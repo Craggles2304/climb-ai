@@ -1,0 +1,3 @@
+import {AppShell} from '@/components/AppShell';import {PageHead} from '@/components/UI';import Link from 'next/link';
+const champs=[['Kog\'Maw',18,'56%','6.4',76],['Aphelios',11,'45%','5.9',63],['Jinx',9,'56%','6.1',69]];
+export default function Champions(){return <AppShell><PageHead title="Champions" subtitle="Your performance patterns, not a generic tier list."/><div className="grid three">{champs.map(c=><Link href={`/champions/${encodeURIComponent(c[0])}`} className="glass card" key={c[0]}><div className="eyebrow">ADC</div><h2>{c[0]}</h2><p className="muted">{c[1]} games · {c[2]} win rate</p><div className="metric">{c[3]} CS/min</div><p className="muted">Climb Score {c[4]}</p></Link>)}</div></AppShell>}
