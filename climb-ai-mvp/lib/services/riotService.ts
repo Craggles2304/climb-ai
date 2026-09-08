@@ -1,4 +1,0 @@
-import {Match} from '../types';
-export interface RiotService{getAccountByRiotId(gameName:string,tagline:string,region:string):Promise<unknown>;getSummonerRank(puuid:string,region:string):Promise<unknown>;getRecentMatches(puuid:string,region:string):Promise<string[]>;getMatchDetails(matchId:string,region:string):Promise<Match>;getChampionData():Promise<unknown>}
-export class DisabledRiotService implements RiotService{private fail():never{throw new Error('Automatic Riot sync is not enabled yet. Upload a match instead.')}async getAccountByRiotId(){return this.fail()}async getSummonerRank(){return this.fail()}async getRecentMatches(){return this.fail()}async getMatchDetails(){return this.fail()}async getChampionData(){return this.fail()}}
-export const riotService:RiotService=new DisabledRiotService();
