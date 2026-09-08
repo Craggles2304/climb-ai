@@ -1,0 +1,3 @@
+/** Production boundary. Keep the service-role key server-only. This file intentionally contains no SDK dependency so demo mode remains zero-config. */
+export const supabaseConfig={url:process.env.NEXT_PUBLIC_SUPABASE_URL||'',anonKey:process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY||'',serviceRoleKey:process.env.SUPABASE_SERVICE_ROLE_KEY||''};
+export function assertServerOnly(){if(typeof window!=='undefined'&&supabaseConfig.serviceRoleKey)throw new Error('Service role key must never be exposed client-side.')}
