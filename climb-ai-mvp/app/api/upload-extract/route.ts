@@ -1,0 +1,1 @@
+import {NextResponse} from 'next/server';export async function POST(){return NextResponse.json({mode:'demo',requiresConfirmation:true,extracted:{champion:"Kog'Maw",kills:8,deaths:4,assists:10,cs:221,duration:'32:10',result:'WIN'},notice:'Production multimodal extraction is intentionally disabled until a server-side AI provider is configured.'})}
