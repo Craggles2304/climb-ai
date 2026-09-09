@@ -1,0 +1,10 @@
+'use client';
+import Link from 'next/link';
+import {usePathname} from 'next/navigation';
+import {useAccount} from './AccountContext';
+import {BRAND} from '@/lib/brand';
+import {Wordmark} from './UI';
+import {SessionBar} from './SessionBar';
+const desk=[['Dashboard','/dashboard'],['My Learning Plan','/ilp'],['Analyse','/analyse'],['Missions','/missions'],['Progress','/progress'],['Coach','/coach'],['Live Companion','/live'],['Uploads','/uploads'],['Accounts','/account'],['Subscription','/pricing'],['Settings','/settings']];
+const mobile=[['Home','/dashboard'],['ILP','/ilp'],['Analyse','/analyse'],['Coach','/coach'],['Profile','/account']];
+export function AppShell({children}:{children:React.ReactNode}){const {accounts,active,setActive}=useAccount();const path=usePathname();return <div className="app-layout"><aside className="sidebar"><Link href="/" className="logo-link" aria-label={`${BRAND.name} home`}><Wordmark size="sm" priority/></Link><div className="account-switch"><div className="label">ACTIVE RIOT ACCOUNT</div><select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline} · {a.region}</option>)}</select><div><strong>{active.rank}</strong><span>{active.role} · {active.label}</span></div></div><nav className="nav">{desk.map(([n,h])=><Link className={path===h?'active-nav':''} key={h} href={h}>{n}</Link>)}</nav><div className="your-champs"><div className="eyebrow">YOUR CHAMPIONS</div>{active.champions.slice(0,3).map((c,i)=><Link href={`/champions/${encodeURIComponent(c)}`} key={c}><span className="champ-index">0{i+1}</span><div><b>{c}</b><small>Open rank plan →</small></div></Link>)}<Link className="all-champs" href="/champions">VIEW CHAMPION LAB</Link></div><SessionBar/></aside><main className="app-main">{children}</main><nav className="mobile-nav"><div>{mobile.map(([n,h])=><Link key={h} href={h}>{n}</Link>)}</div></nav></div>}
