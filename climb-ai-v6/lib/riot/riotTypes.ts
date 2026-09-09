@@ -75,6 +75,10 @@ export interface RiotTimelineEvent{
   itemId?:number;
   assistingParticipantIds?:number[];
   monsterType?:string;
+  monsterSubType?:string;
+  killerTeamId?:number;
+  laneType?:string;
+  towerType?:string;
   buildingType?:string;
   teamId?:number;
 }

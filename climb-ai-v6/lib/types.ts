@@ -1,3 +1,5 @@
+import type {KeyMoment} from './riot/keyMoments';
+
 export type Role='TOP'|'JUNGLE'|'MID'|'ADC'|'SUPPORT';
 export type Rank='Iron'|'Bronze'|'Silver'|'Gold'|'Platinum'|'Emerald'|'Diamond'|'Master+';
 export type MatchResult='WIN'|'LOSS';
@@ -9,7 +11,9 @@ export interface MatchMetrics{
   deathsPre10?:number;deaths10to20?:number;deathsPost20?:number;soloDeaths?:number;teamfightDeaths?:number;
   firstItemMinute?:number;secondItemMinute?:number;thirdItemMinute?:number;levelAt15?:number;wardsPlaced?:number;controlWards?:number;
 }
-export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'; createdAt:string }
+export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'; createdAt:string;
+  /** Turning points from the match timeline, when one was available. */
+  moments?:KeyMoment[] }
 export type IssueCategory='FARMING'|'POSITIONING'|'DEATHS'|'LANING'|'TRADING'|'WAVE_MANAGEMENT'|'TEMPO'|'OBJECTIVES'|'VISION'|'TEAMFIGHTING'|'TARGET_SELECTION'|'RECALL_TIMING'|'RESOURCE_COLLECTION'|'MAP_AWARENESS'|'CHAMPION_MASTERY'|'ITEMISATION'|'MATCHUPS'|'CONSISTENCY';
 export interface Signal{category:IssueCategory;severity:number;confidence:number;facts:string[];inference:string;suggestion:string}
 export interface Mission{ id:string; riotAccountId:string; category:IssueCategory; title:string; metric:string; target:number; unit:string; gamesRequired:number; gamesCompleted:number; successfulGames:number; rules:string[]; status:'DISCOVER'|'PRACTISE'|'REPEAT'|'MASTERED'; createdAt:string }

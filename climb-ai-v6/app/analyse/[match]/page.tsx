@@ -4,6 +4,7 @@ import { MetricCard, PageHead } from '@/components/UI';
 import { demoMatches } from '@/data/demo';
 import { analyseMatch } from '@/lib/engine';
 import { buildReview } from '@/lib/review';
+import { TurningPoints } from '@/components/TurningPoints';
 
 const pct = (n?: number) =>
   n === undefined ? 'Unavailable' : `${Math.round(n * 100)}%`;
@@ -136,6 +137,9 @@ export default async function Analysis({
           </div>
         </div>
       </div>
+
+      {/* Timeline-derived, so it renders only for Riot-synced matches. */}
+      <TurningPoints matchId={id} />
 
       <section className="glass review" style={{ marginTop: 18 }}>
         <div className="review-top">

@@ -17,7 +17,12 @@ export interface SaveResult{
   reason?:string;
 }
 
-export interface SyncedMatch{match:Match;unavailable:string[]}
+export interface SyncedMatch{
+  match:Match;
+  unavailable:string[];
+  /** Turning points, present only when the match had a timeline. */
+  moments?:Match['moments'];
+}
 
 export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<SaveResult>{
   const matches=synced.map(s=>s.match);

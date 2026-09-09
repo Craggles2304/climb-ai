@@ -90,7 +90,9 @@ export async function POST(req:NextRequest){
       ok:true,
       account:{gameName:account.gameName,tagline:account.tagLine,puuid:account.puuid},
       rank,
-      matches:synced.map(s=>s.match),
+      // Turning points ride along with the match so the review page can show
+      // where the game turned without refetching the timeline.
+      matches:synced.map(s=>({...s.match,moments:s.moments})),
       persisted:saved,
       degradedMetrics:Object.fromEntries(degraded),
       failures,

@@ -28,6 +28,8 @@ export interface MapMatchOptions{
 }
 
 export interface MapMatchResult{
+  /** Turning points from the timeline, when one was available. */
+  moments?:import('./keyMoments').KeyMoment[];
   match:Match;
   /** Metric keys that could not be derived from the supplied payloads. */
   unavailable:string[];

@@ -5,6 +5,7 @@ import {platformHost,regionalHost} from '../riot/regions';
 import {mapRiotMatch,MapMatchResult} from '../riot/mapMatch';
 import {SpectatorGame,LiveGameRead,readLiveGame,championNameMap} from '../riot/liveGame';
 import {completedItemIdsFrom,DataDragonItem} from '../riot/items';
+import {keyMoments} from '../riot/keyMoments';
 import {RiotAccountDto,RiotMatchDto,RiotTimelineDto,RiotLeagueEntryDto} from '../riot/riotTypes';
 
 export interface RankInfo{tier:string;division:string;leaguePoints:number;label:string}
@@ -105,11 +106,15 @@ export class LiveRiotService implements RiotService{
     }
 
     const completedItemIds=await this.getCompletedItemIds().catch(()=>undefined);
-    return mapRiotMatch(match,timeline,ctx.puuid,{
+    const mapped=mapRiotMatch(match,timeline,ctx.puuid,{
       riotAccountId:ctx.riotAccountId,
       rank:ctx.rank,
       completedItemIds,
     });
+    // Turning points need the timeline, so they are computed here where it is
+    // still in hand rather than refetching it later.
+    if(timeline)mapped.moments=keyMoments(match,timeline,ctx.puuid);
+    return mapped;
   }
 
   async getActiveGame(puuid:string,region:string):Promise<LiveGameRead|null>{
