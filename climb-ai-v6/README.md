@@ -19,7 +19,7 @@ Play a game. Find the one thing holding you back. Fix it next game.
 - Current champion builds still require a legitimate current-patch data integration before they should be called "best".
 
 ## Deploy
-Set Vercel Root Directory to `climb-ai-v6`.
+Set Vercel Root Directory to `climb-ai-v7`.
 
 Next.js is pinned to 15.5.24, the patched version already used successfully in earlier deployments.
 

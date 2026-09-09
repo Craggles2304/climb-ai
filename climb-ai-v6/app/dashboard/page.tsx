@@ -11,6 +11,7 @@ import {LeakPriceCard} from '@/components/LeakPrice';
 import {TrackView} from '@/components/TrackView';
 import {TiltBanner} from '@/components/TiltBanner';
 import {FirstRun} from '@/components/FirstRun';
+import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
 import {BehaviourCheck} from '@/components/BehaviourCheck';
 import {readTilt,sessionResults} from '@/lib/tilt';
@@ -41,7 +42,7 @@ const EconomyCurve=dynamic(
 
 export default function DevelopmentHQ(){
   const mounted=useMounted();
-  const {active,isEmpty}=useAccount();
+  const {active,isEmpty,profile}=useAccount();
   const matches=matchesFor(active.id);
   const last=matches[0];
   const mission=missionFor(active.id);
@@ -105,6 +106,14 @@ export default function DevelopmentHQ(){
         subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${active.role} · No matches analysed yet.`}
         action={<Link className="btn secondary" href="/account">SWITCH ACCOUNT</Link>}
       />
+      {/* A player with no analysed games can still be in one right now, and
+          the hypothesis rule is exactly what they should be carrying in. */}
+      {profile&&<ErrorBoundary label="live_game" compact>
+        <LiveGameCard
+          gameName={profile.gameName} tagline={profile.tagline}
+          region={profile.region} task={activeTasks[0]}
+        />
+      </ErrorBoundary>}
       <FirstRun task={activeTasks[0]} gameName={active.gameName}/>
     </AppShell>;
   }
@@ -118,6 +127,8 @@ export default function DevelopmentHQ(){
     />
 
     <div className="v7-stack">
+      {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={activeTasks[0]}/></ErrorBoundary>}
+
       <ErrorBoundary label="tilt" compact><TiltBanner read={tilt} results={sessionResults(session)}/></ErrorBoundary>
 
       <section className="hq-command">

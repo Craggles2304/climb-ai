@@ -3,6 +3,8 @@ import {Match} from '../types';
 import {riotFetch,riotEnabled,RiotApiError} from '../riot/client';
 import {platformHost,regionalHost} from '../riot/regions';
 import {mapRiotMatch,MapMatchResult} from '../riot/mapMatch';
+import {SpectatorGame,LiveGameRead,readLiveGame,championNameMap} from '../riot/liveGame';
+import {completedItemIdsFrom,DataDragonItem} from '../riot/items';
 import {RiotAccountDto,RiotMatchDto,RiotTimelineDto,RiotLeagueEntryDto} from '../riot/riotTypes';
 
 export interface RankInfo{tier:string;division:string;leaguePoints:number;label:string}
@@ -26,6 +28,11 @@ export interface RiotService{
   getSummonerRank(puuid:string,region:string):Promise<RankInfo|null>;
   getRecentMatches(puuid:string,region:string,opts?:RecentMatchOptions):Promise<string[]>;
   getMatchDetails(matchId:string,region:string,ctx:MatchContext):Promise<MapMatchResult>;
+  /**
+   * The game this player is in right now, or null if they are not in one.
+   * Not being in a game is the normal case, never an error.
+   */
+  getActiveGame(puuid:string,region:string):Promise<LiveGameRead|null>;
   /** Item IDs that count as a completed item, for item-timing metrics. */
   getCompletedItemIds():Promise<ReadonlySet<number>>;
   getChampionData():Promise<unknown>;
@@ -40,6 +47,7 @@ export class DisabledRiotService implements RiotService{
   async getSummonerRank(){return this.fail()}
   async getRecentMatches(){return this.fail()}
   async getMatchDetails(){return this.fail()}
+  async getActiveGame(){return this.fail()}
   async getCompletedItemIds(){return this.fail()}
   async getChampionData(){return this.fail()}
 }
@@ -104,24 +112,42 @@ export class LiveRiotService implements RiotService{
     });
   }
 
+  async getActiveGame(puuid:string,region:string):Promise<LiveGameRead|null>{
+    try{
+      // SPECTATOR-V5 describes a game in progress, so it is only briefly cacheable.
+      const game=await riotFetch<SpectatorGame>(
+        `${platformHost(region)}/lol/spectator/v5/active-games/by-puuid/${encodeURIComponent(puuid)}`,
+        {ttl:'short',maxRetries:1},
+      );
+      const championNames=await this.getChampionData()
+        .then(championNameMap)
+        .catch(()=>undefined);
+      return readLiveGame(game,puuid,{championNames});
+    }catch(err){
+      // 404 means "not currently in a game". That is the common case for any
+      // player at any moment, and it must never surface as a failure.
+      if(err instanceof RiotApiError&&err.status===404)return null;
+      throw err;
+    }
+  }
+
   /**
    * Data Dragon is a public static CDN — no API key, no Riot rate limit.
-   * "Completed" is a heuristic: an item that builds into nothing further, has
-   * real build depth, costs like a legendary and exists on Summoner's Rift.
-   * Item timings are only reported when this list is available.
+   *
+   * "Completed" means: builds into nothing further, is itself built from
+   * components, costs like a legendary, and exists on Summoner's Rift.
+   *
+   * This previously required `depth >= 3`, which silently excluded Infinity
+   * Edge and Rabadon's Deathcap — both depth 2 and both core items. Against 20
+   * real ranked games that lost the second-item timing in 6 of them and the
+   * third in 12. Build depth is not a reliable proxy for "finished"; having
+   * components and building into nothing is.
    */
   async getCompletedItemIds():Promise<ReadonlySet<number>>{
     const data=await this.getItemData();
-    const ids=new Set<number>();
-    for(const [id,item] of Object.entries(data.data)){
-      const buildsIntoNothing=!item.into||item.into.length===0;
-      const deepEnough=(item.depth??1)>=3;
-      const legendaryCost=(item.gold?.total??0)>=2000;
-      const onRift=item.maps?.['11']!==false;
-      const consumable=(item.tags||[]).some(t=>t==='Consumable'||t==='Trinket');
-      if(buildsIntoNothing&&deepEnough&&legendaryCost&&onRift&&!consumable)ids.add(Number(id));
-    }
-    return ids;
+    // The rule itself lives in lib/riot/items.ts so it can be tested against
+    // real item shapes. It was wrong once and cost most of our item timings.
+    return completedItemIdsFrom(data.data);
   }
 
   async getChampionData():Promise<unknown>{
@@ -135,16 +161,9 @@ export class LiveRiotService implements RiotService{
   }
 }
 
-interface DataDragonItems{
-  data:Record<string,{
-    into?:string[];
-    depth?:number;
-    gold?:{total?:number};
-    maps?:Record<string,boolean>;
-    tags?:string[];
-  }>;
-}
+interface DataDragonItems{data:Record<string,DataDragonItem>}
 
+/** Data Dragon is static per patch, so it is cached hard and shared. */
 const ddragonCache=new Map<string,{expires:number;value:unknown}>();
 
 async function ddragonFetch<T=unknown>(url:string):Promise<T>{
