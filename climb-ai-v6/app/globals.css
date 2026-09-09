@@ -468,3 +468,14 @@ img.logo-sm{width:132px}
 .errstate-actions{display:flex;gap:10px;flex-wrap:wrap}
 .errstate.is-compact h2{font-size:18px;margin:10px 0 8px}
 .errstate.is-compact p{font-size:13px;margin-bottom:16px}
+
+/* Legal pages */
+.legal{max-width:820px;margin:40px auto}
+.legal h1{font-size:clamp(28px,4vw,42px);letter-spacing:-.04em;margin:0 0 6px}
+.legal h2{font-size:clamp(16px,2vw,20px);letter-spacing:-.02em;margin:30px 0 10px;color:var(--accent-2)}
+.legal p{margin:0 0 14px;font-size:14.5px;line-height:1.7;color:#C7CCD2;max-width:70ch}
+.legal ul{margin:0 0 14px;padding-left:20px;display:grid;gap:8px}
+.legal li{font-size:14.5px;line-height:1.6;color:#C7CCD2}
+.legal-links{margin-top:34px;padding-top:20px;border-top:1px solid var(--border)}
+.footer-links{display:flex;gap:18px;margin-top:12px}
+.footer-links a{font-size:12px;font-weight:800;letter-spacing:.06em;color:var(--accent-2)}
