@@ -1,5 +1,4 @@
-# Never upload secrets. Environment variables belong in the Vercel dashboard,
-# not in the deployment bundle.
+# Never upload secrets. Environment variables belong in the Vercel dashboard.
 .env
 .env.local
 .env*.local
@@ -8,12 +7,6 @@
 node_modules
 .next
 
-# Local-only
+# Local backups made while editing
 *bak
 *.orig
-tests
-supabase
-companion
-
-.open-next
-.wrangler
