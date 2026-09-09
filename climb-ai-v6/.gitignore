@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+next-env.d.ts
+tsconfig.tsbuildinfo
+
+# Secrets — never commit these
+.env
+.env.local
+.env*.local
+
+# Local backups made while editing
+*bak
+*.orig
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Cloudflare / OpenNext build output
+.open-next/
+.wrangler/
+cloudflare-env.d.ts

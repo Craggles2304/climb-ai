@@ -1,0 +1,19 @@
+# Never upload secrets. Environment variables belong in the Vercel dashboard,
+# not in the deployment bundle.
+.env
+.env.local
+.env*.local
+
+# Rebuilt on Vercel
+node_modules
+.next
+
+# Local-only
+*bak
+*.orig
+tests
+supabase
+companion
+
+.open-next
+.wrangler
