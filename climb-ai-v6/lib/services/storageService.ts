@@ -1,1 +1,0 @@
-export interface StorageService{saveUpload(file:File):Promise<{path:string}>}export class PlaceholderStorageService implements StorageService{async saveUpload(file:File){return {path:`demo/${encodeURIComponent(file.name)}`}}}export const storageService:StorageService=new PlaceholderStorageService();
