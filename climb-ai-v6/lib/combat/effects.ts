@@ -40,7 +40,16 @@ export interface AutoProcEffect{
   label:string;
   /** Trigger on this numbered basic attack. */
   procAtAuto:number;
+  /** Optional repeat interval after the first proc, e.g. every third attack. */
+  repeatEvery?:number;
   damage:OnHitEffect;
+}
+
+export function autoProcTriggers(proc:AutoProcEffect,attackNumber:number):boolean{
+  if(attackNumber<proc.procAtAuto)return false;
+  if(attackNumber===proc.procAtAuto)return true;
+  const every=Math.max(0,Math.round(proc.repeatEvery??0));
+  return every>0&&(attackNumber-proc.procAtAuto)%every===0;
 }
 
 export interface RuneCombatProfile{
