@@ -4,7 +4,7 @@ import {championDetail,latestPatch,resolveChampionId} from '@/lib/champions/sour
 import {statsAtLevel,damageType} from '@/lib/champions/ddragon';
 import {championSpells} from '@/lib/combat/source';
 import {assembleKit,combatDamageType,defaultRanks,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
-import {simulateCombo,type ComboStep} from '@/lib/combat/combos';
+import {ATTACK_SPEED_CAP,simulateCombo,type ComboStep} from '@/lib/combat/combos';
 import {compareTrades} from '@/lib/combat/trades';
 import {killThreshold,noPenetration,type Penetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
@@ -13,6 +13,13 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {buildLoadout,type LoadoutResult,type MatchupItem} from '@/lib/combat/itemLoadout';
+import {
+  buildRuneCombatProfile,buildSummonerCombatProfile,
+  type RuneCombatProfile,type SummonerCombatProfile,
+} from '@/lib/combat/effects';
+import {
+  buildChampionCombatProfile,type ChampionCombatProfile,
+} from '@/lib/combat/championEffects';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -20,10 +27,10 @@ export const dynamic='force-dynamic';
 /**
  * Matchup Lab simulation.
  *
- * Player-facing setup is champion + level + build + ability ranks + combat
- * state. Stats are derived from patch data. Runes and summoners are carried as
- * explicit context and reduce confidence until their individual mechanics have
- * deterministic models; they are never silently converted into guessed damage.
+ * The player supplies League concepts — champion, level, build, ranks, runes,
+ * summoners and current fight state. The route derives the numerical combat
+ * state from patch data. Only explicitly active summoner/champion effects are
+ * applied; carrying Barrier or Ignite is not the same thing as pressing it.
  */
 const side=z.object({
   champion:z.string().min(1).max(32),
@@ -31,7 +38,11 @@ const side=z.object({
   itemIds:z.array(z.coerce.number().int().positive()).max(6).default([]),
   runeIds:z.array(z.coerce.number().int().positive()).max(6).default([]),
   summonerIds:z.array(z.string().min(1).max(48)).max(2).default([]),
+  activeSummonerIds:z.array(z.string().min(1).max(48)).max(2).default([]),
+  activeChampionEffects:z.array(z.string().min(1).max(48)).max(8).default([]),
   shield:z.coerce.number().min(0).max(10000).default(0),
+  // Legacy sandbox fields stay accepted by the API, but are intentionally not
+  // exposed in the normal Matchup Lab UI.
   bonusAttackDamage:z.coerce.number().min(0).max(1000).default(0),
   bonusAbilityPower:z.coerce.number().min(0).max(2000).default(0),
   bonusArmor:z.coerce.number().min(0).max(1000).default(0),
@@ -81,8 +92,8 @@ export async function POST(req:NextRequest){
     if(!theirId)return NextResponse.json({ok:false,error:`No champion called "${them.champion}".`},{status:404});
 
     const catalogue=catalogueRaw as Record<string,MatchupItem>;
-    const yourLoadout=buildLoadout(catalogue,you.itemIds);
-    const theirLoadout=buildLoadout(catalogue,them.itemIds);
+    const yourLoadout=buildLoadout(catalogue,you.itemIds,you.bonusAbilityPower);
+    const theirLoadout=buildLoadout(catalogue,them.itemIds,them.bonusAbilityPower);
 
     const [yourChampion,theirChampion]=await Promise.all([
       championDetail(yourId,patch),
@@ -93,32 +104,68 @@ export async function POST(req:NextRequest){
       championSpells(theirId),
     ]);
 
-    const yourStats=combatStats(yourChampion,you,yourLoadout);
-    const theirStats=combatStats(theirChampion,them,theirLoadout);
+    const yourRanks=you.ranks??defaultRanks(you.level);
+    const theirRanks=them.ranks??defaultRanks(them.level);
+
+    const yourChampionFx=buildChampionCombatProfile(
+      yourChampion.id,you.activeChampionEffects,yourRanks,
+      {abilityPower:you.bonusAbilityPower+yourLoadout.stats.abilityPower},
+    );
+    const theirChampionFx=buildChampionCombatProfile(
+      theirChampion.id,them.activeChampionEffects,theirRanks,
+      {abilityPower:them.bonusAbilityPower+theirLoadout.stats.abilityPower},
+    );
+
+    const yourStats=combatStats(yourChampion,you,yourLoadout,yourChampionFx.permanentAttackSpeedRatio);
+    const theirStats=combatStats(theirChampion,them,theirLoadout,theirChampionFx.permanentAttackSpeedRatio);
     const yourDamage=combatDamageType(yourChampion.info);
     const theirDamage=combatDamageType(theirChampion.info);
 
     const yourKit=assembleKit(
       yourChampion.spells as DataDragonSpell[],
       yourSpells?.spells??[],
-      {
-        caster:yourStats,
-        level:you.level,
-        ranks:you.ranks??defaultRanks(you.level),
-        damageType:yourDamage.type,
-      });
-
+      {caster:yourStats,level:you.level,ranks:yourRanks,damageType:yourDamage.type},
+    );
     const theirKit=assembleKit(
       theirChampion.spells as DataDragonSpell[],
       theirSpells?.spells??[],
-      {
-        caster:theirStats,
-        level:them.level,
-        ranks:them.ranks??defaultRanks(them.level),
-        damageType:theirDamage.type,
-      });
+      {caster:theirStats,level:them.level,ranks:theirRanks,damageType:theirDamage.type},
+    );
 
-    const targetHealth=theirStats.maxHealth*(them.healthPercent/100);
+    const yourBase=statsAtLevel(yourChampion.stats,you.level);
+    const theirBase=statsAtLevel(theirChampion.stats,them.level);
+    const yourRuneFx=buildRuneCombatProfile(you.runeIds,{
+      level:you.level,isRanged:yourBase.attackRange>=300,
+      baseAttackSpeed:yourBase.baseAttackSpeed,
+      bonusAttackSpeedRatio:yourBase.bonusAttackSpeedRatio+yourLoadout.stats.attackSpeedRatio+yourChampionFx.permanentAttackSpeedRatio,
+      adaptiveDamageType:yourDamage.type,
+    });
+    const theirRuneFx=buildRuneCombatProfile(them.runeIds,{
+      level:them.level,isRanged:theirBase.attackRange>=300,
+      baseAttackSpeed:theirBase.baseAttackSpeed,
+      bonusAttackSpeedRatio:theirBase.bonusAttackSpeedRatio+theirLoadout.stats.attackSpeedRatio+theirChampionFx.permanentAttackSpeedRatio,
+      adaptiveDamageType:theirDamage.type,
+    });
+
+    const yourBaseCurrent=yourStats.maxHealth*(you.healthPercent/100);
+    const theirBaseCurrent=theirStats.maxHealth*(them.healthPercent/100);
+    const yourSummonerFx=buildSummonerCombatProfile(
+      you.summonerIds,you.activeSummonerIds,
+      {level:you.level,maxHealth:yourStats.maxHealth,currentHealth:yourBaseCurrent},
+    );
+    const theirSummonerFx=buildSummonerCombatProfile(
+      them.summonerIds,them.activeSummonerIds,
+      {level:them.level,maxHealth:theirStats.maxHealth,currentHealth:theirBaseCurrent},
+    );
+
+    // Heal is treated as used at fight start. Barrier is added to the manually
+    // entered current shield. Their duration/timing limitations stay visible in
+    // the audit notes instead of being silently ignored.
+    const yourCurrent=Math.min(yourStats.maxHealth,yourBaseCurrent+yourSummonerFx.heal);
+    const theirCurrent=Math.min(theirStats.maxHealth,theirBaseCurrent+theirSummonerFx.heal);
+    const yourShield=you.shield+yourSummonerFx.bonusShield;
+    const theirShield=them.shield+theirSummonerFx.bonusShield;
+
     const yourPen=penetrationFromInput(you,yourLoadout);
     const theirPen=penetrationFromInput(them,theirLoadout);
     const yourHaste=you.abilityHaste+yourLoadout.stats.abilityHaste;
@@ -127,45 +174,85 @@ export async function POST(req:NextRequest){
     const combo=simulateCombo({
       sequence:(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[],
       abilities:yourKit.models,
-      autoAttack:{damage:yourStats.attackDamage,attackSpeed:yourStats.attackSpeed},
+      autoAttack:{
+        damage:yourStats.attackDamage,attackSpeed:yourStats.attackSpeed,
+        onHits:[...yourLoadout.onHits,...yourChampionFx.onHits],
+        attackStack:yourRuneFx.attackStack,
+        autoProcs:yourRuneFx.autoProcs,
+      },
       caster:{mana:yourStats.mana*(you.resourcePercent/100)},
       target:{
-        health:targetHealth,
-        shield:them.shield,
-        armor:theirStats.armor,
-        magicResist:theirStats.magicResist,
+        health:theirCurrent,maxHealth:theirStats.maxHealth,shield:theirShield,
+        armor:theirStats.armor,magicResist:theirStats.magicResist,
       },
       penetration:yourPen,
       abilityHaste:yourHaste,
+      damageRules:yourRuneFx.damageRules,
+      outgoingDamageMultiplier:theirSummonerFx.exhaustDamageMultiplier,
+      outgoingDamageMultiplierDurationSeconds:theirSummonerFx.exhaustDurationSeconds,
     });
+
+    // Ignite is damage over 5 seconds, not instant combo damage. It is therefore
+    // kept out of combo.totalMitigatedDamage and added only to the explicit
+    // all-in kill check below.
+    const allInDamage=combo.totalMitigatedDamage+yourSummonerFx.igniteDamage;
+    const kill=killThreshold(allInDamage,theirCurrent,theirShield);
 
     const tradeSide=(
       champion:string,
       kit:ReturnType<typeof assembleKit>,
       stats:CombatStats,
       input:SideInput,
+      currentHealth:number,
+      shield:number,
       opposing:CombatStats,
       pen:Penetration,
       haste:number,
+      loadout:LoadoutResult,
+      runeFx:RuneCombatProfile,
+      championFx:ChampionCombatProfile,
+      opposingSummonerFx:SummonerCombatProfile,
     )=>({
       champion,
       abilities:kit.models,
-      autoAttack:{damage:stats.attackDamage,attackSpeed:stats.attackSpeed},
+      autoAttack:{
+        damage:stats.attackDamage,attackSpeed:stats.attackSpeed,
+        onHits:[...loadout.onHits,...championFx.onHits],
+        attackStack:runeFx.attackStack,
+        autoProcs:runeFx.autoProcs,
+      },
       mana:stats.mana*(input.resourcePercent/100),
       maxHealth:stats.maxHealth,
+      currentHealth,
+      shield,
       resistances:{armor:opposing.armor,magicResist:opposing.magicResist},
       penetration:pen,
       abilityHaste:haste,
+      damageRules:runeFx.damageRules,
+      outgoingDamageMultiplier:opposingSummonerFx.exhaustDamageMultiplier,
+      outgoingDamageMultiplierDurationSeconds:opposingSummonerFx.exhaustDurationSeconds,
     });
 
     const trades=compareTrades(
-      tradeSide(yourChampion.name,yourKit,yourStats,you,theirStats,yourPen,yourHaste),
-      tradeSide(theirChampion.name,theirKit,theirStats,them,yourStats,theirPen,theirHaste),
+      tradeSide(
+        yourChampion.name,yourKit,yourStats,you,yourCurrent,yourShield,
+        theirStats,yourPen,yourHaste,yourLoadout,yourRuneFx,yourChampionFx,theirSummonerFx,
+      ),
+      tradeSide(
+        theirChampion.name,theirKit,theirStats,them,theirCurrent,theirShield,
+        yourStats,theirPen,theirHaste,theirLoadout,theirRuneFx,theirChampionFx,yourSummonerFx,
+      ),
     );
 
     const setupApproximations=[
-      ...setupCaveats('your',you),
-      ...setupCaveats('enemy',them),
+      ...effectCaveats('Your',yourRuneFx,yourSummonerFx,yourChampionFx),
+      ...effectCaveats('Enemy',theirRuneFx,theirSummonerFx,theirChampionFx),
+      ...(yourSummonerFx.bonusShield>0||theirSummonerFx.bonusShield>0
+        ?['Barrier is applied as an opening shield. Its 2.5s expiry is not yet removed mid-sequence, so a combo lasting longer than 2.5s can slightly overstate Barrier protection.']
+        :[]),
+      ...(yourSummonerFx.igniteDamage>0||theirSummonerFx.igniteDamage>0
+        ?['Ignite is not treated as instant damage. The custom all-in kill check can include its eventual 5-second total; the generic trade-duration table does not yet schedule Ignite ticks.']
+        :[]),
     ];
 
     const confidence=combineConfidence([
@@ -182,6 +269,9 @@ export async function POST(req:NextRequest){
       }),
     ]);
 
+    const yourEffectNotes=[...yourRuneFx.notes,...yourSummonerFx.notes,...yourChampionFx.notes];
+    const theirEffectNotes=[...theirRuneFx.notes,...theirSummonerFx.notes,...theirChampionFx.notes];
+
     return NextResponse.json({
       ok:true,
       patch,
@@ -189,28 +279,56 @@ export async function POST(req:NextRequest){
         {name:'Data Dragon',use:'champion stats, items, runes, summoners, ability slots, cooldowns and costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
       ],
-      you:sideReport(yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste),
-      them:sideReport(theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste),
+      you:sideReport(
+        yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
+        yourCurrent,yourShield,yourChampionFx.attackRangeBonus,
+      ),
+      them:sideReport(
+        theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste,
+        theirCurrent,theirShield,theirChampionFx.attackRangeBonus,
+      ),
       combo,
       trades,
-      kill:killThreshold(combo.totalMitigatedDamage,targetHealth+them.shield),
+      kill,
+      allIn:{
+        comboDamage:round(combo.totalMitigatedDamage),
+        igniteDamage:round(yourSummonerFx.igniteDamage),
+        totalDamageForKillCheck:round(allInDamage),
+        targetCurrentHealth:round(theirCurrent),
+        targetShield:round(theirShield),
+        includesFiveSecondIgnite:yourSummonerFx.igniteDamage>0,
+      },
+      effects:{
+        you:{
+          modelledRunes:yourRuneFx.modelledRuneIds,
+          unmodelledRunes:yourRuneFx.unmodelledRuneIds,
+          modelledSummoners:yourSummonerFx.modelledIds,
+          unmodelledActiveSummoners:yourSummonerFx.unmodelledActiveIds,
+          modelledChampionEffects:yourChampionFx.modelledEffects,
+          unmodelledChampionEffects:yourChampionFx.unmodelledEffects,
+          itemOnHits:yourLoadout.onHits.map(x=>x.label),
+          notes:yourEffectNotes,
+        },
+        them:{
+          modelledRunes:theirRuneFx.modelledRuneIds,
+          unmodelledRunes:theirRuneFx.unmodelledRuneIds,
+          modelledSummoners:theirSummonerFx.modelledIds,
+          unmodelledActiveSummoners:theirSummonerFx.unmodelledActiveIds,
+          modelledChampionEffects:theirChampionFx.modelledEffects,
+          unmodelledChampionEffects:theirChampionFx.unmodelledEffects,
+          itemOnHits:theirLoadout.onHits.map(x=>x.label),
+          notes:theirEffectNotes,
+        },
+      },
       confidence,
       setup:{
-        yourRunes:you.runeIds,
-        enemyRunes:them.runeIds,
-        yourSummoners:you.summonerIds,
-        enemySummoners:them.summonerIds,
-        yourShield:you.shield,
-        enemyShield:them.shield,
+        yourRunes:you.runeIds,enemyRunes:them.runeIds,
+        yourSummoners:you.summonerIds,enemySummoners:them.summonerIds,
+        yourActiveSummoners:you.activeSummonerIds,enemyActiveSummoners:them.activeSummonerIds,
+        yourChampionEffects:you.activeChampionEffects,enemyChampionEffects:them.activeChampionEffects,
+        yourShield,enemyShield:theirShield,
       },
-      notes:[
-        DAMAGE_TYPE_NOTE,
-        combo.timingNote,
-        ...setupApproximations,
-        ...(you.shield>0||them.shield>0
-          ?['Current shields are applied to the custom combo kill check. The generic trade-duration table still compares damage against max health and does not consume temporary shields.']
-          :[]),
-      ],
+      notes:[DAMAGE_TYPE_NOTE,combo.timingNote,...setupApproximations],
     });
   }catch(err){
     const {title,body:detail}=humanError(err);
@@ -220,12 +338,19 @@ export async function POST(req:NextRequest){
 
 type SideInput=z.infer<typeof side>;
 
-function setupCaveats(owner:'your'|'enemy',input:SideInput):string[]{
+function effectCaveats(
+  owner:'Your'|'Enemy',
+  runeFx:RuneCombatProfile,
+  summonerFx:SummonerCombatProfile,
+  championFx:ChampionCombatProfile,
+):string[]{
   const out:string[]=[];
-  if(input.runeIds.length)
-    out.push(`${owner==='your'?'Your':'Enemy'} selected rune effects are recorded as matchup context but are not yet added to deterministic damage totals.`);
-  if(input.summonerIds.length)
-    out.push(`${owner==='your'?'Your':'Enemy'} selected summoner spell effects are recorded as matchup context but are not yet added to deterministic damage totals.`);
+  if(runeFx.unmodelledRuneIds.length)
+    out.push(`${owner} rune effects not yet modelled: ${runeFx.unmodelledRuneIds.join(', ')}.`);
+  if(summonerFx.unmodelledActiveIds.length)
+    out.push(`${owner} active summoner effects not yet modelled: ${summonerFx.unmodelledActiveIds.join(', ')}.`);
+  if(championFx.unmodelledEffects.length)
+    out.push(`${owner} active champion effects not yet modelled: ${championFx.unmodelledEffects.join(', ')}.`);
   return out;
 }
 
@@ -233,10 +358,13 @@ function combatStats(
   champion:Awaited<ReturnType<typeof championDetail>>,
   input:SideInput,
   loadout:LoadoutResult,
+  championAttackSpeedRatio:number,
 ):CombatStats{
   const base=statsAtLevel(champion.stats,input.level);
   const item=loadout.stats;
-  const rawAttackSpeed=base.baseAttackSpeed*(1+base.bonusAttackSpeedRatio+item.attackSpeedRatio);
+  const rawAttackSpeed=base.baseAttackSpeed*(
+    1+base.bonusAttackSpeedRatio+item.attackSpeedRatio+championAttackSpeedRatio
+  );
   return {
     abilityPower:input.bonusAbilityPower+item.abilityPower,
     attackDamage:base.attackDamage+input.bonusAttackDamage+item.attackDamage,
@@ -245,7 +373,7 @@ function combatStats(
     maxHealth:base.hp+input.bonusHealth+item.health,
     critChance:Math.min(1,Math.max(0,item.critChance)),
     critDamageMultiplier:1.75,
-    attackSpeed:Math.min(2.5,rawAttackSpeed),
+    attackSpeed:Math.min(ATTACK_SPEED_CAP,rawAttackSpeed),
     moveSpeed:(base.moveSpeed+item.flatMoveSpeed)*(1+item.percentMoveSpeed),
     mana:base.mana+item.mana,
   };
@@ -268,6 +396,9 @@ function sideReport(
   kit:ReturnType<typeof assembleKit>,
   loadout:LoadoutResult,
   abilityHaste:number,
+  effectiveCurrentHealth:number,
+  effectiveShield:number,
+  attackRangeBonus:number,
 ){
   const base=statsAtLevel(champion.stats,input.level);
   return {
@@ -281,7 +412,9 @@ function sideReport(
     setup:{
       runeIds:input.runeIds,
       summonerIds:input.summonerIds,
-      shield:input.shield,
+      activeSummonerIds:input.activeSummonerIds,
+      activeChampionEffects:input.activeChampionEffects,
+      shield:round(effectiveShield),
       ranks:input.ranks??defaultRanks(input.level),
     },
     stats:{
@@ -290,11 +423,11 @@ function sideReport(
       armor:round(stats.armor),
       magicResist:round(stats.magicResist),
       health:round(stats.maxHealth),
-      healthNow:round(stats.maxHealth*(input.healthPercent/100)),
+      healthNow:round(effectiveCurrentHealth),
       mana:round(stats.mana),
       manaNow:round(stats.mana*(input.resourcePercent/100)),
       attackSpeed:round3(stats.attackSpeed),
-      attackRange:base.attackRange,
+      attackRange:base.attackRange+attackRangeBonus,
       moveSpeed:round(stats.moveSpeed),
     },
     abilities:SLOTS.map(slot=>kit.abilities[slot]).filter(Boolean),
