@@ -3,8 +3,8 @@ import {z} from 'zod';
 import {championDetail,latestPatch,resolveChampionId} from '@/lib/champions/source';
 import {statsAtLevel,damageType} from '@/lib/champions/ddragon';
 import {championSpells} from '@/lib/combat/source';
-import {assembleKit,combatDamageType,defaultRanks,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
-import {ATTACK_SPEED_CAP,simulateCombo,type ComboStep} from '@/lib/combat/combos';
+import {assembleKit,combatDamageType,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
+import {ATTACK_SPEED_CAP,simulateCombo,type AbilitySlot,type ComboStep} from '@/lib/combat/combos';
 import {compareTrades} from '@/lib/combat/trades';
 import {killThreshold,noPenetration,type Penetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
@@ -20,6 +20,7 @@ import {
 import {
   buildChampionCombatProfile,type ChampionCombatProfile,
 } from '@/lib/combat/championEffects';
+import {normaliseStandardRanks,type AbilityRanks} from '@/lib/combat/skillRanks';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -40,7 +41,7 @@ const side=z.object({
   bonusHealth:z.coerce.number().min(0).max(5000).default(0),
   lethality:z.coerce.number().min(0).max(100).default(0),
   abilityHaste:z.coerce.number().min(0).max(500).default(0),
-  ranks:z.record(z.enum(['Q','W','E','R']),z.coerce.number().int().min(1).max(5)).optional(),
+  ranks:z.record(z.enum(['Q','W','E','R']),z.coerce.number().int().min(0).max(5)).optional(),
   healthPercent:z.coerce.number().min(1).max(100).default(100),
   resourcePercent:z.coerce.number().min(0).max(100).default(100),
 });
@@ -94,8 +95,8 @@ export async function POST(req:NextRequest){
       championSpells(theirId),
     ]);
 
-    const yourRanks=you.ranks??defaultRanks(you.level);
-    const theirRanks=them.ranks??defaultRanks(them.level);
+    const yourRanks=normaliseStandardRanks(you.ranks,you.level);
+    const theirRanks=normaliseStandardRanks(them.ranks,them.level);
 
     const yourChampionFx=buildChampionCombatProfile(
       yourChampion.id,you.activeChampionEffects,yourRanks,
@@ -121,6 +122,8 @@ export async function POST(req:NextRequest){
       theirSpells?.spells??[],
       {caster:theirStats,level:them.level,ranks:theirRanks,damageType:theirDamage.type},
     );
+    applyRankAvailability(yourKit,yourRanks);
+    applyRankAvailability(theirKit,theirRanks);
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
@@ -269,11 +272,11 @@ export async function POST(req:NextRequest){
       ],
       you:sideReport(
         yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
-        yourCurrent,yourShield,yourChampionFx.attackRangeBonus,
+        yourCurrent,yourShield,yourChampionFx.attackRangeBonus,yourRanks,
       ),
       them:sideReport(
         theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste,
-        theirCurrent,theirShield,theirChampionFx.attackRangeBonus,
+        theirCurrent,theirShield,theirChampionFx.attackRangeBonus,theirRanks,
       ),
       combo,
       trades,
@@ -325,6 +328,24 @@ export async function POST(req:NextRequest){
 }
 
 type SideInput=z.infer<typeof side>;
+
+function applyRankAvailability(
+  kit:ReturnType<typeof assembleKit>,
+  ranks:Record<AbilitySlot,number>,
+){
+  for(const slot of SLOTS){
+    const rank=ranks[slot]??0;
+    const ability=kit.abilities[slot];
+    if(ability&&rank<=0){
+      ability.rank=0;
+      ability.cooldownSeconds=0;
+      ability.cost=0;
+      ability.damage=[];
+      ability.calculations=[];
+      delete kit.models[slot];
+    }
+  }
+}
 
 function effectCaveats(
   owner:'Your'|'Enemy',
@@ -387,6 +408,7 @@ function sideReport(
   effectiveCurrentHealth:number,
   effectiveShield:number,
   attackRangeBonus:number,
+  ranks:Record<AbilitySlot,number>,
 ){
   const base=statsAtLevel(champion.stats,input.level);
   return {
@@ -403,7 +425,7 @@ function sideReport(
       activeSummonerIds:input.activeSummonerIds,
       activeChampionEffects:input.activeChampionEffects,
       shield:round(effectiveShield),
-      ranks:input.ranks??defaultRanks(input.level),
+      ranks,
     },
     stats:{
       attackDamage:round(stats.attackDamage),
@@ -424,7 +446,7 @@ function sideReport(
 }
 
 const defaultSequence=(level:number):ComboStep[]=>
-  level>=6?['Q','AA','W','AA','E','R']:['Q','AA','W','AA','E'];
+  level>=6?['Q','AA','W','AA','E','R']:level>=3?['Q','AA','W','AA','E']:level===2?['Q','AA','W','AA']:['Q','AA'];
 
 const round=(n:number)=>Math.round(n*10)/10;
 const round3=(n:number)=>Math.round(n*1000)/1000;
