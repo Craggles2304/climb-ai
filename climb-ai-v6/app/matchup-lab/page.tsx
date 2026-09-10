@@ -6,6 +6,7 @@ import type {ConfidenceLevel,ConfidenceReport} from '@/lib/combat/confidence';
 import type {ComboResult,ComboStep,AbilitySlot} from '@/lib/combat/combos';
 import type {KillCheck} from '@/lib/combat/damage';
 import type {TradeReport} from '@/lib/combat/trades';
+import {championEffectOptions} from '@/lib/combat/championEffects';
 import {TradePanel} from '@/components/TradePanel';
 
 interface AbilityView{
@@ -17,17 +18,28 @@ interface AbilityView{
 }
 
 interface ItemView{id:number;name:string;gold:number;image:string|null;tags:string[]}
-interface SideSetup{runeIds:number[];summonerIds:string[];shield:number;ranks:Partial<Record<AbilitySlot,number>>}
+interface SideSetup{
+  runeIds:number[];summonerIds:string[];activeSummonerIds:string[];
+  activeChampionEffects:string[];shield:number;ranks:Partial<Record<AbilitySlot,number>>;
+}
 interface SideView{
   id:string;name:string;level:number;damageType:string;items:ItemView[];totalGold:number;
   setup?:SideSetup;
   stats:{attackDamage:number;abilityPower:number;armor:number;magicResist:number;health:number;healthNow:number;mana:number;manaNow:number;attackSpeed:number;attackRange:number;moveSpeed:number};
   abilities:AbilityView[];confidence:ConfidenceReport;
 }
+interface EffectSide{
+  modelledRunes:number[];unmodelledRunes:number[];
+  modelledSummoners:string[];unmodelledActiveSummoners:string[];
+  modelledChampionEffects:string[];unmodelledChampionEffects:string[];
+  itemOnHits:string[];notes:string[];
+}
 interface Simulation{
   ok:boolean;error?:string;patch?:string;
   dataSources?:{name:string;use:string;official:boolean}[];
   you?:SideView;them?:SideView;combo?:ComboResult;kill?:KillCheck;trades?:TradeReport;
+  allIn?:{comboDamage:number;igniteDamage:number;totalDamageForKillCheck:number;targetCurrentHealth:number;targetShield:number;includesFiveSecondIgnite:boolean};
+  effects?:{you:EffectSide;them:EffectSide};
   confidence?:ConfidenceReport;notes?:string[];
 }
 interface CatalogueItem{
@@ -38,14 +50,18 @@ interface SetupRune{id:number;name:string;icon:string;treeId:number;treeName:str
 interface SetupSummoner{id:string;key:number;name:string;description:string;image:string|null;cooldown:number|null}
 interface SideForm{
   champion:string;level:number;itemIds:number[];healthPercent:number;resourcePercent:number;
-  shield:number;runeIds:number[];summonerIds:string[];ranks:Partial<Record<AbilitySlot,number>>;
+  shield:number;runeIds:number[];summonerIds:string[];activeSummonerIds:string[];
+  activeChampionEffects:string[];ranks:Partial<Record<AbilitySlot,number>>;
 }
 
 const blankSide=(champion:string):SideForm=>({
   champion,level:6,itemIds:[],healthPercent:100,resourcePercent:100,shield:0,
-  runeIds:[],summonerIds:['SummonerFlash'],ranks:{},
+  runeIds:[],summonerIds:['SummonerFlash'],activeSummonerIds:[],
+  activeChampionEffects:[],ranks:{},
 });
 const STEPS:ComboStep[]=['Q','W','E','R','AA'];
+const MODELLED_RUNES=new Set([8005,8008,8014,8017,8299]);
+const ACTIVE_SUMMONERS=new Set(['SummonerBarrier','SummonerHeal','SummonerDot','SummonerExhaust']);
 const CONFIDENCE_CLASS:Record<ConfidenceLevel,string>={HIGH:'conf-high',MEDIUM:'conf-medium',LOW:'conf-low',PARTIAL:'conf-partial'};
 
 export default function MatchupLab(){
@@ -89,29 +105,31 @@ export default function MatchupLab(){
 
   const verdict=useMemo(()=>{
     if(!data?.ok||!data.kill||!data.combo)return null;
-    if(data.kill.kills)return {label:'THIS COMBO KILLS',tone:'edge-you'};
-    const share=data.combo.totalMitigatedDamage/Math.max(1,(data.them?.stats.healthNow??1)+(data.them?.setup?.shield??0));
+    if(data.kill.kills)
+      return {label:data.allIn?.includesFiveSecondIgnite?'LETHAL WITH ACTIVE IGNITE':'THIS COMBO KILLS',tone:'edge-you'};
+    const damage=data.allIn?.totalDamageForKillCheck??data.combo.totalMitigatedDamage;
+    const pool=Math.max(1,(data.them?.stats.healthNow??1)+(data.them?.setup?.shield??0));
+    const share=damage/pool;
     if(share>=0.6)return {label:'CLOSE TO LETHAL',tone:'edge-even'};
     return {label:'NOT LETHAL',tone:'edge-them'};
   },[data]);
 
   return <AppShell>
-    <PageHead title="Matchup Lab" subtitle="Build the real fight state: champion, level, items, ability ranks, runes, summoners and current HP. The engine calculates the stats."/>
+    <PageHead title="Matchup Lab" subtitle="Build the real fight state. Items, runes, active summoners, champion states and ability ranks now feed the deterministic combat engine."/>
 
     <div className="glass card" style={{marginBottom:16,padding:16}}>
       <div className="section-row" style={{gap:12,flexWrap:'wrap'}}>
         <div>
           <div className="eyebrow">BUILD THE FIGHT, NOT A SPREADSHEET</div>
-          <b style={{fontSize:15}}>Champion → level → items → ranks → runes/summoners → combat state → combo.</b>
-          <p className="muted" style={{margin:'5px 0 0',fontSize:12}}>Items and ability ranks alter the maths now. Rune and summoner choices are stored as explicit context until each mechanic has a deterministic model.</p>
+          <b style={{fontSize:15}}>Champion → level → items → ranks → runes → active fight tools → combo.</b>
+          <p className="muted" style={{margin:'5px 0 0',fontSize:12}}>A selected spell is only available. It changes the result only when you mark it active for this simulation.</p>
         </div>
         <div className="tag-chip">DATA PATCH {itemPatch||data?.patch||'…'}</div>
       </div>
     </div>
 
-    {/* The setup layer is deliberately above following cards. Backdrop-filter on
-        glass cards creates stacking contexts; without this the item search menu
-        appears behind the combo card even with a high z-index on the menu. */}
+    {/* Backdrop-filter creates stacking contexts, so the entire setup layer must
+        sit above the combo/results cards for item search menus to escape. */}
     <div className="lab-grid" style={{position:'relative',zIndex:100,overflow:'visible'}}>
       <SideEditor title="YOUR CHAMPION" side="you" form={you} onChange={setYou} names={names} items={items} runes={runes} summoners={summoners} patch={itemPatch} resolved={data?.you}/>
       <SideEditor title="ENEMY CHAMPION" side="them" form={them} onChange={setThem} names={names} items={items} runes={runes} summoners={summoners} patch={itemPatch} resolved={data?.them}/>
@@ -126,7 +144,7 @@ export default function MatchupLab(){
         {STEPS.map(step=><button key={step} type="button" className="tag-chip" onClick={()=>setSequence(s=>s.length<24?[...s,step]:s)}>+ {step}</button>)}
         {sequence.length>0&&<button type="button" className="tag-chip clear" onClick={()=>setSequence(s=>s.slice(0,-1))}>Undo</button>}
       </div>
-      <p className="muted" style={{fontSize:11,margin:'12px 0 0'}}>The custom combo starts with selected abilities ready. Cooldowns and resource costs are then enforced event-by-event.</p>
+      <p className="muted" style={{fontSize:11,margin:'12px 0 0'}}>Cooldowns, resource costs, item on-hits, supported runes and active Exhaust are enforced event-by-event.</p>
     </div>
 
     {loading&&!data?.ok&&<div className="glass card" style={{marginTop:16}}><p className="muted">Recalculating the matchup…</p></div>}
@@ -142,12 +160,19 @@ export default function MatchupLab(){
             <span className="tag-chip">YOUR BUILD {data.you.totalGold.toLocaleString()}g</span>
             <span className="tag-chip">THEIR BUILD {data.them.totalGold.toLocaleString()}g</span>
             {data.them.setup?.shield?<span className="tag-chip">TARGET SHIELD {data.them.setup.shield}</span>:null}
+            {data.allIn?.igniteDamage?<span className="tag-chip">IGNITE +{data.allIn.igniteDamage}</span>:null}
           </div>
         </div>
-        <div className={`lab-damage ${verdict?.tone??''}`}><strong>{data.combo.totalMitigatedDamage}</strong><span>DAMAGE AFTER RESISTANCES</span><small>{data.combo.totalRawDamage} raw</small></div>
+        <div className={`lab-damage ${verdict?.tone??''}`}>
+          <strong>{data.allIn?.totalDamageForKillCheck??data.combo.totalMitigatedDamage}</strong>
+          <span>{data.allIn?.igniteDamage?'ALL-IN DAMAGE':'DAMAGE AFTER RESISTANCES'}</span>
+          <small>{data.combo.totalMitigatedDamage} combo{data.allIn?.igniteDamage?` + ${data.allIn.igniteDamage} Ignite over 5s`:''}</small>
+        </div>
       </div>
 
       <ConfidenceBanner report={data.confidence} floorNote={!data.combo.damageComplete}/>
+
+      {data.effects&&<EffectsPanel effects={data.effects} runes={runes} summoners={summoners}/>} 
 
       <div className="lab-grid" style={{marginTop:16}}>
         <DerivedStats side={data.you} label="YOUR DERIVED STATS" patch={data.patch||itemPatch} runes={runes} summoners={summoners}/>
@@ -201,11 +226,21 @@ function SideEditor({title,side,form,onChange,names,items,runes,summoners,patch,
     <ItemPicker selected={form.itemIds} onChange={ids=>set('itemIds',ids)} items={items} patch={patch}/>
 
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginTop:16}}>
-      <SummonerPicker selected={form.summonerIds} onChange={v=>set('summonerIds',v)} summoners={summoners}/>
+      <SummonerPicker
+        selected={form.summonerIds}
+        active={form.activeSummonerIds}
+        onChange={ids=>{
+          set('summonerIds',ids);
+          set('activeSummonerIds',form.activeSummonerIds.filter(id=>ids.includes(id)));
+        }}
+        onActiveChange={ids=>set('activeSummonerIds',ids)}
+        summoners={summoners}
+      />
       <RunePicker selected={form.runeIds} onChange={v=>set('runeIds',v)} runes={runes}/>
     </div>
 
     <RankEditor abilities={resolved?.abilities??[]} ranks={form.ranks} onChange={r=>set('ranks',r)}/>
+    <ChampionStatePicker champion={form.champion} active={form.activeChampionEffects} onChange={v=>set('activeChampionEffects',v)}/>
   </div>;
 }
 
@@ -222,7 +257,7 @@ function ItemPicker({selected,onChange,items,patch}:{selected:number[];onChange:
   const imageUrl=(item:CatalogueItem)=>item.image&&patch?`https://ddragon.leagueoflegends.com/cdn/${patch}/img/item/${item.image}`:null;
 
   return <div style={{marginTop:16,position:'relative',zIndex:20}}>
-    <div className="section-row"><div><div className="eyebrow">ITEM BUILD</div><p className="muted" style={{fontSize:11,margin:'4px 0 0'}}>Components, boots and completed items all modify the derived stats.</p></div><span className="tag-chip">{selected.length}/6</span></div>
+    <div className="section-row"><div><div className="eyebrow">ITEM BUILD</div><p className="muted" style={{fontSize:11,margin:'4px 0 0'}}>Components, boots and completed items modify stats; supported on-hit passives also enter the damage timeline.</p></div><span className="tag-chip">{selected.length}/6</span></div>
     <div style={{display:'grid',gridTemplateColumns:'repeat(6,minmax(0,1fr))',gap:8,marginTop:10}}>
       {Array.from({length:6}).map((_,index)=>{
         const item=byId.get(selected[index]);
@@ -244,20 +279,34 @@ function ItemPicker({selected,onChange,items,patch}:{selected:number[];onChange:
   </div>;
 }
 
-function SummonerPicker({selected,onChange,summoners}:{selected:string[];onChange:(ids:string[])=>void;summoners:SetupSummoner[]}){
+function SummonerPicker({selected,active,onChange,onActiveChange,summoners}:{
+  selected:string[];active:string[];onChange:(ids:string[])=>void;
+  onActiveChange:(ids:string[])=>void;summoners:SetupSummoner[];
+}){
   const value=(index:number)=>selected[index]??'';
   const change=(index:number,id:string)=>{
     const next=[...selected];
     if(id)next[index]=id;else next.splice(index,1);
-    onChange(next.filter(Boolean).slice(0,2));
+    const clean=next.filter(Boolean).slice(0,2);
+    onChange(clean);
+    onActiveChange(active.filter(x=>clean.includes(x)));
   };
+  const toggle=(id:string)=>onActiveChange(active.includes(id)?active.filter(x=>x!==id):[...active,id].slice(0,2));
+  const byId=new Map(summoners.map(s=>[s.id,s]));
   return <div style={{padding:12,border:'1px solid var(--border)',borderRadius:14,background:'rgba(255,255,255,.02)'}}>
-    <div className="eyebrow">SUMMONERS</div>
-    <p className="muted" style={{fontSize:10,margin:'4px 0 9px'}}>Recorded as fight context. Individual spell maths is being added separately.</p>
+    <div className="section-row"><div className="eyebrow">SUMMONERS</div><span className="tag-chip">ACTIVE STATE</span></div>
+    <p className="muted" style={{fontSize:10,margin:'4px 0 9px'}}>Choose what you have, then explicitly activate Barrier, Heal, Ignite or Exhaust for this fight.</p>
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
       {[0,1].map(i=><select key={i} className="input" value={value(i)} onChange={e=>change(i,e.target.value)} style={{padding:'9px 8px',fontSize:11}}>
         <option value="">None</option>{summoners.map(s=><option key={s.id} value={s.id}>{s.name}</option>)}
       </select>)}
+    </div>
+    <div className="tag-row" style={{marginTop:8}}>
+      {selected.filter(id=>ACTIVE_SUMMONERS.has(id)).map(id=>{
+        const on=active.includes(id);const spell=byId.get(id);
+        return <button type="button" key={id} className={`tag-chip ${on?'live-pill':''}`} onClick={()=>toggle(id)}>{on?'✓ ACTIVE · ':'USE · '}{spell?.name??id}</button>;
+      })}
+      {selected.every(id=>!ACTIVE_SUMMONERS.has(id))&&<span className="muted" style={{fontSize:10}}>No selected spell has a direct deterministic combat toggle.</span>}
     </div>
   </div>;
 }
@@ -274,15 +323,16 @@ function RunePicker({selected,onChange,runes}:{selected:number[];onChange:(ids:n
     if(id)next[index]=id;else next.splice(index,1);
     onChange([...(keystone?[keystone]:[]),...next.filter(Boolean).slice(0,5)]);
   };
+  const supported=selected.filter(id=>MODELLED_RUNES.has(id));
   return <div style={{padding:12,border:'1px solid var(--border)',borderRadius:14,background:'rgba(255,255,255,.02)'}}>
-    <div className="eyebrow">RUNES</div>
-    <p className="muted" style={{fontSize:10,margin:'4px 0 9px'}}>Full rune page context. Effects remain labelled until deterministically modelled.</p>
+    <div className="section-row"><div className="eyebrow">RUNES</div>{supported.length>0&&<span className="tag-chip live-pill">{supported.length} MODELED</span>}</div>
+    <p className="muted" style={{fontSize:10,margin:'4px 0 9px'}}>PTA, Lethal Tempo, Cut Down, Coup de Grace and Last Stand currently alter the calculation.</p>
     <select className="input" value={keystone||''} onChange={e=>setKeystone(Number(e.target.value)||0)} style={{padding:'9px 8px',fontSize:11}}>
-      <option value="">Keystone</option>{keystones.map(r=><option key={r.id} value={r.id}>{r.treeName} · {r.name}</option>)}
+      <option value="">Keystone</option>{keystones.map(r=><option key={r.id} value={r.id}>{MODELLED_RUNES.has(r.id)?'✓ ':''}{r.treeName} · {r.name}</option>)}
     </select>
     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:7}}>
       {[0,1,2,3,4].map(i=><select key={i} className="input" value={minorSelected[i]??''} onChange={e=>setMinor(i,Number(e.target.value)||0)} style={{padding:'8px 7px',fontSize:10}}>
-        <option value="">Rune {i+2}</option>{minor.map(r=><option key={r.id} value={r.id}>{r.treeName} · {r.name}</option>)}
+        <option value="">Rune {i+2}</option>{minor.map(r=><option key={r.id} value={r.id}>{MODELLED_RUNES.has(r.id)?'✓ ':''}{r.treeName} · {r.name}</option>)}
       </select>)}
     </div>
   </div>;
@@ -290,13 +340,61 @@ function RunePicker({selected,onChange,runes}:{selected:number[];onChange:(ids:n
 
 function RankEditor({abilities,ranks,onChange}:{abilities:AbilityView[];ranks:Partial<Record<AbilitySlot,number>>;onChange:(r:Partial<Record<AbilitySlot,number>>)=>void}){
   return <div style={{marginTop:14,padding:12,border:'1px solid var(--border)',borderRadius:14,background:'rgba(255,255,255,.02)'}}>
-    <div className="section-row"><div><div className="eyebrow">ABILITY RANKS</div><p className="muted" style={{fontSize:10,margin:'4px 0 0'}}>These ranks directly change damage, cost and cooldown calculations.</p></div><span className="tag-chip">MODELED</span></div>
+    <div className="section-row"><div><div className="eyebrow">ABILITY RANKS</div><p className="muted" style={{fontSize:10,margin:'4px 0 0'}}>These ranks directly change damage, cost, cooldown and supported champion passives.</p></div><span className="tag-chip live-pill">MODELED</span></div>
     {abilities.length?<div style={{display:'grid',gridTemplateColumns:'repeat(4,minmax(0,1fr))',gap:8,marginTop:10}}>
       {abilities.map(a=><label key={a.slot} className="lab-input"><span>{a.slot} · {a.name}</span><select className="input" value={ranks[a.slot]??a.rank} onChange={e=>onChange({...ranks,[a.slot]:Number(e.target.value)})}>
         {Array.from({length:a.maxRank},(_,i)=>i+1).map(rank=><option key={rank} value={rank}>Rank {rank}</option>)}
       </select></label>)}
     </div>:<p className="muted" style={{fontSize:11,margin:'10px 0 0'}}>Ability ranks appear once the champion resolves.</p>}
   </div>;
+}
+
+function ChampionStatePicker({champion,active,onChange}:{champion:string;active:string[];onChange:(ids:string[])=>void}){
+  const options=championEffectOptions(champion);
+  if(!options.length)return null;
+  return <div style={{marginTop:14,padding:12,border:'1px solid rgba(var(--accent-rgb),.28)',borderRadius:14,background:'rgba(var(--accent-rgb),.05)'}}>
+    <div className="section-row"><div><div className="eyebrow">CHAMPION STATE</div><p className="muted" style={{fontSize:10,margin:'4px 0 0'}}>Toggle temporary champion effects that are already active when the simulation starts.</p></div><span className="tag-chip live-pill">CHAMPION-SPECIFIC</span></div>
+    <div className="tag-row" style={{marginTop:9}}>{options.map(option=>{
+      const on=active.includes(option.id);
+      return <button key={option.id} type="button" className={`tag-chip ${on?'live-pill':''}`} title={option.detail} onClick={()=>onChange(on?active.filter(x=>x!==option.id):[...active,option.id])}>{on?'✓ ':''}{option.label}</button>;
+    })}</div>
+    {options.map(o=><p key={o.id} className="muted" style={{fontSize:10,margin:'6px 0 0'}}><b>{o.label}:</b> {o.detail}</p>)}
+  </div>;
+}
+
+function EffectsPanel({effects,runes,summoners}:{effects:{you:EffectSide;them:EffectSide};runes:SetupRune[];summoners:SetupSummoner[]}){
+  const runeMap=new Map(runes.map(r=>[r.id,r.name]));
+  const summonerMap=new Map(summoners.map(s=>[s.id,s.name]));
+  return <div className="lab-grid" style={{marginTop:16}}>
+    <EffectSideCard title="YOUR MODELED EFFECTS" effect={effects.you} runeMap={runeMap} summonerMap={summonerMap}/>
+    <EffectSideCard title="ENEMY MODELED EFFECTS" effect={effects.them} runeMap={runeMap} summonerMap={summonerMap}/>
+  </div>;
+}
+
+function EffectSideCard({title,effect,runeMap,summonerMap}:{title:string;effect:EffectSide;runeMap:Map<number,string>;summonerMap:Map<string,string>}){
+  const chips=[
+    ...effect.modelledRunes.map(id=>runeMap.get(id)??`Rune ${id}`),
+    ...effect.modelledSummoners.map(id=>summonerMap.get(id)??id),
+    ...effect.modelledChampionEffects.map(cleanEffectName),
+    ...effect.itemOnHits,
+  ];
+  const unsupported=[
+    ...effect.unmodelledRunes.map(id=>runeMap.get(id)??`Rune ${id}`),
+    ...effect.unmodelledActiveSummoners.map(id=>summonerMap.get(id)??id),
+    ...effect.unmodelledChampionEffects.map(cleanEffectName),
+  ];
+  return <div className="glass card">
+    <div className="section-row"><div className="eyebrow">{title}</div><span className="tag-chip live-pill">{chips.length} APPLIED</span></div>
+    <div className="tag-row" style={{marginTop:10}}>{chips.length?chips.map((x,i)=><span key={`${x}-${i}`} className="tag-chip live-pill">✓ {x}</span>):<span className="muted" style={{fontSize:11}}>Base champion + item stats only.</span>}</div>
+    {unsupported.length>0&&<p className="lab-floor">Not yet deterministic: {unsupported.join(' · ')}</p>}
+    {effect.notes.slice(0,4).map((note,i)=><p key={`${note}-${i}`} className="muted" style={{fontSize:10,lineHeight:1.45,margin:'8px 0 0'}}>{note}</p>)}
+  </div>;
+}
+
+function cleanEffectName(id:string){
+  if(id==='KOG_Q_PASSIVE_AS')return "Kog'Maw Q passive AS";
+  if(id==='KOG_W')return "Kog'Maw W active";
+  return id.replaceAll('_',' ');
 }
 
 function statLine(item:CatalogueItem){
@@ -310,11 +408,11 @@ function DerivedStats({side,label,patch,runes,summoners}:{side:SideView;label:st
   const summonerMap=new Map(summoners.map(s=>[s.id,s.name]));
   return <div className="glass card"><div className="section-row"><div><div className="eyebrow">{label}</div><h2 style={{margin:'5px 0 0'}}>{side.name}</h2></div><b>{side.totalGold.toLocaleString()}g</b></div>
     <div className="pct-grid" style={{marginTop:14}}><div><span>AD</span><strong>{side.stats.attackDamage}</strong></div><div><span>AP</span><strong>{side.stats.abilityPower}</strong></div><div><span>ARMOUR</span><strong>{side.stats.armor}</strong></div><div><span>MR</span><strong>{side.stats.magicResist}</strong></div></div>
-    <div className="build-summary"><span>HP <b>{side.stats.healthNow}</b> / {side.stats.health}</span><span>Resource <b>{side.stats.manaNow}</b> / {side.stats.mana}</span><span>AS <b>{side.stats.attackSpeed}</b></span><span>MS <b>{side.stats.moveSpeed}</b></span>{side.setup?.shield?<span>Shield <b>{side.setup.shield}</b></span>:null}</div>
+    <div className="build-summary"><span>HP <b>{side.stats.healthNow}</b> / {side.stats.health}</span><span>Resource <b>{side.stats.manaNow}</b> / {side.stats.mana}</span><span>AS <b>{side.stats.attackSpeed}</b></span><span>Range <b>{side.stats.attackRange}</b></span><span>MS <b>{side.stats.moveSpeed}</b></span>{side.setup?.shield?<span>Shield <b>{side.setup.shield}</b></span>:null}</div>
     {side.items.length>0&&<div className="tag-row" style={{marginTop:12}}>{side.items.map((item,index)=><span className="tag-chip" key={`${item.id}-${index}`}>{item.image&&patch?<img src={`https://ddragon.leagueoflegends.com/cdn/${patch}/img/item/${item.image}`} alt="" width={18} height={18} style={{borderRadius:4,verticalAlign:'middle',marginRight:5}}/>:null}{item.name}</span>)}</div>}
     {side.setup&&<div className="tag-row" style={{marginTop:8}}>
-      {side.setup.summonerIds.map(id=><span className="tag-chip" key={id}>{summonerMap.get(id)??id}</span>)}
-      {side.setup.runeIds.slice(0,3).map(id=><span className="tag-chip" key={id}>{runeMap.get(id)??`Rune ${id}`}</span>)}
+      {side.setup.summonerIds.map(id=><span className={`tag-chip ${side.setup?.activeSummonerIds.includes(id)?'live-pill':''}`} key={id}>{side.setup?.activeSummonerIds.includes(id)?'✓ ':''}{summonerMap.get(id)??id}</span>)}
+      {side.setup.runeIds.slice(0,3).map(id=><span className={`tag-chip ${MODELLED_RUNES.has(id)?'live-pill':''}`} key={id}>{runeMap.get(id)??`Rune ${id}`}</span>)}
     </div>}
   </div>;
 }
@@ -329,7 +427,7 @@ function ConfidenceBanner({report,floorNote}:{report:ConfidenceReport;floorNote:
 
 function AbilityPanel({side,label,showMath}:{side:SideView;label:string;showMath:boolean}){
   return <div className="glass card"><div className="section-row"><div><div className="eyebrow">{label}</div><h2 style={{margin:'6px 0 0'}}>{side.name}</h2></div><span className={`conf-tag ${CONFIDENCE_CLASS[side.confidence.level]}`}>{side.confidence.level}</span></div>
-    <div className="spike-list" style={{marginTop:14}}>{side.abilities.map(a=><div className="spike" key={a.slot}><div className="spike-level">{a.slot}</div><div><b>{a.name} <span className="muted">rank {a.rank}/{a.maxRank}</span></b><p className="spike-fact">{a.damage[0]?.raw!==null&&a.damage[0]?.raw!==undefined?`${a.damage[0].raw} ${a.damage[0].type.toLowerCase()} damage`:'No damage figure'} · {a.cooldownSeconds}s · {a.cost>0?`${a.cost} resource`:'no cost'}{a.rangeUnits?` · ${a.rangeUnits} range`:''}</p>{a.confidence.level!=='HIGH'&&<p className={`conf-inline ${CONFIDENCE_CLASS[a.confidence.level]}`}>{a.confidence.level}: {a.confidence.causes[0]?.reason}</p>}{showMath&&a.calculations.length>0&&<table className="table skill-grid" style={{marginTop:8}}><tbody>{a.calculations.map(c=><tr key={c.name}><td style={{textAlign:'left'}}>{c.primary?'▸ ':''}{c.name}</td><td>{c.value??'—'}</td><td style={{textAlign:'left',color:'var(--muted)',fontSize:10}}>{c.unmodelled[0]??''}</td></tr>)}</tbody></table>}</div></div>)}</div>
+    <div className="spike-list" style={{marginTop:14}}>{side.abilities.map(a=><div className="spike" key={a.slot}><div className="spike-level">{a.slot}</div><div><b>{a.name} <span className="muted">rank {a.rank}/{a.maxRank}</span></b><p className="spike-fact">{a.damage[0]?.raw!==null&&a.damage[0]?.raw!==undefined?`${a.damage[0].raw} ${a.damage[0].type.toLowerCase()} damage`:'No direct damage figure'} · {a.cooldownSeconds}s · {a.cost>0?`${a.cost} resource`:'no cost'}{a.rangeUnits?` · ${a.rangeUnits} range`:''}</p>{a.confidence.level!=='HIGH'&&<p className={`conf-inline ${CONFIDENCE_CLASS[a.confidence.level]}`}>{a.confidence.level}: {a.confidence.causes[0]?.reason}</p>}{showMath&&a.calculations.length>0&&<table className="table skill-grid" style={{marginTop:8}}><tbody>{a.calculations.map(c=><tr key={c.name}><td style={{textAlign:'left'}}>{c.primary?'▸ ':''}{c.name}</td><td>{c.value??'—'}</td><td style={{textAlign:'left',color:'var(--muted)',fontSize:10}}>{c.unmodelled[0]??''}</td></tr>)}</tbody></table>}</div></div>)}</div>
   </div>;
 }
 
