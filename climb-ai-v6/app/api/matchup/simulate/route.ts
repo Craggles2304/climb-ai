@@ -20,14 +20,18 @@ export const dynamic='force-dynamic';
 /**
  * Matchup Lab simulation.
  *
- * The normal player input is champion + level + item IDs. Stats are derived
- * from Riot item data here, never typed by the player. Legacy custom bonuses
- * remain optional for backwards compatibility and future sandbox/debug mode.
+ * Player-facing setup is champion + level + build + ability ranks + combat
+ * state. Stats are derived from patch data. Runes and summoners are carried as
+ * explicit context and reduce confidence until their individual mechanics have
+ * deterministic models; they are never silently converted into guessed damage.
  */
 const side=z.object({
   champion:z.string().min(1).max(32),
   level:z.coerce.number().int().min(1).max(18).default(1),
   itemIds:z.array(z.coerce.number().int().positive()).max(6).default([]),
+  runeIds:z.array(z.coerce.number().int().positive()).max(6).default([]),
+  summonerIds:z.array(z.string().min(1).max(48)).max(2).default([]),
+  shield:z.coerce.number().min(0).max(10000).default(0),
   bonusAttackDamage:z.coerce.number().min(0).max(1000).default(0),
   bonusAbilityPower:z.coerce.number().min(0).max(2000).default(0),
   bonusArmor:z.coerce.number().min(0).max(1000).default(0),
@@ -125,7 +129,12 @@ export async function POST(req:NextRequest){
       abilities:yourKit.models,
       autoAttack:{damage:yourStats.attackDamage,attackSpeed:yourStats.attackSpeed},
       caster:{mana:yourStats.mana*(you.resourcePercent/100)},
-      target:{health:targetHealth,armor:theirStats.armor,magicResist:theirStats.magicResist},
+      target:{
+        health:targetHealth,
+        shield:them.shield,
+        armor:theirStats.armor,
+        magicResist:theirStats.magicResist,
+      },
       penetration:yourPen,
       abilityHaste:yourHaste,
     });
@@ -154,6 +163,11 @@ export async function POST(req:NextRequest){
       tradeSide(theirChampion.name,theirKit,theirStats,them,yourStats,theirPen,theirHaste),
     );
 
+    const setupApproximations=[
+      ...setupCaveats('your',you),
+      ...setupCaveats('enemy',them),
+    ];
+
     const confidence=combineConfidence([
       yourKit.confidence,
       trades.confidence,
@@ -163,6 +177,7 @@ export async function POST(req:NextRequest){
           ...theirDamage.approximations,
           ...yourLoadout.approximations,
           ...theirLoadout.approximations,
+          ...setupApproximations,
         ],
       }),
     ]);
@@ -171,16 +186,31 @@ export async function POST(req:NextRequest){
       ok:true,
       patch,
       dataSources:[
-        {name:'Data Dragon',use:'champion stats, items, ability slots, cooldowns, costs',official:true},
+        {name:'Data Dragon',use:'champion stats, items, runes, summoners, ability slots, cooldowns and costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
       ],
       you:sideReport(yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste),
       them:sideReport(theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste),
       combo,
       trades,
-      kill:killThreshold(combo.totalMitigatedDamage,targetHealth),
+      kill:killThreshold(combo.totalMitigatedDamage,targetHealth+them.shield),
       confidence,
-      notes:[DAMAGE_TYPE_NOTE,combo.timingNote],
+      setup:{
+        yourRunes:you.runeIds,
+        enemyRunes:them.runeIds,
+        yourSummoners:you.summonerIds,
+        enemySummoners:them.summonerIds,
+        yourShield:you.shield,
+        enemyShield:them.shield,
+      },
+      notes:[
+        DAMAGE_TYPE_NOTE,
+        combo.timingNote,
+        ...setupApproximations,
+        ...(you.shield>0||them.shield>0
+          ?['Current shields are applied to the custom combo kill check. The generic trade-duration table still compares damage against max health and does not consume temporary shields.']
+          :[]),
+      ],
     });
   }catch(err){
     const {title,body:detail}=humanError(err);
@@ -189,6 +219,15 @@ export async function POST(req:NextRequest){
 }
 
 type SideInput=z.infer<typeof side>;
+
+function setupCaveats(owner:'your'|'enemy',input:SideInput):string[]{
+  const out:string[]=[];
+  if(input.runeIds.length)
+    out.push(`${owner==='your'?'Your':'Enemy'} selected rune effects are recorded as matchup context but are not yet added to deterministic damage totals.`);
+  if(input.summonerIds.length)
+    out.push(`${owner==='your'?'Your':'Enemy'} selected summoner spell effects are recorded as matchup context but are not yet added to deterministic damage totals.`);
+  return out;
+}
 
 function combatStats(
   champion:Awaited<ReturnType<typeof championDetail>>,
@@ -239,6 +278,12 @@ function sideReport(
     items:loadout.items,
     totalGold:loadout.totalGold,
     itemStats:{...loadout.stats,abilityHaste},
+    setup:{
+      runeIds:input.runeIds,
+      summonerIds:input.summonerIds,
+      shield:input.shield,
+      ranks:input.ranks??defaultRanks(input.level),
+    },
     stats:{
       attackDamage:round(stats.attackDamage),
       abilityPower:round(stats.abilityPower),
