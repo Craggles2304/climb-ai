@@ -5,13 +5,9 @@ import {
   AbilityModel,AbilitySlot,AutoAttackModel,attackInterval,hasteMultiplier,
   applyDamageRules,resolveOnHit,
 } from './combos';
-import type {DamageRule} from './effects';
+import type {DamageRule,TargetDebuffEffect} from './effects';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
 
-/**
- * Trade scenarios: who wins a one-auto poke, a three-second trade, and a
- * ten-second fight, which are frequently three different answers.
- */
 export interface TradeScenario{
   key:string;
   label:string;
@@ -37,15 +33,12 @@ export interface TradeSide{
   autoAttack:AutoAttackModel;
   mana:number;
   maxHealth:number;
-  /** Current health lets the Lab's HP slider affect trade outcomes as well. */
   currentHealth?:number;
-  /** Temporary shields are consumed before current health. */
   shield?:number;
   resistances:TargetResistances;
   penetration?:Penetration;
   abilityHaste?:number;
   damageRules?:DamageRule[];
-  /** Used when the opposing side has active Exhaust. */
   outgoingDamageMultiplier?:number;
   outgoingDamageMultiplierDurationSeconds?:number;
   disabled?:AbilitySlot[];
@@ -74,11 +67,13 @@ export interface TradeReport{
   confidence:ConfidenceReport;
 }
 
+interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
+
 const MODEL_NOTE=
   'A damage race, not a fight: both sides stand still and commit, every ability '+
   'hits, nothing is interrupted and no crowd control exists. It assumes both '+
-  'champions remain in range. Current HP and temporary shields are respected, '+
-  'but movement, peel and crowd-control timing are not.';
+  'champions remain in range. Current HP, temporary shields, supported on-hits '+
+  'and timed resistance debuffs are respected.';
 
 export function compareTrades(
   you:TradeSide,them:TradeSide,scenarios=TRADE_SCENARIOS,
@@ -97,11 +92,6 @@ export function compareTrades(
   };
 }
 
-/**
- * A deterministic damage race. Runes/on-hit effects use the target's remaining
- * health at each action, so Cut Down/Coup and current-health on-hits can switch
- * during the same trade rather than being frozen at the opening state.
- */
 export function runTrade(
   actor:TradeSide,target:TradeSide,scenario:TradeScenario,
 ):TradeSideResult{
@@ -125,6 +115,7 @@ export function runTrade(
   let dealt=0;
   let autoCount=0;
   let attackStacks=0;
+  const activeDebuffs:ActiveDebuff[]=[];
 
   const unmodelled:string[]=[];
   for(const [slot,ability] of Object.entries(actor.abilities) as [AbilitySlot,AbilityModel][]){
@@ -143,10 +134,11 @@ export function runTrade(
 
   while(clock<budget&&steps.length<maxActions&&health>0){
     const timedMultiplier=outgoingMultiplier(actor,clock);
+    const targetNow=withDebuffs(target.resistances,activeDebuffs,clock);
     const candidate=scenario.autosOnly
       ?null
       :bestAbility(
-        actor,target,pen,clock,readyAt,mana,used,disabled,scenario,
+        actor,targetNow,pen,clock,readyAt,mana,used,disabled,scenario,
         health,targetMaxHealth,autoCount,timedMultiplier,
       );
 
@@ -159,6 +151,11 @@ export function runTrade(
         atSeconds:round(clock),label:`${candidate.slot} ${candidate.ability.name}`,
         damage:round(applied.applied),
       });
+      if(candidate.ability.targetDebuff)
+        upsertDebuff(
+          activeDebuffs,candidate.ability.targetDebuff,
+          clock+candidate.ability.targetDebuff.durationSeconds,
+        );
       readyAt.set(candidate.slot,clock+candidate.ability.cooldownSeconds*haste);
       used.add(candidate.slot);
       clock+=Math.max(0,positive(candidate.ability.castTimeSeconds));
@@ -189,7 +186,7 @@ export function runTrade(
     const adjusted=applyDamageRules(
       components,actor.damageRules??[],health,targetMaxHealth,autoCount,timedMultiplier,
     );
-    const result=mitigateAll(adjusted,target.resistances,pen);
+    const result=mitigateAll(adjusted,targetNow,pen);
     const applied=applyToPool(result.mitigatedTotal,shield,health);
     shield=applied.shield;health=applied.health;dealt+=applied.applied;
     autoCount=nextAuto;
@@ -216,7 +213,7 @@ interface Candidate{
 }
 
 function bestAbility(
-  actor:TradeSide,target:TradeSide,pen:Penetration,
+  actor:TradeSide,targetResistances:TargetResistances,pen:Penetration,
   clock:number,readyAt:Map<AbilitySlot,number>,mana:number,
   used:Set<AbilitySlot>,disabled:Set<AbilitySlot>,scenario:TradeScenario,
   currentHealth:number,targetMaxHealth:number,autoCount:number,timedMultiplier:number,
@@ -231,12 +228,25 @@ function bestAbility(
     const adjusted=applyDamageRules(
       ability.damage,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
     );
-    const result=mitigateAll(adjusted,target.resistances,pen);
+    const result=mitigateAll(adjusted,targetResistances,pen);
     if(result.mitigatedTotal<=0)continue;
     if(!best||result.mitigatedTotal>best.damage)
       best={slot,ability,damage:result.mitigatedTotal,incomplete:!result.complete};
   }
   return best;
+}
+
+function withDebuffs(base:TargetResistances,active:ActiveDebuff[],clock:number):TargetResistances{
+  const live=active.filter(d=>d.expiresAt>clock+1e-9);
+  const armorKeep=live.reduce((m,d)=>m*(1-clamp01(d.effect.percentArmorReduction??0)),1);
+  const mrKeep=live.reduce((m,d)=>m*(1-clamp01(d.effect.percentMagicResistReduction??0)),1);
+  return {armor:round(base.armor*armorKeep),magicResist:round(base.magicResist*mrKeep)};
+}
+
+function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:number){
+  const current=active.find(d=>d.effect.label===effect.label);
+  if(current){current.effect=effect;current.expiresAt=expiresAt;return}
+  active.push({effect,expiresAt});
 }
 
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
@@ -263,7 +273,6 @@ function applyToPool(damage:number,shield:number,health:number){
   };
 }
 
-/* --------------------------------------------------------------- verdict -- */
 function buildOutcome(
   scenario:TradeScenario,you:TradeSideResult,them:TradeSideResult,
 ):TradeOutcome{
@@ -310,6 +319,7 @@ function findFlip(outcomes:TradeOutcome[]):string|null{
 }
 
 const signed=(n:number)=>`${n>0?'+':''}${n}`;
+const clamp01=(n:number)=>Math.min(1,Math.max(0,Number.isFinite(n)?n:0));
 const finiteOr=(n:number|undefined,fallback:number)=>Number.isFinite(n)?n as number:fallback;
 const positive=(n:number)=>Number.isFinite(n)&&n>0?n:0;
 const round=(n:number)=>Math.round(n*10)/10;
