@@ -10,6 +10,14 @@ export interface OnHitEffect{
   everyNthAttack?:number;
 }
 
+/** A debuff applied after an ability lands and consumed by later events. */
+export interface TargetDebuffEffect{
+  label:string;
+  durationSeconds:number;
+  percentArmorReduction?:number;
+  percentMagicResistReduction?:number;
+}
+
 export interface DamageRule{
   label:string;
   multiplier:number;
