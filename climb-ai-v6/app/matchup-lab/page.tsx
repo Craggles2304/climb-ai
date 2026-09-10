@@ -6,8 +6,10 @@ import type {ConfidenceLevel,ConfidenceReport} from '@/lib/combat/confidence';
 import type {ComboResult,ComboStep,AbilitySlot} from '@/lib/combat/combos';
 import type {KillCheck} from '@/lib/combat/damage';
 import type {TradeReport} from '@/lib/combat/trades';
+import type {DuelResult} from '@/lib/combat/duel';
 import {championEffectOptions} from '@/lib/combat/championEffects';
 import {TradePanel} from '@/components/TradePanel';
+import {DuelPanel} from '@/components/DuelPanel';
 
 interface AbilityView{
   slot:AbilitySlot;name:string;rank:number;maxRank:number;
@@ -37,7 +39,7 @@ interface EffectSide{
 interface Simulation{
   ok:boolean;error?:string;patch?:string;
   dataSources?:{name:string;use:string;official:boolean}[];
-  you?:SideView;them?:SideView;combo?:ComboResult;kill?:KillCheck;trades?:TradeReport;
+  you?:SideView;them?:SideView;combo?:ComboResult;kill?:KillCheck;trades?:TradeReport;duel?:DuelResult;
   allIn?:{comboDamage:number;igniteDamage:number;totalDamageForKillCheck:number;targetCurrentHealth:number;targetShield:number;includesFiveSecondIgnite:boolean};
   effects?:{you:EffectSide;them:EffectSide};
   confidence?:ConfidenceReport;notes?:string[];
@@ -68,6 +70,8 @@ export default function MatchupLab(){
   const [you,setYou]=useState<SideForm>(blankSide("Kog'Maw"));
   const [them,setThem]=useState<SideForm>(blankSide('Caitlyn'));
   const [sequence,setSequence]=useState<ComboStep[]>(['Q','AA','W','AA','E','R']);
+  const [enemySequence,setEnemySequence]=useState<ComboStep[]>(['Q','AA','W','AA','E','R']);
+  const [duelDuration,setDuelDuration]=useState(10);
   const [data,setData]=useState<Simulation|null>(null);
   const [loading,setLoading]=useState(false);
   const [names,setNames]=useState<string[]>([]);
@@ -95,11 +99,12 @@ export default function MatchupLab(){
     const id=++request.current;
     setLoading(true);
     fetch('/api/matchup/simulate',{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({you,them,sequence}),
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({you,them,sequence,enemySequence,duelDurationSeconds:duelDuration}),
     }).then(r=>r.json()).then(d=>{if(id===request.current)setData(d)})
       .catch(()=>{if(id===request.current)setData({ok:false,error:'Could not reach the simulator.'})})
       .finally(()=>{if(id===request.current)setLoading(false)});
-  },[you,them,sequence]);
+  },[you,them,sequence,enemySequence,duelDuration]);
 
   useEffect(()=>{const timer=setTimeout(simulate,350);return()=>clearTimeout(timer)},[simulate]);
 
@@ -115,14 +120,14 @@ export default function MatchupLab(){
   },[data]);
 
   return <AppShell>
-    <PageHead title="Matchup Lab" subtitle="Build the real fight state. Items, runes, active summoners, champion states and ability ranks now feed the deterministic combat engine."/>
+    <PageHead title="Matchup Lab" subtitle="Build both sides of the fight. Items, runes, champion states, action scripts and a shared duel clock now feed the deterministic combat engine."/>
 
     <div className="glass card" style={{marginBottom:16,padding:16}}>
       <div className="section-row" style={{gap:12,flexWrap:'wrap'}}>
         <div>
           <div className="eyebrow">BUILD THE FIGHT, NOT A SPREADSHEET</div>
-          <b style={{fontSize:15}}>Champion → level → items → ranks → runes → active fight tools → combo.</b>
-          <p className="muted" style={{margin:'5px 0 0',fontSize:12}}>A selected spell is only available. It changes the result only when you mark it active for this simulation.</p>
+          <b style={{fontSize:15}}>Champion → level → items → ranks → runes → active fight tools → both action scripts.</b>
+          <p className="muted" style={{margin:'5px 0 0',fontSize:12}}>The one-sided combo still answers “how much can I do?”; the new shared duel answers “what happens while they hit back?”</p>
         </div>
         <div className="tag-chip">DATA PATCH {itemPatch||data?.patch||'…'}</div>
       </div>
@@ -135,16 +140,16 @@ export default function MatchupLab(){
       <SideEditor title="ENEMY CHAMPION" side="them" form={them} onChange={setThem} names={names} items={items} runes={runes} summoners={summoners} patch={itemPatch} resolved={data?.them}/>
     </div>
 
-    <div className="glass card" style={{marginTop:16,position:'relative',zIndex:1}}>
-      <div className="section-row">
-        <div><div className="eyebrow">YOUR COMBO</div><h2 style={{margin:'6px 0 0'}}>{sequence.join(' → ')||'Nothing selected'}</h2></div>
-        <button className="btn secondary" style={{minHeight:38,fontSize:11}} onClick={()=>setSequence([])}>CLEAR</button>
+    <div className="lab-grid" style={{marginTop:16,position:'relative',zIndex:1}}>
+      <SequenceEditor title="YOUR ACTION SCRIPT" sequence={sequence} onChange={setSequence} detail="Used by your one-sided combo and the shared duel."/>
+      <SequenceEditor title="ENEMY RESPONSE SCRIPT" sequence={enemySequence} onChange={setEnemySequence} detail="What the enemy does while your script is happening."/>
+    </div>
+
+    <div className="glass card" style={{marginTop:16,position:'relative',zIndex:1,padding:14}}>
+      <div className="section-row" style={{gap:12,flexWrap:'wrap'}}>
+        <div><div className="eyebrow">SHARED DUEL WINDOW</div><p className="muted" style={{fontSize:11,margin:'4px 0 0'}}>Stop after this many seconds unless somebody dies or both scripts finish first.</p></div>
+        <div className="tag-row">{[3,5,10,15,20].map(seconds=><button key={seconds} type="button" className={`tag-chip ${duelDuration===seconds?'live-pill':''}`} onClick={()=>setDuelDuration(seconds)}>{seconds}s</button>)}</div>
       </div>
-      <div className="tag-row" style={{marginTop:14}}>
-        {STEPS.map(step=><button key={step} type="button" className="tag-chip" onClick={()=>setSequence(s=>s.length<24?[...s,step]:s)}>+ {step}</button>)}
-        {sequence.length>0&&<button type="button" className="tag-chip clear" onClick={()=>setSequence(s=>s.slice(0,-1))}>Undo</button>}
-      </div>
-      <p className="muted" style={{fontSize:11,margin:'12px 0 0'}}>Cooldowns, resource costs, item on-hits, supported runes and active Exhaust are enforced event-by-event.</p>
     </div>
 
     {loading&&!data?.ok&&<div className="glass card" style={{marginTop:16}}><p className="muted">Recalculating the matchup…</p></div>}
@@ -161,6 +166,7 @@ export default function MatchupLab(){
             <span className="tag-chip">THEIR BUILD {data.them.totalGold.toLocaleString()}g</span>
             {data.them.setup?.shield?<span className="tag-chip">TARGET SHIELD {data.them.setup.shield}</span>:null}
             {data.allIn?.igniteDamage?<span className="tag-chip">IGNITE +{data.allIn.igniteDamage}</span>:null}
+            {data.duel&&<span className="tag-chip live-pill">DUEL · {duelLabel(data.duel.verdict)}</span>}
           </div>
         </div>
         <div className={`lab-damage ${verdict?.tone??''}`}>
@@ -172,6 +178,8 @@ export default function MatchupLab(){
 
       <ConfidenceBanner report={data.confidence} floorNote={!data.combo.damageComplete}/>
 
+      {data.duel&&<DuelPanel result={data.duel} you={data.you.name} them={data.them.name}/>} 
+
       {data.effects&&<EffectsPanel effects={data.effects} runes={runes} summoners={summoners}/>} 
 
       <div className="lab-grid" style={{marginTop:16}}>
@@ -182,7 +190,7 @@ export default function MatchupLab(){
       {data.trades&&<TradePanel report={data.trades} you={data.you.name} them={data.them.name}/>} 
 
       <div className="glass card" style={{marginTop:16}}>
-        <div className="eyebrow">COMBAT TIMELINE</div>
+        <div className="eyebrow">YOUR ONE-SIDED COMBO TIMELINE</div>
         <div style={{overflowX:'auto',marginTop:14}}><table className="table">
           <thead><tr><th>At</th><th>Step</th><th>Status</th><th>Damage</th><th>Target HP</th><th>Resource</th></tr></thead>
           <tbody>{data.combo.events.map(e=><tr key={`${e.index}-${e.step}`} className={e.status==='CAST'?'':'row-blocked'}><td>{e.atSeconds}s</td><td>{e.step} · {e.label}</td><td>{e.status==='CAST'?'cast':statusLabel(e.status)}</td><td>{e.mitigatedDamage>0?e.mitigatedDamage:'—'}</td><td>{e.targetHealthRemaining}</td><td>{e.manaRemaining}</td></tr>)}</tbody>
@@ -204,6 +212,20 @@ export default function MatchupLab(){
       </div>
     </>}
   </AppShell>;
+}
+
+function SequenceEditor({title,sequence,onChange,detail}:{title:string;sequence:ComboStep[];onChange:(steps:ComboStep[])=>void;detail:string}){
+  return <div className="glass card">
+    <div className="section-row">
+      <div><div className="eyebrow">{title}</div><h2 style={{margin:'6px 0 0'}}>{sequence.join(' → ')||'Nothing selected'}</h2></div>
+      <button className="btn secondary" style={{minHeight:38,fontSize:11}} onClick={()=>onChange([])}>CLEAR</button>
+    </div>
+    <div className="tag-row" style={{marginTop:14}}>
+      {STEPS.map(step=><button key={step} type="button" className="tag-chip" onClick={()=>onChange(sequence.length<24?[...sequence,step]:sequence)}>+ {step}</button>)}
+      {sequence.length>0&&<button type="button" className="tag-chip clear" onClick={()=>onChange(sequence.slice(0,-1))}>Undo</button>}
+    </div>
+    <p className="muted" style={{fontSize:11,margin:'12px 0 0'}}>{detail} Cooldowns, resources and supported champion state are enforced event-by-event.</p>
+  </div>;
 }
 
 function SideEditor({title,side,form,onChange,names,items,runes,summoners,patch,resolved}:{
@@ -429,6 +451,15 @@ function AbilityPanel({side,label,showMath}:{side:SideView;label:string;showMath
   return <div className="glass card"><div className="section-row"><div><div className="eyebrow">{label}</div><h2 style={{margin:'6px 0 0'}}>{side.name}</h2></div><span className={`conf-tag ${CONFIDENCE_CLASS[side.confidence.level]}`}>{side.confidence.level}</span></div>
     <div className="spike-list" style={{marginTop:14}}>{side.abilities.map(a=><div className="spike" key={a.slot}><div className="spike-level">{a.slot}</div><div><b>{a.name} <span className="muted">rank {a.rank}/{a.maxRank}</span></b><p className="spike-fact">{a.damage[0]?.raw!==null&&a.damage[0]?.raw!==undefined?`${a.damage[0].raw} ${a.damage[0].type.toLowerCase()} damage`:'No direct damage figure'} · {a.cooldownSeconds}s · {a.cost>0?`${a.cost} resource`:'no cost'}{a.rangeUnits?` · ${a.rangeUnits} range`:''}</p>{a.confidence.level!=='HIGH'&&<p className={`conf-inline ${CONFIDENCE_CLASS[a.confidence.level]}`}>{a.confidence.level}: {a.confidence.causes[0]?.reason}</p>}{showMath&&a.calculations.length>0&&<table className="table skill-grid" style={{marginTop:8}}><tbody>{a.calculations.map(c=><tr key={c.name}><td style={{textAlign:'left'}}>{c.primary?'▸ ':''}{c.name}</td><td>{c.value??'—'}</td><td style={{textAlign:'left',color:'var(--muted)',fontSize:10}}>{c.unmodelled[0]??''}</td></tr>)}</tbody></table>}</div></div>)}</div>
   </div>;
+}
+
+function duelLabel(verdict:DuelResult['verdict']){
+  if(verdict==='YOU_KILL')return 'YOU WIN';
+  if(verdict==='THEM_KILL')return 'THEY WIN';
+  if(verdict==='DOUBLE_KO')return 'DOUBLE KO';
+  if(verdict==='YOU_AHEAD')return 'YOU AHEAD';
+  if(verdict==='THEM_AHEAD')return 'THEY AHEAD';
+  return 'EVEN';
 }
 
 const statusLabel=(status:string)=>status==='NO_RESOURCE'?'no resource':status==='ON_COOLDOWN'?'on cooldown':status==='NOT_LEARNED'?'no rank':status.toLowerCase();
