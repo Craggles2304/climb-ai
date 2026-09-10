@@ -236,8 +236,12 @@ function bestAbility(
     if(clock<(readyAt.get(slot)??0)-1e-9)continue;
     if(positive(ability.cost)>mana+1e-9)continue;
 
+    const abilityComponents=[
+      ...ability.damage,
+      ...(ability.dynamicDamage??[]).map(effect=>resolveOnHit(effect,currentHealth,targetMaxHealth)),
+    ];
     const adjusted=applyDamageRules(
-      ability.damage,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
+      abilityComponents,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
     );
     const result=mitigateAll(adjusted,targetResistances,pen);
     if(result.mitigatedTotal<=0)continue;
