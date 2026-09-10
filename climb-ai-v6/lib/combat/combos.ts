@@ -32,6 +32,10 @@ export interface AutoAttackModel{
   damage:number;
   /** Attacks per second before temporary rune stacks. */
   attackSpeed:number;
+  /** Some champion weapons spend resource on each attack, e.g. Jinx Fishbones. */
+  resourceCost?:number;
+  /** Champion states such as Get Excited may override the normal 3.0 cap. */
+  attackSpeedCap?:number;
   onHits?:OnHitEffect[];
   attackStack?:AttackStackEffect;
   autoProcs?:AutoProcEffect[];
@@ -122,6 +126,15 @@ export function simulateCombo(input:ComboInput):ComboResult{
     const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,clock);
 
     if(step==='AA'){
+      const resourceCost=positive(input.autoAttack.resourceCost??0);
+      if(resourceCost>mana+1e-9){
+        const reason=`This basic attack costs ${round(resourceCost)} resource and only ${round(mana)} is left.`;
+        blocked.push({step,reason});
+        events.push({...base,label:'Basic attack',status:'NO_RESOURCE',note:reason});
+        return;
+      }
+      mana-=resourceCost;
+
       const nextAuto=autoCount+1;
       const components:DamageComponent[]=[
         {label:'Auto attack',type:'PHYSICAL',raw:positive(input.autoAttack.damage)},
@@ -153,9 +166,10 @@ export function simulateCombo(input:ComboInput):ComboResult{
       if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
 
       events.push({
-        ...base,label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
+        ...base,
+        label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
         status:'CAST',rawDamage:result.rawTotal,mitigatedDamage:result.mitigatedTotal,
-        targetHealthRemaining:round(health),
+        manaSpent:resourceCost,manaRemaining:round(mana),targetHealthRemaining:round(health),
       });
       return;
     }
@@ -273,7 +287,10 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
 
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
-  return Math.min(ATTACK_SPEED_CAP,Math.max(0,model.attackSpeed+extra));
+  const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
+    ?Number(model.attackSpeedCap)
+    :ATTACK_SPEED_CAP;
+  return Math.min(cap,Math.max(0,model.attackSpeed+extra));
 }
 
 function timedOutgoingMultiplier(input:ComboInput,clock:number):number{
