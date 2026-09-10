@@ -5,7 +5,10 @@ import {
   AbilityModel,AbilitySlot,AutoAttackModel,attackInterval,hasteMultiplier,
   applyDamageRules,resolveOnHit,
 } from './combos';
-import type {DamageRule,TargetDebuffEffect} from './effects';
+import {
+  autoProcTriggers,onHitTriggers,
+  type DamageRule,type TargetDebuffEffect,
+} from './effects';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
 
 export interface TradeScenario{
@@ -181,11 +184,11 @@ export function runTrade(
       {label:'Auto attack',type:'PHYSICAL',raw:positive(actor.autoAttack.damage)},
     ];
     for(const effect of actor.autoAttack.onHits??[]){
-      if(effect.everyNthAttack&&nextAuto%effect.everyNthAttack!==0)continue;
+      if(!onHitTriggers(effect,nextAuto))continue;
       components.push(resolveOnHit(effect,health,targetMaxHealth));
     }
     for(const proc of actor.autoAttack.autoProcs??[])
-      if(proc.procAtAuto===nextAuto)
+      if(autoProcTriggers(proc,nextAuto))
         components.push(resolveOnHit(proc.damage,health,targetMaxHealth));
     const stack=actor.autoAttack.attackStack;
     if(stack?.onHitAtMax&&attackStacks>=stack.maxStacks)
