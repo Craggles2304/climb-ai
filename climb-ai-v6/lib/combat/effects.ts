@@ -7,7 +7,24 @@ export interface OnHitEffect{
   flatDamage?:number;
   targetMaxHealthRatio?:number;
   targetCurrentHealthRatio?:number;
+  /** Missing-health scaling for executes/finishers. */
+  targetMissingHealthRatio?:number;
+  /** Floor after all flat/health terms are added, before mitigation. */
+  minimumDamage?:number;
+  /** Repeating cadence such as Silver Bolts every third attack. */
   everyNthAttack?:number;
+  /** Empower only the opening N attacks, e.g. Shen Q's next three attacks. */
+  firstNAttacks?:number;
+}
+
+export function onHitTriggers(effect:OnHitEffect,attackNumber:number):boolean{
+  const n=Math.max(1,Math.round(attackNumber));
+  if(effect.firstNAttacks!==undefined&&n>Math.max(0,Math.round(effect.firstNAttacks)))return false;
+  if(effect.everyNthAttack!==undefined){
+    const every=Math.max(1,Math.round(effect.everyNthAttack));
+    if(n%every!==0)return false;
+  }
+  return true;
 }
 
 /** A debuff applied after an ability lands and consumed by later events. */
