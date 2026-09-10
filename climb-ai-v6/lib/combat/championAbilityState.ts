@@ -1,15 +1,14 @@
 import {SLOTS,type AssembledKit} from './abilities';
 import type {AbilitySlot} from './combos';
 import type {ChampionCombatProfile} from './championEffects';
-import {resolveSpellCastVariant} from './spellVariants';
 
 /**
- * Applies champion-specific spell state to an assembled Q/W/E/R kit.
+ * Applies the champion profile's ordinary debuffs, event state and stat/cooldown
+ * modifiers to an assembled Q/W/E/R kit.
  *
- * This is shared by Solo Matchup, simultaneous duel and Bot Duo so one
- * champion-state rule cannot produce different maths in different product
- * surfaces. Failed source-gated variants are downgraded to an explicit partial
- * instead of silently using a guessed formula.
+ * Conditional cast variants are applied by conditionalChampionSpells.ts after
+ * this pass. Keeping the two stages explicit prevents an empowered/all-hit
+ * variant from being multiplied twice by a champion's normal state modifier.
  */
 export function applyChampionAbilityState(
   kit:AssembledKit,
@@ -28,24 +27,6 @@ export function applyChampionAbilityState(
 
     const modifier=profile.abilityModifiers[slot];
     if(!modifier)continue;
-
-    if(modifier.castVariant){
-      const result=resolveSpellCastVariant(ability,modifier.castVariant);
-      if(result.applied){
-        ability.damage=result.damage;
-        model.damage=result.damage;
-        ability.cost=result.cost;
-        model.cost=result.cost;
-        ability.cooldownSeconds=result.cooldownSeconds;
-        model.cooldownSeconds=result.cooldownSeconds;
-        const selected=new Set(result.primaryCalculationNames);
-        for(const calculation of ability.calculations)
-          calculation.primary=selected.has(calculation.name);
-        ability.variantNote=append(ability.variantNote,result.note);
-      }else{
-        downgradeEffect(profile,result.effectId,result.note);
-      }
-    }
 
     if(Number.isFinite(modifier.damageMultiplier)){
       const multiplier=Math.max(0,modifier.damageMultiplier as number);
@@ -80,19 +61,9 @@ export function applyChampionAbilityState(
   }
 }
 
-function downgradeEffect(
-  profile:ChampionCombatProfile,
-  effectId:string,
-  reason:string,
-){
-  profile.modelledEffects=profile.modelledEffects.filter(id=>id!==effectId);
-  if(!profile.unmodelledEffects.includes(effectId))profile.unmodelledEffects.push(effectId);
-  if(!profile.notes.includes(reason))profile.notes.push(reason);
-}
-
 const append=(current:string|undefined,next:string)=>
   [current,next].filter(Boolean).join(' ');
 const round=(n:number)=>Math.round(n*10)/10;
 
-/** Compile-time guard: keep imported slot type used by registry consumers. */
+/** Compile-time guard for registry consumers. */
 export type ChampionAbilitySlot=AbilitySlot;
