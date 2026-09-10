@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import type {NextRequest} from 'next/server';
 import {createServerClient} from '@supabase/ssr';
-import {authConfigured,decideAccess} from '@/lib/auth/config';
+import {authConfigured,decideAccess,isUnreachable} from '@/lib/auth/config';
 
 /**
  * Session refresh + route protection.
@@ -26,6 +26,7 @@ export async function middleware(req:NextRequest){
   let response=NextResponse.next({request:req});
   let signedIn=false;
   let isAdmin=false;
+  let authReachable=true;
 
   if(configured){
     const supabase=createServerClient(
@@ -45,16 +46,30 @@ export async function middleware(req:NextRequest){
 
     // getUser() revalidates against Supabase. getSession() only reads the cookie
     // and is spoofable, so it must not be used for an access decision.
-    const {data}=await supabase.auth.getUser();
-    signedIn=Boolean(data.user);
-    isAdmin=data.user?.app_metadata?.role==='admin';
+    //
+    // It can also fail outright — a free-tier project paused after a week of
+    // inactivity, or any network blip. Unhandled, that threw out of middleware
+    // and every request on the site returned 500. So a failure here is recorded
+    // as "unreachable" and handed to decideAccess, which degrades rather than
+    // redirecting into a login page that cannot work either.
+    try{
+      const {data,error}=await supabase.auth.getUser();
+      if(error&&isUnreachable(error)){
+        authReachable=false;
+      }else{
+        signedIn=Boolean(data.user);
+        isAdmin=data.user?.app_metadata?.role==='admin';
+      }
+    }catch{
+      authReachable=false;
+    }
   }else{
     // Legacy demo admin gate, preserved so the admin page stays reachable in
     // demo mode exactly as it was before auth existed.
     isAdmin=req.cookies.get('climb_admin')?.value==='1';
   }
 
-  const decision=decideAccess({path,configured,signedIn,isAdmin,demoMode});
+  const decision=decideAccess({path,configured,signedIn,isAdmin,demoMode,authReachable});
   if(decision.action==='REDIRECT'){
     const url=req.nextUrl.clone();
     url.pathname=decision.to;

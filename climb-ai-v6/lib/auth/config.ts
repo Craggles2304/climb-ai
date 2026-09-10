@@ -12,10 +12,20 @@
 export const authConfigured=()=>
   Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL&&process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
 
-/** Routes that require a signed-in user once auth is configured. */
+/**
+ * Routes that require a signed-in user once auth is configured.
+ *
+ * /champions and /matchups are deliberately NOT here. Everything they show is
+ * computed from Riot's public static CDN — champion stats, item values, DPS,
+ * matchup comparisons — with no server-side user data involved at all. Gating
+ * them achieved nothing except locking people out of the one part of the app
+ * that works with no account and no database, which is exactly what happened
+ * when the database was unreachable. They are also the best possible shop
+ * window: someone can get real value before deciding to sign up.
+ */
 export const PROTECTED_PREFIXES=[
   '/dashboard','/ilp','/analyse','/missions','/progress','/coach',
-  '/uploads','/account','/billing','/settings','/champions','/matchups','/live',
+  '/uploads','/account','/billing','/settings','/live',
 ] as const;
 
 /** Routes only an admin may see. */
@@ -45,13 +55,25 @@ export function decideAccess(opts:{
   signedIn:boolean;
   isAdmin:boolean;
   demoMode:boolean;
+  /**
+   * Whether Supabase actually answered. Configured-but-unreachable is a real
+   * state, not an edge case: free-tier projects pause after a week of
+   * inactivity, so this happens on a schedule.
+   */
+  authReachable?:boolean;
 }):AuthDecision{
   const {path,configured,signedIn,isAdmin,demoMode}=opts;
+  const authReachable=opts.authReachable??true;
 
   // Admin is gated even in demo mode when auth exists, because it exposes
   // other people's aggregate data rather than the viewer's own.
   if(isAdminRoute(path)){
     if(!configured&&demoMode)return {action:'ALLOW'};
+    // Admin fails CLOSED when auth is unreachable. Everything else below fails
+    // open, but admin is the one route where being unable to check identity
+    // must mean refusal rather than degradation.
+    if(!authReachable)
+      return {action:'REDIRECT',to:'/dashboard',reason:'Cannot verify admin while auth is unreachable.'};
     if(!signedIn)return {action:'REDIRECT',to:'/login',reason:'Admin requires sign-in.'};
     if(!isAdmin)return {action:'REDIRECT',to:'/dashboard',reason:'Not an admin.'};
     return {action:'ALLOW'};
@@ -60,6 +82,20 @@ export function decideAccess(opts:{
   // Without Supabase there is nothing to authenticate against, so the product
   // stays fully usable as a demo instead of redirecting into a dead login page.
   if(!configured)return {action:'ALLOW'};
+
+  /*
+   * Configured but unreachable: allow through rather than redirect.
+   *
+   * Failing open on an auth error is usually wrong, so the reasoning matters.
+   * The only thing these routes protect is the viewer's own data, and that data
+   * lives in the database that is unreachable — so there is nothing to leak;
+   * the pages render demo and local data only. Failing closed instead would
+   * redirect to a login page that cannot work, locking everyone out of features
+   * like /champions and /matchups that never touch the database at all.
+   *
+   * Admin is handled above and still fails closed.
+   */
+  if(!authReachable)return {action:'ALLOW'};
 
   if(isAuthPage(path)&&signedIn){
     return {action:'REDIRECT',to:'/dashboard',reason:'Already signed in.'};
@@ -70,4 +106,27 @@ export function decideAccess(opts:{
   }
 
   return {action:'ALLOW'};
+}
+
+/**
+ * Whether a Supabase error means "could not reach the database" rather than
+ * "this visitor is not signed in". The two must not be confused: the first is
+ * an outage to degrade around, the second is a normal answer.
+ *
+ * A paused free-tier project is the common case. It surfaces as a fetch
+ * failure or a gateway status rather than a clean 401, because there is no
+ * database left to say no.
+ */
+export function isUnreachable(error:unknown):boolean{
+  const err=error as {status?:number;message?:string;name?:string}|null;
+  if(!err)return false;
+
+  // 401/403 are real answers from a working service: not signed in.
+  if(err.status===401||err.status===403)return false;
+
+  // Anything the gateway returns when the project is asleep or overloaded.
+  if(typeof err.status==='number'&&err.status>=500)return true;
+
+  const text=`${err.name??''} ${err.message??''}`.toLowerCase();
+  return /fetch failed|network|econnrefused|enotfound|etimedout|timeout|socket|dns|unavailable|paused|sleep/.test(text);
 }

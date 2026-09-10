@@ -1,6 +1,7 @@
 import 'server-only';
 import {Match} from '../types';
 import {getSupabaseAdmin} from './supabaseAdmin';
+import {isUnreachable} from '../auth/config';
 
 /**
  * Persistence for synced matches.
@@ -24,7 +25,21 @@ export interface SyncedMatch{
   moments?:Match['moments'];
 }
 
+/**
+ * Never throws. A save failure is a reported outcome, not an exception: the
+ * Riot sync that produced these matches already succeeded, and letting a
+ * database throw propagate turned a failed write into a 502 that lost the
+ * matches entirely.
+ */
 export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<SaveResult>{
+  try{
+    return await persistMatches(userId,synced);
+  }catch(err){
+    return failed(synced.length,err);
+  }
+}
+
+async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveResult>{
   const matches=synced.map(s=>s.match);
   const unavailableById=new Map(synced.map(s=>[s.match.id,s.unavailable]));
   const db=getSupabaseAdmin();
@@ -37,7 +52,7 @@ export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<Sa
     .select('external_match_id')
     .eq('user_id',userId)
     .in('external_match_id',matches.map(m=>m.id));
-  if(readError)return {persisted:false,inserted:0,skipped:matches.length,reason:readError.message};
+  if(readError)return failed(matches.length,readError);
 
   const seen=new Set((existing||[]).map(r=>r.external_match_id as string));
   const fresh=matches.filter(m=>!seen.has(m.id));
@@ -60,7 +75,7 @@ export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<Sa
       occurred_at:m.createdAt,
     })))
     .select('id,external_match_id');
-  if(insertError)return {persisted:false,inserted:0,skipped:matches.length,reason:insertError.message};
+  if(insertError)return failed(matches.length,insertError);
 
   const idByExternal=new Map((rows||[]).map(r=>[r.external_match_id as string,r.id as string]));
   const metricRows=fresh
@@ -101,4 +116,22 @@ export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<Sa
   }
 
   return {persisted:true,inserted:fresh.length,skipped:matches.length-fresh.length};
+}
+
+/**
+ * A failed save is reported, never thrown. The Riot sync that produced these
+ * matches already succeeded, so losing the write must not lose the data — the
+ * route still returns the matches and the client still shows them.
+ *
+ * A paused free-tier project gets its own wording because it is the most
+ * likely cause and the fix is a button in the Supabase dashboard, not a bug.
+ */
+function failed(count:number,error:unknown):SaveResult{
+  const message=(error as {message?:string})?.message??'Unknown error';
+  return {
+    persisted:false,inserted:0,skipped:count,
+    reason:isUnreachable(error)
+      ?'Could not reach the database, so nothing was saved. Free Supabase projects pause after a week of inactivity — restoring it in the Supabase dashboard will fix this. Your matches are still shown below.'
+      :message,
+  };
 }
