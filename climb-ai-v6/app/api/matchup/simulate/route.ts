@@ -6,7 +6,8 @@ import {championSpells} from '@/lib/combat/source';
 import {assembleKit,combatDamageType,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
 import {ATTACK_SPEED_CAP,simulateCombo,type AbilitySlot,type ComboStep} from '@/lib/combat/combos';
 import {compareTrades} from '@/lib/combat/trades';
-import {simulateDuel} from '@/lib/combat/duel';
+import {simulateAdvancedDuel} from '@/lib/combat/duelAdvanced';
+import {buildChampionDuelProfile} from '@/lib/combat/championDuel';
 import {killThreshold,noPenetration,type Penetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
 import type {CombatStats} from '@/lib/combat/formula';
@@ -142,6 +143,26 @@ export async function POST(req:NextRequest){
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
+
+    const yourDuelFx=buildChampionDuelProfile(
+      yourChampion.id,you.activeChampionEffects,yourRanks,
+      {
+        level:you.level,
+        abilityPower:yourStats.abilityPower,
+        maxHealth:yourStats.maxHealth,
+        bonusHealth:Math.max(0,yourStats.maxHealth-yourBase.hp),
+      },
+    );
+    const theirDuelFx=buildChampionDuelProfile(
+      theirChampion.id,them.activeChampionEffects,theirRanks,
+      {
+        level:them.level,
+        abilityPower:theirStats.abilityPower,
+        maxHealth:theirStats.maxHealth,
+        bonusHealth:Math.max(0,theirStats.maxHealth-theirBase.hp),
+      },
+    );
+
     const yourRuneFx=buildRuneCombatProfile(you.runeIds,{
       level:you.level,
       isRanged:(yourBase.attackRange+yourChampionFx.attackRangeBonus)>=300,
@@ -225,8 +246,6 @@ export async function POST(req:NextRequest){
       maxHealth:stats.maxHealth,
       currentHealth,
       shield,
-      // This side owns these resistances. runTrade reads the target side's
-      // resistances, so passing the opponent here would invert mitigation.
       resistances:{armor:stats.armor,magicResist:stats.magicResist},
       penetration:pen,
       abilityHaste:haste,
@@ -246,21 +265,26 @@ export async function POST(req:NextRequest){
     );
     const trades=compareTrades(yourTradeSide,theirTradeSide);
 
-    const duel=simulateDuel(
+    const duel=simulateAdvancedDuel(
       {
         side:'YOU',champion:yourChampion.name,sequence:yourSequence,
         abilities:yourKit.models,autoAttack:yourAuto,
         mana:yourStats.mana*(you.resourcePercent/100),
         maxHealth:yourStats.maxHealth,currentHealth:yourCurrent,
         shield:you.shield,
-        openingShields:yourSummonerFx.bonusShield>0
-          ?[{label:'Barrier',amount:yourSummonerFx.bonusShield,durationSeconds:2.5}]
-          :[],
+        openingShields:[
+          ...(yourSummonerFx.bonusShield>0
+            ?[{label:'Barrier',amount:yourSummonerFx.bonusShield,durationSeconds:2.5,scope:'ALL' as const}]
+            :[]),
+          ...yourDuelFx.openingShields,
+        ],
         resistances:{armor:yourStats.armor,magicResist:yourStats.magicResist},
         penetration:yourPen,abilityHaste:yourHaste,damageRules:yourRuneFx.damageRules,
         initialTargetMarks:yourChampionFx.initialTargetMarks,
         outgoingDamageMultiplier:theirSummonerFx.exhaustDamageMultiplier,
         outgoingDamageMultiplierDurationSeconds:theirSummonerFx.exhaustDurationSeconds,
+        abilityOverlays:yourDuelFx.abilityOverlays,
+        sustainEffects:yourDuelFx.sustainEffects,
       },
       {
         side:'THEM',champion:theirChampion.name,sequence:theirSequence,
@@ -268,18 +292,24 @@ export async function POST(req:NextRequest){
         mana:theirStats.mana*(them.resourcePercent/100),
         maxHealth:theirStats.maxHealth,currentHealth:theirCurrent,
         shield:them.shield,
-        openingShields:theirSummonerFx.bonusShield>0
-          ?[{label:'Barrier',amount:theirSummonerFx.bonusShield,durationSeconds:2.5}]
-          :[],
+        openingShields:[
+          ...(theirSummonerFx.bonusShield>0
+            ?[{label:'Barrier',amount:theirSummonerFx.bonusShield,durationSeconds:2.5,scope:'ALL' as const}]
+            :[]),
+          ...theirDuelFx.openingShields,
+        ],
         resistances:{armor:theirStats.armor,magicResist:theirStats.magicResist},
         penetration:theirPen,abilityHaste:theirHaste,damageRules:theirRuneFx.damageRules,
         initialTargetMarks:theirChampionFx.initialTargetMarks,
         outgoingDamageMultiplier:yourSummonerFx.exhaustDamageMultiplier,
         outgoingDamageMultiplierDurationSeconds:yourSummonerFx.exhaustDurationSeconds,
+        abilityOverlays:theirDuelFx.abilityOverlays,
+        sustainEffects:theirDuelFx.sustainEffects,
       },
       duelDurationSeconds,
     );
 
+    const duelPartials=[...yourDuelFx.partial.map(x=>`Your ${x}`),...theirDuelFx.partial.map(x=>`Enemy ${x}`)];
     const setupApproximations=[
       ...effectCaveats('Your',yourRuneFx,yourSummonerFx,yourChampionFx),
       ...effectCaveats('Enemy',theirRuneFx,theirSummonerFx,theirChampionFx),
@@ -306,11 +336,12 @@ export async function POST(req:NextRequest){
           ...theirLoadout.approximations,
           ...setupApproximations,
         ],
+        unmodelled:duelPartials,
       }),
     ]);
 
-    const yourEffectNotes=[...yourRuneFx.notes,...yourSummonerFx.notes,...yourChampionFx.notes];
-    const theirEffectNotes=[...theirRuneFx.notes,...theirSummonerFx.notes,...theirChampionFx.notes];
+    const yourEffectNotes=[...yourRuneFx.notes,...yourSummonerFx.notes,...yourChampionFx.notes,...yourDuelFx.notes];
+    const theirEffectNotes=[...theirRuneFx.notes,...theirSummonerFx.notes,...theirChampionFx.notes,...theirDuelFx.notes];
 
     return NextResponse.json({
       ok:true,
@@ -318,6 +349,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion stats, items, runes, summoners, ability slots, cooldowns and costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
+        {name:'Validated interaction layer',use:'shared-clock CC, healing and typed shield semantics for supported champion states',official:false},
       ],
       you:sideReport(
         yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
@@ -347,6 +379,8 @@ export async function POST(req:NextRequest){
           unmodelledActiveSummoners:yourSummonerFx.unmodelledActiveIds,
           modelledChampionEffects:yourChampionFx.modelledEffects,
           unmodelledChampionEffects:yourChampionFx.unmodelledEffects,
+          modelledDuelInteractions:yourDuelFx.modelled,
+          partialDuelInteractions:yourDuelFx.partial,
           championMechanics:yourChampionFx.mechanicKinds,
           timedChampionStates:yourChampionFx.timedAutoStates.map(x=>`${x.label} · ${x.durationSeconds}s`),
           targetMarks:yourChampionFx.initialTargetMarks.map(x=>`${x.label} · ${x.durationSeconds}s`),
@@ -360,6 +394,8 @@ export async function POST(req:NextRequest){
           unmodelledActiveSummoners:theirSummonerFx.unmodelledActiveIds,
           modelledChampionEffects:theirChampionFx.modelledEffects,
           unmodelledChampionEffects:theirChampionFx.unmodelledEffects,
+          modelledDuelInteractions:theirDuelFx.modelled,
+          partialDuelInteractions:theirDuelFx.partial,
           championMechanics:theirChampionFx.mechanicKinds,
           timedChampionStates:theirChampionFx.timedAutoStates.map(x=>`${x.label} · ${x.durationSeconds}s`),
           targetMarks:theirChampionFx.initialTargetMarks.map(x=>`${x.label} · ${x.durationSeconds}s`),
