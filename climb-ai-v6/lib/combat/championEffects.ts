@@ -99,6 +99,33 @@ const REGISTRY:RegistryEntry[]=[
     ],
     apply:applyAphelios,
   },
+  {
+    aliases:['ashe'],
+    options:[{
+      id:'ASHE_Q',label:'Q ACTIVE',group:'ashe-focus',support:'EXACT',
+      detail:'Ranger’s Focus: rank-scaled attack speed + flurry basic-attack damage',
+    }],
+    apply:applyAshe,
+  },
+  {
+    aliases:['ezreal'],
+    options:[
+      {id:'EZ_PASSIVE_1',label:'PASSIVE · 1 STACK',group:'ezreal-passive',support:'PARTIAL',detail:'10% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
+      {id:'EZ_PASSIVE_2',label:'PASSIVE · 2 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'20% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
+      {id:'EZ_PASSIVE_3',label:'PASSIVE · 3 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'30% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
+      {id:'EZ_PASSIVE_4',label:'PASSIVE · 4 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'40% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
+      {id:'EZ_PASSIVE_5',label:'PASSIVE · 5 STACKS',group:'ezreal-passive',support:'EXACT',detail:'Rising Spell Force fully stacked: +50% bonus attack speed'},
+    ],
+    apply:applyEzreal,
+  },
+  {
+    aliases:['vayne'],
+    options:[
+      {id:'VAYNE_W_FRESH',label:'SILVER BOLTS · FRESH',group:'vayne-bolts',support:'PARTIAL',detail:'Every third basic attack gets W max-HP true damage; ability-applied stacks/minimum damage are still explicit gaps'},
+      {id:'VAYNE_R',label:'FINAL HOUR ACTIVE',group:'vayne-r',support:'PARTIAL',detail:'State recorded; timed bonus AD/Q cooldown/invisibility layer is next and is not guessed yet'},
+    ],
+    apply:applyVayne,
+  },
 ];
 
 export function buildChampionCombatProfile(
@@ -109,15 +136,23 @@ export function buildChampionCombatProfile(
 ):ChampionCombatProfile{
   const profile=emptyProfile();
   const entry=findEntry(championId);
-  const active=new Set(activeEffects);
+  if(!entry){
+    profile.unmodelledEffects.push(...activeEffects);
+    return profile;
+  }
 
-  if(entry)entry.apply(profile,active,ranks,opts);
+  // Frontend state can briefly contain two buttons from the same group while a
+  // user is changing champion state. Resolve that deterministically to the most
+  // recently selected value, and keep the conflict visible in confidence/audit.
+  const active=normaliseGroupedSelection(entry,activeEffects,profile);
+  entry.apply(profile,active,ranks,opts);
 
   // Anything explicitly requested but not recognised remains visible. This also
   // catches stale state if a player changes champion without clearing a toggle.
   const known=new Set([...profile.modelledEffects,...profile.unmodelledEffects]);
   for(const effect of activeEffects)
-    if(!known.has(effect))profile.unmodelledEffects.push(effect);
+    if(!known.has(effect)&&!entry.options.some(o=>o.id===effect))
+      profile.unmodelledEffects.push(effect);
 
   return profile;
 }
@@ -183,8 +218,6 @@ function applyJinx(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,
   }else if(weapon){
     const stacks=Number(weapon.slice(-1));
     const full=[.30,.55,.80,1.05,1.30][qRank-1]??0;
-    // Rev'd Up's first stack grants half the listed maximum and each additional
-    // stack adds a quarter; three stacks reach the published maximum.
     const fraction=stacks===1?.5:stacks===2?.75:1;
     profile.permanentAttackSpeedRatio+=full*fraction;
     profile.modelledEffects.push(weapon);
@@ -197,8 +230,6 @@ function applyJinx(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,
   if(excited){
     const stacks=Math.max(1,Math.min(5,Number(excited.slice(-1))||1));
     profile.totalAttackSpeedMultiplier*=1+.25*stacks;
-    // Get Excited is allowed to break the normal attack-speed cap. 90 is an
-    // engine ceiling, not a claim that Jinx reaches 90 attacks/sec.
     profile.attackSpeedCap=90;
     profile.modelledEffects.push(excited);
     profile.unmodelledEffects.push(`${excited}_MOVESPEED`);
@@ -231,6 +262,80 @@ function applyAphelios(profile:ChampionCombatProfile,active:Set<string>,_ranks:R
     return;
   }
   markPartial(profile,weapon,'Crescendum selected: return time depends on distance and mirror-chakram count, so a fixed attack-speed/damage bonus would be misleading.');
+}
+
+function applyAshe(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,_opts:Context){
+  if(!active.has('ASHE_Q'))return;
+  const qRank=clampRank(ranks.Q,5);
+  if(qRank<=0){
+    markPartial(profile,'ASHE_Q','Ranger’s Focus cannot be active because Q is unlearned.');
+    return;
+  }
+  const attackSpeed=[.20,.30,.40,.50,.60][qRank-1]??0;
+  const attackDamage=[1.10,1.15,1.20,1.25,1.30][qRank-1]??1;
+  profile.permanentAttackSpeedRatio+=attackSpeed;
+  profile.basicAttackDamageMultiplier*=attackDamage;
+  profile.modelledEffects.push('ASHE_Q');
+  profile.notes.push(`Ranger’s Focus active: +${round(attackSpeed*100)}% attack speed and ${round(attackDamage*100)}% AD total basic-attack damage at Q rank ${qRank}.`);
+  profile.unmodelledEffects.push('ASHE_FROST_SHOT_CRIT_SCALING');
+  profile.notes.push('Frost Shot slow/critical-strike scaling is still kept separate, so Ashe’s full sustained result remains conservative when she has crit chance.');
+}
+
+function applyEzreal(profile:ChampionCombatProfile,active:Set<string>,_ranks:Ranks,_opts:Context){
+  const state=firstActive(active,['EZ_PASSIVE_1','EZ_PASSIVE_2','EZ_PASSIVE_3','EZ_PASSIVE_4','EZ_PASSIVE_5']);
+  if(!state)return;
+  const stacks=Math.max(1,Math.min(5,Number(state.slice(-1))||1));
+  profile.permanentAttackSpeedRatio+=.10*stacks;
+  profile.modelledEffects.push(state);
+  profile.notes.push(`Rising Spell Force starts at ${stacks}/5 stacks: +${stacks*10}% bonus attack speed.`);
+  if(stacks<5){
+    profile.unmodelledEffects.push('EZ_PASSIVE_DYNAMIC_STACKING');
+    profile.notes.push('Further spell hits during this simulation do not yet advance Rising Spell Force, so a start below five stacks is a conservative partial model.');
+  }
+}
+
+function applyVayne(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,_opts:Context){
+  if(active.has('VAYNE_W_FRESH')){
+    const wRank=clampRank(ranks.W,5);
+    if(wRank<=0){
+      markPartial(profile,'VAYNE_W_FRESH','Silver Bolts cannot proc because W is unlearned.');
+    }else{
+      const ratio=[.04,.055,.07,.085,.10][wRank-1]??0;
+      profile.onHits.push({
+        label:`Vayne W rank ${wRank} (auto-only stack model)`,
+        type:'TRUE',targetMaxHealthRatio:ratio,everyNthAttack:3,
+      });
+      profile.modelledEffects.push('VAYNE_W_FRESH');
+      profile.unmodelledEffects.push('VAYNE_W_ABILITY_STACKS_AND_MINIMUM');
+      profile.notes.push(`Silver Bolts: every third basic attack adds ${round(ratio*100)}% target max-HP true damage from a fresh target.`);
+      profile.notes.push('Condemn/other ability-applied Silver Bolts stacks and W’s minimum true-damage floor are not yet in this auto-only stack model, so the state remains PARTIAL.');
+    }
+  }
+  if(active.has('VAYNE_R')){
+    markPartial(profile,'VAYNE_R','Final Hour is recorded but not yet applied: its timed bonus AD and Tumble cooldown modifier need the temporary-stat timeline rather than a permanent flat buff.');
+  }
+}
+
+function normaliseGroupedSelection(
+  entry:RegistryEntry,
+  selected:string[],
+  profile:ChampionCombatProfile,
+):Set<string>{
+  const active=new Set(selected.filter(id=>entry.options.some(o=>o.id===id)));
+  const groups=new Map<string,string[]>();
+  for(const option of entry.options){
+    if(!option.group||!active.has(option.id))continue;
+    const list=groups.get(option.group)??[];
+    list.push(option.id);groups.set(option.group,list);
+  }
+  for(const [group,ids] of groups){
+    if(ids.length<=1)continue;
+    const latest=[...selected].reverse().find(id=>ids.includes(id))??ids[ids.length-1];
+    for(const id of ids)if(id!==latest)active.delete(id);
+    profile.unmodelledEffects.push(`CONFLICT_${group.toUpperCase().replace(/[^A-Z0-9]+/g,'_')}`);
+    profile.notes.push(`Conflicting ${group} states were selected. Only the most recently selected state (${latest}) was applied.`);
+  }
+  return active;
 }
 
 function findEntry(name:string):RegistryEntry|undefined{
