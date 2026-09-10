@@ -1,5 +1,6 @@
 import type {DataDragonItemFull} from '@/lib/champions/source';
 import {addStats,emptyStats,parseItemStats,type ItemStats} from '@/lib/champions/dps';
+import type {OnHitEffect} from './effects';
 
 export type MatchupItem=DataDragonItemFull&{
   description?:string;
@@ -8,10 +9,9 @@ export type MatchupItem=DataDragonItemFull&{
 };
 
 /**
- * Stats derived from the items a player actually selected in Matchup Lab.
- * Visible item stat lines are deterministic. Item actives/passives are kept
- * separate until a mechanic has an explicit model; they are never silently
- * converted into fake flat stats.
+ * Stats and deterministic attack effects derived from the items the player
+ * selected. Item text that cannot be resolved cleanly is kept as an explicit
+ * approximation rather than guessed into the damage total.
  */
 export interface LoadoutStats extends ItemStats{
   abilityHaste:number;
@@ -34,22 +34,17 @@ export interface LoadoutResult{
   stats:LoadoutStats;
   items:LoadoutItem[];
   totalGold:number;
+  onHits:OnHitEffect[];
   approximations:string[];
 }
 
 export const emptyLoadoutStats=():LoadoutStats=>({
-  ...emptyStats(),
-  abilityHaste:0,
-  lethality:0,
-  mana:0,
-  flatMagicPen:0,
-  percentMagicPen:0,
-  percentArmorPen:0,
+  ...emptyStats(),abilityHaste:0,lethality:0,mana:0,
+  flatMagicPen:0,percentMagicPen:0,percentArmorPen:0,
 });
 
 export function buildLoadout(
-  catalogue:Record<string,MatchupItem>,
-  ids:number[],
+  catalogue:Record<string,MatchupItem>,ids:number[],casterAbilityPower=0,
 ):LoadoutResult{
   let stats=emptyLoadoutStats();
   const items:LoadoutItem[]=[];
@@ -63,22 +58,27 @@ export function buildLoadout(
     }
     stats=addLoadoutStats(stats,statsFromItem(item));
     items.push({
-      id,
-      name:item.name,
-      gold:item.gold?.total??0,
-      image:item.image?.full??null,
-      tags:item.tags??[],
+      id,name:item.name,gold:item.gold?.total??0,
+      image:item.image?.full??null,tags:item.tags??[],
     });
   }
 
-  if(items.some(i=>hasCombatPassive(catalogue[String(i.id)])))
-    approximations.push('Selected item passives/actives are not yet included unless their effect is represented by a published stat line.');
+  // AP has to be known after the whole build is summed because Nashor-like
+  // effects scale from total AP rather than the AP of the item itself.
+  const finalAp=casterAbilityPower+stats.abilityPower;
+  const onHits:OnHitEffect[]=[];
+  for(const selected of items){
+    const item=catalogue[String(selected.id)];
+    if(!item)continue;
+    const parsed=parseOnHit(item,finalAp);
+    if(parsed.length)onHits.push(...parsed);
+    else if(hasCombatPassive(item))
+      approximations.push(`${item.name} has a combat passive/active that is not yet included in the deterministic damage total.`);
+  }
 
   return {
-    stats,
-    items,
-    totalGold:items.reduce((sum,item)=>sum+item.gold,0),
-    approximations,
+    stats,items,totalGold:items.reduce((sum,item)=>sum+item.gold,0),
+    onHits,approximations,
   };
 }
 
@@ -99,34 +99,55 @@ export function statsFromItem(item:MatchupItem):LoadoutStats{
   };
 }
 
+/**
+ * Models the common item wording Riot exposes with concrete numbers:
+ *   "Attacks deal 15 bonus physical damage On-Hit"
+ *   "Attacks deal 15 (+20% AP) bonus magic damage On-Hit"
+ *   "Attacks deal 8% of the target's current Health ... On-Hit"
+ *
+ * Mechanics whose public text hides the number behind a named calculation, or
+ * which need stacks/missing-health state, deliberately fall through.
+ */
+export function parseOnHit(item:MatchupItem,abilityPower:number):OnHitEffect[]{
+  const text=plainText(item);
+  const effects:OnHitEffect[]=[];
+
+  const flat=text.match(/Attacks?\s+(?:deal|apply)(?:\s+an\s+additional)?\s+(\d+(?:\.\d+)?)\s*(?:\(\s*\+?(\d+(?:\.\d+)?)%\s*(?:AP|Ability Power)\s*\))?\s*(?:bonus\s+)?(physical|magic)\s+damage\s+On-Hit/i);
+  if(flat){
+    const base=Number(flat[1])||0;
+    const apRatio=(Number(flat[2])||0)/100;
+    effects.push({
+      label:`${item.name} on-hit`,
+      type:flat[3].toUpperCase() as 'PHYSICAL'|'MAGIC',
+      flatDamage:round(base+apRatio*Math.max(0,abilityPower)),
+    });
+  }
+
+  const current=text.match(/Attacks?\s+(?:deal|apply)(?:\s+an\s+additional)?\s+(\d+(?:\.\d+)?)%\s+(?:of\s+)?(?:the\s+)?(?:target'?s|enemy'?s?)\s+current\s+Health\s+as\s+(?:bonus\s+)?(physical|magic)\s+damage\s+On-Hit/i);
+  if(current){
+    effects.push({
+      label:`${item.name} current-health on-hit`,
+      type:current[2].toUpperCase() as 'PHYSICAL'|'MAGIC',
+      targetCurrentHealthRatio:(Number(current[1])||0)/100,
+    });
+  }
+
+  return dedupeEffects(effects);
+}
+
 export function itemSummary(id:number,item:MatchupItem){
   const stats=statsFromItem(item);
   const kind=(item.tags??[]).includes('Boots')
-    ?'BOOTS'
-    :item.into?.length
-      ?'COMPONENT'
-      :item.from?.length
-        ?'COMPLETED'
-        :'STARTER';
+    ?'BOOTS':item.into?.length?'COMPONENT':item.from?.length?'COMPLETED':'STARTER';
   return {
-    id,
-    name:item.name,
-    gold:item.gold?.total??0,
-    image:item.image?.full??null,
-    tags:item.tags??[],
-    kind,
+    id,name:item.name,gold:item.gold?.total??0,image:item.image?.full??null,
+    tags:item.tags??[],kind,
     stats:{
-      attackDamage:stats.attackDamage,
-      abilityPower:stats.abilityPower,
+      attackDamage:stats.attackDamage,abilityPower:stats.abilityPower,
       attackSpeedPercent:round(stats.attackSpeedRatio*100),
-      critPercent:round(stats.critChance*100),
-      health:stats.health,
-      armor:stats.armor,
-      magicResist:stats.magicResist,
-      mana:stats.mana,
-      abilityHaste:stats.abilityHaste,
-      lethality:stats.lethality,
-      moveSpeed:stats.flatMoveSpeed,
+      critPercent:round(stats.critChance*100),health:stats.health,armor:stats.armor,
+      magicResist:stats.magicResist,mana:stats.mana,abilityHaste:stats.abilityHaste,
+      lethality:stats.lethality,moveSpeed:stats.flatMoveSpeed,
     },
   };
 }
@@ -134,10 +155,8 @@ export function itemSummary(id:number,item:MatchupItem){
 function addLoadoutStats(a:LoadoutStats,b:LoadoutStats):LoadoutStats{
   const visible=addStats(a,b);
   return {
-    ...visible,
-    abilityHaste:a.abilityHaste+b.abilityHaste,
-    lethality:a.lethality+b.lethality,
-    mana:a.mana+b.mana,
+    ...visible,abilityHaste:a.abilityHaste+b.abilityHaste,
+    lethality:a.lethality+b.lethality,mana:a.mana+b.mana,
     flatMagicPen:a.flatMagicPen+b.flatMagicPen,
     percentMagicPen:combinePercentPen(a.percentMagicPen,b.percentMagicPen),
     percentArmorPen:combinePercentPen(a.percentArmorPen,b.percentArmorPen),
@@ -146,21 +165,27 @@ function addLoadoutStats(a:LoadoutStats,b:LoadoutStats):LoadoutStats{
 
 function plainText(item:MatchupItem):string{
   return `${item.plaintext??''} ${item.description??''}`
+    .replace(/<br\s*\/?\s*>/gi,' ')
     .replace(/<[^>]+>/g,' ')
     .replace(/&nbsp;|&amp;/g,' ')
-    .replace(/\s+/g,' ');
+    .replace(/\s+/g,' ')
+    .trim();
 }
 
 function namedNumber(text:string,label:string):number{
-  const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const match=text.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}`,'i'));
-  return match?Number(match[1]):0;
+  const escaped=escapeRegex(label);
+  const after=text.match(new RegExp(`(\\d+(?:\\.\\d+)?)\\s*${escaped}`,'i'));
+  if(after)return Number(after[1])||0;
+  const before=text.match(new RegExp(`${escaped}\\s*[:+]?\\s*(\\d+(?:\\.\\d+)?)`,'i'));
+  return before?Number(before[1])||0:0;
 }
 
 function namedPercent(text:string,label:string):number{
-  const escaped=label.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const match=text.match(new RegExp(`(\\d+(?:\\.\\d+)?)%\\s*${escaped}`,'i'));
-  return match?Number(match[1])/100:0;
+  const escaped=escapeRegex(label);
+  const after=text.match(new RegExp(`(\\d+(?:\\.\\d+)?)%\\s*${escaped}`,'i'));
+  if(after)return (Number(after[1])||0)/100;
+  const before=text.match(new RegExp(`${escaped}\\s*[:+]?\\s*(\\d+(?:\\.\\d+)?)%`,'i'));
+  return before?(Number(before[1])||0)/100:0;
 }
 
 function normaliseRatio(value:number):number{
@@ -174,7 +199,17 @@ function combinePercentPen(a:number,b:number):number{
 
 function hasCombatPassive(item:MatchupItem|undefined):boolean{
   if(!item?.description)return false;
-  return /<passive|<active|unique passive|unique active/i.test(item.description);
+  return /<passive|<active|unique passive|unique active|On-Hit|Attacking a champion|Attacks deal/i.test(item.description);
 }
 
+function dedupeEffects(effects:OnHitEffect[]):OnHitEffect[]{
+  const seen=new Set<string>();
+  return effects.filter(effect=>{
+    const key=JSON.stringify(effect);
+    if(seen.has(key))return false;
+    seen.add(key);return true;
+  });
+}
+
+const escapeRegex=(s:string)=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const round=(n:number)=>Math.round(n*10)/10;
