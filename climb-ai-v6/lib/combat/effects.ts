@@ -82,16 +82,20 @@ export function buildRuneCombatProfile(
   const notes:string[]=[];
   let attackStack:AttackStackEffect|undefined;
 
+  // Since patch 2025.S1.3, general damage amplification also amplifies true
+  // damage (Smite and jungle-pet damage are the exceptions, neither is part of
+  // this champion-vs-champion model). Therefore these rules are intentionally
+  // NOT filtered by damage type.
   if(selected.has(RUNES.CUT_DOWN)){
     damageRules.push({
-      label:'Cut Down',multiplier:1.08,targetAboveHealthRatio:.60,excludeTrue:true,
+      label:'Cut Down',multiplier:1.08,targetAboveHealthRatio:.60,excludeTrue:false,
     });
     modelledRuneIds.push(RUNES.CUT_DOWN);
   }
 
   if(selected.has(RUNES.COUP_DE_GRACE)){
     damageRules.push({
-      label:'Coup de Grace',multiplier:1.08,targetBelowHealthRatio:.40,excludeTrue:true,
+      label:'Coup de Grace',multiplier:1.08,targetBelowHealthRatio:.40,excludeTrue:false,
     });
     modelledRuneIds.push(RUNES.COUP_DE_GRACE);
   }
@@ -99,27 +103,26 @@ export function buildRuneCombatProfile(
   if(selected.has(RUNES.LAST_STAND)){
     const bonus=lastStandBonus(opts.healthPercent);
     if(bonus>0)
-      damageRules.push({label:'Last Stand',multiplier:1+bonus,excludeTrue:true});
+      damageRules.push({label:'Last Stand',multiplier:1+bonus,excludeTrue:false});
     modelledRuneIds.push(RUNES.LAST_STAND);
   }
 
   if(selected.has(RUNES.PRESS_THE_ATTACK)){
-    const proc=scaleLevel(40,160,opts.level);
+    const proc=scaleLevel(40,180,opts.level);
     autoProcs.push({
       label:'Press the Attack',procAtAuto:3,
       damage:{label:'Press the Attack',type:opts.adaptiveDamageType,flatDamage:proc},
     });
     damageRules.push({
       label:'Press the Attack — Exposed',multiplier:1.08,activateAfterAutos:3,
-      // Current PTA explicitly affects true damage. Keep this rule unfiltered.
       excludeTrue:false,
     });
     modelledRuneIds.push(RUNES.PRESS_THE_ATTACK);
-    notes.push('Press the Attack procs on the third basic attack; its 8% damage amplification begins after that attack.');
+    notes.push('Press the Attack procs on the third consecutive basic attack for 40–180 adaptive damage by level; its 8% self damage amplification begins after that attack.');
   }
 
   if(selected.has(RUNES.LETHAL_TEMPO)){
-    const stackRatio=opts.isRanged?.04:.06;
+    const stackRatio=opts.isRanged?.04:.05;
     const maxStacks=6;
     const baseOnHit=scaleLevel(opts.isRanged?6:9,opts.isRanged?24:30,opts.level);
     const bonusAsAtMax=Math.max(0,opts.bonusAttackSpeedRatio)+stackRatio*maxStacks;
@@ -133,7 +136,7 @@ export function buildRuneCombatProfile(
       },
     };
     modelledRuneIds.push(RUNES.LETHAL_TEMPO);
-    notes.push('Lethal Tempo gains one attack-speed stack per champion attack, to six. The max-stack on-attack damage uses the selected champion/build bonus attack speed.');
+    notes.push('Lethal Tempo gains one stack per champion basic attack, to six: 4% ranged / 5% melee attack speed per stack. At six stacks, attacks add 6–24 ranged / 9–30 melee adaptive damage by level, scaling with bonus attack speed.');
   }
 
   const modelled=new Set(modelledRuneIds);
@@ -166,7 +169,7 @@ export function buildSummonerCombatProfile(
     if(id==='SummonerBarrier'){
       bonusShield+=scaleLevel(100,460,opts.level);
       modelledIds.push(id);
-      notes.push('Barrier: 100–460 shield by level for 2.5s. Level value is interpolated from Riot-published endpoints.');
+      notes.push('Barrier: 100–460 shield by level for 2.5s.');
       continue;
     }
     if(id==='SummonerHeal'){
@@ -179,14 +182,14 @@ export function buildSummonerCombatProfile(
     if(id==='SummonerDot'){
       igniteDamage+=igniteAtLevel(opts.level);
       modelledIds.push(id);
-      notes.push('Ignite: eventual 5s true-damage total is included in the kill check; Grievous Wounds is not yet used to alter other healing in the same simulation.');
+      notes.push('Ignite: 70–475 true damage over 5s; the eventual total is used only when Ignite is explicitly marked active. Grievous Wounds is not yet applied to other healing in the same simulation.');
       continue;
     }
     if(id==='SummonerExhaust'){
       exhaustDamageMultiplier=.65;
       exhaustDurationSeconds=3;
       modelledIds.push(id);
-      notes.push('Exhaust: 35% damage reduction for the first 3 seconds is applied to the exhausted champion; slow/spacing effects are not part of the stationary damage model.');
+      notes.push('Exhaust: 35% damage reduction for 3s is applied to the exhausted champion; its 40% slow is not part of the stationary damage model.');
       continue;
     }
   }
@@ -207,7 +210,7 @@ export function lastStandBonus(healthPercent:number):number{
   return .05+((60-hp)/30)*.06;
 }
 
-/** Current Ignite kept at the old curve through level 6, then scales to 475. */
+/** Ignite is 70–475 and diverges from the old curve after level 6. */
 export function igniteAtLevel(level:number):number{
   const l=clampLevel(level);
   if(l<=6)return 70+(l-1)*20;
