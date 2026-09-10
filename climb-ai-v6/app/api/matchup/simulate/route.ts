@@ -24,14 +24,6 @@ import {
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-/**
- * Matchup Lab simulation.
- *
- * The player supplies League concepts — champion, level, build, ranks, runes,
- * summoners and current fight state. The route derives the numerical combat
- * state from patch data. Only explicitly active summoner/champion effects are
- * applied; carrying Barrier or Ignite is not the same thing as pressing it.
- */
 const side=z.object({
   champion:z.string().min(1).max(32),
   level:z.coerce.number().int().min(1).max(18).default(1),
@@ -41,8 +33,6 @@ const side=z.object({
   activeSummonerIds:z.array(z.string().min(1).max(48)).max(2).default([]),
   activeChampionEffects:z.array(z.string().min(1).max(48)).max(8).default([]),
   shield:z.coerce.number().min(0).max(10000).default(0),
-  // Legacy sandbox fields stay accepted by the API, but are intentionally not
-  // exposed in the normal Matchup Lab UI.
   bonusAttackDamage:z.coerce.number().min(0).max(1000).default(0),
   bonusAbilityPower:z.coerce.number().min(0).max(2000).default(0),
   bonusArmor:z.coerce.number().min(0).max(1000).default(0),
@@ -135,13 +125,17 @@ export async function POST(req:NextRequest){
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
     const yourRuneFx=buildRuneCombatProfile(you.runeIds,{
-      level:you.level,isRanged:yourBase.attackRange>=300,
+      level:you.level,
+      isRanged:yourBase.attackRange>=300,
+      healthPercent:you.healthPercent,
       baseAttackSpeed:yourBase.baseAttackSpeed,
       bonusAttackSpeedRatio:yourBase.bonusAttackSpeedRatio+yourLoadout.stats.attackSpeedRatio+yourChampionFx.permanentAttackSpeedRatio,
       adaptiveDamageType:yourDamage.type,
     });
     const theirRuneFx=buildRuneCombatProfile(them.runeIds,{
-      level:them.level,isRanged:theirBase.attackRange>=300,
+      level:them.level,
+      isRanged:theirBase.attackRange>=300,
+      healthPercent:them.healthPercent,
       baseAttackSpeed:theirBase.baseAttackSpeed,
       bonusAttackSpeedRatio:theirBase.bonusAttackSpeedRatio+theirLoadout.stats.attackSpeedRatio+theirChampionFx.permanentAttackSpeedRatio,
       adaptiveDamageType:theirDamage.type,
@@ -158,9 +152,6 @@ export async function POST(req:NextRequest){
       {level:them.level,maxHealth:theirStats.maxHealth,currentHealth:theirBaseCurrent},
     );
 
-    // Heal is treated as used at fight start. Barrier is added to the manually
-    // entered current shield. Their duration/timing limitations stay visible in
-    // the audit notes instead of being silently ignored.
     const yourCurrent=Math.min(yourStats.maxHealth,yourBaseCurrent+yourSummonerFx.heal);
     const theirCurrent=Math.min(theirStats.maxHealth,theirBaseCurrent+theirSummonerFx.heal);
     const yourShield=you.shield+yourSummonerFx.bonusShield;
@@ -192,9 +183,6 @@ export async function POST(req:NextRequest){
       outgoingDamageMultiplierDurationSeconds:theirSummonerFx.exhaustDurationSeconds,
     });
 
-    // Ignite is damage over 5 seconds, not instant combo damage. It is therefore
-    // kept out of combo.totalMitigatedDamage and added only to the explicit
-    // all-in kill check below.
     const allInDamage=combo.totalMitigatedDamage+yourSummonerFx.igniteDamage;
     const kill=killThreshold(allInDamage,theirCurrent,theirShield);
 
