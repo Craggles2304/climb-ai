@@ -25,6 +25,8 @@ export interface AbilityModel{
   cost:number;
   castTimeSeconds:number;
   damage:DamageComponent[];
+  /** Target-health dependent damage resolved at the exact cast event. */
+  dynamicDamage?:OnHitEffect[];
   /** Debuff applied after this ability lands, affecting later events. */
   targetDebuff?:TargetDebuffEffect;
 }
@@ -199,8 +201,12 @@ export function simulateCombo(input:ComboInput):ComboResult{
     }
 
     mana-=cost;
+    const abilityComponents=[
+      ...ability.damage,
+      ...(ability.dynamicDamage??[]).map(effect=>resolveOnHit(effect,health,targetMaxHealth)),
+    ];
     const adjusted=applyDamageRules(
-      ability.damage,input.damageRules??[],health,targetMaxHealth,autoCount,
+      abilityComponents,input.damageRules??[],health,targetMaxHealth,autoCount,
       timedOutgoingMultiplier(input,clock),
     );
     // The ability that creates a shred hits before its own shred applies.
@@ -236,7 +242,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
   };
 }
 
-/** Resolve a flat/health-scaling on-hit against the health at this exact attack. */
+/** Resolve a flat/health-scaling effect against target health at this exact event. */
 export function resolveOnHit(effect:OnHitEffect,currentHealth:number,maxHealth:number):DamageComponent{
   const safeMax=Math.max(0,maxHealth);
   const safeCurrent=Math.max(0,Math.min(currentHealth,safeMax));
