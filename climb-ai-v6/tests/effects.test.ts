@@ -75,12 +75,13 @@ test("Kog'Maw Q passive, Q shred and W active produce champion-specific combat e
   );
   assert.equal(profile.permanentAttackSpeedRatio,.20);
   assert.equal(profile.attackRangeBonus,150);
-  assert.equal(profile.onHits.length,1);
-  assert.equal(profile.onHits[0].targetMaxHealthRatio,.0525);
+  assert.equal(profile.timedAutoStates.length,1);
+  assert.equal(profile.timedAutoStates[0].durationSeconds,8);
+  assert.equal(profile.timedAutoStates[0].onHits?.[0].targetMaxHealthRatio,.0525);
   assert.equal(profile.abilityDebuffs.Q?.percentArmorReduction,.24);
   assert.equal(profile.abilityDebuffs.Q?.percentMagicResistReduction,.24);
   assert.equal(profile.abilityDebuffs.Q?.durationSeconds,4);
-  assert.ok(profile.unmodelledEffects.includes('KOG_W_DURATION_8S'));
+  assert.ok(!profile.unmodelledEffects.includes('KOG_W_DURATION_8S'));
 });
 
 test("unlearned Kog'Maw Q does not grant its passive attack speed",()=>{
@@ -112,12 +113,13 @@ test('Jinx Fishbones changes attack damage range bonus-AS scaling and resource c
   assert.equal(profile.bonusAttackSpeedScalar,.90);
 });
 
-test('Jinx Get Excited applies total attack-speed stacks but keeps duration and movement visible',()=>{
+test('Jinx Get Excited is now a six-second timed attack-speed state',()=>{
   const profile=buildChampionCombatProfile('Jinx',['JINX_EXCITED_3'],{Q:1},{abilityPower:0});
-  assert.equal(profile.totalAttackSpeedMultiplier,1.75);
+  assert.equal(profile.totalAttackSpeedMultiplier,1);
   assert.equal(profile.attackSpeedCap,90);
+  assert.equal(profile.timedAutoStates[0].attackSpeedMultiplier,1.75);
+  assert.equal(profile.timedAutoStates[0].durationSeconds,6);
   assert.ok(profile.unmodelledEffects.includes('JINX_EXCITED_3_MOVESPEED'));
-  assert.ok(profile.unmodelledEffects.includes('JINX_EXCITED_DURATION_6S'));
 });
 
 test('resource-costing basic attacks stop when the weapon cannot be paid for',()=>{
