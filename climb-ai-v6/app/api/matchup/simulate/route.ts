@@ -20,7 +20,7 @@ import {
 import {
   buildChampionCombatProfile,type ChampionCombatProfile,
 } from '@/lib/combat/championEffects';
-import {normaliseStandardRanks,type AbilityRanks} from '@/lib/combat/skillRanks';
+import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -124,6 +124,8 @@ export async function POST(req:NextRequest){
     );
     applyRankAvailability(yourKit,yourRanks);
     applyRankAvailability(theirKit,theirRanks);
+    applyChampionAbilityDebuffs(yourKit,yourChampionFx);
+    applyChampionAbilityDebuffs(theirKit,theirChampionFx);
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
@@ -344,6 +346,17 @@ function applyRankAvailability(
       ability.calculations=[];
       delete kit.models[slot];
     }
+  }
+}
+
+function applyChampionAbilityDebuffs(
+  kit:ReturnType<typeof assembleKit>,
+  profile:ChampionCombatProfile,
+){
+  for(const slot of SLOTS){
+    const model=kit.models[slot];
+    const debuff=profile.abilityDebuffs[slot];
+    if(model&&debuff)model.targetDebuff=debuff;
   }
 }
 
