@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildBotLaneCoachPlan} from '../lib/combat/botlaneCoach';
+import type {LaneCoachParticipant} from '../lib/combat/botlaneCoach';
 import type {BotLaneFocusComparison,BotLaneResult,BotLaneSnapshot} from '../lib/combat/botlane';
 
 const snap=(key:BotLaneSnapshot['key'],champion:string,team:'YOU'|'THEM',role:'ADC'|'SUPPORT',health=1000):BotLaneSnapshot=>({
@@ -26,7 +27,7 @@ const focus=(base:BotLaneResult):BotLaneFocusComparison=>({
   adcFocus:base,supportFocus:base,
 });
 
-const participant=(champion:string,attackRange:number,accessMode:'FULL'|'NO_AUTOS'='FULL')=>({
+const participant=(champion:string,attackRange:number,accessMode:'FULL'|'NO_AUTOS'='FULL'):LaneCoachParticipant=>({
   champion,attackRange,accessMode,missedAbilities:[],
 });
 
