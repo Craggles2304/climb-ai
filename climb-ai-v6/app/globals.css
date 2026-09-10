@@ -601,3 +601,38 @@ img.logo-sm{width:132px}
   .build-slots{grid-template-columns:repeat(3,minmax(0,1fr))}
   .item-picker{grid-template-columns:1fr}
 }
+
+/* --- Matchup Lab --- */
+.lab-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+.lab-inputs{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px;margin-top:8px}
+.lab-input{display:grid;gap:5px}
+.lab-input span{font-size:10px;letter-spacing:.08em;color:var(--muted);font-weight:800;text-transform:uppercase}
+.lab-input .input{padding:9px 10px;font-size:13px}
+.lab-verdict{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:24px;align-items:center}
+.lab-verdict h2{margin:8px 0;font-size:clamp(26px,3.6vw,40px);letter-spacing:-.04em}
+.lab-damage{text-align:right;padding:16px 20px;border-radius:18px;border:1px solid var(--border);background:rgba(255,255,255,.03);min-width:190px}
+.lab-damage strong{display:block;font-size:42px;font-weight:950;letter-spacing:-.05em;line-height:1}
+.lab-damage span{display:block;font-size:9px;letter-spacing:.1em;color:var(--muted);font-weight:900;margin-top:7px}
+.lab-damage small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
+.lab-damage.edge-you{border-color:rgba(66,230,149,.35);background:rgba(66,230,149,.07)}
+.lab-damage.edge-them{border-color:rgba(255,94,108,.3);background:rgba(255,94,108,.06)}
+.lab-damage.edge-even{border-color:rgba(255,180,84,.3);background:rgba(255,180,84,.06)}
+.conf-tag{font-size:9px;font-weight:950;letter-spacing:.12em;padding:5px 10px;border-radius:999px;border:1px solid var(--border)}
+.conf-high{color:var(--success);border-color:rgba(66,230,149,.32)}
+.conf-medium{color:var(--warn);border-color:rgba(255,180,84,.3)}
+.conf-low{color:#FFA07A;border-color:rgba(255,160,122,.32)}
+.conf-partial{color:var(--danger);border-color:rgba(255,94,108,.34)}
+.lab-confidence{border-left:3px solid var(--border)}
+.lab-confidence.conf-high{border-left-color:var(--success)}
+.lab-confidence.conf-medium{border-left-color:var(--warn)}
+.lab-confidence.conf-low{border-left-color:#FFA07A}
+.lab-confidence.conf-partial{border-left-color:var(--danger)}
+.conf-inline{margin:6px 0 0;font-size:11px;font-weight:700;line-height:1.45}
+.lab-floor{margin:10px 0 0;padding:10px 12px;border-radius:10px;background:rgba(255,180,84,.08);border:1px solid rgba(255,180,84,.22);color:#ffd0a0;font-size:12px}
+.row-blocked{opacity:.5}
+.row-blocked td{font-style:italic}
+@media(max-width:900px){
+  .lab-grid{grid-template-columns:1fr}
+  .lab-verdict{grid-template-columns:1fr}
+  .lab-damage{text-align:left}
+}
