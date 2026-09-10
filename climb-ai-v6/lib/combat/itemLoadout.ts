@@ -1,6 +1,12 @@
 import type {DataDragonItemFull} from '@/lib/champions/source';
 import {addStats,emptyStats,parseItemStats,type ItemStats} from '@/lib/champions/dps';
 
+export type MatchupItem=DataDragonItemFull&{
+  description?:string;
+  plaintext?:string;
+  image?:{full?:string};
+};
+
 /**
  * Stats derived from the items a player actually selected in Matchup Lab.
  * Visible item stat lines are deterministic. Item actives/passives are kept
@@ -42,7 +48,7 @@ export const emptyLoadoutStats=():LoadoutStats=>({
 });
 
 export function buildLoadout(
-  catalogue:Record<string,DataDragonItemFull>,
+  catalogue:Record<string,MatchupItem>,
   ids:number[],
 ):LoadoutResult{
   let stats=emptyLoadoutStats();
@@ -76,7 +82,7 @@ export function buildLoadout(
   };
 }
 
-export function statsFromItem(item:DataDragonItemFull):LoadoutStats{
+export function statsFromItem(item:MatchupItem):LoadoutStats{
   const base=parseItemStats(item.stats);
   const raw=item.stats??{};
   const text=plainText(item);
@@ -93,7 +99,7 @@ export function statsFromItem(item:DataDragonItemFull):LoadoutStats{
   };
 }
 
-export function itemSummary(id:number,item:DataDragonItemFull){
+export function itemSummary(id:number,item:MatchupItem){
   const stats=statsFromItem(item);
   const kind=(item.tags??[]).includes('Boots')
     ?'BOOTS'
@@ -138,7 +144,7 @@ function addLoadoutStats(a:LoadoutStats,b:LoadoutStats):LoadoutStats{
   };
 }
 
-function plainText(item:DataDragonItemFull):string{
+function plainText(item:MatchupItem):string{
   return `${item.plaintext??''} ${item.description??''}`
     .replace(/<[^>]+>/g,' ')
     .replace(/&nbsp;|&amp;/g,' ')
@@ -166,7 +172,7 @@ function combinePercentPen(a:number,b:number):number{
   return 1-(1-Math.max(0,Math.min(1,a)))*(1-Math.max(0,Math.min(1,b)));
 }
 
-function hasCombatPassive(item:DataDragonItemFull|undefined):boolean{
+function hasCombatPassive(item:MatchupItem|undefined):boolean{
   if(!item?.description)return false;
   return /<passive|<active|unique passive|unique active/i.test(item.description);
 }
