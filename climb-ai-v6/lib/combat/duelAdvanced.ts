@@ -15,6 +15,10 @@ import {
   consumeMark,createCombatRuntime,timedAutoSnapshot,
   type CombatRuntimeState,type InitialTargetMark,
 } from './state';
+import {
+  consumeRechargeableAttack,rechargeableAttackEffects,
+  reduceRechargeableAttackCooldownOnAbilityHit,
+} from './attackInteractions';
 import type {DuelResult,DuelSideKey,DuelStopReason,DuelVerdict} from './duel';
 
 export type DuelShieldScope='ALL'|'PHYSICAL'|'MAGIC';
@@ -156,8 +160,8 @@ const DEFAULT_MAX_SECONDS=15;
 
 export const ADVANCED_DUEL_MODEL_NOTE=
   'Both champions resolve on one event clock. Hard crowd control delays future actions, '+
-  'typed shields absorb only eligible post-mitigation damage, and on-damage sustain heals '+
-  'after the simultaneous damage frame. Actions already begun at a timestamp still resolve '+
+  'typed shields absorb only eligible post-mitigation damage, rechargeable attack passives use the same event clock, '+
+  'and on-damage sustain heals after the simultaneous damage frame. Actions already begun at a timestamp still resolve '+
   'together. Movement, projectile travel, dodge chance and unvalidated cast interruption are not inferred.';
 
 export function simulateAdvancedDuel(
@@ -357,9 +361,12 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
     const model=actor.input.autoAttack;
     const timed=timedAutoSnapshot(model.timedStates,clock);
     const nextAuto=actor.autoCount+1;
-    const components:any[]=[{
-      label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier,
-    }];
+    const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
+    const components:any[]=replacementEffects?.length
+      ?replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
+      :[{
+        label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier,
+      }];
     for(const effect of [...(model.onHits??[]),...timed.onHits])
       if(onHitTriggers(effect,nextAuto))components.push(resolveOnHit(effect,target.health,target.input.maxHealth));
     for(const consumer of model.eventState?.consumesMarks??[])
@@ -377,6 +384,13 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
     const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
     pre.breakdown=result;
 
+    const passiveProc=replacementEffects?.length
+      ?consumeRechargeableAttack(model,actor.combat,clock)
+      :null;
+    if(passiveProc){
+      event.label=passiveProc.label;
+      event.note=joinNotes(event.note,`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`);
+    }
     actor.autoCount=nextAuto;
     if(attackStack)actor.attackStacks=Math.min(attackStack.maxStacks,actor.attackStacks+1);
     const interval=attackInterval(currentAttackSpeed(model,actor.attackStacks,timed));
@@ -408,6 +422,11 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
   const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
   pre.breakdown=result;
 
+  const passiveRefund=reduceRechargeableAttackCooldownOnAbilityHit(
+    actor.input.autoAttack,actor.combat,ability,clock,
+  );
+  if(passiveRefund)
+    event.note=joinNotes(event.note,`${passiveRefund.label}: ability hit refunded ${passiveRefund.reduction}s; passive ready at ${passiveRefund.after}s.`);
   const cooldownBase=abilityCooldownSeconds(ability.cooldownSeconds,actor.combat,stackRule,clock);
   applyAbilityStackAfterCast(actor.combat,stackRule,clock);
   actor.abilityReadyAt.set(event.step,clock+cooldownBase*hasteMultiplier(actor.input.abilityHaste??0));
