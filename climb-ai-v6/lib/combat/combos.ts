@@ -8,6 +8,8 @@ import type {AttackStackEffect,AutoProcEffect,DamageRule,OnHitEffect} from './ef
 export type AbilitySlot='Q'|'W'|'E'|'R';
 export type ComboStep=AbilitySlot|'AA';
 
+export const ATTACK_SPEED_CAP=3;
+
 export const hasteMultiplier=(abilityHaste:number)=>
   100/(100+Math.max(0,Number.isFinite(abilityHaste)?abilityHaste:0));
 
@@ -236,7 +238,7 @@ export function applyDamageRules(
 
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
-  return Math.min(2.5,Math.max(0,model.attackSpeed+extra));
+  return Math.min(ATTACK_SPEED_CAP,Math.max(0,model.attackSpeed+extra));
 }
 
 function timedOutgoingMultiplier(input:ComboInput,clock:number):number{
