@@ -34,6 +34,8 @@ jobs:
         run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Conditional spell variant regressions
         run: node --import tsx --test tests/spellVariants.test.ts
+      - name: Execute spell regressions
+        run: node --import tsx --test tests/executeSpells.test.ts
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
       - name: Core and auth regressions
