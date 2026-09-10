@@ -2,7 +2,9 @@ import {
   DamageComponent,Penetration,TargetResistances,
   mitigateAll,noPenetration,
 } from './damage';
-import type {AttackStackEffect,AutoProcEffect,DamageRule,OnHitEffect} from './effects';
+import type {
+  AttackStackEffect,AutoProcEffect,DamageRule,OnHitEffect,TargetDebuffEffect,
+} from './effects';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
 export type AbilitySlot='Q'|'W'|'E'|'R';
@@ -21,6 +23,8 @@ export interface AbilityModel{
   cost:number;
   castTimeSeconds:number;
   damage:DamageComponent[];
+  /** Debuff applied after this ability lands, affecting later events. */
+  targetDebuff?:TargetDebuffEffect;
 }
 
 export interface AutoAttackModel{
@@ -80,6 +84,8 @@ export interface ComboResult{
   resourceNote:string;
 }
 
+interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
+
 const TIMING_NOTE=
   'Duration is a floor: each cast takes its cast time and each auto one attack '+
   'interval, with no animation cancelling, travel time or movement. A real '+
@@ -98,6 +104,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
   let health=Math.max(0,positive(input.target.health));
   let autoCount=0;
   let attackStacks=0;
+  const activeDebuffs:ActiveDebuff[]=[];
 
   const readyAt=new Map<AbilitySlot,number>();
   const events:ComboEvent[]=[];
@@ -112,6 +119,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
       rawDamage:0,mitigatedDamage:0,targetHealthRemaining:round(health),
       skipped:[] as {label:string;reasons:string[]}[],
     };
+    const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,clock);
 
     if(step==='AA'){
       const nextAuto=autoCount+1;
@@ -134,7 +142,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
         components,input.damageRules??[],health,targetMaxHealth,autoCount,
         timedOutgoingMultiplier(input,clock),
       );
-      const result=mitigateAll(adjusted,input.target,pen);
+      const result=mitigateAll(adjusted,targetNow,pen);
       const applied=applyDamage(result.mitigatedTotal,remainingShield,health);
       remainingShield=applied.shield;health=applied.health;
       totalRaw+=result.rawTotal;totalMitigated+=result.mitigatedTotal;
@@ -179,12 +187,16 @@ export function simulateCombo(input:ComboInput):ComboResult{
       ability.damage,input.damageRules??[],health,targetMaxHealth,autoCount,
       timedOutgoingMultiplier(input,clock),
     );
-    const result=mitigateAll(adjusted,input.target,pen);
+    // The ability that creates a shred hits before its own shred applies.
+    const result=mitigateAll(adjusted,targetNow,pen);
     if(!result.complete)damageComplete=false;
 
     const applied=applyDamage(result.mitigatedTotal,remainingShield,health);
     remainingShield=applied.shield;health=applied.health;
     totalRaw+=result.rawTotal;totalMitigated+=result.mitigatedTotal;
+
+    if(ability.targetDebuff)
+      upsertDebuff(activeDebuffs,ability.targetDebuff,clock+ability.targetDebuff.durationSeconds);
 
     readyAt.set(step,clock+ability.cooldownSeconds*haste);
     clock+=Math.max(0,positive(ability.castTimeSeconds));
@@ -193,7 +205,9 @@ export function simulateCombo(input:ComboInput):ComboResult{
       ...base,label:ability.name,status:'CAST',rawDamage:result.rawTotal,
       mitigatedDamage:result.mitigatedTotal,manaSpent:cost,manaRemaining:round(mana),
       targetHealthRemaining:round(health),skipped:result.skipped,
-      note:result.complete?undefined:`Part of ${ability.name} could not be calculated, so this figure is a floor.`,
+      note:ability.targetDebuff
+        ?`${ability.targetDebuff.label} applied for ${ability.targetDebuff.durationSeconds}s after this hit.`
+        :result.complete?undefined:`Part of ${ability.name} could not be calculated, so this figure is a floor.`,
     });
   });
 
@@ -236,6 +250,27 @@ export function applyDamageRules(
   });
 }
 
+/** Percentage resistance reductions from separate sources stack multiplicatively. */
+export function targetResistancesWithDebuffs(
+  base:TargetResistances,
+  active:ActiveDebuff[],
+  clock:number,
+):TargetResistances{
+  const live=active.filter(d=>d.expiresAt>clock+1e-9);
+  const armorKeep=live.reduce((m,d)=>m*(1-clamp01(d.effect.percentArmorReduction??0)),1);
+  const mrKeep=live.reduce((m,d)=>m*(1-clamp01(d.effect.percentMagicResistReduction??0)),1);
+  return {
+    armor:round(base.armor*armorKeep),
+    magicResist:round(base.magicResist*mrKeep),
+  };
+}
+
+function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:number){
+  const current=active.find(d=>d.effect.label===effect.label);
+  if(current){current.effect=effect;current.expiresAt=expiresAt;return}
+  active.push({effect,expiresAt});
+}
+
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   return Math.min(ATTACK_SPEED_CAP,Math.max(0,model.attackSpeed+extra));
@@ -267,5 +302,6 @@ export const attackInterval=(attackSpeed:number)=>{
   return speed>0?round(1/speed):0;
 };
 
+const clamp01=(n:number)=>Math.min(1,Math.max(0,Number.isFinite(n)?n:0));
 const positive=(n:number)=>Number.isFinite(n)&&n>0?n:0;
 const round=(n:number)=>Math.round(n*100)/100;
