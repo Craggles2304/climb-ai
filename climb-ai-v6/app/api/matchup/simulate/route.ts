@@ -22,6 +22,9 @@ import {
 import {
   buildChampionCombatProfile,type ChampionCombatProfile,
 } from '@/lib/combat/championEffects';
+import {
+  applyConfiguredAttackReplacement,configureChampionAttackReplacement,
+} from '@/lib/combat/championAttackReplacements';
 import {applyChampionAbilityState} from '@/lib/combat/championAbilityState';
 import {applyConditionalChampionSpells} from '@/lib/combat/conditionalChampionSpells';
 import {applyExecuteChampionSpells} from '@/lib/combat/executeChampionSpells';
@@ -160,6 +163,22 @@ export async function POST(req:NextRequest){
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
+    configureChampionAttackReplacement(
+      yourChampion.id,you.activeChampionEffects,yourChampionFx,{
+        patch,level:you.level,attackDamage:yourStats.attackDamage,
+        abilityPower:yourStats.abilityPower,
+        bonusMagicResist:Math.max(0,yourStats.magicResist-yourBase.magicResist),
+        critChance:yourStats.critChance,
+      },
+    );
+    configureChampionAttackReplacement(
+      theirChampion.id,them.activeChampionEffects,theirChampionFx,{
+        patch,level:them.level,attackDamage:theirStats.attackDamage,
+        abilityPower:theirStats.abilityPower,
+        bonusMagicResist:Math.max(0,theirStats.magicResist-theirBase.magicResist),
+        critChance:theirStats.critChance,
+      },
+    );
 
     const yourDuelFx=buildChampionDuelProfile(
       yourChampion.id,you.activeChampionEffects,yourRanks,
@@ -366,7 +385,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion stats, items, runes, summoners, ability slots, cooldowns and costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
-        {name:'Validated interaction layer',use:'shared-clock CC, healing, typed shields, dynamic executes and supported ability-applied on-hits',official:false},
+        {name:'Validated interaction layer',use:'shared-clock CC, healing, typed shields, dynamic executes, supported ability-applied on-hits and attack replacements',official:false},
       ],
       you:sideReport(
         yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
@@ -506,7 +525,7 @@ function autoAttackModel(
   runeFx:RuneCombatProfile,
   championFx:ChampionCombatProfile,
 ){
-  return {
+  const model={
     damage:stats.attackDamage*championFx.basicAttackDamageMultiplier,
     attackSpeed:stats.attackSpeed,
     resourceCost:championFx.basicAttackResourceCost,
@@ -517,6 +536,7 @@ function autoAttackModel(
     timedStates:championFx.timedAutoStates,
     eventState:championFx.autoEventState,
   };
+  return applyConfiguredAttackReplacement(model,championFx);
 }
 
 function penetrationFromInput(input:SideInput,loadout:LoadoutResult):Penetration{
