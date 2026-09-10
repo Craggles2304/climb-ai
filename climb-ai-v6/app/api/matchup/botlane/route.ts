@@ -120,7 +120,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
         {name:'CommunityDragon',use:'ability damage formulas'},
-        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes and explicit access/hit assumptions'},
+        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes, supported ability-applied on-hits and explicit access/hit assumptions'},
       ],
     });
   }catch(err){
@@ -163,6 +163,7 @@ async function prepareParticipant(
     patch,
     bonusAttackDamage:loadout.stats.attackDamage,
     ranks,
+    itemOnHits:loadout.onHits,
   });
 
   const runeFx=buildRuneCombatProfile(input.runeIds,{
