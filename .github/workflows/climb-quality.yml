@@ -30,6 +30,8 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
+      - name: Ability damage type regressions
+        run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
       - name: Core and auth regressions
