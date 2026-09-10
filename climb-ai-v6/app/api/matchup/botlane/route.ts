@@ -8,6 +8,8 @@ import {ATTACK_SPEED_CAP,type AbilitySlot,type ComboStep} from '@/lib/combat/com
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {buildLoadout,type LoadoutResult,type MatchupItem} from '@/lib/combat/itemLoadout';
 import {buildChampionCombatProfile,type ChampionCombatProfile} from '@/lib/combat/championEffects';
+import {applyChampionAbilityState} from '@/lib/combat/championAbilityState';
+import {applyConditionalChampionSpells} from '@/lib/combat/conditionalChampionSpells';
 import {buildChampionDuelProfile} from '@/lib/combat/championDuel';
 import {buildBotLaneUtilityProfile} from '@/lib/combat/botlaneSupport';
 import {buildRuneCombatProfile,buildSummonerCombatProfile,type RuneCombatProfile} from '@/lib/combat/effects';
@@ -117,7 +119,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
         {name:'CommunityDragon',use:'ability damage formulas'},
-        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states and explicit access/hit assumptions'},
+        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants and explicit access/hit assumptions'},
       ],
     });
   }catch(err){
@@ -155,6 +157,7 @@ async function prepareParticipant(
   );
   applyRankAvailability(kit,ranks);
   applyChampionAbilityState(kit,championFx);
+  applyConditionalChampionSpells(champion.id,input.activeChampionEffects,kit,championFx);
 
   const runeFx=buildRuneCombatProfile(input.runeIds,{
     level:input.level,isRanged:(base.attackRange+championFx.attackRangeBonus)>=300,
@@ -255,21 +258,6 @@ function mergeOverlays(
 
 function applyRankAvailability(kit:ReturnType<typeof assembleKit>,ranks:Record<AbilitySlot,number>){
   for(const slot of SLOTS)if((ranks[slot]??0)<=0)delete kit.models[slot];
-}
-function applyChampionAbilityState(kit:ReturnType<typeof assembleKit>,profile:ChampionCombatProfile){
-  for(const slot of SLOTS){
-    const model=kit.models[slot];if(!model)continue;
-    if(profile.abilityDebuffs[slot])model.targetDebuff=profile.abilityDebuffs[slot];
-    if(profile.abilityEventStates[slot])model.eventState={...model.eventState,...profile.abilityEventStates[slot]};
-    const modifier=profile.abilityModifiers[slot];if(!modifier)continue;
-    if(Number.isFinite(modifier.damageMultiplier)){
-      const m=Math.max(0,modifier.damageMultiplier as number);model.damage=model.damage.map(c=>c.raw===null?c:{...c,raw:round(c.raw*m)});
-    }
-    const flat=Math.max(0,modifier.cooldownFlatReduction??0);const mult=Number.isFinite(modifier.cooldownMultiplier)?Math.max(0,modifier.cooldownMultiplier as number):1;
-    model.cooldownSeconds=Math.max(0,(model.cooldownSeconds-flat)*mult);
-    if(Number.isFinite(modifier.costOverride))model.cost=Math.max(0,modifier.costOverride as number);
-    if(modifier.dynamicDamage?.length)model.dynamicDamage=[...modifier.dynamicDamage];
-  }
 }
 function combatStats(champion:Awaited<ReturnType<typeof championDetail>>,input:SideInput,loadout:LoadoutResult,fx:ChampionCombatProfile):CombatStats{
   const base=statsAtLevel(champion.stats,input.level);const item=loadout.stats;
