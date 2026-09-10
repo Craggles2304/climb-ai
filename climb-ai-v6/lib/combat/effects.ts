@@ -15,6 +15,12 @@ export interface OnHitEffect{
   everyNthAttack?:number;
   /** Empower only the opening N attacks, e.g. Shen Q's next three attacks. */
   firstNAttacks?:number;
+  /**
+   * True only when an ability explicitly described as "applying on-hit effects"
+   * may forward this effect. Attack-only steroids such as Shen Q/Kog W leave
+   * this unset so an ability can never inherit them accidentally.
+   */
+  appliesFromAbility?:boolean;
 }
 
 export function onHitTriggers(effect:OnHitEffect,attackNumber:number):boolean{
