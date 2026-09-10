@@ -11,6 +11,8 @@ export interface OnHitEffect{
   targetMissingHealthRatio?:number;
   /** Floor after all flat/health terms are added, before mitigation. */
   minimumDamage?:number;
+  /** Do not activate before this numbered basic attack. */
+  startsAtAttack?:number;
   /** Repeating cadence such as Silver Bolts every third attack. */
   everyNthAttack?:number;
   /** Empower only the opening N attacks, e.g. Shen Q's next three attacks. */
@@ -25,6 +27,7 @@ export interface OnHitEffect{
 
 export function onHitTriggers(effect:OnHitEffect,attackNumber:number):boolean{
   const n=Math.max(1,Math.round(attackNumber));
+  if(effect.startsAtAttack!==undefined&&n<Math.max(1,Math.round(effect.startsAtAttack)))return false;
   if(effect.firstNAttacks!==undefined&&n>Math.max(0,Math.round(effect.firstNAttacks)))return false;
   if(effect.everyNthAttack!==undefined){
     const every=Math.max(1,Math.round(effect.everyNthAttack));
