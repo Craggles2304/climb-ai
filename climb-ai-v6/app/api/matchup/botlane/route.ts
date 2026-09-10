@@ -10,6 +10,7 @@ import {buildLoadout,type LoadoutResult,type MatchupItem} from '@/lib/combat/ite
 import {buildChampionCombatProfile,type ChampionCombatProfile} from '@/lib/combat/championEffects';
 import {applyChampionAbilityState} from '@/lib/combat/championAbilityState';
 import {applyConditionalChampionSpells} from '@/lib/combat/conditionalChampionSpells';
+import {applyExecuteChampionSpells} from '@/lib/combat/executeChampionSpells';
 import {buildChampionDuelProfile} from '@/lib/combat/championDuel';
 import {buildBotLaneUtilityProfile} from '@/lib/combat/botlaneSupport';
 import {buildRuneCombatProfile,buildSummonerCombatProfile,type RuneCombatProfile} from '@/lib/combat/effects';
@@ -119,7 +120,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
         {name:'CommunityDragon',use:'ability damage formulas'},
-        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants and explicit access/hit assumptions'},
+        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes and explicit access/hit assumptions'},
       ],
     });
   }catch(err){
@@ -158,6 +159,11 @@ async function prepareParticipant(
   applyRankAvailability(kit,ranks);
   applyChampionAbilityState(kit,championFx);
   applyConditionalChampionSpells(champion.id,input.activeChampionEffects,kit,championFx);
+  applyExecuteChampionSpells(champion.id,kit,championFx,{
+    patch,
+    bonusAttackDamage:loadout.stats.attackDamage,
+    ranks,
+  });
 
   const runeFx=buildRuneCombatProfile(input.runeIds,{
     level:input.level,isRanged:(base.attackRange+championFx.attackRangeBonus)>=300,
