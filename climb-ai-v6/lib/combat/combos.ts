@@ -2,8 +2,10 @@ import {
   DamageComponent,Penetration,TargetResistances,
   mitigateAll,noPenetration,
 } from './damage';
-import type {
-  AttackStackEffect,AutoProcEffect,DamageRule,OnHitEffect,TargetDebuffEffect,
+import {
+  autoProcTriggers,onHitTriggers,
+  type AttackStackEffect,type AutoProcEffect,type DamageRule,
+  type OnHitEffect,type TargetDebuffEffect,
 } from './effects';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
@@ -140,11 +142,11 @@ export function simulateCombo(input:ComboInput):ComboResult{
         {label:'Auto attack',type:'PHYSICAL',raw:positive(input.autoAttack.damage)},
       ];
       for(const effect of input.autoAttack.onHits??[]){
-        if(effect.everyNthAttack&&nextAuto%effect.everyNthAttack!==0)continue;
+        if(!onHitTriggers(effect,nextAuto))continue;
         components.push(resolveOnHit(effect,health,targetMaxHealth));
       }
       for(const proc of input.autoAttack.autoProcs??[])
-        if(proc.procAtAuto===nextAuto)
+        if(autoProcTriggers(proc,nextAuto))
           components.push(resolveOnHit(proc.damage,health,targetMaxHealth));
 
       const stack=input.autoAttack.attackStack;
@@ -236,9 +238,14 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
 /** Resolve a flat/health-scaling on-hit against the health at this exact attack. */
 export function resolveOnHit(effect:OnHitEffect,currentHealth:number,maxHealth:number):DamageComponent{
-  const raw=(effect.flatDamage??0)
-    +(effect.targetMaxHealthRatio??0)*Math.max(0,maxHealth)
-    +(effect.targetCurrentHealthRatio??0)*Math.max(0,currentHealth);
+  const safeMax=Math.max(0,maxHealth);
+  const safeCurrent=Math.max(0,Math.min(currentHealth,safeMax));
+  const missing=Math.max(0,safeMax-safeCurrent);
+  const calculated=(effect.flatDamage??0)
+    +(effect.targetMaxHealthRatio??0)*safeMax
+    +(effect.targetCurrentHealthRatio??0)*safeCurrent
+    +(effect.targetMissingHealthRatio??0)*missing;
+  const raw=Math.max(effect.minimumDamage??0,calculated);
   return {label:effect.label,type:effect.type,raw:round(raw)};
 }
 
