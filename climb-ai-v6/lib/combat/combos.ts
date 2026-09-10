@@ -13,6 +13,10 @@ import {
   grantSelfShield,recordAttackTimerReset,timedAutoSnapshot,
   type AbilityEventState,type AutoEventState,type InitialTargetMark,type TimedAutoState,
 } from './state';
+import {
+  consumeRechargeableAttack,rechargeableAttackEffects,
+  reduceRechargeableAttackCooldownOnAbilityHit,
+} from './attackInteractions';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
 export type AbilitySlot='Q'|'W'|'E'|'R';
@@ -122,7 +126,7 @@ const TIMING_NOTE=
   'interval, with no animation cancelling, travel time or movement. A real '+
   'combo is not faster than this, and is usually slower.';
 const STATE_NOTE=
-  'Temporary champion states, target marks and ability stacks advance on the combat timeline. '+
+  'Temporary champion states, target marks, ability stacks and rechargeable attack passives advance on the combat timeline. '+
   'Self-shields and attack-reset events are recorded, but a one-sided combo does not yet let those defensive/reset events alter an opponent timeline.';
 
 export function simulateCombo(input:ComboInput):ComboResult{
@@ -171,12 +175,13 @@ export function simulateCombo(input:ComboInput):ComboResult{
       mana-=resourceCost;
 
       const nextAuto=autoCount+1;
-      const components:DamageComponent[]=[
-        {
+      const replacementEffects=rechargeableAttackEffects(input.autoAttack,runtime,clock);
+      const components:DamageComponent[]=replacementEffects?.length
+        ?replacementEffects.map(effect=>resolveOnHit(effect,health,targetMaxHealth))
+        :[{
           label:'Auto attack',type:'PHYSICAL',
           raw:positive(input.autoAttack.damage)*timed.basicAttackDamageMultiplier,
-        },
-      ];
+        }];
       for(const effect of [...(input.autoAttack.onHits??[]),...timed.onHits]){
         if(!onHitTriggers(effect,nextAuto))continue;
         components.push(resolveOnHit(effect,health,targetMaxHealth));
@@ -201,6 +206,9 @@ export function simulateCombo(input:ComboInput):ComboResult{
       remainingShield=applied.shield;health=applied.health;
       totalRaw+=result.rawTotal;totalMitigated+=result.mitigatedTotal;
 
+      const passiveProc=replacementEffects?.length
+        ?consumeRechargeableAttack(input.autoAttack,runtime,clock)
+        :null;
       const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks,timed);
       clock+=attackInterval(attackSpeed);
       autoCount=nextAuto;
@@ -208,9 +216,12 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
       events.push({
         ...base,
-        label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
+        label:passiveProc
+          ?`${passiveProc.label}${components.length>1?` + ${components.length-1} effect${components.length===2?'':'s'}`:''}`
+          :components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
         status:'CAST',rawDamage:result.rawTotal,mitigatedDamage:result.mitigatedTotal,
         manaSpent:resourceCost,manaRemaining:round(mana),targetHealthRemaining:round(health),
+        note:passiveProc?`${passiveProc.label} consumed; passive ready again at ${passiveProc.readyAt}s before later refunds.`:undefined,
         state:stateSnapshot(runtime,clock,timed.labels),
       });
       return;
@@ -269,6 +280,9 @@ export function simulateCombo(input:ComboInput):ComboResult{
     if(ability.targetDebuff)
       upsertDebuff(activeDebuffs,ability.targetDebuff,clock+ability.targetDebuff.durationSeconds);
 
+    const passiveRefund=reduceRechargeableAttackCooldownOnAbilityHit(
+      input.autoAttack,runtime,ability,clock,
+    );
     const stacksAfter=applyAbilityStackAfterCast(runtime,stackRule,clock);
     const cooldownBase=abilityCooldownSeconds(ability.cooldownSeconds,runtime,stackRule,clock);
     readyAt.set(step,clock+cooldownBase*haste);
@@ -279,6 +293,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
     const notes=[
       ability.targetDebuff?`${ability.targetDebuff.label} applied for ${ability.targetDebuff.durationSeconds}s after this hit.`:'',
+      passiveRefund?`${passiveRefund.label}: ability hit refunded ${passiveRefund.reduction}s; passive ready at ${passiveRefund.after}s.`:'',
       selfShield>0&&ability.eventState?.grantsSelfShield?`${ability.eventState.grantsSelfShield.label}: ${round(selfShield)} self-shield active.`:'',
       attackReset?'Basic-attack timer reset event recorded.':'',
       !result.complete?`Part of ${ability.name} could not be calculated, so this figure is a floor.`:'',
