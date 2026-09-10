@@ -5,6 +5,7 @@ import {statsAtLevel,damageType} from '@/lib/champions/ddragon';
 import {championSpells} from '@/lib/combat/source';
 import {assembleKit,combatDamageType,defaultRanks,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
 import {simulateCombo,type AbilitySlot,type ComboStep} from '@/lib/combat/combos';
+import {compareTrades} from '@/lib/combat/trades';
 import {killThreshold,penetrationFromLethality,noPenetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
 import type {CombatStats} from '@/lib/combat/formula';
@@ -127,8 +128,31 @@ export async function POST(req:NextRequest){
       abilityHaste:you.abilityHaste,
     });
 
+    const tradeSide=(
+      champion:string,
+      kit:ReturnType<typeof assembleKit>,
+      stats:CombatStats,
+      input:typeof you,
+      opposing:CombatStats,
+    )=>({
+      champion,
+      abilities:kit.models,
+      autoAttack:{damage:stats.attackDamage,attackSpeed:stats.attackSpeed},
+      mana:stats.mana*(input.resourcePercent/100),
+      maxHealth:stats.maxHealth,
+      resistances:{armor:opposing.armor,magicResist:opposing.magicResist},
+      penetration:input.lethality>0?penetrationFromLethality(input.lethality):noPenetration(),
+      abilityHaste:input.abilityHaste,
+    });
+
+    const trades=compareTrades(
+      tradeSide(yourChampion.name,yourKit,yourStats,you,theirStats),
+      tradeSide(theirChampion.name,theirKit,theirStats,them,yourStats),
+    );
+
     const confidence=combineConfidence([
       yourKit.confidence,
+      trades.confidence,
       assessConfidence({approximations:[...yourDamage.approximations,...theirDamage.approximations]}),
     ]);
 
@@ -142,6 +166,7 @@ export async function POST(req:NextRequest){
       you:sideReport(yourChampion,you,yourStats,yourKit),
       them:sideReport(theirChampion,them,theirStats,theirKit),
       combo,
+      trades,
       kill:killThreshold(combo.totalMitigatedDamage,targetHealth),
       confidence,
       notes:[DAMAGE_TYPE_NOTE,combo.timingNote],

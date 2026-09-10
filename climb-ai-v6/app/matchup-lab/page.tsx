@@ -5,6 +5,8 @@ import {PageHead} from '@/components/UI';
 import type {ConfidenceLevel,ConfidenceReport} from '@/lib/combat/confidence';
 import type {ComboResult,ComboStep,AbilitySlot} from '@/lib/combat/combos';
 import type {KillCheck} from '@/lib/combat/damage';
+import type {TradeReport} from '@/lib/combat/trades';
+import {TradePanel} from '@/components/TradePanel';
 
 /**
  * Matchup Lab.
@@ -44,7 +46,7 @@ interface Simulation{
   ok:boolean;error?:string;patch?:string;
   dataSources?:{name:string;use:string;official:boolean}[];
   you?:SideView;them?:SideView;
-  combo?:ComboResult;kill?:KillCheck;
+  combo?:ComboResult;kill?:KillCheck;trades?:TradeReport;
   confidence?:ConfidenceReport;
   notes?:string[];
 }
@@ -155,10 +157,18 @@ export default function MatchupLab(){
     {loading&&!data?.ok&&
       <div className="glass card" style={{marginTop:16}}><p className="muted">Simulating…</p></div>}
 
-    {data&&!data.ok&&
+    {data&&!data.ok&&!loading&&
       <div className="glass card" style={{marginTop:16}}>
         <h2>Could not simulate that.</h2>
         <p className="muted">{data.error}</p>
+        {/*
+          A transient failure — the server still compiling on a cold start, a
+          dropped connection — otherwise left this page stuck on an error with
+          no way out, because nothing re-fires until an input changes.
+        */}
+        <button className="btn secondary" style={{marginTop:12}} onClick={simulate}>
+          TRY AGAIN
+        </button>
       </div>}
 
     {data?.ok&&data.you&&data.them&&data.combo&&data.kill&&data.confidence&&<>
@@ -209,6 +219,9 @@ export default function MatchupLab(){
             <li key={b.step+b.reason}>{b.reason}</li>)}</ul>}
         <p className="muted" style={{marginTop:10,fontSize:12}}>{data.combo.timingNote}</p>
       </div>
+
+      {data.trades&&
+        <TradePanel report={data.trades} you={data.you.name} them={data.them.name}/>}
 
       <div className="lab-grid" style={{marginTop:16}}>
         <AbilityPanel side={data.you} label="YOUR ABILITIES" showMath={showMath}/>
