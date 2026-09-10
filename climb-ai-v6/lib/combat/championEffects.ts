@@ -68,23 +68,23 @@ const REGISTRY:RegistryEntry[]=[
   {
     aliases:['kogmaw'],
     options:[{
-      id:'KOG_W',label:'W ACTIVE',group:'kog-stance',support:'EXACT',
-      detail:'Bio-Arcane Barrage: max-health magic on-hit + bonus range',
+      id:'KOG_W',label:'W ACTIVE',group:'kog-stance',support:'PARTIAL',
+      detail:'Bio-Arcane Barrage: max-health magic on-hit + bonus range; 8s expiry is a timing caveat',
     }],
     apply:applyKogMaw,
   },
   {
     aliases:['jinx'],
     options:[
-      {id:'JINX_POWPOW_1',label:'POW-POW · 1 STACK',group:'jinx-weapon',support:'EXACT',detail:'Minigun with one Rev’d Up stack already active'},
-      {id:'JINX_POWPOW_2',label:'POW-POW · 2 STACKS',group:'jinx-weapon',support:'EXACT',detail:'Minigun with two Rev’d Up stacks already active'},
-      {id:'JINX_POWPOW_3',label:'POW-POW · 3 STACKS',group:'jinx-weapon',support:'EXACT',detail:'Minigun at full Rev’d Up attack speed'},
+      {id:'JINX_POWPOW_1',label:'POW-POW · 1 STACK',group:'jinx-weapon',support:'PARTIAL',detail:'Starts at one Rev’d Up stack; later attacks should build more stacks'},
+      {id:'JINX_POWPOW_2',label:'POW-POW · 2 STACKS',group:'jinx-weapon',support:'PARTIAL',detail:'Starts at two Rev’d Up stacks; the next attack should reach full stacks'},
+      {id:'JINX_POWPOW_3',label:'POW-POW · 3 STACKS',group:'jinx-weapon',support:'EXACT',detail:'Minigun already at full Rev’d Up attack speed'},
       {id:'JINX_FISHBONES',label:'FISHBONES',group:'jinx-weapon',support:'EXACT',detail:'110% AD rockets, +range, 20 mana/shot, 10% less bonus-AS scaling'},
-      {id:'JINX_EXCITED_1',label:'GET EXCITED · 1',group:'jinx-excited',support:'PARTIAL',detail:'One passive stack: attack speed exact; decaying movement speed not simulated'},
-      {id:'JINX_EXCITED_2',label:'GET EXCITED · 2',group:'jinx-excited',support:'PARTIAL',detail:'Two passive stacks: attack speed exact; movement not simulated'},
-      {id:'JINX_EXCITED_3',label:'GET EXCITED · 3',group:'jinx-excited',support:'PARTIAL',detail:'Three passive stacks: attack speed exact; movement not simulated'},
-      {id:'JINX_EXCITED_4',label:'GET EXCITED · 4',group:'jinx-excited',support:'PARTIAL',detail:'Four passive stacks: attack speed exact; movement not simulated'},
-      {id:'JINX_EXCITED_5',label:'GET EXCITED · 5',group:'jinx-excited',support:'PARTIAL',detail:'Five-stack cap: attack speed exact; movement not simulated'},
+      {id:'JINX_EXCITED_1',label:'GET EXCITED · 1',group:'jinx-excited',support:'PARTIAL',detail:'One passive stack: attack speed included; 6s expiry and movement speed are timing gaps'},
+      {id:'JINX_EXCITED_2',label:'GET EXCITED · 2',group:'jinx-excited',support:'PARTIAL',detail:'Two passive stacks: attack speed included; 6s expiry and movement speed are timing gaps'},
+      {id:'JINX_EXCITED_3',label:'GET EXCITED · 3',group:'jinx-excited',support:'PARTIAL',detail:'Three passive stacks: attack speed included; 6s expiry and movement speed are timing gaps'},
+      {id:'JINX_EXCITED_4',label:'GET EXCITED · 4',group:'jinx-excited',support:'PARTIAL',detail:'Four passive stacks: attack speed included; 6s expiry and movement speed are timing gaps'},
+      {id:'JINX_EXCITED_5',label:'GET EXCITED · 5',group:'jinx-excited',support:'PARTIAL',detail:'Five-stack cap: attack speed included; 6s expiry and movement speed are timing gaps'},
     ],
     apply:applyJinx,
   },
@@ -102,26 +102,26 @@ const REGISTRY:RegistryEntry[]=[
   {
     aliases:['ashe'],
     options:[{
-      id:'ASHE_Q',label:'Q ACTIVE',group:'ashe-focus',support:'EXACT',
-      detail:'Ranger’s Focus: rank-scaled attack speed + flurry basic-attack damage',
+      id:'ASHE_Q',label:'Q ACTIVE',group:'ashe-focus',support:'PARTIAL',
+      detail:'Ranger’s Focus: rank-scaled attack speed + flurry damage; 6s expiry is not yet removed mid-fight',
     }],
     apply:applyAshe,
   },
   {
     aliases:['ezreal'],
     options:[
-      {id:'EZ_PASSIVE_1',label:'PASSIVE · 1 STACK',group:'ezreal-passive',support:'PARTIAL',detail:'10% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
-      {id:'EZ_PASSIVE_2',label:'PASSIVE · 2 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'20% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
-      {id:'EZ_PASSIVE_3',label:'PASSIVE · 3 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'30% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
-      {id:'EZ_PASSIVE_4',label:'PASSIVE · 4 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'40% bonus attack speed; further spell-hit stacking is not yet advanced automatically'},
-      {id:'EZ_PASSIVE_5',label:'PASSIVE · 5 STACKS',group:'ezreal-passive',support:'EXACT',detail:'Rising Spell Force fully stacked: +50% bonus attack speed'},
+      {id:'EZ_PASSIVE_1',label:'PASSIVE · 1 STACK',group:'ezreal-passive',support:'PARTIAL',detail:'10% bonus AS; further spell hits and 6s expiry are not yet advanced automatically'},
+      {id:'EZ_PASSIVE_2',label:'PASSIVE · 2 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'20% bonus AS; further spell hits and 6s expiry are not yet advanced automatically'},
+      {id:'EZ_PASSIVE_3',label:'PASSIVE · 3 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'30% bonus AS; further spell hits and 6s expiry are not yet advanced automatically'},
+      {id:'EZ_PASSIVE_4',label:'PASSIVE · 4 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'40% bonus AS; further spell hits and 6s expiry are not yet advanced automatically'},
+      {id:'EZ_PASSIVE_5',label:'PASSIVE · 5 STACKS',group:'ezreal-passive',support:'PARTIAL',detail:'50% bonus AS at start; 6s expiry is not yet removed mid-fight'},
     ],
     apply:applyEzreal,
   },
   {
     aliases:['vayne'],
     options:[
-      {id:'VAYNE_W_FRESH',label:'SILVER BOLTS · FRESH',group:'vayne-bolts',support:'PARTIAL',detail:'Every third basic attack gets W max-HP true damage; ability-applied stacks/minimum damage are still explicit gaps'},
+      {id:'VAYNE_W_FRESH',label:'SILVER BOLTS · FRESH',group:'vayne-bolts',support:'PARTIAL',detail:'Every third basic attack gets W max-HP true damage; ability-applied stacks/minimum damage are explicit gaps'},
       {id:'VAYNE_R',label:'FINAL HOUR ACTIVE',group:'vayne-r',support:'PARTIAL',detail:'State recorded; timed bonus AD/Q cooldown/invisibility layer is next and is not guessed yet'},
     ],
     apply:applyVayne,
@@ -141,14 +141,9 @@ export function buildChampionCombatProfile(
     return profile;
   }
 
-  // Frontend state can briefly contain two buttons from the same group while a
-  // user is changing champion state. Resolve that deterministically to the most
-  // recently selected value, and keep the conflict visible in confidence/audit.
   const active=normaliseGroupedSelection(entry,activeEffects,profile);
   entry.apply(profile,active,ranks,opts);
 
-  // Anything explicitly requested but not recognised remains visible. This also
-  // catches stale state if a player changes champion without clearing a toggle.
   const known=new Set([...profile.modelledEffects,...profile.unmodelledEffects]);
   for(const effect of activeEffects)
     if(!known.has(effect)&&!entry.options.some(o=>o.id===effect))
@@ -194,11 +189,13 @@ function applyKogMaw(profile:ChampionCombatProfile,active:Set<string>,ranks:Rank
       return;
     }
     const base=[.03,.0375,.045,.0525,.06][wRank-1]??0;
-    const apRatio=Math.max(0,opts.abilityPower)*.0001;
+    const apRatio=Math.max(0,opts.abilityPower)*.00015;
     profile.onHits.push({label:`Kog'Maw W rank ${wRank}`,type:'MAGIC',targetMaxHealthRatio:base+apRatio});
     profile.attackRangeBonus=[130,150,170,190,210][wRank-1]??0;
     profile.modelledEffects.push('KOG_W');
+    profile.unmodelledEffects.push('KOG_W_DURATION_8S');
     profile.notes.push(`Bio-Arcane Barrage active: +${round((base+apRatio)*100)}% target max-HP magic damage per auto and +${profile.attackRangeBonus} range.`);
+    profile.notes.push('Bio-Arcane Barrage lasts 8 seconds. The current state layer does not remove W after 8s inside a longer trade, so 10s results are marked partial.');
   }
 }
 
@@ -222,6 +219,10 @@ function applyJinx(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,
     profile.permanentAttackSpeedRatio+=full*fraction;
     profile.modelledEffects.push(weapon);
     profile.notes.push(`Pow-Pow starts with ${stacks} Rev’d Up stack${stacks===1?'':'s'}: +${round(full*fraction*100)}% bonus attack speed at Q rank ${qRank}.`);
+    if(stacks<3){
+      profile.unmodelledEffects.push('JINX_POWPOW_DYNAMIC_STACKING');
+      profile.notes.push('Further Pow-Pow attacks should build toward three stacks. Dynamic champion-stat stacking is not yet advanced during the fight, so one/two-stack starts are conservative.');
+    }
   }
 
   const excited=firstActive(active,[
@@ -232,8 +233,9 @@ function applyJinx(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,
     profile.totalAttackSpeedMultiplier*=1+.25*stacks;
     profile.attackSpeedCap=90;
     profile.modelledEffects.push(excited);
-    profile.unmodelledEffects.push(`${excited}_MOVESPEED`);
-    profile.notes.push(`Get Excited x${stacks}: +${25*stacks}% total attack speed is included. Its 175% decaying movement-speed component is not yet used by the stationary fight model.`);
+    profile.unmodelledEffects.push(`${excited}_MOVESPEED`,'JINX_EXCITED_DURATION_6S');
+    profile.notes.push(`Get Excited x${stacks}: +${25*stacks}% total attack speed is included.`);
+    profile.notes.push('Get Excited lasts 6 seconds and has decaying movement speed. The current stationary state layer does not expire/use those movement effects mid-trade, so this state stays partial.');
   }
 }
 
@@ -276,9 +278,9 @@ function applyAshe(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,
   profile.permanentAttackSpeedRatio+=attackSpeed;
   profile.basicAttackDamageMultiplier*=attackDamage;
   profile.modelledEffects.push('ASHE_Q');
+  profile.unmodelledEffects.push('ASHE_Q_DURATION_6S','ASHE_FROST_SHOT_CRIT_SCALING');
   profile.notes.push(`Ranger’s Focus active: +${round(attackSpeed*100)}% attack speed and ${round(attackDamage*100)}% AD total basic-attack damage at Q rank ${qRank}.`);
-  profile.unmodelledEffects.push('ASHE_FROST_SHOT_CRIT_SCALING');
-  profile.notes.push('Frost Shot slow/critical-strike scaling is still kept separate, so Ashe’s full sustained result remains conservative when she has crit chance.');
+  profile.notes.push('Ranger’s Focus lasts 6 seconds; the current state layer does not remove it mid-trade. Frost Shot critical-strike scaling is also still separate.');
 }
 
 function applyEzreal(profile:ChampionCombatProfile,active:Set<string>,_ranks:Ranks,_opts:Context){
@@ -287,11 +289,13 @@ function applyEzreal(profile:ChampionCombatProfile,active:Set<string>,_ranks:Ran
   const stacks=Math.max(1,Math.min(5,Number(state.slice(-1))||1));
   profile.permanentAttackSpeedRatio+=.10*stacks;
   profile.modelledEffects.push(state);
+  profile.unmodelledEffects.push('EZ_PASSIVE_DURATION_6S');
   profile.notes.push(`Rising Spell Force starts at ${stacks}/5 stacks: +${stacks*10}% bonus attack speed.`);
   if(stacks<5){
     profile.unmodelledEffects.push('EZ_PASSIVE_DYNAMIC_STACKING');
-    profile.notes.push('Further spell hits during this simulation do not yet advance Rising Spell Force, so a start below five stacks is a conservative partial model.');
+    profile.notes.push('Further spell hits during this simulation do not yet advance Rising Spell Force, so a start below five stacks is conservative.');
   }
+  profile.notes.push('Rising Spell Force lasts 6 seconds from a hit/refresh; the current state layer does not yet expire it mid-trade.');
 }
 
 function applyVayne(profile:ChampionCombatProfile,active:Set<string>,ranks:Ranks,_opts:Context){
