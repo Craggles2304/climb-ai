@@ -1,5 +1,5 @@
 import {
-  Penetration,TargetResistances,mitigateAll,noPenetration,
+  type DamageComponent,Penetration,TargetResistances,mitigateAll,noPenetration,
 } from './damage';
 import {
   AbilityModel,AbilitySlot,AutoAttackModel,attackInterval,hasteMultiplier,
@@ -162,8 +162,8 @@ export function runTrade(
     if(interval<=0)break;
 
     const nextAuto=autoCount+1;
-    const components=[
-      {label:'Auto attack',type:'PHYSICAL' as const,raw:positive(actor.autoAttack.damage)},
+    const components:DamageComponent[]=[
+      {label:'Auto attack',type:'PHYSICAL',raw:positive(actor.autoAttack.damage)},
     ];
     for(const effect of actor.autoAttack.onHits??[]){
       if(effect.everyNthAttack&&nextAuto%effect.everyNthAttack!==0)continue;
