@@ -6,6 +6,7 @@ import {championSpells} from '@/lib/combat/source';
 import {assembleKit,combatDamageType,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
 import {ATTACK_SPEED_CAP,simulateCombo,type AbilitySlot,type ComboStep} from '@/lib/combat/combos';
 import {compareTrades} from '@/lib/combat/trades';
+import {simulateDuel} from '@/lib/combat/duel';
 import {killThreshold,noPenetration,type Penetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
 import type {CombatStats} from '@/lib/combat/formula';
@@ -26,6 +27,7 @@ import {timedAutoSnapshot} from '@/lib/combat/state';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
+const comboStep=z.enum(['AA','Q','W','E','R']);
 const side=z.object({
   champion:z.string().min(1).max(32),
   level:z.coerce.number().int().min(1).max(18).default(1),
@@ -50,7 +52,9 @@ const side=z.object({
 const schema=z.object({
   you:side,
   them:side,
-  sequence:z.array(z.enum(['AA','Q','W','E','R'])).max(24).optional(),
+  sequence:z.array(comboStep).max(24).optional(),
+  enemySequence:z.array(comboStep).max(24).optional(),
+  duelDurationSeconds:z.coerce.number().min(1).max(20).default(10),
 });
 
 export async function POST(req:NextRequest){
@@ -71,7 +75,7 @@ export async function POST(req:NextRequest){
       {ok:false,error:'That simulation request is not valid.',detail:parsed.error.issues.slice(0,4)},
       {status:400});
 
-  const {you,them,sequence}=parsed.data;
+  const {you,them,sequence,enemySequence,duelDurationSeconds}=parsed.data;
 
   try{
     const patch=await latestPatch();
@@ -175,11 +179,13 @@ export async function POST(req:NextRequest){
     const theirPen=penetrationFromInput(them,theirLoadout);
     const yourHaste=you.abilityHaste+yourLoadout.stats.abilityHaste;
     const theirHaste=them.abilityHaste+theirLoadout.stats.abilityHaste;
-
     const yourAuto=autoAttackModel(yourStats,yourLoadout,yourRuneFx,yourChampionFx);
+    const theirAuto=autoAttackModel(theirStats,theirLoadout,theirRuneFx,theirChampionFx);
+    const yourSequence=(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[];
+    const theirSequence=(enemySequence?.length?enemySequence:defaultSequence(them.level)) as ComboStep[];
 
     const combo=simulateCombo({
-      sequence:(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[],
+      sequence:yourSequence,
       abilities:yourKit.models,
       autoAttack:yourAuto,
       caster:{mana:yourStats.mana*(you.resourcePercent/100)},
@@ -205,7 +211,6 @@ export async function POST(req:NextRequest){
       input:SideInput,
       currentHealth:number,
       shield:number,
-      opposing:CombatStats,
       pen:Penetration,
       haste:number,
       loadout:LoadoutResult,
@@ -220,7 +225,9 @@ export async function POST(req:NextRequest){
       maxHealth:stats.maxHealth,
       currentHealth,
       shield,
-      resistances:{armor:opposing.armor,magicResist:opposing.magicResist},
+      // This side owns these resistances. runTrade reads the target side's
+      // resistances, so passing the opponent here would invert mitigation.
+      resistances:{armor:stats.armor,magicResist:stats.magicResist},
       penetration:pen,
       abilityHaste:haste,
       damageRules:runeFx.damageRules,
@@ -229,30 +236,67 @@ export async function POST(req:NextRequest){
       outgoingDamageMultiplierDurationSeconds:opposingSummonerFx.exhaustDurationSeconds,
     });
 
-    const trades=compareTrades(
-      tradeSide(
-        yourChampion.name,yourKit,yourStats,you,yourCurrent,yourShield,
-        theirStats,yourPen,yourHaste,yourLoadout,yourRuneFx,yourChampionFx,theirSummonerFx,
-      ),
-      tradeSide(
-        theirChampion.name,theirKit,theirStats,them,theirCurrent,theirShield,
-        yourStats,theirPen,theirHaste,theirLoadout,theirRuneFx,theirChampionFx,yourSummonerFx,
-      ),
+    const yourTradeSide=tradeSide(
+      yourChampion.name,yourKit,yourStats,you,yourCurrent,yourShield,
+      yourPen,yourHaste,yourLoadout,yourRuneFx,yourChampionFx,theirSummonerFx,
+    );
+    const theirTradeSide=tradeSide(
+      theirChampion.name,theirKit,theirStats,them,theirCurrent,theirShield,
+      theirPen,theirHaste,theirLoadout,theirRuneFx,theirChampionFx,yourSummonerFx,
+    );
+    const trades=compareTrades(yourTradeSide,theirTradeSide);
+
+    const duel=simulateDuel(
+      {
+        side:'YOU',champion:yourChampion.name,sequence:yourSequence,
+        abilities:yourKit.models,autoAttack:yourAuto,
+        mana:yourStats.mana*(you.resourcePercent/100),
+        maxHealth:yourStats.maxHealth,currentHealth:yourCurrent,
+        shield:you.shield,
+        openingShields:yourSummonerFx.bonusShield>0
+          ?[{label:'Barrier',amount:yourSummonerFx.bonusShield,durationSeconds:2.5}]
+          :[],
+        resistances:{armor:yourStats.armor,magicResist:yourStats.magicResist},
+        penetration:yourPen,abilityHaste:yourHaste,damageRules:yourRuneFx.damageRules,
+        initialTargetMarks:yourChampionFx.initialTargetMarks,
+        outgoingDamageMultiplier:theirSummonerFx.exhaustDamageMultiplier,
+        outgoingDamageMultiplierDurationSeconds:theirSummonerFx.exhaustDurationSeconds,
+      },
+      {
+        side:'THEM',champion:theirChampion.name,sequence:theirSequence,
+        abilities:theirKit.models,autoAttack:theirAuto,
+        mana:theirStats.mana*(them.resourcePercent/100),
+        maxHealth:theirStats.maxHealth,currentHealth:theirCurrent,
+        shield:them.shield,
+        openingShields:theirSummonerFx.bonusShield>0
+          ?[{label:'Barrier',amount:theirSummonerFx.bonusShield,durationSeconds:2.5}]
+          :[],
+        resistances:{armor:theirStats.armor,magicResist:theirStats.magicResist},
+        penetration:theirPen,abilityHaste:theirHaste,damageRules:theirRuneFx.damageRules,
+        initialTargetMarks:theirChampionFx.initialTargetMarks,
+        outgoingDamageMultiplier:yourSummonerFx.exhaustDamageMultiplier,
+        outgoingDamageMultiplierDurationSeconds:yourSummonerFx.exhaustDurationSeconds,
+      },
+      duelDurationSeconds,
     );
 
     const setupApproximations=[
       ...effectCaveats('Your',yourRuneFx,yourSummonerFx,yourChampionFx),
       ...effectCaveats('Enemy',theirRuneFx,theirSummonerFx,theirChampionFx),
       ...(yourSummonerFx.bonusShield>0||theirSummonerFx.bonusShield>0
-        ?['Barrier is applied as an opening shield. Its 2.5s expiry is not yet removed mid-sequence, so a combo lasting longer than 2.5s can slightly overstate Barrier protection.']
+        ?['Barrier expires correctly after 2.5s in the simultaneous duel. The legacy one-sided combo/trade views still treat it as an opening shield for their whole calculation.']
         :[]),
       ...(yourSummonerFx.igniteDamage>0||theirSummonerFx.igniteDamage>0
-        ?['Ignite is not treated as instant damage. The custom all-in kill check can include its eventual 5-second total; the generic trade-duration table does not yet schedule Ignite ticks.']
+        ?['Ignite is not treated as instant damage. The custom all-in kill check can include its eventual 5-second total; duel/trade timelines do not yet schedule Ignite ticks.']
+        :[]),
+      ...(!enemySequence?.length
+        ?['Enemy simultaneous-duel actions use the default level-based sequence until an enemy response sequence is supplied.']
         :[]),
     ];
 
     const confidence=combineConfidence([
       yourKit.confidence,
+      theirKit.confidence,
       trades.confidence,
       assessConfidence({
         approximations:[
@@ -285,6 +329,7 @@ export async function POST(req:NextRequest){
       ),
       combo,
       trades,
+      duel,
       kill,
       allIn:{
         comboDamage:round(combo.totalMitigatedDamage),
@@ -328,9 +373,10 @@ export async function POST(req:NextRequest){
         yourSummoners:you.summonerIds,enemySummoners:them.summonerIds,
         yourActiveSummoners:you.activeSummonerIds,enemyActiveSummoners:them.activeSummonerIds,
         yourChampionEffects:you.activeChampionEffects,enemyChampionEffects:them.activeChampionEffects,
+        yourSequence,theirSequence,duelDurationSeconds,
         yourShield,enemyShield:theirShield,
       },
-      notes:[DAMAGE_TYPE_NOTE,combo.timingNote,combo.stateNote,...setupApproximations],
+      notes:[DAMAGE_TYPE_NOTE,combo.timingNote,combo.stateNote,duel.modelNote,...setupApproximations],
     });
   }catch(err){
     const {title,body:detail}=humanError(err);
