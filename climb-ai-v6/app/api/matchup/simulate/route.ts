@@ -4,13 +4,15 @@ import {championDetail,latestPatch,resolveChampionId} from '@/lib/champions/sour
 import {statsAtLevel,damageType} from '@/lib/champions/ddragon';
 import {championSpells} from '@/lib/combat/source';
 import {assembleKit,combatDamageType,defaultRanks,DAMAGE_TYPE_NOTE,SLOTS,type DataDragonSpell} from '@/lib/combat/abilities';
-import {simulateCombo,type AbilitySlot,type ComboStep} from '@/lib/combat/combos';
+import {simulateCombo,type ComboStep} from '@/lib/combat/combos';
 import {compareTrades} from '@/lib/combat/trades';
-import {killThreshold,penetrationFromLethality,noPenetration} from '@/lib/combat/damage';
+import {killThreshold,noPenetration,type Penetration} from '@/lib/combat/damage';
 import {assessConfidence,combineConfidence} from '@/lib/combat/confidence';
 import type {CombatStats} from '@/lib/combat/formula';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
+import {matchupItemCatalogue} from '@/lib/combat/itemSource';
+import {buildLoadout,type LoadoutResult,type MatchupItem} from '@/lib/combat/itemLoadout';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -18,16 +20,14 @@ export const dynamic='force-dynamic';
 /**
  * Matchup Lab simulation.
  *
- * Deterministic: the same input always produces the same output, and every
- * number comes from the combat engine rather than from prose. The response
- * carries its own confidence rating and the reasons behind it, so a caller
- * cannot display a figure without the caveat that belongs to it.
+ * The normal player input is champion + level + item IDs. Stats are derived
+ * from Riot item data here, never typed by the player. Legacy custom bonuses
+ * remain optional for backwards compatibility and future sandbox/debug mode.
  */
-
 const side=z.object({
   champion:z.string().min(1).max(32),
   level:z.coerce.number().int().min(1).max(18).default(1),
-  /** Bonus stats from items, supplied directly so the UI owns item choice. */
+  itemIds:z.array(z.coerce.number().int().positive()).max(6).default([]),
   bonusAttackDamage:z.coerce.number().min(0).max(1000).default(0),
   bonusAbilityPower:z.coerce.number().min(0).max(2000).default(0),
   bonusArmor:z.coerce.number().min(0).max(1000).default(0),
@@ -35,7 +35,6 @@ const side=z.object({
   bonusHealth:z.coerce.number().min(0).max(5000).default(0),
   lethality:z.coerce.number().min(0).max(100).default(0),
   abilityHaste:z.coerce.number().min(0).max(500).default(0),
-  /** Per-slot ability ranks. Defaults derived from level when omitted. */
   ranks:z.record(z.enum(['Q','W','E','R']),z.coerce.number().int().min(1).max(5)).optional(),
   healthPercent:z.coerce.number().min(1).max(100).default(100),
   resourcePercent:z.coerce.number().min(0).max(100).default(100),
@@ -44,7 +43,6 @@ const side=z.object({
 const schema=z.object({
   you:side,
   them:side,
-  /** The sequence to simulate. Defaults to a plain Q/W/E/R with autos. */
   sequence:z.array(z.enum(['AA','Q','W','E','R'])).max(24).optional(),
 });
 
@@ -70,12 +68,17 @@ export async function POST(req:NextRequest){
 
   try{
     const patch=await latestPatch();
-    const [yourId,theirId]=await Promise.all([
+    const [yourId,theirId,catalogueRaw]=await Promise.all([
       resolveChampionId(you.champion,patch),
       resolveChampionId(them.champion,patch),
+      matchupItemCatalogue(patch),
     ]);
     if(!yourId)return NextResponse.json({ok:false,error:`No champion called "${you.champion}".`},{status:404});
     if(!theirId)return NextResponse.json({ok:false,error:`No champion called "${them.champion}".`},{status:404});
+
+    const catalogue=catalogueRaw as Record<string,MatchupItem>;
+    const yourLoadout=buildLoadout(catalogue,you.itemIds);
+    const theirLoadout=buildLoadout(catalogue,them.itemIds);
 
     const [yourChampion,theirChampion]=await Promise.all([
       championDetail(yourId,patch),
@@ -86,8 +89,8 @@ export async function POST(req:NextRequest){
       championSpells(theirId),
     ]);
 
-    const yourStats=combatStats(yourChampion,you);
-    const theirStats=combatStats(theirChampion,them);
+    const yourStats=combatStats(yourChampion,you,yourLoadout);
+    const theirStats=combatStats(theirChampion,them,theirLoadout);
     const yourDamage=combatDamageType(yourChampion.info);
     const theirDamage=combatDamageType(theirChampion.info);
 
@@ -111,29 +114,30 @@ export async function POST(req:NextRequest){
         damageType:theirDamage.type,
       });
 
-    const theirLevelStats=statsAtLevel(theirChampion.stats,them.level);
-    const targetHealth=(theirLevelStats.hp+them.bonusHealth)*(them.healthPercent/100);
+    const targetHealth=theirStats.maxHealth*(them.healthPercent/100);
+    const yourPen=penetrationFromInput(you,yourLoadout);
+    const theirPen=penetrationFromInput(them,theirLoadout);
+    const yourHaste=you.abilityHaste+yourLoadout.stats.abilityHaste;
+    const theirHaste=them.abilityHaste+theirLoadout.stats.abilityHaste;
 
     const combo=simulateCombo({
       sequence:(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[],
       abilities:yourKit.models,
       autoAttack:{damage:yourStats.attackDamage,attackSpeed:yourStats.attackSpeed},
       caster:{mana:yourStats.mana*(you.resourcePercent/100)},
-      target:{
-        health:targetHealth,
-        armor:theirStats.armor,
-        magicResist:theirStats.magicResist,
-      },
-      penetration:you.lethality>0?penetrationFromLethality(you.lethality):noPenetration(),
-      abilityHaste:you.abilityHaste,
+      target:{health:targetHealth,armor:theirStats.armor,magicResist:theirStats.magicResist},
+      penetration:yourPen,
+      abilityHaste:yourHaste,
     });
 
     const tradeSide=(
       champion:string,
       kit:ReturnType<typeof assembleKit>,
       stats:CombatStats,
-      input:typeof you,
+      input:SideInput,
       opposing:CombatStats,
+      pen:Penetration,
+      haste:number,
     )=>({
       champion,
       abilities:kit.models,
@@ -141,30 +145,37 @@ export async function POST(req:NextRequest){
       mana:stats.mana*(input.resourcePercent/100),
       maxHealth:stats.maxHealth,
       resistances:{armor:opposing.armor,magicResist:opposing.magicResist},
-      penetration:input.lethality>0?penetrationFromLethality(input.lethality):noPenetration(),
-      abilityHaste:input.abilityHaste,
+      penetration:pen,
+      abilityHaste:haste,
     });
 
     const trades=compareTrades(
-      tradeSide(yourChampion.name,yourKit,yourStats,you,theirStats),
-      tradeSide(theirChampion.name,theirKit,theirStats,them,yourStats),
+      tradeSide(yourChampion.name,yourKit,yourStats,you,theirStats,yourPen,yourHaste),
+      tradeSide(theirChampion.name,theirKit,theirStats,them,yourStats,theirPen,theirHaste),
     );
 
     const confidence=combineConfidence([
       yourKit.confidence,
       trades.confidence,
-      assessConfidence({approximations:[...yourDamage.approximations,...theirDamage.approximations]}),
+      assessConfidence({
+        approximations:[
+          ...yourDamage.approximations,
+          ...theirDamage.approximations,
+          ...yourLoadout.approximations,
+          ...theirLoadout.approximations,
+        ],
+      }),
     ]);
 
     return NextResponse.json({
       ok:true,
       patch,
       dataSources:[
-        {name:'Data Dragon',use:'champion stats, ability slots, cooldowns, costs',official:true},
+        {name:'Data Dragon',use:'champion stats, items, ability slots, cooldowns, costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
       ],
-      you:sideReport(yourChampion,you,yourStats,yourKit),
-      them:sideReport(theirChampion,them,theirStats,theirKit),
+      you:sideReport(yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste),
+      them:sideReport(theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste),
       combo,
       trades,
       kill:killThreshold(combo.totalMitigatedDamage,targetHealth),
@@ -177,25 +188,37 @@ export async function POST(req:NextRequest){
   }
 }
 
-/* ------------------------------------------------------------- helpers -- */
-
 type SideInput=z.infer<typeof side>;
 
 function combatStats(
-  champion:Awaited<ReturnType<typeof championDetail>>,input:SideInput,
+  champion:Awaited<ReturnType<typeof championDetail>>,
+  input:SideInput,
+  loadout:LoadoutResult,
 ):CombatStats{
   const base=statsAtLevel(champion.stats,input.level);
+  const item=loadout.stats;
+  const rawAttackSpeed=base.baseAttackSpeed*(1+base.bonusAttackSpeedRatio+item.attackSpeedRatio);
   return {
-    abilityPower:input.bonusAbilityPower,
-    attackDamage:base.attackDamage+input.bonusAttackDamage,
-    armor:base.armor+input.bonusArmor,
-    magicResist:base.magicResist+input.bonusMagicResist,
-    maxHealth:base.hp+input.bonusHealth,
-    critChance:0,
+    abilityPower:input.bonusAbilityPower+item.abilityPower,
+    attackDamage:base.attackDamage+input.bonusAttackDamage+item.attackDamage,
+    armor:base.armor+input.bonusArmor+item.armor,
+    magicResist:base.magicResist+input.bonusMagicResist+item.magicResist,
+    maxHealth:base.hp+input.bonusHealth+item.health,
+    critChance:Math.min(1,Math.max(0,item.critChance)),
     critDamageMultiplier:1.75,
-    attackSpeed:base.attackSpeed,
-    moveSpeed:base.moveSpeed,
-    mana:base.mana,
+    attackSpeed:Math.min(2.5,rawAttackSpeed),
+    moveSpeed:(base.moveSpeed+item.flatMoveSpeed)*(1+item.percentMoveSpeed),
+    mana:base.mana+item.mana,
+  };
+}
+
+function penetrationFromInput(input:SideInput,loadout:LoadoutResult):Penetration{
+  return {
+    ...noPenetration(),
+    flatArmorPen:Math.max(0,input.lethality+loadout.stats.lethality),
+    percentArmorPen:loadout.stats.percentArmorPen,
+    flatMagicPen:loadout.stats.flatMagicPen,
+    percentMagicPen:loadout.stats.percentMagicPen,
   };
 }
 
@@ -204,6 +227,8 @@ function sideReport(
   input:SideInput,
   stats:CombatStats,
   kit:ReturnType<typeof assembleKit>,
+  loadout:LoadoutResult,
+  abilityHaste:number,
 ){
   const base=statsAtLevel(champion.stats,input.level);
   return {
@@ -211,26 +236,29 @@ function sideReport(
     name:champion.name,
     level:input.level,
     damageType:damageType(champion.info),
+    items:loadout.items,
+    totalGold:loadout.totalGold,
+    itemStats:{...loadout.stats,abilityHaste},
     stats:{
-      attackDamage:stats.attackDamage,
-      abilityPower:stats.abilityPower,
-      armor:stats.armor,
-      magicResist:stats.magicResist,
-      health:Math.round((base.hp+input.bonusHealth)*10)/10,
-      healthNow:Math.round((base.hp+input.bonusHealth)*(input.healthPercent/100)*10)/10,
-      mana:base.mana,
-      manaNow:Math.round(base.mana*(input.resourcePercent/100)*10)/10,
-      attackSpeed:stats.attackSpeed,
+      attackDamage:round(stats.attackDamage),
+      abilityPower:round(stats.abilityPower),
+      armor:round(stats.armor),
+      magicResist:round(stats.magicResist),
+      health:round(stats.maxHealth),
+      healthNow:round(stats.maxHealth*(input.healthPercent/100)),
+      mana:round(stats.mana),
+      manaNow:round(stats.mana*(input.resourcePercent/100)),
+      attackSpeed:round3(stats.attackSpeed),
       attackRange:base.attackRange,
-      moveSpeed:stats.moveSpeed,
+      moveSpeed:round(stats.moveSpeed),
     },
     abilities:SLOTS.map(slot=>kit.abilities[slot]).filter(Boolean),
     confidence:kit.confidence,
   };
 }
 
-/** A full rotation once the ultimate exists, otherwise basics and autos. */
 const defaultSequence=(level:number):ComboStep[]=>
-  level>=6
-    ?['Q','AA','W','AA','E','R']
-    :['Q','AA','W','AA','E'];
+  level>=6?['Q','AA','W','AA','E','R']:['Q','AA','W','AA','E'];
+
+const round=(n:number)=>Math.round(n*10)/10;
+const round3=(n:number)=>Math.round(n*1000)/1000;
