@@ -7,6 +7,10 @@ import {getMainChampion,setMainChampion,MAIN_CHAMPION_EVENT} from '@/lib/mainCha
 import {addStats,emptyStats,dpsCurve,type ItemValue,type DpsPoint,type CombatProfile} from '@/lib/champions/dps';
 import type {MatchupRanking,MatchupScore} from '@/lib/champions/ranking';
 import type {ChampionStatBlock} from '@/lib/champions/ddragon';
+import type {BestBuild,BuildItem} from '@/lib/champions/build';
+import type {SkillOrder} from '@/lib/champions/skillOrder';
+import {ChampionBuilder} from '@/components/ChampionBuilder';
+import {MaxDpsTable,SkillOrderTable} from '@/components/MaxDpsTables';
 
 /** Recharts is heavy, so it stays out of the shared bundle. */
 const DpsCurve=dynamic(()=>import('@/components/DpsCurve').then(m=>m.DpsCurve),{
@@ -30,6 +34,8 @@ type Payload={
     stats:ChampionStatBlock};
   dps?:{curve:DpsPoint[];atLevel:CombatProfile};
   items?:{best:ItemValue[];worst:ItemValue[];all:ItemValue[];damageItemCount:number;totalCount:number};
+  build?:{catalogue:BuildItem[];maxDps:BestBuild;bySize:BestBuild[];budget:number|null};
+  skillOrder?:SkillOrder;
   ranking?:MatchupRanking|null;
   names?:string[];
 };
@@ -42,6 +48,7 @@ export default function MainChampion(){
   const [draft,setDraft]=useState('');
   const [level,setLevel]=useState(11);
   const [tags,setTags]=useState<string[]>([]);
+  const [budget,setBudget]=useState<number|''>('');
   const [data,setData]=useState<Payload|null>(null);
   const [loading,setLoading]=useState(false);
   const [compare,setCompare]=useState<ItemValue|null>(null);
@@ -64,13 +71,14 @@ export default function MainChampion(){
     setLoading(true);
     const params=new URLSearchParams({champion:main,level:String(level)});
     if(tags.length)params.set('tags',tags.join(','));
+    if(budget!=='')params.set('budget',String(budget));
     fetch(`/api/champions/main?${params}`)
       .then(r=>r.json())
       .then(d=>{if(live){setData(d);setCompare(null)}})
       .catch(()=>{if(live)setData({ok:false,error:'Could not reach champion data.'})})
       .finally(()=>{if(live)setLoading(false)});
     return ()=>{live=false};
-  },[main,level,tags]);
+  },[main,level,tags,budget]);
 
   // Recomputed client-side so picking a different item to compare is instant
   // rather than a round trip.
@@ -112,10 +120,22 @@ export default function MainChampion(){
 
     <div className="glass card form" style={{maxWidth:'none'}}>
       <div className="grid three">
+        <div className="field"><label>Champion</label>
+          <input className="input" list="all-champions" value={main}
+            onChange={e=>setMainChampion(e.target.value)}/>
+          <datalist id="all-champions">
+            {(data?.names??[]).map(n=><option key={n} value={n}/>)}
+          </datalist>
+        </div>
         <div className="field"><label>Level</label>
           <select className="input" value={level} onChange={e=>setLevel(Number(e.target.value))}>
             {[1,2,3,6,9,11,13,16,18].map(l=><option key={l} value={l}>Level {l}</option>)}
           </select>
+        </div>
+        <div className="field"><label>Gold budget (optional)</label>
+          <input className="input" type="number" min={0} step={500} value={budget}
+            placeholder="No limit"
+            onChange={e=>setBudget(e.target.value===''?'':Math.max(0,Number(e.target.value)))}/>
         </div>
         <div className="field" style={{gridColumn:'span 2'}}>
           <label>Only compare against</label>
@@ -165,6 +185,20 @@ export default function MainChampion(){
       </div>
 
       <DpsCurve base={data.dps.curve} withItem={withItemCurve} itemName={compare?.name}/>
+
+      {data.build&&
+        <ChampionBuilder
+          champion={c.name} stats={c.stats} level={level}
+          catalogue={data.build.catalogue} maxDps={data.build.maxDps} bySize={data.build.bySize}
+          budget={data.build.budget}/>}
+
+      {data.build&&
+        <MaxDpsTable
+          champion={c.name} level={level}
+          maxDps={data.build.maxDps} bySize={data.build.bySize}
+          budget={data.build.budget}/>}
+
+      {data.skillOrder&&<SkillOrderTable order={data.skillOrder}/>}
 
       {data.items&&<>
         <div className="glass card" style={{marginTop:16}}>

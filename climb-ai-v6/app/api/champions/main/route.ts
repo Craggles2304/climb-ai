@@ -3,6 +3,8 @@ import {z} from 'zod';
 import {championProfile} from '@/lib/champions/profile';
 import {rankMatchups} from '@/lib/champions/ranking';
 import {rankItems,byDamagePerGold,dpsCurve,combatProfile} from '@/lib/champions/dps';
+import {bestBuild,maxDpsBySize,toBuildItems,BEAM_WIDTH,MAX_BUILD_SIZE} from '@/lib/champions/build';
+import {skillOrder} from '@/lib/champions/skillOrder';
 import {championDetail,championRoster,itemCatalogue,latestPatch,resolveChampionId} from '@/lib/champions/source';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
@@ -25,6 +27,8 @@ const schema=z.object({
   level:z.coerce.number().int().min(1).max(18).optional(),
   /** Comma-separated Riot tags, to narrow opponents to a plausible lane. */
   tags:z.string().max(120).optional(),
+  /** Gold cap for the max-DPS search. Omitted means unconstrained. */
+  budget:z.coerce.number().int().min(0).max(100000).optional(),
 });
 
 export async function GET(req:NextRequest){
@@ -39,7 +43,7 @@ export async function GET(req:NextRequest){
   if(!parsed.success)
     return NextResponse.json({ok:false,error:'Tell us which champion you main.'},{status:400});
 
-  const {champion,level=11,tags}=parsed.data;
+  const {champion,level=11,tags,budget}=parsed.data;
 
   try{
     const patch=await latestPatch();
@@ -55,6 +59,7 @@ export async function GET(req:NextRequest){
       itemCatalogue(patch),
     ]);
 
+    const catalogue=toBuildItems(items);
     const values=rankItems(detail.stats,level,items);
     const damageItems=byDamagePerGold(values);
     const ranking=rankMatchups(roster,id,{
@@ -91,6 +96,13 @@ export async function GET(req:NextRequest){
         damageItemCount:damageItems.length,
         totalCount:values.length,
       },
+      build:{
+        catalogue,
+        maxDps:bestBuild(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
+        bySize:maxDpsBySize(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
+        budget:budget??null,
+      },
+      skillOrder:skillOrder(detail),
       ranking,
       names:Object.values(roster).map(c=>c.name).sort(),
     });
