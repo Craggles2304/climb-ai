@@ -100,11 +100,19 @@ export async function POST(req:NextRequest){
 
     const yourChampionFx=buildChampionCombatProfile(
       yourChampion.id,you.activeChampionEffects,yourRanks,
-      {abilityPower:you.bonusAbilityPower+yourLoadout.stats.abilityPower},
+      {
+        abilityPower:you.bonusAbilityPower+yourLoadout.stats.abilityPower,
+        bonusAttackDamage:you.bonusAttackDamage+yourLoadout.stats.attackDamage,
+        level:you.level,
+      },
     );
     const theirChampionFx=buildChampionCombatProfile(
       theirChampion.id,them.activeChampionEffects,theirRanks,
-      {abilityPower:them.bonusAbilityPower+theirLoadout.stats.abilityPower},
+      {
+        abilityPower:them.bonusAbilityPower+theirLoadout.stats.abilityPower,
+        bonusAttackDamage:them.bonusAttackDamage+theirLoadout.stats.attackDamage,
+        level:them.level,
+      },
     );
 
     const yourStats=combatStats(yourChampion,you,yourLoadout,yourChampionFx);
@@ -124,8 +132,8 @@ export async function POST(req:NextRequest){
     );
     applyRankAvailability(yourKit,yourRanks);
     applyRankAvailability(theirKit,theirRanks);
-    applyChampionAbilityDebuffs(yourKit,yourChampionFx);
-    applyChampionAbilityDebuffs(theirKit,theirChampionFx);
+    applyChampionAbilityState(yourKit,yourChampionFx);
+    applyChampionAbilityState(theirKit,theirChampionFx);
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
@@ -168,7 +176,6 @@ export async function POST(req:NextRequest){
     const theirHaste=them.abilityHaste+theirLoadout.stats.abilityHaste;
 
     const yourAuto=autoAttackModel(yourStats,yourLoadout,yourRuneFx,yourChampionFx);
-    const theirAuto=autoAttackModel(theirStats,theirLoadout,theirRuneFx,theirChampionFx);
 
     const combo=simulateCombo({
       sequence:(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[],
@@ -292,6 +299,7 @@ export async function POST(req:NextRequest){
           unmodelledActiveSummoners:yourSummonerFx.unmodelledActiveIds,
           modelledChampionEffects:yourChampionFx.modelledEffects,
           unmodelledChampionEffects:yourChampionFx.unmodelledEffects,
+          championMechanics:yourChampionFx.mechanicKinds,
           itemOnHits:yourLoadout.onHits.map(x=>x.label),
           notes:yourEffectNotes,
         },
@@ -302,6 +310,7 @@ export async function POST(req:NextRequest){
           unmodelledActiveSummoners:theirSummonerFx.unmodelledActiveIds,
           modelledChampionEffects:theirChampionFx.modelledEffects,
           unmodelledChampionEffects:theirChampionFx.unmodelledEffects,
+          championMechanics:theirChampionFx.mechanicKinds,
           itemOnHits:theirLoadout.onHits.map(x=>x.label),
           notes:theirEffectNotes,
         },
@@ -342,14 +351,50 @@ function applyRankAvailability(
   }
 }
 
-function applyChampionAbilityDebuffs(
+function applyChampionAbilityState(
   kit:ReturnType<typeof assembleKit>,
   profile:ChampionCombatProfile,
 ){
   for(const slot of SLOTS){
     const model=kit.models[slot];
+    const ability=kit.abilities[slot];
+    if(!model||!ability)continue;
+
     const debuff=profile.abilityDebuffs[slot];
-    if(model&&debuff)model.targetDebuff=debuff;
+    if(debuff)model.targetDebuff=debuff;
+
+    const modifier=profile.abilityModifiers[slot];
+    if(!modifier)continue;
+
+    if(Number.isFinite(modifier.damageMultiplier)){
+      const multiplier=Math.max(0,modifier.damageMultiplier as number);
+      for(const component of ability.damage)
+        if(component.raw!==null)component.raw=round(component.raw*multiplier);
+      for(const calculation of ability.calculations)
+        if(calculation.primary&&calculation.value!==null)
+          calculation.value=round(calculation.value*multiplier);
+      model.damage=ability.damage;
+    }
+
+    const flatReduction=Math.max(0,modifier.cooldownFlatReduction??0);
+    const cooldownMultiplier=Number.isFinite(modifier.cooldownMultiplier)
+      ?Math.max(0,modifier.cooldownMultiplier as number):1;
+    if(flatReduction>0||cooldownMultiplier!==1){
+      const cooldown=Math.max(0,(ability.cooldownSeconds-flatReduction)*cooldownMultiplier);
+      ability.cooldownSeconds=round(cooldown);
+      model.cooldownSeconds=ability.cooldownSeconds;
+    }
+
+    if(Number.isFinite(modifier.costOverride)){
+      ability.cost=Math.max(0,modifier.costOverride as number);
+      model.cost=ability.cost;
+    }
+
+    if(modifier.dynamicDamage?.length)
+      model.dynamicDamage=[...modifier.dynamicDamage];
+
+    if(modifier.note)
+      ability.variantNote=[ability.variantNote,modifier.note].filter(Boolean).join(' ');
   }
 }
 
@@ -409,7 +454,7 @@ function autoAttackModel(
     attackSpeedCap:championFx.attackSpeedCap??ATTACK_SPEED_CAP,
     onHits:[...loadout.onHits,...championFx.onHits],
     attackStack:runeFx.attackStack,
-    autoProcs:runeFx.autoProcs,
+    autoProcs:[...runeFx.autoProcs,...championFx.autoProcs],
   };
 }
 
