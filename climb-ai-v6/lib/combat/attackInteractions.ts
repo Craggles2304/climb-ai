@@ -1,6 +1,6 @@
 import type {AutoAttackModel,AbilityModel} from './combos';
 import type {OnHitEffect} from './effects';
-import type {BasicAttackReplacement} from './state';
+import type {BasicAttackReplacement,CombatRuntimeState} from './state';
 
 export interface AbilityOnHitAttachResult{
   applied:boolean;
@@ -101,6 +101,111 @@ export function withOpeningBasicAttackReplacement(
     },
     note:`${replacement.label}: replaces basic attack${count===1?'':`s 1–${count}`}; ordinary physical attacks resume at attack ${count+1}. Existing on-hit effects remain attached.`,
   };
+}
+
+/** A replacement that can return during the same combat timeline. */
+export interface RechargeableAttackReplacement{
+  id:string;
+  label:string;
+  damage:OnHitEffect[];
+  cooldownSeconds:number;
+  cooldownReductionOnAbilityHit:number;
+  startsReady:boolean;
+}
+
+type RechargeableAutoModel=AutoAttackModel&{
+  rechargeableReplacement?:RechargeableAttackReplacement;
+};
+
+/** Runtime state is keyed by CombatRuntimeState, so every simulation gets an isolated passive clock. */
+const rechargeableState=new WeakMap<CombatRuntimeState,Map<string,number>>();
+
+export function withRechargeableBasicAttackReplacement(
+  model:AutoAttackModel,
+  replacement:RechargeableAttackReplacement,
+):AutoAttackModel{
+  return {...model,rechargeableReplacement:{...replacement,damage:replacement.damage.map(x=>({...x}))}} as RechargeableAutoModel;
+}
+
+export function rechargeableAttackEffects(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+  clock:number,
+):OnHitEffect[]|null{
+  const replacement=getRechargeable(model);
+  if(!replacement||replacement.damage.length===0)return null;
+  return replacementReadyAt(runtime,replacement)<=clock+1e-9
+    ?replacement.damage
+    :null;
+}
+
+/** Consume a ready replacement and start its static cooldown. */
+export function consumeRechargeableAttack(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+  clock:number,
+):{label:string;readyAt:number}|null{
+  const replacement=getRechargeable(model);
+  if(!replacement||replacementReadyAt(runtime,replacement)>clock+1e-9)return null;
+  const readyAt=clock+Math.max(0,finite(replacement.cooldownSeconds));
+  stateFor(runtime).set(replacement.id,readyAt);
+  return {label:replacement.label,readyAt:round(readyAt)};
+}
+
+/**
+ * Apply one refund for one successful cast that actually hit the target.
+ * Multi-hit spells still refund once because this is called once per cast event.
+ */
+export function reduceRechargeableAttackCooldownOnAbilityHit(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+  ability:AbilityModel,
+  clock:number,
+):{label:string;before:number;after:number;reduction:number}|null{
+  const replacement=getRechargeable(model);
+  if(!replacement||!abilityHitsTarget(ability))return null;
+  const before=replacementReadyAt(runtime,replacement);
+  if(before<=clock+1e-9)return null;
+  const reduction=Math.max(0,finite(replacement.cooldownReductionOnAbilityHit));
+  if(reduction<=0)return null;
+  const after=Math.max(clock,before-reduction);
+  stateFor(runtime).set(replacement.id,after);
+  return {
+    label:replacement.label,before:round(before),after:round(after),
+    reduction:round(before-after),
+  };
+}
+
+export function rechargeableAttackReadyAt(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+):number|null{
+  const replacement=getRechargeable(model);
+  return replacement?round(replacementReadyAt(runtime,replacement)):null;
+}
+
+function replacementReadyAt(runtime:CombatRuntimeState,replacement:RechargeableAttackReplacement):number{
+  const state=stateFor(runtime);
+  if(state.has(replacement.id))return state.get(replacement.id) as number;
+  const initial=replacement.startsReady?0:Number.POSITIVE_INFINITY;
+  state.set(replacement.id,initial);
+  return initial;
+}
+
+function stateFor(runtime:CombatRuntimeState):Map<string,number>{
+  let state=rechargeableState.get(runtime);
+  if(!state){state=new Map();rechargeableState.set(runtime,state)}
+  return state;
+}
+
+function getRechargeable(model:AutoAttackModel):RechargeableAttackReplacement|undefined{
+  return (model as RechargeableAutoModel).rechargeableReplacement;
+}
+
+function abilityHitsTarget(ability:AbilityModel):boolean{
+  return ability.damage.length>0
+    ||Boolean(ability.dynamicDamage?.length)
+    ||Boolean(ability.targetDebuff);
 }
 
 function scaleEffect(effect:OnHitEffect,multiplier:number,prefix:string):OnHitEffect{
