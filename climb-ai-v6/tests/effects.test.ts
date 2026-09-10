@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   RUNES,buildRuneCombatProfile,buildSummonerCombatProfile,igniteAtLevel,lastStandBonus,
 } from '../lib/combat/effects';
-import {buildChampionCombatProfile} from '../lib/combat/championEffects';
+import {buildChampionCombatProfile,championEffectOptions} from '../lib/combat/championEffects';
 import {simulateCombo} from '../lib/combat/combos';
 
 test('Press the Attack is modelled on the third basic attack',()=>{
@@ -88,6 +88,62 @@ test("unlearned Kog'Maw Q does not grant its passive attack speed",()=>{
   );
   assert.equal(profile.permanentAttackSpeedRatio,0);
   assert.equal(profile.abilityDebuffs.Q,undefined);
+});
+
+test('Jinx Pow-Pow states use mutually exclusive registry group and rank-scaled attack speed',()=>{
+  const options=championEffectOptions('Jinx');
+  const powpow=options.filter(o=>o.id.startsWith('JINX_POWPOW'));
+  assert.equal(powpow.length,3);
+  assert.ok(powpow.every(o=>o.group==='jinx-weapon'));
+
+  const one=buildChampionCombatProfile('Jinx',['JINX_POWPOW_1'],{Q:5},{abilityPower:0});
+  const three=buildChampionCombatProfile('Jinx',['JINX_POWPOW_3'],{Q:5},{abilityPower:0});
+  assert.equal(one.permanentAttackSpeedRatio,.65);
+  assert.equal(three.permanentAttackSpeedRatio,1.30);
+});
+
+test('Jinx Fishbones changes attack damage range bonus-AS scaling and resource cost',()=>{
+  const profile=buildChampionCombatProfile('Jinx',['JINX_FISHBONES'],{Q:3},{abilityPower:0});
+  assert.equal(profile.basicAttackDamageMultiplier,1.10);
+  assert.equal(profile.attackRangeBonus,150);
+  assert.equal(profile.basicAttackResourceCost,20);
+  assert.equal(profile.bonusAttackSpeedScalar,.90);
+});
+
+test('Jinx Get Excited applies total attack-speed stacks but keeps movement as a visible gap',()=>{
+  const profile=buildChampionCombatProfile('Jinx',['JINX_EXCITED_3'],{Q:1},{abilityPower:0});
+  assert.equal(profile.totalAttackSpeedMultiplier,1.75);
+  assert.equal(profile.attackSpeedCap,90);
+  assert.ok(profile.unmodelledEffects.includes('JINX_EXCITED_3_MOVESPEED'));
+});
+
+test('resource-costing basic attacks stop when the weapon cannot be paid for',()=>{
+  const result=simulateCombo({
+    sequence:['AA','AA','AA'],abilities:{},
+    autoAttack:{damage:100,attackSpeed:1,resourceCost:20},caster:{mana:30},
+    target:{health:1000,maxHealth:1000,armor:0,magicResist:0},
+  });
+  assert.equal(result.events[0].status,'CAST');
+  assert.equal(result.events[0].manaRemaining,10);
+  assert.equal(result.events[1].status,'NO_RESOURCE');
+  assert.equal(result.totalMitigatedDamage,100);
+});
+
+test('Aphelios Calibrum and Infernum expose exact weapon effects',()=>{
+  const calibrum=buildChampionCombatProfile('Aphelios',['APH_CALIBRUM'],{}, {abilityPower:0});
+  const infernum=buildChampionCombatProfile('Aphelios',['APH_INFERNUM'],{}, {abilityPower:0});
+  assert.equal(calibrum.attackRangeBonus,100);
+  assert.equal(infernum.basicAttackDamageMultiplier,1.10);
+  assert.ok(calibrum.modelledEffects.includes('APH_CALIBRUM'));
+  assert.ok(infernum.modelledEffects.includes('APH_INFERNUM'));
+});
+
+test('Aphelios stateful weapons stay explicitly partial instead of becoming guessed flat bonuses',()=>{
+  for(const id of ['APH_SEVERUM','APH_GRAVITUM','APH_CRESCENDUM']){
+    const profile=buildChampionCombatProfile('Aphelios',[id],{}, {abilityPower:0});
+    assert.ok(profile.unmodelledEffects.includes(id));
+    assert.equal(profile.basicAttackDamageMultiplier,1);
+  }
 });
 
 test('an ability resistance shred affects later hits but not the shred hit itself',()=>{
