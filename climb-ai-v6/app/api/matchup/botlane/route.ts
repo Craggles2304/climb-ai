@@ -8,6 +8,9 @@ import {ATTACK_SPEED_CAP,type AbilitySlot,type ComboStep} from '@/lib/combat/com
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {buildLoadout,type LoadoutResult,type MatchupItem} from '@/lib/combat/itemLoadout';
 import {buildChampionCombatProfile,type ChampionCombatProfile} from '@/lib/combat/championEffects';
+import {
+  applyConfiguredAttackReplacement,configureChampionAttackReplacement,
+} from '@/lib/combat/championAttackReplacements';
 import {applyChampionAbilityState} from '@/lib/combat/championAbilityState';
 import {applyConditionalChampionSpells} from '@/lib/combat/conditionalChampionSpells';
 import {applyExecuteChampionSpells} from '@/lib/combat/executeChampionSpells';
@@ -120,7 +123,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
         {name:'CommunityDragon',use:'ability damage formulas'},
-        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes, supported ability-applied on-hits and explicit access/hit assumptions'},
+        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes, supported ability-applied on-hits, attack replacements and explicit access/hit assumptions'},
       ],
     });
   }catch(err){
@@ -151,6 +154,14 @@ async function prepareParticipant(
     level:input.level,
   });
   const stats=combatStats(champion,input,loadout,championFx);
+  configureChampionAttackReplacement(
+    champion.id,input.activeChampionEffects,championFx,{
+      patch,level:input.level,attackDamage:stats.attackDamage,
+      abilityPower:stats.abilityPower,
+      bonusMagicResist:Math.max(0,stats.magicResist-base.magicResist),
+      critChance:stats.critChance,
+    },
+  );
   const damage=combatDamageType(champion.info);
   const kit=assembleKit(
     champion.spells as DataDragonSpell[],spellSource?.spells??[],
@@ -272,7 +283,10 @@ function combatStats(champion:Awaited<ReturnType<typeof championDetail>>,input:S
   const cap=fx.attackSpeedCap??ATTACK_SPEED_CAP;
   return {abilityPower:item.abilityPower,attackDamage:base.attackDamage+item.attackDamage,armor:base.armor+item.armor,magicResist:base.magicResist+item.magicResist,maxHealth:base.hp+item.health,critChance:Math.min(1,Math.max(0,item.critChance)),critDamageMultiplier:1.75,attackSpeed:Math.min(cap,base.baseAttackSpeed*(1+bonusAs)*fx.totalAttackSpeedMultiplier),moveSpeed:(base.moveSpeed+item.flatMoveSpeed)*(1+item.percentMoveSpeed),mana:base.mana+item.mana};
 }
-function autoAttackModel(stats:CombatStats,loadout:LoadoutResult,runeFx:RuneCombatProfile,fx:ChampionCombatProfile){return {damage:stats.attackDamage*fx.basicAttackDamageMultiplier,attackSpeed:stats.attackSpeed,resourceCost:fx.basicAttackResourceCost,attackSpeedCap:fx.attackSpeedCap??ATTACK_SPEED_CAP,onHits:[...loadout.onHits,...fx.onHits],attackStack:runeFx.attackStack,autoProcs:[...runeFx.autoProcs,...fx.autoProcs],timedStates:fx.timedAutoStates,eventState:fx.autoEventState}}
+function autoAttackModel(stats:CombatStats,loadout:LoadoutResult,runeFx:RuneCombatProfile,fx:ChampionCombatProfile){
+  const model={damage:stats.attackDamage*fx.basicAttackDamageMultiplier,attackSpeed:stats.attackSpeed,resourceCost:fx.basicAttackResourceCost,attackSpeedCap:fx.attackSpeedCap??ATTACK_SPEED_CAP,onHits:[...loadout.onHits,...fx.onHits],attackStack:runeFx.attackStack,autoProcs:[...runeFx.autoProcs,...fx.autoProcs],timedStates:fx.timedAutoStates,eventState:fx.autoEventState};
+  return applyConfiguredAttackReplacement(model,fx);
+}
 function penetrationFromLoadout(loadout:LoadoutResult):Penetration{return {...noPenetration(),flatArmorPen:loadout.stats.lethality,percentArmorPen:loadout.stats.percentArmorPen,flatMagicPen:loadout.stats.flatMagicPen,percentMagicPen:loadout.stats.percentMagicPen}}
 function summary(result:ReturnType<typeof simulateBotLane>){return {verdict:result.verdict,winner:result.winner,firstKill:result.firstKill,kills:result.kills,teamDamage:result.teamDamage,participants:result.participants}}
 const round=(n:number)=>Math.round(n*10)/10;const round3=(n:number)=>Math.round(n*1000)/1000;
