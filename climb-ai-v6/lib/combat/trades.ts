@@ -15,6 +15,10 @@ import {
   recordAttackTimerReset,timedAutoSnapshot,
   type InitialTargetMark,
 } from './state';
+import {
+  consumeRechargeableAttack,rechargeableAttackEffects,
+  reduceRechargeableAttackCooldownOnAbilityHit,
+} from './attackInteractions';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
 
 export interface TradeScenario{
@@ -88,7 +92,7 @@ interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const MODEL_NOTE=
   'A damage race, not a full simultaneous duel: both sides commit, every selected damage ability hits, '+
-  'and temporary offensive states/stacks/marks advance on each side’s own timeline. Cast-generated '+
+  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. Cast-generated '+
   'self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
 
 export function compareTrades(
@@ -168,6 +172,9 @@ export function runTrade(
       shield=applied.shield;health=applied.health;dealt+=applied.applied;
       if(candidate.incomplete)incomplete=true;
 
+      const passiveRefund=reduceRechargeableAttackCooldownOnAbilityHit(
+        actor.autoAttack,runtime,candidate.ability,clock,
+      );
       const stackRule=candidate.ability.eventState?.stackRule;
       const stacksAfter=applyAbilityStackAfterCast(runtime,stackRule,clock);
       const cooldownBase=abilityCooldownSeconds(candidate.ability.cooldownSeconds,runtime,stackRule,clock);
@@ -179,6 +186,7 @@ export function runTrade(
         damage:round(applied.applied),
         state:[
           stackRule?`${stackRule.label} ${stacksAfter}/${stackRule.maxStacks}`:'',
+          passiveRefund?`${passiveRefund.label} refund ${passiveRefund.reduction}s → ready ${passiveRefund.after}s`:'',
           selfShield>0&&candidate.ability.eventState?.grantsSelfShield?`self shield ${round(selfShield)}`:'',
           reset?'attack reset':''
         ].filter(Boolean).join(' · ')||undefined,
@@ -210,12 +218,13 @@ export function runTrade(
 
     mana-=resourceCost;
     const nextAuto=autoCount+1;
-    const components:DamageComponent[]=[
-      {
+    const replacementEffects=rechargeableAttackEffects(actor.autoAttack,runtime,clock);
+    const components:DamageComponent[]=replacementEffects?.length
+      ?replacementEffects.map(effect=>resolveOnHit(effect,health,targetMaxHealth))
+      :[{
         label:'Auto attack',type:'PHYSICAL',
         raw:positive(actor.autoAttack.damage)*timed.basicAttackDamageMultiplier,
-      },
-    ];
+      }];
     for(const effect of [...(actor.autoAttack.onHits??[]),...timed.onHits]){
       if(!onHitTriggers(effect,nextAuto))continue;
       components.push(resolveOnHit(effect,health,targetMaxHealth));
@@ -236,13 +245,21 @@ export function runTrade(
     const result=mitigateAll(adjusted,targetNow,pen);
     const applied=applyToPool(result.mitigatedTotal,shield,health);
     shield=applied.shield;health=applied.health;dealt+=applied.applied;
+    const passiveProc=replacementEffects?.length
+      ?consumeRechargeableAttack(actor.autoAttack,runtime,clock)
+      :null;
     autoCount=nextAuto;
     if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
     steps.push({
       atSeconds:round(clock),
-      label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
+      label:passiveProc
+        ?`${passiveProc.label}${components.length>1?` + ${components.length-1} effect${components.length===2?'':'s'}`:''}`
+        :components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
       damage:round(applied.applied),
-      state:timed.labels.length?timed.labels.join(' · '):undefined,
+      state:[
+        ...timed.labels,
+        passiveProc?`recharges until ${passiveProc.readyAt}s before refunds`:'',
+      ].filter(Boolean).join(' · ')||undefined,
     });
     clock+=interval;
   }
