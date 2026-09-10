@@ -107,8 +107,8 @@ export async function POST(req:NextRequest){
       {abilityPower:them.bonusAbilityPower+theirLoadout.stats.abilityPower},
     );
 
-    const yourStats=combatStats(yourChampion,you,yourLoadout,yourChampionFx.permanentAttackSpeedRatio);
-    const theirStats=combatStats(theirChampion,them,theirLoadout,theirChampionFx.permanentAttackSpeedRatio);
+    const yourStats=combatStats(yourChampion,you,yourLoadout,yourChampionFx);
+    const theirStats=combatStats(theirChampion,them,theirLoadout,theirChampionFx);
     const yourDamage=combatDamageType(yourChampion.info);
     const theirDamage=combatDamageType(theirChampion.info);
 
@@ -131,18 +131,18 @@ export async function POST(req:NextRequest){
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
     const yourRuneFx=buildRuneCombatProfile(you.runeIds,{
       level:you.level,
-      isRanged:yourBase.attackRange>=300,
+      isRanged:(yourBase.attackRange+yourChampionFx.attackRangeBonus)>=300,
       healthPercent:you.healthPercent,
       baseAttackSpeed:yourBase.baseAttackSpeed,
-      bonusAttackSpeedRatio:yourBase.bonusAttackSpeedRatio+yourLoadout.stats.attackSpeedRatio+yourChampionFx.permanentAttackSpeedRatio,
+      bonusAttackSpeedRatio:(yourBase.bonusAttackSpeedRatio+yourLoadout.stats.attackSpeedRatio+yourChampionFx.permanentAttackSpeedRatio)*yourChampionFx.bonusAttackSpeedScalar,
       adaptiveDamageType:yourDamage.type,
     });
     const theirRuneFx=buildRuneCombatProfile(them.runeIds,{
       level:them.level,
-      isRanged:theirBase.attackRange>=300,
+      isRanged:(theirBase.attackRange+theirChampionFx.attackRangeBonus)>=300,
       healthPercent:them.healthPercent,
       baseAttackSpeed:theirBase.baseAttackSpeed,
-      bonusAttackSpeedRatio:theirBase.bonusAttackSpeedRatio+theirLoadout.stats.attackSpeedRatio+theirChampionFx.permanentAttackSpeedRatio,
+      bonusAttackSpeedRatio:(theirBase.bonusAttackSpeedRatio+theirLoadout.stats.attackSpeedRatio+theirChampionFx.permanentAttackSpeedRatio)*theirChampionFx.bonusAttackSpeedScalar,
       adaptiveDamageType:theirDamage.type,
     });
 
@@ -167,15 +167,13 @@ export async function POST(req:NextRequest){
     const yourHaste=you.abilityHaste+yourLoadout.stats.abilityHaste;
     const theirHaste=them.abilityHaste+theirLoadout.stats.abilityHaste;
 
+    const yourAuto=autoAttackModel(yourStats,yourLoadout,yourRuneFx,yourChampionFx);
+    const theirAuto=autoAttackModel(theirStats,theirLoadout,theirRuneFx,theirChampionFx);
+
     const combo=simulateCombo({
       sequence:(sequence?.length?sequence:defaultSequence(you.level)) as ComboStep[],
       abilities:yourKit.models,
-      autoAttack:{
-        damage:yourStats.attackDamage,attackSpeed:yourStats.attackSpeed,
-        onHits:[...yourLoadout.onHits,...yourChampionFx.onHits],
-        attackStack:yourRuneFx.attackStack,
-        autoProcs:yourRuneFx.autoProcs,
-      },
+      autoAttack:yourAuto,
       caster:{mana:yourStats.mana*(you.resourcePercent/100)},
       target:{
         health:theirCurrent,maxHealth:theirStats.maxHealth,shield:theirShield,
@@ -208,12 +206,7 @@ export async function POST(req:NextRequest){
     )=>({
       champion,
       abilities:kit.models,
-      autoAttack:{
-        damage:stats.attackDamage,attackSpeed:stats.attackSpeed,
-        onHits:[...loadout.onHits,...championFx.onHits],
-        attackStack:runeFx.attackStack,
-        autoProcs:runeFx.autoProcs,
-      },
+      autoAttack:autoAttackModel(stats,loadout,runeFx,championFx),
       mana:stats.mana*(input.resourcePercent/100),
       maxHealth:stats.maxHealth,
       currentHealth,
@@ -380,13 +373,15 @@ function combatStats(
   champion:Awaited<ReturnType<typeof championDetail>>,
   input:SideInput,
   loadout:LoadoutResult,
-  championAttackSpeedRatio:number,
+  championFx:ChampionCombatProfile,
 ):CombatStats{
   const base=statsAtLevel(champion.stats,input.level);
   const item=loadout.stats;
-  const rawAttackSpeed=base.baseAttackSpeed*(
-    1+base.bonusAttackSpeedRatio+item.attackSpeedRatio+championAttackSpeedRatio
-  );
+  const bonusAttackSpeed=(
+    base.bonusAttackSpeedRatio+item.attackSpeedRatio+championFx.permanentAttackSpeedRatio
+  )*championFx.bonusAttackSpeedScalar;
+  const rawAttackSpeed=base.baseAttackSpeed*(1+bonusAttackSpeed)*championFx.totalAttackSpeedMultiplier;
+  const attackSpeedCap=championFx.attackSpeedCap??ATTACK_SPEED_CAP;
   return {
     abilityPower:input.bonusAbilityPower+item.abilityPower,
     attackDamage:base.attackDamage+input.bonusAttackDamage+item.attackDamage,
@@ -395,9 +390,26 @@ function combatStats(
     maxHealth:base.hp+input.bonusHealth+item.health,
     critChance:Math.min(1,Math.max(0,item.critChance)),
     critDamageMultiplier:1.75,
-    attackSpeed:Math.min(ATTACK_SPEED_CAP,rawAttackSpeed),
+    attackSpeed:Math.min(attackSpeedCap,rawAttackSpeed),
     moveSpeed:(base.moveSpeed+item.flatMoveSpeed)*(1+item.percentMoveSpeed),
     mana:base.mana+item.mana,
+  };
+}
+
+function autoAttackModel(
+  stats:CombatStats,
+  loadout:LoadoutResult,
+  runeFx:RuneCombatProfile,
+  championFx:ChampionCombatProfile,
+){
+  return {
+    damage:stats.attackDamage*championFx.basicAttackDamageMultiplier,
+    attackSpeed:stats.attackSpeed,
+    resourceCost:championFx.basicAttackResourceCost,
+    attackSpeedCap:championFx.attackSpeedCap??ATTACK_SPEED_CAP,
+    onHits:[...loadout.onHits,...championFx.onHits],
+    attackStack:runeFx.attackStack,
+    autoProcs:runeFx.autoProcs,
   };
 }
 
