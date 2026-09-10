@@ -9,6 +9,12 @@ import {
   autoProcTriggers,onHitTriggers,
   type DamageRule,type TargetDebuffEffect,
 } from './effects';
+import {
+  abilityCooldownSeconds,abilityDamageMultiplier,applyAbilityStackAfterCast,
+  consumeMark,createCombatRuntime,currentSelfShield,grantSelfShield,
+  recordAttackTimerReset,timedAutoSnapshot,
+  type InitialTargetMark,
+} from './state';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
 
 export interface TradeScenario{
@@ -45,9 +51,15 @@ export interface TradeSide{
   outgoingDamageMultiplier?:number;
   outgoingDamageMultiplierDurationSeconds?:number;
   disabled?:AbilitySlot[];
+  initialTargetMarks?:InitialTargetMark[];
 }
 
-export interface TradeStep{atSeconds:number;label:string;damage:number}
+export interface TradeStep{
+  atSeconds:number;
+  label:string;
+  damage:number;
+  state?:string;
+}
 export interface TradeSideResult{
   champion:string;
   damageDealt:number;
@@ -57,6 +69,8 @@ export interface TradeSideResult{
   steps:TradeStep[];
   incomplete:boolean;
   unmodelled:string[];
+  selfShieldGenerated:number;
+  attackTimerResets:number;
 }
 export type TradeVerdict='YOU'|'THEM'|'EVEN';
 export interface TradeOutcome{
@@ -73,10 +87,9 @@ export interface TradeReport{
 interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const MODEL_NOTE=
-  'A damage race, not a fight: both sides stand still and commit, every ability '+
-  'hits, nothing is interrupted and no crowd control exists. It assumes both '+
-  'champions remain in range. Current HP, temporary shields, supported on-hits '+
-  'and timed resistance debuffs are respected.';
+  'A damage race, not a full simultaneous duel: both sides commit, every selected damage ability hits, '+
+  'and temporary offensive states/stacks/marks advance on each side’s own timeline. Cast-generated '+
+  'self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
 
 export function compareTrades(
   you:TradeSide,them:TradeSide,scenarios=TRADE_SCENARIOS,
@@ -109,6 +122,10 @@ export function runTrade(
   );
   const startingShield=Math.max(0,finiteOr(target.shield,0));
   const startingPool=Math.max(1,startingHealth+startingShield);
+  const stackRules=Object.values(actor.abilities)
+    .map(a=>a?.eventState?.stackRule)
+    .filter((x):x is NonNullable<typeof x>=>Boolean(x));
+  const runtime=createCombatRuntime(stackRules,actor.initialTargetMarks??[]);
 
   let clock=0;
   let mana=positive(actor.mana);
@@ -142,7 +159,7 @@ export function runTrade(
       ?null
       :bestAbility(
         actor,targetNow,pen,clock,readyAt,mana,used,disabled,scenario,
-        health,targetMaxHealth,autoCount,timedMultiplier,
+        health,targetMaxHealth,autoCount,timedMultiplier,runtime,
       );
 
     if(candidate){
@@ -150,16 +167,28 @@ export function runTrade(
       const applied=applyToPool(candidate.damage,shield,health);
       shield=applied.shield;health=applied.health;dealt+=applied.applied;
       if(candidate.incomplete)incomplete=true;
+
+      const stackRule=candidate.ability.eventState?.stackRule;
+      const stacksAfter=applyAbilityStackAfterCast(runtime,stackRule,clock);
+      const cooldownBase=abilityCooldownSeconds(candidate.ability.cooldownSeconds,runtime,stackRule,clock);
+      const selfShield=grantSelfShield(runtime,candidate.ability.eventState?.grantsSelfShield,clock);
+      const reset=recordAttackTimerReset(runtime,candidate.ability.eventState?.resetsBasicAttackTimer);
+
       steps.push({
         atSeconds:round(clock),label:`${candidate.slot} ${candidate.ability.name}`,
         damage:round(applied.applied),
+        state:[
+          stackRule?`${stackRule.label} ${stacksAfter}/${stackRule.maxStacks}`:'',
+          selfShield>0&&candidate.ability.eventState?.grantsSelfShield?`self shield ${round(selfShield)}`:'',
+          reset?'attack reset':''
+        ].filter(Boolean).join(' · ')||undefined,
       });
       if(candidate.ability.targetDebuff)
         upsertDebuff(
           activeDebuffs,candidate.ability.targetDebuff,
           clock+candidate.ability.targetDebuff.durationSeconds,
         );
-      readyAt.set(candidate.slot,clock+candidate.ability.cooldownSeconds*haste);
+      readyAt.set(candidate.slot,clock+cooldownBase*haste);
       used.add(candidate.slot);
       clock+=Math.max(0,positive(candidate.ability.castTimeSeconds));
       continue;
@@ -167,26 +196,33 @@ export function runTrade(
 
     if(scenario.abilitiesOnce&&!scenario.autosOnly)break;
 
-    const resourceCost=positive(actor.autoAttack.resourceCost??0);
+    const timed=timedAutoSnapshot(actor.autoAttack.timedStates,clock);
+    const resourceCost=timed.resourceCostOverride??positive(actor.autoAttack.resourceCost??0);
     if(resourceCost>mana+1e-9){
       unmodelled.push(`Basic attacks in this champion state cost ${round(resourceCost)} resource; only ${round(mana)} remained, so the damage race stopped rather than silently firing an unaffordable attack.`);
       incomplete=true;
       break;
     }
 
-    const speed=currentAttackSpeed(actor.autoAttack,attackStacks);
+    const speed=currentAttackSpeed(actor.autoAttack,attackStacks,timed);
     const interval=attackInterval(speed);
     if(interval<=0)break;
 
     mana-=resourceCost;
     const nextAuto=autoCount+1;
     const components:DamageComponent[]=[
-      {label:'Auto attack',type:'PHYSICAL',raw:positive(actor.autoAttack.damage)},
+      {
+        label:'Auto attack',type:'PHYSICAL',
+        raw:positive(actor.autoAttack.damage)*timed.basicAttackDamageMultiplier,
+      },
     ];
-    for(const effect of actor.autoAttack.onHits??[]){
+    for(const effect of [...(actor.autoAttack.onHits??[]),...timed.onHits]){
       if(!onHitTriggers(effect,nextAuto))continue;
       components.push(resolveOnHit(effect,health,targetMaxHealth));
     }
+    for(const consumer of actor.autoAttack.eventState?.consumesMarks??[])
+      if(consumeMark(runtime,consumer,clock))
+        components.push(resolveOnHit(consumer.damage,health,targetMaxHealth));
     for(const proc of actor.autoAttack.autoProcs??[])
       if(autoProcTriggers(proc,nextAuto))
         components.push(resolveOnHit(proc.damage,health,targetMaxHealth));
@@ -206,6 +242,7 @@ export function runTrade(
       atSeconds:round(clock),
       label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
       damage:round(applied.applied),
+      state:timed.labels.length?timed.labels.join(' · '):undefined,
     });
     clock+=interval;
   }
@@ -216,6 +253,8 @@ export function runTrade(
     healthSharePercent:round(Math.min(100,dealt/startingPool*100)),
     manaUsed:round(startingMana-mana),manaLeft:round(mana),steps,incomplete,
     unmodelled:[...new Set(unmodelled)],
+    selfShieldGenerated:currentSelfShield(runtime,clock),
+    attackTimerResets:runtime.attackTimerResets,
   };
 }
 
@@ -228,6 +267,7 @@ function bestAbility(
   clock:number,readyAt:Map<AbilitySlot,number>,mana:number,
   used:Set<AbilitySlot>,disabled:Set<AbilitySlot>,scenario:TradeScenario,
   currentHealth:number,targetMaxHealth:number,autoCount:number,timedMultiplier:number,
+  runtime:ReturnType<typeof createCombatRuntime>,
 ):Candidate|null{
   let best:Candidate|null=null;
   for(const [slot,ability] of Object.entries(actor.abilities) as [AbilitySlot,AbilityModel][]){
@@ -240,15 +280,39 @@ function bestAbility(
       ...ability.damage,
       ...(ability.dynamicDamage??[]).map(effect=>resolveOnHit(effect,currentHealth,targetMaxHealth)),
     ];
+    // Candidate selection must not mutate marks. Include mark damage only when the
+    // mark exists; consumption happens after the candidate is chosen.
+    for(const consumer of ability.eventState?.consumesMarks??[]){
+      const preview=createMarkPreview(runtime,consumer.markId,clock);
+      if(preview)abilityComponents.push(resolveOnHit(consumer.damage,currentHealth,targetMaxHealth));
+    }
+    const stackMultiplier=abilityDamageMultiplier(runtime,ability.eventState?.stackRule,clock);
+    const stateAdjusted=stackMultiplier===1
+      ?abilityComponents
+      :abilityComponents.map(component=>component.raw===null
+        ?component
+        :{...component,raw:round(component.raw*stackMultiplier)});
     const adjusted=applyDamageRules(
-      abilityComponents,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
+      stateAdjusted,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
     );
     const result=mitigateAll(adjusted,targetResistances,pen);
     if(result.mitigatedTotal<=0)continue;
     if(!best||result.mitigatedTotal>best.damage)
       best={slot,ability,damage:result.mitigatedTotal,incomplete:!result.complete};
   }
+
+  if(best){
+    for(const consumer of best.ability.eventState?.consumesMarks??[])
+      consumeMark(runtime,consumer,clock);
+  }
   return best;
+}
+
+function createMarkPreview(
+  runtime:ReturnType<typeof createCombatRuntime>,markId:string,clock:number,
+):boolean{
+  const state=runtime.marks.get(markId);
+  return Boolean(state&&state.expiresAt>clock+1e-9&&state.stacks>0);
 }
 
 function withDebuffs(base:TargetResistances,active:ActiveDebuff[],clock:number):TargetResistances{
@@ -264,12 +328,17 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
   active.push({effect,expiresAt});
 }
 
-function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
+function currentAttackSpeed(
+  model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>,
+):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
     ?Number(model.attackSpeedCap)
     :3;
-  return Math.min(cap,Math.max(0,model.attackSpeed+extra));
+  return Math.min(
+    cap,
+    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier),
+  );
 }
 
 function outgoingMultiplier(actor:TradeSide,clock:number):number{
