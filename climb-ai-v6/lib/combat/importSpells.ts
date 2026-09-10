@@ -102,9 +102,9 @@ function normaliseSpell(path:string,spell:Record<string,unknown>):NormalisedSpel
     dataValues:readDataValues(spell),
     effectAmounts:readEffectAmounts(spell),
     calculations,
-    cooldownByRank:numberArray(spell.Cooldown??spell.cooldownTime),
-    costByRank:numberArray(spell.manaValues??spell.mana),
-    rangeByRank:numberArray(spell.castRangeValues??spell.castRange),
+    cooldownByRank:firstNonEmpty(spell.cooldownTime,spell.Cooldown),
+    costByRank:toRankIndexed(firstNonEmpty(spell.mana,spell.manaValues)),
+    rangeByRank:firstNonEmpty(spell.castRange,spell.castRangeValues),
     castTime:singleNumber(spell.mCastTime??spell.spellCastTime),
   };
 }
@@ -128,8 +128,24 @@ function readDataValues(spell:Record<string,unknown>):SpellDataValue[]{
   return out;
 }
 
+/**
+ * Reads a per-rank number list in any of the three shapes the files use: a bare
+ * array, a single number, or an object wrapping the array under `values`.
+ *
+ * That last one is not cosmetic. `manaValues` and `Cooldown` are objects while
+ * `mana` and `cooldownTime` are plain arrays, so reading the object field first
+ * and handing it to an array parser yields an empty list — which is how every
+ * ability came out costing 0 mana on a 10s fallback cooldown.
+ */
 function numberArray(value:unknown):number[]{
   if(typeof value==='number')return [value];
+
+  if(value&&!Array.isArray(value)&&typeof value==='object'){
+    const wrapped=(value as Record<string,unknown>).values;
+    if(Array.isArray(wrapped))return numberArray(wrapped);
+    return [];
+  }
+
   if(!Array.isArray(value))return [];
   return value
     .map(v=>{
@@ -145,6 +161,18 @@ function numberArray(value:unknown):number[]{
     .filter((v):v is number=>typeof v==='number'&&Number.isFinite(v));
 }
 
+/**
+ * Resource costs are indexed from rank 1; cooldowns and ranges from rank 0.
+ *
+ * Verified against Data Dragon for Darius, Caitlyn, Lux and Garen. Darius Q
+ * costs 25 at rank 1 and `mana[0]` is 25, while his rank-1 cooldown is 9 and
+ * `cooldownTime[1]` is 9. Mixing the two conventions up is a silent off-by-one
+ * that hands out the wrong cost and the wrong cooldown at every rank, so a
+ * placeholder is prepended to the cost list and everything downstream indexes
+ * uniformly by rank.
+ */
+const toRankIndexed=(values:number[])=>values.length?[0,...values]:[];
+
 const singleNumber=(value:unknown):number|null=>
   typeof value==='number'&&Number.isFinite(value)?value:null;
 
@@ -156,8 +184,22 @@ const singleNumber=(value:unknown):number|null=>
  */
 const NON_ABILITY=/missile|buff|marker|internal|visual|indicator|particle|dummy|toggle|sound|aura/i;
 
+/**
+ * Something the player presses. Deliberately does NOT require damage: Darius's
+ * Apprehend has a mana cost and a cooldown and deals nothing at all, and a combo
+ * still has to spend both when it is cast.
+ */
+export const isCastAbility=(spell:NormalisedSpell)=>
+  !NON_ABILITY.test(spell.name)&&
+  (spell.costByRank.length>1||spell.cooldownByRank.length>0||Object.keys(spell.calculations).length>0);
+
+/** Has at least one damage calculation to evaluate. */
+export const dealsDamage=(spell:NormalisedSpell)=>
+  Object.keys(spell.calculations).length>0;
+
+/** Kept for the coverage script, which measures damage calculations only. */
 export const looksLikeCastAbility=(spell:NormalisedSpell)=>
-  !NON_ABILITY.test(spell.name)&&Object.keys(spell.calculations).length>0;
+  !NON_ABILITY.test(spell.name)&&dealsDamage(spell);
 
 /**
  * mEffectAmount is a list of unnamed per-rank rows, referenced by index from
@@ -173,4 +215,13 @@ function readEffectAmounts(spell:Record<string,unknown>):number[][]{
       ?values.filter((v):v is number=>typeof v==='number'&&Number.isFinite(v))
       :[];
   });
+}
+
+/** The first of several candidate fields that yields any numbers. */
+function firstNonEmpty(...candidates:unknown[]):number[]{
+  for(const candidate of candidates){
+    const values=numberArray(candidate);
+    if(values.length)return values;
+  }
+  return [];
 }

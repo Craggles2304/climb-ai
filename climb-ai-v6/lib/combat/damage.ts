@@ -95,13 +95,18 @@ export function effectiveResistance(
   base:number,
   opts:{flatReduction?:number;percentReduction?:number;percentPen?:number;flatPen?:number}={},
 ):number{
-  let resistance=base-(opts.flatReduction??0);
+  // A non-finite resistance has to be caught here. Left alone it survives the
+  // arithmetic, passes through damageMultiplier — where `NaN >= 0` is false, so
+  // it takes the negative-resistance branch — and ends up as a NaN target
+  // health several layers away from the input that caused it.
+  const start=Number.isFinite(base)?base:0;
+  let resistance=start-finite(opts.flatReduction);
   resistance*=1-clamp01(opts.percentReduction??0);
 
   // Penetration applies to what reduction left, and cannot push below zero.
   if(resistance>0){
     resistance*=1-clamp01(opts.percentPen??0);
-    resistance=Math.max(0,resistance-Math.max(0,opts.flatPen??0));
+    resistance=Math.max(0,resistance-Math.max(0,finite(opts.flatPen)));
   }
   return round(resistance);
 }
@@ -260,4 +265,7 @@ const clamp01=(n:number)=>Math.min(1,Math.max(0,Number.isFinite(n)?n:0));
 
 /** Zero for anything that is not a finite, positive number. */
 const positive=(n:number)=>Number.isFinite(n)&&n>0?n:0;
+
+/** Zero for anything non-finite, but negatives preserved. */
+const finite=(n:number|undefined)=>Number.isFinite(n)?n as number:0;
 const round=(n:number)=>Math.round(n*10)/10;
