@@ -7,6 +7,12 @@ import {
   type AttackStackEffect,type AutoProcEffect,type DamageRule,
   type OnHitEffect,type TargetDebuffEffect,
 } from './effects';
+import {
+  abilityCooldownSeconds,abilityDamageMultiplier,activeMarks,
+  applyAbilityStackAfterCast,consumeMark,createCombatRuntime,currentSelfShield,
+  grantSelfShield,recordAttackTimerReset,timedAutoSnapshot,
+  type AbilityEventState,type AutoEventState,type InitialTargetMark,type TimedAutoState,
+} from './state';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
 export type AbilitySlot='Q'|'W'|'E'|'R';
@@ -29,12 +35,14 @@ export interface AbilityModel{
   dynamicDamage?:OnHitEffect[];
   /** Debuff applied after this ability lands, affecting later events. */
   targetDebuff?:TargetDebuffEffect;
+  /** Stateful mechanics such as stacks, marks, shields and attack resets. */
+  eventState?:AbilityEventState;
 }
 
 export interface AutoAttackModel{
   /** Raw physical damage of the ordinary attack; crit may already be averaged. */
   damage:number;
-  /** Attacks per second before temporary rune stacks. */
+  /** Attacks per second before temporary rune/champion states. */
   attackSpeed:number;
   /** Some champion weapons spend resource on each attack, e.g. Jinx Fishbones. */
   resourceCost?:number;
@@ -43,6 +51,9 @@ export interface AutoAttackModel{
   onHits?:OnHitEffect[];
   attackStack?:AttackStackEffect;
   autoProcs?:AutoProcEffect[];
+  /** Buffs active at t=0 that expire during the fight. */
+  timedStates?:TimedAutoState[];
+  eventState?:AutoEventState;
 }
 
 export interface ComboInput{
@@ -54,12 +65,22 @@ export interface ComboInput{
   penetration?:Penetration;
   abilityHaste?:number;
   damageRules?:DamageRule[];
+  /** Marks already on the target when t=0 begins. */
+  initialTargetMarks?:InitialTargetMark[];
   /** Used for Exhaust: multiplier while the actor is exhausted. */
   outgoingDamageMultiplier?:number;
   outgoingDamageMultiplierDurationSeconds?:number;
 }
 
 export type EventStatus='CAST'|'NO_RESOURCE'|'ON_COOLDOWN'|'NOT_LEARNED';
+
+export interface ComboEventState{
+  timedAuto:string[];
+  targetMarks:string[];
+  selfShield:number;
+  stackChange?:string;
+  attackTimerReset?:boolean;
+}
 
 export interface ComboEvent{
   index:number;
@@ -74,6 +95,7 @@ export interface ComboEvent{
   targetHealthRemaining:number;
   skipped:{label:string;reasons:string[]}[];
   note?:string;
+  state?:ComboEventState;
 }
 
 export interface ComboResult{
@@ -90,6 +112,7 @@ export interface ComboResult{
   damageComplete:boolean;
   timingNote:string;
   resourceNote:string;
+  stateNote:string;
 }
 
 interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
@@ -98,12 +121,19 @@ const TIMING_NOTE=
   'Duration is a floor: each cast takes its cast time and each auto one attack '+
   'interval, with no animation cancelling, travel time or movement. A real '+
   'combo is not faster than this, and is usually slower.';
+const STATE_NOTE=
+  'Temporary champion states, target marks and ability stacks advance on the combat timeline. '+
+  'Self-shields and attack-reset events are recorded, but a one-sided combo does not yet let those defensive/reset events alter an opponent timeline.';
 
 export function simulateCombo(input:ComboInput):ComboResult{
   const haste=hasteMultiplier(input.abilityHaste??0);
   const pen=input.penetration??noPenetration();
   const shield=Math.max(0,positive(input.target.shield??0));
   const targetMaxHealth=Math.max(1,positive(input.target.maxHealth??input.target.health));
+  const stackRules=Object.values(input.abilities)
+    .map(a=>a?.eventState?.stackRule)
+    .filter((x):x is NonNullable<typeof x>=>Boolean(x));
+  const runtime=createCombatRuntime(stackRules,input.initialTargetMarks??[]);
 
   let clock=0;
   let mana=positive(input.caster.mana);
@@ -130,23 +160,30 @@ export function simulateCombo(input:ComboInput):ComboResult{
     const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,clock);
 
     if(step==='AA'){
-      const resourceCost=positive(input.autoAttack.resourceCost??0);
+      const timed=timedAutoSnapshot(input.autoAttack.timedStates,clock);
+      const resourceCost=timed.resourceCostOverride??positive(input.autoAttack.resourceCost??0);
       if(resourceCost>mana+1e-9){
         const reason=`This basic attack costs ${round(resourceCost)} resource and only ${round(mana)} is left.`;
         blocked.push({step,reason});
-        events.push({...base,label:'Basic attack',status:'NO_RESOURCE',note:reason});
+        events.push({...base,label:'Basic attack',status:'NO_RESOURCE',note:reason,state:stateSnapshot(runtime,clock,timed.labels)});
         return;
       }
       mana-=resourceCost;
 
       const nextAuto=autoCount+1;
       const components:DamageComponent[]=[
-        {label:'Auto attack',type:'PHYSICAL',raw:positive(input.autoAttack.damage)},
+        {
+          label:'Auto attack',type:'PHYSICAL',
+          raw:positive(input.autoAttack.damage)*timed.basicAttackDamageMultiplier,
+        },
       ];
-      for(const effect of input.autoAttack.onHits??[]){
+      for(const effect of [...(input.autoAttack.onHits??[]),...timed.onHits]){
         if(!onHitTriggers(effect,nextAuto))continue;
         components.push(resolveOnHit(effect,health,targetMaxHealth));
       }
+      for(const consumer of input.autoAttack.eventState?.consumesMarks??[])
+        if(consumeMark(runtime,consumer,clock))
+          components.push(resolveOnHit(consumer.damage,health,targetMaxHealth));
       for(const proc of input.autoAttack.autoProcs??[])
         if(autoProcTriggers(proc,nextAuto))
           components.push(resolveOnHit(proc.damage,health,targetMaxHealth));
@@ -164,7 +201,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
       remainingShield=applied.shield;health=applied.health;
       totalRaw+=result.rawTotal;totalMitigated+=result.mitigatedTotal;
 
-      const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks);
+      const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks,timed);
       clock+=attackInterval(attackSpeed);
       autoCount=nextAuto;
       if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
@@ -174,6 +211,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
         label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
         status:'CAST',rawDamage:result.rawTotal,mitigatedDamage:result.mitigatedTotal,
         manaSpent:resourceCost,manaRemaining:round(mana),targetHealthRemaining:round(health),
+        state:stateSnapshot(runtime,clock,timed.labels),
       });
       return;
     }
@@ -181,7 +219,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
     const ability=input.abilities[step];
     if(!ability){
       blocked.push({step,reason:`${step} is not available at this level or rank.`});
-      events.push({...base,label:step,status:'NOT_LEARNED',note:`${step} has no rank, so it cannot be cast.`});
+      events.push({...base,label:step,status:'NOT_LEARNED',note:`${step} has no rank, so it cannot be cast.`,state:stateSnapshot(runtime,clock,[])});
       return;
     }
 
@@ -189,14 +227,14 @@ export function simulateCombo(input:ComboInput):ComboResult{
     if(clock<ready-1e-9){
       const wait=round(ready-clock);
       blocked.push({step,reason:`${ability.name} is still on cooldown for ${wait}s at this point.`});
-      events.push({...base,label:ability.name,status:'ON_COOLDOWN',note:`${ability.name} comes back ${wait}s after this point in the sequence.`});
+      events.push({...base,label:ability.name,status:'ON_COOLDOWN',note:`${ability.name} comes back ${wait}s after this point in the sequence.`,state:stateSnapshot(runtime,clock,[])});
       return;
     }
 
     const cost=positive(ability.cost);
     if(cost>mana+1e-9){
       blocked.push({step,reason:`${ability.name} costs ${cost} and only ${round(mana)} is left.`});
-      events.push({...base,label:ability.name,status:'NO_RESOURCE',note:`${ability.name} costs ${cost}; ${round(mana)} remaining. The combo stops being payable here.`});
+      events.push({...base,label:ability.name,status:'NO_RESOURCE',note:`${ability.name} costs ${cost}; ${round(mana)} remaining. The combo stops being payable here.`,state:stateSnapshot(runtime,clock,[])});
       return;
     }
 
@@ -205,8 +243,19 @@ export function simulateCombo(input:ComboInput):ComboResult{
       ...ability.damage,
       ...(ability.dynamicDamage??[]).map(effect=>resolveOnHit(effect,health,targetMaxHealth)),
     ];
+    for(const consumer of ability.eventState?.consumesMarks??[])
+      if(consumeMark(runtime,consumer,clock))
+        abilityComponents.push(resolveOnHit(consumer.damage,health,targetMaxHealth));
+
+    const stackRule=ability.eventState?.stackRule;
+    const stackMultiplier=abilityDamageMultiplier(runtime,stackRule,clock);
+    const stateAdjusted=stackMultiplier===1
+      ?abilityComponents
+      :abilityComponents.map(component=>component.raw===null
+        ?component
+        :{...component,raw:round(component.raw*stackMultiplier)});
     const adjusted=applyDamageRules(
-      abilityComponents,input.damageRules??[],health,targetMaxHealth,autoCount,
+      stateAdjusted,input.damageRules??[],health,targetMaxHealth,autoCount,
       timedOutgoingMultiplier(input,clock),
     );
     // The ability that creates a shred hits before its own shred applies.
@@ -220,16 +269,27 @@ export function simulateCombo(input:ComboInput):ComboResult{
     if(ability.targetDebuff)
       upsertDebuff(activeDebuffs,ability.targetDebuff,clock+ability.targetDebuff.durationSeconds);
 
-    readyAt.set(step,clock+ability.cooldownSeconds*haste);
+    const stacksAfter=applyAbilityStackAfterCast(runtime,stackRule,clock);
+    const cooldownBase=abilityCooldownSeconds(ability.cooldownSeconds,runtime,stackRule,clock);
+    readyAt.set(step,clock+cooldownBase*haste);
+    const selfShield=grantSelfShield(runtime,ability.eventState?.grantsSelfShield,clock);
+    const attackReset=recordAttackTimerReset(runtime,ability.eventState?.resetsBasicAttackTimer);
+    const stackChange=stackRule?`${stackRule.label}: ${stacksAfter}/${stackRule.maxStacks}`:undefined;
     clock+=Math.max(0,positive(ability.castTimeSeconds));
+
+    const notes=[
+      ability.targetDebuff?`${ability.targetDebuff.label} applied for ${ability.targetDebuff.durationSeconds}s after this hit.`:'',
+      selfShield>0&&ability.eventState?.grantsSelfShield?`${ability.eventState.grantsSelfShield.label}: ${round(selfShield)} self-shield active.`:'',
+      attackReset?'Basic-attack timer reset event recorded.':'',
+      !result.complete?`Part of ${ability.name} could not be calculated, so this figure is a floor.`:'',
+    ].filter(Boolean);
 
     events.push({
       ...base,label:ability.name,status:'CAST',rawDamage:result.rawTotal,
       mitigatedDamage:result.mitigatedTotal,manaSpent:cost,manaRemaining:round(mana),
       targetHealthRemaining:round(health),skipped:result.skipped,
-      note:ability.targetDebuff
-        ?`${ability.targetDebuff.label} applied for ${ability.targetDebuff.durationSeconds}s after this hit.`
-        :result.complete?undefined:`Part of ${ability.name} could not be calculated, so this figure is a floor.`,
+      note:notes.length?notes.join(' '):undefined,
+      state:{...stateSnapshot(runtime,clock,[]),stackChange,attackTimerReset:attackReset||undefined},
     });
   });
 
@@ -239,6 +299,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
     manaRemaining:round(mana),targetHealthRemaining:round(health),kills:health<=0,
     completable:blocked.length===0,blocked,damageComplete,timingNote:TIMING_NOTE,
     resourceNote:resourceNote(startingMana,startingMana-mana,mana,blocked),
+    stateNote:STATE_NOTE,
   };
 }
 
@@ -298,12 +359,19 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
   active.push({effect,expiresAt});
 }
 
-function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
+function currentAttackSpeed(
+  model:AutoAttackModel,
+  stacks:number,
+  timed:ReturnType<typeof timedAutoSnapshot>,
+):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
     ?Number(model.attackSpeedCap)
     :ATTACK_SPEED_CAP;
-  return Math.min(cap,Math.max(0,model.attackSpeed+extra));
+  return Math.min(
+    cap,
+    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier),
+  );
 }
 
 function timedOutgoingMultiplier(input:ComboInput,clock:number):number{
@@ -320,6 +388,16 @@ function resourceNote(starting:number,used:number,remaining:number,blocked:{reas
   if(share<=0.1)return `Costs ${round(used)} of ${round(starting)} and leaves ${round(remaining)} — effectively empty, with nothing held back for a follow-up or a disengage.`;
   if(share<=0.35)return `Costs ${round(used)} of ${round(starting)}, leaving ${round(remaining)}. Enough for the combo, not enough to repeat it.`;
   return `Costs ${round(used)} of ${round(starting)}, leaving ${round(remaining)} — comfortable, with room for a follow-up.`;
+}
+
+function stateSnapshot(
+  runtime:ReturnType<typeof createCombatRuntime>,clock:number,timedAuto:string[],
+):ComboEventState{
+  return {
+    timedAuto,
+    targetMarks:activeMarks(runtime,clock),
+    selfShield:currentSelfShield(runtime,clock),
+  };
 }
 
 function applyDamage(damage:number,shield:number,health:number){
