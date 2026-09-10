@@ -30,5 +30,13 @@ jobs:
         run: npm ci
       - name: Typecheck
         run: npm run typecheck
-      - name: Combat tests
-        run: npm test
+      - name: Bot lane regression tests
+        run: node --import tsx --test tests/botlane.test.ts
+      - name: Existing combat regression tests
+        run: |
+          set -e
+          for f in tests/*.test.ts; do
+            if [ "$f" = "tests/botlane.test.ts" ]; then continue; fi
+            echo "Running $f"
+            node --import tsx --test "$f"
+          done
