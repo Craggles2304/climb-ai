@@ -69,15 +69,43 @@ test('Heal cannot push current health above maximum health',()=>{
   assert.equal(profile.heal,100);
 });
 
-test("Kog'Maw Q passive and W active produce champion-specific combat effects",()=>{
+test("Kog'Maw Q passive, Q shred and W active produce champion-specific combat effects",()=>{
   const profile=buildChampionCombatProfile(
     'KogMaw',['KOG_W'],{Q:3,W:2,E:1,R:1},{abilityPower:100},
   );
   assert.equal(profile.permanentAttackSpeedRatio,.20);
   assert.equal(profile.attackRangeBonus,150);
   assert.equal(profile.onHits.length,1);
-  // W rank 2 is 3.75% max HP + 1 percentage point per 100 AP.
   assert.equal(profile.onHits[0].targetMaxHealthRatio,.0475);
+  assert.equal(profile.abilityDebuffs.Q?.percentArmorReduction,.24);
+  assert.equal(profile.abilityDebuffs.Q?.percentMagicResistReduction,.24);
+  assert.equal(profile.abilityDebuffs.Q?.durationSeconds,4);
+});
+
+test("unlearned Kog'Maw Q does not grant its passive attack speed",()=>{
+  const profile=buildChampionCombatProfile(
+    'KogMaw',[],{Q:0,W:1,E:0,R:0},{abilityPower:0},
+  );
+  assert.equal(profile.permanentAttackSpeedRatio,0);
+  assert.equal(profile.abilityDebuffs.Q,undefined);
+});
+
+test('an ability resistance shred affects later hits but not the shred hit itself',()=>{
+  const result=simulateCombo({
+    sequence:['Q','AA'],
+    abilities:{Q:{
+      slot:'Q',name:'Shred',rank:1,cooldownSeconds:8,cost:0,castTimeSeconds:.25,
+      damage:[{label:'Q',type:'PHYSICAL',raw:100}],
+      targetDebuff:{
+        label:'20% shred',durationSeconds:4,
+        percentArmorReduction:.20,percentMagicResistReduction:.20,
+      },
+    }},
+    autoAttack:{damage:100,attackSpeed:1},caster:{mana:0},
+    target:{health:1000,maxHealth:1000,armor:100,magicResist:100},
+  });
+  assert.equal(result.events[0].mitigatedDamage,50);
+  assert.equal(result.events[1].mitigatedDamage,55.56);
 });
 
 test('current-health rune rules are evaluated event by event',()=>{
@@ -91,8 +119,8 @@ test('current-health rune rules are evaluated event by event',()=>{
     target:{health:1000,maxHealth:1000,armor:0,magicResist:0},
     damageRules:profile.damageRules,
   });
-  assert.equal(result.events[0].rawDamage,324); // Cut Down while target >60%.
-  assert.equal(result.events[2].rawDamage,324); // Coup once target falls <40%.
+  assert.equal(result.events[0].rawDamage,324);
+  assert.equal(result.events[2].rawDamage,324);
 });
 
 test('Exhaust reduces ordinary damage during its active window but not true damage',()=>{
