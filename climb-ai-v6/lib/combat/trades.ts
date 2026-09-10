@@ -164,10 +164,18 @@ export function runTrade(
 
     if(scenario.abilitiesOnce&&!scenario.autosOnly)break;
 
+    const resourceCost=positive(actor.autoAttack.resourceCost??0);
+    if(resourceCost>mana+1e-9){
+      unmodelled.push(`Basic attacks in this champion state cost ${round(resourceCost)} resource; only ${round(mana)} remained, so the damage race stopped rather than silently firing an unaffordable attack.`);
+      incomplete=true;
+      break;
+    }
+
     const speed=currentAttackSpeed(actor.autoAttack,attackStacks);
     const interval=attackInterval(speed);
     if(interval<=0)break;
 
+    mana-=resourceCost;
     const nextAuto=autoCount+1;
     const components:DamageComponent[]=[
       {label:'Auto attack',type:'PHYSICAL',raw:positive(actor.autoAttack.damage)},
@@ -251,7 +259,10 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
 
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
-  return Math.min(3,Math.max(0,model.attackSpeed+extra));
+  const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
+    ?Number(model.attackSpeedCap)
+    :3;
+  return Math.min(cap,Math.max(0,model.attackSpeed+extra));
 }
 
 function outgoingMultiplier(actor:TradeSide,clock:number):number{
