@@ -37,6 +37,10 @@ export interface TradeSide{
   autoAttack:AutoAttackModel;
   mana:number;
   maxHealth:number;
+  /** Current health lets the Lab's HP slider affect trade outcomes as well. */
+  currentHealth?:number;
+  /** Temporary shields are consumed before current health. */
+  shield?:number;
   resistances:TargetResistances;
   penetration?:Penetration;
   abilityHaste?:number;
@@ -72,11 +76,9 @@ export interface TradeReport{
 
 const MODEL_NOTE=
   'A damage race, not a fight: both sides stand still and commit, every ability '+
-  'hits, nothing is interrupted and no crowd control exists. It also assumes '+
-  'both champions are in range of each other the whole time, which is a large '+
-  'assumption across a big range gap — a melee champion losing this race may '+
-  'simply never get to start it. It answers "if we both commit for this long, '+
-  'who comes out ahead", which is not the same question as who wins the lane.';
+  'hits, nothing is interrupted and no crowd control exists. It assumes both '+
+  'champions remain in range. Current HP and temporary shields are respected, '+
+  'but movement, peel and crowd-control timing are not.';
 
 export function compareTrades(
   you:TradeSide,them:TradeSide,scenarios=TRADE_SCENARIOS,
@@ -108,10 +110,18 @@ export function runTrade(
   const budget=scenario.budgetSeconds??Infinity;
   const disabled=new Set(actor.disabled??[]);
   const targetMaxHealth=Math.max(1,positive(target.maxHealth));
+  const startingHealth=Math.min(
+    targetMaxHealth,
+    Math.max(0,finiteOr(target.currentHealth,targetMaxHealth)),
+  );
+  const startingShield=Math.max(0,finiteOr(target.shield,0));
+  const startingPool=Math.max(1,startingHealth+startingShield);
 
   let clock=0;
   let mana=positive(actor.mana);
   const startingMana=mana;
+  let health=startingHealth;
+  let shield=startingShield;
   let dealt=0;
   let autoCount=0;
   let attackStacks=0;
@@ -131,23 +141,23 @@ export function runTrade(
   const used=new Set<AbilitySlot>();
   const maxActions=scenario.maxActions??200;
 
-  while(clock<budget&&steps.length<maxActions&&dealt<targetMaxHealth){
-    const currentHealth=Math.max(0,targetMaxHealth-dealt);
+  while(clock<budget&&steps.length<maxActions&&health>0){
     const timedMultiplier=outgoingMultiplier(actor,clock);
     const candidate=scenario.autosOnly
       ?null
       :bestAbility(
         actor,target,pen,clock,readyAt,mana,used,disabled,scenario,
-        currentHealth,targetMaxHealth,autoCount,timedMultiplier,
+        health,targetMaxHealth,autoCount,timedMultiplier,
       );
 
     if(candidate){
       mana-=positive(candidate.ability.cost);
-      dealt+=candidate.damage;
+      const applied=applyToPool(candidate.damage,shield,health);
+      shield=applied.shield;health=applied.health;dealt+=applied.applied;
       if(candidate.incomplete)incomplete=true;
       steps.push({
         atSeconds:round(clock),label:`${candidate.slot} ${candidate.ability.name}`,
-        damage:round(candidate.damage),
+        damage:round(applied.applied),
       });
       readyAt.set(candidate.slot,clock+candidate.ability.cooldownSeconds*haste);
       used.add(candidate.slot);
@@ -167,27 +177,27 @@ export function runTrade(
     ];
     for(const effect of actor.autoAttack.onHits??[]){
       if(effect.everyNthAttack&&nextAuto%effect.everyNthAttack!==0)continue;
-      components.push(resolveOnHit(effect,currentHealth,targetMaxHealth));
+      components.push(resolveOnHit(effect,health,targetMaxHealth));
     }
     for(const proc of actor.autoAttack.autoProcs??[])
       if(proc.procAtAuto===nextAuto)
-        components.push(resolveOnHit(proc.damage,currentHealth,targetMaxHealth));
+        components.push(resolveOnHit(proc.damage,health,targetMaxHealth));
     const stack=actor.autoAttack.attackStack;
     if(stack?.onHitAtMax&&attackStacks>=stack.maxStacks)
-      components.push(resolveOnHit(stack.onHitAtMax,currentHealth,targetMaxHealth));
+      components.push(resolveOnHit(stack.onHitAtMax,health,targetMaxHealth));
 
     const adjusted=applyDamageRules(
-      components,actor.damageRules??[],currentHealth,targetMaxHealth,autoCount,timedMultiplier,
+      components,actor.damageRules??[],health,targetMaxHealth,autoCount,timedMultiplier,
     );
     const result=mitigateAll(adjusted,target.resistances,pen);
-    const damage=result.mitigatedTotal;
-    dealt+=damage;
+    const applied=applyToPool(result.mitigatedTotal,shield,health);
+    shield=applied.shield;health=applied.health;dealt+=applied.applied;
     autoCount=nextAuto;
     if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
     steps.push({
       atSeconds:round(clock),
       label:components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
-      damage:round(damage),
+      damage:round(applied.applied),
     });
     clock+=interval;
   }
@@ -195,7 +205,7 @@ export function runTrade(
   return {
     champion:actor.champion,
     damageDealt:round(dealt),
-    healthSharePercent:round(Math.min(100,dealt/targetMaxHealth*100)),
+    healthSharePercent:round(Math.min(100,dealt/startingPool*100)),
     manaUsed:round(startingMana-mana),manaLeft:round(mana),steps,incomplete,
     unmodelled:[...new Set(unmodelled)],
   };
@@ -231,7 +241,7 @@ function bestAbility(
 
 function currentAttackSpeed(model:AutoAttackModel,stacks:number):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
-  return Math.min(2.5,Math.max(0,model.attackSpeed+extra));
+  return Math.min(3,Math.max(0,model.attackSpeed+extra));
 }
 
 function outgoingMultiplier(actor:TradeSide,clock:number):number{
@@ -239,6 +249,18 @@ function outgoingMultiplier(actor:TradeSide,clock:number):number{
   if(duration<=0||clock>=duration)return 1;
   const value=actor.outgoingDamageMultiplier??1;
   return Number.isFinite(value)?Math.max(0,value):1;
+}
+
+function applyToPool(damage:number,shield:number,health:number){
+  const incoming=Math.max(0,finiteOr(damage,0));
+  const absorbed=Math.min(shield,incoming);
+  const afterShield=incoming-absorbed;
+  const hpDamage=Math.min(health,afterShield);
+  return {
+    shield:round(Math.max(0,shield-absorbed)),
+    health:round(Math.max(0,health-hpDamage)),
+    applied:round(absorbed+hpDamage),
+  };
 }
 
 /* --------------------------------------------------------------- verdict -- */
@@ -255,8 +277,8 @@ function explain(
   scenario:TradeScenario,you:TradeSideResult,them:TradeSideResult,
   verdict:TradeVerdict,margin:number,
 ):string{
-  const head=`${you.champion} takes ${you.healthSharePercent}% of their health, `+
-    `${them.champion} takes ${them.healthSharePercent}% of yours`;
+  const head=`${you.champion} removes ${you.healthSharePercent}% of their current effective pool, `+
+    `${them.champion} removes ${them.healthSharePercent}% of yours`;
   const floor=you.incomplete||them.incomplete
     ?' Both figures are floors — a damage component could not be calculated.':'';
   if(verdict==='EVEN')return `${head} — within ${EVEN_TRADE_POINTS} points, so this trade comes down to who starts it.${floor}`;
@@ -288,5 +310,6 @@ function findFlip(outcomes:TradeOutcome[]):string|null{
 }
 
 const signed=(n:number)=>`${n>0?'+':''}${n}`;
+const finiteOr=(n:number|undefined,fallback:number)=>Number.isFinite(n)?n as number:fallback;
 const positive=(n:number)=>Number.isFinite(n)&&n>0?n:0;
 const round=(n:number)=>Math.round(n*10)/10;
