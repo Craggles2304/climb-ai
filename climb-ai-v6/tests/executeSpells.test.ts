@@ -66,7 +66,7 @@ test('Garen execute is not silently carried into an unreviewed future patch',()=
   assert.ok(profile.unmodelledEffects.includes('GAREN_R_EXECUTE_PATCH_UNVALIDATED'));
 });
 
-test('Viego primary R adds current-patch missing-health physical component from bonus AD',()=>{
+test('Viego primary R adds current-patch missing-health and supported on-hit components',()=>{
   const ranks={Q:5,R:3};
   const profile=buildChampionCombatProfile('Viego',['VIEGO_R_PRIMARY'],ranks,{abilityPower:0,bonusAttackDamage:100,level:18});
   const r=ability('Heartbreaker','R',3);
@@ -76,14 +76,35 @@ test('Viego primary R adds current-patch missing-health physical component from 
   const kit=kitWith(r);
   kit.models.R!.damage=r.damage;
 
-  applyExecuteChampionSpells('Viego',kit,profile,{patch:'16.18.1',bonusAttackDamage:100,ranks});
+  applyExecuteChampionSpells('Viego',kit,profile,{
+    patch:'16.18.1',bonusAttackDamage:100,ranks,
+    itemOnHits:[{label:'Test item on-hit',type:'MAGIC',flatDamage:50,appliesFromAbility:true}],
+  });
 
-  assert.equal(kit.models.R?.dynamicDamage?.[0].targetMissingHealthRatio,.25);
+  const dynamic=kit.models.R?.dynamicDamage??[];
+  assert.equal(dynamic[0].targetMissingHealthRatio,.25);
+  assert.ok(dynamic.some(x=>/Viego Q passive/i.test(x.label)),'Q passive is forwarded');
+  assert.ok(dynamic.some(x=>/Test item on-hit/i.test(x.label)),'supported item on-hit is forwarded');
   assert.ok(profile.modelledEffects.includes('VIEGO_R_MISSING_HEALTH'));
-  assert.ok(profile.unmodelledEffects.includes('VIEGO_R_PRIMARY_ON_HIT'));
+  assert.ok(profile.modelledEffects.includes('VIEGO_R_PRIMARY_ON_HIT'));
+  assert.ok(!profile.unmodelledEffects.includes('VIEGO_R_PRIMARY_ON_HIT'));
 });
 
-test('Viego missing-health bonus is evaluated after earlier damage in the sequence',()=>{
+test('Viego R does not forward attack-only champion steroids',()=>{
+  const ranks={Q:5,R:3};
+  const profile=buildChampionCombatProfile('Viego',['VIEGO_R_PRIMARY'],ranks,{abilityPower:0,bonusAttackDamage:0,level:18});
+  profile.onHits.push({label:'Attack-only test steroid',type:'MAGIC',flatDamage:999});
+  const r=ability('Heartbreaker','R',3);
+  r.damage=[{label:'BaseHeartbreaker',type:'PHYSICAL',raw:0}];
+  r.damageType='PHYSICAL';r.damageTypes=['PHYSICAL'];r.confidence=assessConfidence({});
+  const kit=kitWith(r);kit.models.R!.damage=r.damage;
+
+  applyExecuteChampionSpells('Viego',kit,profile,{patch:'16.18.1',bonusAttackDamage:0,ranks});
+
+  assert.ok(!(kit.models.R?.dynamicDamage??[]).some(x=>/Attack-only test steroid/.test(x.label)));
+});
+
+test('Viego missing-health and on-hit package is evaluated after earlier damage in the sequence',()=>{
   const ranks={Q:5,R:3};
   const profile=buildChampionCombatProfile('Viego',['VIEGO_R_PRIMARY'],ranks,{abilityPower:0,bonusAttackDamage:100,level:18});
   const r=ability('Heartbreaker','R',3);
@@ -98,6 +119,7 @@ test('Viego missing-health bonus is evaluated after earlier damage in the sequen
     autoAttack:{damage:400,attackSpeed:1},caster:{mana:0},
     target:{health:1000,maxHealth:1000,armor:0,magicResist:0},
   });
-  // R sees 400 missing HP and adds 25% of it.
-  assert.equal(result.events[1].rawDamage,100);
+  // R sees 400 missing HP: 25% = 100. Viego Q rank 5 then applies 6% of
+  // the target's CURRENT 600 HP = 36, for 136 raw total on R.
+  assert.equal(result.events[1].rawDamage,136);
 });
