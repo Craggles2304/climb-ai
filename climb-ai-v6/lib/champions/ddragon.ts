@@ -61,6 +61,14 @@ export interface LevelStats{
   level:number;
   hp:number;armor:number;magicResist:number;
   attackDamage:number;attackSpeed:number;
+  /**
+   * Base attack speed and the bonus ratio from levels, kept apart because
+   * League adds bonus attack speed additively: AS = base x (1 + sum of
+   * bonuses). Multiplying the level-scaled figure by an item's bonus would
+   * quietly overstate every attack-speed item.
+   */
+  baseAttackSpeed:number;
+  bonusAttackSpeedRatio:number;
   moveSpeed:number;attackRange:number;
   /** Health scaled by resistances — the number that decides who wins a trade. */
   effectiveHpVsPhysical:number;
@@ -74,12 +82,15 @@ export function statsAtLevel(s:ChampionStatBlock,level:number):LevelStats{
   const armor=grow(s.armor,s.armorperlevel,n);
   const magicResist=grow(s.spellblock,s.spellblockperlevel,n);
   // Attack speed grows as a percentage of the base value, not a flat add.
-  const attackSpeed=s.attackspeed*(1+(s.attackspeedperlevel/100)*growthMultiplier(n));
+  const bonusAttackSpeedRatio=(s.attackspeedperlevel/100)*growthMultiplier(n);
+  const attackSpeed=s.attackspeed*(1+bonusAttackSpeedRatio);
   return {
     level:n,
     hp:round(hp),armor:round(armor),magicResist:round(magicResist),
     attackDamage:round(grow(s.attackdamage,s.attackdamageperlevel,n)),
     attackSpeed:Number(attackSpeed.toFixed(3)),
+    baseAttackSpeed:s.attackspeed,
+    bonusAttackSpeedRatio:Number(bonusAttackSpeedRatio.toFixed(4)),
     moveSpeed:s.movespeed,attackRange:s.attackrange,
     effectiveHpVsPhysical:round(hp*(1+armor/100)),
     effectiveHpVsMagic:round(hp*(1+magicResist/100)),

@@ -548,3 +548,30 @@ img.logo-sm{width:132px}
   .matchup-fact-values,.pct-grid{grid-template-columns:1fr}
   .spike{grid-template-columns:46px 1fr;gap:10px}
 }
+
+/* --- Main champion page: tags, item rows, matchup ranking --- */
+.tag-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.tag-chip{padding:8px 12px;border-radius:999px;border:1px solid var(--border);background:rgba(255,255,255,.04);color:var(--muted);font-size:11px;font-weight:800;letter-spacing:.06em}
+.tag-chip:hover{color:var(--text);border-color:rgba(var(--accent-2-rgb),.35)}
+.tag-chip.active{color:var(--text);border-color:rgba(var(--accent-rgb),.6);background:rgba(var(--accent-rgb),.14)}
+.tag-chip.clear{color:var(--warn);border-color:rgba(255,180,84,.28)}
+.item-row{cursor:pointer;transition:background .15s}
+.item-row:hover{background:rgba(255,255,255,.035)}
+.item-row.active{background:rgba(var(--accent-rgb),.13)}
+.item-row.active td:first-child{box-shadow:inset 3px 0 0 var(--accent-2)}
+.matchup-rank-list{display:grid;gap:8px;margin-top:16px}
+.matchup-rank{border:1px solid var(--border);border-radius:14px;background:rgba(255,255,255,.025);overflow:hidden}
+.matchup-rank-head{width:100%;display:grid;grid-template-columns:64px 1fr auto;gap:14px;align-items:center;padding:13px 16px;background:none;border:0;color:var(--text);text-align:left}
+.matchup-rank-head:hover{background:rgba(255,255,255,.03)}
+.rank-score{font-size:16px;font-weight:950;letter-spacing:-.03em;padding:6px 0;border-radius:9px;text-align:center;border:1px solid var(--border)}
+.rank-name{font-size:14px;font-weight:800}
+.rank-name small{display:block;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:.06em;margin-top:3px}
+.rank-toggle{font-size:10px;letter-spacing:.12em;color:var(--accent-2);font-weight:900}
+.matchup-rank-body{padding:4px 16px 16px;display:grid;gap:10px;border-top:1px solid var(--border)}
+.rank-contribution{padding:12px 0;border-bottom:1px solid var(--border)}
+.rank-contribution:last-child{border-bottom:0}
+.rank-contribution-head{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.rank-contribution p{margin:6px 0 0;font-size:13px;line-height:1.5}
+@media(max-width:900px){
+  .matchup-rank-head{grid-template-columns:56px 1fr auto;gap:10px;padding:12px}
+}

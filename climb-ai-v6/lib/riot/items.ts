@@ -44,3 +44,34 @@ export function completedItemIdsFrom(data:Record<string,DataDragonItem>):Set<num
   }
   return ids;
 }
+
+/**
+ * Data Dragon ships game-mode variants of the same item under different ids —
+ * The Collector is both 6676 and 667666, Manamune both 3004 and 323004 — and
+ * some of those variants still claim map 11, so the Summoner's Rift filter
+ * does not remove them. They also carry different gold costs, so keeping both
+ * puts one item twice in a "best value" table with two different answers.
+ *
+ * The canonical Rift item is always the lowest id: mode variants are built by
+ * prefixing it (22…, 32…, 77…) or repeating digits.
+ */
+export function dedupeByName<T extends {name:string}>(
+  items:Record<string,T>,
+):Record<string,T>{
+  const bestIdForName=new Map<string,number>();
+  for(const id of Object.keys(items)){
+    const name=items[id].name;
+    const numeric=Number(id);
+    if(!Number.isFinite(numeric))continue;
+    const current=bestIdForName.get(name);
+    if(current===undefined||numeric<current)bestIdForName.set(name,numeric);
+  }
+
+  const out:Record<string,T>={};
+  for(const [id,item] of Object.entries(items)){
+    const numeric=Number(id);
+    if(!Number.isFinite(numeric)){out[id]=item;continue}
+    if(bestIdForName.get(item.name)===numeric)out[id]=item;
+  }
+  return out;
+}

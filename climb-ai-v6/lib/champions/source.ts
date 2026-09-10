@@ -1,5 +1,6 @@
 import 'server-only';
 import {ChampionDetail,ChampionListEntry} from './ddragon';
+import {isCompletedItem,dedupeByName} from '../riot/items';
 
 /**
  * Data Dragon access for the champion features.
@@ -53,6 +54,31 @@ export async function resolveChampionId(input:string,patch?:string):Promise<stri
 }
 
 const normalise=(s:string)=>s.toLowerCase().replace(/[^a-z0-9]/g,'');
+
+/**
+ * Completed items only. The full catalogue is mostly components, and ranking
+ * a B.F. Sword against Infinity Edge would be noise — the completed-item rule
+ * already exists for match item timings, so it is reused rather than rewritten.
+ */
+export async function itemCatalogue(patch?:string):Promise<Record<string,DataDragonItemFull>>{
+  const v=patch??await latestPatch();
+  const data=await ddragon<{data:Record<string,DataDragonItemFull>}>(`${base(v)}/item.json`);
+  const out:Record<string,DataDragonItemFull>={};
+  for(const [id,item] of Object.entries(data.data))
+    if(isCompletedItem(item))out[id]=item;
+  // Mode variants survive the Rift filter and would list the same item twice.
+  return dedupeByName(out);
+}
+
+export interface DataDragonItemFull{
+  name:string;
+  gold?:{total?:number};
+  stats?:Record<string,number>;
+  into?:string[];
+  from?:string[];
+  maps?:Record<string,boolean>;
+  tags?:string[];
+}
 
 export async function championDetail(id:string,patch?:string):Promise<ChampionDetail>{
   const v=patch??await latestPatch();
