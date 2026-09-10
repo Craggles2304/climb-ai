@@ -21,6 +21,7 @@ import {
   buildChampionCombatProfile,type ChampionCombatProfile,
 } from '@/lib/combat/championEffects';
 import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
+import {timedAutoSnapshot} from '@/lib/combat/state';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -189,6 +190,7 @@ export async function POST(req:NextRequest){
       penetration:yourPen,
       abilityHaste:yourHaste,
       damageRules:yourRuneFx.damageRules,
+      initialTargetMarks:yourChampionFx.initialTargetMarks,
       outgoingDamageMultiplier:theirSummonerFx.exhaustDamageMultiplier,
       outgoingDamageMultiplierDurationSeconds:theirSummonerFx.exhaustDurationSeconds,
     });
@@ -222,6 +224,7 @@ export async function POST(req:NextRequest){
       penetration:pen,
       abilityHaste:haste,
       damageRules:runeFx.damageRules,
+      initialTargetMarks:championFx.initialTargetMarks,
       outgoingDamageMultiplier:opposingSummonerFx.exhaustDamageMultiplier,
       outgoingDamageMultiplierDurationSeconds:opposingSummonerFx.exhaustDurationSeconds,
     });
@@ -274,11 +277,11 @@ export async function POST(req:NextRequest){
       ],
       you:sideReport(
         yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
-        yourCurrent,yourShield,yourChampionFx.attackRangeBonus,yourRanks,
+        yourCurrent,yourShield,yourChampionFx.attackRangeBonus,yourRanks,yourChampionFx,
       ),
       them:sideReport(
         theirChampion,them,theirStats,theirKit,theirLoadout,theirHaste,
-        theirCurrent,theirShield,theirChampionFx.attackRangeBonus,theirRanks,
+        theirCurrent,theirShield,theirChampionFx.attackRangeBonus,theirRanks,theirChampionFx,
       ),
       combo,
       trades,
@@ -300,6 +303,8 @@ export async function POST(req:NextRequest){
           modelledChampionEffects:yourChampionFx.modelledEffects,
           unmodelledChampionEffects:yourChampionFx.unmodelledEffects,
           championMechanics:yourChampionFx.mechanicKinds,
+          timedChampionStates:yourChampionFx.timedAutoStates.map(x=>`${x.label} · ${x.durationSeconds}s`),
+          targetMarks:yourChampionFx.initialTargetMarks.map(x=>`${x.label} · ${x.durationSeconds}s`),
           itemOnHits:yourLoadout.onHits.map(x=>x.label),
           notes:yourEffectNotes,
         },
@@ -311,6 +316,8 @@ export async function POST(req:NextRequest){
           modelledChampionEffects:theirChampionFx.modelledEffects,
           unmodelledChampionEffects:theirChampionFx.unmodelledEffects,
           championMechanics:theirChampionFx.mechanicKinds,
+          timedChampionStates:theirChampionFx.timedAutoStates.map(x=>`${x.label} · ${x.durationSeconds}s`),
+          targetMarks:theirChampionFx.initialTargetMarks.map(x=>`${x.label} · ${x.durationSeconds}s`),
           itemOnHits:theirLoadout.onHits.map(x=>x.label),
           notes:theirEffectNotes,
         },
@@ -323,7 +330,7 @@ export async function POST(req:NextRequest){
         yourChampionEffects:you.activeChampionEffects,enemyChampionEffects:them.activeChampionEffects,
         yourShield,enemyShield:theirShield,
       },
-      notes:[DAMAGE_TYPE_NOTE,combo.timingNote,...setupApproximations],
+      notes:[DAMAGE_TYPE_NOTE,combo.timingNote,combo.stateNote,...setupApproximations],
     });
   }catch(err){
     const {title,body:detail}=humanError(err);
@@ -363,6 +370,9 @@ function applyChampionAbilityState(
     const debuff=profile.abilityDebuffs[slot];
     if(debuff)model.targetDebuff=debuff;
 
+    const eventState=profile.abilityEventStates[slot];
+    if(eventState)model.eventState={...model.eventState,...eventState};
+
     const modifier=profile.abilityModifiers[slot];
     if(!modifier)continue;
 
@@ -390,11 +400,8 @@ function applyChampionAbilityState(
       model.cost=ability.cost;
     }
 
-    if(modifier.dynamicDamage?.length)
-      model.dynamicDamage=[...modifier.dynamicDamage];
-
-    if(modifier.note)
-      ability.variantNote=[ability.variantNote,modifier.note].filter(Boolean).join(' ');
+    if(modifier.dynamicDamage?.length)model.dynamicDamage=[...modifier.dynamicDamage];
+    if(modifier.note)ability.variantNote=[ability.variantNote,modifier.note].filter(Boolean).join(' ');
   }
 }
 
@@ -455,6 +462,8 @@ function autoAttackModel(
     onHits:[...loadout.onHits,...championFx.onHits],
     attackStack:runeFx.attackStack,
     autoProcs:[...runeFx.autoProcs,...championFx.autoProcs],
+    timedStates:championFx.timedAutoStates,
+    eventState:championFx.autoEventState,
   };
 }
 
@@ -479,8 +488,14 @@ function sideReport(
   effectiveShield:number,
   attackRangeBonus:number,
   ranks:Record<AbilitySlot,number>,
+  championFx:ChampionCombatProfile,
 ){
   const base=statsAtLevel(champion.stats,input.level);
+  const timed=timedAutoSnapshot(championFx.timedAutoStates,0);
+  const displayedAttackSpeed=Math.min(
+    championFx.attackSpeedCap??ATTACK_SPEED_CAP,
+    Math.max(0,(stats.attackSpeed+timed.attackSpeedFlat)*timed.attackSpeedMultiplier),
+  );
   return {
     id:champion.id,
     name:champion.name,
@@ -506,7 +521,7 @@ function sideReport(
       healthNow:round(effectiveCurrentHealth),
       mana:round(stats.mana),
       manaNow:round(stats.mana*(input.resourcePercent/100)),
-      attackSpeed:round3(stats.attackSpeed),
+      attackSpeed:round3(displayedAttackSpeed),
       attackRange:base.attackRange+attackRangeBonus,
       moveSpeed:round(stats.moveSpeed),
     },
