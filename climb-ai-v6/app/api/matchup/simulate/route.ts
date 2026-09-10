@@ -24,6 +24,7 @@ import {
 } from '@/lib/combat/championEffects';
 import {applyChampionAbilityState} from '@/lib/combat/championAbilityState';
 import {applyConditionalChampionSpells} from '@/lib/combat/conditionalChampionSpells';
+import {applyExecuteChampionSpells} from '@/lib/combat/executeChampionSpells';
 import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
 import {timedAutoSnapshot} from '@/lib/combat/state';
 
@@ -144,6 +145,16 @@ export async function POST(req:NextRequest){
     applyChampionAbilityState(theirKit,theirChampionFx);
     applyConditionalChampionSpells(yourChampion.id,you.activeChampionEffects,yourKit,yourChampionFx);
     applyConditionalChampionSpells(theirChampion.id,them.activeChampionEffects,theirKit,theirChampionFx);
+    applyExecuteChampionSpells(yourChampion.id,yourKit,yourChampionFx,{
+      patch,
+      bonusAttackDamage:you.bonusAttackDamage+yourLoadout.stats.attackDamage,
+      ranks:yourRanks,
+    });
+    applyExecuteChampionSpells(theirChampion.id,theirKit,theirChampionFx,{
+      patch,
+      bonusAttackDamage:them.bonusAttackDamage+theirLoadout.stats.attackDamage,
+      ranks:theirRanks,
+    });
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
     const theirBase=statsAtLevel(theirChampion.stats,them.level);
