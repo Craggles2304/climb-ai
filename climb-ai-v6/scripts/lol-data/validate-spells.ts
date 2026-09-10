@@ -24,7 +24,8 @@ const RETRIES=4;
 /** A mid-game statline, so ratio terms contribute something visible. */
 const TEST_CASTER:CombatStats={
   abilityPower:200,attackDamage:150,armor:80,magicResist:60,
-  maxHealth:2200,critChance:0.25,attackSpeed:1.1,moveSpeed:340,
+  maxHealth:2200,critChance:0.25,critDamageMultiplier:1.75,
+  attackSpeed:1.1,moveSpeed:340,mana:900,
 };
 
 const TEST_LEVEL=11;
@@ -75,6 +76,7 @@ async function validateChampion(id:string,patch:string):Promise<ChampionResult>{
         rank:TEST_RANK,
         dataValues:spell.dataValues,
         calculations:spell.calculations,
+        effectAmounts:spell.effectAmounts,
       });
       if(result.value!==null&&Number.isFinite(result.value))resolved++;
       else{blocked++;reasons.push(...result.unmodelled)}

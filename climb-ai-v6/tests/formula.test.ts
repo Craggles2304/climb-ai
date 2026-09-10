@@ -16,7 +16,8 @@ import {
 
 const stats=(over:Partial<CombatStats>={}):CombatStats=>({
   abilityPower:0,attackDamage:0,armor:0,magicResist:0,
-  maxHealth:0,critChance:0,attackSpeed:0,moveSpeed:0,...over,
+  maxHealth:0,critChance:0,critDamageMultiplier:1.75,
+  attackSpeed:0,moveSpeed:0,mana:0,...over,
 });
 
 const ctx=(over:Partial<EvalContext>={}):EvalContext=>({
@@ -171,12 +172,12 @@ test('an unmapped stat enum is refused, not guessed at',()=>{
   // A wrong stat produces a plausible wrong number, which is worse than no
   // number at all.
   const unknown={
-    mFormulaParts:[{mStat:9,mCoefficient:1,__type:'StatByCoefficientCalculationPart'}],
+    mFormulaParts:[{mStat:31,mCoefficient:1,__type:'StatByCoefficientCalculationPart'}],
     __type:'GameCalculation',
   };
   const result=evaluateCalculation(unknown,ctx({caster:stats({abilityPower:500})}));
   assert.equal(result.value,null);
-  assert.match(result.unmodelled[0],/stat #9/);
+  assert.match(result.unmodelled[0],/stat #31/);
 });
 
 test('armor scaling reads the caster armor',()=>{
@@ -306,4 +307,132 @@ test('one unmodelled part poisons the whole result',()=>{
   }));
   assert.equal(result.value,null);
   assert.ok(result.unmodelled.length>0);
+});
+
+/* --- part types added after measuring what blocked coverage ------------- */
+
+const calc=(parts:unknown[])=>({mFormulaParts:parts,__type:'GameCalculation'});
+
+test('a keyed reference evaluates the calculation it points at',()=>{
+  const result=evaluateCalculation(
+    calc([{mSpellCalculationKey:'Base',__type:'{f3cbe7b2}'}]),
+    ctx({rank:1,dataValues:[{name:'BaseDamage',values:[0,75]}],
+      calculations:{Base:calc([{mDataValue:'BaseDamage',__type:'NamedDataValueCalculationPart'}])}}));
+  assert.equal(result.value,75);
+});
+
+test('a keyed reference to something absent is named, not zeroed',()=>{
+  const result=evaluateCalculation(
+    calc([{mSpellCalculationKey:'Missing',__type:'{f3cbe7b2}'}]),ctx({calculations:{}}));
+  assert.equal(result.value,null);
+  assert.match(result.unmodelled[0],/"Missing"/);
+});
+
+test('a per-level value table is read by champion level',()=>{
+  const table=calc([{values:[16,26,36,46,56],__type:'ByCharLevelFormulaCalculationPart'}]);
+  assert.equal(evaluateCalculation(table,ctx({level:1})).value,16);
+  assert.equal(evaluateCalculation(table,ctx({level:3})).value,36);
+});
+
+test('a per-level table that does not reach this level is reported',()=>{
+  const short=calc([{values:[10,20],__type:'ByCharLevelFormulaCalculationPart'}]);
+  const result=evaluateCalculation(short,ctx({level:11}));
+  assert.equal(result.value,null);
+  assert.match(result.unmodelled[0],/does not cover this level/);
+});
+
+test('effect values read the unnamed per-rank rows',()=>{
+  const result=evaluateCalculation(
+    calc([{mEffectIndex:1,__type:'EffectValueCalculationPart'}]),
+    ctx({rank:2,effectAmounts:[[],[5,10,20,30],[1,2,3,4]]}));
+  assert.equal(result.value,20,'row 1, rank 2');
+});
+
+test('effect values refuse rather than guess when not supplied',()=>{
+  const result=evaluateCalculation(
+    calc([{mEffectIndex:1,__type:'EffectValueCalculationPart'}]),ctx());
+  assert.equal(result.value,null);
+  assert.match(result.unmodelled[0],/were not supplied/);
+});
+
+test('resource scaling reads the caster mana pool',()=>{
+  const result=evaluateCalculation(
+    calc([{mCoefficient:0.02,__type:'AbilityResourceByCoefficientCalculationPart'}]),
+    ctx({caster:stats({mana:1500})}));
+  assert.equal(result.value,30);
+});
+
+test('a clamped sum is held between its floor and ceiling',()=>{
+  const clamped=(attackSpeed:number)=>evaluateCalculation(
+    calc([{
+      mCeiling:2,mFloor:1,
+      mSubparts:[
+        {mStat:4,mCoefficient:1,__type:'StatByCoefficientCalculationPart'},
+        {mNumber:0,__type:'NumberCalculationPart'},
+      ],
+      __type:'ClampSubPartsCalculationPart',
+    }]),ctx({caster:stats({attackSpeed})})).value;
+  assert.equal(clamped(0.5),1,'below the floor clamps up');
+  assert.equal(clamped(1.5),1.5,'inside the band passes through');
+  assert.equal(clamped(4),2,'above the ceiling clamps down');
+});
+
+test('the cooldown multiplier is 1 with no ability haste',()=>{
+  const cd=calc([{__type:'CooldownMultiplierCalculationPart'}]);
+  assert.equal(evaluateCalculation(cd,ctx()).value,1);
+  // Standard League haste maths: 100/(100+haste).
+  assert.equal(evaluateCalculation(cd,ctx({abilityHaste:100})).value,0.5);
+});
+
+test('crit damage uses the multiplier stat, not ability power',()=>{
+  // Garen's CriticalDamage is TotalDamage x (1 + CritMod x (stat9 - 1)).
+  // Reading stat 9 as ability power would make this nonsense.
+  const garen={
+    mMultiplier:{
+      mSubparts:[
+        {mNumber:1,__type:'NumberCalculationPart'},
+        {
+          mPart1:{mDataValue:'CritMod',__type:'NamedDataValueCalculationPart'},
+          mPart2:{mSubparts:[
+            {mStat:9,mCoefficient:1,__type:'StatByCoefficientCalculationPart'},
+            {mNumber:-1,__type:'NumberCalculationPart'},
+          ],__type:'SumOfSubPartsCalculationPart'},
+          __type:'ProductOfSubPartsCalculationPart',
+        },
+      ],
+      __type:'SumOfSubPartsCalculationPart',
+    },
+    mModifiedGameCalculation:'TotalDamage',
+    __type:'GameCalculationModified',
+  };
+  const result=evaluateCalculation(garen,ctx({
+    caster:stats({critDamageMultiplier:1.75,abilityPower:999}),
+    rank:1,
+    dataValues:[{name:'CritMod',values:[1,1]},{name:'Base',values:[0,100]}],
+    calculations:{TotalDamage:calc([{mDataValue:'Base',__type:'NamedDataValueCalculationPart'}])},
+  }));
+  // 100 x (1 + 1 x (1.75 - 1)) = 175
+  assert.equal(result.value,175);
+});
+
+test('the newly mapped stat enums read the right stats',()=>{
+  const byStat=(mStat:number,caster:Partial<CombatStats>)=>evaluateCalculation(
+    calc([{mStat,mCoefficient:1,__type:'StatByCoefficientCalculationPart'}]),
+    ctx({caster:stats(caster)})).value;
+  assert.equal(byStat(4,{attackSpeed:1.4}),1.4,'4 is attack speed');
+  assert.equal(byStat(6,{magicResist:55}),55,'6 is magic resist');
+  assert.equal(byStat(7,{moveSpeed:345}),345,'7 is move speed');
+  assert.equal(byStat(9,{critDamageMultiplier:1.75}),1.75,'9 is crit damage');
+});
+
+test('buff conditions and buff timing are named as live-state gaps',()=>{
+  const conditional=evaluateCalculation(
+    calc([{mConditionalGameCalculation:'X',__type:'GameCalculationConditional'}]),ctx());
+  assert.equal(conditional.value,null);
+  assert.match(conditional.unmodelled[0],/buff condition/);
+
+  const elapsed=evaluateCalculation(
+    calc([{buffName:'X',Coefficient:2,__type:'PercentageOfBuffNameElapsed'}]),ctx());
+  assert.equal(elapsed.value,null);
+  assert.match(elapsed.unmodelled[0],/how long a buff has been running/);
 });

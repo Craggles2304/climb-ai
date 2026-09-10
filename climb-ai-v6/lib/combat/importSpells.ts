@@ -37,6 +37,8 @@ export interface NormalisedSpell{
   dataValues:SpellDataValue[];
   /** Named calculation trees, passed to the evaluator as-is. */
   calculations:Record<string,unknown>;
+  /** mEffectAmount rows, each a per-rank array. Row 0 is a placeholder. */
+  effectAmounts:number[][];
   cooldownByRank:number[];
   costByRank:number[];
   rangeByRank:number[];
@@ -98,6 +100,7 @@ function normaliseSpell(path:string,spell:Record<string,unknown>):NormalisedSpel
     path,
     name:path.split('/').pop()??path,
     dataValues:readDataValues(spell),
+    effectAmounts:readEffectAmounts(spell),
     calculations,
     cooldownByRank:numberArray(spell.Cooldown??spell.cooldownTime),
     costByRank:numberArray(spell.manaValues??spell.mana),
@@ -155,3 +158,19 @@ const NON_ABILITY=/missile|buff|marker|internal|visual|indicator|particle|dummy|
 
 export const looksLikeCastAbility=(spell:NormalisedSpell)=>
   !NON_ABILITY.test(spell.name)&&Object.keys(spell.calculations).length>0;
+
+/**
+ * mEffectAmount is a list of unnamed per-rank rows, referenced by index from
+ * EffectValueCalculationPart. The first row is a placeholder with no values.
+ */
+function readEffectAmounts(spell:Record<string,unknown>):number[][]{
+  const raw=spell.mEffectAmount;
+  if(!Array.isArray(raw))return [];
+  return raw.map(row=>{
+    if(!row||typeof row!=='object')return [];
+    const values=(row as Record<string,unknown>).value;
+    return Array.isArray(values)
+      ?values.filter((v):v is number=>typeof v==='number'&&Number.isFinite(v))
+      :[];
+  });
+}

@@ -41,7 +41,8 @@
 /** Stats a formula can multiply by. */
 export type StatKey=
   |'abilityPower'|'attackDamage'|'armor'|'magicResist'
-  |'maxHealth'|'critChance'|'attackSpeed'|'moveSpeed';
+  |'maxHealth'|'critChance'|'critDamageMultiplier'
+  |'attackSpeed'|'moveSpeed'|'mana';
 
 /**
  * Numeric stat enum, derived from evidence rather than assumed: each mapping
@@ -54,11 +55,31 @@ export type StatKey=
  * outcome: a wrong stat silently produces a plausible wrong number.
  */
 export const STAT_ENUM:Record<number,StatKey>={
-  1:'armor',
-  2:'attackDamage',
-  8:'critChance',
-  12:'maxHealth',
+  1:'armor',                  // ArmorRatio, ThunderclapBaseDamageArmorRatio
+  2:'attackDamage',           // ADRatio, BonusADRatio — 481 uses, the commonest
+  4:'attackSpeed',            // AttackSpeedCoefficient, ASCoeff
+  6:'magicResist',            // MRRatio, DamageMRRatio
+  7:'moveSpeed',              // DashSpeedRatio, DashSpeedMod
+  8:'critChance',             // CritRatio, CriticalStrikeScaling
+  9:'critDamageMultiplier',   // see the note below
+  12:'maxHealth',             // BonusHealthRatio, ShieldHealthRatio
 };
+
+/**
+ * mStat 9 took evidence to pin down: 51 of its 54 uses are a bare coefficient
+ * of 1.0, so the paired data-value names said nothing. The structure did.
+ *
+ * Garen's CriticalDamage reads, in effect:
+ *
+ *   TotalDamage x (1 + CritMod x (stat9 - 1))
+ *
+ * and Nasus's CritDamage multiplies his Q damage by it directly. A "minus one"
+ * term only makes sense against a multiplier whose neutral value is 1, which
+ * makes stat 9 the critical-strike damage multiplier, not a chance or a flat
+ * stat. Reading it as ability power — the other plausible guess, since AP parts
+ * omit mStat — would have made every crit calculation nonsense.
+ */
+export const CRIT_DAMAGE_STAT=9;
 
 /** A part with no mStat field scales with ability power. */
 export const DEFAULT_STAT:StatKey='abilityPower';
@@ -72,8 +93,11 @@ export interface CombatStats{
   magicResist:number;
   maxHealth:number;
   critChance:number;
+  /** Total damage a crit deals as a multiple of a normal hit. 1.75 in game. */
+  critDamageMultiplier:number;
   attackSpeed:number;
   moveSpeed:number;
+  mana:number;
 }
 
 export interface EvalContext{
@@ -86,6 +110,10 @@ export interface EvalContext{
   dataValues:SpellDataValue[];
   /** Other calculations on the same spell, for GameCalculationModified. */
   calculations?:Record<string,unknown>;
+  /** mEffectAmount rows, for EffectValueCalculationPart. Indexed by rank. */
+  effectAmounts?:number[][];
+  /** Ability haste, for the cooldown-multiplier part. */
+  abilityHaste?:number;
   /** Buff stacks, when the caller actually knows them. */
   stacks?:number;
 }
@@ -237,6 +265,119 @@ function walk(
       const coefficient=typeof part.mCoefficient==='number'?part.mCoefficient:0;
       return coefficient*ctx.stacks;
     }
+
+    /**
+     * A reference to another calculation on the same spell, by key. Riot never
+     * published a name for this type, so it is matched on its hash — which will
+     * change if they rename it, and the default branch will then report it.
+     */
+    case '{f3cbe7b2}':{
+      const key=typeof part.mSpellCalculationKey==='string'?part.mSpellCalculationKey:null;
+      const target=key?ctx.calculations?.[key]:null;
+      if(!target){
+        unmodelled.push(`Referenced calculation "${key??'unnamed'}" was not found on this spell.`);
+        return null;
+      }
+      return walk(target,ctx,unmodelled,depth+1);
+    }
+
+    /** Values indexed straight by champion level. */
+    case 'ByCharLevelFormulaCalculationPart':{
+      const values=Array.isArray(part.values)?part.values:[];
+      const index=clampLevel(ctx.level)-1;
+      const value=values[index];
+      if(typeof value!=='number'||!Number.isFinite(value)){
+        unmodelled.push('Per-level value table does not cover this level.');
+        return null;
+      }
+      return value;
+    }
+
+    /** Reads mEffectAmount, the spell's unnamed per-rank effect rows. */
+    case 'EffectValueCalculationPart':{
+      const index=typeof part.mEffectIndex==='number'?part.mEffectIndex:null;
+      if(index===null){unmodelled.push('Effect reference has no index.');return null}
+      const rows=ctx.effectAmounts;
+      if(!rows){
+        unmodelled.push('Spell effect amounts were not supplied to the evaluator.');
+        return null;
+      }
+      // mEffectIndex is 1-based; row 0 of the file is a placeholder.
+      const row=rows[index];
+      if(!row||!row.length){
+        unmodelled.push(`Spell effect ${index} is missing from this spell.`);
+        return null;
+      }
+      const rank=Math.min(row.length-1,Math.max(0,Math.round(ctx.rank)));
+      return row[rank];
+    }
+
+    /** Scales with the caster's resource pool — mana for most champions. */
+    case 'AbilityResourceByCoefficientCalculationPart':{
+      const coefficient=typeof part.mCoefficient==='number'?part.mCoefficient:0;
+      return ctx.caster.mana*coefficient;
+    }
+
+    /** Sum of subparts held between a floor and a ceiling. */
+    case 'ClampSubPartsCalculationPart':{
+      const parts=Array.isArray(part.mSubparts)?part.mSubparts:[];
+      let total=0;
+      for(const sub of parts){
+        const value=walk(sub,ctx,unmodelled,depth+1);
+        if(value===null)return null;
+        total+=value;
+      }
+      const floor=numberOf(part.mFloor);
+      const ceiling=numberOf(part.mCeiling);
+      if(floor!==null)total=Math.max(floor,total);
+      if(ceiling!==null)total=Math.min(ceiling,total);
+      return total;
+    }
+
+    /**
+     * The cooldown multiplier. With no ability haste it is exactly 1, and haste
+     * reduces cooldown by the standard 100/(100+haste). Treated as 1 rather
+     * than refused because a damage figure should not be blocked by a cooldown
+     * term the caller has not asked about.
+     */
+    case 'CooldownMultiplierCalculationPart':{
+      const haste=ctx.abilityHaste??0;
+      return 100/(100+Math.max(0,haste));
+    }
+
+    /**
+     * Level interpolation whose endpoints are named data values. Riot publishes
+     * no name for the type and hashes its field names, so the endpoints are
+     * taken as the string-valued fields in order. Fragile by nature, which is
+     * why a failure to resolve both reports rather than guesses.
+     */
+    case '{ee18a47b}':{
+      const names=Object.entries(part)
+        .filter(([key,value])=>key!=='__type'&&typeof value==='string')
+        .map(([,value])=>value as string);
+      if(names.length<2){
+        unmodelled.push('Named level interpolation did not expose two endpoints.');
+        return null;
+      }
+      const start=dataValue(names[0],ctx);
+      const end=dataValue(names[1],ctx);
+      if(start===null||end===null){
+        unmodelled.push('Named level interpolation endpoints are missing from this spell.');
+        return null;
+      }
+      return start+(end-start)*((clampLevel(ctx.level)-1)/17);
+    }
+
+    // Conditional on a buff being present, which is live game state rather than
+    // anything in the files. Named specifically so the confidence layer can say
+    // which condition it could not check.
+    case 'GameCalculationConditional':
+      unmodelled.push('Only applies under a buff condition that depends on live game state.');
+      return null;
+
+    case 'PercentageOfBuffNameElapsed':
+      unmodelled.push('Scales with how long a buff has been running, which depends on live game state.');
+      return null;
 
     default:
       unmodelled.push(type
