@@ -3,6 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState,type ReactNode} from 'reac
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
+import {BotLaneLevelMap} from '@/components/BotLaneLevelMap';
 import {championEffectOptions} from '@/lib/combat/championEffects';
 import {maxRankAtLevel} from '@/lib/combat/skillRanks';
 
@@ -19,7 +20,7 @@ interface LaneForm{
   ranks:Partial<Record<AbilitySlot,number>>;shield:number;accessMode:AccessMode;missedAbilities:AbilitySlot[];
 }
 interface ParticipantSnapshot{key:SideKey;champion:string;team:'YOU'|'THEM';role:'ADC'|'SUPPORT';health:number;maxHealth:number;shield:number;mana:number;alive:boolean;damageDealt:number;damageTaken:number;healingDone:number;shieldingDone:number;controlledUntil:number}
-interface ActionEvent{actor:SideKey;champion:string;step:Step;target:SideKey|null;targetChampion:string|null;status:string;damageApplied:number;healApplied:number;shieldGranted:number;controlSeconds:number}
+interface ActionEvent{actor:SideKey;champion:string;step:Step;target:SideKey|null;targetChampion:string|null;status:string;damageApplied:number;healApplied:number;shieldGranted:number;controlSeconds:number;note?:string}
 interface Frame{atSeconds:number;actions:ActionEvent[];participants:Record<SideKey,ParticipantSnapshot>}
 interface Kill{atSeconds:number;victim:SideKey;champion:string;team:'YOU'|'THEM';by:SideKey[]}
 interface BotResult{verdict:string;winner:'YOU'|'THEM'|null;durationSeconds:number;timeline:Frame[];kills:Kill[];participants:Record<SideKey,ParticipantSnapshot>;teamDamage:{YOU:number;THEM:number};firstKill:Kill|null;incomplete:boolean;modelNote:string}
@@ -78,10 +79,7 @@ export default function BotDuoLab(){
     const id=++request.current;setLoading(true);
     fetch('/api/matchup/botlane',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        yourAdc,yourSupport,enemyAdc,enemySupport,
-        yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds:duration,
-      }),
+      body:JSON.stringify({yourAdc,yourSupport,enemyAdc,enemySupport,yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds:duration}),
     }).then(r=>r.json()).then((d:ApiResponse)=>{
       if(id!==request.current)return;
       setData(d);if(typeof d.patch==='string')setPatch(d.patch);
@@ -100,7 +98,7 @@ export default function BotDuoLab(){
         <div>
           <div className="eyebrow">BOT DUO · DETERMINISTIC 2V2</div>
           <b style={{fontSize:15}}>ADC + Support vs ADC + Support</b>
-          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting and explicit HIT/MISS/access assumptions now feed the same four-champion timeline.</p>
+          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting and explicit HIT/MISS/access assumptions feed the same four-champion timeline.</p>
         </div>
         <div className="tag-row"><span className="tag-chip">PATCH {patch||'…'}</span><Link className="tag-chip" href="/matchup-lab">SOLO LAB →</Link></div>
       </div>
@@ -144,6 +142,12 @@ export default function BotDuoLab(){
       </div>
 
       {data.lanePlan&&<LaneCoachCard plan={data.lanePlan}/>} 
+
+      <BotLaneLevelMap
+        yourAdc={yourAdc} yourSupport={yourSupport} enemyAdc={enemyAdc} enemySupport={enemySupport}
+        yourFocus={yourFocus} enemyFocus={enemyFocus} yourProtect={yourProtect} enemyProtect={enemyProtect}
+        durationSeconds={duration}
+      />
 
       {data.focusComparison&&<div className="glass card" style={{marginTop:16,padding:16,border:'1px solid rgba(var(--accent-rgb),.3)'}}>
         <div className="section-row" style={{gap:12,flexWrap:'wrap'}}>
@@ -297,7 +301,8 @@ function FocusPicker({label,value,options,onChange}:{label:string;value:string;o
 }
 
 function LaneCoachCard({plan}:{plan:LanePlan}){
-  return <div className="glass card" style={{marginTop:16,padding:16,border:'1px solid rgba(var(--accent-rgb),.34)'}}><div className="section-row" style={{gap:12,flexWrap:'wrap'}}><div><div className="eyebrow">HOW TO PLAY THIS SETUP</div><h2 style={{margin:'5px 0'}}>{plan.headline}</h2><p className="muted" style={{fontSize:12,margin:0,lineHeight:1.5}}>{plan.reason}</p></div><span className="tag-chip live-pill">{plan.call.replaceAll('_',' ')}</span></div>
+  return <div className="glass card" style={{marginTop:16,padding:16,border:'1px solid rgba(var(--accent-rgb),.34)'}}>
+    <div className="section-row" style={{gap:12,flexWrap:'wrap'}}><div><div className="eyebrow">HOW TO PLAY THIS SETUP</div><h2 style={{margin:'5px 0'}}>{plan.headline}</h2><p className="muted" style={{fontSize:12,margin:0,lineHeight:1.5}}>{plan.reason}</p></div><span className="tag-chip live-pill">{plan.call.replaceAll('_',' ')}</span></div>
     <div className="lab-grid" style={{marginTop:12}}><div style={{padding:12,border:'1px solid var(--border)',borderRadius:12}}><div className="eyebrow">PLAY RULES</div>{plan.rules.map((rule,index)=><p key={index} style={{fontSize:11,lineHeight:1.45,margin:'7px 0 0'}}><b>{index+1}.</b> {rule}</p>)}</div><div style={{padding:12,border:'1px solid var(--border)',borderRadius:12}}><div className="eyebrow">WHAT CAN FLIP IT?</div>{plan.rerunTriggers.map((rule,index)=><p key={index} className="muted" style={{fontSize:10,lineHeight:1.45,margin:'7px 0 0'}}>{rule}</p>)}</div></div>
     <div className="tag-row" style={{marginTop:10}}><span className="tag-chip">ADC RANGE {plan.rangeLabel==='YOU'?`YOU +${Math.abs(plan.rangeDelta)}`:plan.rangeLabel==='THEM'?`THEM +${Math.abs(plan.rangeDelta)}`:'EVEN'}</span><span className="tag-chip">PRIMARY TARGET · {plan.targetChampion}</span></div>
   </div>;
