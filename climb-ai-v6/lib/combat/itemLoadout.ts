@@ -120,6 +120,7 @@ export function parseOnHit(item:MatchupItem,abilityPower:number):OnHitEffect[]{
       label:`${item.name} on-hit`,
       type:flat[3].toUpperCase() as 'PHYSICAL'|'MAGIC',
       flatDamage:round(base+apRatio*Math.max(0,abilityPower)),
+      appliesFromAbility:true,
     });
   }
 
@@ -129,6 +130,7 @@ export function parseOnHit(item:MatchupItem,abilityPower:number):OnHitEffect[]{
       label:`${item.name} current-health on-hit`,
       type:current[2].toUpperCase() as 'PHYSICAL'|'MAGIC',
       targetCurrentHealthRatio:(Number(current[1])||0)/100,
+      appliesFromAbility:true,
     });
   }
 
