@@ -52,10 +52,37 @@ export interface ShieldGrant{
   durationSeconds:number;
 }
 
+/**
+ * An ability such as Viego R can explicitly apply the actor's eligible on-hit
+ * package without becoming a basic attack. It does not advance PTA/Lethal Tempo
+ * or the ordinary attack counter unless a future mechanic explicitly says so.
+ */
+export interface AbilityOnHitApplication{
+  label:string;
+  /** 1 = 100% effectiveness. Stored as a multiplier rather than a percentage. */
+  effectiveness:number;
+}
+
+/**
+ * A true modified/replacement basic attack. This replaces the ordinary physical
+ * AD component rather than adding another component on top of it, preventing
+ * double-counting on attacks such as Galio passive once champion wiring lands.
+ */
+export interface BasicAttackReplacement{
+  id:string;
+  label:string;
+  /** Replacement damage can itself be mixed or health-scaled. */
+  damage:OnHitEffect[];
+  /** Usually one for a "next attack" passive. Omit for every attack. */
+  firstNAttacks?:number;
+}
+
 export interface AbilityEventState{
   stackRule?:AbilityStackRule;
   consumesMarks?:MarkConsumer[];
   grantsSelfShield?:ShieldGrant;
+  /** Apply only on-hits explicitly tagged appliesFromAbility=true. */
+  appliesOnHitEffects?:AbilityOnHitApplication;
   /** Records that a cast resets the basic attack timer. The current sequential
    * combo clock can surface this state even before a full wind-up scheduler uses it. */
   resetsBasicAttackTimer?:boolean;
@@ -63,6 +90,8 @@ export interface AbilityEventState{
 
 export interface AutoEventState{
   consumesMarks?:MarkConsumer[];
+  /** Replace the normal basic-attack damage component for matching attacks. */
+  replacement?:BasicAttackReplacement;
 }
 
 interface StackRuntime{stacks:number;expiresAt:number}
@@ -210,6 +239,16 @@ export function recordAttackTimerReset(runtime:CombatRuntimeState,enabled:boolea
   if(!enabled)return false;
   runtime.attackTimerResets+=1;
   return true;
+}
+
+export function replacementApplies(
+  replacement:BasicAttackReplacement|undefined,
+  attackNumber:number,
+):boolean{
+  if(!replacement)return false;
+  if(replacement.firstNAttacks===undefined)return true;
+  const limit=Math.max(0,Math.round(replacement.firstNAttacks));
+  return attackNumber>=1&&attackNumber<=limit;
 }
 
 export interface TimedAutoSnapshot{
