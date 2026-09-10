@@ -60,6 +60,8 @@ const grow=(base:number,per:number,level:number)=>base+per*growthMultiplier(leve
 export interface LevelStats{
   level:number;
   hp:number;armor:number;magicResist:number;
+  /** Max resource at this level. 0 for champions with no resource bar. */
+  mana:number;
   attackDamage:number;attackSpeed:number;
   /**
    * Base attack speed and the bonus ratio from levels, kept apart because
@@ -87,6 +89,7 @@ export function statsAtLevel(s:ChampionStatBlock,level:number):LevelStats{
   return {
     level:n,
     hp:round(hp),armor:round(armor),magicResist:round(magicResist),
+    mana:round(grow(s.mp??0,s.mpperlevel??0,n)),
     attackDamage:round(grow(s.attackdamage,s.attackdamageperlevel,n)),
     attackSpeed:Number(attackSpeed.toFixed(3)),
     baseAttackSpeed:s.attackspeed,
