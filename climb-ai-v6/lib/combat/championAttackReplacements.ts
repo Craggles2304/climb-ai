@@ -1,6 +1,8 @@
 import type {AutoAttackModel} from './combos';
 import type {ChampionCombatProfile} from './championEffects';
-import {withOpeningBasicAttackReplacement} from './attackInteractions';
+import {
+  withOpeningBasicAttackReplacement,withRechargeableBasicAttackReplacement,
+} from './attackInteractions';
 
 export interface ChampionAttackReplacementContext{
   patch:string;
@@ -15,10 +17,9 @@ export interface ChampionAttackReplacementContext{
  * Configure champion-specific modified basic attacks that replace the ordinary
  * attack damage component instead of adding another on-hit component.
  *
- * Galio is the first real implementation. The selected state means Colossal
- * Smash is ready at t=0, so the opening attack damage is deterministic. Its
- * future 5s recharge / 3s ability-hit refunds and special windup speed are kept
- * explicit until the shared passive-cooldown scheduler models them.
+ * Galio is the first rechargeable implementation. Selecting COLOSSAL SMASH
+ * READY means the passive begins ready at t=0; after each proc it starts a 5s
+ * static cooldown and each successful ability cast can refund 3s once per cast.
  */
 export function configureChampionAttackReplacement(
   championId:string,
@@ -50,7 +51,7 @@ export function configureChampionAttackReplacement(
       label:'Colossal Smash',
       firstNAttacks:1,
       damage:[{
-        label:`15–115 level scaling + 100% AD + 40% AP + 60% bonus MR`,
+        label:'15–115 level scaling + 100% AD + 40% AP + 60% bonus MR',
         type:'MAGIC',
         flatDamage:round(raw),
       }],
@@ -58,24 +59,22 @@ export function configureChampionAttackReplacement(
   };
 
   removePartial(profile,'GALIO_PASSIVE_READY');
-  addModelled(profile,'GALIO_COLOSSAL_SMASH_OPENING_REPLACEMENT');
+  removePartial(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
+  addModelled(profile,'GALIO_COLOSSAL_SMASH_REPLACEMENT');
+  addModelled(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
   addNote(
     profile,
-    `Colossal Smash ready: opening basic attack is replaced by ${round(raw)} raw magic damage (${round(base)} level base + ${round(totalAd)} total AD + ${round(.40*ap)} AP scaling + ${round(.60*bonusMr)} bonus-MR scaling).`,
+    `Colossal Smash ready: a ready basic attack is replaced by ${round(raw)} raw magic damage (${round(base)} level base + ${round(totalAd)} total AD + ${round(.40*ap)} AP scaling + ${round(.60*bonusMr)} bonus-MR scaling). After it procs, the passive recharges for 5s; each successful ability cast against the simulated target refunds 3s once per cast.`,
   );
 
   addPartial(
-    profile,'GALIO_PASSIVE_RECHARGE_TIMELINE',
-    'After the opening Colossal Smash, its 5s static recharge and 3s refund per champion/epic-monster ability hit are not yet rescheduled on the auto timeline, so later passive procs are omitted rather than guessed.',
-  );
-  addPartial(
     profile,'GALIO_PASSIVE_WINDUP_AS',
-    'The empowered Colossal Smash attack gains 40% bonus attack speed during its windup. The current auto scheduler uses attack intervals rather than a separate windup model, so damage is exact but that one attack\'s timing remains partial.',
+    'The empowered Colossal Smash attack gains 40% bonus attack speed during its windup. The current auto scheduler uses attack intervals rather than a separate windup model, so passive damage/recharge are exact but that one attack\'s windup timing remains partial.',
   );
   if(Math.max(0,finite(ctx.critChance))>0){
     addPartial(
       profile,'GALIO_PASSIVE_CRIT_AD_RATIO',
-      'Colossal Smash can critically strike its AD ratio with special crit scaling. CLIMB does not convert crit chance into expected passive damage, so the selected ready attack is shown as the non-critical deterministic result.',
+      'Colossal Smash can critically strike its AD ratio with special crit scaling. CLIMB does not convert crit chance into expected passive damage, so each passive proc is shown as the non-critical deterministic result.',
     );
   }
 }
@@ -87,6 +86,19 @@ export function applyConfiguredAttackReplacement(
 ):AutoAttackModel{
   const replacement=profile.autoEventState.replacement;
   if(!replacement)return model;
+
+  if(replacement.id==='GALIO_COLOSSAL_SMASH'){
+    addNote(profile,'Colossal Smash runtime: starts ready, then uses a 5s static cooldown with 3s refunded per successful ability cast.');
+    return withRechargeableBasicAttackReplacement(model,{
+      id:replacement.id,
+      label:replacement.label,
+      damage:replacement.damage,
+      cooldownSeconds:5,
+      cooldownReductionOnAbilityHit:3,
+      startsReady:true,
+    });
+  }
+
   const applied=withOpeningBasicAttackReplacement(model,replacement);
   if(!applied.applied){
     addPartial(profile,'ATTACK_REPLACEMENT_RUNTIME_REFUSED',applied.note);
