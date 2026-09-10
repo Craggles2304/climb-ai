@@ -149,11 +149,13 @@ export async function POST(req:NextRequest){
       patch,
       bonusAttackDamage:you.bonusAttackDamage+yourLoadout.stats.attackDamage,
       ranks:yourRanks,
+      itemOnHits:yourLoadout.onHits,
     });
     applyExecuteChampionSpells(theirChampion.id,theirKit,theirChampionFx,{
       patch,
       bonusAttackDamage:them.bonusAttackDamage+theirLoadout.stats.attackDamage,
       ranks:theirRanks,
+      itemOnHits:theirLoadout.onHits,
     });
 
     const yourBase=statsAtLevel(yourChampion.stats,you.level);
@@ -364,7 +366,7 @@ export async function POST(req:NextRequest){
       dataSources:[
         {name:'Data Dragon',use:'champion stats, items, runes, summoners, ability slots, cooldowns and costs',official:true},
         {name:'CommunityDragon',use:'ability damage formulas',official:false},
-        {name:'Validated interaction layer',use:'shared-clock CC, healing and typed shield semantics for supported champion states',official:false},
+        {name:'Validated interaction layer',use:'shared-clock CC, healing, typed shields, dynamic executes and supported ability-applied on-hits',official:false},
       ],
       you:sideReport(
         yourChampion,you,yourStats,yourKit,yourLoadout,yourHaste,
