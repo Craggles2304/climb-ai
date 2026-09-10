@@ -13,6 +13,7 @@ import {buildBotLaneUtilityProfile} from '@/lib/combat/botlaneSupport';
 import {buildRuneCombatProfile,buildSummonerCombatProfile,type RuneCombatProfile} from '@/lib/combat/effects';
 import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
 import {compareYourFocusTargets,simulateBotLane,type BotLaneKey,type BotLaneParticipantInput} from '@/lib/combat/botlane';
+import {buildBotLaneCoachPlan,type AccessMode} from '@/lib/combat/botlaneCoach';
 import {noPenetration,type Penetration} from '@/lib/combat/damage';
 import type {CombatStats} from '@/lib/combat/formula';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
@@ -22,6 +23,8 @@ export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
 const step=z.enum(['AA','Q','W','E','R']);
+const abilitySlot=z.enum(['Q','W','E','R']);
+const accessMode=z.enum(['FULL','NO_AUTOS']);
 const side=z.object({
   champion:z.string().min(1).max(32),
   level:z.coerce.number().int().min(1).max(18).default(6),
@@ -35,6 +38,8 @@ const side=z.object({
   resourcePercent:z.coerce.number().min(0).max(100).default(100),
   shield:z.coerce.number().min(0).max(10000).default(0),
   sequence:z.array(step).max(24).default(['Q','AA','W','AA','E','R']),
+  accessMode:accessMode.default('FULL'),
+  missedAbilities:z.array(abilitySlot).max(4).default([]),
 });
 const schema=z.object({
   yourAdc:side,
@@ -43,6 +48,8 @@ const schema=z.object({
   enemySupport:side,
   yourFocus:z.enum(['THEM_ADC','THEM_SUPPORT']).default('THEM_ADC'),
   enemyFocus:z.enum(['YOU_ADC','YOU_SUPPORT']).default('YOU_ADC'),
+  yourProtect:z.enum(['YOU_ADC','YOU_SUPPORT']).default('YOU_ADC'),
+  enemyProtect:z.enum(['THEM_ADC','THEM_SUPPORT']).default('THEM_ADC'),
   durationSeconds:z.coerce.number().min(1).max(20).default(10),
 });
 
@@ -63,10 +70,10 @@ export async function POST(req:NextRequest){
     const catalogue=catalogueRaw as Record<string,MatchupItem>;
 
     const configs=[
-      ['YOU_ADC','YOU','ADC',input.yourAdc,input.yourFocus,'YOU_ADC'],
-      ['YOU_SUPPORT','YOU','SUPPORT',input.yourSupport,input.yourFocus,'YOU_ADC'],
-      ['THEM_ADC','THEM','ADC',input.enemyAdc,input.enemyFocus,'THEM_ADC'],
-      ['THEM_SUPPORT','THEM','SUPPORT',input.enemySupport,input.enemyFocus,'THEM_ADC'],
+      ['YOU_ADC','YOU','ADC',input.yourAdc,input.yourFocus,input.yourProtect],
+      ['YOU_SUPPORT','YOU','SUPPORT',input.yourSupport,input.yourFocus,input.yourProtect],
+      ['THEM_ADC','THEM','ADC',input.enemyAdc,input.enemyFocus,input.enemyProtect],
+      ['THEM_SUPPORT','THEM','SUPPORT',input.enemySupport,input.enemyFocus,input.enemyProtect],
     ] as const;
 
     const prepared=await Promise.all(configs.map(async([key,team,role,form,focus,protect])=>
@@ -75,6 +82,15 @@ export async function POST(req:NextRequest){
     const participants=Object.fromEntries(prepared.map(x=>[x.input.key,x.input])) as Record<BotLaneKey,BotLaneParticipantInput>;
     const current=simulateBotLane(participants,input.durationSeconds);
     const focusComparison=compareYourFocusTargets(participants,input.durationSeconds);
+    const preparedByKey=Object.fromEntries(prepared.map(x=>[x.input.key,x])) as Record<BotLaneKey,(typeof prepared)[number]>;
+    const lanePlan=buildBotLaneCoachPlan({
+      result:current,
+      focus:focusComparison,
+      yourAdc:preparedByKey.YOU_ADC.coach,
+      yourSupport:preparedByKey.YOU_SUPPORT.coach,
+      enemyAdc:preparedByKey.THEM_ADC.coach,
+      enemySupport:preparedByKey.THEM_SUPPORT.coach,
+    });
 
     const partials=prepared.flatMap(x=>x.partial.map(reason=>`${x.input.champion}: ${reason}`));
     const notes=prepared.flatMap(x=>x.notes);
@@ -82,9 +98,14 @@ export async function POST(req:NextRequest){
 
     return NextResponse.json({
       ok:true,patch,confidence,
-      setup:{yourFocus:input.yourFocus,enemyFocus:input.enemyFocus,durationSeconds:input.durationSeconds},
+      setup:{
+        yourFocus:input.yourFocus,enemyFocus:input.enemyFocus,
+        yourProtect:input.yourProtect,enemyProtect:input.enemyProtect,
+        durationSeconds:input.durationSeconds,
+      },
       participants:Object.fromEntries(prepared.map(x=>[x.input.key,x.report])),
       result:current,
+      lanePlan,
       focusComparison:{
         recommendedTarget:focusComparison.recommendedTarget,
         recommendedRole:focusComparison.recommendedRole,
@@ -92,11 +113,11 @@ export async function POST(req:NextRequest){
         adcFocus:summary(focusComparison.adcFocus),
         supportFocus:summary(focusComparison.supportFocus),
       },
-      coverage:{partial:partials,notes:[...new Set(notes)].slice(0,30)},
+      coverage:{partial:partials,notes:[...new Set(notes)].slice(0,40)},
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
         {name:'CommunityDragon',use:'ability damage formulas'},
-        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals and champion states'},
+        {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states and explicit access/hit assumptions'},
       ],
     });
   }catch(err){
@@ -156,10 +177,24 @@ async function prepareParticipant(
     if(kit.models[slot])kit.models[slot]={...kit.models[slot]!,damage:[]};
   }
 
+  // HIT/MISS is a player-controlled assumption. A forced miss still consumes
+  // its cast in the script but contributes no enemy damage, target debuff, CC,
+  // or ally-targeted utility. We do not invent hit probability.
+  for(const slot of input.missedAbilities as AbilitySlot[]){
+    const model=kit.models[slot];
+    if(model)kit.models[slot]={...model,damage:[],dynamicDamage:[],targetDebuff:undefined};
+    delete duelFx.abilityOverlays[slot];
+    delete utilityFx.abilityOverlays[slot];
+    delete utilityFx.allyUtility[slot];
+  }
+
   const penetration=penetrationFromLoadout(loadout);
   const haste=loadout.stats.abilityHaste;
+  const sequence=(input.accessMode==='NO_AUTOS'
+    ?input.sequence.filter(action=>action!=='AA')
+    :input.sequence) as ComboStep[];
   const participant:BotLaneParticipantInput={
-    key,team,role,champion:champion.name,sequence:input.sequence as ComboStep[],
+    key,team,role,champion:champion.name,sequence,
     abilities:kit.models,autoAttack:autoAttackModel(stats,loadout,runeFx,championFx),
     mana:stats.mana*(input.resourcePercent/100),maxHealth:stats.maxHealth,currentHealth:current,
     shield:input.shield,
@@ -183,13 +218,28 @@ async function prepareParticipant(
     ...(summonerFx.igniteDamage>0?['Ignite tick timing is not yet scheduled in 2v2']:[]),
     ...(summonerFx.exhaustDamageMultiplier<1?['Exhaust target selection is not yet explicit in 2v2']:[]),
   ];
-  const notes=[...championFx.notes,...duelFx.notes,...utilityFx.notes,...runeFx.notes,...summonerFx.notes];
+  const notes=[
+    ...championFx.notes,...duelFx.notes,...utilityFx.notes,...runeFx.notes,...summonerFx.notes,
+    ...(input.accessMode==='NO_AUTOS'?[`${champion.name}: NO AUTO ACCESS is explicit, so basic attacks are removed from the four-champion script.`]:[]),
+    ...(input.missedAbilities.length?[`${champion.name}: ${input.missedAbilities.join('/')} is explicitly forced to MISS for this simulation.`]:[]),
+  ];
+  const attackRange=base.attackRange+championFx.attackRangeBonus;
   return {
     input:participant,partial,notes,
+    coach:{
+      champion:champion.name,
+      attackRange,
+      accessMode:input.accessMode as AccessMode,
+      missedAbilities:input.missedAbilities as AbilitySlot[],
+    },
     report:{
       key,team,role,champion:champion.name,level:input.level,items:loadout.items,totalGold:loadout.totalGold,
-      stats:{attackDamage:round(stats.attackDamage),abilityPower:round(stats.abilityPower),armor:round(stats.armor),magicResist:round(stats.magicResist),health:round(stats.maxHealth),healthNow:round(current),mana:round(stats.mana),attackSpeed:round3(stats.attackSpeed),attackRange:base.attackRange+championFx.attackRangeBonus},
-      ranks,sequence:input.sequence,focusTarget,protectTarget,
+      stats:{attackDamage:round(stats.attackDamage),abilityPower:round(stats.abilityPower),armor:round(stats.armor),magicResist:round(stats.magicResist),health:round(stats.maxHealth),healthNow:round(current),mana:round(stats.mana),attackSpeed:round3(stats.attackSpeed),attackRange},
+      ranks,sequence,focusTarget,protectTarget,
+      setup:{
+        runeIds:input.runeIds,summonerIds:input.summonerIds,activeSummonerIds:input.activeSummonerIds,
+        activeChampionEffects:input.activeChampionEffects,accessMode:input.accessMode,missedAbilities:input.missedAbilities,
+      },
     },
   };
 }
