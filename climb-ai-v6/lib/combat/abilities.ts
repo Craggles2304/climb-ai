@@ -122,6 +122,7 @@ export function assembleKit(
       cooldownSeconds:assembled.cooldownSeconds,
       cost:assembled.cost,
       castTimeSeconds:assembled.castTimeSeconds,
+      rangeUnits:assembled.rangeUnits,
       damage:assembled.damage,
     };
   });
