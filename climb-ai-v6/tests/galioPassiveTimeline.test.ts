@@ -100,5 +100,5 @@ test('Bot Duo also allows a refunded second Colossal Smash on the shared four-pl
 
   const result=simulateBotLane(inputs,10);
   const galioActions=result.timeline.flatMap(frame=>frame.actions.filter(action=>action.actor==='YOU_ADC'));
-  assert.equal(galioActions.filter(action=>action.note?.includes('Colossal Smash consumed')).length,2);
+  assert.equal(galioActions.filter(action=>action.note?.includes('Colossal Smash landed')).length,2);
 });
