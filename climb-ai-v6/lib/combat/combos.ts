@@ -17,6 +17,7 @@ import {
   consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackSpeedMultiplier,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
+import {resolveRangeAccess} from './rangeAccess';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
 export type AbilitySlot='Q'|'W'|'E'|'R';
@@ -34,6 +35,8 @@ export interface AbilityModel{
   cooldownSeconds:number;
   cost:number;
   castTimeSeconds:number;
+  /** Riot/Data Dragon cast range when it is a positive comparable distance. */
+  rangeUnits?:number|null;
   damage:DamageComponent[];
   /** Target-health dependent damage resolved at the exact cast event. */
   dynamicDamage?:OnHitEffect[];
@@ -48,6 +51,8 @@ export interface AutoAttackModel{
   damage:number;
   /** Attacks per second before temporary rune/champion states. */
   attackSpeed:number;
+  /** Current basic-attack range after explicit champion range modifiers. */
+  rangeUnits?:number|null;
   /** Some champion weapons spend resource on each attack, e.g. Jinx Fishbones. */
   resourceCost?:number;
   /** Champion states such as Get Excited may override the normal 3.0 cap. */
@@ -66,6 +71,8 @@ export interface ComboInput{
   autoAttack:AutoAttackModel;
   caster:{mana:number};
   target:TargetResistances&{health:number;maxHealth?:number;shield?:number};
+  /** Static target separation. Omit to preserve UNKNOWN/legacy access rather than guessing geometry. */
+  targetDistanceUnits?:number|null;
   penetration?:Penetration;
   abilityHaste?:number;
   damageRules?:DamageRule[];
@@ -76,7 +83,7 @@ export interface ComboInput{
   outgoingDamageMultiplierDurationSeconds?:number;
 }
 
-export type EventStatus='CAST'|'NO_RESOURCE'|'ON_COOLDOWN'|'NOT_LEARNED';
+export type EventStatus='CAST'|'NO_RESOURCE'|'ON_COOLDOWN'|'NOT_LEARNED'|'OUT_OF_RANGE';
 
 export interface ComboEventState{
   timedAuto:string[];
@@ -128,6 +135,7 @@ const TIMING_NOTE=
 const STATE_NOTE=
   'Temporary champion states, target marks, ability stacks and rechargeable attack passives advance on the combat timeline. '+
   'Rechargeable passives can also alter the attack speed of the attack that consumes them. '+
+  'When static target distance is supplied, known action ranges can block casts without inventing movement. '+
   'Self-shields and attack-reset events are recorded, but a one-sided combo does not yet let those defensive/reset events alter an opponent timeline.';
 
 export function simulateCombo(input:ComboInput):ComboResult{
@@ -166,6 +174,12 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
     if(step==='AA'){
       const timed=timedAutoSnapshot(input.autoAttack.timedStates,clock);
+      const access=resolveRangeAccess(input.targetDistanceUnits,input.autoAttack.rangeUnits,'Basic attack');
+      if(access.status==='OUT_OF_RANGE'){
+        blocked.push({step,reason:access.note});
+        events.push({...base,label:'Basic attack',status:'OUT_OF_RANGE',note:access.note,state:stateSnapshot(runtime,clock,timed.labels)});
+        return;
+      }
       const resourceCost=timed.resourceCostOverride??positive(input.autoAttack.resourceCost??0);
       if(resourceCost>mana+1e-9){
         const reason=`This basic attack costs ${round(resourceCost)} resource and only ${round(mana)} is left.`;
@@ -248,6 +262,13 @@ export function simulateCombo(input:ComboInput):ComboResult{
       const wait=round(ready-clock);
       blocked.push({step,reason:`${ability.name} is still on cooldown for ${wait}s at this point.`});
       events.push({...base,label:ability.name,status:'ON_COOLDOWN',note:`${ability.name} comes back ${wait}s after this point in the sequence.`,state:stateSnapshot(runtime,clock,[])});
+      return;
+    }
+
+    const access=resolveRangeAccess(input.targetDistanceUnits,ability.rangeUnits,ability.name);
+    if(access.status==='OUT_OF_RANGE'){
+      blocked.push({step,reason:access.note});
+      events.push({...base,label:ability.name,status:'OUT_OF_RANGE',note:access.note,state:stateSnapshot(runtime,clock,[])});
       return;
     }
 
