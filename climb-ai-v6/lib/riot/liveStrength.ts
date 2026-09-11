@@ -1,6 +1,7 @@
 import type {LiveTelemetryPlayer,LiveTelemetrySnapshot} from './liveTelemetry';
 
 export type StrengthVerdict='YOU_STRONGER'|'EVEN'|'THEM_STRONGER';
+export type OpportunityType='ALL_IN_CANDIDATE'|'PRESSURE_WINDOW'|'CAUTION_WINDOW';
 
 export interface StrengthPoint{
   atSeconds:number;
@@ -14,14 +15,33 @@ export interface StrengthPoint{
   confidence:'VISIBLE_STATE';
 }
 
+export interface OpportunityWindow{
+  atSeconds:number;
+  type:OpportunityType;
+  opponent:string;
+  confidence:'HIGH'|'MEDIUM';
+  score:number;
+  headline:string;
+  detail:string;
+  evidence:{
+    levelDelta:number;
+    itemGoldDelta:number;
+    currentGold:number;
+    healthPct:number|null;
+    manaPct:number|null;
+  };
+  limitation:string;
+}
+
 export interface StrengthTimeline{
   points:StrengthPoint[];
+  opportunities:OpportunityWindow[];
   strongestWindow:StrengthPoint|null;
   weakestWindow:StrengthPoint|null;
   modelNote:string;
 }
 
-const MODEL_NOTE='Visible-state power model only: level, visible item value and death/respawn state. Unspent gold is excluded. It does not infer hidden enemy cooldowns, unseen information or issue live tactical instructions.';
+const MODEL_NOTE='Visible-state power model only: level, visible item value, your current health/mana and death/respawn state. Enemy unspent gold, exact proximity and hidden cooldowns are excluded, so all-in windows are candidates rather than guaranteed kills.';
 
 export function strengthPoint(snapshot:LiveTelemetrySnapshot):StrengthPoint{
   const me=findMe(snapshot);
@@ -76,7 +96,56 @@ export function buildStrengthTimeline(snapshots:LiveTelemetrySnapshot[]):Strengt
   const comparable=raw.filter(point=>point.them!==null);
   const strongestWindow=comparable.length?comparable.reduce((a,b)=>b.score>a.score?b:a):null;
   const weakestWindow=comparable.length?comparable.reduce((a,b)=>b.score<a.score?b:a):null;
-  return {points,strongestWindow,weakestWindow,modelNote:MODEL_NOTE};
+  const opportunities=buildOpportunities(ordered,raw);
+  return {points,opportunities,strongestWindow,weakestWindow,modelNote:MODEL_NOTE};
+}
+
+function buildOpportunities(snapshots:LiveTelemetrySnapshot[],points:StrengthPoint[]):OpportunityWindow[]{
+  const windows:OpportunityWindow[]=[];
+  let lastKey='';
+  let lastAt=-999;
+  for(let i=0;i<snapshots.length;i++){
+    const snapshot=snapshots[i];
+    const point=points[i];
+    if(!point?.them||!point.opponent||point.you.dead||point.them.dead)continue;
+    if(point.score>-12&&point.score<12)continue;
+    const me=findMe(snapshot);
+    const opponent=chooseOpponent(snapshot,me);
+    if(!me||!opponent)continue;
+    const levelDelta=me.level-opponent.level;
+    const itemGoldDelta=me.itemGold-opponent.itemGold;
+    const healthPct=ratio(snapshot.active.stats.currentHealth,snapshot.active.stats.maxHealth);
+    const manaPct=ratio(snapshot.active.stats.currentMana,snapshot.active.stats.maxMana);
+    const healthy=healthPct===null||healthPct>=0.6;
+    const resourced=manaPct===null||manaPct>=0.3;
+    const type:OpportunityType=point.score<=-12?'CAUTION_WINDOW':point.score>=24&&healthy&&resourced?'ALL_IN_CANDIDATE':'PRESSURE_WINDOW';
+    const confidence:'HIGH'|'MEDIUM'=Math.abs(point.score)>=24&&healthy&&resourced?'HIGH':'MEDIUM';
+    const key=`${type}:${point.opponent}`;
+    if(key===lastKey&&point.atSeconds-lastAt<45)continue;
+    lastKey=key;lastAt=point.atSeconds;
+    const advantage=describeDelta(levelDelta,itemGoldDelta);
+    const headline=type==='CAUTION_WINDOW'
+      ?`Enemy-favoured window vs ${point.opponent}`
+      :type==='ALL_IN_CANDIDATE'
+        ?`Possible all-in window vs ${point.opponent}`
+        :`Power advantage vs ${point.opponent}`;
+    const detail=type==='CAUTION_WINDOW'
+      ?`${point.opponent} held the stronger visible state (${advantage}). This was a poor default fight unless another advantage changed the situation.`
+      :`${advantage}. If ${point.opponent} was in a reachable fight, this was a ${type==='ALL_IN_CANDIDATE'?'strong all-in candidate':'good pressure window'}.`;
+    windows.push({
+      atSeconds:point.atSeconds,type,opponent:point.opponent,confidence,score:point.score,headline,detail,
+      evidence:{levelDelta,itemGoldDelta,currentGold:Math.round(snapshot.active.currentGold),healthPct,manaPct},
+      limitation:'Riot Live Client Data does not expose enemy pocket gold, exact champion proximity or hidden cooldowns. This identifies a power window, not a guaranteed kill.',
+    });
+  }
+  return windows.slice(0,16);
+}
+
+function describeDelta(levelDelta:number,itemGoldDelta:number){
+  const pieces:string[]=[];
+  if(levelDelta)pieces.push(`${levelDelta>0?'+':''}${levelDelta} level${Math.abs(levelDelta)===1?'':'s'}`);
+  if(Math.abs(itemGoldDelta)>=100)pieces.push(`${itemGoldDelta>0?'+':''}${Math.round(itemGoldDelta)}g visible item value`);
+  return pieces.length?pieces.join(' and '):'visible combat state was close';
 }
 
 function findMe(snapshot:LiveTelemetrySnapshot):LiveTelemetryPlayer|null{
@@ -96,8 +165,6 @@ function chooseOpponent(snapshot:LiveTelemetrySnapshot,me:LiveTelemetryPlayer|nu
     const same=enemies.find(player=>player.position&&player.position.toUpperCase()===me.position!.toUpperCase());
     if(same)return same;
   }
-  // Fail transparently to the enemy whose visible level/item state is closest,
-  // rather than pretending we know a lane assignment that Riot did not expose.
   return enemies.reduce((best,current)=>{
     const currentGap=Math.abs(current.level-me.level)*1000+Math.abs(current.itemGold-me.itemGold);
     const bestGap=Math.abs(best.level-me.level)*1000+Math.abs(best.itemGold-me.itemGold);
@@ -109,9 +176,13 @@ function comparisonReason(snapshot:LiveTelemetrySnapshot,opponent:LiveTelemetryP
   const me=findMe(snapshot);
   if(me?.position&&opponent.position&&me.position.toUpperCase()===opponent.position.toUpperCase())
     return `Matched by Riot-exposed position: ${me.position}.`;
-  return 'No exact lane match was exposed, so CLIMB used the closest visible enemy state and labels this comparison accordingly.';
+  return 'No exact lane match was exposed, so OVERPOWERED used the closest visible enemy state and labels this comparison accordingly.';
 }
 
+function ratio(value:number|null,max:number|null){
+  if(value===null||max===null||max<=0)return null;
+  return round(clamp(value/max,0,1));
+}
 const clamp=(n:number,min:number,max:number)=>Math.max(min,Math.min(max,n));
 const round=(n:number)=>Math.round(n*10)/10;
 const roundTime=(n:number)=>Math.round(Math.max(0,n)*10)/10;
