@@ -99,6 +99,8 @@ test('Galio Colossal Smash uses current 16.18 replacement scaling and removes th
   assert.equal(replacement?.damage[0].type,'MAGIC');
   assert.ok(profile.modelledEffects.includes('GALIO_COLOSSAL_SMASH_REPLACEMENT'));
   assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
+  assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
+  assert.ok(profile.modelledEffects.includes('BASIC_ATTACK_WINDUP_TIMING'));
   assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_READY'));
 
   const model=applyConfiguredAttackReplacement({damage:100,attackSpeed:1,eventState:profile.autoEventState},profile);
@@ -106,19 +108,22 @@ test('Galio Colossal Smash uses current 16.18 replacement scaling and removes th
     sequence:['AA','AA'],abilities:{},autoAttack:model,caster:{mana:0},
     target:{health:1000,maxHealth:1000,armor:100,magicResist:100},
   });
-  // Ready Colossal Smash goes through MR: 325 -> 162.5. The next attack at t=1 is still on passive cooldown and uses normal physical damage: 100 -> 50.
+  // Ready Colossal Smash goes through MR: 325 -> 162.5. The next attack starts at t=1 while passive is still cooling down and uses normal physical damage: 100 -> 50.
   assert.equal(sim.events[0].mitigatedDamage,162.5);
   assert.equal(sim.events[1].mitigatedDamage,50);
+  assert.equal(sim.events[0].atSeconds,.17);
+  assert.equal(sim.events[1].atSeconds,1.21);
 });
 
-test('Galio passive models recharge/refunds while keeping unsupported windup and crit explicit',()=>{
+test('Galio passive models recharge, refunds and empowered windup while keeping crit explicit',()=>{
   const profile=buildChampionCombatProfile('Galio',['GALIO_PASSIVE_READY'],{}, {abilityPower:0,level:6});
   configureChampionAttackReplacement('Galio',['GALIO_PASSIVE_READY'],profile,{
     patch:'16.18.1',level:6,attackDamage:75,abilityPower:0,bonusMagicResist:0,critChance:.25,
   });
   assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
+  assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
   assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
-  assert.ok(profile.unmodelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
+  assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
   assert.ok(profile.unmodelledEffects.includes('GALIO_PASSIVE_CRIT_AD_RATIO'));
 });
 
@@ -130,5 +135,6 @@ test('Galio replacement fails closed on an unreviewed future patch',()=>{
     patch:'16.19.1',level:18,attackDamage:100,abilityPower:0,bonusMagicResist:0,critChance:0,
   });
   assert.equal(profile.autoEventState.replacement,undefined);
+  assert.equal(profile.autoEventState.attackTiming,undefined);
   assert.ok(profile.unmodelledEffects.includes('GALIO_PASSIVE_PATCH_UNVALIDATED'));
 });
