@@ -18,6 +18,7 @@ import {buildChampionDuelProfile} from '@/lib/combat/championDuel';
 import {buildBotLaneUtilityProfile} from '@/lib/combat/botlaneSupport';
 import {buildRuneCombatProfile,buildSummonerCombatProfile,type RuneCombatProfile} from '@/lib/combat/effects';
 import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
+import {resolveStaticRangeAccess} from '@/lib/combat/access';
 import {compareYourFocusTargets,simulateBotLane,type BotLaneKey,type BotLaneParticipantInput} from '@/lib/combat/botlane';
 import {buildBotLaneCoachPlan,type AccessMode} from '@/lib/combat/botlaneCoach';
 import {noPenetration,type Penetration} from '@/lib/combat/damage';
@@ -45,6 +46,8 @@ const side=z.object({
   shield:z.coerce.number().min(0).max(10000).default(0),
   sequence:z.array(step).max(24).default(['Q','AA','W','AA','E','R']),
   accessMode:accessMode.default('FULL'),
+  /** Explicit static distance to the current focus target. Omit to preserve legacy access assumptions. */
+  targetDistance:z.coerce.number().min(0).max(5000).optional(),
   missedAbilities:z.array(abilitySlot).max(4).default([]),
 });
 const schema=z.object({
@@ -119,9 +122,9 @@ export async function POST(req:NextRequest){
         adcFocus:summary(focusComparison.adcFocus),
         supportFocus:summary(focusComparison.supportFocus),
       },
-      coverage:{partial:partials,notes:[...new Set(notes)].slice(0,40)},
+      coverage:{partial:partials,notes:[...new Set(notes)].slice(0,60)},
       dataSources:[
-        {name:'Data Dragon',use:'champion/item/rune/summoner identity and visible stats'},
+        {name:'Data Dragon',use:'champion/item/rune/summoner identity, visible stats and published cast ranges'},
         {name:'CommunityDragon',use:'ability damage formulas'},
         {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes, supported ability-applied on-hits, attack replacements and explicit access/hit assumptions'},
       ],
@@ -190,12 +193,53 @@ async function prepareParticipant(
     level:input.level,abilityPower:stats.abilityPower,maxHealth:stats.maxHealth,bonusHealth:Math.max(0,stats.maxHealth-base.hp),
   });
   const utilityFx=buildBotLaneUtilityProfile(champion.id,ranks,{level:input.level,abilityPower:stats.abilityPower,maxHealth:stats.maxHealth});
+  const attackRange=base.attackRange+championFx.attackRangeBonus;
+  const rangeNotes:string[]=[];
+  const rangePartials:string[]=[];
+  const autoRange=resolveStaticRangeAccess(input.targetDistance,attackRange,`${champion.name} basic attack`);
+  const distanceWasExplicit=input.targetDistance!==undefined;
+  const effectiveAccessMode:AccessMode=(
+    input.accessMode==='NO_AUTOS'||autoRange.status==='OUT_OF_RANGE'
+  )?'NO_AUTOS':'FULL';
+  if(distanceWasExplicit)rangeNotes.push(autoRange.reason);
 
   // Ally-targeted support casts must not simultaneously use the enemy-cast
   // damage branch of the imported spell. The omitted bounce/alternate target is
   // explicitly carried as PARTIAL by the utility profile instead.
   for(const slot of Object.keys(utilityFx.allyUtility) as AbilitySlot[]){
     if(kit.models[slot])kit.models[slot]={...kit.models[slot]!,damage:[]};
+  }
+
+  // Static-distance access is an explicit assumption, not movement simulation.
+  // Enemy-facing effects that are provably outside a published positive range
+  // are removed. Unknown/zero ranges are kept and lower confidence instead.
+  if(distanceWasExplicit){
+    for(const slot of SLOTS){
+      const model=kit.models[slot];
+      if(!model||utilityFx.allyUtility[slot])continue;
+      const duelOverlay=duelFx.abilityOverlays[slot];
+      const utilityOverlay=utilityFx.abilityOverlays[slot];
+      const enemyFacing=Boolean(
+        model.damage.length
+        ||model.dynamicDamage?.length
+        ||model.targetDebuff
+        ||duelOverlay?.targetControl
+        ||utilityOverlay?.targetControl
+      );
+      if(!enemyFacing)continue;
+      const access=resolveStaticRangeAccess(
+        input.targetDistance,kit.abilities[slot]?.rangeUnits,`${champion.name} ${slot}`,
+      );
+      if(access.status==='OUT_OF_RANGE'){
+        kit.models[slot]={...model,damage:[],dynamicDamage:[],targetDebuff:undefined};
+        if(duelOverlay)duelFx.abilityOverlays[slot]={...duelOverlay,targetControl:undefined};
+        if(utilityOverlay)utilityFx.abilityOverlays[slot]={...utilityOverlay,targetControl:undefined};
+        rangeNotes.push(`${access.reason} Enemy-facing damage/debuff/control is removed for this static-distance run.`);
+      }else if(access.status==='UNKNOWN'){
+        rangePartials.push(`${slot} target access is unresolved at ${round(input.targetDistance as number)}u because no positive published target range is available.`);
+        rangeNotes.push(access.reason);
+      }else rangeNotes.push(access.reason);
+    }
   }
 
   // HIT/MISS is a player-controlled assumption. A forced miss still consumes
@@ -211,7 +255,7 @@ async function prepareParticipant(
 
   const penetration=penetrationFromLoadout(loadout);
   const haste=loadout.stats.abilityHaste;
-  const sequence=(input.accessMode==='NO_AUTOS'
+  const sequence=(effectiveAccessMode==='NO_AUTOS'
     ?input.sequence.filter(action=>action!=='AA')
     :input.sequence) as ComboStep[];
   const participant:BotLaneParticipantInput={
@@ -234,6 +278,7 @@ async function prepareParticipant(
     ...championFx.unmodelledEffects,
     ...duelFx.partial,
     ...utilityFx.partial,
+    ...rangePartials,
     ...runeFx.unmodelledRuneIds.map(id=>`rune ${id}`),
     ...summonerFx.unmodelledActiveIds.map(id=>`summoner ${id}`),
     ...(summonerFx.igniteDamage>0?['Ignite tick timing is not yet scheduled in 2v2']:[]),
@@ -241,16 +286,18 @@ async function prepareParticipant(
   ];
   const notes=[
     ...championFx.notes,...duelFx.notes,...utilityFx.notes,...runeFx.notes,...summonerFx.notes,
-    ...(input.accessMode==='NO_AUTOS'?[`${champion.name}: NO AUTO ACCESS is explicit, so basic attacks are removed from the four-champion script.`]:[]),
+    ...rangeNotes,
+    ...(distanceWasExplicit?[`${champion.name}: target distance is held static at ${round(input.targetDistance as number)}u for access checks; movement/dashes are not inferred.`]:[]),
+    ...(input.accessMode==='NO_AUTOS'?[`${champion.name}: NO AUTO ACCESS is explicitly selected, so basic attacks are removed from the four-champion script.`]:[]),
+    ...(input.accessMode==='FULL'&&autoRange.status==='OUT_OF_RANGE'?[`${champion.name}: basic attacks are removed because the explicit target distance exceeds ${round(attackRange)}u attack range.`]:[]),
     ...(input.missedAbilities.length?[`${champion.name}: ${input.missedAbilities.join('/')} is explicitly forced to MISS for this simulation.`]:[]),
   ];
-  const attackRange=base.attackRange+championFx.attackRangeBonus;
   return {
     input:participant,partial,notes,
     coach:{
       champion:champion.name,
       attackRange,
-      accessMode:input.accessMode as AccessMode,
+      accessMode:effectiveAccessMode,
       missedAbilities:input.missedAbilities as AbilitySlot[],
     },
     report:{
@@ -259,7 +306,9 @@ async function prepareParticipant(
       ranks,sequence,focusTarget,protectTarget,
       setup:{
         runeIds:input.runeIds,summonerIds:input.summonerIds,activeSummonerIds:input.activeSummonerIds,
-        activeChampionEffects:input.activeChampionEffects,accessMode:input.accessMode,missedAbilities:input.missedAbilities,
+        activeChampionEffects:input.activeChampionEffects,
+        requestedAccessMode:input.accessMode,accessMode:effectiveAccessMode,targetDistance:input.targetDistance??null,
+        missedAbilities:input.missedAbilities,
       },
     },
   };
