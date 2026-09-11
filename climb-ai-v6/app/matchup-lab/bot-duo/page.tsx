@@ -18,6 +18,7 @@ interface LaneForm{
   champion:string;level:number;itemIds:number[];healthPercent:number;resourcePercent:number;sequence:Step[];
   runeIds:number[];summonerIds:string[];activeSummonerIds:string[];activeChampionEffects:string[];
   ranks:Partial<Record<AbilitySlot,number>>;shield:number;accessMode:AccessMode;missedAbilities:AbilitySlot[];
+  focusDistanceUnits:number|null;
 }
 interface ParticipantSnapshot{key:SideKey;champion:string;team:'YOU'|'THEM';role:'ADC'|'SUPPORT';health:number;maxHealth:number;shield:number;mana:number;alive:boolean;damageDealt:number;damageTaken:number;healingDone:number;shieldingDone:number;controlledUntil:number}
 interface ActionEvent{actor:SideKey;champion:string;step:Step;target:SideKey|null;targetChampion:string|null;status:string;damageApplied:number;healApplied:number;shieldGranted:number;controlSeconds:number;note?:string}
@@ -35,7 +36,7 @@ const ACTIVE_SUMMONERS=new Set(['SummonerBarrier','SummonerHeal','SummonerDot','
 const blank=(champion:string):LaneForm=>({
   champion,level:6,itemIds:[],healthPercent:100,resourcePercent:100,sequence:['Q','AA','W','AA','E','R'],
   runeIds:[],summonerIds:['SummonerFlash'],activeSummonerIds:[],activeChampionEffects:[],ranks:{},
-  shield:0,accessMode:'FULL',missedAbilities:[],
+  shield:0,accessMode:'FULL',missedAbilities:[],focusDistanceUnits:null,
 });
 
 export default function BotDuoLab(){
@@ -91,14 +92,14 @@ export default function BotDuoLab(){
   const result=data?.result;
 
   return <AppShell>
-    <PageHead title="Bot Duo Lab" subtitle="Four champions. One shared clock. Configure the real lane state, choose what lands, then see who wins and how to play it."/>
+    <PageHead title="Bot Duo Lab" subtitle="Four champions. One shared clock. Configure items, states, exact hit assumptions and static focus distance, then see which actions can actually connect."/>
 
     <div className="glass card" style={{padding:16,marginBottom:16}}>
       <div className="section-row" style={{gap:12,flexWrap:'wrap'}}>
         <div>
           <div className="eyebrow">BOT DUO · DETERMINISTIC 2V2</div>
           <b style={{fontSize:15}}>ADC + Support vs ADC + Support</b>
-          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting and explicit HIT/MISS/access assumptions feed the same four-champion timeline.</p>
+          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting, static focus distance and explicit HIT/MISS/access assumptions feed the same four-champion timeline. No movement or hit probability is invented.</p>
         </div>
         <div className="tag-row"><span className="tag-chip">PATCH {patch||'…'}</span><Link className="tag-chip" href="/matchup-lab">SOLO LAB →</Link></div>
       </div>
@@ -117,7 +118,7 @@ export default function BotDuoLab(){
 
     <div className="glass card" style={{marginTop:16,padding:16,position:'relative',zIndex:1}}>
       <div className="section-row" style={{gap:14,flexWrap:'wrap'}}>
-        <div><div className="eyebrow">TARGET + PEEL PLAN</div><h2 style={{margin:'5px 0 0'}}>Who gets hit — and who gets protected?</h2></div>
+        <div><div className="eyebrow">TARGET + PEEL PLAN</div><h2 style={{margin:'5px 0 0'}}>Who gets hit — and who gets protected?</h2><p className="muted" style={{fontSize:10,margin:'5px 0 0'}}>Each champion&apos;s focus distance is measured to the team&apos;s selected focus target. If that target dies, the simulator does not reuse that number for the new target.</p></div>
         <span className="tag-chip">{data?.confidence??'CALCULATING'}</span>
       </div>
       <div className="lab-grid" style={{marginTop:14}}>
@@ -137,7 +138,7 @@ export default function BotDuoLab(){
 
     {data?.ok&&result&&<>
       <div className="glass card lab-verdict" style={{marginTop:16}}>
-        <div><div className="eyebrow">2V2 RESULT</div><h2>{verdictCopy(result.verdict)}</h2><p className="muted">{result.firstKill?`First kill: ${result.firstKill.champion} at ${result.firstKill.atSeconds}s.`:'No kill inside the selected window.'}</p></div>
+        <div><div className="eyebrow">2V2 RESULT</div><h2>{verdictCopy(result.verdict)}</h2><p className="muted">{result.firstKill?`First kill: ${result.firstKill.champion} at ${result.firstKill.atSeconds}s.`:'No kill inside the selected window.'}</p><div className="tag-row" style={{marginTop:8}}>{distanceChip('YOUR ADC',yourAdc.focusDistanceUnits)}{distanceChip('YOUR SUP',yourSupport.focusDistanceUnits)}{distanceChip('THEIR ADC',enemyAdc.focusDistanceUnits)}{distanceChip('THEIR SUP',enemySupport.focusDistanceUnits)}</div></div>
         <div className="lab-damage"><strong>{result.teamDamage.YOU}</strong><span>YOUR TEAM DAMAGE</span><small>Enemy team: {result.teamDamage.THEM}</small></div>
       </div>
 
@@ -164,8 +165,8 @@ export default function BotDuoLab(){
       <div className="glass card" style={{marginTop:16}}>
         <div className="section-row"><div><div className="eyebrow">FOUR-CHAMPION TIMELINE</div><h2 style={{margin:'5px 0 0'}}>What happens while everyone acts</h2></div><span className="tag-chip">{result.durationSeconds}s</span></div>
         <div style={{overflowX:'auto',marginTop:14}}><table className="table">
-          <thead><tr><th>At</th><th>Actor</th><th>Action</th><th>Target</th><th>Damage</th><th>Utility</th></tr></thead>
-          <tbody>{result.timeline.flatMap((frame,frameIndex)=>frame.actions.map((action,actionIndex)=><tr key={`${frameIndex}-${actionIndex}-${action.actor}`}>
+          <thead><tr><th>At</th><th>Actor</th><th>Action</th><th>Target</th><th>Damage</th><th>Utility / note</th></tr></thead>
+          <tbody>{result.timeline.flatMap((frame,frameIndex)=>frame.actions.map((action,actionIndex)=><tr key={`${frameIndex}-${actionIndex}-${action.actor}`} className={action.status==='OUT_OF_RANGE'?'row-blocked':undefined}>
             <td>{frame.atSeconds}s</td><td>{shortKey(action.actor)} · {action.champion}</td><td>{action.step} · {action.status.replaceAll('_',' ')}</td><td>{action.targetChampion??'—'}</td><td>{action.damageApplied||'—'}</td><td>{utilityCopy(action)}</td>
           </tr>))}</tbody>
         </table></div>
@@ -190,7 +191,7 @@ function DuoEditor({label,sideId,form,onChange,names,items,runes,summoners,patch
 }){
   const set=<K extends keyof LaneForm>(key:K,value:LaneForm[K])=>onChange({...form,[key]:value});
   return <div style={{padding:12,border:'1px solid var(--border)',borderRadius:14,background:'rgba(255,255,255,.02)',overflow:'visible'}}>
-    <div className="section-row"><b>{label}</b><span className="tag-chip">LV {form.level}</span></div>
+    <div className="section-row"><b>{label}</b><div className="tag-row"><span className="tag-chip">LV {form.level}</span>{form.focusDistanceUnits!==null&&<span className="tag-chip live-pill">{form.focusDistanceUnits}u TO FOCUS</span>}</div></div>
     <div style={{display:'grid',gridTemplateColumns:'1.4fr .55fr .65fr .75fr',gap:8,marginTop:9}}>
       <label className="lab-input"><span>Champion</span><input className="input" list={`names-${sideId}`} value={form.champion} onChange={e=>set('champion',e.target.value)}/><datalist id={`names-${sideId}`}>{names.map(name=><option key={name} value={name}/>)}</datalist></label>
       <Num label="Level" value={form.level} min={1} max={18} onChange={value=>set('level',value)}/>
@@ -207,6 +208,7 @@ function DuoEditor({label,sideId,form,onChange,names,items,runes,summoners,patch
         <RuneMini selected={form.runeIds} onChange={value=>set('runeIds',value)} runes={runes}/>
         <SummonerMini selected={form.summonerIds} active={form.activeSummonerIds} onChange={value=>set('summonerIds',value)} onActive={value=>set('activeSummonerIds',value)} summoners={summoners}/>
         <ChampionStateMini champion={form.champion} active={form.activeChampionEffects} onChange={value=>set('activeChampionEffects',value)}/>
+        <DistancePicker value={form.focusDistanceUnits} onChange={value=>set('focusDistanceUnits',value)}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
           <AccessPicker value={form.accessMode} onChange={value=>set('accessMode',value)}/>
           <Num label="Shield now" value={form.shield} min={0} max={10000} onChange={value=>set('shield',value)}/>
@@ -214,6 +216,16 @@ function DuoEditor({label,sideId,form,onChange,names,items,runes,summoners,patch
         <HitPicker missed={form.missedAbilities} onChange={value=>set('missedAbilities',value)}/>
       </div>
     </details>
+  </div>;
+}
+
+function DistancePicker({value,onChange}:{value:number|null;onChange:(value:number|null)=>void}){
+  const setRaw=(raw:string)=>{if(raw===''){onChange(null);return}const next=Number(raw);onChange(Number.isFinite(next)?Math.min(5000,Math.max(0,next)):null)};
+  return <div style={{padding:10,border:'1px solid rgba(var(--accent-rgb),.28)',borderRadius:12,background:'rgba(var(--accent-rgb),.035)'}}>
+    <div className="section-row"><div><div className="eyebrow">FOCUS DISTANCE</div><p className="muted" style={{fontSize:9,margin:'3px 0 0'}}>Static distance from this champion to the team&apos;s selected focus target. Unknown means range will not hard-block actions.</p></div><span className={`tag-chip ${value!==null?'live-pill':''}`}>{value===null?'UNKNOWN':`${value}u`}</span></div>
+    <input className="input" style={{marginTop:7}} type="number" min={0} max={5000} step={25} placeholder="Unknown" value={value??''} onChange={e=>setRaw(e.target.value)}/>
+    <div className="tag-row" style={{marginTop:7}}>{[300,500,550,650,800].map(distance=><button type="button" key={distance} className={`tag-chip ${value===distance?'live-pill':''}`} onClick={()=>onChange(distance)}>{distance}u</button>)}<button type="button" className={`tag-chip ${value===null?'live-pill':''}`} onClick={()=>onChange(null)}>UNKNOWN</button></div>
+    <p className="muted" style={{fontSize:9,margin:'6px 0 0'}}>If the focus target dies, this distance is not copied to the replacement target. That new geometry stays unknown until explicitly supplied.</p>
   </div>;
 }
 
@@ -289,7 +301,7 @@ function ChampionStateMini({champion,active,onChange}:{champion:string;active:st
 }
 
 function AccessPicker({value,onChange}:{value:AccessMode;onChange:(value:AccessMode)=>void}){
-  return <div style={{padding:10,border:'1px solid var(--border)',borderRadius:12}}><div className="eyebrow">RANGE / ACCESS</div><div className="tag-row" style={{marginTop:7}}><button type="button" className={`tag-chip ${value==='FULL'?'live-pill':''}`} onClick={()=>onChange('FULL')}>FULL ACCESS</button><button type="button" className={`tag-chip ${value==='NO_AUTOS'?'live-pill':''}`} onClick={()=>onChange('NO_AUTOS')}>NO AUTO ACCESS</button></div><p className="muted" style={{fontSize:9,margin:'6px 0 0'}}>No-auto access removes basic attacks instead of guessing whether you can walk into range.</p></div>;
+  return <div style={{padding:10,border:'1px solid var(--border)',borderRadius:12}}><div className="eyebrow">ACCESS OVERRIDE</div><div className="tag-row" style={{marginTop:7}}><button type="button" className={`tag-chip ${value==='FULL'?'live-pill':''}`} onClick={()=>onChange('FULL')}>ALLOW AUTOS</button><button type="button" className={`tag-chip ${value==='NO_AUTOS'?'live-pill':''}`} onClick={()=>onChange('NO_AUTOS')}>NO AUTOS</button></div><p className="muted" style={{fontSize:9,margin:'6px 0 0'}}>Distance handles geometric range. NO AUTOS is a stronger manual assumption for cases where the champion cannot safely access basic attacks even if raw range would permit one.</p></div>;
 }
 
 function HitPicker({missed,onChange}:{missed:AbilitySlot[];onChange:(value:AbilitySlot[])=>void}){
@@ -316,7 +328,8 @@ function Num({label,value,min,max,onChange}:{label:string;value:number;min:numbe
   return <label className="lab-input"><span>{label}</span><input className="input" type="number" min={min} max={max} value={value} onChange={e=>{const next=Number(e.target.value);onChange(Number.isFinite(next)?Math.max(min,Math.min(max,next)):min)}}/></label>;
 }
 
-function utilityCopy(action:ActionEvent){const parts:string[]=[];if(action.shieldGranted)parts.push(`+${action.shieldGranted} shield`);if(action.healApplied)parts.push(`+${action.healApplied} heal`);if(action.controlSeconds)parts.push(`${action.controlSeconds}s CC`);return parts.join(' · ')||'—'}
+function utilityCopy(action:ActionEvent){if(action.status==='OUT_OF_RANGE')return action.note??'Out of range';const parts:string[]=[];if(action.shieldGranted)parts.push(`+${action.shieldGranted} shield`);if(action.healApplied)parts.push(`+${action.healApplied} heal`);if(action.controlSeconds)parts.push(`${action.controlSeconds}s CC`);if(action.note)parts.push(action.note);return parts.join(' · ')||'—'}
+function distanceChip(label:string,value:number|null){return value===null?null:<span className="tag-chip live-pill">{label} → FOCUS {value}u</span>}
 const verdictCopy=(value:string)=>value==='YOU_WIN'?'YOUR BOT LANE WINS':value==='THEM_WIN'?'ENEMY BOT LANE WINS':value==='YOU_AHEAD'?'YOUR BOT LANE FINISHES AHEAD':value==='THEM_AHEAD'?'ENEMY BOT LANE FINISHES AHEAD':value==='DOUBLE_KO'?'BOTH LANES ARE WIPED':'THE 2V2 IS CLOSE';
 const shortKey=(key:SideKey)=>key==='YOU_ADC'?'YOU ADC':key==='YOU_SUPPORT'?'YOU SUP':key==='THEM_ADC'?'THEIR ADC':'THEIR SUP';
 const clean=(value:string)=>value.replaceAll('_',' ');
