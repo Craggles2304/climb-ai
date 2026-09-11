@@ -18,9 +18,28 @@ const STANDARD_Q_MAX_ORDER:AbilitySlot[]=[
 ];
 
 export function legalDefaultRanks(level:number):Record<AbilitySlot,number>{
+  return ranksFromLevelOrder(STANDARD_Q_MAX_ORDER,level);
+}
+
+/**
+ * Resolve a supplied level-by-level skill sequence into legal ranks at a target
+ * level. Each entry is evaluated at the level it would actually be learned, so
+ * an early R or an over-ranked basic is ignored instead of creating an impossible
+ * champion state. Generated CLIMB skill plans are already legal; this guard is
+ * for external/manual sequences.
+ */
+export function ranksFromLevelOrder(
+  order:AbilitySlot[],
+  level:number,
+):Record<AbilitySlot,number>{
   const ranks:Record<AbilitySlot,number>={Q:0,W:0,E:0,R:0};
   const points=Math.max(1,Math.min(18,Math.round(level)));
-  for(const slot of STANDARD_Q_MAX_ORDER.slice(0,points))ranks[slot]++;
+  for(let index=0;index<Math.min(points,order.length);index++){
+    const slot=order[index];
+    const learnLevel=index+1;
+    const cap=maxRankAtLevel(slot,learnLevel);
+    if(ranks[slot]<cap)ranks[slot]++;
+  }
   return ranks;
 }
 
