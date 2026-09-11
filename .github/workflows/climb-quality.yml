@@ -2,7 +2,7 @@ name: CLIMB Quality
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev/combat-engine-batch]
     paths:
       - 'climb-ai-v6/**'
       - '.github/workflows/climb-quality.yml'
