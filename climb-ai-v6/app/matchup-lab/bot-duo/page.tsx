@@ -17,7 +17,7 @@ interface SetupSummoner{id:string;key:number;name:string;description:string;imag
 interface LaneForm{
   champion:string;level:number;itemIds:number[];healthPercent:number;resourcePercent:number;sequence:Step[];
   runeIds:number[];summonerIds:string[];activeSummonerIds:string[];activeChampionEffects:string[];
-  ranks:Partial<Record<AbilitySlot,number>>;shield:number;accessMode:AccessMode;missedAbilities:AbilitySlot[];
+  ranks:Partial<Record<AbilitySlot,number>>;shield:number;accessMode:AccessMode;targetDistance?:number;missedAbilities:AbilitySlot[];
 }
 interface ParticipantSnapshot{key:SideKey;champion:string;team:'YOU'|'THEM';role:'ADC'|'SUPPORT';health:number;maxHealth:number;shield:number;mana:number;alive:boolean;damageDealt:number;damageTaken:number;healingDone:number;shieldingDone:number;controlledUntil:number}
 interface ActionEvent{actor:SideKey;champion:string;step:Step;target:SideKey|null;targetChampion:string|null;status:string;damageApplied:number;healApplied:number;shieldGranted:number;controlSeconds:number;note?:string}
@@ -89,6 +89,9 @@ export default function BotDuoLab(){
 
   useEffect(()=>{const timer=setTimeout(simulate,400);return()=>clearTimeout(timer)},[simulate]);
   const result=data?.result;
+  const accessNotes=(data?.coverage?.notes??[]).filter(note=>
+    /target distance|basic attack:|outside the published|inside the published|held static/i.test(note),
+  ).slice(0,12);
 
   return <AppShell>
     <PageHead title="Bot Duo Lab" subtitle="Four champions. One shared clock. Configure the real lane state, choose what lands, then see who wins and how to play it."/>
@@ -98,7 +101,7 @@ export default function BotDuoLab(){
         <div>
           <div className="eyebrow">BOT DUO · DETERMINISTIC 2V2</div>
           <b style={{fontSize:15}}>ADC + Support vs ADC + Support</b>
-          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting and explicit HIT/MISS/access assumptions feed the same four-champion timeline.</p>
+          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting, explicit distance and HIT/MISS assumptions feed the same four-champion timeline.</p>
         </div>
         <div className="tag-row"><span className="tag-chip">PATCH {patch||'…'}</span><Link className="tag-chip" href="/matchup-lab">SOLO LAB →</Link></div>
       </div>
@@ -142,6 +145,11 @@ export default function BotDuoLab(){
       </div>
 
       {data.lanePlan&&<LaneCoachCard plan={data.lanePlan}/>} 
+
+      {accessNotes.length>0&&<div className="glass card" style={{marginTop:16,padding:16}}>
+        <div className="section-row"><div><div className="eyebrow">STATIC ACCESS MODEL</div><h2 style={{margin:'5px 0'}}>What can actually reach from this distance?</h2></div><span className="tag-chip">NO MOVEMENT GUESSED</span></div>
+        <div className="tag-row" style={{marginTop:10}}>{accessNotes.map((note,index)=><span className="tag-chip" key={`${note}-${index}`}>{note}</span>)}</div>
+      </div>}
 
       <BotLaneLevelMap
         yourAdc={yourAdc} yourSupport={yourSupport} enemyAdc={enemyAdc} enemySupport={enemySupport}
@@ -208,7 +216,7 @@ function DuoEditor({label,sideId,form,onChange,names,items,runes,summoners,patch
         <SummonerMini selected={form.summonerIds} active={form.activeSummonerIds} onChange={value=>set('summonerIds',value)} onActive={value=>set('activeSummonerIds',value)} summoners={summoners}/>
         <ChampionStateMini champion={form.champion} active={form.activeChampionEffects} onChange={value=>set('activeChampionEffects',value)}/>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-          <AccessPicker value={form.accessMode} onChange={value=>set('accessMode',value)}/>
+          <AccessPicker value={form.accessMode} distance={form.targetDistance} onChange={value=>set('accessMode',value)} onDistance={value=>set('targetDistance',value)}/>
           <Num label="Shield now" value={form.shield} min={0} max={10000} onChange={value=>set('shield',value)}/>
         </div>
         <HitPicker missed={form.missedAbilities} onChange={value=>set('missedAbilities',value)}/>
@@ -288,8 +296,18 @@ function ChampionStateMini({champion,active,onChange}:{champion:string;active:st
   return <div style={{padding:10,border:'1px solid rgba(var(--accent-rgb),.28)',borderRadius:12,background:'rgba(var(--accent-rgb),.04)'}}><div className="eyebrow">CHAMPION STATE</div><div className="tag-row" style={{marginTop:7}}>{options.map(option=><button type="button" key={option.id} title={option.detail} className={`tag-chip ${active.includes(option.id)?'live-pill':''}`} onClick={()=>toggle(option.id,option.group)}>{active.includes(option.id)?'✓ ':''}{option.label}</button>)}</div></div>;
 }
 
-function AccessPicker({value,onChange}:{value:AccessMode;onChange:(value:AccessMode)=>void}){
-  return <div style={{padding:10,border:'1px solid var(--border)',borderRadius:12}}><div className="eyebrow">RANGE / ACCESS</div><div className="tag-row" style={{marginTop:7}}><button type="button" className={`tag-chip ${value==='FULL'?'live-pill':''}`} onClick={()=>onChange('FULL')}>FULL ACCESS</button><button type="button" className={`tag-chip ${value==='NO_AUTOS'?'live-pill':''}`} onClick={()=>onChange('NO_AUTOS')}>NO AUTO ACCESS</button></div><p className="muted" style={{fontSize:9,margin:'6px 0 0'}}>No-auto access removes basic attacks instead of guessing whether you can walk into range.</p></div>;
+function AccessPicker({value,distance,onChange,onDistance}:{value:AccessMode;distance?:number;onChange:(value:AccessMode)=>void;onDistance:(value:number|undefined)=>void}){
+  const setDistance=(raw:string)=>{
+    if(raw.trim()===''){onDistance(undefined);return}
+    const next=Number(raw);if(Number.isFinite(next))onDistance(Math.max(0,Math.min(5000,next)));
+  };
+  return <div style={{padding:10,border:'1px solid var(--border)',borderRadius:12}}>
+    <div className="eyebrow">RANGE / ACCESS</div>
+    <div className="tag-row" style={{marginTop:7}}><button type="button" className={`tag-chip ${value==='FULL'?'live-pill':''}`} onClick={()=>onChange('FULL')}>FULL ACCESS</button><button type="button" className={`tag-chip ${value==='NO_AUTOS'?'live-pill':''}`} onClick={()=>onChange('NO_AUTOS')}>NO AUTO ACCESS</button></div>
+    <label className="lab-input" style={{display:'block',marginTop:8}}><span>Target distance (units)</span><input className="input" type="number" min={0} max={5000} placeholder="Not set" value={distance??''} onChange={e=>setDistance(e.target.value)}/></label>
+    <div className="tag-row" style={{marginTop:6}}>{[150,300,425,550,650].map(value=><button type="button" key={value} className={`tag-chip ${distance===value?'live-pill':''}`} onClick={()=>onDistance(value)}>{value}u</button>)}{distance!==undefined&&<button type="button" className="tag-chip" onClick={()=>onDistance(undefined)}>CLEAR</button>}</div>
+    <p className="muted" style={{fontSize:9,margin:'6px 0 0'}}>When distance is set, CLIMB checks current attack range and published spell ranges. It does not walk champions forward, add hitbox padding or invent hit probability.</p>
+  </div>;
 }
 
 function HitPicker({missed,onChange}:{missed:AbilitySlot[];onChange:(value:AbilitySlot[])=>void}){
