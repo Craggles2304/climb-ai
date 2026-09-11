@@ -38,10 +38,14 @@ jobs:
         run: node --import tsx --test tests/executeSpells.test.ts
       - name: Attack interaction regressions
         run: node --import tsx --test tests/attackInteractions.test.ts
+      - name: Basic attack timing regressions
+        run: node --import tsx --test tests/attackTiming.test.ts
       - name: Galio passive timeline regressions
         run: node --import tsx --test tests/galioPassiveTimeline.test.ts
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
+      - name: Live tracker regressions
+        run: node --import tsx --test tests/liveGame.test.ts tests/liveStrength.test.ts
       - name: Core and auth regressions
         continue-on-error: true
         run: node --import tsx --test tests/analytics.test.ts tests/auth.test.ts tests/build.test.ts
@@ -53,4 +57,4 @@ jobs:
         run: node --import tsx --test tests/costOfLeak.test.ts tests/damage.test.ts tests/dps.test.ts tests/duel.test.ts tests/duelInteractions.test.ts tests/effects.test.ts tests/formula.test.ts tests/importSpells.test.ts tests/items.test.ts tests/trades.test.ts
       - name: Product regressions
         continue-on-error: true
-        run: node --import tsx --test tests/keyMoments.test.ts tests/lane.test.ts tests/liveGame.test.ts tests/mapMatch.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts
+        run: node --import tsx --test tests/keyMoments.test.ts tests/lane.test.ts tests/mapMatch.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts
