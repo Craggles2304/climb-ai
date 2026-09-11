@@ -17,8 +17,10 @@ import {
 } from './state';
 import {
   consumeRechargeableAttack,rechargeableAttackEffects,
+  rechargeableAttackWindupBonusAttackSpeedFlat,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
+import {basicAttackHitTiming} from './attackTiming';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
 
 export interface TradeScenario{
@@ -92,8 +94,9 @@ interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const MODEL_NOTE=
   'A damage race, not a full simultaneous duel: both sides commit, every selected damage ability hits, '+
-  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. Cast-generated '+
-  'self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
+  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. '+
+  'Validated basic attacks deal damage when their windup lands, and a timed trade counts that attack only if impact occurs inside the window. '+
+  'Cast-generated self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
 
 export function compareTrades(
   you:TradeSide,them:TradeSide,scenarios=TRADE_SCENARIOS,
@@ -182,7 +185,7 @@ export function runTrade(
       const reset=recordAttackTimerReset(runtime,candidate.ability.eventState?.resetsBasicAttackTimer);
 
       steps.push({
-        atSeconds:round(clock),label:`${candidate.slot} ${candidate.ability.name}`,
+        atSeconds:roundTime(clock),label:`${candidate.slot} ${candidate.ability.name}`,
         damage:round(applied.applied),
         state:[
           stackRule?`${stackRule.label} ${stacksAfter}/${stackRule.maxStacks}`:'',
@@ -204,21 +207,30 @@ export function runTrade(
 
     if(scenario.abilitiesOnce&&!scenario.autosOnly)break;
 
-    const timed=timedAutoSnapshot(actor.autoAttack.timedStates,clock);
-    const resourceCost=timed.resourceCostOverride??positive(actor.autoAttack.resourceCost??0);
+    const attackStart=clock;
+    const timedAtStart=timedAutoSnapshot(actor.autoAttack.timedStates,attackStart);
+    const resourceCost=timedAtStart.resourceCostOverride??positive(actor.autoAttack.resourceCost??0);
     if(resourceCost>mana+1e-9){
       unmodelled.push(`Basic attacks in this champion state cost ${round(resourceCost)} resource; only ${round(mana)} remained, so the damage race stopped rather than silently firing an unaffordable attack.`);
       incomplete=true;
       break;
     }
 
-    const speed=currentAttackSpeed(actor.autoAttack,attackStacks,timed);
+    const speed=currentAttackSpeed(actor.autoAttack,attackStacks,timedAtStart);
     const interval=attackInterval(speed);
     if(interval<=0)break;
 
+    const replacementEffects=rechargeableAttackEffects(actor.autoAttack,runtime,attackStart);
+    const windupBonus=replacementEffects?.length
+      ?rechargeableAttackWindupBonusAttackSpeedFlat(actor.autoAttack,runtime,attackStart)
+      :0;
+    const hitClock=basicAttackHitTiming(actor.autoAttack,attackStart,speed,windupBonus).hitsAt;
+    if(hitClock>budget+1e-9)break;
+
     mana-=resourceCost;
+    const timed=timedAutoSnapshot(actor.autoAttack.timedStates,hitClock);
+    const targetAtHit=withDebuffs(target.resistances,activeDebuffs,hitClock);
     const nextAuto=autoCount+1;
-    const replacementEffects=rechargeableAttackEffects(actor.autoAttack,runtime,clock);
     const components:DamageComponent[]=replacementEffects?.length
       ?replacementEffects.map(effect=>resolveOnHit(effect,health,targetMaxHealth))
       :[{
@@ -230,7 +242,7 @@ export function runTrade(
       components.push(resolveOnHit(effect,health,targetMaxHealth));
     }
     for(const consumer of actor.autoAttack.eventState?.consumesMarks??[])
-      if(consumeMark(runtime,consumer,clock))
+      if(consumeMark(runtime,consumer,hitClock))
         components.push(resolveOnHit(consumer.damage,health,targetMaxHealth));
     for(const proc of actor.autoAttack.autoProcs??[])
       if(autoProcTriggers(proc,nextAuto))
@@ -240,18 +252,19 @@ export function runTrade(
       components.push(resolveOnHit(stack.onHitAtMax,health,targetMaxHealth));
 
     const adjusted=applyDamageRules(
-      components,actor.damageRules??[],health,targetMaxHealth,autoCount,timedMultiplier,
+      components,actor.damageRules??[],health,targetMaxHealth,autoCount,
+      outgoingMultiplier(actor,hitClock),
     );
-    const result=mitigateAll(adjusted,targetNow,pen);
+    const result=mitigateAll(adjusted,targetAtHit,pen);
     const applied=applyToPool(result.mitigatedTotal,shield,health);
     shield=applied.shield;health=applied.health;dealt+=applied.applied;
     const passiveProc=replacementEffects?.length
-      ?consumeRechargeableAttack(actor.autoAttack,runtime,clock)
+      ?consumeRechargeableAttack(actor.autoAttack,runtime,hitClock)
       :null;
     autoCount=nextAuto;
     if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
     steps.push({
-      atSeconds:round(clock),
+      atSeconds:roundTime(hitClock),
       label:passiveProc
         ?`${passiveProc.label}${components.length>1?` + ${components.length-1} effect${components.length===2?'':'s'}`:''}`
         :components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
@@ -261,7 +274,7 @@ export function runTrade(
         passiveProc?`recharges until ${passiveProc.readyAt}s before refunds`:'',
       ].filter(Boolean).join(' · ')||undefined,
     });
-    clock+=interval;
+    clock=attackStart+interval;
   }
 
   return {
@@ -427,3 +440,4 @@ const clamp01=(n:number)=>Math.min(1,Math.max(0,Number.isFinite(n)?n:0));
 const finiteOr=(n:number|undefined,fallback:number)=>Number.isFinite(n)?n as number:fallback;
 const positive=(n:number)=>Number.isFinite(n)&&n>0?n:0;
 const round=(n:number)=>Math.round(n*10)/10;
+const roundTime=(n:number)=>Math.round(n*100)/100;
