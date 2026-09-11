@@ -77,6 +77,13 @@ export interface BasicAttackReplacement{
   firstNAttacks?:number;
 }
 
+/** Patch-validated ordinary basic-attack windup data. */
+export interface BasicAttackTimingState{
+  championId:string;
+  patch:string;
+  windupPercent:number;
+}
+
 export interface AbilityEventState{
   stackRule?:AbilityStackRule;
   consumesMarks?:MarkConsumer[];
@@ -92,6 +99,8 @@ export interface AutoEventState{
   consumesMarks?:MarkConsumer[];
   /** Replace the normal basic-attack damage component for matching attacks. */
   replacement?:BasicAttackReplacement;
+  /** Fail-closed timing metadata: absent means preserve the legacy immediate-hit fallback. */
+  attackTiming?:BasicAttackTimingState;
 }
 
 interface StackRuntime{stacks:number;expiresAt:number}
