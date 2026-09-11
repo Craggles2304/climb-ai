@@ -11,6 +11,7 @@ type Step='AA'|'Q'|'W'|'E'|'R';
 type AbilitySlot='Q'|'W'|'E'|'R';
 type SideKey='YOU_ADC'|'YOU_SUPPORT'|'THEM_ADC'|'THEM_SUPPORT';
 type AccessMode='FULL'|'NO_AUTOS';
+type WavePosition='YOUR_TOWER'|'YOUR_SIDE'|'CENTER'|'THEIR_SIDE'|'THEIR_TOWER';
 interface CatalogueItem{id:number;name:string;gold:number;image:string|null;kind:string}
 interface SetupRune{id:number;name:string;icon:string;treeId:number;treeName:string;slot:number}
 interface SetupSummoner{id:string;key:number;name:string;description:string;image:string|null;cooldown:number|null}
@@ -19,17 +20,20 @@ interface LaneForm{
   runeIds:number[];summonerIds:string[];activeSummonerIds:string[];activeChampionEffects:string[];
   ranks:Partial<Record<AbilitySlot,number>>;shield:number;accessMode:AccessMode;targetDistance?:number;missedAbilities:AbilitySlot[];
 }
+interface LaneContextForm{wavePosition:WavePosition;yourMinions:number;enemyMinions:number;yourCannon:boolean;enemyCannon:boolean}
+interface LaneContextReport{facts:LaneContextForm&{minionDelta:number};waveNumbers:'YOU'|'THEM'|'EVEN';constraints:string[];rerunTriggers:string[];modelNote:string}
 interface ParticipantSnapshot{key:SideKey;champion:string;team:'YOU'|'THEM';role:'ADC'|'SUPPORT';health:number;maxHealth:number;shield:number;mana:number;alive:boolean;damageDealt:number;damageTaken:number;healingDone:number;shieldingDone:number;controlledUntil:number}
 interface ActionEvent{actor:SideKey;champion:string;step:Step;target:SideKey|null;targetChampion:string|null;status:string;damageApplied:number;healApplied:number;shieldGranted:number;controlSeconds:number;note?:string}
 interface Frame{atSeconds:number;actions:ActionEvent[];participants:Record<SideKey,ParticipantSnapshot>}
 interface Kill{atSeconds:number;victim:SideKey;champion:string;team:'YOU'|'THEM';by:SideKey[]}
 interface BotResult{verdict:string;winner:'YOU'|'THEM'|null;durationSeconds:number;timeline:Frame[];kills:Kill[];participants:Record<SideKey,ParticipantSnapshot>;teamDamage:{YOU:number;THEM:number};firstKill:Kill|null;incomplete:boolean;modelNote:string}
 interface FocusComparison{recommendedTarget:SideKey;recommendedRole:'ADC'|'SUPPORT';reason:string}
-interface LanePlan{call:'SAFE'|'FARM'|'POKE'|'SHORT_TRADE'|'EXTENDED_TRADE'|'ALL_IN';headline:string;reason:string;target:'ADC'|'SUPPORT';targetChampion:string;rangeDelta:number;rangeLabel:'YOU'|'THEM'|'EVEN';rules:string[];rerunTriggers:string[]}
-interface ApiResponse{ok:boolean;error?:string;patch?:string;confidence?:string;result?:BotResult;focusComparison?:FocusComparison;lanePlan?:LanePlan;coverage?:{partial:string[];notes:string[]}}
+interface LanePlan{call:'SAFE'|'FARM'|'POKE'|'SHORT_TRADE'|'EXTENDED_TRADE'|'ALL_IN';headline:string;reason:string;target:'ADC'|'SUPPORT';targetChampion:string;rangeDelta:number;rangeLabel:'YOU'|'THEM'|'EVEN';rules:string[];rerunTriggers:string[];laneContext?:LaneContextReport|null}
+interface ApiResponse{ok:boolean;error?:string;patch?:string;confidence?:string;result?:BotResult;focusComparison?:FocusComparison;lanePlan?:LanePlan;laneContext?:LaneContextReport|null;coverage?:{partial:string[];notes:string[]}}
 
 const STEPS:Step[]=['Q','W','E','R','AA'];
 const SPELLS:AbilitySlot[]=['Q','W','E','R'];
+const WAVE_POSITIONS:WavePosition[]=['YOUR_TOWER','YOUR_SIDE','CENTER','THEIR_SIDE','THEIR_TOWER'];
 const MODELLED_RUNES=new Set([8005,8008,8014,8017,8299]);
 const ACTIVE_SUMMONERS=new Set(['SummonerBarrier','SummonerHeal','SummonerDot','SummonerExhaust']);
 const blank=(champion:string):LaneForm=>({
@@ -47,6 +51,7 @@ export default function BotDuoLab(){
   const [enemyFocus,setEnemyFocus]=useState<'YOU_ADC'|'YOU_SUPPORT'>('YOU_ADC');
   const [yourProtect,setYourProtect]=useState<'YOU_ADC'|'YOU_SUPPORT'>('YOU_ADC');
   const [enemyProtect,setEnemyProtect]=useState<'THEM_ADC'|'THEM_SUPPORT'>('THEM_ADC');
+  const [laneContext,setLaneContext]=useState<LaneContextForm>({wavePosition:'CENTER',yourMinions:3,enemyMinions:3,yourCannon:false,enemyCannon:false});
   const [duration,setDuration]=useState(10);
   const [names,setNames]=useState<string[]>([]);
   const [items,setItems]=useState<CatalogueItem[]>([]);
@@ -79,13 +84,13 @@ export default function BotDuoLab(){
     const id=++request.current;setLoading(true);
     fetch('/api/matchup/botlane',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({yourAdc,yourSupport,enemyAdc,enemySupport,yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds:duration}),
+      body:JSON.stringify({yourAdc,yourSupport,enemyAdc,enemySupport,yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds:duration,laneContext}),
     }).then(r=>r.json()).then((d:ApiResponse)=>{
       if(id!==request.current)return;
       setData(d);if(typeof d.patch==='string')setPatch(d.patch);
     }).catch(()=>{if(id===request.current)setData({ok:false,error:'Could not reach the bot-lane simulator.'})})
       .finally(()=>{if(id===request.current)setLoading(false)});
-  },[yourAdc,yourSupport,enemyAdc,enemySupport,yourFocus,enemyFocus,yourProtect,enemyProtect,duration]);
+  },[yourAdc,yourSupport,enemyAdc,enemySupport,yourFocus,enemyFocus,yourProtect,enemyProtect,duration,laneContext]);
 
   useEffect(()=>{const timer=setTimeout(simulate,400);return()=>clearTimeout(timer)},[simulate]);
   const result=data?.result;
@@ -101,7 +106,7 @@ export default function BotDuoLab(){
         <div>
           <div className="eyebrow">BOT DUO · DETERMINISTIC 2V2</div>
           <b style={{fontSize:15}}>ADC + Support vs ADC + Support</b>
-          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting, explicit distance and HIT/MISS assumptions feed the same four-champion timeline.</p>
+          <p className="muted" style={{fontSize:11,margin:'5px 0 0'}}>Items, ranks, runes, summoners, champion states, support targeting, explicit distance, wave state and HIT/MISS assumptions feed the same coaching result.</p>
         </div>
         <div className="tag-row"><span className="tag-chip">PATCH {patch||'…'}</span><Link className="tag-chip" href="/matchup-lab">SOLO LAB →</Link></div>
       </div>
@@ -120,7 +125,7 @@ export default function BotDuoLab(){
 
     <div className="glass card" style={{marginTop:16,padding:16,position:'relative',zIndex:1}}>
       <div className="section-row" style={{gap:14,flexWrap:'wrap'}}>
-        <div><div className="eyebrow">TARGET + PEEL PLAN</div><h2 style={{margin:'5px 0 0'}}>Who gets hit — and who gets protected?</h2></div>
+        <div><div className="eyebrow">TARGET + LANE STATE</div><h2 style={{margin:'5px 0 0'}}>Who gets hit — and what lane are you fighting in?</h2></div>
         <span className="tag-chip">{data?.confidence??'CALCULATING'}</span>
       </div>
       <div className="lab-grid" style={{marginTop:14}}>
@@ -129,6 +134,7 @@ export default function BotDuoLab(){
         <FocusPicker label="YOUR SUPPORT PROTECTS" value={yourProtect} options={[{id:'YOU_ADC',label:'YOUR ADC'},{id:'YOU_SUPPORT',label:'THEMSELF'}]} onChange={v=>setYourProtect(v as 'YOU_ADC'|'YOU_SUPPORT')}/>
         <FocusPicker label="ENEMY SUPPORT PROTECTS" value={enemyProtect} options={[{id:'THEM_ADC',label:'ENEMY ADC'},{id:'THEM_SUPPORT',label:'THEMSELF'}]} onChange={v=>setEnemyProtect(v as 'THEM_ADC'|'THEM_SUPPORT')}/>
       </div>
+      <LaneStatePicker value={laneContext} onChange={setLaneContext}/>
       <div className="section-row" style={{marginTop:14,gap:10,flexWrap:'wrap'}}>
         <span className="muted" style={{fontSize:11}}>Fight window</span>
         <div className="tag-row">{[3,5,10,15,20].map(seconds=><button type="button" key={seconds} className={`tag-chip ${duration===seconds?'live-pill':''}`} onClick={()=>setDuration(seconds)}>{seconds}s</button>)}</div>
@@ -146,6 +152,11 @@ export default function BotDuoLab(){
 
       {data.lanePlan&&<LaneCoachCard plan={data.lanePlan}/>} 
 
+      {data.laneContext&&<div className="glass card" style={{marginTop:16,padding:16}}>
+        <div className="section-row"><div><div className="eyebrow">LANE CONTEXT · FACTS NOT DAMAGE</div><h2 style={{margin:'5px 0'}}>Wave {data.laneContext.facts.wavePosition.replaceAll('_',' ')}</h2></div><span className="tag-chip">MINION DELTA {signed(data.laneContext.facts.minionDelta)}</span></div>
+        <div className="tag-row" style={{marginTop:10}}>{data.laneContext.constraints.map((line,index)=><span className="tag-chip" key={`${line}-${index}`}>{line}</span>)}</div>
+      </div>}
+
       {accessNotes.length>0&&<div className="glass card" style={{marginTop:16,padding:16}}>
         <div className="section-row"><div><div className="eyebrow">STATIC ACCESS MODEL</div><h2 style={{margin:'5px 0'}}>What can actually reach from this distance?</h2></div><span className="tag-chip">NO MOVEMENT GUESSED</span></div>
         <div className="tag-row" style={{marginTop:10}}>{accessNotes.map((note,index)=><span className="tag-chip" key={`${note}-${index}`}>{note}</span>)}</div>
@@ -154,7 +165,7 @@ export default function BotDuoLab(){
       <BotLaneLevelMap
         yourAdc={yourAdc} yourSupport={yourSupport} enemyAdc={enemyAdc} enemySupport={enemySupport}
         yourFocus={yourFocus} enemyFocus={enemyFocus} yourProtect={yourProtect} enemyProtect={enemyProtect}
-        durationSeconds={duration}
+        durationSeconds={duration} laneContext={laneContext}
       />
 
       {data.focusComparison&&<div className="glass card" style={{marginTop:16,padding:16,border:'1px solid rgba(var(--accent-rgb),.3)'}}>
@@ -310,6 +321,22 @@ function AccessPicker({value,distance,onChange,onDistance}:{value:AccessMode;dis
   </div>;
 }
 
+function LaneStatePicker({value,onChange}:{value:LaneContextForm;onChange:(value:LaneContextForm)=>void}){
+  const set=<K extends keyof LaneContextForm>(key:K,next:LaneContextForm[K])=>onChange({...value,[key]:next});
+  return <div style={{marginTop:14,padding:12,border:'1px solid var(--border)',borderRadius:14,background:'rgba(255,255,255,.02)'}}>
+    <div className="section-row" style={{gap:10,flexWrap:'wrap'}}><div><div className="eyebrow">WAVE CONTEXT</div><p className="muted" style={{fontSize:9.5,margin:'4px 0 0'}}>These facts constrain the coaching text. They do not secretly add minion or turret damage to champion combat.</p></div><span className="tag-chip">EXPLICIT</span></div>
+    <div className="tag-row" style={{marginTop:8}}>{WAVE_POSITIONS.map(position=><button type="button" key={position} className={`tag-chip ${value.wavePosition===position?'live-pill':''}`} onClick={()=>set('wavePosition',position)}>{position.replaceAll('_',' ')}</button>)}</div>
+    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginTop:10}}>
+      <Num label="Your minions" value={value.yourMinions} min={0} max={30} onChange={next=>set('yourMinions',next)}/>
+      <Num label="Enemy minions" value={value.enemyMinions} min={0} max={30} onChange={next=>set('enemyMinions',next)}/>
+    </div>
+    <div className="tag-row" style={{marginTop:8}}>
+      <button type="button" className={`tag-chip ${value.yourCannon?'live-pill':''}`} onClick={()=>set('yourCannon',!value.yourCannon)}>{value.yourCannon?'✓ ':''}YOUR CANNON</button>
+      <button type="button" className={`tag-chip ${value.enemyCannon?'live-pill':''}`} onClick={()=>set('enemyCannon',!value.enemyCannon)}>{value.enemyCannon?'✓ ':''}ENEMY CANNON</button>
+    </div>
+  </div>;
+}
+
 function HitPicker({missed,onChange}:{missed:AbilitySlot[];onChange:(value:AbilitySlot[])=>void}){
   return <div style={{padding:10,border:'1px solid var(--border)',borderRadius:12}}><div className="section-row"><div><div className="eyebrow">ABILITY HIT ASSUMPTION</div><p className="muted" style={{fontSize:9,margin:'3px 0 0'}}>No hit percentage is invented. Tell CLIMB whether each spell connects in this scenario.</p></div><span className="tag-chip">EXPLICIT</span></div><div className="tag-row" style={{marginTop:7}}>{SPELLS.map(slot=>{const miss=missed.includes(slot);return <button type="button" key={slot} className={`tag-chip ${miss?'':'live-pill'}`} onClick={()=>onChange(miss?missed.filter(x=>x!==slot):[...missed,slot])}>{slot} · {miss?'MISS':'HIT'}</button>})}</div></div>;
 }
@@ -338,3 +365,4 @@ function utilityCopy(action:ActionEvent){const parts:string[]=[];if(action.shiel
 const verdictCopy=(value:string)=>value==='YOU_WIN'?'YOUR BOT LANE WINS':value==='THEM_WIN'?'ENEMY BOT LANE WINS':value==='YOU_AHEAD'?'YOUR BOT LANE FINISHES AHEAD':value==='THEM_AHEAD'?'ENEMY BOT LANE FINISHES AHEAD':value==='DOUBLE_KO'?'BOTH LANES ARE WIPED':'THE 2V2 IS CLOSE';
 const shortKey=(key:SideKey)=>key==='YOU_ADC'?'YOU ADC':key==='YOU_SUPPORT'?'YOU SUP':key==='THEM_ADC'?'THEIR ADC':'THEIR SUP';
 const clean=(value:string)=>value.replaceAll('_',' ');
+const signed=(value:number)=>`${value>0?'+':''}${value}`;

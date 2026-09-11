@@ -2,7 +2,7 @@ name: CLIMB Quality
 
 on:
   push:
-    branches: [main]
+    branches: [main, 'dev/combat-batch-20260911']
     paths:
       - 'climb-ai-v6/**'
       - '.github/workflows/climb-quality.yml'
@@ -40,6 +40,8 @@ jobs:
         run: node --import tsx --test tests/attackInteractions.test.ts
       - name: Galio passive timeline regressions
         run: node --import tsx --test tests/galioPassiveTimeline.test.ts
+      - name: Lane setup and coaching regressions
+        run: node --import tsx --test tests/access.test.ts tests/botlaneAccess.test.ts tests/laneContext.test.ts tests/botlaneCoach.test.ts tests/skillRanks.test.ts
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
       - name: Core and auth regressions

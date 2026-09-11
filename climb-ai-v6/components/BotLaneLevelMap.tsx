@@ -8,6 +8,7 @@ type ProtectYou='YOU_ADC'|'YOU_SUPPORT';
 type ProtectThem='THEM_ADC'|'THEM_SUPPORT';
 type FocusYou='THEM_ADC'|'THEM_SUPPORT';
 type FocusThem='YOU_ADC'|'YOU_SUPPORT';
+type WavePosition='YOUR_TOWER'|'YOUR_SIDE'|'CENTER'|'THEIR_SIDE'|'THEIR_TOWER';
 
 export interface LevelMapSide{
   champion:string;
@@ -23,7 +24,16 @@ export interface LevelMapSide{
   ranks:Partial<Record<AbilitySlot,number>>;
   shield:number;
   accessMode:AccessMode;
+  targetDistance?:number;
   missedAbilities:AbilitySlot[];
+}
+
+export interface LevelMapLaneContext{
+  wavePosition:WavePosition;
+  yourMinions:number;
+  enemyMinions:number;
+  yourCannon:boolean;
+  enemyCannon:boolean;
 }
 
 interface LanePlan{
@@ -68,10 +78,11 @@ interface SkillPlanResponse{
 
 export function BotLaneLevelMap({
   yourAdc,yourSupport,enemyAdc,enemySupport,
-  yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,
+  yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,laneContext,
 }:{
   yourAdc:LevelMapSide;yourSupport:LevelMapSide;enemyAdc:LevelMapSide;enemySupport:LevelMapSide;
   yourFocus:FocusYou;enemyFocus:FocusThem;yourProtect:ProtectYou;enemyProtect:ProtectThem;durationSeconds:number;
+  laneContext?:LevelMapLaneContext;
 }){
   const [rows,setRows]=useState<LevelResult[]>([]);
   const [skillPlans,setSkillPlans]=useState<SkillPlan[]>([]);
@@ -115,7 +126,7 @@ export function BotLaneLevelMap({
           body:JSON.stringify({
             yourAdc:side(yourAdc,0),yourSupport:side(yourSupport,1),
             enemyAdc:side(enemyAdc,2),enemySupport:side(enemySupport,3),
-            yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,
+            yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,laneContext,
           }),
         });
         const payload=await response.json() as Response;
@@ -140,7 +151,7 @@ export function BotLaneLevelMap({
       <div>
         <div className="eyebrow">LEVEL 1 → 6 LANE MAP</div>
         <h2 style={{margin:'5px 0'}}>When does this lane actually change?</h2>
-        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ranks. Standard-rank champions use a champion-specific cooldown/uptime baseline; no purchase timing or skillshot probability is invented.</p>
+        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ranks. Standard-rank champions use a champion-specific cooldown/uptime baseline; explicit distance and wave context are held constant across levels.</p>
       </div>
       <button type="button" className="btn" onClick={run} disabled={loading}>{loading?'RUNNING 6 FIGHTS…':'RUN LEVEL 1–6 MAP'}</button>
     </div>
@@ -161,6 +172,7 @@ export function BotLaneLevelMap({
         {strongest&&<span className="tag-chip">STRONGEST WINDOW · LEVEL {strongest.level} · {callLabel(strongest.call)}</span>}
         <span className="tag-chip">{buildMode==='CURRENT'?'ITEMS HELD CONSTANT':'NO ITEMS'}</span>
         <span className="tag-chip">SKILLS · CHAMPION UPTIME BASELINE</span>
+        {laneContext&&<span className="tag-chip">WAVE · {laneContext.wavePosition.replaceAll('_',' ')}</span>}
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:10,marginTop:12}}>
@@ -183,7 +195,7 @@ export function BotLaneLevelMap({
       </div>
 
       {skillSummary&&<p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'12px 0 0'}}>Skill baselines: {skillSummary}.</p>}
-      <p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'6px 0 0'}}>The champion-specific baseline orders standard abilities by how much ranking them improves cooldown uptime. It is deterministic from Riot data, but it is not presented as a meta/damage-optimal order. Champions with non-standard rank systems use the legal generic fallback. Use the normal Bot Duo setup for exact manually configured ranks.</p>
+      <p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'6px 0 0'}}>The champion-specific baseline orders standard abilities by how much ranking them improves cooldown uptime. It is deterministic from Riot data, but it is not presented as a meta/damage-optimal order. Champions with non-standard rank systems use the legal generic fallback. Wave context constrains coaching only; minion/turret damage is not added to champion totals.</p>
     </>}
   </div>;
 }

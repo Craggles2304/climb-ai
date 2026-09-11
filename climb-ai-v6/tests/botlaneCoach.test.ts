@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildBotLaneCoachPlan} from '../lib/combat/botlaneCoach';
 import type {LaneCoachParticipant} from '../lib/combat/botlaneCoach';
+import {buildLaneContext} from '../lib/combat/laneContext';
 import type {BotLaneFocusComparison,BotLaneResult,BotLaneSnapshot} from '../lib/combat/botlane';
 
 const snap=(key:BotLaneSnapshot['key'],champion:string,team:'YOU'|'THEM',role:'ADC'|'SUPPORT',health=1000):BotLaneSnapshot=>({
@@ -74,4 +75,31 @@ test('forced misses are surfaced as rerun triggers rather than hidden probabilit
     enemyAdc:participant('Caitlyn',650),enemySupport:participant('Lux',550),
   });
   assert.ok(plan.rerunTriggers.some(x=>x.includes('Q is currently set to MISS')));
+});
+
+test('enemy tower context keeps combat advantage but refuses to label it a safe dive',()=>{
+  const r=result({verdict:'YOU_WIN',winner:'YOU',teamDamage:{YOU:900,THEM:400}});
+  const laneContext=buildLaneContext({wavePosition:'THEIR_TOWER',yourMinions:5,enemyMinions:5});
+  const plan=buildBotLaneCoachPlan({
+    result:r,focus:focus(r),laneContext,
+    yourAdc:participant('Ashe',600),yourSupport:participant('Lulu',550),
+    enemyAdc:participant('Vayne',550),enemySupport:participant('Nautilus',175),
+  });
+  assert.equal(plan.call,'ALL_IN');
+  assert.match(plan.headline,/NOT A DIVE CALL/i);
+  assert.ok(plan.rules.some(rule=>/turret shots.*excluded/i.test(rule)));
+});
+
+test('enemy wave numbers become coaching constraints without rewriting the combat result',()=>{
+  const r=result({verdict:'YOU_AHEAD',winner:null});
+  const laneContext=buildLaneContext({wavePosition:'CENTER',yourMinions:2,enemyMinions:6,enemyCannon:true});
+  const plan=buildBotLaneCoachPlan({
+    result:r,focus:focus(r),laneContext,
+    yourAdc:participant('Ashe',600),yourSupport:participant('Lulu',550),
+    enemyAdc:participant('Vayne',550),enemySupport:participant('Nautilus',175),
+  });
+  assert.equal(plan.call,'POKE');
+  assert.ok(plan.rules.some(rule=>/enemy wave has 4 more minions/i.test(rule)));
+  assert.ok(plan.rules.some(rule=>/cannon advantage/i.test(rule)));
+  assert.match(plan.reason,/2 your minions vs 6 enemy minions/i);
 });

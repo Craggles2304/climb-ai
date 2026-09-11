@@ -19,6 +19,7 @@ import {buildBotLaneUtilityProfile} from '@/lib/combat/botlaneSupport';
 import {buildRuneCombatProfile,buildSummonerCombatProfile,type RuneCombatProfile} from '@/lib/combat/effects';
 import {normaliseStandardRanks} from '@/lib/combat/skillRanks';
 import {applyBotLaneStaticAccess} from '@/lib/combat/botlaneAccess';
+import {buildLaneContext} from '@/lib/combat/laneContext';
 import {compareYourFocusTargets,simulateBotLane,type BotLaneKey,type BotLaneParticipantInput} from '@/lib/combat/botlane';
 import {buildBotLaneCoachPlan,type AccessMode} from '@/lib/combat/botlaneCoach';
 import {noPenetration,type Penetration} from '@/lib/combat/damage';
@@ -50,6 +51,13 @@ const side=z.object({
   targetDistance:z.coerce.number().min(0).max(5000).optional(),
   missedAbilities:z.array(abilitySlot).max(4).default([]),
 });
+const laneContext=z.object({
+  wavePosition:z.enum(['YOUR_TOWER','YOUR_SIDE','CENTER','THEIR_SIDE','THEIR_TOWER']).default('CENTER'),
+  yourMinions:z.coerce.number().int().min(0).max(30).default(3),
+  enemyMinions:z.coerce.number().int().min(0).max(30).default(3),
+  yourCannon:z.boolean().default(false),
+  enemyCannon:z.boolean().default(false),
+}).optional();
 const schema=z.object({
   yourAdc:side,
   yourSupport:side,
@@ -60,6 +68,7 @@ const schema=z.object({
   yourProtect:z.enum(['YOU_ADC','YOU_SUPPORT']).default('YOU_ADC'),
   enemyProtect:z.enum(['THEM_ADC','THEM_SUPPORT']).default('THEM_ADC'),
   durationSeconds:z.coerce.number().min(1).max(20).default(10),
+  laneContext,
 });
 
 type SideInput=z.infer<typeof side>;
@@ -92,6 +101,7 @@ export async function POST(req:NextRequest){
     const current=simulateBotLane(participants,input.durationSeconds);
     const focusComparison=compareYourFocusTargets(participants,input.durationSeconds);
     const preparedByKey=Object.fromEntries(prepared.map(x=>[x.input.key,x])) as Record<BotLaneKey,(typeof prepared)[number]>;
+    const laneReport=input.laneContext?buildLaneContext(input.laneContext):null;
     const lanePlan=buildBotLaneCoachPlan({
       result:current,
       focus:focusComparison,
@@ -99,6 +109,7 @@ export async function POST(req:NextRequest){
       yourSupport:preparedByKey.YOU_SUPPORT.coach,
       enemyAdc:preparedByKey.THEM_ADC.coach,
       enemySupport:preparedByKey.THEM_SUPPORT.coach,
+      laneContext:laneReport,
     });
 
     const partials=prepared.flatMap(x=>x.partial.map(reason=>`${x.input.champion}: ${reason}`));
@@ -110,11 +121,12 @@ export async function POST(req:NextRequest){
       setup:{
         yourFocus:input.yourFocus,enemyFocus:input.enemyFocus,
         yourProtect:input.yourProtect,enemyProtect:input.enemyProtect,
-        durationSeconds:input.durationSeconds,
+        durationSeconds:input.durationSeconds,laneContext:input.laneContext??null,
       },
       participants:Object.fromEntries(prepared.map(x=>[x.input.key,x.report])),
       result:current,
       lanePlan,
+      laneContext:laneReport,
       focusComparison:{
         recommendedTarget:focusComparison.recommendedTarget,
         recommendedRole:focusComparison.recommendedRole,
@@ -122,11 +134,15 @@ export async function POST(req:NextRequest){
         adcFocus:summary(focusComparison.adcFocus),
         supportFocus:summary(focusComparison.supportFocus),
       },
-      coverage:{partial:partials,notes:[...new Set(notes)].slice(0,60)},
+      coverage:{
+        partial:partials,
+        notes:[...new Set([...notes,...(laneReport?[laneReport.modelNote,...laneReport.constraints]:[])])].slice(0,80),
+      },
       dataSources:[
         {name:'Data Dragon',use:'champion/item/rune/summoner identity, visible stats and published cast ranges'},
         {name:'CommunityDragon',use:'ability damage formulas'},
         {name:'CLIMB interaction registry',use:'validated shared-clock CC, shields, heals, champion states, conditional spell variants, dynamic executes, supported ability-applied on-hits, attack replacements and explicit access/hit assumptions'},
+        {name:'Explicit lane state',use:'player-supplied wave position/minion counts constrain coaching without altering champion combat damage'},
       ],
     });
   }catch(err){
