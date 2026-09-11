@@ -99,26 +99,32 @@ test('Galio Colossal Smash uses current 16.18 replacement scaling and removes th
   assert.equal(replacement?.damage[0].type,'MAGIC');
   assert.ok(profile.modelledEffects.includes('GALIO_COLOSSAL_SMASH_REPLACEMENT'));
   assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
+  assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_READY_ATTACK_SPEED'));
   assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_READY'));
+  assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
 
   const model=applyConfiguredAttackReplacement({damage:100,attackSpeed:1,eventState:profile.autoEventState},profile);
   const sim=simulateCombo({
     sequence:['AA','AA'],abilities:{},autoAttack:model,caster:{mana:0},
     target:{health:1000,maxHealth:1000,armor:100,magicResist:100},
   });
-  // Ready Colossal Smash goes through MR: 325 -> 162.5. The next attack at t=1 is still on passive cooldown and uses normal physical damage: 100 -> 50.
+  // Ready Colossal Smash goes through MR: 325 -> 162.5. Its 40% ready-state AS makes the
+  // next attack start after 1/1.4 = 0.71s; that next attack is on passive cooldown and physical.
   assert.equal(sim.events[0].mitigatedDamage,162.5);
+  assert.equal(sim.events[1].atSeconds,.71);
   assert.equal(sim.events[1].mitigatedDamage,50);
+  assert.match(sim.events[0].note??'',/40% ready-state attack speed/i);
 });
 
-test('Galio passive models recharge/refunds while keeping unsupported windup and crit explicit',()=>{
+test('Galio passive models recharge/refunds and ready-state attack speed while keeping crit explicit',()=>{
   const profile=buildChampionCombatProfile('Galio',['GALIO_PASSIVE_READY'],{}, {abilityPower:0,level:6});
   configureChampionAttackReplacement('Galio',['GALIO_PASSIVE_READY'],profile,{
     patch:'16.18.1',level:6,attackDamage:75,abilityPower:0,bonusMagicResist:0,critChance:.25,
   });
   assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
+  assert.ok(profile.modelledEffects.includes('GALIO_PASSIVE_READY_ATTACK_SPEED'));
   assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_RECHARGE_TIMELINE'));
-  assert.ok(profile.unmodelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
+  assert.ok(!profile.unmodelledEffects.includes('GALIO_PASSIVE_WINDUP_AS'));
   assert.ok(profile.unmodelledEffects.includes('GALIO_PASSIVE_CRIT_AD_RATIO'));
 });
 
