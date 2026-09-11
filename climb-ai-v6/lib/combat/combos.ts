@@ -15,8 +15,10 @@ import {
 } from './state';
 import {
   consumeRechargeableAttack,rechargeableAttackEffects,
+  rechargeableAttackWindupBonusAttackSpeedFlat,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
+import {basicAttackHitTiming} from './attackTiming';
 
 /** Combo simulator: sequence damage, resources, cooldowns and combat effects. */
 export type AbilitySlot='Q'|'W'|'E'|'R';
@@ -122,11 +124,12 @@ export interface ComboResult{
 interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const TIMING_NOTE=
-  'Duration is a floor: each cast takes its cast time and each auto one attack '+
-  'interval, with no animation cancelling, travel time or movement. A real '+
-  'combo is not faster than this, and is usually slower.';
+  'Duration is a floor: each cast takes its cast time and each auto keeps its normal attack-start cadence. '+
+  'Validated champion autos resolve damage after their real windup; unvalidated champions preserve the legacy immediate-hit fallback. '+
+  'Projectile travel time, movement and animation cancelling are not yet inferred.';
 const STATE_NOTE=
   'Temporary champion states, target marks, ability stacks and rechargeable attack passives advance on the combat timeline. '+
+  'For modelled basic attacks, damage, marks, resistances, outgoing modifiers and rechargeable-passive consumption resolve at the hit timestamp. '+
   'Self-shields and attack-reset events are recorded, but a one-sided combo does not yet let those defensive/reset events alter an opponent timeline.';
 
 export function simulateCombo(input:ComboInput):ComboResult{
@@ -161,21 +164,30 @@ export function simulateCombo(input:ComboInput):ComboResult{
       rawDamage:0,mitigatedDamage:0,targetHealthRemaining:round(health),
       skipped:[] as {label:string;reasons:string[]}[],
     };
-    const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,clock);
 
     if(step==='AA'){
-      const timed=timedAutoSnapshot(input.autoAttack.timedStates,clock);
-      const resourceCost=timed.resourceCostOverride??positive(input.autoAttack.resourceCost??0);
+      const attackStart=clock;
+      const timedAtStart=timedAutoSnapshot(input.autoAttack.timedStates,attackStart);
+      const resourceCost=timedAtStart.resourceCostOverride??positive(input.autoAttack.resourceCost??0);
       if(resourceCost>mana+1e-9){
         const reason=`This basic attack costs ${round(resourceCost)} resource and only ${round(mana)} is left.`;
         blocked.push({step,reason});
-        events.push({...base,label:'Basic attack',status:'NO_RESOURCE',note:reason,state:stateSnapshot(runtime,clock,timed.labels)});
+        events.push({...base,label:'Basic attack',status:'NO_RESOURCE',note:reason,state:stateSnapshot(runtime,clock,timedAtStart.labels)});
         return;
       }
       mana-=resourceCost;
 
+      const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks,timedAtStart);
+      const replacementEffects=rechargeableAttackEffects(input.autoAttack,runtime,attackStart);
+      const windupBonus=replacementEffects?.length
+        ?rechargeableAttackWindupBonusAttackSpeedFlat(input.autoAttack,runtime,attackStart)
+        :0;
+      const hitTiming=basicAttackHitTiming(input.autoAttack,attackStart,attackSpeed,windupBonus);
+      const hitClock=hitTiming.hitsAt;
+      const timed=timedAutoSnapshot(input.autoAttack.timedStates,hitClock);
+      const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,hitClock);
+
       const nextAuto=autoCount+1;
-      const replacementEffects=rechargeableAttackEffects(input.autoAttack,runtime,clock);
       const components:DamageComponent[]=replacementEffects?.length
         ?replacementEffects.map(effect=>resolveOnHit(effect,health,targetMaxHealth))
         :[{
@@ -187,7 +199,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
         components.push(resolveOnHit(effect,health,targetMaxHealth));
       }
       for(const consumer of input.autoAttack.eventState?.consumesMarks??[])
-        if(consumeMark(runtime,consumer,clock))
+        if(consumeMark(runtime,consumer,hitClock))
           components.push(resolveOnHit(consumer.damage,health,targetMaxHealth));
       for(const proc of input.autoAttack.autoProcs??[])
         if(autoProcTriggers(proc,nextAuto))
@@ -199,7 +211,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
       const adjusted=applyDamageRules(
         components,input.damageRules??[],health,targetMaxHealth,autoCount,
-        timedOutgoingMultiplier(input,clock),
+        timedOutgoingMultiplier(input,hitClock),
       );
       const result=mitigateAll(adjusted,targetNow,pen);
       const applied=applyDamage(result.mitigatedTotal,remainingShield,health);
@@ -207,26 +219,26 @@ export function simulateCombo(input:ComboInput):ComboResult{
       totalRaw+=result.rawTotal;totalMitigated+=result.mitigatedTotal;
 
       const passiveProc=replacementEffects?.length
-        ?consumeRechargeableAttack(input.autoAttack,runtime,clock)
+        ?consumeRechargeableAttack(input.autoAttack,runtime,hitClock)
         :null;
-      const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks,timed);
-      clock+=attackInterval(attackSpeed);
+      clock=attackStart+attackInterval(attackSpeed);
       autoCount=nextAuto;
       if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
 
       events.push({
-        ...base,
+        ...base,atSeconds:round(hitClock),
         label:passiveProc
           ?`${passiveProc.label}${components.length>1?` + ${components.length-1} effect${components.length===2?'':'s'}`:''}`
           :components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
         status:'CAST',rawDamage:result.rawTotal,mitigatedDamage:result.mitigatedTotal,
         manaSpent:resourceCost,manaRemaining:round(mana),targetHealthRemaining:round(health),
-        note:passiveProc?`${passiveProc.label} consumed; passive ready again at ${passiveProc.readyAt}s before later refunds.`:undefined,
-        state:stateSnapshot(runtime,clock,timed.labels),
+        note:passiveProc?`${passiveProc.label} landed at ${round(hitClock)}s; passive ready again at ${passiveProc.readyAt}s before later refunds.`:undefined,
+        state:stateSnapshot(runtime,hitClock,timed.labels),
       });
       return;
     }
 
+    const targetNow=targetResistancesWithDebuffs(input.target,activeDebuffs,clock);
     const ability=input.abilities[step];
     if(!ability){
       blocked.push({step,reason:`${step} is not available at this level or rank.`});
