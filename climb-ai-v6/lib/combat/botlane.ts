@@ -2,7 +2,7 @@ import {mitigateAll,noPenetration,type DamageBreakdown,type DamageComponent,type
 import {applyDamageRules,attackInterval,hasteMultiplier,resolveOnHit,type AbilityModel,type AbilitySlot,type AutoAttackModel,type ComboStep} from './combos';
 import {autoProcTriggers,onHitTriggers,type DamageRule,type TargetDebuffEffect} from './effects';
 import {abilityCooldownSeconds,abilityDamageMultiplier,applyAbilityStackAfterCast,consumeMark,createCombatRuntime,timedAutoSnapshot,type CombatRuntimeState,type InitialTargetMark} from './state';
-import {consumeRechargeableAttack,rechargeableAttackEffects,reduceRechargeableAttackCooldownOnAbilityHit} from './attackInteractions';
+import {consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackSpeedMultiplier,reduceRechargeableAttackCooldownOnAbilityHit} from './attackInteractions';
 import type {AdvancedDuelAbilityOverlay,AdvancedDuelOpeningShield,DuelShieldScope,DuelSustainEffect} from './duelAdvanced';
 
 export type BotLaneKey='YOU_ADC'|'YOU_SUPPORT'|'THEM_ADC'|'THEM_SUPPORT';
@@ -154,7 +154,7 @@ interface PreparedAction{
 const ORDER:BotLaneKey[]=['YOU_ADC','YOU_SUPPORT','THEM_ADC','THEM_SUPPORT'];
 const EPS=1e-9;
 const MAX_FRAMES=512;
-export const BOT_LANE_MODEL_NOTE='Four champions share one deterministic event clock. Both bot laners on each team can damage, shield, heal and crowd-control while focus targets automatically swap after a death. Rechargeable attack passives use that same clock and qualifying ability hits can reduce their recharge. Same-timestamp actions resolve together. Movement, projectile travel, body-blocking, skillshot miss chance, minions and positional range access are not inferred yet.';
+export const BOT_LANE_MODEL_NOTE='Four champions share one deterministic event clock. Both bot laners on each team can damage, shield, heal and crowd-control while focus targets automatically swap after a death. Rechargeable attack passives use that same clock, qualifying ability hits can reduce their recharge, and ready-state passives can alter the attack interval that consumes them. Same-timestamp actions resolve together. Movement, projectile travel, body-blocking, skillshot miss chance, minions and positional range access are not inferred yet.';
 
 export function simulateBotLane(
   inputs:Record<BotLaneKey,BotLaneParticipantInput>,
@@ -329,6 +329,7 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
   if(event.step==='AA'){
     const model=actor.input.autoAttack;const timed=timedAutoSnapshot(model.timedStates,clock);const nextAuto=actor.autoCount+1;
     const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
+    const readyAttackSpeedMultiplier=rechargeableAttackSpeedMultiplier(model,actor.combat,clock);
     const components:DamageComponent[]=replacementEffects?.length
       ?replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
       :[{label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier}];
@@ -340,9 +341,13 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
     const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
     pre.breakdown=result;event.rawDamage=result.rawTotal;event.mitigatedDamage=result.mitigatedTotal;event.incomplete=!result.complete;actor.incomplete||=!result.complete;
     const passiveProc=replacementEffects?.length?consumeRechargeableAttack(model,actor.combat,clock):null;
-    if(passiveProc){event.note=`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`}
+    if(passiveProc){
+      event.note=`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`;
+      if(readyAttackSpeedMultiplier!==1)
+        event.note+=` ${round((readyAttackSpeedMultiplier-1)*100)}% ready-state attack speed applied to this attack interval.`;
+    }
     actor.autoCount=nextAuto;if(stack)actor.attackStacks=Math.min(stack.maxStacks,actor.attackStacks+1);
-    actor.autoReadyAt=clock+attackInterval(currentAttackSpeed(model,actor.attackStacks,timed));actor.nextFreeAt=actor.autoReadyAt;actor.actionIndex++;
+    actor.autoReadyAt=clock+attackInterval(currentAttackSpeed(model,actor.attackStacks,timed,readyAttackSpeedMultiplier));actor.nextFreeAt=actor.autoReadyAt;actor.actionIndex++;
     return pre;
   }
 
@@ -405,7 +410,7 @@ function resistancesAt(actor:ActorRuntime,clock:number){
   actor.incomingDebuffs=actor.incomingDebuffs.filter(d=>d.expiresAt>clock+EPS);const armorKeep=actor.incomingDebuffs.reduce((m,d)=>m*(1-clamp01(d.effect.percentArmorReduction??0)),1);const mrKeep=actor.incomingDebuffs.reduce((m,d)=>m*(1-clamp01(d.effect.percentMagicResistReduction??0)),1);return {armor:round(actor.input.resistances.armor*armorKeep),magicResist:round(actor.input.resistances.magicResist*mrKeep)};
 }
 function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:number){const found=active.find(d=>d.effect.label===effect.label);if(found){found.effect=effect;found.expiresAt=expiresAt}else active.push({effect,expiresAt})}
-function currentAttackSpeed(model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>){const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0?Number(model.attackSpeedCap):3;return Math.min(cap,Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier))}
+function currentAttackSpeed(model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>,readyStateMultiplier=1){const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0?Number(model.attackSpeedCap):3;return Math.min(cap,Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier*Math.max(0,readyStateMultiplier)))}
 function outgoingMultiplier(actor:ActorRuntime,clock:number){const duration=Math.max(0,actor.input.outgoingDamageMultiplierDurationSeconds??0);if(duration<=0||clock>=duration-EPS)return 1;return Number.isFinite(actor.input.outgoingDamageMultiplier)?Math.max(0,actor.input.outgoingDamageMultiplier as number):1}
 function teamDead(actors:Record<BotLaneKey,ActorRuntime>,team:BotLaneTeam){return ORDER.filter(k=>actors[k].input.team===team).every(k=>actors[k].health<=0)}
 function snapshots(actors:Record<BotLaneKey,ActorRuntime>,clock:number){return Object.fromEntries(ORDER.map(k=>[k,snapshot(actors[k],clock)])) as Record<BotLaneKey,BotLaneSnapshot>}
