@@ -13,9 +13,14 @@ export interface ChampionAttackReplacementContext{
   critChance:number;
 }
 
+const GALIO_BASE_ATTACK_SPEED=0.625;
+const GALIO_PASSIVE_BONUS_ATTACK_SPEED_RATIO=0.40;
+const GALIO_PASSIVE_READY_ATTACK_SPEED_FLAT=
+  GALIO_BASE_ATTACK_SPEED*GALIO_PASSIVE_BONUS_ATTACK_SPEED_RATIO;
+
 /**
  * Configure champion-specific modified basic attacks that replace the ordinary
- * attack damage component instead of adding another on-hit component.
+ * attack damage component instead of adding another component on top of it.
  *
  * Galio is the first rechargeable implementation. Selecting COLOSSAL SMASH
  * READY means the passive begins ready at t=0; after each proc it starts a 5s
@@ -50,6 +55,7 @@ export function configureChampionAttackReplacement(
       id:'GALIO_COLOSSAL_SMASH',
       label:'Colossal Smash',
       firstNAttacks:1,
+      attackSpeedFlatWhileReady:GALIO_PASSIVE_READY_ATTACK_SPEED_FLAT,
       damage:[{
         label:'15–115 level scaling + 100% AD + 40% AP + 60% bonus MR',
         type:'MAGIC',
@@ -60,17 +66,19 @@ export function configureChampionAttackReplacement(
 
   removePartial(profile,'GALIO_PASSIVE_READY');
   removePartial(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
+  removePartial(profile,'GALIO_PASSIVE_WINDUP_AS');
   addModelled(profile,'GALIO_COLOSSAL_SMASH_REPLACEMENT');
   addModelled(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
+  addModelled(profile,'GALIO_PASSIVE_READY_ATTACK_SPEED');
   addNote(
     profile,
     `Colossal Smash ready: a ready basic attack is replaced by ${round(raw)} raw magic damage (${round(base)} level base + ${round(totalAd)} total AD + ${round(.40*ap)} AP scaling + ${round(.60*bonusMr)} bonus-MR scaling). After it procs, the passive recharges for 5s; each successful ability cast against the simulated target refunds 3s once per cast.`,
   );
-
-  addPartial(
-    profile,'GALIO_PASSIVE_WINDUP_AS',
-    'The empowered Colossal Smash attack gains 40% bonus attack speed during its windup. The current auto scheduler uses attack intervals rather than a separate windup model, so passive damage/recharge are exact but that one attack\'s windup timing remains partial.',
+  addNote(
+    profile,
+    `While Colossal Smash is ready, Galio gains 40% bonus attack speed. On the validated 0.625 attack-speed ratio this adds ${round(GALIO_PASSIVE_READY_ATTACK_SPEED_FLAT)} attacks/s; the bonus disappears after the proc and returns when the passive becomes ready again.`,
   );
+
   if(Math.max(0,finite(ctx.critChance))>0){
     addPartial(
       profile,'GALIO_PASSIVE_CRIT_AD_RATIO',
@@ -88,7 +96,7 @@ export function applyConfiguredAttackReplacement(
   if(!replacement)return model;
 
   if(replacement.id==='GALIO_COLOSSAL_SMASH'){
-    addNote(profile,'Colossal Smash runtime: starts ready, then uses a 5s static cooldown with 3s refunded per successful ability cast.');
+    addNote(profile,'Colossal Smash runtime: starts ready, then uses a 5s static cooldown with 3s refunded per successful ability cast; its 40% ready-state bonus attack speed is sampled on each basic attack.');
     return withRechargeableBasicAttackReplacement(model,{
       id:replacement.id,
       label:replacement.label,
@@ -96,6 +104,7 @@ export function applyConfiguredAttackReplacement(
       cooldownSeconds:5,
       cooldownReductionOnAbilityHit:3,
       startsReady:true,
+      attackSpeedFlatWhileReady:replacement.attackSpeedFlatWhileReady,
     });
   }
 
