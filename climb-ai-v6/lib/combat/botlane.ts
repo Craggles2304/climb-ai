@@ -1,8 +1,9 @@
 import {mitigateAll,noPenetration,type DamageBreakdown,type DamageComponent,type DamageType,type Penetration,type TargetResistances} from './damage';
 import {applyDamageRules,attackInterval,hasteMultiplier,resolveOnHit,type AbilityModel,type AbilitySlot,type AutoAttackModel,type ComboStep} from './combos';
-import {autoProcTriggers,onHitTriggers,type DamageRule,type TargetDebuffEffect} from './effects';
+import {autoProcTriggers,onHitTriggers,type DamageRule,type OnHitEffect,type TargetDebuffEffect} from './effects';
 import {abilityCooldownSeconds,abilityDamageMultiplier,applyAbilityStackAfterCast,consumeMark,createCombatRuntime,timedAutoSnapshot,type CombatRuntimeState,type InitialTargetMark} from './state';
-import {consumeRechargeableAttack,rechargeableAttackEffects,reduceRechargeableAttackCooldownOnAbilityHit} from './attackInteractions';
+import {consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackWindupBonusAttackSpeedFlat,reduceRechargeableAttackCooldownOnAbilityHit} from './attackInteractions';
+import {basicAttackHitTiming} from './attackTiming';
 import type {AdvancedDuelAbilityOverlay,AdvancedDuelOpeningShield,DuelShieldScope,DuelSustainEffect} from './duelAdvanced';
 
 export type BotLaneKey='YOU_ADC'|'YOU_SUPPORT'|'THEM_ADC'|'THEM_SUPPORT';
@@ -37,7 +38,7 @@ export interface BotLaneParticipantInput{
   outgoingDamageMultiplierDurationSeconds?:number;
   abilityOverlays?:Partial<Record<AbilitySlot,AdvancedDuelAbilityOverlay>>;
   sustainEffects?:DuelSustainEffect[];
-  /** Enemy focus preference. Automatically retargets if that champion dies. */
+  /** Enemy focus preference. Automatically retargets if that champion dies before a new action starts. */
   focusTarget:BotLaneKey;
   /** Ally who receives ally-targeted utility; supports normally protect their ADC. */
   protectTarget?:BotLaneKey;
@@ -150,11 +151,22 @@ interface PreparedAction{
   overlay?:AdvancedDuelAbilityOverlay;
   allyUtility?:AllyUtilityOverlay;
 }
+interface PendingAutoHit{
+  actor:ActorRuntime;
+  /** Locked when the attack starts; never retargeted during the windup. */
+  target:ActorRuntime;
+  protect:ActorRuntime|null;
+  event:BotLaneActionEvent;
+  hitsAt:number;
+  attackNumber:number;
+  attackStacksBefore:number;
+  replacementEffects:OnHitEffect[]|null;
+}
 
 const ORDER:BotLaneKey[]=['YOU_ADC','YOU_SUPPORT','THEM_ADC','THEM_SUPPORT'];
 const EPS=1e-9;
 const MAX_FRAMES=512;
-export const BOT_LANE_MODEL_NOTE='Four champions share one deterministic event clock. Both bot laners on each team can damage, shield, heal and crowd-control while focus targets automatically swap after a death. Rechargeable attack passives use that same clock and qualifying ability hits can reduce their recharge. Same-timestamp actions resolve together. Movement, projectile travel, body-blocking, skillshot miss chance, minions and positional range access are not inferred yet.';
+export const BOT_LANE_MODEL_NOTE='Four champions share one deterministic event clock. Both bot laners on each team can damage, shield, heal and crowd-control while focus targets automatically swap after a death for future actions. Validated basic attacks are pending hits during their windup and keep the target selected when the attack began; they cannot jump to the other bot-laner mid-swing. Rechargeable attack passives use the same clock and begin cooldown on impact. Same-timestamp actions resolve together. Movement, projectile travel, body-blocking, skillshot miss chance, minions and positional range access are not inferred yet.';
 
 export function simulateBotLane(
   inputs:Record<BotLaneKey,BotLaneParticipantInput>,
@@ -163,13 +175,15 @@ export function simulateBotLane(
   const actors=Object.fromEntries(ORDER.map(k=>[k,createActor(inputs[k])])) as Record<BotLaneKey,ActorRuntime>;
   const timeline:BotLaneFrame[]=[];
   const kills:BotLaneKill[]=[];
-  const assumptions=[BOT_LANE_MODEL_NOTE,'When multiple eligible shields overlap, the earliest-expiring timed shield is consumed first, then persistent shield.','If a configured focus target dies, that actor automatically retargets the surviving enemy.'];
+  const pendingAutos:PendingAutoHit[]=[];
+  const assumptions=[BOT_LANE_MODEL_NOTE,'When multiple eligible shields overlap, the earliest-expiring timed shield is consumed first, then persistent shield.','If a configured focus target dies, future actions automatically retarget the surviving enemy; a basic attack already winding up remains locked to its original target.'];
   let clock=0;
 
   for(let frame=0;frame<MAX_FRAMES;frame++){
     if(teamDead(actors,'YOU')||teamDead(actors,'THEM'))break;
     const schedule=ORDER.map(key=>({key,at:nextActionAt(actors[key])}));
-    const next=Math.min(...schedule.map(x=>x.at));
+    const pendingAt=pendingAutos.length?Math.min(...pendingAutos.map(hit=>hit.hitsAt)):Infinity;
+    const next=Math.min(pendingAt,...schedule.map(x=>x.at));
     if(!Number.isFinite(next)||next>maxDurationSeconds+EPS){clock=Math.min(maxDurationSeconds,Number.isFinite(next)?next:maxDurationSeconds);break}
     clock=Math.max(clock,next);
     for(const key of ORDER)expireShields(actors[key],clock);
@@ -177,7 +191,20 @@ export function simulateBotLane(
     const acting=schedule.filter(x=>Math.abs(x.at-clock)<=EPS).map(x=>actors[x.key]);
     const beforeAlive=new Map(ORDER.map(k=>[k,actors[k].health>0]));
     const prepped=acting.map(actor=>preflight(actor,actors,clock));
-    const actions=prepped.map(pre=>prepareDamage(pre,clock));
+    const actions:PreparedAction[]=[];
+    for(const pre of prepped){
+      if(pre.event.status==='CAST'&&pre.event.step==='AA'&&pre.target){
+        const immediate=scheduleAuto(pre,clock,pendingAutos);
+        if(immediate)actions.push(immediate);
+      }else actions.push(prepareDamage(pre,clock));
+    }
+
+    const due=pendingAutos.filter(hit=>Math.abs(hit.hitsAt-clock)<=EPS);
+    for(const hit of due)actions.push(preparePendingAutoHit(hit,clock));
+    if(due.length){
+      const dueSet=new Set(due);
+      for(let i=pendingAutos.length-1;i>=0;i--)if(dueSet.has(pendingAutos[i]))pendingAutos.splice(i,1);
+    }
 
     // Cast-start ally utility exists before same-frame incoming damage.
     for(const pre of actions){
@@ -226,7 +253,7 @@ export function simulateBotLane(
 
     // Successful hit state and CC apply to later timestamps.
     for(const pre of actions){
-      if(pre.event.status!=='CAST'||!pre.target)continue;
+      if(pre.event.status!=='CAST'||!pre.target||!pre.breakdown)continue;
       if(pre.targetDebuff)
         upsertDebuff(pre.target.incomingDebuffs,pre.targetDebuff,clock+pre.targetDebuff.durationSeconds);
       const control=pre.targetControl;
@@ -244,7 +271,7 @@ export function simulateBotLane(
       kills.push({atSeconds:round(clock),victim,champion:actors[victim].input.champion,team:actors[victim].input.team,by:[...new Set(attackers)]});
     }
 
-    timeline.push({atSeconds:round(clock),actions:actions.map(a=>a.event),participants:snapshots(actors,clock)});
+    if(actions.length)timeline.push({atSeconds:round(clock),actions:actions.map(a=>a.event),participants:snapshots(actors,clock)});
   }
 
   const final=snapshots(actors,clock);
@@ -278,7 +305,6 @@ export function compareYourFocusTargets(
   const chosen=recommendAdc?adcFocus:supportFocus;
   const target=recommendAdc?'THEM_ADC':'THEM_SUPPORT';
   const targetName=chosen.participants[target].champion;
-  const other=recommendAdc?supportFocus:adcFocus;
   const delta=Math.abs(adcScore-supportScore);
   return {
     recommendedTarget:target,recommendedRole:recommendAdc?'ADC':'SUPPORT',
@@ -323,28 +349,46 @@ function preflight(actor:ActorRuntime,actors:Record<BotLaneKey,ActorRuntime>,clo
   return {actor,target,protect,event,targetDebuff:ability.targetDebuff,targetControl:overlay?.targetControl,overlay,allyUtility:actor.input.allyUtility?.[step]};
 }
 
+function scheduleAuto(pre:PreparedAction,clock:number,pending:PendingAutoHit[]):PreparedAction|null{
+  const {actor,target,event,protect}=pre;if(!target)return pre;
+  const model=actor.input.autoAttack;
+  const timedAtStart=timedAutoSnapshot(model.timedStates,clock);
+  const speed=currentAttackSpeed(model,actor.attackStacks,timedAtStart);
+  const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
+  const windupBonus=replacementEffects?.length?rechargeableAttackWindupBonusAttackSpeedFlat(model,actor.combat,clock):0;
+  const hitTiming=basicAttackHitTiming(model,clock,speed,windupBonus);
+  const interval=attackInterval(speed);
+  actor.autoReadyAt=clock+interval;actor.nextFreeAt=actor.autoReadyAt;actor.actionIndex++;
+  const hit:PendingAutoHit={actor,target,protect,event,hitsAt:hitTiming.hitsAt,attackNumber:actor.autoCount+1,attackStacksBefore:actor.attackStacks,replacementEffects};
+  if(hitTiming.hitsAt<=clock+EPS)return preparePendingAutoHit(hit,clock);
+  pending.push(hit);return null;
+}
+
+function preparePendingAutoHit(hit:PendingAutoHit,clock:number):PreparedAction{
+  const {actor,target,event,protect}=hit;
+  if(actor.health<=0){event.note='Basic attack cancelled because the attacker died during its windup.';return {actor,target,protect,event}}
+  if(target.health<=0){event.note='Original basic-attack target died during the windup; the pending attack does not retarget.';return {actor,target,protect,event}}
+  const model=actor.input.autoAttack;const timed=timedAutoSnapshot(model.timedStates,clock);
+  const components:DamageComponent[]=hit.replacementEffects?.length
+    ?hit.replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
+    :[{label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier}];
+  for(const effect of [...(model.onHits??[]),...timed.onHits])if(onHitTriggers(effect,hit.attackNumber))components.push(resolveOnHit(effect,target.health,target.input.maxHealth));
+  for(const consumer of model.eventState?.consumesMarks??[])if(consumeMark(actor.combat,consumer,clock))components.push(resolveOnHit(consumer.damage,target.health,target.input.maxHealth));
+  for(const proc of model.autoProcs??[])if(autoProcTriggers(proc,hit.attackNumber))components.push(resolveOnHit(proc.damage,target.health,target.input.maxHealth));
+  const stack=model.attackStack;if(stack?.onHitAtMax&&hit.attackStacksBefore>=stack.maxStacks)components.push(resolveOnHit(stack.onHitAtMax,target.health,target.input.maxHealth));
+  const adjusted=applyDamageRules(components,actor.input.damageRules??[],target.health,target.input.maxHealth,Math.max(0,hit.attackNumber-1),outgoingMultiplier(actor,clock));
+  const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
+  const pre:PreparedAction={actor,target,protect,event,breakdown:result};event.rawDamage=result.rawTotal;event.mitigatedDamage=result.mitigatedTotal;event.incomplete=!result.complete;actor.incomplete||=!result.complete;
+  const passiveProc=hit.replacementEffects?.length?consumeRechargeableAttack(model,actor.combat,clock):null;
+  if(passiveProc)event.note=`${passiveProc.label} landed at ${round(clock)}s; passive ready at ${passiveProc.readyAt}s before later refunds.`;
+  actor.autoCount=Math.max(actor.autoCount,hit.attackNumber);if(stack)actor.attackStacks=Math.min(stack.maxStacks,actor.attackStacks+1);
+  return pre;
+}
+
 function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
   const {actor,target,event}=pre;
   if(event.status!=='CAST'||!target)return pre;
-  if(event.step==='AA'){
-    const model=actor.input.autoAttack;const timed=timedAutoSnapshot(model.timedStates,clock);const nextAuto=actor.autoCount+1;
-    const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
-    const components:DamageComponent[]=replacementEffects?.length
-      ?replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
-      :[{label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier}];
-    for(const effect of [...(model.onHits??[]),...timed.onHits])if(onHitTriggers(effect,nextAuto))components.push(resolveOnHit(effect,target.health,target.input.maxHealth));
-    for(const consumer of model.eventState?.consumesMarks??[])if(consumeMark(actor.combat,consumer,clock))components.push(resolveOnHit(consumer.damage,target.health,target.input.maxHealth));
-    for(const proc of model.autoProcs??[])if(autoProcTriggers(proc,nextAuto))components.push(resolveOnHit(proc.damage,target.health,target.input.maxHealth));
-    const stack=model.attackStack;if(stack?.onHitAtMax&&actor.attackStacks>=stack.maxStacks)components.push(resolveOnHit(stack.onHitAtMax,target.health,target.input.maxHealth));
-    const adjusted=applyDamageRules(components,actor.input.damageRules??[],target.health,target.input.maxHealth,actor.autoCount,outgoingMultiplier(actor,clock));
-    const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
-    pre.breakdown=result;event.rawDamage=result.rawTotal;event.mitigatedDamage=result.mitigatedTotal;event.incomplete=!result.complete;actor.incomplete||=!result.complete;
-    const passiveProc=replacementEffects?.length?consumeRechargeableAttack(model,actor.combat,clock):null;
-    if(passiveProc){event.note=`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`}
-    actor.autoCount=nextAuto;if(stack)actor.attackStacks=Math.min(stack.maxStacks,actor.attackStacks+1);
-    actor.autoReadyAt=clock+attackInterval(currentAttackSpeed(model,actor.attackStacks,timed));actor.nextFreeAt=actor.autoReadyAt;actor.actionIndex++;
-    return pre;
-  }
+  if(event.step==='AA')return pre;
 
   const ability=actor.input.abilities[event.step];if(!ability)return pre;
   const components:DamageComponent[]=[...ability.damage,...(ability.dynamicDamage??[]).map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))];
