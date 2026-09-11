@@ -16,7 +16,7 @@ import {
   type CombatRuntimeState,type InitialTargetMark,
 } from './state';
 import {
-  consumeRechargeableAttack,rechargeableAttackEffects,
+  consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackSpeedMultiplier,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
 import type {DuelResult,DuelSideKey,DuelStopReason,DuelVerdict} from './duel';
@@ -160,7 +160,8 @@ const DEFAULT_MAX_SECONDS=15;
 
 export const ADVANCED_DUEL_MODEL_NOTE=
   'Both champions resolve on one event clock. Hard crowd control delays future actions, '+
-  'typed shields absorb only eligible post-mitigation damage, rechargeable attack passives use the same event clock, '+
+  'typed shields absorb only eligible post-mitigation damage, rechargeable attack passives use the same event clock '+
+  'and can alter the attack speed of the attack that consumes them, '+
   'and on-damage sustain heals after the simultaneous damage frame. Actions already begun at a timestamp still resolve '+
   'together. Movement, projectile travel, dodge chance and unvalidated cast interruption are not inferred.';
 
@@ -362,6 +363,7 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
     const timed=timedAutoSnapshot(model.timedStates,clock);
     const nextAuto=actor.autoCount+1;
     const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
+    const readyAttackSpeedMultiplier=rechargeableAttackSpeedMultiplier(model,actor.combat,clock);
     const components:any[]=replacementEffects?.length
       ?replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
       :[{
@@ -390,10 +392,14 @@ function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
     if(passiveProc){
       event.label=passiveProc.label;
       event.note=joinNotes(event.note,`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`);
+      if(readyAttackSpeedMultiplier!==1)
+        event.note=joinNotes(event.note,`${round((readyAttackSpeedMultiplier-1)*100)}% ready-state attack speed applied to this attack interval.`);
     }
     actor.autoCount=nextAuto;
     if(attackStack)actor.attackStacks=Math.min(attackStack.maxStacks,actor.attackStacks+1);
-    const interval=attackInterval(currentAttackSpeed(model,actor.attackStacks,timed));
+    const interval=attackInterval(currentAttackSpeed(
+      model,actor.attackStacks,timed,readyAttackSpeedMultiplier,
+    ));
     actor.autoReadyAt=clock+interval;
     actor.nextFreeAt=clock+(Number.isFinite(actor.input.autoActionLockSeconds)
       ?Math.max(0,actor.input.autoActionLockSeconds as number):interval);
@@ -538,10 +544,13 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
   active.push({effect,expiresAt});
 }
 
-function currentAttackSpeed(model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>){
+function currentAttackSpeed(
+  model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>,
+  readyStateMultiplier=1,
+){
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0?Number(model.attackSpeedCap):3;
-  return Math.min(cap,Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier));
+  return Math.min(cap,Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier*Math.max(0,readyStateMultiplier)));
 }
 
 function outgoingMultiplier(actor:ActorRuntime,clock:number):number{
