@@ -49,6 +49,23 @@ interface Response{
 }
 interface LevelResult{level:number;response:Response}
 
+interface SkillPlan{
+  requested:string;
+  ok:boolean;
+  error?:string;
+  champion?:string;
+  mode?:'UPTIME_BASELINE'|'STANDARD_FALLBACK';
+  sequence?:AbilitySlot[];
+  shorthand?:string;
+  basis?:string;
+  unavailable?:string[];
+}
+interface SkillPlanResponse{
+  ok:boolean;
+  error?:string;
+  plans?:SkillPlan[];
+}
+
 export function BotLaneLevelMap({
   yourAdc,yourSupport,enemyAdc,enemySupport,
   yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,
@@ -57,6 +74,7 @@ export function BotLaneLevelMap({
   yourFocus:FocusYou;enemyFocus:FocusThem;yourProtect:ProtectYou;enemyProtect:ProtectThem;durationSeconds:number;
 }){
   const [rows,setRows]=useState<LevelResult[]>([]);
+  const [skillPlans,setSkillPlans]=useState<SkillPlan[]>([]);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [buildMode,setBuildMode]=useState<'CURRENT'|'NO_ITEMS'>('CURRENT');
@@ -64,20 +82,39 @@ export function BotLaneLevelMap({
   const run=async()=>{
     setLoading(true);setError('');
     try{
+      const sides=[yourAdc,yourSupport,enemyAdc,enemySupport];
+      const skillResponse=await fetch('/api/matchup/skill-order',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({champions:sides.map(side=>side.champion)}),
+      });
+      const skillPayload=await skillResponse.json() as SkillPlanResponse;
+      if(!skillPayload.ok||!skillPayload.plans)
+        throw new Error(skillPayload.error??'Could not build champion-specific skill baselines.');
+      const badPlan=skillPayload.plans.find(plan=>!plan.ok);
+      if(badPlan)throw new Error(badPlan.error??`Could not build a skill baseline for ${badPlan.requested}.`);
+      setSkillPlans(skillPayload.plans);
+
       const results=await Promise.all([1,2,3,4,5,6].map(async level=>{
-        const side=(value:LevelMapSide)=>({
-          ...value,
-          level,
-          // Let the existing legal-rank normaliser allocate only points that
-          // can exist at this level. This is intentionally a baseline skill order.
-          ranks:{},
-          itemIds:buildMode==='NO_ITEMS'?[]:value.itemIds,
-        });
+        const side=(value:LevelMapSide,index:number)=>{
+          const plan=skillPayload.plans?.[index];
+          const ranks=plan?.mode==='UPTIME_BASELINE'&&plan.sequence?.length
+            ?ranksAtLevel(plan.sequence,level)
+            :{};
+          return {
+            ...value,
+            level,
+            // Standard-rank champions use a champion-specific cooldown/uptime
+            // sequence. Non-standard rank systems fail back to the backend's
+            // legal generic ranks rather than inventing unsupported progression.
+            ranks,
+            itemIds:buildMode==='NO_ITEMS'?[]:value.itemIds,
+          };
+        };
         const response=await fetch('/api/matchup/botlane',{
           method:'POST',headers:{'Content-Type':'application/json'},
           body:JSON.stringify({
-            yourAdc:side(yourAdc),yourSupport:side(yourSupport),
-            enemyAdc:side(enemyAdc),enemySupport:side(enemySupport),
+            yourAdc:side(yourAdc,0),yourSupport:side(yourSupport,1),
+            enemyAdc:side(enemyAdc,2),enemySupport:side(enemySupport,3),
             yourFocus,enemyFocus,yourProtect,enemyProtect,durationSeconds,
           }),
         });
@@ -87,20 +124,23 @@ export function BotLaneLevelMap({
       setRows(results);
       const failed=results.find(row=>!row.response.ok);
       if(failed)setError(failed.response.error??`Level ${failed.level} could not be simulated.`);
-    }catch{
-      setError('Could not run the Level 1–6 lane map.');
+    }catch(err){
+      setError(err instanceof Error?err.message:'Could not run the Level 1–6 lane map.');
     }finally{setLoading(false)}
   };
 
   const flip=useMemo(()=>laneFlip(rows),[rows]);
   const strongest=useMemo(()=>strongestLevel(rows),[rows]);
+  const skillSummary=useMemo(()=>skillPlans.map(plan=>
+    `${plan.champion??plan.requested}: ${plan.mode==='UPTIME_BASELINE'?(plan.shorthand??'uptime baseline'):'standard fallback'}`,
+  ).join(' · '),[skillPlans]);
 
   return <div className="glass card" style={{marginTop:16,padding:16}}>
     <div className="section-row" style={{gap:12,alignItems:'flex-start',flexWrap:'wrap'}}>
       <div>
         <div className="eyebrow">LEVEL 1 → 6 LANE MAP</div>
         <h2 style={{margin:'5px 0'}}>When does this lane actually change?</h2>
-        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ability ranks. It does not invent purchase timing or skillshot probability.</p>
+        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ranks. Standard-rank champions use a champion-specific cooldown/uptime baseline; no purchase timing or skillshot probability is invented.</p>
       </div>
       <button type="button" className="btn" onClick={run} disabled={loading}>{loading?'RUNNING 6 FIGHTS…':'RUN LEVEL 1–6 MAP'}</button>
     </div>
@@ -120,6 +160,7 @@ export function BotLaneLevelMap({
         {flip&&<span className="tag-chip live-pill">LANE FLIP · {flip}</span>}
         {strongest&&<span className="tag-chip">STRONGEST WINDOW · LEVEL {strongest.level} · {callLabel(strongest.call)}</span>}
         <span className="tag-chip">{buildMode==='CURRENT'?'ITEMS HELD CONSTANT':'NO ITEMS'}</span>
+        <span className="tag-chip">SKILLS · CHAMPION UPTIME BASELINE</span>
       </div>
 
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(165px,1fr))',gap:10,marginTop:12}}>
@@ -141,9 +182,16 @@ export function BotLaneLevelMap({
         })}
       </div>
 
-      <p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'12px 0 0'}}>Level-map ranks use CLIMB’s legal standard fallback order at each level. That prevents impossible spells, but it is not yet champion-specific skill-order modelling. Use the normal Bot Duo setup for an exact manually configured level.</p>
+      {skillSummary&&<p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'12px 0 0'}}>Skill baselines: {skillSummary}.</p>}
+      <p className="muted" style={{fontSize:9.5,lineHeight:1.45,margin:'6px 0 0'}}>The champion-specific baseline orders standard abilities by how much ranking them improves cooldown uptime. It is deterministic from Riot data, but it is not presented as a meta/damage-optimal order. Champions with non-standard rank systems use the legal generic fallback. Use the normal Bot Duo setup for exact manually configured ranks.</p>
     </>}
   </div>;
+}
+
+function ranksAtLevel(order:AbilitySlot[],level:number):Record<AbilitySlot,number>{
+  const ranks:Record<AbilitySlot,number>={Q:0,W:0,E:0,R:0};
+  for(const slot of order.slice(0,Math.max(1,Math.min(18,Math.round(level)))))ranks[slot]++;
+  return ranks;
 }
 
 function laneFlip(rows:LevelResult[]){
