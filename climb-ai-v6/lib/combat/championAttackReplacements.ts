@@ -60,17 +60,15 @@ export function configureChampionAttackReplacement(
 
   removePartial(profile,'GALIO_PASSIVE_READY');
   removePartial(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
+  removePartial(profile,'GALIO_PASSIVE_WINDUP_AS');
   addModelled(profile,'GALIO_COLOSSAL_SMASH_REPLACEMENT');
   addModelled(profile,'GALIO_PASSIVE_RECHARGE_TIMELINE');
+  addModelled(profile,'GALIO_PASSIVE_READY_ATTACK_SPEED');
   addNote(
     profile,
-    `Colossal Smash ready: a ready basic attack is replaced by ${round(raw)} raw magic damage (${round(base)} level base + ${round(totalAd)} total AD + ${round(.40*ap)} AP scaling + ${round(.60*bonusMr)} bonus-MR scaling). After it procs, the passive recharges for 5s; each successful ability cast against the simulated target refunds 3s once per cast.`,
+    `Colossal Smash ready: a ready basic attack is replaced by ${round(raw)} raw magic damage (${round(base)} level base + ${round(totalAd)} total AD + ${round(.40*ap)} AP scaling + ${round(.60*bonusMr)} bonus-MR scaling). While the passive is ready Galio has 40% bonus attack speed. After it procs, the passive recharges for 5s; each successful ability cast against the simulated target refunds 3s once per cast.`,
   );
 
-  addPartial(
-    profile,'GALIO_PASSIVE_WINDUP_AS',
-    'The empowered Colossal Smash attack gains 40% bonus attack speed during its windup. The current auto scheduler uses attack intervals rather than a separate windup model, so passive damage/recharge are exact but that one attack\'s windup timing remains partial.',
-  );
   if(Math.max(0,finite(ctx.critChance))>0){
     addPartial(
       profile,'GALIO_PASSIVE_CRIT_AD_RATIO',
@@ -88,7 +86,7 @@ export function applyConfiguredAttackReplacement(
   if(!replacement)return model;
 
   if(replacement.id==='GALIO_COLOSSAL_SMASH'){
-    addNote(profile,'Colossal Smash runtime: starts ready, then uses a 5s static cooldown with 3s refunded per successful ability cast.');
+    addNote(profile,'Colossal Smash runtime: starts ready, grants 40% bonus attack speed while ready, then uses a 5s static cooldown with 3s refunded per successful ability cast.');
     return withRechargeableBasicAttackReplacement(model,{
       id:replacement.id,
       label:replacement.label,
@@ -96,6 +94,7 @@ export function applyConfiguredAttackReplacement(
       cooldownSeconds:5,
       cooldownReductionOnAbilityHit:3,
       startsReady:true,
+      attackSpeedMultiplierWhileReady:1.4,
     });
   }
 
