@@ -111,6 +111,8 @@ export interface RechargeableAttackReplacement{
   cooldownSeconds:number;
   cooldownReductionOnAbilityHit:number;
   startsReady:boolean;
+  /** Multiplies attacks/second only while this replacement is currently ready. */
+  attackSpeedMultiplierWhileReady?:number;
 }
 
 type RechargeableAutoModel=AutoAttackModel&{
@@ -137,6 +139,22 @@ export function rechargeableAttackEffects(
   return replacementReadyAt(runtime,replacement)<=clock+1e-9
     ?replacement.damage
     :null;
+}
+
+/**
+ * Attack-speed modifier supplied by a rechargeable ready-state passive.
+ * It is queried before the attack consumes the passive, so the empowered attack
+ * itself receives the ready-state speed and later cooldown-state attacks do not.
+ */
+export function rechargeableAttackSpeedMultiplier(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+  clock:number,
+):number{
+  const replacement=getRechargeable(model);
+  if(!replacement||replacementReadyAt(runtime,replacement)>clock+1e-9)return 1;
+  const multiplier=finiteMultiplier(replacement.attackSpeedMultiplierWhileReady??1);
+  return multiplier>0?multiplier:1;
 }
 
 /** Consume a ready replacement and start its static cooldown. */
