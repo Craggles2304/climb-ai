@@ -14,7 +14,7 @@ import {
   type AbilityEventState,type AutoEventState,type InitialTargetMark,type TimedAutoState,
 } from './state';
 import {
-  consumeRechargeableAttack,rechargeableAttackEffects,
+  consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackSpeedMultiplier,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
 
@@ -127,6 +127,7 @@ const TIMING_NOTE=
   'combo is not faster than this, and is usually slower.';
 const STATE_NOTE=
   'Temporary champion states, target marks, ability stacks and rechargeable attack passives advance on the combat timeline. '+
+  'Rechargeable passives can also alter the attack speed of the attack that consumes them. '+
   'Self-shields and attack-reset events are recorded, but a one-sided combo does not yet let those defensive/reset events alter an opponent timeline.';
 
 export function simulateCombo(input:ComboInput):ComboResult{
@@ -176,6 +177,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
 
       const nextAuto=autoCount+1;
       const replacementEffects=rechargeableAttackEffects(input.autoAttack,runtime,clock);
+      const readyAttackSpeedMultiplier=rechargeableAttackSpeedMultiplier(input.autoAttack,runtime,clock);
       const components:DamageComponent[]=replacementEffects?.length
         ?replacementEffects.map(effect=>resolveOnHit(effect,health,targetMaxHealth))
         :[{
@@ -209,11 +211,18 @@ export function simulateCombo(input:ComboInput):ComboResult{
       const passiveProc=replacementEffects?.length
         ?consumeRechargeableAttack(input.autoAttack,runtime,clock)
         :null;
-      const attackSpeed=currentAttackSpeed(input.autoAttack,attackStacks,timed);
+      const attackSpeed=currentAttackSpeed(
+        input.autoAttack,attackStacks,timed,readyAttackSpeedMultiplier,
+      );
       clock+=attackInterval(attackSpeed);
       autoCount=nextAuto;
       if(stack)attackStacks=Math.min(stack.maxStacks,attackStacks+1);
 
+      const passiveNotes=[
+        passiveProc?`${passiveProc.label} consumed; passive ready again at ${passiveProc.readyAt}s before later refunds.`:'',
+        passiveProc&&readyAttackSpeedMultiplier!==1
+          ?`${round((readyAttackSpeedMultiplier-1)*100)}% ready-state attack speed applied to this attack interval.`:'',
+      ].filter(Boolean);
       events.push({
         ...base,
         label:passiveProc
@@ -221,7 +230,7 @@ export function simulateCombo(input:ComboInput):ComboResult{
           :components.length>1?`Auto attack + ${components.length-1} effect${components.length===2?'':'s'}`:'Auto attack',
         status:'CAST',rawDamage:result.rawTotal,mitigatedDamage:result.mitigatedTotal,
         manaSpent:resourceCost,manaRemaining:round(mana),targetHealthRemaining:round(health),
-        note:passiveProc?`${passiveProc.label} consumed; passive ready again at ${passiveProc.readyAt}s before later refunds.`:undefined,
+        note:passiveNotes.length?passiveNotes.join(' '):undefined,
         state:stateSnapshot(runtime,clock,timed.labels),
       });
       return;
@@ -378,6 +387,7 @@ function currentAttackSpeed(
   model:AutoAttackModel,
   stacks:number,
   timed:ReturnType<typeof timedAutoSnapshot>,
+  readyStateMultiplier=1,
 ):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
@@ -385,7 +395,7 @@ function currentAttackSpeed(
     :ATTACK_SPEED_CAP;
   return Math.min(
     cap,
-    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier),
+    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier*Math.max(0,readyStateMultiplier)),
   );
 }
 
