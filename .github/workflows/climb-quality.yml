@@ -40,6 +40,8 @@ jobs:
         run: node --import tsx --test tests/attackInteractions.test.ts
       - name: Galio passive timeline regressions
         run: node --import tsx --test tests/galioPassiveTimeline.test.ts
+      - name: Range access regressions
+        run: node --import tsx --test tests/rangeAccess.test.ts
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
       - name: Core and auth regressions
