@@ -24,6 +24,8 @@ export interface LevelMapSide{
   shield:number;
   accessMode:AccessMode;
   missedAbilities:AbilitySlot[];
+  /** Static distance from this champion to the team's configured focus target. */
+  focusDistanceUnits?:number|null;
 }
 
 interface LanePlan{
@@ -72,6 +74,8 @@ export function BotLaneLevelMap({
           // can exist at this level. This is intentionally a baseline skill order.
           ranks:{},
           itemIds:buildMode==='NO_ITEMS'?[]:value.itemIds,
+          // Explicit geometry is held constant across levels just like HP/runes/state.
+          focusDistanceUnits:value.focusDistanceUnits??null,
         });
         const response=await fetch('/api/matchup/botlane',{
           method:'POST',headers:{'Content-Type':'application/json'},
@@ -94,13 +98,14 @@ export function BotLaneLevelMap({
 
   const flip=useMemo(()=>laneFlip(rows),[rows]);
   const strongest=useMemo(()=>strongestLevel(rows),[rows]);
+  const hasDistance=[yourAdc,yourSupport,enemyAdc,enemySupport].some(side=>side.focusDistanceUnits!==null&&side.focusDistanceUnits!==undefined);
 
   return <div className="glass card" style={{marginTop:16,padding:16}}>
     <div className="section-row" style={{gap:12,alignItems:'flex-start',flexWrap:'wrap'}}>
       <div>
         <div className="eyebrow">LEVEL 1 → 6 LANE MAP</div>
         <h2 style={{margin:'5px 0'}}>When does this lane actually change?</h2>
-        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ability ranks. It does not invent purchase timing or skillshot probability.</p>
+        <p className="muted" style={{fontSize:11,margin:0,maxWidth:760}}>Runs the same four-champion setup six times with legal level-gated ability ranks. Items, explicit focus distance and hit/access assumptions stay fixed unless you choose the no-items baseline. It does not invent purchase timing, movement or skillshot probability.</p>
       </div>
       <button type="button" className="btn" onClick={run} disabled={loading}>{loading?'RUNNING 6 FIGHTS…':'RUN LEVEL 1–6 MAP'}</button>
     </div>
@@ -110,6 +115,7 @@ export function BotLaneLevelMap({
       <div className="tag-row">
         <button type="button" className={`tag-chip ${buildMode==='CURRENT'?'live-pill':''}`} onClick={()=>setBuildMode('CURRENT')}>HOLD CURRENT ITEMS</button>
         <button type="button" className={`tag-chip ${buildMode==='NO_ITEMS'?'live-pill':''}`} onClick={()=>setBuildMode('NO_ITEMS')}>NO ITEMS · KIT BASELINE</button>
+        {hasDistance&&<span className="tag-chip live-pill">DISTANCE HELD CONSTANT</span>}
       </div>
     </div>
 
