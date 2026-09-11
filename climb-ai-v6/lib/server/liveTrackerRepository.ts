@@ -80,7 +80,7 @@ export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelop
       metadata:{deviceName:device.deviceName},
     }).select('id').single();
     if(error)throw new Error(error.message);
-    sessionId=data.id;
+    sessionId=data?.id as string|undefined;
   }else{
     const patch:Record<string,unknown>={last_seen_at:now};
     if(envelope.type==='END'){
@@ -90,15 +90,18 @@ export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelop
     if(error)throw new Error(error.message);
   }
 
+  if(!sessionId)throw new Error('Live session could not be created.');
+  const confirmedSessionId=sessionId;
+
   if(envelope.type==='SNAPSHOT'&&envelope.snapshot){
     const {error}=await db.from('live_telemetry_snapshots').insert({
-      session_id:sessionId,game_time:envelope.snapshot.gameTime,payload:envelope.snapshot,
+      session_id:confirmedSessionId,game_time:envelope.snapshot.gameTime,payload:envelope.snapshot,
     });
     if(error)throw new Error(error.message);
   }
 
-  if(envelope.type==='END')await finalizeSession(sessionId);
-  return {sessionId};
+  if(envelope.type==='END')await finalizeSession(confirmedSessionId);
+  return {sessionId:confirmedSessionId};
 }
 
 export async function latestLiveReview(userId:string,accountKey:string){
