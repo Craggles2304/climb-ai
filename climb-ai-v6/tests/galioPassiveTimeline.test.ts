@@ -14,10 +14,24 @@ const galioAuto=():AutoAttackModel=>withRechargeableBasicAttackReplacement(
   {damage:100,attackSpeed:1},
   {
     id:'GALIO_COLOSSAL_SMASH',label:'Colossal Smash',startsReady:true,
-    cooldownSeconds:5,cooldownReductionOnAbilityHit:3,
+    cooldownSeconds:5,cooldownReductionOnAbilityHit:3,attackSpeedMultiplierWhileReady:1.4,
     damage:[{label:'Colossal Smash',type:'MAGIC',flatDamage:200}],
   },
 );
+
+test('ready Colossal Smash gets 40 percent attack speed only on the attack that consumes it',()=>{
+  const result=simulateCombo({
+    sequence:['AA','AA','AA'],abilities:{},autoAttack:galioAuto(),caster:{mana:0},
+    target:{health:5000,maxHealth:5000,armor:0,magicResist:0},
+  });
+
+  // First attack starts ready: 1 / 1.4 = 0.71s. Passive is then cooling down,
+  // so the second auto uses normal 1.0 AS and the third starts one second later.
+  assert.deepEqual(result.events.map(x=>x.atSeconds),[0,.71,1.71]);
+  assert.equal(result.events[0].label,'Colossal Smash');
+  assert.equal(result.events[1].label,'Auto attack');
+  assert.match(result.events[0].note??'',/40% ready-state attack speed/i);
+});
 
 test('one ability hit refunds 3s but does not make Colossal Smash ready before its remaining cooldown',()=>{
   const result=simulateCombo({
@@ -28,8 +42,10 @@ test('one ability hit refunds 3s but does not make Colossal Smash ready before i
 
   assert.equal(result.events[0].label,'Colossal Smash');
   assert.equal(result.events[0].rawDamage,200);
-  // First passive at t=0 -> ready t=5; Q lands at t=1 -> refund to t=2.
-  // The next AA starts at t=1.1, so it must still be an ordinary physical attack.
+  // First passive at t=0 -> ready t=5. Ready-state AS makes Q begin at t=.71;
+  // Q refunds the passive to t=2, then the next AA starts at t=.81 and is ordinary.
+  assert.equal(result.events[1].atSeconds,.71);
+  assert.equal(result.events[2].atSeconds,.81);
   assert.equal(result.events[2].label,'Auto attack');
   assert.equal(result.events[2].rawDamage,100);
   assert.match(result.events[1].note??'',/refunded 3s.*ready at 2s/i);
@@ -44,8 +60,10 @@ test('two qualifying ability casts can recharge Colossal Smash early and the nex
 
   assert.deepEqual(result.events.map(x=>x.rawDamage),[200,10,10,200,100]);
   assert.equal(result.events[3].label,'Colossal Smash');
+  assert.equal(result.events[3].atSeconds,.91);
+  assert.equal(result.events[4].atSeconds,1.62);
   assert.equal(result.events[4].label,'Auto attack');
-  assert.match(result.events[3].note??'',/ready again at 6\.2s/i);
+  assert.match(result.events[3].note??'',/ready again at 5\.91s/i);
 });
 
 test('ability hits while Colossal Smash is already ready do not bank future cooldown reduction',()=>{
@@ -58,10 +76,11 @@ test('ability hits while Colossal Smash is already ready do not bank future cool
   assert.equal(result.events[1].label,'Colossal Smash');
   // Q happened before the first proc, so the passive still starts a full 5s cooldown when consumed.
   assert.match(result.events[1].note??'',/ready again at 5\.1s/i);
+  assert.equal(result.events[2].atSeconds,.81);
   assert.equal(result.events[2].label,'Auto attack');
 });
 
-test('simultaneous duel uses the same rechargeable passive clock',()=>{
+test('simultaneous duel uses the same rechargeable passive clock and ready-state attack speed',()=>{
   const result=simulateAdvancedDuel(
     {
       side:'YOU',champion:'Galio',sequence:['AA','Q','W','AA'],
@@ -75,8 +94,11 @@ test('simultaneous duel uses the same rechargeable passive clock',()=>{
     10,
   );
 
-  const labels=result.timeline.flatMap(frame=>frame.actions.map((action:any)=>action.label));
-  assert.equal(labels.filter(label=>label==='Colossal Smash').length,2);
+  const galioActions=result.timeline.flatMap(frame=>frame.actions.filter((action:any)=>action.champion==='Galio'));
+  assert.equal(galioActions.filter((action:any)=>action.label==='Colossal Smash').length,2);
+  assert.equal(galioActions[1].step,'Q');
+  assert.equal(galioActions[1].rawDamage,10);
+  assert.ok(result.timeline.some(frame=>frame.atSeconds===.71));
 });
 
 function participant(
@@ -90,7 +112,7 @@ function participant(
   };
 }
 
-test('Bot Duo also allows a refunded second Colossal Smash on the shared four-player clock',()=>{
+test('Bot Duo also applies ready-state attack speed and allows a refunded second Colossal Smash',()=>{
   const inputs={
     YOU_ADC:participant('YOU_ADC','YOU','ADC','Galio',['AA','Q','W','AA'],galioAuto(),{Q:spell('Q'),W:spell('W')}),
     YOU_SUPPORT:participant('YOU_SUPPORT','YOU','SUPPORT','Ally',[],{damage:0,attackSpeed:1}),
@@ -101,4 +123,6 @@ test('Bot Duo also allows a refunded second Colossal Smash on the shared four-pl
   const result=simulateBotLane(inputs,10);
   const galioActions=result.timeline.flatMap(frame=>frame.actions.filter(action=>action.actor==='YOU_ADC'));
   assert.equal(galioActions.filter(action=>action.note?.includes('Colossal Smash consumed')).length,2);
+  assert.ok(result.timeline.some(frame=>frame.atSeconds===.71));
+  assert.match(galioActions[0].note??'',/40% ready-state attack speed/i);
 });
