@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  legalDefaultRanks,normaliseStandardRanks,maxRankAtLevel,
+  legalDefaultRanks,normaliseStandardRanks,maxRankAtLevel,ranksFromLevelOrder,
 } from '../lib/combat/skillRanks';
 
 test('level 1 fallback spends exactly one skill point and has no ultimate',()=>{
@@ -39,4 +39,17 @@ test('rank caps follow normal basic and ultimate unlock rules',()=>{
   assert.equal(maxRankAtLevel('R',6),1);
   assert.equal(maxRankAtLevel('R',11),2);
   assert.equal(maxRankAtLevel('R',16),3);
+});
+
+test('explicit level order resolves champion-specific starts without forcing Q first',()=>{
+  const order=['E','Q','W','E','E','R'] as const;
+  assert.deepEqual(ranksFromLevelOrder([...order],1),{Q:0,W:0,E:1,R:0});
+  assert.deepEqual(ranksFromLevelOrder([...order],3),{Q:1,W:1,E:1,R:0});
+  assert.deepEqual(ranksFromLevelOrder([...order],6),{Q:1,W:1,E:3,R:1});
+});
+
+test('explicit level order refuses an ultimate before level 6 instead of inventing the skill point',()=>{
+  const ranks=ranksFromLevelOrder(['R','Q','W','E','Q','R'],6);
+  assert.deepEqual(ranks,{Q:2,W:1,E:1,R:1});
+  assert.equal(ranks.Q+ranks.W+ranks.E+ranks.R,5);
 });
