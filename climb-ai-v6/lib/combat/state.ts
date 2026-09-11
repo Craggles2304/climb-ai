@@ -75,6 +75,8 @@ export interface BasicAttackReplacement{
   damage:OnHitEffect[];
   /** Usually one for a "next attack" passive. Omit for every attack. */
   firstNAttacks?:number;
+  /** Absolute attacks/second added while this replacement is ready. */
+  attackSpeedFlatWhileReady?:number;
 }
 
 export interface AbilityEventState{
