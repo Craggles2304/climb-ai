@@ -111,6 +111,8 @@ export interface RechargeableAttackReplacement{
   cooldownSeconds:number;
   cooldownReductionOnAbilityHit:number;
   startsReady:boolean;
+  /** Absolute attacks/second added only while this empowered attack winds up. */
+  windupBonusAttackSpeedFlat?:number;
 }
 
 type RechargeableAutoModel=AutoAttackModel&{
@@ -137,6 +139,17 @@ export function rechargeableAttackEffects(
   return replacementReadyAt(runtime,replacement)<=clock+1e-9
     ?replacement.damage
     :null;
+}
+
+/** Extra attack speed that applies only to the windup of a ready replacement. */
+export function rechargeableAttackWindupBonusAttackSpeedFlat(
+  model:AutoAttackModel,
+  runtime:CombatRuntimeState,
+  clock:number,
+):number{
+  const replacement=getRechargeable(model);
+  if(!replacement||replacementReadyAt(runtime,replacement)>clock+1e-9)return 0;
+  return Math.max(0,finite(replacement.windupBonusAttackSpeedFlat??0));
 }
 
 /** Consume a ready replacement and start its static cooldown. */
