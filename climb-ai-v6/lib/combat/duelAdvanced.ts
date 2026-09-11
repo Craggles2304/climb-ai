@@ -8,7 +8,7 @@ import {
 } from './combos';
 import {
   autoProcTriggers,onHitTriggers,
-  type DamageRule,type TargetDebuffEffect,
+  type DamageRule,type OnHitEffect,type TargetDebuffEffect,
 } from './effects';
 import {
   abilityCooldownSeconds,abilityDamageMultiplier,applyAbilityStackAfterCast,
@@ -17,8 +17,10 @@ import {
 } from './state';
 import {
   consumeRechargeableAttack,rechargeableAttackEffects,
+  rechargeableAttackWindupBonusAttackSpeedFlat,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
+import {basicAttackHitTiming} from './attackTiming';
 import type {DuelResult,DuelSideKey,DuelStopReason,DuelVerdict} from './duel';
 
 export type DuelShieldScope='ALL'|'PHYSICAL'|'MAGIC';
@@ -154,6 +156,16 @@ interface PreparedAction{
   overlay?:AdvancedDuelAbilityOverlay;
 }
 
+interface PendingAutoHit{
+  actor:ActorRuntime;
+  target:ActorRuntime;
+  event:ActionEvent;
+  hitsAt:number;
+  attackNumber:number;
+  attackStacksBefore:number;
+  replacementEffects:OnHitEffect[]|null;
+}
+
 const EPS=1e-9;
 const MAX_FRAMES=256;
 const DEFAULT_MAX_SECONDS=15;
@@ -161,8 +173,9 @@ const DEFAULT_MAX_SECONDS=15;
 export const ADVANCED_DUEL_MODEL_NOTE=
   'Both champions resolve on one event clock. Hard crowd control delays future actions, '+
   'typed shields absorb only eligible post-mitigation damage, rechargeable attack passives use the same event clock, '+
-  'and on-damage sustain heals after the simultaneous damage frame. Actions already begun at a timestamp still resolve '+
-  'together. Movement, projectile travel, dodge chance and unvalidated cast interruption are not inferred.';
+  'and on-damage sustain heals after the simultaneous damage frame. Validated basic attacks are carried as pending hits during '+
+  'their windup, so damage and hit-state resolve at impact while attack cadence stays anchored to attack start. '+
+  'Actions already begun at a timestamp still resolve together. Movement, projectile travel, dodge chance and unvalidated cast interruption are not inferred.';
 
 export function simulateAdvancedDuel(
   you:AdvancedDuelSideInput,
@@ -173,6 +186,7 @@ export function simulateAdvancedDuel(
   const b=createActor(them);
   const timeline:any[]=[];
   const blocked:{side:DuelSideKey;step:ComboStep;reason:string}[]=[];
+  const pendingAutos:PendingAutoHit[]=[];
   const assumptions=[
     ADVANCED_DUEL_MODEL_NOTE,
     'Same-timestamp damage is resolved before on-damage sustain. This prevents array order deciding a simultaneous frame; sustain can preserve a champion only when its own action also successfully dealt damage in that frame.',
@@ -187,9 +201,10 @@ export function simulateAdvancedDuel(
 
     const aAt=nextActionAt(a);
     const bAt=nextActionAt(b);
-    const next=Math.min(aAt,bAt);
+    const pendingAt=pendingAutos.length?Math.min(...pendingAutos.map(hit=>hit.hitsAt)):Number.POSITIVE_INFINITY;
+    const next=Math.min(aAt,bAt,pendingAt);
     if(!Number.isFinite(next)){
-      stopReason=(sequenceComplete(a)&&sequenceComplete(b))?'SEQUENCES_COMPLETE':'NO_ACTIONS';
+      stopReason=(sequenceComplete(a)&&sequenceComplete(b)&&pendingAutos.length===0)?'SEQUENCES_COMPLETE':'NO_ACTIONS';
       break;
     }
     if(next>maxDurationSeconds+EPS){clock=maxDurationSeconds;stopReason='TIME_LIMIT';break}
@@ -203,7 +218,20 @@ export function simulateAdvancedDuel(
 
     // Cast-start state is granted to both actors before either side's damage is prepared.
     const prepped=actors.map(actor=>preflight(actor,actor===a?b:a,clock,blocked));
-    const actions=prepped.map(pre=>prepareDamage(pre,clock));
+    const actions:PreparedAction[]=[];
+    for(const pre of prepped){
+      if(pre.event.status==='CAST'&&pre.event.step==='AA'){
+        const immediate=scheduleAuto(pre,clock,pendingAutos);
+        if(immediate)actions.push(immediate);
+      }else actions.push(prepareDamage(pre,clock));
+    }
+
+    const due=pendingAutos.filter(hit=>Math.abs(hit.hitsAt-clock)<=EPS);
+    for(const hit of due)actions.push(preparePendingAutoHit(hit,clock));
+    if(due.length){
+      const dueSet=new Set(due);
+      for(let i=pendingAutos.length-1;i>=0;i--)if(dueSet.has(pendingAutos[i]))pendingAutos.splice(i,1);
+    }
 
     // Resolve all same-frame incoming damage component-by-component so magic-only
     // and physical-only shields behave correctly on mixed-damage hits.
@@ -267,15 +295,17 @@ export function simulateAdvancedDuel(
       }
     }
 
-    timeline.push({
-      atSeconds:round(clock),
-      actions:actions.map(x=>x.event),
-      you:snapshot(a,clock),
-      them:snapshot(b,clock),
-    });
+    if(actions.length){
+      timeline.push({
+        atSeconds:round(clock),
+        actions:actions.map(x=>x.event),
+        you:snapshot(a,clock),
+        them:snapshot(b,clock),
+      });
+    }
 
     if(a.health<=0||b.health<=0){stopReason='LETHAL';break}
-    if(sequenceComplete(a)&&sequenceComplete(b)){stopReason='SEQUENCES_COMPLETE';break}
+    if(sequenceComplete(a)&&sequenceComplete(b)&&pendingAutos.length===0){stopReason='SEQUENCES_COMPLETE';break}
     stopReason='TIME_LIMIT';
   }
 
@@ -353,54 +383,80 @@ function preflight(
   };
 }
 
+function scheduleAuto(
+  pre:PreparedAction,
+  clock:number,
+  pending:PendingAutoHit[],
+):PreparedAction|null{
+  const {actor,target,event}=pre;
+  const model=actor.input.autoAttack;
+  const timedAtStart=timedAutoSnapshot(model.timedStates,clock);
+  const speed=currentAttackSpeed(model,actor.attackStacks,timedAtStart);
+  const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
+  const windupBonus=replacementEffects?.length
+    ?rechargeableAttackWindupBonusAttackSpeedFlat(model,actor.combat,clock)
+    :0;
+  const hitTiming=basicAttackHitTiming(model,clock,speed,windupBonus);
+  const interval=attackInterval(speed);
+  actor.autoReadyAt=clock+interval;
+  actor.nextFreeAt=clock+(Number.isFinite(actor.input.autoActionLockSeconds)
+    ?Math.max(0,actor.input.autoActionLockSeconds as number):interval);
+  actor.actionIndex++;
+
+  const hit:PendingAutoHit={
+    actor,target,event,hitsAt:hitTiming.hitsAt,
+    attackNumber:actor.autoCount+1,
+    attackStacksBefore:actor.attackStacks,
+    replacementEffects,
+  };
+  if(hitTiming.hitsAt<=clock+EPS)return preparePendingAutoHit(hit,clock);
+  pending.push(hit);
+  return null;
+}
+
+function preparePendingAutoHit(hit:PendingAutoHit,clock:number):PreparedAction{
+  const {actor,target,event}=hit;
+  const model=actor.input.autoAttack;
+  const timed=timedAutoSnapshot(model.timedStates,clock);
+  const components:any[]=hit.replacementEffects?.length
+    ?hit.replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
+    :[{
+      label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier,
+    }];
+  for(const effect of [...(model.onHits??[]),...timed.onHits])
+    if(onHitTriggers(effect,hit.attackNumber))components.push(resolveOnHit(effect,target.health,target.input.maxHealth));
+  for(const consumer of model.eventState?.consumesMarks??[])
+    if(consumeMark(actor.combat,consumer,clock))components.push(resolveOnHit(consumer.damage,target.health,target.input.maxHealth));
+  for(const proc of model.autoProcs??[])
+    if(autoProcTriggers(proc,hit.attackNumber))components.push(resolveOnHit(proc.damage,target.health,target.input.maxHealth));
+  const attackStack=model.attackStack;
+  if(attackStack?.onHitAtMax&&hit.attackStacksBefore>=attackStack.maxStacks)
+    components.push(resolveOnHit(attackStack.onHitAtMax,target.health,target.input.maxHealth));
+
+  const adjusted=applyDamageRules(
+    components,actor.input.damageRules??[],target.health,target.input.maxHealth,
+    Math.max(0,hit.attackNumber-1),outgoingMultiplier(actor,clock),
+  );
+  const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
+  const pre:PreparedAction={actor,target,event,breakdown:result};
+
+  const passiveProc=hit.replacementEffects?.length
+    ?consumeRechargeableAttack(model,actor.combat,clock)
+    :null;
+  if(passiveProc){
+    event.label=passiveProc.label;
+    event.note=joinNotes(event.note,`${passiveProc.label} landed at ${round(clock)}s; passive ready at ${passiveProc.readyAt}s before later refunds.`);
+  }
+  actor.autoCount=Math.max(actor.autoCount,hit.attackNumber);
+  if(attackStack)actor.attackStacks=Math.min(attackStack.maxStacks,actor.attackStacks+1);
+  finishDamageEvent(actor,event,result);
+  return pre;
+}
+
 function prepareDamage(pre:PreparedAction,clock:number):PreparedAction{
   const {actor,target,event}=pre;
   if(event.status!=='CAST')return pre;
-
-  if(event.step==='AA'){
-    const model=actor.input.autoAttack;
-    const timed=timedAutoSnapshot(model.timedStates,clock);
-    const nextAuto=actor.autoCount+1;
-    const replacementEffects=rechargeableAttackEffects(model,actor.combat,clock);
-    const components:any[]=replacementEffects?.length
-      ?replacementEffects.map(effect=>resolveOnHit(effect,target.health,target.input.maxHealth))
-      :[{
-        label:'Auto attack',type:'PHYSICAL',raw:positive(model.damage)*timed.basicAttackDamageMultiplier,
-      }];
-    for(const effect of [...(model.onHits??[]),...timed.onHits])
-      if(onHitTriggers(effect,nextAuto))components.push(resolveOnHit(effect,target.health,target.input.maxHealth));
-    for(const consumer of model.eventState?.consumesMarks??[])
-      if(consumeMark(actor.combat,consumer,clock))components.push(resolveOnHit(consumer.damage,target.health,target.input.maxHealth));
-    for(const proc of model.autoProcs??[])
-      if(autoProcTriggers(proc,nextAuto))components.push(resolveOnHit(proc.damage,target.health,target.input.maxHealth));
-    const attackStack=model.attackStack;
-    if(attackStack?.onHitAtMax&&actor.attackStacks>=attackStack.maxStacks)
-      components.push(resolveOnHit(attackStack.onHitAtMax,target.health,target.input.maxHealth));
-
-    const adjusted=applyDamageRules(
-      components,actor.input.damageRules??[],target.health,target.input.maxHealth,
-      actor.autoCount,outgoingMultiplier(actor,clock),
-    );
-    const result=mitigateAll(adjusted,resistancesAt(target,clock),actor.input.penetration??noPenetration());
-    pre.breakdown=result;
-
-    const passiveProc=replacementEffects?.length
-      ?consumeRechargeableAttack(model,actor.combat,clock)
-      :null;
-    if(passiveProc){
-      event.label=passiveProc.label;
-      event.note=joinNotes(event.note,`${passiveProc.label} consumed; passive ready at ${passiveProc.readyAt}s before later refunds.`);
-    }
-    actor.autoCount=nextAuto;
-    if(attackStack)actor.attackStacks=Math.min(attackStack.maxStacks,actor.attackStacks+1);
-    const interval=attackInterval(currentAttackSpeed(model,actor.attackStacks,timed));
-    actor.autoReadyAt=clock+interval;
-    actor.nextFreeAt=clock+(Number.isFinite(actor.input.autoActionLockSeconds)
-      ?Math.max(0,actor.input.autoActionLockSeconds as number):interval);
-    actor.actionIndex++;
-    finishDamageEvent(actor,event,result);
-    return pre;
-  }
+  if(event.step==='AA')return pre;
 
   const ability=actor.input.abilities[event.step];
   if(!ability)return pre;
