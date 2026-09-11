@@ -111,6 +111,8 @@ export interface RechargeableAttackReplacement{
   cooldownSeconds:number;
   cooldownReductionOnAbilityHit:number;
   startsReady:boolean;
+  /** Absolute attacks/second added while the replacement is ready. */
+  attackSpeedFlatWhileReady?:number;
 }
 
 type RechargeableAutoModel=AutoAttackModel&{
@@ -119,14 +121,27 @@ type RechargeableAutoModel=AutoAttackModel&{
 
 /** Runtime state is keyed by CombatRuntimeState, so every simulation gets an isolated passive clock. */
 const rechargeableState=new WeakMap<CombatRuntimeState,Map<string,number>>();
+/** Preserve the unmodified model attack speed while a ready-state bonus is sampled per attack. */
+const rechargeableBaseAttackSpeed=new WeakMap<AutoAttackModel,number>();
 
 export function withRechargeableBasicAttackReplacement(
   model:AutoAttackModel,
   replacement:RechargeableAttackReplacement,
 ):AutoAttackModel{
-  return {...model,rechargeableReplacement:{...replacement,damage:replacement.damage.map(x=>({...x}))}} as RechargeableAutoModel;
+  const configured={
+    ...model,
+    rechargeableReplacement:{...replacement,damage:replacement.damage.map(x=>({...x}))},
+  } as RechargeableAutoModel;
+  rechargeableBaseAttackSpeed.set(configured,Math.max(0,finite(model.attackSpeed)));
+  return configured;
 }
 
+/**
+ * Return the ready replacement damage and synchronise any attack-speed bonus
+ * that exists only while the passive is available. Combat engines ask this
+ * immediately before calculating the current basic-attack interval, so a proc
+ * can use the ready-state speed without making later ordinary attacks inherit it.
+ */
 export function rechargeableAttackEffects(
   model:AutoAttackModel,
   runtime:CombatRuntimeState,
@@ -134,9 +149,9 @@ export function rechargeableAttackEffects(
 ):OnHitEffect[]|null{
   const replacement=getRechargeable(model);
   if(!replacement||replacement.damage.length===0)return null;
-  return replacementReadyAt(runtime,replacement)<=clock+1e-9
-    ?replacement.damage
-    :null;
+  const ready=replacementReadyAt(runtime,replacement)<=clock+1e-9;
+  syncRechargeableAttackSpeed(model,replacement,ready);
+  return ready?replacement.damage:null;
 }
 
 /** Consume a ready replacement and start its static cooldown. */
@@ -190,6 +205,20 @@ function replacementReadyAt(runtime:CombatRuntimeState,replacement:RechargeableA
   const initial=replacement.startsReady?0:Number.POSITIVE_INFINITY;
   state.set(replacement.id,initial);
   return initial;
+}
+
+function syncRechargeableAttackSpeed(
+  model:AutoAttackModel,
+  replacement:RechargeableAttackReplacement,
+  ready:boolean,
+){
+  let base=rechargeableBaseAttackSpeed.get(model);
+  if(base===undefined){
+    base=Math.max(0,finite(model.attackSpeed));
+    rechargeableBaseAttackSpeed.set(model,base);
+  }
+  const bonus=ready?Math.max(0,finite(replacement.attackSpeedFlatWhileReady??0)):0;
+  model.attackSpeed=base+bonus;
 }
 
 function stateFor(runtime:CombatRuntimeState):Map<string,number>{
