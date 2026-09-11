@@ -16,7 +16,7 @@ import {
   type InitialTargetMark,
 } from './state';
 import {
-  consumeRechargeableAttack,rechargeableAttackEffects,
+  consumeRechargeableAttack,rechargeableAttackEffects,rechargeableAttackSpeedMultiplier,
   reduceRechargeableAttackCooldownOnAbilityHit,
 } from './attackInteractions';
 import {ConfidenceReport,assessConfidence,combineConfidence} from './confidence';
@@ -92,7 +92,8 @@ interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const MODEL_NOTE=
   'A damage race, not a full simultaneous duel: both sides commit, every selected damage ability hits, '+
-  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. Cast-generated '+
+  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. '+
+  'A rechargeable passive can also alter the attack speed of the attack that consumes it. Cast-generated '+
   'self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
 
 export function compareTrades(
@@ -212,7 +213,10 @@ export function runTrade(
       break;
     }
 
-    const speed=currentAttackSpeed(actor.autoAttack,attackStacks,timed);
+    const readyAttackSpeedMultiplier=rechargeableAttackSpeedMultiplier(actor.autoAttack,runtime,clock);
+    const speed=currentAttackSpeed(
+      actor.autoAttack,attackStacks,timed,readyAttackSpeedMultiplier,
+    );
     const interval=attackInterval(speed);
     if(interval<=0)break;
 
@@ -259,6 +263,8 @@ export function runTrade(
       state:[
         ...timed.labels,
         passiveProc?`recharges until ${passiveProc.readyAt}s before refunds`:'',
+        passiveProc&&readyAttackSpeedMultiplier!==1
+          ?`${round((readyAttackSpeedMultiplier-1)*100)}% ready-state attack speed`:''
       ].filter(Boolean).join(' · ')||undefined,
     });
     clock+=interval;
@@ -347,6 +353,7 @@ function upsertDebuff(active:ActiveDebuff[],effect:TargetDebuffEffect,expiresAt:
 
 function currentAttackSpeed(
   model:AutoAttackModel,stacks:number,timed:ReturnType<typeof timedAutoSnapshot>,
+  readyStateMultiplier=1,
 ):number{
   const extra=model.attackStack?model.attackStack.attackSpeedPerStack*stacks:0;
   const cap=Number.isFinite(model.attackSpeedCap)&&Number(model.attackSpeedCap)>0
@@ -354,7 +361,7 @@ function currentAttackSpeed(
     :3;
   return Math.min(
     cap,
-    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier),
+    Math.max(0,(model.attackSpeed+extra+timed.attackSpeedFlat)*timed.attackSpeedMultiplier*Math.max(0,readyStateMultiplier)),
   );
 }
 
