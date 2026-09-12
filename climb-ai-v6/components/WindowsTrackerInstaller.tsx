@@ -10,17 +10,17 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
     const lines=[
       '@echo off',
       'setlocal EnableExtensions',
-      'title OVERPOWERED Tracker Setup',
+      'title OVERPOWERED CLIMB AI Tracker Setup',
       'color 0A',
       'echo.',
       'echo ============================================================',
-      'echo              OVERPOWERED TRACKER - ALPHA SETUP',
+      'echo          OVERPOWERED CLIMB AI TRACKER - ALPHA SETUP',
       'echo ============================================================',
       'echo Silent League recording for post-game coaching. No live shotcalling.',
       'echo.',
       'set "OP_HOME=%LOCALAPPDATA%\\OVERPOWERED\\Tracker"',
       'if not exist "%OP_HOME%" mkdir "%OP_HOME%"',
-      'echo [1/4] Downloading the tracker...',
+      'echo [1/4] Downloading the OVERPOWERED CLIMB AI tracker...',
       `powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; Invoke-WebRequest -UseBasicParsing -Uri '${web}/tracker/overpowered-companion.mjs' -OutFile '%OP_HOME%\\main.mjs'"`,
       'if errorlevel 1 goto :download_failed',
       'echo [2/4] Checking Node.js...',
@@ -37,6 +37,7 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
       ':write_launcher',
       'echo [3/4] Saving your secure PC pairing...',
       '> "%OP_HOME%\\start.cmd" echo @echo off',
+      '>> "%OP_HOME%\\start.cmd" echo title OVERPOWERED CLIMB AI Tracker',
       `>> "%OP_HOME%\\start.cmd" echo set "OP_WEB_URL=${web}"`,
       `>> "%OP_HOME%\\start.cmd" echo set "OP_TRACKER_TOKEN=${trackerToken}"`,
       `>> "%OP_HOME%\\start.cmd" echo powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -UseBasicParsing -Uri '${web}/tracker/overpowered-companion.mjs' -OutFile '%%LOCALAPPDATA%%\\OVERPOWERED\\Tracker\\main.mjs' } catch { }"`,
@@ -44,11 +45,11 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
       '>> "%OP_HOME%\\start.cmd" echo if exist "%%ProgramFiles%%\\nodejs\\node.exe" set "NODE_EXE=%%ProgramFiles%%\\nodejs\\node.exe"',
       '>> "%OP_HOME%\\start.cmd" echo "%%NODE_EXE%%" "%%LOCALAPPDATA%%\\OVERPOWERED\\Tracker\\main.mjs"',
       'echo [4/4] Creating your desktop shortcut...',
-      'powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws=New-Object -ComObject WScript.Shell; $shortcut=$ws.CreateShortcut([Environment]::GetFolderPath(\'Desktop\')+\'\\OVERPOWERED Tracker.lnk\'); $shortcut.TargetPath=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\\start.cmd\'; $shortcut.WorkingDirectory=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\'; $shortcut.Description=\'OVERPOWERED League live tracker\'; $shortcut.Save()"',
+      'powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws=New-Object -ComObject WScript.Shell; $shortcut=$ws.CreateShortcut([Environment]::GetFolderPath(\'Desktop\')+\'\\OVERPOWERED CLIMB AI Tracker.lnk\'); $shortcut.TargetPath=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\\start.cmd\'; $shortcut.WorkingDirectory=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\'; $shortcut.Description=\'OVERPOWERED CLIMB AI League tracker\'; $shortcut.Save()"',
       'echo.',
-      'echo Setup complete. Starting OVERPOWERED Tracker now.',
+      'echo Setup complete. Starting OVERPOWERED CLIMB AI Tracker now.',
       'echo Keep the tracker window open while playing League.',
-      'echo Future launches: double-click OVERPOWERED Tracker on your desktop.',
+      'echo Future launches: double-click OVERPOWERED CLIMB AI Tracker on your desktop.',
       'echo.',
       'start "" "%OP_HOME%\\start.cmd"',
       'timeout /t 4 >nul',
@@ -71,7 +72,7 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
     const url=URL.createObjectURL(blob);
     const a=document.createElement('a');
     a.href=url;
-    a.download='OVERPOWERED-Tracker-Setup.cmd';
+    a.download='OVERPOWERED-CLIMB-AI-Tracker-Setup.cmd';
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -81,13 +82,13 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
 
   return <div className="glass card" style={{marginTop:18,display:'grid',gap:12}}>
     <div className="eyebrow">PC PAIRED · INSTALLER READY</div>
-    <h3 style={{margin:0}}>Install the OVERPOWERED tracker</h3>
+    <h3 style={{margin:0}}>Install the OVERPOWERED CLIMB AI Tracker</h3>
     <p className="muted" style={{margin:0}}>One download. The setup checks for Node.js, installs it automatically through Windows Package Manager when needed, saves this PC&apos;s secure pairing, creates a desktop shortcut and starts the tracker.</p>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
       <button className="btn primary" type="button" onClick={download}>DOWNLOAD WINDOWS TRACKER</button>
-      <span className="muted">Then double-click <b>OVERPOWERED-Tracker-Setup.cmd</b>.</span>
+      <span className="muted">Then double-click <b>OVERPOWERED-CLIMB-AI-Tracker-Setup.cmd</b>.</span>
     </div>
-    {downloaded&&<div className="auth-message" role="status">Installer downloaded. Run it once. After setup, use the OVERPOWERED Tracker shortcut on your desktop before playing League.</div>}
-    <small className="muted">Alpha note: Windows may show an “unknown publisher” warning because this test installer is not code-signed yet. Only run the setup file you downloaded directly from this OVERPOWERED page.</small>
+    {downloaded&&<div className="auth-message" role="status">Installer downloaded. Run it once. After setup, use the OVERPOWERED CLIMB AI Tracker shortcut on your desktop before playing League.</div>}
+    <small className="muted">Alpha note: Windows may show an “unknown publisher” warning because this test installer is not code-signed yet. Only run the setup file you downloaded directly from this OVERPOWERED CLIMB AI page.</small>
   </div>;
 }
