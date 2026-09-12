@@ -52,7 +52,7 @@ function accountRank(row:any,profile:any){
 function mapMatch(row:any,metric:any):Match{
   const raw=metric?.raw&&typeof metric.raw==='object'?metric.raw:{};
   const n=(v:unknown,fallback=0)=>{const x=Number(v);return Number.isFinite(x)?x:fallback};
-  const result=row.result==='WIN'||row.result==='LOSS'?row.result:'UNKNOWN';
+  const result=row.result as Match['result'];
   const source=String(row.source||'manual').toLowerCase() as Match['source'];
   return {
     id:row.id,riotAccountId:row.riot_account_id||PROFILE_ACCOUNT_ID,
@@ -145,7 +145,8 @@ export function AccountProvider({children}:{children:React.ReactNode}){
 
     const {data:matchRows,error:matchError}=await client.from('matches').select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at').eq('user_id',user.id).order('occurred_at',{ascending:false});
     if(matchError)console.error('[account] matches load failed',matchError);
-    const ids=(matchRows||[]).map((m:any)=>m.id);
+    const decidedRows=(matchRows||[]).filter((m:any)=>m.result==='WIN'||m.result==='LOSS');
+    const ids=decidedRows.map((m:any)=>m.id);
     let metricRows:any[]=[];
     if(ids.length){
       const metricResult=await client.from('match_metrics').select('match_id,cs,cs_per_min,gold_per_min,damage_per_min,kill_participation,vision_score,farm_after_15,objective_participation,raw').eq('user_id',user.id).in('match_id',ids);
@@ -154,7 +155,7 @@ export function AccountProvider({children}:{children:React.ReactNode}){
     }
     const metricMap=new Map(metricRows.map((m:any)=>[m.match_id,m]));
     runtimeMatches.clear();
-    for(const row of matchRows||[]){
+    for(const row of decidedRows){
       const match=mapMatch(row,metricMap.get(row.id));
       const list=runtimeMatches.get(match.riotAccountId)||[];
       list.push(match);runtimeMatches.set(match.riotAccountId,list);
