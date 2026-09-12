@@ -26,9 +26,9 @@ export async function savePregameEnvelope(device:TrackerDevice,envelope:PregameE
 
 export async function latestPregame(userId:string,accountKey:string){
   const db=getSupabaseAdmin();if(!db)return null;
-  const {data,error}=await db.from('live_pregame_contexts').select('id,client_pregame_id,started_at,last_seen_at,ended_at,context').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
+  const {data,error}=await db.from('live_pregame_contexts').select('id,client_pregame_id,started_at,last_seen_at,ended_at,linked_session_id,context').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error)throw new Error(error.message);if(!data)return null;
   const age=Date.now()-new Date(data.last_seen_at).getTime();
   const active=!data.ended_at&&Number.isFinite(age)&&age<30_000;
-  return{id:data.id,clientPregameId:data.client_pregame_id,startedAt:data.started_at,lastSeenAt:data.last_seen_at,endedAt:data.ended_at,status:active?'CHAMP_SELECT':'ENDED',context:data.context as PregameContext};
+  return{id:data.id,clientPregameId:data.client_pregame_id,startedAt:data.started_at,lastSeenAt:data.last_seen_at,endedAt:data.ended_at,linkedSessionId:data.linked_session_id??null,status:active?'CHAMP_SELECT':'ENDED',context:data.context as PregameContext};
 }
