@@ -3,11 +3,13 @@ import Image from 'next/image';
 import {Match,Mission} from '@/lib/types';
 import {BRAND} from '@/lib/brand';
 
-/**
- * The real logo asset, not a text stand-in. Sized by CSS so one file serves
- * the sidebar, the landing header and the auth pages.
- */
-export function Wordmark({size='md',priority=false}:{size?:'sm'|'md';priority?:boolean}){return <Image className={`logo logo-${size}`} src={BRAND.logo.lockup} alt={`${BRAND.name} — ${BRAND.tagline}`} width={size==='sm'?132:186} height={size==='sm'?66:93} priority={priority}/>}
+/** Existing OVERPOWERED artwork with the CLIMB AI product name locked beneath it. */
+export function Wordmark({size='md',priority=false}:{size?:'sm'|'md';priority?:boolean}){
+  return <span style={{display:'inline-grid',justifyItems:'center',lineHeight:1}}>
+    <Image className={`logo logo-${size}`} src={BRAND.logo.lockup} alt={`${BRAND.name} — ${BRAND.tagline}`} width={size==='sm'?132:186} height={size==='sm'?66:93} priority={priority}/>
+    <span style={{fontSize:size==='sm'?9:11,fontWeight:900,letterSpacing:'.22em',marginTop:size==='sm'?-8:-11,color:'var(--blue,#4b94ff)',whiteSpace:'nowrap'}}>CLIMB AI</span>
+  </span>;
+}
 
 export function PageHead({title,subtitle,action}:{title:string;subtitle:string;action?:React.ReactNode}){return <div className="page-head"><div><h1>{title}</h1><p className="muted">{subtitle}</p></div>{action}</div>}
 export function MetricCard({label,value,detail}:{label:string;value:string|number;detail?:string}){return <div className="glass card"><div className="label">{label}</div><div className="metric">{value}</div>{detail&&<div className="muted" style={{fontSize:13}}>{detail}</div>}</div>}
