@@ -16,8 +16,9 @@ export function CompactFixLadder({fights,historyProfile}:{fights:FightReview[];h
   const {tier}=useSubscription();
   const [open,setOpen]=useState<string|null>(null);
   const matchFixes=useMemo(()=>buildMatchFixes(fights),[fights]);
-  const persistent=useMemo(()=>tier==='PRO'?(historyProfile?.fixLadder??[]).map(fromHistory):[],[historyProfile,tier]);
-  const sourceFixes=persistent.length?mergeFixes(persistent,matchFixes):matchFixes;
+  const current=useMemo<LadderFix[]>(()=>matchFixes.map(fix=>({...fix,persistent:false})),[matchFixes]);
+  const persistent=useMemo<LadderFix[]>(()=>tier==='PRO'?(historyProfile?.fixLadder??[]).map(fromHistory):[],[historyProfile,tier]);
+  const sourceFixes:LadderFix[]=persistent.length?mergeFixes(persistent,current):current;
   const depth=PLAN_COPY[tier].fixDepth;
   const visible=sourceFixes.slice(0,depth);
   const locked=sourceFixes.slice(depth);
@@ -65,7 +66,7 @@ function FixDetail({fix}:{fix:LadderFix}){return <div style={detailBody}><div st
 function MiniBlock({label,text}:{label:string;text:string}){return <div style={miniBlock}><div className="eyebrow">{label}</div><div style={{fontSize:12,lineHeight:1.45,marginTop:5}}>{text}</div></div>}
 
 function fromHistory(fix:ProHistoryFix):LadderFix{return{id:`history-${fix.key}`,stage:fix.stage,severity:fix.severity,title:fix.title,oneLine:`Repeated in ${fix.gamesSeen} tracked game${fix.gamesSeen===1?'':'s'}.`,rule:fix.rule,mastery:fix.mastery,why:fix.why,evidence:[],persistent:true,gamesSeen:fix.gamesSeen,occurrences:fix.occurrences}}
-function mergeFixes(history:LadderFix[],current:MatchFix[]):LadderFix[]{const seen=new Set<string>();const out:LadderFix[]=[];for(const fix of history){out.push(fix);seen.add(normalize(fix.title))}for(const fix of current){if(!seen.has(normalize(fix.title)))out.push({...fix,persistent:false})}return out.slice(0,7)}
+function mergeFixes(history:LadderFix[],current:LadderFix[]):LadderFix[]{const seen=new Set<string>();const out:LadderFix[]=[];for(const fix of history){out.push(fix);seen.add(normalize(fix.title))}for(const fix of current){if(!seen.has(normalize(fix.title)))out.push(fix)}return out.slice(0,7)}
 function normalize(value:string){return value.toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
 
 function buildMatchFixes(fights:FightReview[]):MatchFix[]{
