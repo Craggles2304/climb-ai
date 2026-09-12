@@ -3,6 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 import {useAccount} from './AccountContext';
 import {FightDecisionReview,type FightReview} from './FightDecisionReview';
 import {CompactFixLadder} from './CompactFixLadder';
+import {MapTempoReview} from './MapTempoReview';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
 
@@ -33,6 +34,7 @@ export function LiveFightReviewMount(){
     {matchDraft&&<DraftEvidence pregame={matchDraft}/>} 
     <div><div className="eyebrow">OP COACHING</div><h2 style={{margin:'5px 0 0'}}>One priority first. Deeper evidence only when you open it.</h2></div>
     <CompactFixLadder fights={fights} historyProfile={review.historyProfile}/>
+    <MapTempoReview fights={fights} analysis={review.proAnalysis}/>
     <div className="op-review-with-compact-ladder">
       <FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/>
     </div>
