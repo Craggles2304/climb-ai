@@ -16,6 +16,7 @@ export interface AuthService{
   configured():boolean;
   signIn(email:string,password:string):Promise<AuthUser>;
   signUp(email:string,password:string):Promise<AuthUser>;
+  resendConfirmation(email:string):Promise<void>;
   signInWithGoogle(redirectTo?:string):Promise<void>;
   signOut():Promise<void>;
   currentUser():Promise<AuthUser|null>;
@@ -41,21 +42,25 @@ class SupabaseAuthService implements AuthService{
   async signUp(email:string,password:string):Promise<AuthUser>{
     const {data,error}=await (await this.client()).auth.signUp({
       email,password,
-      options:{emailRedirectTo:typeof window!=='undefined'?`${window.location.origin}/dashboard`:undefined},
+      options:{emailRedirectTo:authCallback('/onboarding')},
     });
     if(error)throw new Error(friendly(error.message));
     if(data.session)await claimAnonymousHistory();
     return {id:data.user?.id??'pending',email};
   }
 
+  async resendConfirmation(email:string){
+    const {error}=await (await this.client()).auth.resend({
+      type:'signup',email,
+      options:{emailRedirectTo:authCallback('/onboarding')},
+    });
+    if(error)throw new Error(friendly(error.message));
+  }
+
   async signInWithGoogle(redirectTo?:string){
-    const next=safeNext(redirectTo);
-    const callback=typeof window!=='undefined'
-      ?`${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
-      :undefined;
     const {error}=await (await this.client()).auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:callback},
+      options:{redirectTo:authCallback(safeNext(redirectTo))},
     });
     if(error)throw new Error(friendly(error.message));
   }
@@ -78,6 +83,7 @@ class UnconfiguredAuthService implements AuthService{
   private fail():never{throw new AuthNotConfiguredError()}
   async signIn(){return this.fail()}
   async signUp(){return this.fail()}
+  async resendConfirmation(){return this.fail()}
   async signInWithGoogle(){return this.fail()}
   async signOut(){/* nothing to sign out of */}
   async currentUser(){return null}
@@ -92,6 +98,11 @@ async function claimAnonymousHistory(){
   }catch{/* sign-in itself succeeded */}
 }
 
+function authCallback(next:string){
+  if(typeof window==='undefined')return undefined;
+  return `${window.location.origin}/auth/callback?next=${encodeURIComponent(safeNext(next))}`;
+}
+
 function safeNext(value?:string){
   if(!value||!value.startsWith('/')||value.startsWith('//'))return '/dashboard';
   return value;
@@ -99,6 +110,7 @@ function safeNext(value?:string){
 
 function friendly(message:string):string{
   const m=message.toLowerCase();
+  if(m.includes('email not confirmed')||m.includes('email_not_confirmed')||m.includes('not confirmed'))return 'Confirm your email before logging in. You can resend the confirmation link below.';
   if(m.includes('invalid login'))return 'That email and password do not match an account.';
   if(m.includes('already registered'))return 'There is already an account with that email. Try logging in.';
   if(m.includes('provider')||m.includes('oauth'))return 'Google sign-in is not enabled correctly yet. Please try again shortly.';

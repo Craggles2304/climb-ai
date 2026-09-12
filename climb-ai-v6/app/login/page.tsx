@@ -16,14 +16,16 @@ function LoginForm(){
   const [password,setPassword]=useState('');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
+  const [resent,setResent]=useState(false);
+  const [resendBusy,setResendBusy]=useState(false);
 
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault();
-    setError('');setBusy(true);
+    setError('');setResent(false);setBusy(true);
     try{
       await authService.signIn(email,password);
       router.push(next);
-      router.refresh();   // let server components pick up the new session
+      router.refresh();
     }catch(err){
       setError(err instanceof AuthNotConfiguredError
         ?err.message
@@ -39,6 +41,19 @@ function LoginForm(){
       setBusy(false);
     }
   };
+
+  const resend=async()=>{
+    if(!email)return setError('Enter the email address you signed up with first.');
+    setError('');setResent(false);setResendBusy(true);
+    try{
+      await authService.resendConfirmation(email);
+      setResent(true);
+    }catch(err){
+      setError(err instanceof Error?err.message:'Could not resend the confirmation email.');
+    }finally{setResendBusy(false)}
+  };
+
+  const needsConfirmation=error.toLowerCase().includes('confirm your email');
 
   return <main className="container section">
     <Wordmark/>
@@ -73,6 +88,10 @@ function LoginForm(){
       </form>
 
       {error&&<div className="auth-message" role="alert">{error}</div>}
+      {needsConfirmation&&<button className="btn secondary" type="button" onClick={resend} disabled={resendBusy||!email} style={{marginTop:10}}>
+        {resendBusy?'SENDING…':'RESEND CONFIRMATION EMAIL'}
+      </button>}
+      {resent&&<div className="auth-message" role="status">New confirmation email sent. Open the newest email; it will return you to OVERPOWERED onboarding.</div>}
 
       <div className="divider"/>
       <p className="muted">
@@ -87,6 +106,5 @@ function LoginForm(){
 }
 
 export default function Login(){
-  // useSearchParams needs a Suspense boundary during static rendering.
   return <Suspense fallback={null}><LoginForm/></Suspense>;
 }
