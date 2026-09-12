@@ -5,14 +5,37 @@ import {FightDecisionReview,type FightReview} from './FightDecisionReview';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
 
-type Review={status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
+type Review={sessionId:string;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
+type Pick={championId:number;championName:string|null;role:string|null;lockedIn:boolean};
+type Ban={championId:number;championName:string|null};
+type Pregame={linkedSessionId:string|null;status:'CHAMP_SELECT'|'ENDED';context:{localChampionName:string|null;localRole:string|null;allies:Pick[];enemies:Pick[];bans:{allies:Ban[];enemies:Ban[]}}};
 
 export function LiveFightReviewMount(){
   const {active}=useAccount();
   const [review,setReview]=useState<Review|null>(null);
-  const refresh=useCallback(async()=>{try{const response=await fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});if(!response.ok)return;const body=await response.json();setReview(body.review??null)}catch{}},[active.id]);
+  const [pregame,setPregame]=useState<Pregame|null>(null);
+  const refresh=useCallback(async()=>{
+    try{
+      const [reviewResponse,pregameResponse]=await Promise.all([
+        fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'}),
+        fetch(`/api/live/pregame?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'}),
+      ]);
+      if(reviewResponse.ok){const body=await reviewResponse.json();setReview(body.review??null)}
+      if(pregameResponse.ok){const body=await pregameResponse.json();setPregame(body.pregame??null)}
+    }catch{}
+  },[active.id]);
   useEffect(()=>{void refresh();const id=window.setInterval(()=>void refresh(),15_000);return()=>window.clearInterval(id)},[refresh]);
   if(!review||!['COMPLETE','ABORTED'].includes(review.status))return null;
   const fights=review.summary?.fightReviews??[];
-  return <section className="dash-section" style={{display:'grid',gap:14}}><div><div className="eyebrow">COACHING DECISION REVIEW</div><h2 style={{margin:'5px 0 0'}}>Open the exact moments that changed your game</h2></div><FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/></section>;
+  const matchDraft=pregame?.linkedSessionId===review.sessionId?pregame:null;
+  return <section className="dash-section" style={{display:'grid',gap:14}}>
+    {matchDraft&&<DraftEvidence pregame={matchDraft}/>} 
+    <div><div className="eyebrow">COACHING DECISION REVIEW</div><h2 style={{margin:'5px 0 0'}}>Open the exact moments that changed your game</h2></div>
+    <FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/>
+  </section>;
 }
+
+function DraftEvidence({pregame}:{pregame:Pregame}){const c=pregame.context;return <details className="glass card"><summary style={{cursor:'pointer',fontWeight:900}}>DRAFT CONTEXT · {c.localChampionName||'Your pick'}{c.localRole?` · ${roleLabel(c.localRole)}`:''}</summary><p className="muted">This champion-select snapshot is linked to this exact tracked match and remains part of the saved learning evidence.</p><div className="grid two" style={{marginTop:12}}><DraftList title="YOUR DRAFT" picks={c.allies}/><DraftList title="ENEMY DRAFT" picks={c.enemies}/></div><div style={{marginTop:12,fontSize:12}}><b>Ally bans:</b> {banText(c.bans.allies)}<br/><b>Enemy bans:</b> {banText(c.bans.enemies)}</div></details>}
+function DraftList({title,picks}:{title:string;picks:Pick[]}){return <div><div className="eyebrow">{title}</div><div style={{display:'flex',gap:7,flexWrap:'wrap',marginTop:7}}>{picks.filter(p=>p.championId>0).map((p,i)=><span key={`${p.championId}-${i}`} style={{padding:'6px 8px',border:'1px solid rgba(255,255,255,.09)',borderRadius:999,fontSize:11}}>{p.championName||`Champion ${p.championId}`}{p.role?` · ${roleLabel(p.role)}`:''}</span>)}</div></div>}
+function roleLabel(role:string){const r=role.toUpperCase();if(r==='BOTTOM'||r==='ADC')return'ADC';if(r==='MIDDLE'||r==='MID')return'MID';if(r==='UTILITY'||r==='SUPPORT')return'SUPPORT';return r}
+function banText(bans:Ban[]){const names=bans.filter(b=>b.championId>0).map(b=>b.championName||`Champion ${b.championId}`);return names.length?names.join(' · '):'None recorded'}
