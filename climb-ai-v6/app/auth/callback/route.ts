@@ -12,6 +12,7 @@ export async function GET(request:NextRequest){
   const providerErrorDescription=request.nextUrl.searchParams.get('error_description');
   const next=safeNext(request.nextUrl.searchParams.get('next'));
   const canonical=process.env.NEXT_PUBLIC_SITE_URL||request.nextUrl.origin;
+  let failureReason=providerErrorDescription||providerErrorCode||providerError||'';
 
   if(providerError){
     console.error('[auth-callback] Provider returned an OAuth error',{
@@ -57,20 +58,27 @@ export async function GET(request:NextRequest){
       return redirect;
     }
 
+    failureReason=error?.message||'No session returned';
     console.error('[auth-callback] OAuth code exchange failed',{
       flowIdPresent:Boolean(flowId),
-      error:error?.message??'No session returned',
+      error:failureReason,
     });
   }else if(!code&&!providerError){
+    failureReason='Callback arrived without an OAuth code';
     console.error('[auth-callback] Callback arrived without an OAuth code');
   }
 
   const target=new URL('/login',canonical);
   target.searchParams.set('error','google_auth_failed');
+  if(failureReason)target.searchParams.set('reason',safeReason(failureReason));
   return NextResponse.redirect(target);
 }
 
 function safeNext(value:string|null){
   if(!value||!value.startsWith('/')||value.startsWith('//'))return '/dashboard';
   return value;
+}
+
+function safeReason(value:string){
+  return value.replace(/[\r\n\t]+/g,' ').replace(/\s+/g,' ').trim().slice(0,240);
 }
