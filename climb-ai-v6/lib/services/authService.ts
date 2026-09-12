@@ -60,7 +60,10 @@ class SupabaseAuthService implements AuthService{
   async signInWithGoogle(redirectTo?:string){
     const {error}=await (await this.client()).auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:authCallback(safeNext(redirectTo))},
+      options:{
+        redirectTo:authCallback(safeNext(redirectTo)),
+        scopes:'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/userinfo.profile',
+      },
     });
     if(error)throw new Error(friendly(error.message));
   }
