@@ -17,6 +17,8 @@ export interface AuthService{
   signIn(email:string,password:string):Promise<AuthUser>;
   signUp(email:string,password:string):Promise<AuthUser>;
   resendConfirmation(email:string):Promise<void>;
+  requestPasswordReset(email:string):Promise<void>;
+  updatePassword(password:string):Promise<void>;
   signInWithGoogle(redirectTo?:string):Promise<void>;
   signOut():Promise<void>;
   currentUser():Promise<AuthUser|null>;
@@ -57,6 +59,18 @@ class SupabaseAuthService implements AuthService{
     if(error)throw new Error(friendly(error.message));
   }
 
+  async requestPasswordReset(email:string){
+    const {error}=await (await this.client()).auth.resetPasswordForEmail(email,{
+      redirectTo:authCallback('/reset-password'),
+    });
+    if(error)throw new Error(friendly(error.message));
+  }
+
+  async updatePassword(password:string){
+    const {error}=await (await this.client()).auth.updateUser({password});
+    if(error)throw new Error(friendly(error.message));
+  }
+
   async signInWithGoogle(redirectTo?:string){
     const {error}=await (await this.client()).auth.signInWithOAuth({
       provider:'google',
@@ -87,6 +101,8 @@ class UnconfiguredAuthService implements AuthService{
   async signIn(){return this.fail()}
   async signUp(){return this.fail()}
   async resendConfirmation(){return this.fail()}
+  async requestPasswordReset(){return this.fail()}
+  async updatePassword(){return this.fail()}
   async signInWithGoogle(){return this.fail()}
   async signOut(){/* nothing to sign out of */}
   async currentUser(){return null}
