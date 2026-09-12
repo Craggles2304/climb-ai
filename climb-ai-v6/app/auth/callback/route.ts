@@ -9,6 +9,7 @@ export async function GET(request:NextRequest){
   const flowId=request.nextUrl.searchParams.get('sb_flow_id');
   const providerError=request.nextUrl.searchParams.get('error');
   const providerErrorCode=request.nextUrl.searchParams.get('error_code');
+  const providerErrorDescription=request.nextUrl.searchParams.get('error_description');
   const next=safeNext(request.nextUrl.searchParams.get('next'));
   const canonical=process.env.NEXT_PUBLIC_SITE_URL||request.nextUrl.origin;
 
@@ -16,6 +17,7 @@ export async function GET(request:NextRequest){
     console.error('[auth-callback] Provider returned an OAuth error',{
       error:providerError,
       errorCode:providerErrorCode??undefined,
+      description:providerErrorDescription??undefined,
     });
   }
 
