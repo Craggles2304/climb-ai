@@ -1,24 +1,16 @@
 /**
  * Single source of truth for product naming.
  *
- * The original brief required the name to be globally replaceable. It was not —
- * it was hard-coded in 48 places across 28 files. Everything user-visible now
- * reads from here, so the next rename is this file plus the two colour tokens
- * at the top of globals.css.
- *
- * Deliberately NOT renamed, and why:
- *  - localStorage keys (`climb_active_account`, `climb_ilp_v6`, `climb_events`)
- *    Renaming them silently discards every existing player's saved plan. They
- *    are invisible to users; a migration can happen later if it ever matters.
- *  - CSS class names (`.climb-card-*`, `.climb-cockpit`) — internal selectors.
- *  - `climbScore()` in lib/engine.ts — internal function name.
+ * User-visible naming is centralised here. Internal storage keys and CSS
+ * selectors deliberately keep their historic CLIMB names so existing player
+ * data is not invalidated by a branding change.
  */
 
 export const BRAND={
-  /** Full wordmark, as it appears in the logo. */
-  name:'OVERPOWERED',
-  /** Monogram — the two angular eyes of the mark read as OP. */
-  short:'OP',
+  /** Full public product name. */
+  name:'OVERPOWERED CLIMB AI',
+  /** Short form used where space is tight. */
+  short:'OP CLIMB',
   tagline:"HUNT WHAT'S NEXT.",
   /** Proprietary improvement metric, 0–100. */
   score:'OP Score',
@@ -26,8 +18,8 @@ export const BRAND={
   /** The core product loop. */
   loop:'The Hunt',
   loopCaps:'THE HUNT',
-  description:'Play. Analyse. Hunt the leak. Prove improvement.',
-  /** The real logo, in public/brand. Use these, never a text substitute. */
+  description:'League of Legends improvement powered by saved match evidence, adaptive learning plans and post-game coaching.',
+  /** Existing OVERPOWERED logo assets remain the visual mark. */
   logo:{lockup:'/brand/overpowered-lockup.png',crest:'/brand/overpowered-crest.png'},
 } as const;
 
