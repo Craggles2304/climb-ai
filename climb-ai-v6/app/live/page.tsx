@@ -4,6 +4,7 @@ import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
 import {useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {WindowsTrackerInstaller} from '@/components/WindowsTrackerInstaller';
 
 type Device={id:string;account_key:string;riot_account_id?:string|null;device_name:string;created_at:string;last_seen_at:string|null};
 type StrengthPoint={
@@ -61,7 +62,6 @@ export default function Live(){
   const clock=review?.latestSnapshot?formatClock(review.latestSnapshot.gameTime):'—';
   const timeline=review?.status==='COMPLETE'?(review.summary?.points??[]):[];
   const opportunities=review?.status==='COMPLETE'?(review.summary?.opportunities??[]):[];
-  const powershell=pairToken?`$env:OP_WEB_URL="${origin}"\n$env:OP_TRACKER_TOKEN="${pairToken}"\nnpm start`:'';
 
   async function pair(){
     if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing the tracker.');return}
@@ -81,7 +81,7 @@ export default function Live(){
       const body=await response.json();
       if(!response.ok){setMessage(body.error||'Pairing failed.');return}
       setPairToken(body.token||'');
-      setMessage(`PC paired to ${body.riotAccount?.game_name||active.gameName}. The Riot identity and every recorded session are now saved to this login.`);
+      setMessage(`PC paired to ${body.riotAccount?.game_name||active.gameName}. Download the Windows tracker below and run the setup once.`);
       await refresh();
     }catch{setMessage('Could not reach the pairing service.')}
     finally{setBusy(false)}
@@ -101,7 +101,7 @@ export default function Live(){
             <Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/>
             <Mini label="CHAMPION" value={review?.latestSnapshot?.active.championName||'Detecting'}/>
           </div>
-        </>:<p>{paired?'Your PC is paired. Start the companion before League; recording begins automatically when a match becomes available.':'Pair the Windows PC that runs League. Your Riot profile is saved to your login and the companion sends match snapshots to that account.'}</p>}
+        </>:<p>{paired?'Your PC is paired. Open the OVERPOWERED Tracker desktop shortcut before League; recording starts automatically when a match becomes available.':'Pair the Windows PC that runs League. Your Riot profile is saved to your login and the companion sends match snapshots to that account.'}</p>}
         <div className="mission-command"><span>PRE-GAME ILP CUE</span><b>{mission?.gameRule||'Open your ILP before queueing.'}</b></div>
       </div>
 
@@ -120,15 +120,9 @@ export default function Live(){
         <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
         <button className="btn primary" disabled={busy||!isOwnAccount} onClick={pair}>{busy?'PAIRING…':'PAIR THIS PC'}</button>
       </div>
-      {!isOwnAccount&&<p className="muted" style={{marginTop:10}}>Switch from the demo account to your own Riot account before pairing.</p>}
+      {!isOwnAccount&&<p className="muted" style={{marginTop:10}}>Switch to your own Riot account before pairing.</p>}
       {message&&<p style={{marginTop:12}}>{message}</p>}
-      {pairToken&&<div style={{marginTop:18,display:'grid',gap:10}}>
-        <div><b>1. Keep this token private — it is shown once.</b></div>
-        <code style={{display:'block',padding:14,borderRadius:12,overflowWrap:'anywhere',background:'rgba(255,255,255,.06)'}}>{pairToken}</code>
-        <div><b>2. In PowerShell, inside <code>climb-ai-v6\companion</code>:</b></div>
-        <pre style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere',padding:14,borderRadius:12,background:'rgba(255,255,255,.06)'}}>{powershell}</pre>
-        <div className="muted">Node.js 22+ is enough for the alpha companion. No AI model or Riot API key is required for the local recording loop.</div>
-      </div>}
+      {pairToken&&<WindowsTrackerInstaller token={pairToken} origin={origin}/>} 
     </section>
 
     {review?.status==='COMPLETE'&&<section className="dash-section">
