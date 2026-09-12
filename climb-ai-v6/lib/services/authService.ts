@@ -3,15 +3,6 @@ import {getBrowserClient} from '@/lib/supabase/client';
 import {authConfigured} from '@/lib/auth/config';
 import {anonId} from '@/lib/analytics';
 
-/**
- * Authentication.
- *
- * Was a stub whose `signIn()` returned `{id:'demo-user'}` for any input. Now it
- * is real Supabase auth when configured, and an explicit, honest refusal when
- * it is not — rather than a fake success that makes an unauthenticated app look
- * authenticated.
- */
-
 export interface AuthUser{id:string;email:string}
 
 export class AuthNotConfiguredError extends Error{
@@ -53,16 +44,18 @@ class SupabaseAuthService implements AuthService{
       options:{emailRedirectTo:typeof window!=='undefined'?`${window.location.origin}/dashboard`:undefined},
     });
     if(error)throw new Error(friendly(error.message));
-    // With email confirmation on, there is no session yet and that is not a failure.
     if(data.session)await claimAnonymousHistory();
     return {id:data.user?.id??'pending',email};
   }
 
   async signInWithGoogle(redirectTo?:string){
+    const next=safeNext(redirectTo);
+    const callback=typeof window!=='undefined'
+      ?`${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`
+      :undefined;
     const {error}=await (await this.client()).auth.signInWithOAuth({
       provider:'google',
-      options:{redirectTo:typeof window!=='undefined'
-        ?`${window.location.origin}${redirectTo??'/dashboard'}`:undefined},
+      options:{redirectTo:callback},
     });
     if(error)throw new Error(friendly(error.message));
   }
@@ -90,26 +83,25 @@ class UnconfiguredAuthService implements AuthService{
   async currentUser(){return null}
 }
 
-/**
- * Attaches everything recorded before sign-in — events, feedback, behaviour
- * checks — to the new account. Without this, a founder tester's most valuable
- * session (their first) would stay orphaned from their user id forever.
- *
- * Best effort: a failure here must never block a successful sign-in.
- */
 async function claimAnonymousHistory(){
   try{
     await fetch('/api/auth/claim',{
       method:'POST',headers:{'content-type':'application/json'},
       body:JSON.stringify({anonId:anonId()}),
     });
-  }catch{/* the user is signed in; this is not their problem */}
+  }catch{/* sign-in itself succeeded */}
+}
+
+function safeNext(value?:string){
+  if(!value||!value.startsWith('/')||value.startsWith('//'))return '/dashboard';
+  return value;
 }
 
 function friendly(message:string):string{
   const m=message.toLowerCase();
   if(m.includes('invalid login'))return 'That email and password do not match an account.';
   if(m.includes('already registered'))return 'There is already an account with that email. Try logging in.';
+  if(m.includes('provider')||m.includes('oauth'))return 'Google sign-in is not enabled correctly yet. Please try again shortly.';
   if(m.includes('password'))return 'That password is too weak — use at least eight characters.';
   if(m.includes('rate'))return 'Too many attempts. Wait a minute and try again.';
   return 'We could not complete that. Your account is safe — try again shortly.';
