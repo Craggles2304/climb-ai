@@ -37,13 +37,21 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
       ':write_launcher',
       'echo [3/4] Saving your secure PC pairing...',
       '> "%OP_HOME%\\start.cmd" echo @echo off',
+      '>> "%OP_HOME%\\start.cmd" echo setlocal EnableExtensions',
       '>> "%OP_HOME%\\start.cmd" echo title OVERPOWERED CLIMB AI Tracker',
       `>> "%OP_HOME%\\start.cmd" echo set "OP_WEB_URL=${web}"`,
       `>> "%OP_HOME%\\start.cmd" echo set "OP_TRACKER_TOKEN=${trackerToken}"`,
-      `>> "%OP_HOME%\\start.cmd" echo powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -UseBasicParsing -Uri '${web}/tracker/overpowered-companion.mjs' -OutFile '%%LOCALAPPDATA%%\\OVERPOWERED\\Tracker\\main.mjs' } catch { }"`,
       '>> "%OP_HOME%\\start.cmd" echo set "NODE_EXE=node"',
       '>> "%OP_HOME%\\start.cmd" echo if exist "%%ProgramFiles%%\\nodejs\\node.exe" set "NODE_EXE=%%ProgramFiles%%\\nodejs\\node.exe"',
+      '>> "%OP_HOME%\\start.cmd" echo :tracker_loop',
+      `>> "%OP_HOME%\\start.cmd" echo powershell -NoProfile -ExecutionPolicy Bypass -Command "$ProgressPreference='SilentlyContinue'; try { Invoke-WebRequest -UseBasicParsing -Uri '${web}/tracker/overpowered-companion.mjs' -OutFile '%%LOCALAPPDATA%%\\OVERPOWERED\\Tracker\\main.mjs' } catch { }"`,
       '>> "%OP_HOME%\\start.cmd" echo "%%NODE_EXE%%" "%%LOCALAPPDATA%%\\OVERPOWERED\\Tracker\\main.mjs"',
+      '>> "%OP_HOME%\\start.cmd" echo set "TRACKER_EXIT=%%ERRORLEVEL%%"',
+      '>> "%OP_HOME%\\start.cmd" echo if "%%TRACKER_EXIT%%"=="0" exit /b 0',
+      '>> "%OP_HOME%\\start.cmd" echo echo.',
+      '>> "%OP_HOME%\\start.cmd" echo echo OVERPOWERED Companion stopped unexpectedly. Restarting in 5 seconds...',
+      '>> "%OP_HOME%\\start.cmd" echo timeout /t 5 ^>nul',
+      '>> "%OP_HOME%\\start.cmd" echo goto :tracker_loop',
       'echo [4/4] Creating your desktop shortcut...',
       'powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws=New-Object -ComObject WScript.Shell; $shortcut=$ws.CreateShortcut([Environment]::GetFolderPath(\'Desktop\')+\'\\OVERPOWERED CLIMB AI Tracker.lnk\'); $shortcut.TargetPath=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\\start.cmd\'; $shortcut.WorkingDirectory=\'%LOCALAPPDATA%\\OVERPOWERED\\Tracker\'; $shortcut.Description=\'OVERPOWERED CLIMB AI League tracker\'; $shortcut.Save()"',
       'echo.',
@@ -83,7 +91,7 @@ export function WindowsTrackerInstaller({token,origin}:{token:string;origin:stri
   return <div className="glass card" style={{marginTop:18,display:'grid',gap:12}}>
     <div className="eyebrow">PC PAIRED · INSTALLER READY</div>
     <h3 style={{margin:0}}>Install the OVERPOWERED CLIMB AI Tracker</h3>
-    <p className="muted" style={{margin:0}}>One download. The setup checks for Node.js, installs it automatically through Windows Package Manager when needed, saves this PC&apos;s secure pairing, creates a desktop shortcut and starts the tracker.</p>
+    <p className="muted" style={{margin:0}}>One download. The setup checks for Node.js, installs it automatically through Windows Package Manager when needed, saves this PC&apos;s secure pairing, creates a desktop shortcut and starts the tracker. The launcher automatically recovers from an unexpected tracker crash.</p>
     <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center'}}>
       <button className="btn primary" type="button" onClick={download}>DOWNLOAD WINDOWS TRACKER</button>
       <span className="muted">Then double-click <b>OVERPOWERED-CLIMB-AI-Tracker-Setup.cmd</b>.</span>
