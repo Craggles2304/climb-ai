@@ -27,7 +27,7 @@ export function CompactFixLadder({fights,historyProfile}:{fights:FightReview[];h
   return <section className="glass card" style={{display:'grid',gap:14}}>
     <div style={{display:'flex',justifyContent:'space-between',alignItems:'start',gap:12,flexWrap:'wrap'}}>
       <div><div className="eyebrow">OP FIX LADDER</div><h2 style={{margin:'5px 0 4px'}}>Fix one leak. Prove it. Move up.</h2><p className="muted" style={{margin:0,maxWidth:680}}>OP CLIMB prioritises the simplest high-impact behaviour first. Harder coaching stays behind it instead of giving you five things to remember at once.</p></div>
-      <span style={tierPill}>{tier} · {depth} FIX{depth===1?'':'ES'}</span>
+      <span style={tierPill}>{tier} · {depth} FIXES</span>
     </div>
 
     <div style={stageRail} aria-label="Fix Ladder progression">
