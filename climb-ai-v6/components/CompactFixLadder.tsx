@@ -66,19 +66,15 @@ function FixDetail({fix}:{fix:LadderFix}){
   const plan=coachingPlan(fix);
   return <div style={detailBody}>
     <div style={detailGrid}><MiniBlock label="WHY THIS MATTERS" text={fix.why}/><MiniBlock label="IN-GAME TRIGGER" text={plan.trigger}/></div>
-
     <div style={protocolShell}>
       <div className="eyebrow">HOW TO FIX IT · 3-STEP PROTOCOL</div>
       <div style={protocolGrid}>{plan.routine.map((step,index)=><div key={step} style={stepCard}><span style={stepNumber}>{index+1}</span><div><b>{stepHeading(index)}</b><p style={stepText}>{step}</p></div></div>)}</div>
     </div>
-
     <div style={detailGrid}>
       <div style={miniBlock}><div className="eyebrow">DO NOT DO THIS</div><div style={{display:'grid',gap:7,marginTop:7}}>{plan.avoid.map(item=><div key={item} style={avoidRow}><span>×</span><span>{item}</span></div>)}</div></div>
       <div style={miniBlock}><div className="eyebrow">SUCCESS CHECK</div><div style={{fontSize:12,lineHeight:1.5,marginTop:5}}>{plan.success}</div><div style={coachNote}>{plan.coachNote}</div></div>
     </div>
-
     <div style={masteryShell}><div><div className="eyebrow">MASTER IT WHEN</div><b style={{fontSize:13}}>{fix.mastery}</b></div>{fix.persistent&&<span style={persistentPill}>TRACKED ACROSS GAMES</span>}</div>
-
     {fix.persistent?<div className="muted" style={{fontSize:11,marginTop:10}}>Detected {fix.occurrences??0} time{fix.occurrences===1?'':'s'} across {fix.gamesSeen??0} tracked game{fix.gamesSeen===1?'':'s'}. OP CLIMB will keep this priority active until the pattern falls away consistently.</div>:fix.evidence.length?<EvidenceBlock evidence={fix.evidence}/>:null}
   </div>;
 }
@@ -87,9 +83,12 @@ function EvidenceBlock({evidence}:{evidence:FightReview[]}){return <div style={{
 
 function evidenceSummary(fight:FightReview){
   const bits:string[]=[];
-  if(fight.evidence.levelDelta!==0)bits.push(`${fight.evidence.levelDelta>0?'+':''}${fight.evidence.levelDelta} lvl`);
-  if(fight.evidence.itemGoldDelta!==0)bits.push(`${fight.evidence.itemGoldDelta>0?'+':''}${Math.round(fight.evidence.itemGoldDelta)}g items`);
-  if(fight.evidence.currentGold>=500)bits.push(`${Math.round(fight.evidence.currentGold)}g pocket`);
+  const levelDelta=fight.evidence.levelDelta;
+  const itemDelta=fight.evidence.itemGoldDelta;
+  const pocket=fight.evidence.currentGold;
+  if(typeof levelDelta==='number'&&levelDelta!==0)bits.push(`${levelDelta>0?'+':''}${levelDelta} lvl`);
+  if(typeof itemDelta==='number'&&itemDelta!==0)bits.push(`${itemDelta>0?'+':''}${Math.round(itemDelta)}g items`);
+  if(typeof pocket==='number'&&pocket>=500)bits.push(`${Math.round(pocket)}g pocket`);
   if(typeof fight.evidence.healthPct==='number')bits.push(`${Math.round(fight.evidence.healthPct*100)}% HP`);
   if(typeof fight.evidence.manaPct==='number')bits.push(`${Math.round(fight.evidence.manaPct*100)}% resource`);
   return bits.join(' · ')||fight.verdict;
@@ -102,77 +101,49 @@ function coachingPlan(fix:LadderFix):CoachingPlan{
   const key=normalize(`${fix.id} ${fix.title}`);
   if(key.includes('red state')||key.includes('history red_state')||key.includes('match red'))return{
     trigger:'Before every voluntary fight, run four checks: LEVEL, PURCHASED ITEMS, HP/RESOURCE and NUMBERS. If two or more are against you, treat the state as RED.',
-    routine:[
-      'Pause the engage for one second. Compare your level and completed/major item power with the main enemy threat. Then check your HP/resource and whether both teams have equal numbers.',
-      'If the state is red, change one condition before fighting: add a teammate, force enemy HP down first, wait for ally CC, make the enemy walk into you, or disengage and spend gold.',
-      'Only re-enter when you have created a real edge. If the state is still red after 5–10 seconds, give the space/objective and take the next resource instead of gambling the fight.'
-    ],
+    routine:['Pause the engage for one second. Compare your level and completed/major item power with the main enemy threat. Then check your HP/resource and whether both teams have equal numbers.','If the state is red, change one condition before fighting: add a teammate, force enemy HP down first, wait for ally CC, make the enemy walk into you, or disengage and spend gold.','Only re-enter when you have created a real edge. If the state is still red after 5–10 seconds, give the space/objective and take the next resource instead of gambling the fight.'],
     avoid:['Following a teammate into a bad fight just because they started it.','Using a kill from a disadvantaged fight as proof that the decision was good.','Re-entering after escaping when the level/item/HP disadvantage has not changed.'],
     success:'The goal is not “never fight while behind”. The goal is to stop taking clean, equal-number fights when the visible state already favours the enemy. A good game is one where every red-state fight had a reason: numbers, first damage, terrain, CC or a forced objective defence.',
     coachNote:'COACH CUE: RED = CHANGE THE FIGHT BEFORE YOU TAKE THE FIGHT.'
   };
   if(key.includes('spend')||key.includes('bank'))return{
     trigger:'Any time you are holding roughly 900g+ after a wave, camp, kill or objective, ask: “What meaningful component can I buy, and is there a safe reset now?”',
-    routine:[
-      'Identify the purchase before you continue moving on the map. If the gold completes a strong component or full item, treat the reset as part of the play—not downtime.',
-      'Create the reset: crash/clear the safe wave, finish the camp, move out of enemy threat and recall. Do not add a low-value side fight while the purchase is sitting in your pocket.',
-      'Return to the map with the new item and look for the next fight from the upgraded state. Judge the sequence as FARM/KILL → SPEND → FIGHT, not FARM/KILL → FIGHT → MAYBE SPEND.'
-    ],
+    routine:['Identify the purchase before you continue moving on the map. If the gold completes a strong component or full item, treat the reset as part of the play—not downtime.','Create the reset: crash/clear the safe wave, finish the camp, move out of enemy threat and recall. Do not add a low-value side fight while the purchase is sitting in your pocket.','Return to the map with the new item and look for the next fight from the upgraded state. Judge the sequence as FARM/KILL → SPEND → FIGHT, not FARM/KILL → FIGHT → MAYBE SPEND.'],
     avoid:['Staying because “one more wave” is available when you already have a major purchase.','Walking to an objective with 1200–1800g unspent unless the objective is genuinely unavoidable.','Counting banked gold as if it makes you stronger before it is converted into items.'],
     success:'You should increasingly arrive to voluntary fights with your earned gold already converted. The strongest signal is fewer deaths with a large bank and more fights immediately after meaningful purchases.',
     coachNote:'COACH CUE: GOLD IN THE BANK IS NOT POWER. BUY IT, THEN USE IT.'
   };
   if(key.includes('second death')||key.includes('chain'))return{
     trigger:'The moment you respawn after a death, the next 90 seconds become a RECOVERY WINDOW. Your job is to stabilise before you contest again.',
-    routine:[
-      'On respawn, choose one safe resource first: a catchable wave, nearby camp or protected route. Do not path straight back toward the place you just died.',
-      'Rebuild information. Check which enemies are missing, where the next objective is, and whether your team actually has numbers before crossing into contested space.',
-      'Only re-enter a fight after you have recovered resources or the enemy gives you a clear favourable setup. If not, trade the fight for farm, plates, camps or opposite-side pressure.'
-    ],
+    routine:['On respawn, choose one safe resource first: a catchable wave, nearby camp or protected route. Do not path straight back toward the place you just died.','Rebuild information. Check which enemies are missing, where the next objective is, and whether your team actually has numbers before crossing into contested space.','Only re-enter a fight after you have recovered resources or the enemy gives you a clear favourable setup. If not, trade the fight for farm, plates, camps or opposite-side pressure.'],
     avoid:['Revenge pathing toward the player who killed you.','Running through unverified fog because teammates are already fighting.','Trying to “win back” the previous death immediately with another 50/50 play.'],
     success:'A clean recovery means the first death stays one death. Even if your team loses the next skirmish, you should not compound it by donating another kill before your economy and information recover.',
     coachNote:'COACH CUE: AFTER A DEATH, YOUR FIRST WIN IS NOT DYING AGAIN.'
   };
   if(key.includes('protect')||key.includes('lead')||key.includes('advantage'))return{
     trigger:'Whenever OP CLIMB shows you are clearly stronger in level/items, switch from “find a kill” to “convert the lead safely”.',
-    routine:[
-      'Spend first if needed, then identify what the lead should buy you: safer farm, tower pressure, objective setup, vision control or forcing the enemy to answer a wave.',
-      'Make the enemy enter your threat. Hold the stronger area, play with teammates and attack the nearest safe target instead of chasing through uncontrolled space.',
-      'After winning a trade/fight, convert and reset. Take the guaranteed objective/resource, then leave before the enemy respawns or your HP/resources turn the winning state into an even one.'
-    ],
+    routine:['Spend first if needed, then identify what the lead should buy you: safer farm, tower pressure, objective setup, vision control or forcing the enemy to answer a wave.','Make the enemy enter your threat. Hold the stronger area, play with teammates and attack the nearest safe target instead of chasing through uncontrolled space.','After winning a trade/fight, convert and reset. Take the guaranteed objective/resource, then leave before the enemy respawns or your HP/resources turn the winning state into an even one.'],
     avoid:['Chasing low-value targets deep into fog because you are fed.','Taking isolated stat-checks when your lead could create a guaranteed team advantage.','Staying on the map after a win until your HP, mana or unspent gold removes the advantage.'],
     success:'The lead should survive multiple minutes and create another advantage. Track whether your next death occurs while still ahead; those are the deaths this fix is designed to remove.',
     coachNote:'COACH CUE: A LEAD IS AN ASSET. CONVERT IT—DON’T GAMBLE IT.'
   };
   if(key.includes('empty')||key.includes('resource'))return{
     trigger:'Before committing, check your usable fight resources. Under ~55% HP or ~30% mana/resource is a warning unless the play is forced or immediately winning.',
-    routine:[
-      'Decide whether you have enough HP/resource to survive the enemy’s first threat cycle and still contribute afterward. If not, your margin for error is already too small.',
-      'Shorten the play: poke from range, clear the wave, hold a safe angle, take the objective from distance, or reset. Let teammates with healthier states take first contact.',
-      'Commit only when the enemy is lower, a key threat is already spent, your team has numbers, or the reward is worth the forced risk.'
-    ],
+    routine:['Decide whether you have enough HP/resource to survive the enemy’s first threat cycle and still contribute afterward. If not, your margin for error is already too small.','Shorten the play: poke from range, clear the wave, hold a safe angle, take the objective from distance, or reset. Let teammates with healthier states take first contact.','Commit only when the enemy is lower, a key threat is already spent, your team has numbers, or the reward is worth the forced risk.'],
     avoid:['Starting the fight because your cooldowns are ready while your HP/resource is not.','Treating 40% HP as “fine” because you are ahead in items.','Using flash/ultimate to enter a fight that you were too depleted to take normally.'],
     success:'You should see fewer deaths that begin from a depleted state. When you do fight low, there should be a clear forced reason rather than habit or impatience.',
     coachNote:'COACH CUE: LOW RESOURCE = LOW ERROR BUDGET.'
   };
   if(key.includes('setup')||key.includes('even'))return{
     trigger:'When level and item power are close, assume raw stats will not decide the fight. Your job is to WIN THE SETUP first.',
-    routine:[
-      'Identify the fight-winning edge before engaging: numbers, first damage, vision denial, choke/terrain, ally CC, enemy cooldown usage or safer access to the nearest target.',
-      'Create that edge deliberately. Hold a bush, wait for the enemy to walk into range, let frontline draw a cooldown, poke first, or delay until a teammate arrives.',
-      'Once the edge appears, commit quickly and play the simple target you can hit safely. If no edge appears, do not force the even fight—reset the setup.'
-    ],
+    routine:['Identify the fight-winning edge before engaging: numbers, first damage, vision denial, choke/terrain, ally CC, enemy cooldown usage or safer access to the nearest target.','Create that edge deliberately. Hold a bush, wait for the enemy to walk into range, let frontline draw a cooldown, poke first, or delay until a teammate arrives.','Once the edge appears, commit quickly and play the simple target you can hit safely. If no edge appears, do not force the even fight—reset the setup.'],
     avoid:['Coin-flipping front-to-back fights with no first advantage.','Crossing enemy threat range just to reach a higher-priority target.','Starting because both teams are present; presence is not setup.'],
     success:'Across several games, your even-state fights should become positive because you are manufacturing the advantage before damage starts, not trying to outplay after the fight is already neutral.',
     coachNote:'COACH CUE: IF THE STATS ARE EVEN, THE SETUP MUST NOT BE.'
   };
   if(key.includes('carry')||key.includes('uptime'))return{
     trigger:'When you are one of your team’s top two visible carries, every fight starts with one question: “What can reach me if I step forward?”',
-    routine:[
-      'List the enemy access threats mentally: hard engage, assassin gap-close, hook, flank or long-range CC. Keep enough distance that at least one teammate/terrain layer sits between you and that threat.',
-      'Hit the nearest safe target until the major access tool is used. Do not cross an uncontrolled threat line just to reach the enemy carry; your damage only matters while you are alive.',
-      'After the first threat cycle is spent, step forward and increase damage. Preserve Flash/defensive tools for the threat that actually kills you, not for extra damage on a target already dying.'
-    ],
+    routine:['List the enemy access threats mentally: hard engage, assassin gap-close, hook, flank or long-range CC. Keep enough distance that at least one teammate/terrain layer sits between you and that threat.','Hit the nearest safe target until the major access tool is used. Do not cross an uncontrolled threat line just to reach the enemy carry; your damage only matters while you are alive.','After the first threat cycle is spent, step forward and increase damage. Preserve Flash/defensive tools for the threat that actually kills you, not for extra damage on a target already dying.'],
     avoid:['Being the first high-value champion visible to enemy engage.','Walking past frontline to hit a lower-health target.','Chasing after a won fight when your death would remove Baron/Dragon/tower pressure.'],
     success:'You are still alive after the enemy’s first engage cycle and remain available for the second half of the fight/objective. Fewer high-value deaths before objectives is the key trend.',
     coachNote:'COACH CUE: YOUR JOB IS NOT TO HIT THE BEST TARGET. IT IS TO HIT THE BEST TARGET YOU CAN REACH SAFELY.'
@@ -192,7 +163,7 @@ function normalize(value:string){return value.toLowerCase().replace(/[^a-z0-9]+/
 
 function buildMatchFixes(fights:FightReview[]):MatchFix[]{
   const deaths=fights.filter(f=>f.outcome==='DEATH'),rows:MatchFix[]=[];
-  const high=deaths.filter(f=>f.evidence.currentGold>=900),red=deaths.filter(f=>f.verdict==='THEM_STRONGER'),chain=deaths.filter((f,i)=>i>0&&f.atSeconds-deaths[i-1].atSeconds<=90),thrown=deaths.filter(f=>f.verdict==='YOU_STRONGER'),low=deaths.filter(f=>(f.evidence.healthPct??1)<.55||(f.evidence.manaPct??1)<.3),even=deaths.filter(f=>f.verdict==='EVEN');
+  const high=deaths.filter(f=>(f.evidence.currentGold??0)>=900),red=deaths.filter(f=>f.verdict==='THEM_STRONGER'),chain=deaths.filter((f,i)=>i>0&&f.atSeconds-deaths[i-1].atSeconds<=90),thrown=deaths.filter(f=>f.verdict==='YOU_STRONGER'),low=deaths.filter(f=>(f.evidence.healthPct??1)<.55||(f.evidence.manaPct??1)<.3),even=deaths.filter(f=>f.verdict==='EVEN');
   const add=(id:string,stage:FixStage,evidence:FightReview[],title:string,oneLine:string,rule:string,mastery:string,why:string)=>{if(evidence.length)rows.push({id:`match-${id}`,stage,severity:severity(evidence.length),title,oneLine,rule,mastery,why,evidence})};
   add('bank','QUICK WIN',high,'Spend before you fight','You died with meaningful gold still unspent.','If a safe reset buys meaningful power, bank before the next voluntary fight.','3 completed games with no reviewed death while carrying 900g+.','Unspent gold gives you no combat stats until it is converted into items.');
   add('red','CONTROL',red,'Stop accepting red-state fights','You died after visible power had already moved against you.','If level/item state is red, add numbers, setup or first damage before committing.','3 games with zero deaths from clearly enemy-favoured visible states.','The leak starts with fight selection, before mechanics can save the play.');
