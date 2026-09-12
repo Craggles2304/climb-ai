@@ -1,20 +1,35 @@
 import {randomUUID} from 'node:crypto';
 import {get as httpsGet} from 'node:https';
+import {mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
 
 const LOCAL='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
 const TOKEN=process.env.OP_TRACKER_TOKEN||process.env.CLIMB_TRACKER_TOKEN||'';
 const POLL_MS=Math.max(3000,Number(process.env.OP_POLL_MS||5000));
 const END_AFTER_MISSES=3;
+const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8000));
+const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
+const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
+const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
+const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 
 if(!TOKEN){
   console.error('OVERPOWERED Companion: OP_TRACKER_TOKEN is missing. Pair this PC from the Live Companion page first.');
   process.exit(1);
 }
 
+if(TRACKER_HOME){
+  try{mkdirSync(TRACKER_HOME,{recursive:true})}catch{}
+}
+
 let session=null;
 let running=true;
 let state='STARTING';
+let uploadQueue=[];
+let uploadFlushing=false;
+let uploadRetryTimer=null;
+let droppedSnapshots=0;
 
 function logState(next,message){
   if(state===next)return;
@@ -41,17 +56,67 @@ function localGameData(){
 }
 
 async function postEnvelope(envelope){
-  const response=await fetch(`${WEB}/api/live/telemetry`,{
-    method:'POST',
-    headers:{'content-type':'application/json','authorization':`Bearer ${TOKEN}`},
-    body:JSON.stringify(envelope),
-  });
-  if(response.ok)return true;
-  const body=await response.json().catch(()=>({}));
-  const detail=body?.error||`HTTP ${response.status}`;
-  if(response.status===401)logState('AUTH_ERROR',`OVERPOWERED Companion: pairing token rejected — ${detail}`);
-  else console.warn(`OVERPOWERED Companion: upload failed — ${detail}`);
-  return false;
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),UPLOAD_TIMEOUT_MS);
+  try{
+    const response=await fetch(`${WEB}/api/live/telemetry`,{
+      method:'POST',
+      headers:{'content-type':'application/json','authorization':`Bearer ${TOKEN}`},
+      body:JSON.stringify(envelope),
+      signal:controller.signal,
+    });
+    if(response.ok)return {ok:true,retryable:false};
+    const body=await response.json().catch(()=>({}));
+    const detail=body?.error||`HTTP ${response.status}`;
+    if(response.status===401||response.status===403){
+      logState('AUTH_ERROR',`OVERPOWERED Companion: pairing token rejected — ${detail}`);
+      return {ok:false,retryable:false};
+    }
+    console.warn(`OVERPOWERED Companion: upload deferred — ${detail}. Recording continues locally and will retry.`);
+    return {ok:false,retryable:true};
+  }catch(err){
+    const detail=err?.name==='AbortError'?'upload timed out':(err?.message||'network error');
+    console.warn(`OVERPOWERED Companion: upload deferred — ${detail}. Recording continues locally and will retry.`);
+    return {ok:false,retryable:true};
+  }finally{
+    clearTimeout(timeout);
+  }
+}
+
+function queueEnvelope(envelope){
+  if(uploadQueue.length>=MAX_UPLOAD_QUEUE){
+    const oldestSnapshot=uploadQueue.findIndex(item=>item.type==='SNAPSHOT');
+    if(oldestSnapshot>=0){uploadQueue.splice(oldestSnapshot,1);droppedSnapshots+=1}
+    else uploadQueue.shift();
+    if(droppedSnapshots===1||droppedSnapshots%20===0)
+      console.warn(`OVERPOWERED Companion: upload queue is full; ${droppedSnapshots} old snapshot(s) dropped while preserving live recording.`);
+  }
+  uploadQueue.push(envelope);
+  void flushUploadQueue();
+}
+
+async function flushUploadQueue(){
+  if(uploadFlushing||uploadQueue.length===0)return;
+  uploadFlushing=true;
+  try{
+    while(uploadQueue.length){
+      const result=await postEnvelope(uploadQueue[0]);
+      if(result.ok){uploadQueue.shift();continue}
+      if(!result.retryable){uploadQueue.shift();continue}
+      scheduleUploadRetry();
+      return;
+    }
+  }finally{
+    uploadFlushing=false;
+  }
+}
+
+function scheduleUploadRetry(){
+  if(uploadRetryTimer)return;
+  uploadRetryTimer=setTimeout(()=>{
+    uploadRetryTimer=null;
+    void flushUploadQueue();
+  },UPLOAD_RETRY_MS);
 }
 
 function normalize(data){
@@ -114,8 +179,44 @@ function normalizePlayer(raw){
   };
 }
 
+function loadPersistedSession(snapshot){
+  if(!SESSION_FILE)return null;
+  try{
+    const saved=JSON.parse(readFileSync(SESSION_FILE,'utf8'));
+    if(!saved||typeof saved.id!=='string'||typeof saved.startedAt!=='string')return null;
+    const lastGameTime=num(saved.lastGameTime,-1);
+    const sameTimeline=lastGameTime>=0&&snapshot.gameTime+30>=lastGameTime;
+    const sameIdentity=!saved.riotId||!snapshot.active.riotId||saved.riotId===snapshot.active.riotId;
+    if(!sameTimeline||!sameIdentity){clearPersistedSession();return null}
+    return {id:saved.id,startedAt:saved.startedAt,lastGameTime:Math.max(lastGameTime,snapshot.gameTime),misses:0};
+  }catch{return null}
+}
+
+function persistSession(snapshot){
+  if(!SESSION_FILE||!session)return;
+  try{
+    writeFileSync(SESSION_FILE,JSON.stringify({
+      id:session.id,startedAt:session.startedAt,lastGameTime:session.lastGameTime,
+      riotId:snapshot?.active?.riotId||null,championName:snapshot?.active?.championName||null,
+      savedAt:new Date().toISOString(),
+    }),'utf8');
+  }catch{}
+}
+
+function clearPersistedSession(){
+  if(!SESSION_FILE)return;
+  try{unlinkSync(SESSION_FILE)}catch{}
+}
+
 async function startSession(snapshot){
+  const restored=loadPersistedSession(snapshot);
+  if(restored){
+    session=restored;
+    logState('RECORDING',`OVERPOWERED Companion: resumed ${snapshot.active.championName||'League match'} after tracker restart.`);
+    return;
+  }
   session={id:randomUUID(),startedAt:new Date().toISOString(),lastGameTime:snapshot.gameTime,misses:0};
+  persistSession(snapshot);
   logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
 }
 
@@ -123,31 +224,37 @@ async function finishSession(reason){
   if(!session)return;
   const finished=session;
   session=null;
-  await postEnvelope({type:'END',clientSessionId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()}).catch(err=>console.warn(`OVERPOWERED Companion: could not close session — ${err.message}`));
+  clearPersistedSession();
+  queueEnvelope({type:'END',clientSessionId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
   logState('WAITING',`OVERPOWERED Companion: match recording closed (${reason}). Waiting for League.`);
 }
 
 async function tick(){
+  let data;
   try{
-    const data=await localGameData();
-    const snapshot=normalize(data);
-    if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
-    if(!session)await startSession(snapshot);
-    session.misses=0;
-    session.lastGameTime=snapshot.gameTime;
-    const ok=await postEnvelope({type:'SNAPSHOT',clientSessionId:session.id,startedAt:session.startedAt,snapshot});
-    if(ok)logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
-  }catch(err){
+    data=await localGameData();
+  }catch{
     if(session){
       session.misses+=1;
       if(session.misses>=END_AFTER_MISSES)await finishSession('League game ended');
     }else logState('WAITING','OVERPOWERED Companion: connected. Waiting for a League match.');
+    return;
   }
+
+  const snapshot=normalize(data);
+  if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
+  if(!session)await startSession(snapshot);
+  session.misses=0;
+  session.lastGameTime=snapshot.gameTime;
+  persistSession(snapshot);
+  queueEnvelope({type:'SNAPSHOT',clientSessionId:session.id,startedAt:session.startedAt,snapshot});
+  logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
 }
 
 async function loop(){
   while(running){
-    await tick();
+    try{await tick()}
+    catch(err){console.warn(`OVERPOWERED Companion: recorder loop recovered from an error — ${err?.message||err}`)}
     await new Promise(resolve=>setTimeout(resolve,POLL_MS));
   }
 }
@@ -155,14 +262,22 @@ async function loop(){
 async function shutdown(){
   if(!running)return;
   running=false;
+  if(uploadRetryTimer){clearTimeout(uploadRetryTimer);uploadRetryTimer=null}
   await finishSession('companion stopped');
+  const deadline=Date.now()+5000;
+  while(uploadQueue.length&&Date.now()<deadline){
+    await flushUploadQueue();
+    if(uploadQueue.length)await new Promise(resolve=>setTimeout(resolve,250));
+  }
   process.exit(0);
 }
 process.on('SIGINT',shutdown);
 process.on('SIGTERM',shutdown);
+process.on('uncaughtException',err=>console.error('OVERPOWERED Companion: recovered from unexpected error:',err));
+process.on('unhandledRejection',err=>console.error('OVERPOWERED Companion: recovered from rejected task:',err));
 
 console.log('OVERPOWERED Companion: silent telemetry recorder. No live tactical instructions or hidden cooldown tracking.');
-loop().catch(err=>{console.error('OVERPOWERED Companion stopped:',err);process.exit(1)});
+loop().catch(err=>{console.error('OVERPOWERED Companion loop error:',err);setTimeout(()=>void loop(),1000)});
 
 function samePlayer(raw,summonerName,riotId){
   if(summonerName&&text(raw?.summonerName)===summonerName)return true;
