@@ -81,6 +81,9 @@ function LoginForm(){
           <input className="input" type="password" autoComplete="current-password" required
             value={password} onChange={e=>setPassword(e.target.value)}/>
         </label>
+        <div style={{marginTop:-8,marginBottom:16,textAlign:'right'}}>
+          <Link href="/forgot-password" className="text-link" style={{fontSize:12}}>FORGOT PASSWORD?</Link>
+        </div>
         <div className="login-actions">
           <button className="btn primary" type="submit" disabled={busy||!configured}>
             {busy?'SIGNING IN…':'LOG IN'}
