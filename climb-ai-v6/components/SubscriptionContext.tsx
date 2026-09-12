@@ -7,7 +7,7 @@ type Ctx={tier:SubscriptionTier;loading:boolean;refresh:()=>Promise<void>};
 const C=createContext<Ctx|null>(null);
 
 const FOUNDER_RIOT_ACCOUNTS=[
-  {gameName:'kraggles',region:'EUW'},
+  {gameName:'craggles',tagline:'EUW'},
 ] as const;
 
 export function SubscriptionProvider({children}:{children:React.ReactNode}){
@@ -29,14 +29,14 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
 
       const [{data:profile},{data:riotAccounts}]=await Promise.all([
         client.from('profiles').select('is_founder').eq('id',user.id).maybeSingle(),
-        client.from('riot_accounts').select('game_name,region').eq('user_id',user.id),
+        client.from('riot_accounts').select('game_name,tagline,region').eq('user_id',user.id),
       ]);
 
       const founderByProfile=profile?.is_founder===true;
       const founderByRiot=(riotAccounts??[]).some(account=>
         FOUNDER_RIOT_ACCOUNTS.some(founder=>
           String(account.game_name??'').trim().toLowerCase()===founder.gameName&&
-          String(account.region??'').trim().toUpperCase()===founder.region
+          String(account.tagline??'').trim().toUpperCase()===founder.tagline
         )
       );
 
