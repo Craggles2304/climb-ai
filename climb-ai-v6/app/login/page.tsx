@@ -11,11 +11,15 @@ function LoginForm(){
   const params=useSearchParams();
   const next=params.get('next')||'/dashboard';
   const configured=authService.configured();
+  const callbackError=params.get('error');
+  const callbackReason=params.get('reason');
 
   const [email,setEmail]=useState('');
   const [password,setPassword]=useState('');
   const [busy,setBusy]=useState(false);
-  const [error,setError]=useState('');
+  const [error,setError]=useState(()=>callbackError==='google_auth_failed'
+    ?`Google sign-in failed${callbackReason?`: ${callbackReason}`:'. Please try again.'}`
+    :'');
   const [resent,setResent]=useState(false);
   const [resendBusy,setResendBusy]=useState(false);
 
