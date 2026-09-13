@@ -43,7 +43,10 @@ export default function Activate(){
   const [syncing,setSyncing]=useState(false);
   const [syncError,setSyncError]=useState('');
   const autoSyncAttempted=useRef(false);
+  const activationTracked=useRef(false);
   const completionTracked=useRef('');
+  const ladderTracked=useRef('');
+  const fixLadderRef=useRef<HTMLElement|null>(null);
 
   const [champion,setChampion]=useState('');
   const [result,setResult]=useState<'WIN'|'LOSS'>('WIN');
@@ -58,6 +61,12 @@ export default function Activate(){
   useEffect(()=>{
     if(hydrated&&!champion&&active.isPrimary&&active.champions[0])setChampion(active.champions[0]);
   },[hydrated,active.id,active.isPrimary,active.champions,champion]);
+
+  useEffect(()=>{
+    if(!hydrated||latest||activationTracked.current)return;
+    activationTracked.current=true;
+    track('activation_started',{authenticated});
+  },[hydrated,latest,authenticated]);
 
   useEffect(()=>{
     let cancelled=false;
@@ -85,9 +94,11 @@ export default function Activate(){
       });
       const body=await res.json().catch(()=>({}));
       if(!res.ok||!body.ok)throw new Error(body.error||'Riot could not import your latest ranked game.');
-      track('match_synced',{source:'activation',matches:Array.isArray(body.matches)?body.matches.length:0});
+      const imported=Array.isArray(body.matches)?body.matches.length:0;
+      track('match_synced',{source:'activation',matches:imported});
+      if(imported>0)track('first_match_added',{source:'riot'});
       await refresh();
-      if(!Array.isArray(body.matches)||body.matches.length===0)setSyncError('No recent Ranked Solo/Duo game was found. Add your last match below instead.');
+      if(imported===0)setSyncError('No recent Ranked Solo/Duo game was found. Add your last match below instead.');
     }catch(err){
       setSyncError(err instanceof Error?err.message:'Riot could not import your latest ranked game.');
     }finally{setSyncing(false)}
@@ -104,12 +115,33 @@ export default function Activate(){
   useEffect(()=>{
     if(!latest||!report||completionTracked.current===latest.id)return;
     completionTracked.current=latest.id;
+    const grade=Math.round(report.performance*10);
     track('analysis_completed',{
       source:latest.source,
       activation:true,
-      grade:Math.round(report.performance*10),
+      grade,
       category:report.primary.category,
     });
+    track('op_grade_viewed',{source:latest.source,grade,category:report.primary.category});
+    track('activation_completed',{source:latest.source,grade});
+  },[latest,report]);
+
+  useEffect(()=>{
+    if(!latest||!report||!fixLadderRef.current||ladderTracked.current===latest.id)return;
+    const node=fixLadderRef.current;
+    const mark=()=>{
+      if(ladderTracked.current===latest.id)return;
+      ladderTracked.current=latest.id;
+      track('fix_ladder_viewed',{source:latest.source,category:report.primary.category});
+    };
+    if(typeof IntersectionObserver==='undefined'){mark();return}
+    const observer=new IntersectionObserver(entries=>{
+      if(entries.some(entry=>entry.isIntersecting&&entry.intersectionRatio>=.25)){
+        mark();observer.disconnect();
+      }
+    },{threshold:[.25]});
+    observer.observe(node);
+    return()=>observer.disconnect();
   },[latest,report]);
 
   const submitManual=async(e:FormEvent)=>{
@@ -134,6 +166,7 @@ export default function Activate(){
       const body=await res.json().catch(()=>({}));
       if(!res.ok||!body.ok)throw new Error(body.error||'The match could not be saved.');
       track('match_uploaded',{source:'manual_activation'});
+      track('first_match_added',{source:'manual'});
       await refresh();
     }catch(err){setManualError(err instanceof Error?err.message:'The match could not be saved.')}
     finally{setManualBusy(false)}
@@ -192,7 +225,7 @@ export default function Activate(){
           </div>
         </section>
 
-        <section className="glass card">
+        <section ref={fixLadderRef} className="glass card">
           <div className="eyebrow">OP FIX LADDER</div>
           <h2>Do the first fix. Earn the deeper ones.</h2>
           <div style={{display:'grid',gap:9,marginTop:18}}>
@@ -210,7 +243,7 @@ export default function Activate(){
           <h2 style={{marginBottom:8}}>{report.mission.title}</h2>
           <p style={{fontSize:18,lineHeight:1.55}}>{report.mission.rules[0]}</p>
           <div className="hero-actions" style={{marginTop:18}}>
-            <Link className="btn primary" href="/dashboard">OPEN DEVELOPMENT HQ</Link>
+            <Link className="btn primary" href="/dashboard" onClick={()=>track('development_hq_entered',{source:'activation',grade:score})}>OPEN DEVELOPMENT HQ</Link>
             <Link className="btn secondary" href={`/analyse/${encodeURIComponent(latest.id)}`}>OPEN FULL MATCH REVIEW</Link>
           </div>
         </section>
