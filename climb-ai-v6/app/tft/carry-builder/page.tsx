@@ -28,6 +28,24 @@ export default function TftCarryBuilder(){
     void fetch('/api/tft/static').then(async r=>{const body=await r.json();if(!r.ok)throw new Error(body.error||'Static data failed.');setData(body)}).catch(err=>setStatus(err instanceof Error?err.message:'Static data failed.'));
   },[]);
 
+  useEffect(()=>{
+    try{
+      const raw=localStorage.getItem('op_tft_carry_builder_pick');
+      if(!raw)return;
+      const pick=JSON.parse(raw) as {champion?:string;buildId?:string};
+      const next=TFT_CARRY_PROFILES.find(p=>p.champion===pick.champion);
+      if(next){
+        setSelectedName(next.champion);
+        const build=next.builds.find(b=>b.id===pick.buildId)||next.builds[0];
+        setSelectedBuildId(build.id);
+        setFilter('ALL');
+        setQuery('');
+        setStatus(`${next.champion} · ${build.label} loaded from Item Finder.`);
+      }
+      localStorage.removeItem('op_tft_carry_builder_pick');
+    }catch{}
+  },[]);
+
   const profiles=useMemo(()=>TFT_CARRY_PROFILES.filter(p=>{
     const matchesFilter=filter==='ALL'||p.tier===filter;
     const q=query.trim().toLowerCase();
