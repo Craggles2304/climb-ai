@@ -118,7 +118,7 @@ function flexibility(matches:TftMatch[]):TftSkillScore{
       if(r.pivotQuality==='FLEXED_LATE')delta-=5;
       if(r.pivotQuality==='FORCED_CONTESTED'){delta-=14;forced++;}
     }
-    if(r.planFollowed&&r.planFollowed!=='UNKNOWN'){
+    if(r.planFollowed&&r.planFollowed!=='UNKNOWN'&&m.planSnapshot){
       evidence++;
       if(r.planFollowed==='YES')delta+=3;
       if(r.planFollowed==='NO'&&r.contested==='HEAVY')delta-=6;
@@ -160,8 +160,21 @@ function conversion(matches:TftMatch[]):TftSkillScore{
 
 function taskProgress(skill:TftSkillKey,matches:TftMatch[]){
   const sample=matches.slice(0,5);
-  if(skill==='ECONOMY')return sample.filter(m=>(m.goldLeft===undefined||m.goldLeft<10)&&m.decisionReview?.rollTiming!=='LATE'&&m.decisionReview?.economyChoice!=='PANIC_ROLL').length;
-  if(skill==='TEMPO')return sample.filter(m=>m.decisionReview?.rollTiming==='ON_TIME'||(m.level!==undefined&&m.level>=8&&m.placement<=4)).length;
+  if(skill==='ECONOMY')return sample.filter(m=>{
+    const r=m.decisionReview;
+    const hasGold=m.goldLeft!==undefined;
+    const hasReview=Boolean(r&&(r.rollTiming&&r.rollTiming!=='UNKNOWN'||r.economyChoice&&r.economyChoice!=='UNKNOWN'));
+    if(!hasGold&&!hasReview)return false;
+    if(m.placement>=5&&hasGold&&(m.goldLeft as number)>=10)return false;
+    if(r?.rollTiming==='LATE'||r?.economyChoice==='PANIC_ROLL')return false;
+    return true;
+  }).length;
+  if(skill==='TEMPO')return sample.filter(m=>{
+    const r=m.decisionReview;
+    const explicit=r?.rollTiming==='ON_TIME';
+    const scoreboard=m.level!==undefined&&m.level>=8&&m.placement<=4;
+    return explicit||scoreboard;
+  }).length;
   if(skill==='FLEXIBILITY')return sample.filter(m=>m.decisionReview?.pivotQuality==='FLEXED_EARLY'||m.decisionReview?.pivotQuality==='STAYED_UNCONTESTED').length;
   if(skill==='POSITIONING')return sample.filter(m=>m.decisionReview?.positioningResult==='WON_FIGHTS'||m.decisionReview?.positioningResult==='NEUTRAL').length;
   return sample.filter(m=>m.placement<=2).length;
@@ -180,7 +193,9 @@ export function buildTacticianProfile(matches:TftMatch[]):TftTacticianProfile{
   const sample=matches.slice(0,20);
   const skills=[economy(sample),tempo(sample),flexibility(sample),positioning(sample),conversion(sample)];
   const known=skills.filter(s=>s.score!==null);
-  const grade=known.length?Math.round(known.reduce((sum,s)=>sum+(s.score||0),0)/known.length):null;
+  const weighted=known.map(s=>({score:s.score as number,weight:Math.max(.2,s.confidence/100)}));
+  const weightTotal=weighted.reduce((sum,s)=>sum+s.weight,0);
+  const grade=weighted.length?Math.round(weighted.reduce((sum,s)=>sum+s.score*s.weight,0)/weightTotal):null;
   const profileConfidence=known.length?Math.round(known.reduce((sum,s)=>sum+s.confidence,0)/known.length):0;
   const ranked=[...skills].sort((a,b)=>{
     if(a.score===null&&b.score===null)return a.key.localeCompare(b.key);
