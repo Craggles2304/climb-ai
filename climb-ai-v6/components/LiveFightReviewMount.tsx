@@ -31,9 +31,12 @@ export function LiveFightReviewMount(){
   if(!review||!['COMPLETE','ABORTED'].includes(review.status))return null;
   const fights=review.summary?.fightReviews??[];
   const matchDraft=pregame?.linkedSessionId===review.sessionId?pregame:null;
-  return <section className="dash-section" style={{display:'grid',gap:14}}>
+  return <section className="dash-section op-coaching-zone">
     {matchDraft&&<DraftEvidence pregame={matchDraft}/>} 
-    <div><div className="eyebrow">OP COACHING</div><h2 style={{margin:'5px 0 0'}}>One priority first. Deeper evidence only when you open it.</h2></div>
+    <div className="op-section-title">
+      <div><div className="eyebrow">OP COACHING</div><h2>Fix the leak. Prove it. Move up.</h2></div>
+      <p>Your report is ordered by impact: priority first, map timing second, deeper evidence only when you ask for it.</p>
+    </div>
     <CompactFixLadder fights={fights} historyProfile={review.historyProfile}/>
     <CompactMapTimerRoutine analysis={review.proAnalysis}/>
     <div className="map-tempo-with-compact-routine"><MapTempoReview fights={fights} analysis={review.proAnalysis}/></div>
