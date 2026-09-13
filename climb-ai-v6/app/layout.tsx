@@ -6,6 +6,7 @@ import './op-visual-first.css';
 import './op-data-visual.css';
 import './op-analyse-visual.css';
 import './op-esports.css';
+import './op-tempo-visual.css';
 import {BRAND} from '@/lib/brand';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';
