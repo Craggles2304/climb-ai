@@ -19,11 +19,28 @@ const groups=[
 ] as const;
 const mobile=[['Home','/dashboard'],['ILP','/ilp'],['Analyse','/analyse'],['Coach','/coach'],['Profile','/account']];
 
+const routeTitle=(path:string)=>{
+  if(path==='/dashboard')return'DEVELOPMENT HQ';
+  if(path==='/ilp')return'PLAYER DEVELOPMENT';
+  if(path==='/live')return'LIVE COMPANION';
+  if(path==='/analyse'||path.startsWith('/analyse/'))return'MATCH REVIEW';
+  if(path==='/progress')return'PERFORMANCE';
+  if(path==='/coach')return'COACH';
+  if(path.startsWith('/matchup-lab'))return'MATCHUP LAB';
+  if(path.startsWith('/champions'))return'CHAMPION LAB';
+  if(path==='/missions')return'MISSIONS';
+  if(path==='/uploads')return'UPLOADS';
+  if(path==='/account')return'ACCOUNT';
+  if(path==='/pricing')return'SUBSCRIPTION';
+  return'OP CLIMB';
+};
+
 export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
   const {tier}=useSubscription();
   const path=usePathname();
   const live=path==='/live';
+  const title=routeTitle(path);
   return <div className={`app-layout op-shell ${live?'is-live':''}`}>
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
@@ -32,16 +49,16 @@ export function AppShell({children}:{children:React.ReactNode}){
       </div>
 
       <div className="account-switch op-account-card">
-        <div className="label">ACTIVE RIOT ACCOUNT</div>
+        <div className="op-player-kicker"><span>PLAYER</span><i/></div>
         <select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>
           {accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline} · {a.region}</option>)}
         </select>
-        <div className="op-account-meta"><strong>{active.rank}</strong><span>{active.role} · {active.label}</span></div>
+        <div className="op-account-meta"><strong>{active.rank}</strong><span>{active.role} · {active.region}</span></div>
       </div>
 
       <nav className="op-nav" aria-label="Main navigation">
         {groups.map(group=><div className="op-nav-group" key={group.label}>
-          <div className="op-nav-label">{group.label}</div>
+          <div className="op-nav-label"><span>{group.label}</span></div>
           {group.items.map(([n,h,icon])=>{
             const activeLink=path===h||((h==='/champions/main'||h==='/matchup-lab')&&path.startsWith(h+'/'));
             return <Link className={activeLink?'active-nav':''} key={h} href={h}>
@@ -52,17 +69,30 @@ export function AppShell({children}:{children:React.ReactNode}){
       </nav>
 
       <div className="your-champs op-champ-stack">
-        <div className="op-nav-label">YOUR CHAMPIONS</div>
+        <div className="op-nav-label"><span>CHAMPION POOL</span></div>
         {active.champions.slice(0,3).map((c,i)=><Link href={'/champions/'+encodeURIComponent(c)} key={c}>
-          <span className="champ-index">0{i+1}</span><div><b>{c}</b><small>Open rank plan</small></div><span className="op-arrow">→</span>
+          <span className="champ-index">0{i+1}</span><div><b>{c}</b><small>OPEN DEVELOPMENT FILE</small></div><span className="op-arrow">›</span>
         </Link>)}
-        <Link className="all-champs" href="/champions">CHAMPION LAB →</Link>
+        <Link className="all-champs" href="/champions">OPEN CHAMPION LAB ›</Link>
       </div>
       <SessionBar/>
     </aside>
 
     <main className={`app-main op-main ${live?'op-live-main':''}`}>
-      {live?<><TrackerDiagnosticMount/><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:children}
+      <header className="op-broadcast-hud">
+        <div className="op-hud-brand"><span className="op-hud-mark">OP</span><div><small>COMPETITIVE PERFORMANCE SYSTEM</small><strong>{title}</strong></div></div>
+        <div className="op-hud-player">
+          <div><small>SUMMONER</small><strong>{active.gameName}{active.tagline}</strong></div>
+          <div><small>RANK</small><strong>{active.rank}</strong></div>
+          <div><small>ROLE</small><strong>{active.role}</strong></div>
+          <div><small>ACCESS</small><strong className={tier==='PRO'?'volt':''}>{tier}</strong></div>
+          <span className={`op-hud-state ${live?'live':''}`}><i/>{live?'COMPANION':'SYSTEM'} ONLINE</span>
+        </div>
+      </header>
+      <div className="op-energy-rail"><i/><span>OP CLIMB // READ THE GAME. FIX THE LEAK. CLIMB.</span></div>
+      <div className="op-screen-frame">
+        {live?<><TrackerDiagnosticMount/><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:children}
+      </div>
     </main>
 
     <nav className="mobile-nav"><div>{mobile.map(([n,h])=><Link className={path===h?'active':''} key={h} href={h}>{n}</Link>)}</div></nav>
