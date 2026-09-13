@@ -31,3 +31,11 @@ alter table public.analytics_events enable row level security;
 -- Writes and founder reporting go through server-side service-role code.
 -- No signed-out or ordinary signed-in client needs direct table privileges.
 revoke all on table public.analytics_events from anon, authenticated;
+
+drop policy if exists "analytics_events_no_client_access" on public.analytics_events;
+create policy "analytics_events_no_client_access"
+on public.analytics_events
+for all
+to anon, authenticated
+using (false)
+with check (false);
