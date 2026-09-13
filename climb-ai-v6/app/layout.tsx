@@ -3,6 +3,7 @@ import './live-review-cleanup.css';
 import './op-wow.css';
 import './op-live-wow.css';
 import './op-visual-first.css';
+import './op-data-visual.css';
 import {BRAND} from '@/lib/brand';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';
