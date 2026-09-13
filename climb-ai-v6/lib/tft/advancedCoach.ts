@@ -40,7 +40,7 @@ function finishScore(totalDelta:number,evidence:number){
   return Math.round(clamp(72+(totalDelta/Math.sqrt(evidence)),25,96));
 }
 
-function confidence(evidence:number){return Math.round(clamp(15+evidence*11,0,95));}
+function confidence(evidence:number){return evidence===0?0:Math.round(clamp(15+evidence*11,0,95));}
 
 function economy(matches:TftMatch[]):TftSkillScore{
   let delta=0,evidence=0,highGoldBottom=0,panic=0,cleanSpend=0;
