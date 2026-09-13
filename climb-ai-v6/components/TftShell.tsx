@@ -7,6 +7,7 @@ import {Wordmark} from './UI';
 
 const items=[
   ['TFT HQ','/tft','⌂'],
+  ['Game Plan','/tft/game-plan','◎'],
   ['Decision Lab','/tft/decision-lab','◈'],
   ['Set Lab','/tft/set-lab','★'],
   ['Match History','/tft/matches','◇'],
@@ -18,7 +19,7 @@ export function TftShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const {active}=useAccount();
   const {tftTier}=useSubscription();
-  const title=path==='/tft'?'TFT HQ':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
+  const title=path==='/tft'?'TFT HQ':path.includes('game-plan')?'GAME PLAN':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
   return <div className="app-layout op-shell">
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
@@ -65,7 +66,7 @@ export function TftShell({children}:{children:React.ReactNode}){
           <span className="op-hud-state"><i/>POST-GAME SYSTEM</span>
         </div>
       </header>
-      <div className="op-energy-rail"><i/><span>TFT CLIMB // REVIEW THE BOARD. SCORE THE DECISION. TRAIN THE TACTICIAN.</span></div>
+      <div className="op-energy-rail"><i/><span>TFT CLIMB // PLAN THE RULE. REVIEW THE DECISION. TRAIN THE TACTICIAN.</span></div>
       <div className="op-screen-frame">{children}</div>
     </main>
   </div>;
