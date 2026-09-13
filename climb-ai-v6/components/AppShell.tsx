@@ -17,7 +17,7 @@ const groups=[
   {label:'DEVELOP',items:[['My Main','/champions/main','★'],['Coach','/coach','✦'],['Uploads','/uploads','↑']]},
   {label:'ACCOUNT',items:[['Accounts','/account','◉'],['Subscription','/pricing','◇'],['Settings','/settings','⚙']]},
 ] as const;
-const mobile=[['Home','/dashboard'],['ILP','/ilp'],['Analyse','/analyse'],['Coach','/coach'],['Profile','/account']];
+const mobile=[['Home','/dashboard'],['ILP','/ilp'],['Analyse','/analyse'],['TFT','/tft'],['Profile','/account']];
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'DEVELOPMENT HQ';
@@ -37,7 +37,7 @@ const routeTitle=(path:string)=>{
 
 export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
-  const {tier}=useSubscription();
+  const {tier,tftTier}=useSubscription();
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -45,7 +45,12 @@ export function AppShell({children}:{children:React.ReactNode}){
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
         <Link href="/dashboard" className="logo-link" aria-label={BRAND.name+' home'}><Wordmark size="sm" priority/></Link>
-        <span className={`op-tier op-tier-${tier.toLowerCase()}`}>{tier}</span>
+        <span className={`op-tier op-tier-${tier.toLowerCase()}`}>LOL · {tier}</span>
+      </div>
+
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'10px 0 16px'}}>
+        <Link className="btn primary" href="/dashboard" style={{padding:'9px 8px',fontSize:11,textAlign:'center'}}>LEAGUE</Link>
+        <Link className="btn secondary" href="/tft" style={{padding:'9px 8px',fontSize:11,textAlign:'center'}}>TFT · {tftTier}</Link>
       </div>
 
       <div className="account-switch op-account-card">
@@ -85,7 +90,7 @@ export function AppShell({children}:{children:React.ReactNode}){
           <div><small>SUMMONER</small><strong>{active.gameName}{active.tagline}</strong></div>
           <div><small>RANK</small><strong>{active.rank}</strong></div>
           <div><small>ROLE</small><strong>{active.role}</strong></div>
-          <div><small>ACCESS</small><strong className={tier==='PRO'?'volt':''}>{tier}</strong></div>
+          <div><small>LOL ACCESS</small><strong className={tier==='PRO'?'volt':''}>{tier}</strong></div>
           <span className={`op-hud-state ${live?'live':''}`}><i/>{live?'COMPANION':'SYSTEM'} ONLINE</span>
         </div>
       </header>

@@ -1,4 +1,5 @@
 export type SubscriptionTier='FREE'|'PLUS'|'PRO';
+export type SubscriptionProduct='LOL'|'TFT';
 
 export type CoachingMetricKey=
   |'op_score'
@@ -37,6 +38,7 @@ export const METRIC_TIER:Record<CoachingMetricKey,SubscriptionTier>={
   lead_protection:'PRO',power_spike_conversion:'PRO',reset_quality:'PRO',objective_readiness:'PRO',farm_fight_tradeoff:'PRO',repeat_threat:'PRO',opponent_adaptation:'PRO',item_timing_diff:'PRO',build_response:'PRO',damage_efficiency:'PRO',survival_value:'PRO',carry_preservation:'PRO',decision_fingerprint:'PRO',historical_leak_rate:'PRO',historical_recovery:'PRO',champion_identity:'PRO',
 };
 
+/** League pricing remains unchanged. TFT is intentionally a different product entitlement. */
 export const PLAN_COPY={
   FREE:{name:'FREE',price:'£0',historyDays:7,fixDepth:2,reviewAllowance:'3 detailed reviews / week',description:'See the obvious leaks and get a useful first learning loop.'},
   PLUS:{name:'PLUS',price:'£9.99/month',historyDays:90,fixDepth:4,reviewAllowance:'Higher review allowance',description:'Decision coaching, economic leaks and repeatable fight-state analysis.'},
