@@ -2,6 +2,7 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {TftShell} from '@/components/TftShell';
+import {ManualTftMatchForm} from '@/components/ManualTftMatchForm';
 import {useAccount} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {getBrowserClient} from '@/lib/supabase/client';
@@ -24,10 +25,11 @@ export default function TftHome(){
   const [rank,setRank]=useState('UNRANKED');
   const [loading,setLoading]=useState(true);
   const [syncing,setSyncing]=useState(false);
+  const [syncAvailable,setSyncAvailable]=useState<boolean|null>(null);
   const [message,setMessage]=useState('');
 
   const load=useCallback(async()=>{
-    setLoading(true);setMessage('');
+    setLoading(true);
     const client=await getBrowserClient();
     if(!client){setMatches([]);setLoading(false);return}
     const {data:userData}=await client.auth.getUser();
@@ -43,6 +45,7 @@ export default function TftHome(){
   },[active.id]);
 
   useEffect(()=>{void load()},[load]);
+  useEffect(()=>{let cancelled=false;void fetch('/api/tft/sync').then(r=>r.json()).then(x=>{if(!cancelled)setSyncAvailable(Boolean(x.enabled))}).catch(()=>{if(!cancelled)setSyncAvailable(false)});return()=>{cancelled=true}},[]);
   const summary=useMemo(()=>summarizeTft(matches),[matches]);
   const read=useMemo(()=>tftCoachingRead(matches),[matches]);
 
@@ -61,19 +64,22 @@ export default function TftHome(){
   return <TftShell><main className="container section">
     <div className="eyebrow">SEPARATE PRODUCT · TFT CLIMB</div>
     <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
-      <div><h1 style={{marginBottom:8}}>TACTICIAN DEVELOPMENT HQ</h1><p className="muted" style={{maxWidth:720}}>Your League account identity carries across. Your TFT rank, match model, coaching history and subscription do not.</p></div>
-      <button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>
+      <div><h1 style={{marginBottom:8}}>TACTICIAN DEVELOPMENT HQ</h1><p className="muted" style={{maxWidth:760}}>TFT CLIMB works with or without a Riot API key. Log finished games now; automatic Riot history can be connected later without rebuilding your coaching profile.</p></div>
+      {syncAvailable?<button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>:<span className="op-tier op-tier-plus">NO-API MODE ACTIVE</span>}
     </div>
 
+    {syncAvailable===false&&<section className="glass card" style={{marginTop:16,padding:14,display:'grid',gridTemplateColumns:'1fr auto',gap:14,alignItems:'center'}}><div><div className="eyebrow">RIOT KEY NOT REQUIRED</div><b>Manual evidence mode is fully active.</b><p className="muted" style={{margin:'4px 0 0'}}>Your games, trends and coaching still persist. Riot sync will simply remove the logging step when a key becomes available.</p></div><Link href="/tft/set-lab" className="btn secondary">OPEN SET LAB</Link></section>}
     {message&&<div className="glass card" style={{marginTop:16,padding:14}}><b>{message}</b></div>}
 
     <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginTop:22}}>
-      <div className="glass card"><div className="eyebrow">TFT RANK</div><h2>{rank}</h2></div>
+      <div className="glass card"><div className="eyebrow">TFT RANK</div><h2>{rank}</h2><span className="muted">Riot sync only</span></div>
       <div className="glass card"><div className="eyebrow">AVG PLACE</div><h2>{summary.games?summary.averagePlacement.toFixed(2):'—'}</h2><span className="muted">last {summary.games} tracked</span></div>
       <div className="glass card"><div className="eyebrow">TOP 4</div><h2>{summary.games?`${Math.round(summary.top4Rate*100)}%`:'—'}</h2></div>
       <div className="glass card"><div className="eyebrow">1ST PLACE</div><h2>{summary.games?`${Math.round(summary.winRate*100)}%`:'—'}</h2></div>
       <div className="glass card"><div className="eyebrow">TFT ACCESS</div><h2>{tftTier}</h2><Link href="/tft/pricing" className="text-link">MANAGE TFT PLAN →</Link></div>
     </section>
+
+    <ManualTftMatchForm riotAccountId={active.id} disabled={!authenticated} onSaved={load}/>
 
     <section className="glass card" style={{marginTop:18}}>
       <div className="eyebrow">CURRENT TFT FIX</div><h2>{read.title}</h2><p>{read.detail}</p><div className="cue-row"><span>NEXT TARGET</span><b>{read.target}</b></div>
@@ -82,9 +88,9 @@ export default function TftHome(){
 
     <section style={{display:'grid',gridTemplateColumns:'minmax(0,1.5fr) minmax(260px,.7fr)',gap:16,marginTop:18}}>
       <div className="glass card"><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div className="eyebrow">RECENT BOARDS</div><h2>LATEST TFT RESULTS</h2></div><Link href="/tft/matches" className="text-link">ALL MATCHES →</Link></div>
-        {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><p className="muted">No TFT evidence yet. Sync recent ranked games to create the first baseline.</p><button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>IMPORT FIRST TFT GAMES</button></div>:<div style={{display:'grid',gap:8}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',gap:12,alignItems:'center',padding:'11px 0',borderBottom:'1px solid rgba(255,255,255,.08)'}}><strong>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left</div></div><span className="muted">{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
+        {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><p className="muted">No TFT evidence yet. Log your next finished game above. Five games is enough to start producing a useful baseline.</p></div>:<div style={{display:'grid',gap:8}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',gap:12,alignItems:'center',padding:'11px 0',borderBottom:'1px solid rgba(255,255,255,.08)'}}><strong>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left</div></div><span className="muted">{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
       </div>
-      <div className="glass card"><div className="eyebrow">PRODUCT RULE</div><h3>NO LIVE AUTOPILOT</h3><p className="muted">TFT CLIMB analyses finished games and gives static preparation. It will not dynamically prescribe rolls, buys or positioning from your live actions.</p><Link className="btn secondary" href="/tft/coach">OPEN TFT COACH</Link></div>
+      <div className="glass card"><div className="eyebrow">NO-KEY TOOLKIT</div><h3>STATIC DATA STILL WORKS</h3><p className="muted">Champions, items, augments and traits can come from Riot Data Dragon without a match API key.</p><Link className="btn primary" href="/tft/set-lab">OPEN TFT SET LAB</Link><Link className="btn secondary" href="/tft/coach" style={{marginTop:8}}>OPEN TFT COACH</Link></div>
     </section>
   </main></TftShell>;
 }
