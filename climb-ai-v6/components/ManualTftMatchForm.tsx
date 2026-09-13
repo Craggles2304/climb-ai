@@ -1,9 +1,11 @@
 'use client';
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {track} from '@/lib/analytics';
+import type {TftGamePlan} from '@/lib/tft/types';
 
 type Props={riotAccountId:string;disabled?:boolean;onSaved:()=>Promise<void>|void};
 const placements=[1,2,3,4,5,6,7,8];
+const PLAN_KEY='op_tft_game_plan';
 
 export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
   const [placement,setPlacement]=useState(4);
@@ -25,9 +27,14 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
   const [positioningResult,setPositioningResult]=useState('UNKNOWN');
   const [planFollowed,setPlanFollowed]=useState('UNKNOWN');
   const [contested,setContested]=useState('UNKNOWN');
+  const [plan,setPlan]=useState<TftGamePlan|null>(null);
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState('');
   const valid=useMemo(()=>comp.trim().length>0&&!saving&&!disabled,[comp,saving,disabled]);
+
+  useEffect(()=>{
+    try{const raw=localStorage.getItem(PLAN_KEY);if(raw)setPlan(JSON.parse(raw) as TftGamePlan);}catch{/* malformed local state is ignored */}
+  },[]);
 
   const submit=async(e:React.FormEvent)=>{
     e.preventDefault();if(!valid)return;setSaving(true);setMessage('');
@@ -40,12 +47,14 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
         units:units.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12).map(name=>({name,itemNames:[]})),
         note:note.trim()||undefined,
         review:advanced?{weakStage,rollTiming,economyChoice,pivotQuality,itemChoice,positioningResult,planFollowed,contested}:undefined,
+        planSnapshot:plan||undefined,
       };
       const res=await fetch('/api/tft/manual',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
       const data=await res.json();if(!res.ok)throw new Error(data.error||'Could not save TFT game.');
-      track('tft_manual_game_added',{placement,hasAdvanced:advanced,hasAugments:body.augments.length>0,hasUnits:body.units.length>0});
+      track('tft_manual_game_added',{placement,hasAdvanced:advanced,hasAugments:body.augments.length>0,hasUnits:body.units.length>0,hasPlan:Boolean(plan)});
       setMessage(advanced?'Game + decision review saved. Your Tactician Profile and ILP have been recalculated.':'Game saved. Add Decision Review next time for deeper coaching.');
       setComp('');setGold('');setRound('');setDamage('');setElims('');setAugments('');setUnits('');setNote('');
+      if(plan){localStorage.removeItem(PLAN_KEY);setPlan(null);}
       await onSaved();
     }catch(err){setMessage(err instanceof Error?err.message:'Could not save TFT game.')}finally{setSaving(false)}
   };
@@ -55,6 +64,8 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
       <div><div className="eyebrow">NO-API MODE · EVIDENCE LOG</div><h2 style={{marginBottom:6}}>LOG + REVIEW A FINISHED TFT GAME</h2><p className="muted" style={{margin:0,maxWidth:760}}>Placement gives outcome data. Decision Review tells OP CLIMB why it happened, so Economy, Tempo, Flexibility, Positioning and Conversion can be scored separately.</p></div>
       <span className="op-tier op-tier-plus">TACTICIAN DATA</span>
     </div>
+
+    {plan&&<div style={{marginTop:14,padding:13,border:'1px solid rgba(255,255,255,.10)',borderRadius:12}}><div className="eyebrow">LOCKED PLAN DETECTED</div><b>This game will be attached to the plan you locked before queueing.</b><p className="muted" style={{fontSize:11,margin:'4px 0 0'}}>Use “Followed your plan?” in Decision Review so OP CLIMB can separate planning quality from execution.</p></div>}
 
     <div style={{marginTop:18}}><label className="eyebrow">PLACEMENT</label><div style={{display:'grid',gridTemplateColumns:'repeat(8,minmax(38px,1fr))',gap:7,marginTop:8}}>{placements.map(p=><button type="button" key={p} onClick={()=>setPlacement(p)} className={`btn ${placement===p?'primary':'secondary'}`} style={{padding:'9px 4px'}}>#{p}</button>)}</div></div>
 
