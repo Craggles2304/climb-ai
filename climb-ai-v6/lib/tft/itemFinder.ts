@@ -2,8 +2,8 @@ import {TFT_CARRY_PROFILES,metaStrengthScore,type TftCarryItemBuild,type TftCarr
 
 export const TFT_COMPONENTS=['B.F. Sword','Recurve Bow','Needlessly Large Rod','Tear of the Goddess','Chain Vest','Negatron Cloak',"Giant's Belt",'Sparring Gloves'] as const;
 export type TftComponent=typeof TFT_COMPONENTS[number];
-
 export type ComponentBag=Partial<Record<TftComponent,number>>;
+export type ItemFitState='OWNED'|'CRAFT NOW'|'PARTIAL'|'MISSING';
 
 export const TFT_ITEM_RECIPES:Record<string,[TftComponent,TftComponent]>={
   'Deathblade':['B.F. Sword','B.F. Sword'],
@@ -48,6 +48,7 @@ export interface CarryFitResult{
   profile:TftCarryProfile;
   build:TftCarryItemBuild;
   score:number;
+  itemStates:Array<{item:string;state:ItemFitState}>;
   craftable:string[];
   owned:string[];
   partial:string[];
@@ -57,7 +58,7 @@ export interface CarryFitResult{
 
 const norm=(value:string)=>value.toLowerCase().replace(/[^a-z0-9]/g,'');
 
-function bagCopy(bag:ComponentBag){
+function bagCopy(bag:ComponentBag|Record<string,number>){
   const next:Record<string,number>={};
   for(const component of TFT_COMPONENTS)next[component]=Math.max(0,Number(bag[component]||0));
   return next;
@@ -80,6 +81,39 @@ function partialRecipeScore(recipe:[TftComponent,TftComponent],bag:Record<string
   return Math.min(1,bag[a]||0)+Math.min(1,bag[b]||0);
 }
 
+function permutations(values:number[]):number[][]{
+  if(values.length<=1)return[values];
+  const out:number[][]=[];
+  values.forEach((value,index)=>{
+    const rest=[...values.slice(0,index),...values.slice(index+1)];
+    for(const tail of permutations(rest))out.push([value,...tail]);
+  });
+  return out;
+}
+
+function optimalCraftPlan(items:string[],components:ComponentBag,ownedIndexes:Set<number>){
+  const craftIndexes=items.map((_,index)=>index).filter(index=>!ownedIndexes.has(index));
+  const orders=permutations(craftIndexes);
+  let best={crafted:new Set<number>(),bag:bagCopy(components),partialValue:-1};
+
+  for(const order of orders.length?orders:[[]]){
+    const bag=bagCopy(components);
+    const crafted=new Set<number>();
+    for(const index of order){
+      const recipe=TFT_ITEM_RECIPES[items[index]];
+      if(recipe&&canConsume(recipe,bag)){consume(recipe,bag);crafted.add(index);}
+    }
+    let partialValue=0;
+    for(const index of craftIndexes){
+      if(crafted.has(index))continue;
+      const recipe=TFT_ITEM_RECIPES[items[index]];
+      if(recipe)partialValue+=partialRecipeScore(recipe,bag);
+    }
+    if(crafted.size>best.crafted.size||(crafted.size===best.crafted.size&&partialValue>best.partialValue))best={crafted,bag,partialValue};
+  }
+  return best;
+}
+
 export function rankCarryFits(components:ComponentBag,completedItems:string[]=[]):CarryFitResult[]{
   const completedCounts=new Map<string,number>();
   for(const item of completedItems)completedCounts.set(norm(item),(completedCounts.get(norm(item))||0)+1);
@@ -87,43 +121,40 @@ export function rankCarryFits(components:ComponentBag,completedItems:string[]=[]
 
   for(const profile of TFT_CARRY_PROFILES){
     for(const build of profile.builds){
-      const bag=bagCopy(components);
-      const usedCompleted=new Map(completedCounts);
-      const owned:string[]=[];
-      const craftable:string[]=[];
-      const partial:string[]=[];
-      const missing:string[]=[];
-      let score=Math.round(metaStrengthScore(profile)*0.22);
+      const remainingCompleted=new Map(completedCounts);
+      const ownedIndexes=new Set<number>();
+      build.items.forEach((item,index)=>{
+        const key=norm(item);
+        const count=remainingCompleted.get(key)||0;
+        if(count>0){ownedIndexes.add(index);remainingCompleted.set(key,count-1);}
+      });
+
+      const plan=optimalCraftPlan(build.items,components,ownedIndexes);
+      const itemStates=build.items.map((item,index):{item:string;state:ItemFitState}=>{
+        if(ownedIndexes.has(index))return{item,state:'OWNED'};
+        if(plan.crafted.has(index))return{item,state:'CRAFT NOW'};
+        const recipe=TFT_ITEM_RECIPES[item];
+        if(recipe&&partialRecipeScore(recipe,plan.bag)>0)return{item,state:'PARTIAL'};
+        return{item,state:'MISSING'};
+      });
+
+      const owned=itemStates.filter(x=>x.state==='OWNED').map(x=>x.item);
+      const craftable=itemStates.filter(x=>x.state==='CRAFT NOW').map(x=>x.item);
+      const partial=itemStates.filter(x=>x.state==='PARTIAL').map(x=>x.item);
+      const missing=itemStates.filter(x=>x.state==='MISSING').map(x=>x.item);
+      let score=Math.round(metaStrengthScore(profile)*0.22)+owned.length*34+craftable.length*26;
+      for(const state of itemStates){
+        if(state.state!=='PARTIAL')continue;
+        const recipe=TFT_ITEM_RECIPES[state.item];
+        if(recipe)score+=partialRecipeScore(recipe,plan.bag)*6;
+      }
       if(build.kind==='META')score+=15;
       if(build.kind==='ALTERNATIVE')score+=7;
       if(build.kind==='FUN')score-=10;
 
-      for(const item of build.items){
-        const key=norm(item);
-        const ownedCount=usedCompleted.get(key)||0;
-        if(ownedCount>0){
-          usedCompleted.set(key,ownedCount-1);
-          owned.push(item);
-          score+=34;
-          continue;
-        }
-        const recipe=TFT_ITEM_RECIPES[item];
-        if(recipe&&canConsume(recipe,bag)){
-          consume(recipe,bag);
-          craftable.push(item);
-          score+=26;
-          continue;
-        }
-        if(recipe){
-          const partialCount=partialRecipeScore(recipe,bag);
-          if(partialCount>0){partial.push(item);score+=partialCount*6;}
-          else missing.push(item);
-        }else missing.push(item);
-      }
-
       const matched=owned.length+craftable.length;
       const reason=matched>=3?'Your current bag already completes this entire carry package.':matched===2?'Two of the three target items are already owned or immediately craftable.':matched===1?'One target item is ready now; the rest remain flexible.':partial.length?'Your components lean toward this line, but you should avoid hard-forcing it yet.':'Low natural item fit from the current bag.';
-      results.push({profile,build,score,craftable,owned,partial,missing,reason});
+      results.push({profile,build,score,itemStates,craftable,owned,partial,missing,reason});
     }
   }
   return results.sort((a,b)=>b.score-a.score||metaStrengthScore(b.profile)-metaStrengthScore(a.profile));
