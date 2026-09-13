@@ -19,11 +19,12 @@
 
 export type AnalyticsEvent=
   |'landing_view'|'signup_started'|'signup_completed'|'riot_profile_added'
+  |'activation_started'|'first_match_added'|'op_grade_viewed'|'fix_ladder_viewed'
+  |'activation_completed'|'development_hq_entered'
   |'match_uploaded'|'match_synced'|'analysis_started'|'analysis_completed'
   |'mission_started'|'mission_completed'|'coach_message_sent'|'pricing_viewed'
   |'checkout_started'|'subscription_started'|'subscription_cancelled'
   |'week_1_return'|'week_4_return'|'first_mission_generated'
-  // Added for the Hunt loop and the cost-of-leak card.
   |'dashboard_view'|'ilp_view'|'leak_priced'|'leak_insufficient_sample'
   |'hunt_loop_completed'|'feedback_given'|'app_error';
 
@@ -94,7 +95,6 @@ function bind(){
   if(listenersBound||typeof window==='undefined')return;
   listenersBound=true;
   timer=setInterval(()=>{void flush()},FLUSH_EVERY_MS);
-  // pagehide fires on tab close and bfcache navigation, where unload does not.
   window.addEventListener('pagehide',()=>flush(true));
   document.addEventListener('visibilitychange',()=>{
     if(document.visibilityState==='hidden')flush(true);
@@ -107,9 +107,6 @@ export async function flush(useBeacon=false):Promise<void>{
   if(!queue.length)return;
 
   const body=JSON.stringify({anonId:anonId(),sessionId:sessionId(),events:queue});
-
-  // Clear optimistically so a flush during another flush cannot double-send,
-  // and restore on failure so nothing is lost.
   writeQueue([]);
 
   if(useBeacon&&typeof navigator!=='undefined'&&navigator.sendBeacon){
