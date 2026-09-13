@@ -14,6 +14,28 @@ export interface TftUnit{
   itemNames?:string[];
 }
 
+export type TftLossReason='economy'|'tempo'|'items'|'positioning'|'contested'|'pivot'|'variance'|'execution'|'other';
+export type TftPlanFollowed='yes'|'partly'|'no'|'unknown';
+
+export interface TftGamePlan{
+  economyRule:string;
+  stabilizeRule:string;
+  flexRule:string;
+  positioningCue:string;
+  selectedReferences:string[];
+  lockedAt:string;
+}
+
+export interface TftReview{
+  lossReason?:TftLossReason;
+  firstUnstableStage?:string;
+  rolledTooLate?:boolean;
+  planFollowed?:TftPlanFollowed;
+  keyDecision?:string;
+  wouldRepeat?:string;
+  planSnapshot?:TftGamePlan;
+}
+
 export interface TftMatch{
   id:string;
   riotAccountId:string;
@@ -34,6 +56,7 @@ export interface TftMatch{
   units:TftUnit[];
   companion?:Record<string,unknown>;
   compSignature:string;
+  review?:TftReview;
 }
 
 export interface TftSummary{
@@ -65,8 +88,28 @@ export function summarizeTft(matches:TftMatch[]):TftSummary{
   };
 }
 
+const reasonCount=(matches:TftMatch[],...reasons:TftLossReason[])=>matches.filter(m=>m.review?.lossReason&&reasons.includes(m.review.lossReason)).length;
+
 export function tftCoachingRead(matches:TftMatch[]):{title:string;detail:string;target:string}{
   if(!matches.length)return{title:'BUILD YOUR TFT BASELINE',detail:'Log finished TFT games or sync them later. OP CLIMB can build your placement, comp and consistency model without Riot API access.',target:'Track at least 5 finished games — manual and Riot-imported games count together.'};
+
+  const reviewed=matches.filter(m=>m.review);
+  const planBroken=reviewed.filter(m=>m.review?.planFollowed==='no').length;
+  const rolledLate=reviewed.filter(m=>m.review?.rolledTooLate===true).length;
+  const positioning=reasonCount(reviewed,'positioning');
+  const economy=reasonCount(reviewed,'economy');
+  const tempo=reasonCount(reviewed,'tempo');
+  const flex=reasonCount(reviewed,'pivot','contested');
+
+  // Decision evidence wins over scoreboard proxies once the same problem has
+  // been self-observed at least twice. One game is never enough to label a leak.
+  if(planBroken>=2)return{title:'EXECUTION BEFORE THEORY',detail:`You marked the pre-game plan as not followed in ${planBroken} reviewed games. The current leak is not finding another comp guide — it is executing the rule you already chose.`,target:'Lock one simple rule before each of the next 3 games and score only whether you followed it, not whether you won.'};
+  if(rolledLate>=2)return{title:'ROLL ONE ROUND EARLIER',detail:`You independently marked the decisive roll-down as late in ${rolledLate} reviewed games. That repeated decision is stronger evidence than placement alone.`,target:'Pre-commit the HP/stage trigger for your stabilisation roll before queueing and act on it one decision window earlier.'};
+  if(positioning>=2)return{title:'FIX THE FINAL BOARD',detail:`Positioning was the primary loss reason in ${positioning} reviewed games. Your board strength may be sufficient, but the final arrangement is not converting it.`,target:'Before each late-game fight, identify the enemy carry, main threat and one unit whose only job is to protect or disrupt that matchup.'};
+  if(economy>=2)return{title:'ECONOMY CONVERSION',detail:`Economy was your primary loss reason in ${economy} reviewed games. The repeated problem is converting gold into board strength at the right time.`,target:'Lock one spend trigger before queueing: stage + HP + gold. Review after the game whether you obeyed it.'};
+  if(tempo>=2)return{title:'STABILISE EARLIER',detail:`Tempo was your primary loss reason in ${tempo} reviewed games. Your own reviews say the board is becoming unstable before you react.`,target:'Name the first unstable stage after every game and move your next stabilisation trigger one window earlier when the pattern repeats.'};
+  if(flex>=2)return{title:'FLEX BEFORE YOU BLEED',detail:`Contested/pivot decisions appeared in ${flex} reviewed games. You are staying attached to the original line after the lobby has made it expensive.`,target:'Set one explicit pivot condition before queueing: contested carry, missing items or no key units by your chosen stage.'};
+
   const s=summarizeTft(matches);
   const bottom4=matches.filter(m=>m.placement>=5).length;
   const highGold=matches.filter(m=>(m.goldLeft||0)>=10&&m.placement>=5).length;
