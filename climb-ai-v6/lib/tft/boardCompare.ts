@@ -52,9 +52,16 @@ function activeTraitMap(read:TftBoardRead){
   return new Map(read.activeTraits.map(t=>[t.name,t.breakpoint]));
 }
 
+function evidenceRead(snapshot:TftBoardSnapshot,traitDefinitions:TftBoardContext['traitDefinitions']){
+  const read=analyseTftBoard({...snapshot,traitDefinitions});
+  if(snapshot.units.length)return read;
+  return{...read,boardStrength:0,confidence:0,activeTraits:[],vulnerabilities:['No board evidence entered yet.'],reasons:['Add or import fielded units before comparing board strength.'],metrics:read.metrics.map(metric=>({...metric,score:0,evidence:'No board evidence entered.'}))};
+}
+
 export function compareTftBoards(a:TftBoardSnapshot,b:TftBoardSnapshot,traitDefinitions:TftBoardContext['traitDefinitions']):TftBoardCompareRead{
-  const readA=analyseTftBoard({...a,traitDefinitions});
-  const readB=analyseTftBoard({...b,traitDefinitions});
+  const readA=evidenceRead(a,traitDefinitions);
+  const readB=evidenceRead(b,traitDefinitions);
+  const hasBoth=a.units.length>0&&b.units.length>0;
   const strengthDelta=readB.boardStrength-readA.boardStrength;
   const verdict:TftBoardCompareRead['verdict']=strengthDelta>=9?'BOARD B CLEARLY STRONGER':strengthDelta>=3?'BOARD B SLIGHTLY STRONGER':strengthDelta<=-9?'BOARD A CLEARLY STRONGER':strengthDelta<=-3?'BOARD A SLIGHTLY STRONGER':'STRUCTURALLY EVEN';
 
@@ -90,6 +97,15 @@ export function compareTftBoards(a:TftBoardSnapshot,b:TftBoardSnapshot,traitDefi
     if(next<bp)lostTraits.push(`${name} ${bp}${next?` → ${next}`:' → inactive'}`);
   }
 
+  if(!hasBoth){
+    return{
+      readA,readB,strengthDelta,verdict,confidence:0,metrics,gainedUnits,lostUnits,upgradedUnits,downgradedUnits,gainedTraits,lostTraits,
+      explanations:['Import your current Board Lab as Board A, then clone it to Board B and change only the decision you want to test.'],
+      tradeoffs:['No comparison is scored until both Board A and Board B contain fielded units.'],
+      question:'Which single decision are you testing: level, unit swap, upgrade, item move, trait pivot or positioning change?',
+    };
+  }
+
   const sorted=[...metrics].sort((x,y)=>Math.abs(y.delta)-Math.abs(x.delta));
   const explanations:string[]=[];
   for(const metric of sorted.slice(0,3)){
@@ -112,7 +128,7 @@ export function compareTftBoards(a:TftBoardSnapshot,b:TftBoardSnapshot,traitDefi
   if(b.level>a.level&&metrics.find(m=>m.key==='UPGRADES')!.delta<=-5)tradeoffs.push('The higher-level board loses upgrade density. The extra slot is currently being paid for with weaker unit quality.');
   if(metrics.find(m=>m.key==='DAMAGE')!.delta>0&&metrics.find(m=>m.key==='FRONTLINE')!.delta<0)tradeoffs.push('Board B increases damage but reduces frontline time; the carry upgrade only matters if the board survives long enough to cast/attack.');
   if(metrics.find(m=>m.key==='FRONTLINE')!.delta>0&&metrics.find(m=>m.key==='DAMAGE')!.delta<0)tradeoffs.push('Board B is harder to kill but loses damage concentration; check whether fights now time out rather than collapse instantly.');
-  if(!tradeoffs.length)tradeoffs.push('No major cross-axis tradeoff is detected; the stronger board improves without an obvious structural sacrifice.');
+  if(!tradeoffs.length)tradeoffs.push(strengthDelta===0?'No major structural tradeoff separates the boards; compare economy cost, flexibility and matchup-specific positioning.':'No major cross-axis tradeoff is detected; the stronger board improves without an obvious structural sacrifice.');
 
   const confidence=Math.round((readA.confidence+readB.confidence)/2);
   const question=strengthDelta>0?'What did Board B change that creates repeatable strength—and was that change affordable at the real game state?':strengthDelta<0?'Why were you considering Board B if it weakens the entered structure—was there a matchup-specific reason not represented here?':'If these boards are structurally even, which one preserves more economy, flexibility and matchup-specific positioning options?';
