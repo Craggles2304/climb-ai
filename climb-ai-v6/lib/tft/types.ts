@@ -66,7 +66,7 @@ export function summarizeTft(matches:TftMatch[]):TftSummary{
 }
 
 export function tftCoachingRead(matches:TftMatch[]):{title:string;detail:string;target:string}{
-  if(!matches.length)return{title:'BUILD YOUR TFT BASELINE',detail:'Sync ranked TFT games so OP CLIMB can learn your placement pattern, comp habits and consistency.',target:'Import at least 5 recent ranked games.'};
+  if(!matches.length)return{title:'BUILD YOUR TFT BASELINE',detail:'Log finished TFT games or sync them later. OP CLIMB can build your placement, comp and consistency model without Riot API access.',target:'Track at least 5 finished games — manual and Riot-imported games count together.'};
   const s=summarizeTft(matches);
   const bottom4=matches.filter(m=>m.placement>=5).length;
   const highGold=matches.filter(m=>(m.goldLeft||0)>=10&&m.placement>=5).length;
