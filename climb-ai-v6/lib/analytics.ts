@@ -17,7 +17,7 @@ export type AnalyticsEvent=
   |'dashboard_view'|'ilp_view'|'leak_priced'|'leak_insufficient_sample'
   |'hunt_loop_completed'|'feedback_given'|'app_error'
   |'tft_section_view'|'tft_sync_started'|'tft_match_synced'|'tft_coach_view'|'tft_pricing_viewed'
-  |'tft_manual_game_added'|'tft_set_lab_viewed';
+  |'tft_manual_game_added'|'tft_set_lab_viewed'|'tft_game_plan_viewed'|'tft_game_plan_locked';
 
 export interface QueuedEvent{event:AnalyticsEvent;props:Record<string,unknown>;occurredAt:string}
 
