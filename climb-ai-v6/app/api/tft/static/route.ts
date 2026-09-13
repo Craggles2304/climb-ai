@@ -1,6 +1,18 @@
 import {NextResponse} from 'next/server';
 
-type DDragonEntry={id?:string;name?:string;tier?:number|string;image?:{full?:string};desc?:string;description?:string};
+type DDragonStats={hp?:number;armor?:number;magicResist?:number;attackDamage?:number;attackSpeed?:number;range?:number};
+type DDragonEffect={minUnits?:number;maxUnits?:number;style?:number};
+type DDragonEntry={
+  id?:string;
+  name?:string;
+  tier?:number|string;
+  image?:{full?:string};
+  desc?:string;
+  description?:string;
+  traits?:string[];
+  stats?:DDragonStats;
+  effects?:DDragonEffect[];
+};
 type DDragonFile={data?:Record<string,DDragonEntry>};
 
 const BASE='https://ddragon.leagueoflegends.com';
@@ -29,6 +41,20 @@ export async function GET(){
         tier:x.tier??null,
         description:String(x.description||x.desc||'').replace(/<[^>]+>/g,' ').replace(/\s+/g,' ').trim(),
         image:x.image?.full?`${BASE}/cdn/${version}/img/${imageGroup}/${encodeURIComponent(x.image.full)}`:null,
+        traits:Array.isArray(x.traits)?x.traits.filter(Boolean):[],
+        stats:x.stats?{
+          hp:Number(x.stats.hp||0)||undefined,
+          armor:Number(x.stats.armor||0)||undefined,
+          magicResist:Number(x.stats.magicResist||0)||undefined,
+          attackDamage:Number(x.stats.attackDamage||0)||undefined,
+          attackSpeed:Number(x.stats.attackSpeed||0)||undefined,
+          range:Number(x.stats.range||0)||undefined,
+        }:null,
+        effects:Array.isArray(x.effects)?x.effects.map(effect=>({
+          minUnits:Number(effect.minUnits||0),
+          maxUnits:Number(effect.maxUnits||0)||undefined,
+          style:Number(effect.style||0)||undefined,
+        })).filter(effect=>effect.minUnits>0):[],
       }));
       return[key,entries] as const;
     }));

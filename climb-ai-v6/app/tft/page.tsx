@@ -74,7 +74,7 @@ export default function TftHome(){
       {syncAvailable?<button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>:<span className="op-tier op-tier-plus">NO-API MODE ACTIVE</span>}
     </div>
 
-    {syncAvailable===false&&<section className="glass card" style={{marginTop:16,padding:14,display:'grid',gridTemplateColumns:'1fr auto',gap:14,alignItems:'center'}}><div><div className="eyebrow">RIOT KEY NOT REQUIRED</div><b>The coaching loop is fully usable without automatic history.</b><p className="muted" style={{margin:'4px 0 0'}}>Lock a plan, log the finished game, review the decision, and let the profile detect repeated economy, tempo, flexibility, positioning and conversion leaks.</p></div><Link href="/tft/game-plan" className="btn secondary">BUILD GAME PLAN</Link></section>}
+    {syncAvailable===false&&<section className="glass card" style={{marginTop:16,padding:14,display:'grid',gridTemplateColumns:'1fr auto',gap:14,alignItems:'center'}}><div><div className="eyebrow">RIOT KEY NOT REQUIRED</div><b>The coaching loop is fully usable without automatic history.</b><p className="muted" style={{margin:'4px 0 0'}}>Lock a plan, build or replay the board, log the finished game, review the decision, and let the profile detect repeated economy, tempo, flexibility, positioning and conversion leaks.</p></div><Link href="/tft/board-lab" className="btn secondary">OPEN BOARD LAB</Link></section>}
     {message&&<div className="glass card" style={{marginTop:16,padding:14}}><b>{message}</b></div>}
 
     <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginTop:22}}>
@@ -88,6 +88,7 @@ export default function TftHome(){
 
     <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12,marginTop:16}}>
       <Link href="/tft/game-plan" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">BEFORE QUEUE</div><h3>LOCK GAME PLAN</h3><p className="muted">Set economy, stabilise, flex and positioning rules before the result exists.</p></Link>
+      <Link href="/tft/board-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">BOARD STRENGTH ENGINE</div><h3>BUILD + SCORE THE BOARD</h3><p className="muted">Place units, stars and items on a 4×7 board and expose structural leaks before reviewing the decision.</p></Link>
       <Link href="/tft/decision-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">AFTER GAME / PRACTICE</div><h3>DECISION REPLAY</h3><p className="muted">Rebuild a past board state and test the principle behind hold, level, roll or pivot.</p></Link>
       <Link href="/tft/coach" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">LONG-TERM MODEL</div><h3>TACTICIAN PROFILE + ILP</h3><p className="muted">Five skill scores, confidence and five adaptive development missions.</p></Link>
     </section>
@@ -104,7 +105,7 @@ export default function TftHome(){
       <div className="glass card"><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div className="eyebrow">RECENT BOARDS</div><h2>LATEST TFT RESULTS</h2></div><Link href="/tft/matches" className="text-link">ALL MATCHES →</Link></div>
         {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><p className="muted">No TFT evidence yet. Log your next finished game above. Five games is enough to start producing a useful baseline.</p></div>:<div style={{display:'grid',gap:8}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',gap:12,alignItems:'center',padding:'11px 0',borderBottom:'1px solid rgba(255,255,255,.08)'}}><strong>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left · {m.decisionReview?'reviewed':'scoreboard only'}</div></div><span className="muted">{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
       </div>
-      <div className="glass card"><div className="eyebrow">NO-KEY TOOLKIT</div><h3>STATIC DATA STILL WORKS</h3><p className="muted">Champions, items, augments and traits can come from Riot Data Dragon without a match API key.</p><Link className="btn primary" href="/tft/set-lab">OPEN TFT SET LAB</Link><Link className="btn secondary" href="/tft/coach" style={{marginTop:8}}>OPEN TFT COACH</Link></div>
+      <div className="glass card"><div className="eyebrow">NO-KEY TOOLKIT</div><h3>STATIC DATA STILL WORKS</h3><p className="muted">Champions, items, augments, traits and trait breakpoints can come from Riot Data Dragon without a match API key.</p><Link className="btn primary" href="/tft/board-lab">OPEN BOARD LAB</Link><Link className="btn secondary" href="/tft/set-lab" style={{marginTop:8}}>OPEN SET LAB</Link><Link className="btn secondary" href="/tft/coach" style={{marginTop:8}}>OPEN TFT COACH</Link></div>
     </section>
   </main></TftShell>;
 }
