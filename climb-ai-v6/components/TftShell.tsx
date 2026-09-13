@@ -7,6 +7,7 @@ import {Wordmark} from './UI';
 
 const items=[
   ['TFT HQ','/tft','⌂'],
+  ['Set Lab','/tft/set-lab','★'],
   ['Match History','/tft/matches','◇'],
   ['TFT Coach','/tft/coach','✦'],
   ['TFT Subscription','/tft/pricing','◆'],
@@ -16,6 +17,7 @@ export function TftShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const {active}=useAccount();
   const {tftTier}=useSubscription();
+  const title=path==='/tft'?'TFT HQ':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
   return <div className="app-layout op-shell">
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
@@ -54,7 +56,7 @@ export function TftShell({children}:{children:React.ReactNode}){
 
     <main className="app-main op-main">
       <header className="op-broadcast-hud">
-        <div className="op-hud-brand"><span className="op-hud-mark">TFT</span><div><small>OP CLIMB · TACTICIAN DEVELOPMENT</small><strong>{path==='/tft'?'TFT HQ':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS'}</strong></div></div>
+        <div className="op-hud-brand"><span className="op-hud-mark">TFT</span><div><small>OP CLIMB · TACTICIAN DEVELOPMENT</small><strong>{title}</strong></div></div>
         <div className="op-hud-player">
           <div><small>RIOT ID</small><strong>{active.gameName}{active.tagline}</strong></div>
           <div><small>REGION</small><strong>{active.region}</strong></div>
