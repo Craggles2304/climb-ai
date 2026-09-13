@@ -22,6 +22,7 @@ export default function TftCoach(){
   const read=useMemo(()=>tftCoachingRead(matches),[matches]);
   const profile=useMemo(()=>buildTacticianProfile(matches),[matches]);
   const spread=matches.length?Math.max(...matches.map(m=>m.placement))-Math.min(...matches.map(m=>m.placement)):0;
+  const nextAction=profile.primaryLeak?profile.ilp.find(task=>task.skill===profile.primaryLeak?.key)?.target||read.target:read.target;
 
   return <TftShell><main className="container section">
     <div className="eyebrow">ADVANCED TFT DEVELOPMENT COACH</div><h1>BUILD THE TACTICIAN, NOT JUST THE COMP.</h1><p className="muted" style={{maxWidth:820}}>OP CLIMB separates five trainable skills and attaches confidence to every score. Missing evidence stays unknown; the system does not pretend placement alone proves why you won or lost.</p>
@@ -37,7 +38,7 @@ export default function TftCoach(){
         <div className="eyebrow">PRIMARY DEVELOPMENT LEAK</div>
         <h2>{profile.primaryLeak?profile.primaryLeak.label:read.title}</h2>
         <p>{profile.primaryLeak?.rationale||read.detail}</p>
-        <div className="cue-row"><span>NEXT ACTION</span><b>{profile.ilp[0]?.target||read.target}</b></div>
+        <div className="cue-row"><span>NEXT ACTION</span><b>{nextAction}</b></div>
       </div>
     </section>
 
