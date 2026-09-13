@@ -5,12 +5,12 @@ import {TftShell} from '@/components/TftShell';
 import {useAccount} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {getBrowserClient} from '@/lib/supabase/client';
-import {summarizeTft,tftCoachingRead,type TftDecisionReview,type TftMatch} from '@/lib/tft/types';
+import {summarizeTft,tftCoachingRead,type TftDecisionReview,type TftGamePlan,type TftMatch} from '@/lib/tft/types';
 import {buildTacticianProfile} from '@/lib/tft/advancedCoach';
 
 function map(row:any):TftMatch{
   const raw=row.raw&&typeof row.raw==='object'?row.raw:{};
-  return{id:row.external_match_id,riotAccountId:row.riot_account_id,playedAt:row.game_datetime,gameLengthSeconds:Number(row.game_length_seconds||0),gameVersion:row.game_version||'',placement:Number(row.placement),level:row.level??undefined,lastRound:row.last_round??undefined,playersEliminated:row.players_eliminated??undefined,totalDamageToPlayers:row.total_damage_to_players??undefined,goldLeft:row.gold_left??undefined,augments:Array.isArray(row.augments)?row.augments:[],traits:Array.isArray(row.traits)?row.traits:[],units:Array.isArray(row.units)?row.units:[],compSignature:row.comp_signature||'UNRESOLVED COMP',note:typeof raw.note==='string'?raw.note:undefined,decisionReview:raw.decisionReview as TftDecisionReview|undefined};
+  return{id:row.external_match_id,riotAccountId:row.riot_account_id,playedAt:row.game_datetime,gameLengthSeconds:Number(row.game_length_seconds||0),gameVersion:row.game_version||'',placement:Number(row.placement),level:row.level??undefined,lastRound:row.last_round??undefined,playersEliminated:row.players_eliminated??undefined,totalDamageToPlayers:row.total_damage_to_players??undefined,goldLeft:row.gold_left??undefined,augments:Array.isArray(row.augments)?row.augments:[],traits:Array.isArray(row.traits)?row.traits:[],units:Array.isArray(row.units)?row.units:[],compSignature:row.comp_signature||'UNRESOLVED COMP',note:typeof raw.note==='string'?raw.note:undefined,decisionReview:raw.decisionReview as TftDecisionReview|undefined,planSnapshot:raw.planSnapshot as TftGamePlan|undefined};
 }
 
 function scoreTone(score:number|null){if(score===null)return 'UNKNOWN';if(score>=85)return 'ELITE';if(score>=72)return 'STRONG';if(score>=60)return 'STABLE';if(score>=45)return 'LEAK';return 'CRITICAL';}
