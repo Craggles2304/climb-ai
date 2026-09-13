@@ -3,6 +3,17 @@ import {z} from 'zod';
 import {getServerClient} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 
+const Review=z.object({
+  weakStage:z.enum(['NEVER','STAGE_2','STAGE_3','STAGE_4','STAGE_5_PLUS']).optional(),
+  rollTiming:z.enum(['EARLY','ON_TIME','LATE','DID_NOT_ROLL','UNKNOWN']).optional(),
+  economyChoice:z.enum(['SPENT_TO_STABILISE','HELD_FOR_ECON','FAST_LEVEL','PANIC_ROLL','UNKNOWN']).optional(),
+  pivotQuality:z.enum(['FLEXED_EARLY','FLEXED_LATE','FORCED_CONTESTED','STAYED_UNCONTESTED','UNKNOWN']).optional(),
+  itemChoice:z.enum(['SLAMMED_TEMPO','GREEDY_COMPONENTS','BALANCED','UNKNOWN']).optional(),
+  positioningResult:z.enum(['WON_FIGHTS','NEUTRAL','LOST_FIGHTS','UNKNOWN']).optional(),
+  planFollowed:z.enum(['YES','PARTIAL','NO','UNKNOWN']).optional(),
+  contested:z.enum(['NONE','LIGHT','HEAVY','UNKNOWN']).optional(),
+}).optional();
+
 const Body=z.object({
   riotAccountId:z.string().uuid(),
   placement:z.number().int().min(1).max(8),
@@ -15,6 +26,7 @@ const Body=z.object({
   augments:z.array(z.string().trim().min(1).max(80)).max(3).default([]),
   units:z.array(z.object({name:z.string().trim().min(1).max(80),tier:z.number().int().min(1).max(4).optional(),itemNames:z.array(z.string().trim().min(1).max(80)).max(3).default([])})).max(12).default([]),
   note:z.string().trim().max(500).optional(),
+  review:Review,
   playedAt:z.string().datetime().optional(),
 });
 
@@ -49,7 +61,7 @@ export async function POST(req:Request){
     traits:[],
     units:parsed.units.map(u=>({character_id:u.name,name:u.name,tier:u.tier,itemNames:u.itemNames})),
     comp_signature:parsed.compSignature,
-    raw:{source:'manual',note:parsed.note||null},
+    raw:{source:'manual',note:parsed.note||null,decisionReview:parsed.review||null},
   }).select('id,external_match_id').single();
   if(error)return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json({ok:true,id:data.id,externalMatchId:data.external_match_id});
