@@ -4,7 +4,7 @@ import {riotService} from '@/lib/services/riotService';
 import {riotEnabled,RiotApiError} from '@/lib/riot/client';
 import {isSupportedRegion,SUPPORTED_REGIONS} from '@/lib/riot/regions';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
-import {saveMatches,SyncedMatch} from '@/lib/server/matchRepository';
+import {saveMatches,SaveResult,SyncedMatch} from '@/lib/server/matchRepository';
 import {getServerClient} from '@/lib/supabase/server';
 
 export const runtime='nodejs';
@@ -82,7 +82,7 @@ export async function POST(req:NextRequest){
       catch(err){failures.push({matchId:id,reason:err instanceof Error?err.message:'Unknown error'})}
     }
 
-    let saved={persisted:false,inserted:0,skipped:synced.length,reason:'No signed-in linked account; results were not persisted.'};
+    let saved:SaveResult={persisted:false,inserted:0,skipped:synced.length,reason:'No signed-in linked account; results were not persisted.'};
     if(user&&linkedAccount){
       saved=await saveMatches(user.id,synced);
       if(!saved.persisted){
