@@ -23,6 +23,14 @@ export type TftPositioningResult='WON_FIGHTS'|'NEUTRAL'|'LOST_FIGHTS'|'UNKNOWN';
 export type TftPlanFollowed='YES'|'PARTIAL'|'NO'|'UNKNOWN';
 export type TftContested='NONE'|'LIGHT'|'HEAVY'|'UNKNOWN';
 
+export interface TftGamePlan{
+  economyRule:string;
+  stabilizeRule:string;
+  flexRule:string;
+  positioningCue:string;
+  lockedAt:string;
+}
+
 export interface TftDecisionReview{
   weakStage?:TftWeakStage;
   rollTiming?:TftRollTiming;
@@ -56,6 +64,7 @@ export interface TftMatch{
   compSignature:string;
   note?:string;
   decisionReview?:TftDecisionReview;
+  planSnapshot?:TftGamePlan;
 }
 
 export interface TftSummary{
@@ -94,6 +103,8 @@ export function tftCoachingRead(matches:TftMatch[]):{title:string;detail:string;
   const highGold=matches.filter(m=>(m.goldLeft||0)>=10&&m.placement>=5).length;
   const lateRolls=matches.filter(m=>m.decisionReview?.rollTiming==='LATE'&&m.placement>=5).length;
   const forcedContested=matches.filter(m=>m.decisionReview?.pivotQuality==='FORCED_CONTESTED').length;
+  const planBroken=matches.filter(m=>m.planSnapshot&&m.decisionReview?.planFollowed==='NO').length;
+  if(planBroken>=2)return{title:'EXECUTION BEFORE MORE THEORY',detail:`You locked a plan and then marked it as not followed in ${planBroken} recent games. The biggest leak is execution against your own rules, not another comp guide.`,target:'For the next 3 games, lock only one non-negotiable rule and score whether you executed it before judging placement.'};
   if(highGold>=2||lateRolls>=2)return{title:'SPEND BEFORE YOU BLEED OUT',detail:`${highGold+lateRolls} recent danger-state signals show resources or your roll-down arriving after the board had already lost control.`,target:'For the next 3 danger-state games, define the stabilisation trigger before stage 4 and review whether you acted on time.'};
   if(forcedContested>=2)return{title:'STOP PAYING THE CONTEST TAX',detail:`You recorded ${forcedContested} recent games where you stayed on a heavily contested line. That is now a repeatable flexibility leak, not one unlucky shop.`,target:'Use a two-player contest rule: if two opponents clearly occupy your line before the midgame, record the best viable pivot instead of forcing the same cap.'};
   const lowLevel=matches.filter(m=>(m.level||0)<=7&&m.placement>=5).length;
