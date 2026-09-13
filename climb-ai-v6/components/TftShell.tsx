@@ -9,6 +9,7 @@ const items=[
   ['TFT HQ','/tft','⌂'],
   ['Game Plan','/tft/game-plan','◎'],
   ['Item Finder','/tft/item-finder','◫'],
+  ['Roll Lab','/tft/roll-lab','％'],
   ['Carry Builder','/tft/carry-builder','♛'],
   ['Board Lab','/tft/board-lab','⬡'],
   ['Board Compare','/tft/board-compare','⇄'],
@@ -23,7 +24,7 @@ export function TftShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const {active}=useAccount();
   const {tftTier}=useSubscription();
-  const title=path==='/tft'?'TFT HQ':path.includes('game-plan')?'GAME PLAN':path.includes('item-finder')?'ITEM FINDER':path.includes('carry-builder')?'CARRY BUILDER':path.includes('board-compare')?'BOARD COMPARE':path.includes('board-lab')?'BOARD LAB':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
+  const title=path==='/tft'?'TFT HQ':path.includes('game-plan')?'GAME PLAN':path.includes('item-finder')?'ITEM FINDER':path.includes('roll-lab')?'ROLL ODDS LAB':path.includes('carry-builder')?'CARRY BUILDER':path.includes('board-compare')?'BOARD COMPARE':path.includes('board-lab')?'BOARD LAB':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
   return <div className="app-layout op-shell">
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
@@ -70,7 +71,7 @@ export function TftShell({children}:{children:React.ReactNode}){
           <span className="op-hud-state"><i/>POST-GAME SYSTEM</span>
         </div>
       </header>
-      <div className="op-energy-rail"><i/><span>TFT CLIMB // READ THE ITEMS. FIND THE CORE. BUILD THE BOARD. REVIEW THE DECISION.</span></div>
+      <div className="op-energy-rail"><i/><span>TFT CLIMB // READ THE ITEMS. MEASURE THE ROLL. BUILD THE BOARD. REVIEW THE DECISION.</span></div>
       <div className="op-screen-frame">{children}</div>
     </main>
   </div>;
