@@ -2,7 +2,7 @@
 import Image from 'next/image';
 import {useEffect,useMemo,useState} from 'react';
 import {TftShell} from '@/components/TftShell';
-import {TFT_BAG_SIZE,TFT_ROLL_AS_OF,TFT_ROLL_PATCH,TFT_ROLL_SET,TFT_SHOP_ODDS,TFT_UNIQUE_BY_COST,compareRollVsLevel,estimateRoll,goldForChance,goalCopies,poolPressureLabel,practicalOddsRows,type TftCost,type TftStarGoal} from '@/lib/tft/rollOdds';
+import {TFT_BAG_SIZE,TFT_ROLL_AS_OF,TFT_ROLL_PATCH,TFT_ROLL_SET,TFT_UNIQUE_BY_COST,compareRollVsLevel,estimateRoll,goldForChance,goalCopies,poolPressureLabel,practicalOddsRows,type TftCost,type TftStarGoal} from '@/lib/tft/rollOdds';
 
 type StaticChampion={id:string;name:string;tier:number|string|null;image:string|null};
 type StaticData={version:string;source:string;champions:StaticChampion[]};
