@@ -3,6 +3,15 @@ import {z} from 'zod';
 import {getServerClient} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 
+const GamePlan=z.object({
+  economyRule:z.string().max(240),
+  stabilizeRule:z.string().max(240),
+  flexRule:z.string().max(240),
+  positioningCue:z.string().max(240),
+  selectedReferences:z.array(z.string().max(100)).max(20),
+  lockedAt:z.string().datetime(),
+});
+
 const Body=z.object({
   riotAccountId:z.string().uuid(),
   placement:z.number().int().min(1).max(8),
@@ -16,6 +25,13 @@ const Body=z.object({
   units:z.array(z.object({name:z.string().trim().min(1).max(80),tier:z.number().int().min(1).max(4).optional(),itemNames:z.array(z.string().trim().min(1).max(80)).max(3).default([])})).max(12).default([]),
   note:z.string().trim().max(500).optional(),
   playedAt:z.string().datetime().optional(),
+  lossReason:z.enum(['economy','tempo','items','positioning','contested','pivot','variance','execution','other']).optional(),
+  firstUnstableStage:z.enum(['2','3','4','5','6']).optional(),
+  rolledTooLate:z.boolean().optional(),
+  planFollowed:z.enum(['yes','partly','no','unknown']).optional(),
+  keyDecision:z.string().trim().max(300).optional(),
+  wouldRepeat:z.string().trim().max(300).optional(),
+  planSnapshot:GamePlan.optional(),
 });
 
 export async function POST(req:Request){
@@ -34,6 +50,16 @@ export async function POST(req:Request){
   if(!db)return NextResponse.json({error:'Database persistence is unavailable.'},{status:503});
   const externalMatchId=`manual-tft-${crypto.randomUUID()}`;
   const playedAt=parsed.playedAt||new Date().toISOString();
+  const review={
+    lossReason:parsed.lossReason,
+    firstUnstableStage:parsed.firstUnstableStage,
+    rolledTooLate:parsed.rolledTooLate,
+    planFollowed:parsed.planFollowed,
+    keyDecision:parsed.keyDecision||undefined,
+    wouldRepeat:parsed.wouldRepeat||undefined,
+    planSnapshot:parsed.planSnapshot,
+  };
+  const hasReview=Object.values(review).some(v=>v!==undefined);
   const {data,error}=await db.from('tft_matches').insert({
     user_id:userData.user.id,
     riot_account_id:parsed.riotAccountId,
@@ -49,7 +75,7 @@ export async function POST(req:Request){
     traits:[],
     units:parsed.units.map(u=>({character_id:u.name,name:u.name,tier:u.tier,itemNames:u.itemNames})),
     comp_signature:parsed.compSignature,
-    raw:{source:'manual',note:parsed.note||null},
+    raw:{source:'manual',note:parsed.note||null,review:hasReview?review:null},
   }).select('id,external_match_id').single();
   if(error)return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json({ok:true,id:data.id,externalMatchId:data.external_match_id});
