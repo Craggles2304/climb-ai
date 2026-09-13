@@ -14,6 +14,14 @@ const Review=z.object({
   contested:z.enum(['NONE','LIGHT','HEAVY','UNKNOWN']).optional(),
 }).optional();
 
+const Plan=z.object({
+  economyRule:z.string().trim().max(240),
+  stabilizeRule:z.string().trim().max(240),
+  flexRule:z.string().trim().max(240),
+  positioningCue:z.string().trim().max(240),
+  lockedAt:z.string().datetime(),
+}).optional();
+
 const Body=z.object({
   riotAccountId:z.string().uuid(),
   placement:z.number().int().min(1).max(8),
@@ -27,6 +35,7 @@ const Body=z.object({
   units:z.array(z.object({name:z.string().trim().min(1).max(80),tier:z.number().int().min(1).max(4).optional(),itemNames:z.array(z.string().trim().min(1).max(80)).max(3).default([])})).max(12).default([]),
   note:z.string().trim().max(500).optional(),
   review:Review,
+  planSnapshot:Plan,
   playedAt:z.string().datetime().optional(),
 });
 
@@ -61,7 +70,7 @@ export async function POST(req:Request){
     traits:[],
     units:parsed.units.map(u=>({character_id:u.name,name:u.name,tier:u.tier,itemNames:u.itemNames})),
     comp_signature:parsed.compSignature,
-    raw:{source:'manual',note:parsed.note||null,decisionReview:parsed.review||null},
+    raw:{source:'manual',note:parsed.note||null,decisionReview:parsed.review||null,planSnapshot:parsed.planSnapshot||null},
   }).select('id,external_match_id').single();
   if(error)return NextResponse.json({error:error.message},{status:500});
   return NextResponse.json({ok:true,id:data.id,externalMatchId:data.external_match_id});
