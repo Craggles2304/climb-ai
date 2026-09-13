@@ -7,6 +7,8 @@ import type {ProMatchAnalysis,ProMetric} from '@/lib/riot/proAnalysis';
 type MomentKind='OBJECTIVE'|'RESET'|'POWER'|'FARM';
 type Moment={kind:MomentKind;atSeconds:number;label:string;detail:string};
 type TimingRow={fight:FightReview;nearestObjective:Moment|null;nearestReset:Moment|null;nearestPower:Moment|null;status:'COSTLY'|'GOOD'|'RESET'|'NEUTRAL';headline:string;detail:string};
+type TimerStage='PREP'|'SPEND'|'MOVE'|'ARRIVE';
+type TimerGuide={summary:string;check:string;action:string;why:string;avoid:string;example:string;success:string};
 
 export function MapTempoReview({fights,analysis}:{fights:FightReview[];analysis?:ProMatchAnalysis|null}){
   const [open,setOpen]=useState<string|null>(null);
@@ -35,14 +37,14 @@ export function MapTempoReview({fights,analysis}:{fights:FightReview[];analysis?
       <Mini label="GOOD TEMPO CONVERSIONS" value={String(good)} sub="positive fight outcomes around map windows"/>
     </div>
 
-    <details style={protocolShell}>
-      <summary style={summaryStyle}>OPEN THE OP MAP-TIMER ROUTINE</summary>
+    <details style={protocolShell} open>
+      <summary style={summaryStyle}>OP MAP-TIMER ROUTINE · CLICK EACH STAGE FOR THE FULL COACHING</summary>
       <div style={{display:'grid',gap:10,marginTop:12}}>
         <div style={countdownGrid}>
-          <TimerStep time="60s" title="PREP" text="Finish the current safe resource, decide whether you need to reset, and stop starting long side actions."/>
-          <TimerStep time="45s" title="SPEND" text="If you have a meaningful buy, convert gold now. A late reset is often worse than arriving with slightly less farm."/>
-          <TimerStep time="30s" title="MOVE" text="Start the rotation through the safest route available with your team rather than arriving alone from a blind angle."/>
-          <TimerStep time="15s" title="ARRIVE" text="Be close enough to influence the setup. Do not begin another long roam, camp cycle or side-wave commitment unless the objective is being conceded."/>
+          <TimerStep time="60s" title="PREP" guide={timerGuide('PREP',role)}/>
+          <TimerStep time="45s" title="SPEND" guide={timerGuide('SPEND',role)}/>
+          <TimerStep time="30s" title="MOVE" guide={timerGuide('MOVE',role)}/>
+          <TimerStep time="15s" title="ARRIVE" guide={timerGuide('ARRIVE',role)}/>
         </div>
         <RoleRoamRule role={role}/>
       </div>
@@ -63,6 +65,75 @@ export function MapTempoReview({fights,analysis}:{fights:FightReview[];analysis?
       })}
     </div>
   </section>;
+}
+
+function TimerStep({time,title,guide}:{time:string;title:TimerStage;guide:TimerGuide}){
+  return <details style={timerStep}>
+    <summary style={{cursor:'pointer',listStyle:'none'}}>
+      <strong style={{fontSize:22}}>{time}</strong>
+      <div className="eyebrow" style={{marginTop:5}}>{title}</div>
+      <div style={{fontSize:11,lineHeight:1.5,marginTop:6}}>{guide.summary}</div>
+      <div className="muted" style={{fontSize:9,fontWeight:900,letterSpacing:'.07em',marginTop:9}}>OPEN COACHING +</div>
+    </summary>
+    <div style={{display:'grid',gap:7,marginTop:12,paddingTop:11,borderTop:'1px solid rgba(255,255,255,.08)'}}>
+      <CoachPoint label="CHECK" text={guide.check}/>
+      <CoachPoint label="DO THIS" text={guide.action}/>
+      <CoachPoint label="WHY" text={guide.why}/>
+      <CoachPoint label="AVOID" text={guide.avoid}/>
+      <CoachPoint label="ROLE EXAMPLE" text={guide.example}/>
+      <CoachPoint label="SUCCESS CUE" text={guide.success}/>
+    </div>
+  </details>;
+}
+
+function CoachPoint({label,text}:{label:string;text:string}){return <div style={coachPoint}><div className="eyebrow" style={{fontSize:9}}>{label}</div><div style={{fontSize:11,lineHeight:1.5,marginTop:3}}>{text}</div></div>}
+
+function timerGuide(stage:TimerStage,role:string):TimerGuide{
+  const adc=role.includes('BOTTOM')||role.includes('ADC');
+  const mid=role.includes('MIDDLE')||role.includes('MID');
+  const jungle=role.includes('JUNGLE');
+  const support=role.includes('SUPPORT')||role.includes('UTILITY');
+  const top=role.includes('TOP');
+
+  if(stage==='PREP')return{
+    summary:'Finish the safe resource, read your wave/camp state and decide now whether this objective needs a reset.',
+    check:'Ask four questions: Is my next wave/camp safe to take? How much gold am I holding? Are HP and resource healthy? Which side of the map is the next important play on?',
+    action:'Take only the resource you can finish without trapping yourself. Ping or mentally commit to the objective side, then decide RESET or STAY before the clock falls below 45 seconds.',
+    why:'Most late rotations begin one minute earlier. Taking one extra wave, camp or chase often creates the late recall that makes the next 30 seconds impossible.',
+    avoid:'Do not start a long side-wave, deep chase, multi-camp clear or risky ward mission just because the objective has not spawned yet.',
+    example:adc?'ADC: catch the nearest safe wave, push it only as far as you can without getting trapped, then check your gold. If your next component is affordable, prepare to recall rather than taking another wave.':mid?'MID: clear or neutralise the wave so the enemy mid cannot pin you under tower while they move first.':jungle?'JUNGLE: choose the last one or two camps that naturally finish toward the objective side. Do not start an opposite-side full clear.':support?'SUPPORT: identify whether your ADC can safely finish the next wave while you begin setting vision with your jungler.':top?'TOP: decide whether you are actually joining. If yes, fix the side wave now rather than teleporting away from a wave that will crash into your tower.':'Finish the nearest safe resource and create a clean exit toward the next map play.',
+    success:'At 45s you should already know: reset now, stay and move, or consciously concede the objective.'
+  };
+
+  if(stage==='SPEND')return{
+    summary:'Convert gold into real combat stats early enough that the recall does not make you late.',
+    check:'Check your pocket gold against the purchase that actually changes the fight: completed item, major component, boots, control ward or sustain. Also check the time it takes to recall, buy and walk back.',
+    action:'If the buy materially increases your strength, recall immediately. Buy with a purpose, leave base quickly and path toward the objective side rather than back to a low-value side wave.',
+    why:'1,300g in your pocket gives zero combat stats. A player with less total gold but a completed purchase can be stronger at the actual fight.',
+    avoid:'Do not recall at 20–25 seconds unless you already know you can arrive. Do not stay for one more wave when that wave delays a major component and your whole rotation.',
+    example:adc?'ADC: if you can buy a meaningful damage component, spend now. Missing a few minions is usually cheaper than arriving to Dragon with 1,300g unspent and no item spike.':mid?'MID: buy the AP/AD component that changes your burst or waveclear, then return through the side your team is setting up.':jungle?'JUNGLE: spend before the contest rather than clearing one extra camp with 1,200g sitting unused.':support?'SUPPORT: convert gold into wards/boots/utility and refill vision tools before the setup begins.':top?'TOP: if joining the objective, buy before the move so your teleport or walk-in actually carries full combat value.':'Spend when the buy changes your next fight more than the extra resource you would collect by staying.',
+    success:'At 30s you should be out of base and moving, not still deciding what to buy.'
+  };
+
+  if(stage==='MOVE')return{
+    summary:'Start the rotation early enough to arrive with your team instead of entering through a blind angle after the fight starts.',
+    check:'Check where your team is grouping, which route is safest, whether enemies are missing, and whether you are about to walk through unowned fog alone.',
+    action:'Move with the nearest teammate when possible. Use the safe side of the map, stop detouring for low-value farm and position so you can influence the first contact.',
+    why:'Early movement buys choices. Late movement forces you to face-check, sprint through fog or arrive after key cooldowns and health bars have already changed.',
+    avoid:'Do not cross-map for a low-probability chase, stop for an extra camp on the wrong side, or walk alone through the shortest but least controlled route.',
+    example:adc?'ADC: rotate after the wave is safe and stay behind the teammate who can enter fog first. Your job is to arrive with damage available, not to be the person checking the river brush.':mid?'MID: move on the timing created by your pushed wave and threaten the river entrance with your jungler/support.':jungle?'JUNGLE: finish pathing on the objective side and meet the support/mid before entering contested vision.':support?'SUPPORT: move with your jungler, establish the first safe vision line, then fall back rather than dying for one deep ward.':top?'TOP: if you are joining, leave the side lane early enough that your team does not have to stall a 4v5 while you finish a wave.':'Start moving while you still have a choice of safe routes rather than after the contest has already started.',
+    success:'At 15s you should be near the setup with teammates between you and uncontrolled fog.'
+  };
+
+  return{
+    summary:'Be present before contact, choose your safe starting position and stop beginning actions that remove you from the fight.',
+    check:'Check ally numbers, enemy threats, your escape route, your safest damage/engage angle and which enemy ability would punish you hardest if you step too far forward.',
+    action:'Take a position where you can contribute without being first exposed. Let vision and teammates reveal the fight, then commit when the target and state are clear.',
+    why:'The final 15 seconds are about position, not income. One extra camp or three melee minions are rarely worth entering the fight late or from the wrong side.',
+    avoid:'Do not start another wave, recall, wander for a deep ward or stand in the frontline just because nothing has happened yet.',
+    example:adc?'ADC: stand behind your frontline and near peel. Hit the closest safe target when contact starts. Do not walk past your team to reach the enemy carry before the main threats are committed.':mid?'MID: hold an angle that lets you threaten the fight without being the first champion caught entering river.':jungle?'JUNGLE: be in range to contest/secure while preserving enough HP and key cooldowns for the objective itself.':support?'SUPPORT: protect the route your carries need, deny the nearest enemy vision and be ready to peel or engage based on your composition.':top?'TOP: arrive where you can either front-line for your carries or threaten the flank without being isolated before your team can follow.':'Arrive before contact and choose a position that lets your champion perform its job immediately.',
+    success:'When the fight starts, you should already be useful — not still walking from lane, base or an extra camp.'
+  };
 }
 
 function TimingDetail({row,role}:{row:TimingRow;role:string}){
@@ -93,10 +164,7 @@ function collectMoments(analysis?:ProMatchAnalysis|null):Moment[]{
   addMetric(out,analysis.metrics.farm_fight_tradeoff,'FARM');
   return dedupe(out).sort((a,b)=>a.atSeconds-b.atSeconds);
 }
-function addMetric(out:Moment[],metric:ProMetric|undefined,kind:MomentKind){
-  if(!metric)return;
-  for(const e of metric.evidence||[]){if(typeof e.atSeconds==='number')out.push({kind,atSeconds:e.atSeconds,label:e.label,detail:e.detail})}
-}
+function addMetric(out:Moment[],metric:ProMetric|undefined,kind:MomentKind){if(!metric)return;for(const e of metric.evidence||[]){if(typeof e.atSeconds==='number')out.push({kind,atSeconds:e.atSeconds,label:e.label,detail:e.detail})}}
 function dedupe(rows:Moment[]){const seen=new Set<string>();return rows.filter(r=>{const key=`${r.kind}:${Math.round(r.atSeconds)}:${r.label}`;if(seen.has(key))return false;seen.add(key);return true})}
 
 function buildTimingRows(fights:FightReview[],moments:Moment[]):TimingRow[]{
@@ -149,7 +217,6 @@ function RoleRoamRule({role}:{role:string}){return <div style={roleRule}><div cl
 function roleLabel(role:string){if(role.includes('BOTTOM')||role.includes('ADC'))return'ADC';if(role.includes('MIDDLE')||role.includes('MID'))return'MID';if(role.includes('UTILITY')||role.includes('SUPPORT'))return'SUPPORT';return role||'ROLE'}
 function StatusPill({status}:{status:TimingRow['status']}){const text=status==='COSTLY'?'OBJECTIVE RISK':status==='RESET'?'RESET LEAK':status==='GOOD'?'GOOD TEMPO':'NEUTRAL';return <span style={{...statusPill,borderColor:status==='GOOD'?'rgba(214,255,47,.28)':status==='NEUTRAL'?'rgba(255,255,255,.12)':'rgba(255,105,105,.3)'}}>{text}</span>}
 function Mini({label,value,sub}:{label:string;value:string;sub:string}){return <div style={mini}><div className="eyebrow">{label}</div><strong style={{fontSize:25,display:'block',marginTop:4}}>{value}</strong><div className="muted" style={{fontSize:10,marginTop:3}}>{sub}</div></div>}
-function TimerStep({time,title,text}:{time:string;title:string;text:string}){return <div style={timerStep}><strong style={{fontSize:20}}>{time}</strong><div className="eyebrow" style={{marginTop:5}}>{title}</div><div style={{fontSize:11,lineHeight:1.45,marginTop:5}}>{text}</div></div>}
 function Block({label,text}:{label:string;text:string}){return <div style={block}><div className="eyebrow">{label}</div><div style={{fontSize:12,lineHeight:1.5,marginTop:5}}>{text}</div></div>}
 
 const proxyPill:React.CSSProperties={padding:'7px 10px',borderRadius:999,border:'1px solid rgba(67,156,255,.28)',fontSize:9,fontWeight:900,letterSpacing:'.08em'};
@@ -157,8 +224,9 @@ const summaryGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repea
 const mini:React.CSSProperties={padding:12,border:'1px solid rgba(255,255,255,.08)',borderRadius:12,background:'rgba(255,255,255,.018)'};
 const protocolShell:React.CSSProperties={padding:'12px 13px',border:'1px solid rgba(67,156,255,.18)',borderRadius:13,background:'rgba(67,156,255,.025)'};
 const summaryStyle:React.CSSProperties={cursor:'pointer',fontSize:11,fontWeight:900,letterSpacing:'.06em'};
-const countdownGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:8};
-const timerStep:React.CSSProperties={padding:11,border:'1px solid rgba(255,255,255,.08)',borderRadius:11};
+const countdownGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:8};
+const timerStep:React.CSSProperties={padding:13,border:'1px solid rgba(255,255,255,.08)',borderRadius:12,background:'rgba(255,255,255,.012)'};
+const coachPoint:React.CSSProperties={padding:'8px 9px',border:'1px solid rgba(255,255,255,.06)',borderRadius:9,background:'rgba(255,255,255,.012)'};
 const roleRule:React.CSSProperties={padding:12,border:'1px solid rgba(214,255,47,.14)',borderRadius:11,background:'rgba(214,255,47,.025)'};
 const rowShell:React.CSSProperties={border:'1px solid rgba(255,255,255,.08)',borderRadius:13,overflow:'hidden',background:'rgba(255,255,255,.018)'};
 const rowButton:React.CSSProperties={width:'100%',display:'grid',gridTemplateColumns:'72px minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'11px 13px',border:0,background:'transparent',color:'inherit',textAlign:'left',cursor:'pointer'};
