@@ -1,6 +1,6 @@
 import 'server-only';
 import {getSupabaseAdmin} from './supabaseAdmin';
-import type {TftMatch,TftRankInfo as Never} from '@/lib/tft/types';
+import type {TftMatch} from '@/lib/tft/types';
 
 export interface TftSaveResult{persisted:boolean;inserted:number;skipped:number;reason?:string}
 export interface TftProfileUpdate{puuid:string;rank?:{tier:string;division:string;leaguePoints:number}|null}
