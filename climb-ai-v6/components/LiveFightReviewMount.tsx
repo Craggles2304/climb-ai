@@ -3,7 +3,7 @@ import {useCallback,useEffect,useState} from 'react';
 import {useAccount} from './AccountContext';
 import {FightDecisionReview,type FightReview} from './FightDecisionReview';
 import {CompactFixLadder} from './CompactFixLadder';
-import {MapTempoReview} from './MapTempoReview';
+import {VisualMapTempoReview} from './VisualMapTempoReview';
 import {CompactMapTimerRoutine} from './CompactMapTimerRoutine';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
@@ -39,13 +39,12 @@ export function LiveFightReviewMount(){
     </div>
     <CompactFixLadder fights={fights} historyProfile={review.historyProfile}/>
     <CompactMapTimerRoutine analysis={review.proAnalysis}/>
-    <div className="map-tempo-with-compact-routine"><MapTempoReview fights={fights} analysis={review.proAnalysis}/></div>
+    <VisualMapTempoReview fights={fights} analysis={review.proAnalysis}/>
     <div className="op-review-with-compact-ladder">
       <FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/>
     </div>
     <style jsx global>{`
       .op-review-with-compact-ladder > div > section:nth-of-type(4){display:none!important;}
-      .map-tempo-with-compact-routine > section > details{display:none!important;}
     `}</style>
   </section>;
 }
