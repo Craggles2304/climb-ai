@@ -10,6 +10,7 @@ export function CompactMapTimerRoutine({analysis}:{analysis?:ProMatchAnalysis|nu
   const [open,setOpen]=useState<Stage|null>(null);
   const role=(analysis?.role||'').toUpperCase();
   const stages:Stage[]=['PREP','SPEND','MOVE','ARRIVE'];
+  const selected=open?guide(open,role):null;
   return <section className="op-timer-shell">
     <div className="op-section-title">
       <div><div className="eyebrow">OP MAP-TIMER ROUTINE</div><h2>60 → 45 → 30 → 15</h2></div>
@@ -18,26 +19,26 @@ export function CompactMapTimerRoutine({analysis}:{analysis?:ProMatchAnalysis|nu
     <div className="op-timer-grid" style={{marginTop:12}}>
       {stages.map(stage=>{
         const g=guide(stage,role); const active=open===stage;
-        return <div key={stage}>
-          <button type="button" className={`op-timer-card ${active?'active':''}`} onClick={()=>setOpen(active?null:stage)}>
-            <strong>{g.time}</strong><span>{stage}</span><small>{g.summary}</small>
-          </button>
-          {active&&<div className="op-timer-detail">
-            <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:7}}>
-              <Point label="CHECK" text={g.check}/><Point label="DO" text={g.action}/><Point label="CUE" text={g.cue}/>
-            </div>
-            <details style={{marginTop:9,paddingTop:9,borderTop:'1px solid rgba(255,255,255,.07)'}}>
-              <summary style={{cursor:'pointer',fontSize:9,fontWeight:900,letterSpacing:'.09em',color:'#7f8b98'}}>MORE COACHING</summary>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:7,marginTop:8}}><Point label="WHY" text={g.why}/><Point label="AVOID" text={g.avoid}/><Point label="ROLE EXAMPLE" text={g.example}/></div>
-            </details>
-          </div>}
-        </div>;
+        return <button key={stage} type="button" className={`op-timer-card ${active?'active':''}`} onClick={()=>setOpen(active?null:stage)}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8}}><strong>{g.time}</strong><b>{active?'−':'+'}</b></div>
+          <span>{stage}</span><small>{g.summary}</small>
+        </button>;
       })}
     </div>
+    {selected&&open&&<div className="op-timer-detail">
+      <div className="op-timer-detail-head"><div><div className="eyebrow">{selected.time} · {open}</div><strong>{selected.cue}</strong></div><button type="button" onClick={()=>setOpen(null)} aria-label="Close timer coaching">×</button></div>
+      <div className="op-timer-points">
+        <Point label="CHECK" text={selected.check}/><Point label="DO" text={selected.action}/><Point label="CUE" text={selected.cue}/>
+      </div>
+      <details className="op-more-coaching">
+        <summary>MORE COACHING</summary>
+        <div className="op-timer-points"><Point label="WHY" text={selected.why}/><Point label="AVOID" text={selected.avoid}/><Point label="ROLE EXAMPLE" text={selected.example}/></div>
+      </details>
+    </div>}
   </section>;
 }
 
-function Point({label,text}:{label:string;text:string}){return <div style={{padding:10,border:'1px solid rgba(255,255,255,.06)',borderRadius:10,background:'rgba(255,255,255,.015)'}}><div className="eyebrow" style={{fontSize:8}}>{label}</div><div style={{fontSize:11,lineHeight:1.45,marginTop:4,color:'#c7ced6'}}>{text}</div></div>}
+function Point({label,text}:{label:string;text:string}){return <div className="op-timer-point"><div className="eyebrow">{label}</div><div>{text}</div></div>}
 
 function guide(stage:Stage,role:string):Guide{
   const adc=role.includes('BOTTOM')||role.includes('ADC');
