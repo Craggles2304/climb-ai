@@ -17,7 +17,13 @@ export function TrackerDiagnosticMount(){
       const body=await response.json();setStatus(body.status??null);
     }catch{}
   },[active.id]);
-  useEffect(()=>{void refresh();const id=window.setInterval(()=>void refresh(),5000);return()=>window.clearInterval(id)},[refresh]);
+  useEffect(()=>{
+    void refresh();
+    const tick=()=>{if(document.visibilityState==='visible')void refresh()};
+    const id=window.setInterval(tick,8_000);
+    document.addEventListener('visibilitychange',tick);
+    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',tick)};
+  },[refresh]);
   if(!status)return null;
   const stamp=status.tracker_status_updated_at||status.last_seen_at;
   const age=stamp?Date.now()-new Date(stamp).getTime():Number.POSITIVE_INFINITY;
