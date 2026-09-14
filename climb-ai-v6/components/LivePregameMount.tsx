@@ -17,7 +17,13 @@ export function LivePregameMount(){
       setPregame(body.pregame??null);
     }catch{}
   },[active.id]);
-  useEffect(()=>{void refresh();const id=window.setInterval(()=>void refresh(),5_000);return()=>window.clearInterval(id)},[refresh]);
+  useEffect(()=>{
+    void refresh();
+    const tick=()=>{if(document.visibilityState==='visible')void refresh()};
+    const id=window.setInterval(tick,8_000);
+    document.addEventListener('visibilitychange',tick);
+    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',tick)};
+  },[refresh]);
   if(!pregame||pregame.status!=='CHAMP_SELECT')return null;
   const c=pregame.context;
   return <section className="dash-section" style={{display:'grid',gap:14}}>
