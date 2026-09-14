@@ -1,9 +1,49 @@
 {
-  "name": "overpowered-companion",
-  "version": "0.1.0",
+  "name": "op-climb-companion",
+  "version": "0.2.0",
   "private": true,
+  "description": "OP CLIMB Windows companion for League of Legends match capture and post-game coaching.",
+  "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
-    "start": "node src/main.mjs"
+    "tracker": "node src/main.mjs",
+    "desktop": "electron .",
+    "build:win": "electron-builder --win nsis --x64"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.opclimb.companion",
+    "productName": "OP CLIMB Companion",
+    "artifactName": "OP-Climb-Companion-Setup.${ext}",
+    "files": [
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/main.mjs",
+        "to": "tracker/main.mjs"
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": ["x64"]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OP CLIMB Companion",
+      "uninstallDisplayName": "OP CLIMB Companion"
+    }
   }
 }
