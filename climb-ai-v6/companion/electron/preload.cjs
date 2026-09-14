@@ -2,7 +2,6 @@ const {contextBridge,ipcRenderer}=require('electron');
 
 contextBridge.exposeInMainWorld('opCompanion',{
   getState:()=>ipcRenderer.invoke('companion:get-state'),
-  pair:(payload)=>ipcRenderer.invoke('companion:pair',payload),
   unpair:()=>ipcRenderer.invoke('companion:unpair'),
   restart:()=>ipcRenderer.invoke('companion:restart'),
   setAutoStart:(enabled)=>ipcRenderer.invoke('companion:auto-start',enabled),
