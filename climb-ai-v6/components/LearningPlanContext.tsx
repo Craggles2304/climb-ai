@@ -4,7 +4,7 @@ import {ILPTask} from '@/lib/types';
 import {defaultILP} from '@/data/learning';
 import {useAccount,matchesFor} from './AccountContext';
 import {firstPlan,PROFILE_ACCOUNT_ID} from '@/lib/profile';
-import {adaptILP,createCoachTask,rankTasks} from '@/lib/ilpEngine';
+import {adaptAndRefill,createCoachTask,ensureFiveActive,rankTasks,reviseTaskFromCoach} from '@/lib/ilpEngine';
 import {orderTasks,OrderedTask,orderingNote} from '@/lib/planOrder';
 import {getBrowserClient} from '@/lib/supabase/client';
 
@@ -27,9 +27,7 @@ export function LearningPlanProvider({children}:{children:React.ReactNode}){
   const {active,profile,authenticated,hydrated}=useAccount();
   const [allTasks,setAllTasks]=useState<Record<string,ILPTask[]>>(defaultILP);
 
-  useEffect(()=>{
-    const raw=localStorage.getItem(KEY);if(raw){try{setAllTasks(prev=>({...prev,...JSON.parse(raw)}))}catch{}}
-  },[]);
+  useEffect(()=>{const raw=localStorage.getItem(KEY);if(raw){try{setAllTasks(prev=>({...prev,...JSON.parse(raw)}))}catch{}}},[]);
 
   useEffect(()=>{
     if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;
@@ -46,20 +44,16 @@ export function LearningPlanProvider({children}:{children:React.ReactNode}){
         return;
       }
       let seed:ILPTask[]=[];
-      try{
-        const legacy=JSON.parse(localStorage.getItem(KEY)||'{}') as Record<string,ILPTask[]>;
-        const old=legacy[PROFILE_ACCOUNT_ID];
-        if(active.isPrimary&&old?.length)seed=old.map(t=>({...t,accountId:active.id}));
-      }catch{/* no legacy plan */}
+      try{const legacy=JSON.parse(localStorage.getItem(KEY)||'{}') as Record<string,ILPTask[]>;const old=legacy[PROFILE_ACCOUNT_ID];if(active.isPrimary&&old?.length)seed=old.map(t=>({...t,accountId:active.id}))}catch{}
       if(!seed.length&&active.isPrimary&&profile)seed=firstPlan({...profile,id:active.id});
-      if(seed.length){setAllTasks(prev=>({...prev,[active.id]:seed}));await persistCloud(active.id,seed)}
+      if(seed.length){const filled=ensureFiveActive(seed,matchesFor(active.id),active.id,active.role).tasks;setAllTasks(prev=>({...prev,[active.id]:filled}));await persistCloud(active.id,filled)}
     })();
-    return ()=>{cancelled=true};
-  },[active.id,active.isPrimary,authenticated,hydrated,profile]);
+    return()=>{cancelled=true};
+  },[active.id,active.isPrimary,active.role,authenticated,hydrated,profile]);
 
   const persist=(next:Record<string,ILPTask[]>)=>{
     setAllTasks(next);
-    try{localStorage.setItem(KEY,JSON.stringify(next))}catch{/* private mode */}
+    try{localStorage.setItem(KEY,JSON.stringify(next))}catch{}
     if(authenticated)void persistCloud(active.id,next[active.id]||[]);
   };
 
@@ -69,27 +63,63 @@ export function LearningPlanProvider({children}:{children:React.ReactNode}){
     if(profile&&active.isPrimary)return firstPlan({...profile,id:active.id});
     return [];
   },[allTasks,active.id,active.isPrimary,profile]);
-  const ordering=useMemo(()=>orderTasks(rawTasks,matchesFor(active.id)),[rawTasks,active.id]);
+  const accountMatches=matchesFor(active.id);
+  const matchSignature=accountMatches.slice(0,5).map(m=>m.id).join('|');
+  const ordering=useMemo(()=>orderTasks(rawTasks,accountMatches),[rawTasks,matchSignature]);
   const tasks=useMemo(()=>ordering.map(o=>o.task),[ordering]);
   const orderNote=useMemo(()=>orderingNote(ordering),[ordering]);
 
   const addTask=(input:CoachTaskInput)=>{
-    const current=[...(allTasks[active.id]||rawTasks)];const task=createCoachTask(active.id,input);const activeTasks=current.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED');let next=current;
-    if(activeTasks.length>=5){const replaceable=rankTasks(activeTasks).reverse()[0];next=current.map(t=>t.id===replaceable.id?{...t,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically to make room for Coach task: ${task.title}`}:t)}
-    next=[...next,task];persist({...allTasks,[active.id]:next});
+    const current=[...(allTasks[active.id]||rawTasks)];
+    const existing=current.find(t=>t.status!=='MASTERED'&&t.status!=='PAUSED'&&(t.title.toLowerCase()===input.title.toLowerCase()||(t.metric===input.metric&&t.category===input.category)));
+    if(existing){
+      const revised=current.map(t=>t.id===existing.id?reviseTaskFromCoach(t,input):t);
+      persist({...allTasks,[active.id]:ensureFiveActive(revised,accountMatches,active.id,active.role).tasks});
+      return;
+    }
+    const task=createCoachTask(active.id,input);
+    const activeTasks=current.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED');
+    let next=current;
+    if(activeTasks.length>=5){
+      const replaceable=rankTasks(activeTasks).reverse()[0];
+      next=current.map(t=>t.id===replaceable.id?{...t,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically because Coach promoted a higher-priority behaviour: ${task.title}`,history:[...(t.history||[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Replaced by Coach mission: ${task.title}`}].slice(-10)}:t);
+    }
+    next=[...next,task];
+    persist({...allTasks,[active.id]:ensureFiveActive(next,accountMatches,active.id,active.role).tasks});
   };
-  const replaceTask=(oldId:string,input:CoachTaskInput)=>{const task=createCoachTask(active.id,input);const current=allTasks[active.id]||rawTasks;persist({...allTasks,[active.id]:[...current.map(t=>t.id===oldId?{...t,status:'PAUSED' as const,lastUpdatedReason:`Paused and replaced by Coach task: ${task.title}`}:t),task]})};
-  const pauseTask=(id:string)=>{const current=allTasks[active.id]||rawTasks;persist({...allTasks,[active.id]:current.map(t=>t.id===id?{...t,status:'PAUSED' as const,lastUpdatedReason:'Paused by player.'}:t)})};
-  const completeTask=(id:string)=>{const current=allTasks[active.id]||rawTasks;persist({...allTasks,[active.id]:current.map(t=>t.id===id?{...t,progress:100,status:'MASTERED' as const,successfulGames:t.masteryRequired||3,lastUpdatedReason:'Marked mastered after reviewed evidence.'}:t)})};
-  const refreshFromMatches=()=>{const current=allTasks[active.id]||rawTasks;const {tasks:adapted,changes}=adaptILP(current,matchesFor(active.id));persist({...allTasks,[active.id]:adapted});return changes};
+
+  const replaceTask=(oldId:string,input:CoachTaskInput)=>{
+    const task=createCoachTask(active.id,input);const current=allTasks[active.id]||rawTasks;
+    const next=[...current.map(t=>t.id===oldId?{...t,status:'PAUSED' as const,lastUpdatedReason:`Paused and replaced by Coach task: ${task.title}`,history:[...(t.history||[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Replaced by Coach mission: ${task.title}`}].slice(-10)}:t),task];
+    persist({...allTasks,[active.id]:ensureFiveActive(next,accountMatches,active.id,active.role).tasks});
+  };
+
+  const pauseTask=(id:string)=>{
+    const current=allTasks[active.id]||rawTasks;
+    const paused=current.map(t=>t.id===id?{...t,status:'PAUSED' as const,lastUpdatedReason:'Paused by player.',history:[...(t.history||[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:'Paused by player.'}].slice(-10)}:t);
+    persist({...allTasks,[active.id]:ensureFiveActive(paused,accountMatches,active.id,active.role).tasks});
+  };
+
+  const completeTask=(id:string)=>{
+    const current=allTasks[active.id]||rawTasks;
+    const completed=current.map(t=>t.id===id?{...t,progress:100,status:'MASTERED' as const,successfulGames:t.masteryRequired||3,lastUpdatedReason:'Marked mastered after reviewed evidence.',history:[...(t.history||[]),{at:new Date().toISOString(),type:'MASTERED' as const,note:'Marked mastered after reviewed evidence.'}].slice(-10)}:t);
+    persist({...allTasks,[active.id]:ensureFiveActive(completed,accountMatches,active.id,active.role).tasks});
+  };
+
+  const refreshFromMatches=()=>{
+    const current=allTasks[active.id]||rawTasks;
+    const {tasks:adapted,changes}=adaptAndRefill(current,accountMatches,active.id,active.role);
+    persist({...allTasks,[active.id]:adapted});
+    return changes;
+  };
 
   useEffect(()=>{
     if(!rawTasks.length)return;
-    const {tasks:adapted}=adaptILP(rawTasks,matchesFor(active.id));
-    const before=JSON.stringify(rawTasks.map(t=>[t.id,t.progress,t.status,t.successfulGames]));
-    const after=JSON.stringify(adapted.map(t=>[t.id,t.progress,t.status,t.successfulGames]));
+    const {tasks:adapted}=adaptAndRefill(rawTasks,accountMatches,active.id,active.role);
+    const before=JSON.stringify(rawTasks.map(t=>[t.id,t.progress,t.status,t.successfulGames,t.title,t.gameRule]));
+    const after=JSON.stringify(adapted.map(t=>[t.id,t.progress,t.status,t.successfulGames,t.title,t.gameRule]));
     if(before!==after){const next={...allTasks,[active.id]:adapted};setAllTasks(next);try{localStorage.setItem(KEY,JSON.stringify(next))}catch{};if(authenticated)void persistCloud(active.id,adapted)}
-  },[active.id]);
+  },[active.id,active.role,matchSignature,rawTasks.length]);
 
   return <C.Provider value={{tasks,ordering,orderNote,allTasks,addTask,replaceTask,pauseTask,completeTask,refreshFromMatches}}>{children}</C.Provider>;
 }
