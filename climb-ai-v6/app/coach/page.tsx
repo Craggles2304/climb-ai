@@ -93,14 +93,17 @@ export default function Coach(){
   async function send(t?:string){
     const text=(t??q).trim();if(!text||pending)return;
     const history=threadHistory(messages);
-    setQ('');setPending(true);setMessages(m=>[...m,{who:'user',text}].slice(-MAX_SAVED_MESSAGES));
+    const userMessage:Msg={who:'user',text};
+    setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));
     try{
       const res=await fetch('/api/coach',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:text,history,context:{rank:active.rank,role:active.role,mission:activeFive[0]?.title,champions:active.champions,activeTasks:activeFive.map(task=>({title:task.title,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule})),recent:summary}})});
       const body=await res.json() as CoachResponse;
       if(!res.ok)throw new Error(body.error||'Coach request failed.');
-      setMessages(m=>[...m,{who:'ai',text:body.answer||'I do not have enough evidence to answer that yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed}].slice(-MAX_SAVED_MESSAGES));
+      const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough evidence to answer that yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};
+      setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES));
     }catch(error){
-      setMessages(m=>[...m,{who:'ai',text:`Coach could not load the evidence response. Your active #1 is still “${activeFive[0]?.title||'waiting for evidence'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']}].slice(-MAX_SAVED_MESSAGES));
+      const errorMessage:Msg={who:'ai',text:`Coach could not load the evidence response. Your active #1 is still “${activeFive[0]?.title||'waiting for evidence'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};
+      setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES));
     }finally{setPending(false)}
   }
 
@@ -110,7 +113,7 @@ export default function Coach(){
   }
 
   function resetThread(){
-    const next=[welcome(activeFive[0]?.title)];
+    const next:Msg[]=[welcome(activeFive[0]?.title)];
     setMessages(next);
     try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(next))}catch{}
   }
