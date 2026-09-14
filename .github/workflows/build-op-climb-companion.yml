@@ -1,0 +1,53 @@
+name: Build OP CLIMB Companion
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'climb-ai-v6/companion/**'
+      - '.github/workflows/build-op-climb-companion.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: climb-ai-v6/companion
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install Companion dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build Windows installer
+        run: npm run build:win
+
+      - name: Upload installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: op-climb-companion-windows
+          path: climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe
+          if-no-files-found: error
+
+      - name: Publish beta installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view companion-beta --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create companion-beta --repo $env:GITHUB_REPOSITORY --prerelease --title 'OP CLIMB Companion Beta' --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
+          }
+          gh release upload companion-beta 'dist/OP-Climb-Companion-Setup.exe' --clobber --repo $env:GITHUB_REPOSITORY
