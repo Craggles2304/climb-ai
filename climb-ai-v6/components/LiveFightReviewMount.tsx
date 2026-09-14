@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useState} from 'react';
+import {useCallback,useEffect,useRef,useState} from 'react';
 import {useAccount} from './AccountContext';
 import {FightDecisionReview,type FightReview} from './FightDecisionReview';
 import {CompactFixLadder} from './CompactFixLadder';
@@ -17,17 +17,32 @@ export function LiveFightReviewMount(){
   const {active}=useAccount();
   const [review,setReview]=useState<Review|null>(null);
   const [pregame,setPregame]=useState<Pregame|null>(null);
+  const loadedDraftFor=useRef('');
+
   const refresh=useCallback(async()=>{
     try{
-      const [reviewResponse,pregameResponse]=await Promise.all([
-        fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'}),
-        fetch(`/api/live/pregame?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'}),
-      ]);
-      if(reviewResponse.ok){const body=await reviewResponse.json();setReview(body.review??null)}
-      if(pregameResponse.ok){const body=await pregameResponse.json();setPregame(body.pregame??null)}
+      const reviewResponse=await fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});
+      if(!reviewResponse.ok)return;
+      const body=await reviewResponse.json();
+      const nextReview=(body.review??null) as Review|null;
+      setReview(nextReview);
+      if(!nextReview||!['COMPLETE','ABORTED'].includes(nextReview.status)||loadedDraftFor.current===nextReview.sessionId)return;
+      loadedDraftFor.current=nextReview.sessionId;
+      const pregameResponse=await fetch(`/api/live/pregame?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});
+      if(pregameResponse.ok){const pregameBody=await pregameResponse.json();setPregame(pregameBody.pregame??null)}
     }catch{}
   },[active.id]);
-  useEffect(()=>{void refresh();const id=window.setInterval(()=>void refresh(),15_000);return()=>window.clearInterval(id)},[refresh]);
+
+  useEffect(()=>{
+    loadedDraftFor.current='';
+    setPregame(null);
+    void refresh();
+    const tick=()=>{if(document.visibilityState==='visible')void refresh()};
+    const id=window.setInterval(tick,20_000);
+    document.addEventListener('visibilitychange',tick);
+    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',tick)};
+  },[refresh,active.id]);
+
   if(!review||!['COMPLETE','ABORTED'].includes(review.status))return null;
   const fights=review.summary?.fightReviews??[];
   const matchDraft=pregame?.linkedSessionId===review.sessionId?pregame:null;
