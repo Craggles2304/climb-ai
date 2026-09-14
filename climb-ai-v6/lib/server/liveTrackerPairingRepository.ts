@@ -27,40 +27,48 @@ export async function createDesktopPairCode(userId:string,accountKey:string,devi
   },{onConflict:'user_id,game_name,tagline,region'}).select('id,game_name,tagline,region').single();
   if(riotError||!riotAccount)throw new Error(riotError?.message||'Riot account could not be saved.');
 
-  await db.from('live_tracker_pair_codes').delete().eq('user_id',userId).eq('account_key',accountKey).is('claimed_at',null);
   const code=makeCode();
   const expiresAt=new Date(Date.now()+PAIR_CODE_TTL_MS).toISOString();
-  const {error}=await db.from('live_tracker_pair_codes').insert({
-    user_id:userId,account_key:accountKey,riot_account_id:riotAccount.id,device_name:deviceName,
-    code_hash:hash(code),expires_at:expiresAt,
-  });
-  if(error)throw new Error(error.message);
-  return{code,expiresAt,riotAccount};
+  const {data:pending,error}=await db.from('live_tracker_devices').insert({
+    user_id:userId,
+    account_key:accountKey,
+    riot_account_id:riotAccount.id,
+    device_name:deviceName,
+    token_hash:hash(normalizeCode(code)),
+    revoked_at:now,
+    tracker_status:{state:'PAIRING',pairing:true,expiresAt},
+    tracker_status_updated_at:now,
+  }).select('id').single();
+  if(error||!pending)throw new Error(error?.message||'Pairing code could not be created.');
+  return{code,expiresAt,pendingDeviceId:pending.id,riotAccount};
 }
 
 export async function claimDesktopPairCode(rawCode:string){
   const db=getSupabaseAdmin();
   if(!db)throw new Error('Supabase is required for secure tracker pairing.');
   const code=normalizeCode(rawCode);
-  const now=new Date().toISOString();
-  const {data:pair,error:readError}=await db.from('live_tracker_pair_codes')
-    .select('id,user_id,account_key,riot_account_id,device_name,expires_at,claimed_at')
-    .eq('code_hash',hash(code)).maybeSingle();
+  if(code.length!==12)return null;
+  const {data:pair,error:readError}=await db.from('live_tracker_devices')
+    .select('id,user_id,account_key,riot_account_id,device_name,tracker_status,revoked_at')
+    .eq('token_hash',hash(code)).maybeSingle();
   if(readError)throw new Error(readError.message);
-  if(!pair||pair.claimed_at||new Date(pair.expires_at).getTime()<=Date.now())return null;
-
-  const {data:claimed,error:claimError}=await db.from('live_tracker_pair_codes')
-    .update({claimed_at:now}).eq('id',pair.id).is('claimed_at',null).select('id').maybeSingle();
-  if(claimError)throw new Error(claimError.message);
-  if(!claimed)return null;
+  const status=(pair?.tracker_status&&typeof pair.tracker_status==='object'?pair.tracker_status:{}) as Record<string,unknown>;
+  const expiresAt=typeof status.expiresAt==='string'?status.expiresAt:'';
+  if(!pair||status.pairing!==true||!expiresAt||new Date(expiresAt).getTime()<=Date.now())return null;
 
   const token=`climb_live_${randomBytes(32).toString('base64url')}`;
-  const {data:device,error:deviceError}=await db.from('live_tracker_devices').insert({
-    user_id:pair.user_id,account_key:pair.account_key,riot_account_id:pair.riot_account_id,
-    device_name:pair.device_name,token_hash:hash(token),
-  }).select('id,account_key,riot_account_id,device_name,created_at,last_seen_at').single();
-  if(deviceError)throw new Error(deviceError.message);
-  await db.from('riot_accounts').update({sync_status:'paired',updated_at:now}).eq('id',pair.riot_account_id);
+  const now=new Date().toISOString();
+  const {data:device,error:updateError}=await db.from('live_tracker_devices').update({
+    token_hash:hash(token),
+    revoked_at:null,
+    last_seen_at:null,
+    tracker_status:{state:'WAITING',pairing:false,pairedAt:now},
+    tracker_status_updated_at:now,
+  }).eq('id',pair.id).eq('token_hash',hash(code)).not('revoked_at','is',null)
+    .select('id,account_key,riot_account_id,device_name,created_at,last_seen_at').maybeSingle();
+  if(updateError)throw new Error(updateError.message);
+  if(!device)return null;
+  if(pair.riot_account_id)await db.from('riot_accounts').update({sync_status:'paired',updated_at:now}).eq('id',pair.riot_account_id);
   return{token,device};
 }
 
