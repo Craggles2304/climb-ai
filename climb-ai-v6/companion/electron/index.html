@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OP CLIMB Companion</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main class="shell">
+  <header class="brand"><div class="mark">OP</div><div><h1>OP CLIMB Companion</h1><p>League match intelligence</p></div></header>
+  <section id="setup" class="card hidden">
+    <div class="eyebrow">ONE-TIME SETUP</div>
+    <h2>Connect this Windows PC</h2>
+    <p>Open Live Companion on OP CLIMB, pair a new PC, then enter the pairing code shown there.</p>
+    <label>PAIRING CODE<input id="pairCode" autocomplete="off" spellcheck="false" placeholder="Paste pairing code"></label>
+    <div id="setupMessage" class="message hidden"></div>
+    <div class="actions"><button id="connect" class="primary">CONNECT THIS PC</button><button id="openSetup">OPEN OP CLIMB</button></div>
+  </section>
+  <section id="status" class="card hidden">
+    <div class="statusRow"><div><div class="eyebrow">COMPANION STATUS</div><h2 id="statusTitle">Starting…</h2><p id="statusCopy">Starting OP CLIMB Companion.</p></div><div id="statusPill" class="pill">STARTING</div></div>
+    <div class="metrics"><div><span>PAIRING</span><b>Connected</b></div><div><span>TRACKER</span><b id="trackerState">Starting</b></div><div><span>MODE</span><b id="modeState">Waiting</b></div></div>
+    <div class="actions"><button id="openClimb" class="primary">OPEN OP CLIMB</button><button id="restart">RESTART TRACKER</button><button id="showLogs">DIAGNOSTICS</button></div>
+  </section>
+  <section id="settings" class="card hidden">
+    <div class="setting"><div><b>Start with Windows</b><small>Keep the Companion ready automatically.</small></div><button id="autoStart" class="toggle" aria-label="Start with Windows"></button></div>
+    <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
+    <button id="unpair" class="danger">UNPAIR THIS PC</button>
+  </section>
+  <footer>Runs quietly in the system tray. Coaching is built from your match for post-game improvement.</footer>
+</main>
+<script src="renderer.js"></script>
+</body>
+</html>
