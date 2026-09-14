@@ -52,58 +52,62 @@ export interface TftCarryShell{
   notes:string[];
 }
 
-export const TFT_META_PATCH='17.9';
-export const TFT_META_AS_OF='2026-09-13';
+export const TFT_META_SET=18;
+export const TFT_META_PATCH='18.2';
+export const TFT_META_AS_OF='2026-09-14';
 
+// Dated ranked snapshot. Profile-level numbers come from current Patch 18.2 tactics.tools
+// unit pages. Item packages intentionally exclude emblem/artifact/radiant-dependent trios
+// from META and ALTERNATIVE so Item Finder only recommends craftable standard lines.
 export const TFT_CARRY_PROFILES:TftCarryProfile[]=[
   {
-    champion:'Jhin',tier:'S',style:'BACKLINE_CARRY',headline:'Elite late-game backline carry',
-    whyBuildAround:'Jhin is one of the strongest current end-board focal points. Protect him, give him cast uptime, and let frontline buy enough time for repeated damage cycles.',
-    patch:TFT_META_PATCH,sampleLabel:'~380k games',avgPlace:3.85,top4:61.7,win:20.2,sourceLabel:'tactics.tools',sourceUrl:'https://tactics.tools/units/jhin',
+    champion:'Ashe',tier:'S',style:'BACKLINE_CARRY',headline:'Premium 5-cost AD capstone',
+    whyBuildAround:'Ashe is one of the cleanest late-game physical damage caps in Enchanted Wilds. Give her cast uptime and penetration, then build enough frontline for the Spirit Rift damage zone to keep working.',
+    patch:TFT_META_PATCH,sampleLabel:'~37k games',avgPlace:3.78,top4:63.2,win:19.6,sourceLabel:'tactics.tools · Patch 18.2',sourceUrl:'https://tactics.tools/units/da_18_ashe/all',
     builds:[
-      {id:'jhin-bis',label:'BEST-IN-SLOT',kind:'META',items:['Blue Buff','Quicksilver','Spear of Shojin'],note:'Highest-confidence non-emblem package from current large-sample data. Mana plus safety keeps Jhin casting.',avgPlace:3.66,top4:65.1,win:21.6},
-      {id:'jhin-dps',label:'DPS ALTERNATIVE',kind:'ALTERNATIVE',items:['Quicksilver','Blue Buff',"Kraken's Fury"],note:'More sustained physical damage when you already have enough cast frequency.',avgPlace:3.58,top4:67.0,win:22.0},
-      {id:'jhin-rage',label:'RAGEBLADE TEMPO',kind:'FUN',items:["Guinsoo's Rageblade",'Red Buff','Spear of Shojin'],note:'A faster-ramping variant. Stronger when fights run long; less universally safe than the core package.'}
+      {id:'ashe-cast',label:'CAST + SHRED CORE',kind:'META',items:['Spear of Shojin','Last Whisper','Infinity Edge'],note:'A current standard-item trio with mana generation, armor shred and crit scaling. It avoids emblem-dependent high-roll packages while preserving Ashe’s cast pattern.'},
+      {id:'ashe-red',label:'ANTI-HEAL DAMAGE',kind:'ALTERNATIVE',items:['Red Buff','Infinity Edge','Last Whisper'],note:'A strong physical alternative when you need anti-heal and already have enough cast support elsewhere on the board.'},
+      {id:'ashe-ramp',label:'RAMPING ASHE',kind:'FUN',items:["Guinsoo's Rageblade",'Spear of Shojin','Red Buff'],note:'A real played line that leans harder into fight length and attack-speed ramp. Treat it as context-dependent rather than universal BIS.'}
     ]
   },
   {
-    champion:'Rhaast',tier:'S',style:'TANK_ANCHOR',headline:'Premium frontline anchor',
-    whyBuildAround:'Rhaast is currently an extremely high-performing board anchor. Build the rest of the team to exploit the extra time and space he creates rather than forcing him into a pure damage role.',
-    patch:TFT_META_PATCH,sampleLabel:'~1.9m games',avgPlace:3.81,top4:63.2,win:18.9,sourceLabel:'tactics.tools',sourceUrl:'https://tactics.tools/units/rhaast/plat',
+    champion:'Draven',tier:'S',style:'BACKLINE_CARRY',headline:'Explosive 5-cost finisher',
+    whyBuildAround:'Draven has one of the highest current first-place rates among normal Set 18 capstones. His best line depends heavily on whether you need safety/cast consistency or can greed for a full physical damage package.',
+    patch:TFT_META_PATCH,sampleLabel:'~51k games',avgPlace:4.07,top4:55.4,win:24.1,sourceLabel:'tactics.tools · Patch 18.2',sourceUrl:'https://tactics.tools/units/da_draven18/all',
     builds:[
-      {id:'rhaast-tank',label:'BEST ANCHOR',kind:'META',items:['Evenshroud','Bramble Vest',"Warmog's Armor"],note:'Durability plus shred. Best when the rest of your board has enough backline damage.',avgPlace:3.42,top4:71.3,win:19.3},
-      {id:'rhaast-magic',label:'MAGIC-SHRED FRONT',kind:'ALTERNATIVE',items:['Ionic Spark','Evenshroud','Crownguard'],note:'Use when your secondary carries benefit heavily from MR shred.',avgPlace:3.49,top4:69.9,win:19.0},
-      {id:'rhaast-greed',label:'BRAWLER HIGH-ROLL',kind:'FUN',items:["Titan's Resolve",'Spirit Visage',"Warmog's Armor"],note:'Greedier scaling frontline build for upgraded/high-roll Rhaast boards.'}
+      {id:'draven-safe',label:'SAFE CAST CORE',kind:'META',items:['Hand of Justice','Quicksilver','Spear of Shojin'],note:'The highest-volume standard trio in the current broad Patch 18.2 sample: sustain, crowd-control protection and faster casts.'},
+      {id:'draven-ad',label:'PURE AD CAP',kind:'ALTERNATIVE',items:['Infinity Edge','Last Whisper',"Kraken's Fury"],note:'High-MMR data supports this full physical package when your board already protects Draven and you need maximum damage conversion.'},
+      {id:'draven-ramp',label:'FULL RAMP DAMAGE',kind:'FUN',items:["Guinsoo's Rageblade","Kraken's Fury",'Deathblade'],note:'A high-ceiling damage line seen in current data. It gives up the safety of the main package, so use it only when the board can buy time.'}
     ]
   },
   {
-    champion:'Twisted Fate',tier:'A',style:'BACKLINE_CARRY',headline:'Flexible AP / attack-speed carry',
-    whyBuildAround:'Twisted Fate can convert attack speed and mana into repeated spell pressure. He is best when the shell protects him and supplies enough frontline to let Rageblade-style scaling matter.',
-    patch:TFT_META_PATCH,sampleLabel:'~2.1m games',avgPlace:4.07,top4:58.2,win:16.2,sourceLabel:'tactics.tools',sourceUrl:'https://tactics.tools/units/twistedfate',
+    champion:"Kog'Maw",tier:'A',style:'BACKLINE_CARRY',headline:'Flexible 3-cost adaptor carry',
+    whyBuildAround:'Kog’Maw is valuable because the current set supports both spell-heavy and physical item directions. That makes him an excellent Item Finder bridge when your component bag has not committed to one damage profile yet.',
+    patch:TFT_META_PATCH,sampleLabel:'~56k games',avgPlace:4.22,top4:56.6,win:11.1,sourceLabel:'tactics.tools · Patch 18.2',sourceUrl:'https://tactics.tools/units/da_kogmaw18_ad/all',
     builds:[
-      {id:'tf-bis',label:'BEST-IN-SLOT',kind:'META',items:["Guinsoo's Rageblade",'Blue Buff','Void Staff'],note:'The cleanest current standard trio: ramp, cast frequency and penetration.',avgPlace:3.61,top4:67.0,win:19.0},
-      {id:'tf-ap',label:'AP BURST',kind:'ALTERNATIVE',items:['Jeweled Gauntlet',"Nashor's Tooth",'Void Staff'],note:'Higher immediate spell pressure when you do not need as much ramp.',avgPlace:3.44,top4:70.4,win:20.7},
-      {id:'tf-rage',label:'FULL RAMP',kind:'FUN',items:["Guinsoo's Rageblade",'Jeweled Gauntlet',"Rabadon's Deathcap"],note:'Maximum scaling fantasy. Needs long fights and excellent protection.'}
+      {id:'kog-ap',label:'SPELL ARTILLERY',kind:'META',items:["Rabadon's Deathcap","Archangel's Staff",'Blue Buff'],note:'The strongest clean standard-item trio in the current broad sample. It turns Kog’Maw into a scaling spell-artillery carry.'},
+      {id:'kog-ad',label:'PHYSICAL ADAPTOR',kind:'ALTERNATIVE',items:["Guinsoo's Rageblade",'Deathblade','Last Whisper'],note:'A current physical package for Bow/Sword-heavy games: ramping attacks, raw AD and armor shred.'},
+      {id:'kog-hybrid',label:'HYBRID RAMP',kind:'FUN',items:["Kraken's Fury",'Red Buff',"Guinsoo's Rageblade"],note:'A played hybrid attack-speed line. It is useful when those components arrive naturally, but it is less reliable than the best clean AP or AD packages.'}
     ]
   },
   {
-    champion:'Graves',tier:'A',style:'MELEE_CARRY',headline:'High-ceiling physical carry',
-    whyBuildAround:'Graves can take over fights when he gets enough uptime. He needs defensive access, lifesteal or edge protection more than a pure glass-cannon backliner.',
-    patch:TFT_META_PATCH,sampleLabel:'~1.6m games',avgPlace:4.47,top4:49.2,win:17.6,sourceLabel:'tactics.tools',sourceUrl:'https://tactics.tools/units/graves',
+    champion:'Ahri',tier:'A',style:'BACKLINE_CARRY',headline:'Reliable 4-cost spell carry',
+    whyBuildAround:'Ahri gives the roster a conventional AP route between 3-cost reroll and 5-cost cap boards. Her current standard packages strongly value cast frequency plus a scaling AP or attack-speed amplifier.',
+    patch:TFT_META_PATCH,sampleLabel:'~37k games',avgPlace:4.42,top4:51.3,win:12.4,sourceLabel:'tactics.tools · Patch 18.2',sourceUrl:'https://tactics.tools/units/da_18_ahri/all',
     builds:[
-      {id:'graves-safe',label:'SAFE CARRY',kind:'META',items:['Edge of Night','Bloodthirster',"Guinsoo's Rageblade"],note:'Protects Graves through the first burst while still giving ramp and sustain.',avgPlace:4.11,top4:55.8,win:21.4},
-      {id:'graves-crit',label:'CRIT DAMAGE',kind:'ALTERNATIVE',items:['Infinity Edge',"Guinsoo's Rageblade",'Giant Slayer'],note:'Higher raw damage into durable lobbies; less forgiving if Graves is focused.',avgPlace:4.02,top4:57.3,win:21.3},
-      {id:'graves-nuke',label:'FULL DAMAGE',kind:'FUN',items:['Infinity Edge','Deathblade',"Guinsoo's Rageblade"],note:'Explosive high-roll damage. Use only when the board already supplies protection.'}
+      {id:'ahri-cast',label:'CAST ENGINE',kind:'META',items:['Spear of Shojin',"Nashor's Tooth",'Blue Buff'],note:'A current clean standard trio with strong sample support: fast casts plus Nashor’s attack-speed window after casting.'},
+      {id:'ahri-scale',label:'SCALING AP',kind:'ALTERNATIVE',items:['Spear of Shojin',"Nashor's Tooth","Archangel's Staff"],note:'Trades some immediate mana acceleration for stronger fight-length scaling when your frontline is durable.'},
+      {id:'ahri-burst',label:'BURST AP',kind:'FUN',items:['Spear of Shojin','Blue Buff',"Rabadon's Deathcap"],note:'A straightforward high-AP burst line. Playable when the components land naturally, but not the default recommendation over the better-supported cast packages.'}
     ]
   },
   {
-    champion:'Jax',tier:'B',style:'BRUISER_ANCHOR',headline:'Bruiser anchor with carry variants',
-    whyBuildAround:'Current data says Jax is stronger as a durable bruiser/tank anchor than as a pure Rageblade carry. You can still force a Jax carry line, but OP CLIMB should tell you when that is a fun build rather than the statistical best line.',
-    patch:TFT_META_PATCH,sampleLabel:'~682k games',avgPlace:4.29,top4:53.8,win:14.1,sourceLabel:'tactics.tools',sourceUrl:'https://tactics.tools/units/jax',
+    champion:'Master Yi',tier:'B',style:'MELEE_CARRY',headline:'3-star melee reroll threat',
+    whyBuildAround:'Master Yi is a reroll commitment rather than a generic plug-in carry. The current data is strongest when he reaches 3★ and combines sustain, crowd-control protection and a defensive damage scaler.',
+    patch:TFT_META_PATCH,sampleLabel:'~26k games',avgPlace:4.43,top4:51.4,win:11.7,sourceLabel:'tactics.tools · Patch 18.2',sourceUrl:'https://tactics.tools/units/da_18_masteryi_ad/all',
     builds:[
-      {id:'jax-bis',label:'CURRENT META JAX',kind:'META',items:['Adaptive Helm','Sunfire Cape',"Protector's Vow"],note:'The strongest current large-sample Jax pattern is durable frontline, not triple Rageblade.',avgPlace:3.81,top4:63.5,win:15.6},
-      {id:'jax-carry',label:'CARRY JAX',kind:'ALTERNATIVE',items:["Guinsoo's Rageblade",'Edge of Night',"Titan's Resolve"],note:'The real carry version: attack-speed ramp plus survival and scaling.',avgPlace:4.69,top4:46.7,win:9.7},
-      {id:'jax-triple-rage',label:'TRIPLE RAGEBLADE JAX',kind:'FUN',items:["Guinsoo's Rageblade","Guinsoo's Rageblade","Guinsoo's Rageblade"],note:'Your requested full-ramp Jax. Extremely fun if he is protected and fights last long enough, but this is not current best-in-slot and should be treated as a high-roll/meme line.'}
+      {id:'yi-bis',label:'REROLL CORE',kind:'META',items:['Bloodthirster','Quicksilver',"Titan's Resolve"],note:'A strong current standard melee trio: sustain, CC protection and durable damage scaling. Best treated as a 3★ reroll package.'},
+      {id:'yi-safe',label:'SURVIVAL DAMAGE',kind:'ALTERNATIVE',items:["Titan's Resolve",'Quicksilver','Edge of Night'],note:'Adds a second survival layer for lobbies where Yi is being focused before he can ramp.'},
+      {id:'yi-ramp',label:'RAGEBLADE YI',kind:'FUN',items:["Guinsoo's Rageblade",'Quicksilver','Edge of Night'],note:'Attack-speed fantasy with two safety pieces. It can work in long fights, but the current data does not justify calling it universal BIS.'}
     ]
   }
 ];

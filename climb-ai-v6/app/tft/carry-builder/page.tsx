@@ -3,7 +3,7 @@ import Image from 'next/image';
 import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {TftShell} from '@/components/TftShell';
-import {TFT_CARRY_PROFILES,TFT_META_AS_OF,TFT_META_PATCH,buildCarryShell,metaStrengthScore,type TftCarryItemBuild,type TftCarryProfile,type TftStaticChampion} from '@/lib/tft/carryBuilder';
+import {TFT_CARRY_PROFILES,TFT_META_AS_OF,TFT_META_PATCH,TFT_META_SET,buildCarryShell,metaStrengthScore,type TftCarryItemBuild,type TftCarryProfile,type TftStaticChampion} from '@/lib/tft/carryBuilder';
 
 type StaticEntry={id:string;name:string;tier:number|string|null;description:string;image:string|null;traits?:string[];stats?:{hp?:number;armor?:number;magicResist?:number;attackDamage?:number;attackSpeed?:number;range?:number}|null};
 type StaticData={version:string;source:string;champions:StaticEntry[];items:StaticEntry[];augments:StaticEntry[];traits:StaticEntry[]};
@@ -17,8 +17,8 @@ function scoreLabel(profile:TftCarryProfile){const score=metaStrengthScore(profi
 export default function TftCarryBuilder(){
   const router=useRouter();
   const [data,setData]=useState<StaticData|null>(null);
-  const [selectedName,setSelectedName]=useState('Jhin');
-  const [selectedBuildId,setSelectedBuildId]=useState('jhin-bis');
+  const [selectedName,setSelectedName]=useState('Ashe');
+  const [selectedBuildId,setSelectedBuildId]=useState('ashe-cast');
   const [query,setQuery]=useState('');
   const [filter,setFilter]=useState<'ALL'|'S'|'A'|'B'>('ALL');
   const [teamSize,setTeamSize]=useState(8);
@@ -93,11 +93,11 @@ export default function TftCarryBuilder(){
   return <TftShell><main className="container section">
     <div className="eyebrow">PATCH-AWARE META STARTING POINTS · STATIC PREP</div>
     <h1>TFT CARRY BUILDER</h1>
-    <p className="muted" style={{maxWidth:940}}>Start with the champion you want to play around. OP CLIMB separates the statistically strongest item package from strong alternatives and fun/high-roll lines, then builds a trait-aware support shell from the current Riot static set data.</p>
+    <p className="muted" style={{maxWidth:940}}>Start with the champion you want to play around. OP CLIMB separates current standard-item meta cores from strong alternatives and fun/high-roll lines, then builds a trait-aware support shell from the current Riot static set data.</p>
 
     <section className="glass card" style={{marginTop:18}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}>
-        <div><div className="eyebrow">META SNAPSHOT</div><h2 style={{margin:'3px 0'}}>SET 17 · PATCH {TFT_META_PATCH}</h2><p className="muted" style={{margin:0}}>Snapshot date {TFT_META_AS_OF} · current Riot static feed {data?.version||'loading…'}</p></div>
+        <div><div className="eyebrow">CURRENT META SNAPSHOT</div><h2 style={{margin:'3px 0'}}>SET {TFT_META_SET} · PATCH {TFT_META_PATCH}</h2><p className="muted" style={{margin:0}}>Snapshot date {TFT_META_AS_OF} · current Riot static feed {data?.version||'loading…'}</p></div>
         <div style={{display:'flex',gap:7,flexWrap:'wrap'}}>{(['ALL','S','A','B'] as const).map(x=><button key={x} className={`btn ${filter===x?'primary':'secondary'}`} onClick={()=>setFilter(x)}>{x==='ALL'?'ALL CORES':`${x} TIER`}</button>)}</div>
       </div>
       <input style={{marginTop:12}} value={query} onChange={e=>setQuery(e.target.value)} placeholder="Search champion, archetype or reason…"/>
@@ -156,8 +156,8 @@ export default function TftCarryBuilder(){
       <div style={{display:'flex',gap:9,flexWrap:'wrap',marginTop:16}}><button className="btn primary" onClick={saveToBoardLab}>LOAD THIS TEAM INTO BOARD LAB</button><button className="btn secondary" onClick={()=>router.push('/tft/board-compare')}>OPEN BOARD COMPARE</button></div>
     </section>
 
-    {profile.champion==='Jax'&&<section className="glass card" style={{marginTop:16}}><div className="eyebrow">YOUR EXAMPLE · JAX</div><h2>TRIPLE RAGEBLADE IS AVAILABLE — BUT LABELLED CORRECTLY</h2><p className="muted">Pick <b>TRIPLE RAGEBLADE JAX</b> above and the team shell will load Jax with three Guinsoo&apos;s Rageblades into Board Lab. Current patch data says durable Jax performs substantially better overall, so OP CLIMB keeps the triple-Rageblade line as FUN / HIGH-ROLL rather than falsely calling it BIS.</p></section>}
+    {selectedBuild.kind==='FUN'&&<section className="glass card" style={{marginTop:16}}><div className="eyebrow">HIGH-ROLL LINE · LABELLED CORRECTLY</div><h2>FUN DOES NOT MEAN BIS</h2><p className="muted">This package is intentionally kept as a context-dependent or high-roll option. OP CLIMB will never promote a fun build above the better-supported META core just because it looks more exciting.</p></section>}
 
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">DATA BOUNDARY</div><p className="muted" style={{margin:0}}>Champion/item performance is a dated meta snapshot from {TFT_CARRY_PROFILES[0].sourceLabel}; unit traits, costs, images and base stats come from the current Riot Data Dragon feed. The generated team shell is OP CLIMB coaching logic, not a scraped live lobby recommendation and not an exact combat-win prediction.</p></section>
+    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">DATA BOUNDARY</div><p className="muted" style={{margin:0}}>Champion performance and item packages are a dated Patch {TFT_META_PATCH} snapshot from {TFT_CARRY_PROFILES[0].sourceLabel}; unit traits, costs, images and base stats come from the current Riot Data Dragon feed. Standard craftable packages are prioritised over emblem/artifact-dependent outliers. The generated team shell is OP CLIMB coaching logic, not a live-lobby recommendation and not an exact combat-win prediction.</p></section>
   </main></TftShell>;
 }
