@@ -1,6 +1,6 @@
 const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage}=require('electron');
 const {spawn}=require('node:child_process');
-const {existsSync,readFileSync,writeFileSync,mkdirSync,unlinkSync}=require('node:fs');
+const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
 
 const DEFAULT_WEB='https://opclimb.com';
@@ -99,6 +99,21 @@ function startTracker(){
   });
 }
 
+async function redeemPairCode(rawCode,webUrl){
+  const code=String(rawCode||'').trim().toUpperCase();
+  if(code.replace(/[^A-Z0-9]/g,'').length!==12)return {ok:false,error:'Enter the 12-character pairing code shown on OP CLIMB.'};
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),10000);
+  try{
+    const response=await fetch(`${webUrl}/api/live/pair/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code}),signal:controller.signal});
+    const body=await response.json().catch(()=>({}));
+    if(!response.ok||!body?.token)return {ok:false,error:body?.error||'Pairing failed. Create a new code on OP CLIMB and try again.'};
+    return {ok:true,token:String(body.token)};
+  }catch(err){
+    return {ok:false,error:err?.name==='AbortError'?'Pairing timed out. Check your internet connection and try again.':'Could not reach OP CLIMB.'};
+  }finally{clearTimeout(timer)}
+}
+
 function createWindow(show=true){
   if(mainWindow&&!mainWindow.isDestroyed()){if(show){mainWindow.show();mainWindow.focus()}return mainWindow}
   mainWindow=new BrowserWindow({width:760,height:690,minWidth:660,minHeight:600,show:false,backgroundColor:'#090d0a',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
@@ -135,27 +150,29 @@ function applyAutoStart(enabled){
 }
 
 ipcMain.handle('companion:get-state',()=>publicState());
-ipcMain.handle('companion:pair',(_event,payload)=>{
-  const token=String(payload?.token||'').trim();
+ipcMain.handle('companion:pair',async(_event,payload)=>{
   const webUrl=String(payload?.webUrl||DEFAULT_WEB).trim().replace(/\/$/,'');
-  if(!token.startsWith('climb_live_'))return {ok:false,error:'That does not look like an OP CLIMB pairing token.'};
+  const safeWeb=/^https:\/\//i.test(webUrl)?webUrl:DEFAULT_WEB;
   if(!safeStorage.isEncryptionAvailable())return {ok:false,error:'Windows secure storage is unavailable on this PC.'};
+  setState({phase:'STARTING',detail:'Securely pairing this PC with OP CLIMB…'});
+  const claimed=await redeemPairCode(payload?.code,safeWeb);
+  if(!claimed.ok){setState({phase:'SETUP',detail:'Pair this PC from OP CLIMB to start live tracking.'});return claimed}
   const cfg=readConfig();
-  cfg.webUrl=/^https:\/\//i.test(webUrl)?webUrl:DEFAULT_WEB;
-  cfg.tokenCipher=safeStorage.encryptString(token).toString('base64');
+  cfg.webUrl=safeWeb;
+  cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');
   writeConfig(cfg);
   recentLogs=[];
   stopTracker();startTracker();
   return {ok:true};
 });
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];setState({phase:'SETUP',detail:'This PC is unpaired. Create a new pairing from OP CLIMB.',trackerRunning:false});return {ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];setState({phase:'SETUP',detail:'This PC is unpaired. Create a new pairing code on OP CLIMB.',trackerRunning:false});return {ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return {ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return {ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return {ok:true}});
 
 app.on('second-instance',()=>createWindow(true));
 app.on('before-quit',()=>{quitting=true;stopTracker()});
-app.on('window-all-closed',event=>{event.preventDefault()});
+app.on('window-all-closed',()=>{});
 
 app.whenReady().then(()=>{
   const cfg=readConfig();
