@@ -59,37 +59,48 @@ function roleFromShell(role:string,isCarry:boolean):TftBoardRole{
   return'FLEX';
 }
 
-function targetPosition(role:TftBoardRole,index:number){
-  const col=index%7;
-  if(role==='FRONTLINE')return{row:0,col};
-  if(role==='CARRY')return{row:3,col};
-  if(role==='SUPPORT')return{row:2,col};
-  return{row:index%2?1:2,col};
+function preferredRows(role:TftBoardRole){
+  if(role==='FRONTLINE')return[0,1,2,3];
+  if(role==='CARRY')return[3,2,1,0];
+  if(role==='SUPPORT')return[2,3,1,0];
+  return[1,2,0,3];
 }
 
-function preserveStar(current:TftBoardUnit|undefined,cost:number):TftBoardStar{
+function firstOpenPosition(role:TftBoardRole,used:Set<string>,seed:number){
+  for(const row of preferredRows(role)){
+    for(let step=0;step<7;step++){
+      const col=(seed+step)%7;
+      if(!used.has(`${row}-${col}`))return{row,col};
+    }
+  }
+  return{row:3,col:6};
+}
+
+function preserveStar(current:TftBoardUnit|undefined):TftBoardStar{
   if(current)return current.star;
-  // The target read models an attainable transition state, not a fantasy fully-upgraded cap board.
-  // Missing units therefore enter as one-star regardless of cost.
-  void cost;
+  // Missing units enter as one-star so the target read stays an attainable transition proxy.
   return 1;
 }
 
 function buildTargetContext(current:TftBoardContext,profile:TftCarryProfile,build:TftCarryItemBuild,champions:TftStaticChampion[],targetSize:number){
   const shell=buildCarryShell(profile,champions,targetSize);
   const currentByName=new Map(current.units.map(u=>[norm(u.name),u]));
+  const used=new Set<string>();
   const units:TftBoardUnit[]=shell.units.map((entry,index)=>{
     const champ=entry.champion;
     const existing=currentByName.get(norm(champ.name));
     const isCarry=norm(champ.name)===norm(profile.champion);
     const role=roleFromShell(entry.role,isCarry);
-    const pos=existing?{row:existing.row,col:existing.col}:targetPosition(role,index);
+    let pos:{row:number;col:number};
+    if(existing&&!used.has(`${existing.row}-${existing.col}`))pos={row:existing.row,col:existing.col};
+    else pos=firstOpenPosition(role,used,index);
+    used.add(`${pos.row}-${pos.col}`);
     return{
       id:existing?.id||`transition-${champ.id}-${index}`,
       championId:champ.id,
       name:champ.name,
       cost:Number(champ.tier)||1,
-      star:preserveStar(existing,Number(champ.tier)||1),
+      star:preserveStar(existing),
       role,
       items:isCarry?[...build.items]:(existing?.items||[]),
       traits:champ.traits||[],
@@ -175,7 +186,7 @@ function decideCall(current:TftBoardContext,currentRead:TftBoardRead,targetRead:
   }else if(swapLoad<=2&&purchaseFloor<=Math.max(8,current.gold*.35)){
     call='LIGHT PIVOT';risk=lowHp?'MEDIUM':'LOW';reasons.push(`Only ${swapLoad} unit${swapLoad===1?' is':'s are'} missing from the target shell.`);reasons.push(`${purchaseFloor}g is the minimum direct purchase cost before reroll/search costs, so the structural change is comparatively light.`);
   }else{
-    call='TRANSITION IN STAGES';risk=(swapLoad>=4||expensiveMissing>=2||carryMissing&&current.gold<30)?'HIGH':'MEDIUM';reasons.push(`${swapLoad} units need replacing, including ${expensiveMissing} missing 4/5-cost unit${expensiveMissing===1?'':'s'}.`);reasons.push('Build the target in layers; selling the whole current board first creates unnecessary transition risk.');
+    call='TRANSITION IN STAGES';risk=(swapLoad>=4||expensiveMissing>=2||(carryMissing&&current.gold<30))?'HIGH':'MEDIUM';reasons.push(`${swapLoad} units need replacing, including ${expensiveMissing} missing 4/5-cost unit${expensiveMissing===1?'':'s'}.`);reasons.push('Build the target in layers; selling the whole current board first creates unnecessary transition risk.');
   }
   if(delta>=8)reasons.push(`The attainable target-state proxy improves Board Strength by ${delta} points if the listed units can actually be found.`);
   else if(delta<=-4)reasons.push(`The immediate one-star target proxy is ${Math.abs(delta)} points weaker than the current board, so the target needs upgrades before it deserves a full swap.`);
