@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "description": "OP CLIMB Windows companion for League of Legends match capture and post-game coaching.",
   "main": "electron/main.cjs",
@@ -35,6 +35,7 @@
       }
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -49,7 +50,10 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "OP CLIMB Companion",
-      "uninstallDisplayName": "OP CLIMB Companion"
+      "uninstallDisplayName": "OP CLIMB Companion",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     }
   }
 }
