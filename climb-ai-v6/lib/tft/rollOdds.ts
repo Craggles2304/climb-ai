@@ -141,8 +141,8 @@ function simulateBudget(s:TftRollScenario){
 export function estimateRoll(input:TftRollScenario):TftRollEstimate{
   const level=int(input.level,1,11);
   const cost=int(input.cost,1,5) as TftCost;
-  const goal=input.goal===3?3:2;
-  const clean={...input,level,cost,goal,goldBudget:Math.max(0,int(input.goldBudget,0,500))};
+  const goal:TftStarGoal=input.goal===3?3:2;
+  const clean:TftRollScenario={...input,level,cost,goal,goldBudget:Math.max(0,int(input.goldBudget,0,500))};
   const sim=simulateBudget(clean);
   const wanted=goalCopies(goal);
   const chanceAtLeastOne=sim.need<=0?1:1-(sim.dist[0]||0);
