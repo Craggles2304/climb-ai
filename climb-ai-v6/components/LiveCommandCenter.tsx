@@ -84,7 +84,7 @@ export function LiveCommandCenter(){
       const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});
       const body=await res.json();
       if(!res.ok){setMessage(body.error||'Pairing failed.');return}
-      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Secure pairing ready. Install the Windows app once, then click Open Companion & Connect.');
+      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Installer download started. Install OP CLIMB Companion, then click Open Companion & Connect below.');
     }catch{setMessage('Could not reach the pairing service.')}
     finally{setBusy(false)}
   }
@@ -134,7 +134,7 @@ export function LiveCommandCenter(){
         <p className="muted">You only need this section for first-time setup, another PC or reinstalling the Companion.</p>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
           <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
-          <button className="btn primary" disabled={busy||!isOwnAccount} onClick={pair}>{busy?'CREATING SECURE PAIRING…':'PAIR A NEW PC'}</button>
+          <a className="btn primary" href="/download/windows" target="_blank" rel="noopener" aria-disabled={busy||!isOwnAccount} onClick={e=>{if(busy||!isOwnAccount){e.preventDefault();return}void pair()}}>{busy?'CREATING SECURE PAIRING…':'CONNECT THIS PC'}</a>
         </div>
         {message&&<p style={{marginTop:12}}>{message}</p>}
         {pairCode&&<WindowsTrackerInstaller code={pairCode}/>} 
