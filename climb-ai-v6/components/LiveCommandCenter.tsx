@@ -4,7 +4,7 @@ import {useAccount} from './AccountContext';
 import {PageHead} from './UI';
 import {WindowsTrackerInstaller} from './WindowsTrackerInstaller';
 
-type Device={id:string;account_key:string;device_name:string;last_seen_at:string|null};
+type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};
 type Item={itemId:number;displayName:string;count:number;price:number};
 type Player={summonerName:string;riotId:string|null;championName:string;team:string;level:number;position:string|null;itemGold:number;items:Item[];scores:{kills:number;deaths:number;assists:number;creepScore:number;wardScore:number}};
 type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;championName:string;position:string|null;currentGold:number};players:Player[]};
@@ -16,7 +16,7 @@ export function LiveCommandCenter(){
   const [review,setReview]=useState<Review|null>(null);
   const [pairCode,setPairCode]=useState('');
   const [pairExpiresAt,setPairExpiresAt]=useState('');
-  const [pairBaselineCount,setPairBaselineCount]=useState(0);
+  const [pairStartedAt,setPairStartedAt]=useState(0);
   const [deviceName,setDeviceName]=useState('My Windows PC');
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
@@ -43,18 +43,20 @@ export function LiveCommandCenter(){
 
   useEffect(()=>{
     void refresh();
-    const tick=()=>{if(document.visibilityState==='visible')void refreshReview()};
+    const reviewTick=()=>{if(document.visibilityState==='visible')void refreshReview()};
+    const deviceTick=()=>{if(document.visibilityState==='visible')void refreshDevices()};
     const onVisibility=()=>{if(document.visibilityState==='visible')void refresh()};
-    const id=window.setInterval(tick,10_000);
+    const reviewId=window.setInterval(reviewTick,10_000);
+    const deviceId=window.setInterval(deviceTick,15_000);
     document.addEventListener('visibilitychange',onVisibility);
-    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',onVisibility)};
-  },[refresh,refreshReview]);
+    return()=>{window.clearInterval(reviewId);window.clearInterval(deviceId);document.removeEventListener('visibilitychange',onVisibility)};
+  },[refresh,refreshDevices,refreshReview]);
 
   useEffect(()=>{
     if(!pairCode)return;
     const tick=()=>{
       if(pairExpiresAt&&Date.now()>=new Date(pairExpiresAt).getTime()){
-        setPairCode('');setPairExpiresAt('');setMessage('That pairing link expired. Choose Pair a new PC to create a fresh one.');return;
+        setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Download & connect this PC to create a fresh one.');return;
       }
       void refreshDevices();
     };
@@ -64,38 +66,45 @@ export function LiveCommandCenter(){
   },[pairCode,pairExpiresAt,refreshDevices]);
 
   useEffect(()=>{
-    if(pairCode&&devices.length>pairBaselineCount){
-      setPairCode('');setPairExpiresAt('');setMessage('Companion connected successfully. This PC is ready for League.');
+    if(!pairCode||!pairStartedAt)return;
+    const newPcOnline=devices.some(device=>{
+      const createdAt=new Date(device.created_at).getTime();
+      return Number.isFinite(createdAt)&&createdAt>=pairStartedAt-5_000&&recent(device.last_seen_at,45_000);
+    });
+    if(newPcOnline){
+      setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('Companion heartbeat confirmed. This PC is connected and ready for League.');
     }
-  },[devices.length,pairBaselineCount,pairCode]);
+  },[devices,pairStartedAt,pairCode]);
 
-  const paired=devices.length>0;
+  const linked=devices.length>0;
+  const online=devices.some(device=>recent(device.last_seen_at,45_000));
   const snapshot=review?.latestSnapshot??null;
   const me=useMemo(()=>snapshot?findMe(snapshot):null,[snapshot]);
   const ready=Boolean(review&&['COMPLETE','ABORTED'].includes(review.status)&&snapshot);
   const recording=Boolean(review?.status==='ACTIVE'&&recent(review.lastSeenAt,30_000));
-  const status=recording?'RECORDING':ready?'REVIEW READY':paired?'READY FOR LEAGUE':'SETUP REQUIRED';
+  const status=recording?'RECORDING':online?'READY FOR LEAGUE':linked?'COMPANION OFFLINE':'SETUP REQUIRED';
   const csMin=me&&snapshot?((me.scores.creepScore/Math.max(snapshot.gameTime/60,1/60))).toFixed(1):'—';
 
   async function pair(){
     if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing.');return}
-    setBusy(true);setMessage('');setPairCode('');setPairExpiresAt('');setPairBaselineCount(devices.length);
+    const startedAt=Date.now();
+    setBusy(true);setMessage('');setPairCode('');setPairExpiresAt('');setPairStartedAt(startedAt);
     try{
       const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});
       const body=await res.json();
-      if(!res.ok){setMessage(body.error||'Pairing failed.');return}
-      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Installer download started. Install OP CLIMB Companion, then click Open Companion & Connect below.');
-    }catch{setMessage('Could not reach the pairing service.')}
+      if(!res.ok){setPairStartedAt(0);setMessage(body.error||'Pairing failed.');return}
+      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Installer download opened. Install OP CLIMB Companion, then click Open Companion & Connect below. The page will only show connected after a real Companion heartbeat is received.');
+    }catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}
     finally{setBusy(false)}
   }
 
   return <div className="op-live-command">
     <PageHead title="Live Companion" subtitle="Record quietly. Review the decisions that actually move your rank."/>
 
-    <section className={`glass card op-live-status ${recording?'is-recording':ready?'is-ready':''}`}>
+    <section className={`glass card op-live-status ${recording?'is-recording':online?'is-ready':''}`}>
       <div className="op-live-status-copy">
-        <div><div className="eyebrow">OP CLIMB COMPANION</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':ready?'The game is analysed. Start with the grade and the first Fix Ladder priority.':paired?'Companion connected. It can stay quietly in your Windows tray.':'Install and pair the Windows Companion once to start recording League matches.'}</p></div>
-        <span className="op-live-status-pill">{recording?'● LIVE':ready?'✓ ANALYSED':paired?'● WAITING':'SETUP'}</span>
+        <div><div className="eyebrow">OP CLIMB COMPANION</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion heartbeat is live. Leave it quietly in your Windows tray and play League normally.':linked?'A PC is registered to this account, but OP CLIMB is not receiving a live Companion heartbeat. Download/open the Companion on this PC to reconnect.':'Install and pair the Windows Companion once to start recording League matches.'}</p></div>
+        <span className="op-live-status-pill">{recording?'● LIVE':online?'● ONLINE':linked?'○ OFFLINE':'SETUP'}</span>
       </div>
       {recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/><Mini label="GAME TIME" value={clock(snapshot.gameTime)}/><Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/></div>}
     </section>
@@ -128,13 +137,13 @@ export function LiveCommandCenter(){
       </details>
     </section>}
 
-    <details className="glass card op-quiet-details op-tracker-setup" open={!paired||Boolean(pairCode)}>
-      <summary>{paired?'COMPANION SETUP & DEVICES':'INSTALL & CONNECT THIS WINDOWS PC'}</summary>
+    <details className="glass card op-quiet-details op-tracker-setup" open={!online||Boolean(pairCode)}>
+      <summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'INSTALL & CONNECT THIS WINDOWS PC'}</summary>
       <div style={{marginTop:16}}>
         <p className="muted">You only need this section for first-time setup, another PC or reinstalling the Companion.</p>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
           <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
-          <a className="btn primary" href="/download/windows" target="_blank" rel="noopener" aria-disabled={busy||!isOwnAccount} onClick={e=>{if(busy||!isOwnAccount){e.preventDefault();return}void pair()}}>{busy?'CREATING SECURE PAIRING…':'CONNECT THIS PC'}</a>
+          <a className="btn primary" href="/download/windows" target="_blank" rel="noopener" aria-disabled={busy||!isOwnAccount} onClick={e=>{if(busy||!isOwnAccount){e.preventDefault();return}void pair()}}>{busy?'CREATING SECURE PAIRING…':online?'PAIR ANOTHER PC':'DOWNLOAD & CONNECT THIS PC'}</a>
         </div>
         {message&&<p style={{marginTop:12}}>{message}</p>}
         {pairCode&&<WindowsTrackerInstaller code={pairCode}/>} 
