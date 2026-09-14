@@ -3,7 +3,7 @@ import Image from 'next/image';
 import {useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {TftShell} from '@/components/TftShell';
-import {TFT_CARRY_PROFILES,TFT_META_AS_OF,TFT_META_PATCH} from '@/lib/tft/carryBuilder';
+import {TFT_CARRY_PROFILES,TFT_META_AS_OF,TFT_META_PATCH,TFT_META_SET} from '@/lib/tft/carryBuilder';
 import {TFT_COMPONENTS,componentCount,slamCandidates,topCarryDirections,type ComponentBag,type TftComponent} from '@/lib/tft/itemFinder';
 
 type StaticEntry={id:string;name:string;image:string|null};
@@ -38,10 +38,10 @@ export default function TftItemFinder(){
   return <TftShell><main className="container section">
     <div className="eyebrow">ITEM-FIRST FLEX ENGINE · STATIC PREP</div>
     <h1>COMPONENT → CARRY FINDER</h1>
-    <p className="muted" style={{maxWidth:930}}>Tell OP CLIMB what components and completed items you actually have. It ranks the strongest carry directions your bag naturally supports, shows what can be slammed now, and keeps three viable paths open instead of forcing one comp from Stage 2.</p>
+    <p className="muted" style={{maxWidth:930}}>Tell OP CLIMB what components and completed items you actually have. It ranks current Set 18 carry directions your bag naturally supports, shows what can be slammed now, and keeps three viable paths open instead of forcing one comp from Stage 2.</p>
 
     <section className="glass card" style={{marginTop:18}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'end',flexWrap:'wrap'}}><div><div className="eyebrow">YOUR COMPONENT BAG</div><h2>WHAT DID THE GAME GIVE YOU?</h2><p className="muted" style={{margin:0}}>Set {TFT_META_PATCH} carry snapshot · {TFT_META_AS_OF} · Riot static feed {data?.version||'loading…'}</p></div><button className="btn secondary" onClick={()=>{setComponents({});setCompleted([]);}}>RESET BAG</button></div>
+      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'end',flexWrap:'wrap'}}><div><div className="eyebrow">YOUR COMPONENT BAG</div><h2>WHAT DID THE GAME GIVE YOU?</h2><p className="muted" style={{margin:0}}>Set {TFT_META_SET} · Patch {TFT_META_PATCH} carry snapshot · {TFT_META_AS_OF} · Riot static feed {data?.version||'loading…'}</p></div><button className="btn secondary" onClick={()=>{setComponents({});setCompleted([]);}}>RESET BAG</button></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:9,marginTop:14}}>{TFT_COMPONENTS.map(component=>{const info=itemByName.get(norm(component));const count=Number(components[component]||0);return <div key={component} style={{padding:11,borderRadius:14,border:count?'2px solid currentColor':'1px solid rgba(255,255,255,.08)',background:count?'rgba(255,255,255,.07)':'rgba(255,255,255,.025)'}}><div style={{display:'flex',gap:9,alignItems:'center'}}>{info?.image?<Image src={info.image} alt="" width={38} height={38} style={{borderRadius:9}}/>:null}<div style={{minWidth:0}}><b style={{fontSize:12}}>{component}</b><div className="muted" style={{fontSize:10}}>Owned: {count}</div></div></div><div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,marginTop:9}}><button className="btn secondary" onClick={()=>changeComponent(component,-1)} disabled={!count}>−</button><button className="btn primary" onClick={()=>changeComponent(component,1)}>+</button></div></div>})}</div>
       <div className="cue-row" style={{marginTop:12}}><span>TOTAL COMPONENTS</span><b>{totalComponents}</b></div>
     </section>
@@ -71,6 +71,6 @@ export default function TftItemFinder(){
       <p className="muted" style={{fontSize:11,marginBottom:0,marginTop:12}}>Higher flex means the item appears across more viable carry directions in the current OP CLIMB carry snapshot. This is a preparation aid, not an instruction to slam an item during a live round.</p>
     </section>
 
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">HOW TO USE IT</div><p className="muted" style={{margin:0}}>Example: if you have Bow + Rod + Sword, the engine recognises the immediate Rageblade line while also checking what the remaining Sword can become across Jhin, Twisted Fate, Graves and Jax packages. It ranks the complete bag, not one isolated recipe. Choose a direction, then Carry Builder creates the team shell and Board Lab tests the finished structure.</p></section>
+    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">HOW TO USE IT</div><p className="muted" style={{margin:0}}>Example: Bow + Sword + Tear can point toward Ashe or Kog’Maw depending on the second components, while Rod + Tear naturally opens Kog’Maw or Ahri spell packages. OP CLIMB scores the complete bag, not one isolated recipe. Choose a direction, then Carry Builder creates the team shell and Board Lab tests the finished structure.</p></section>
   </main></TftShell>;
 }
