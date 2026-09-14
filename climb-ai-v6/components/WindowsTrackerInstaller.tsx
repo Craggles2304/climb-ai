@@ -1,6 +1,6 @@
 'use client';
 
-const INSTALLER_URL='https://github.com/Craggles2304/climb-ai/releases/download/companion-beta/OP-Climb-Companion-Setup.exe';
+const INSTALLER_URL='/download/windows';
 
 export function WindowsTrackerInstaller({code}:{code:string}){
   const pairUrl=`opclimb://pair?code=${encodeURIComponent(code)}`;
