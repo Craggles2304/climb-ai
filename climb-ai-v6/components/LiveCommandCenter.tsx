@@ -20,18 +20,35 @@ export function LiveCommandCenter(){
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
 
-  const refresh=useCallback(async()=>{
+  const refreshDevices=useCallback(async()=>{
     try{
-      const [d,r]=await Promise.all([
-        fetch('/api/live/pair',{cache:'no-store'}),
-        fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'}),
-      ]);
-      if(d.ok){const body=await d.json();setDevices((body.devices??[]).filter((x:Device)=>x.account_key===active.id))}
-      if(r.ok){const body=await r.json();setReview(body.review??null)}
+      const response=await fetch('/api/live/pair',{cache:'no-store'});
+      if(!response.ok)return;
+      const body=await response.json();
+      setDevices((body.devices??[]).filter((x:Device)=>x.account_key===active.id));
     }catch{}
   },[active.id]);
 
-  useEffect(()=>{setOrigin(window.location.origin);void refresh();const id=window.setInterval(()=>void refresh(),10_000);return()=>window.clearInterval(id)},[refresh]);
+  const refreshReview=useCallback(async()=>{
+    try{
+      const response=await fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});
+      if(!response.ok)return;
+      const body=await response.json();
+      setReview(body.review??null);
+    }catch{}
+  },[active.id]);
+
+  const refresh=useCallback(async()=>{await Promise.all([refreshDevices(),refreshReview()])},[refreshDevices,refreshReview]);
+
+  useEffect(()=>{
+    setOrigin(window.location.origin);
+    void refresh();
+    const tick=()=>{if(document.visibilityState==='visible')void refreshReview()};
+    const onVisibility=()=>{if(document.visibilityState==='visible')void refresh()};
+    const id=window.setInterval(tick,10_000);
+    document.addEventListener('visibilitychange',onVisibility);
+    return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',onVisibility)};
+  },[refresh,refreshReview]);
 
   const paired=devices.length>0;
   const snapshot=review?.latestSnapshot??null;
