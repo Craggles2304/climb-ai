@@ -3,8 +3,9 @@ import {z} from 'zod';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {
-  authenticateTrackerToken,latestLiveReview,saveLiveEnvelope,
+  authenticateTrackerToken,saveLiveEnvelope,
 } from '@/lib/server/liveTrackerRepository';
+import {latestLiveRead} from '@/lib/server/liveReadRepository';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -82,7 +83,7 @@ export async function GET(req:NextRequest){
   const accountId=req.nextUrl.searchParams.get('accountId')?.trim();
   if(!accountId)return NextResponse.json({ok:false,error:'accountId is required.'},{status:400});
   try{
-    const review=await latestLiveReview(user.id,accountId);
+    const review=await latestLiveRead(user.id,accountId);
     return NextResponse.json({ok:true,review});
   }catch(err){
     console.error('[live-telemetry] read failed',err);
