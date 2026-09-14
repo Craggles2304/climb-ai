@@ -9,6 +9,7 @@
 <body>
 <main class="shell">
   <header class="brand"><div class="mark">OP</div><div><h1>OP CLIMB Companion</h1><p>League match intelligence</p></div></header>
+
   <section id="setup" class="card hidden">
     <div class="eyebrow">ONE-TIME SETUP</div>
     <h2>Connect this Windows PC</h2>
@@ -16,17 +17,103 @@
     <div class="actions"><button id="openSetup" class="primary">OPEN OP CLIMB TO PAIR</button></div>
     <div class="message">No CMD. No Node.js. No tracker key to copy. After pairing, the Companion runs quietly from your Windows system tray.</div>
   </section>
+
   <section id="status" class="card hidden">
     <div class="statusRow"><div><div class="eyebrow">COMPANION STATUS</div><h2 id="statusTitle">Starting…</h2><p id="statusCopy">Starting OP CLIMB Companion.</p></div><div id="statusPill" class="pill">STARTING</div></div>
     <div class="metrics"><div><span>PAIRING</span><b>Connected</b></div><div><span>TRACKER</span><b id="trackerState">Starting</b></div><div><span>MODE</span><b id="modeState">Waiting</b></div></div>
     <div class="actions"><button id="openClimb" class="primary">OPEN OP CLIMB</button><button id="restart">RESTART TRACKER</button><button id="showLogs">DIAGNOSTICS</button></div>
   </section>
+
+  <section id="matchup" class="card matchup-card hidden" aria-live="polite">
+    <div id="matchupLoading" class="hidden">
+      <div class="eyebrow">MATCHUP COACH</div>
+      <h2>Building your lane plan…</h2>
+      <p>Reading the same champion engine used by Matchup Lab.</p>
+    </div>
+
+    <div id="matchupError" class="hidden">
+      <div class="eyebrow">MATCHUP COACH</div>
+      <h2>Matchup plan unavailable</h2>
+      <p id="matchupErrorCopy">OP CLIMB could not build this matchup.</p>
+    </div>
+
+    <div id="matchupReady" class="hidden">
+      <div class="matchup-head">
+        <div>
+          <div class="eyebrow">MATCHUP COACH · PRECOMPUTED GAME PLAN</div>
+          <h2><span id="matchupYou">—</span> <em>VS</em> <span id="matchupThem">—</span></h2>
+          <p id="matchupSummary">Your matchup plan is ready.</p>
+        </div>
+        <div id="matchupEdge" class="edge-pill">EVEN</div>
+      </div>
+
+      <div class="matchup-rulebar">
+        <span>3 RULES FOR THIS GAME</span>
+        <ol id="matchupRules"></ol>
+      </div>
+
+      <div class="matchup-tabs" role="tablist" aria-label="Matchup plan sections">
+        <button class="matchup-tab active" data-matchup-tab="overview" role="tab">OVERVIEW</button>
+        <button class="matchup-tab" data-matchup-tab="spikes" role="tab">POWER SPIKES</button>
+        <button class="matchup-tab" data-matchup-tab="lead" role="tab">GET THE LEAD</button>
+        <button class="matchup-tab" data-matchup-tab="trades" role="tab">TRADES</button>
+        <button class="matchup-tab" data-matchup-tab="items" role="tab">ITEM TEMPO</button>
+        <button class="matchup-tab" data-matchup-tab="states" role="tab">AHEAD / EVEN / BEHIND</button>
+      </div>
+
+      <div class="matchup-panel" data-matchup-panel="overview">
+        <div class="section-title"><span>HOW YOU WIN THIS LANE</span><small id="matchupRole"></small></div>
+        <ol id="winCondition" class="plan-list numbered"></ol>
+        <div class="coach-note">This plan is calculated from champion and matchup data before the fight. It does not issue live “fight now” commands or react to hidden information.</div>
+      </div>
+
+      <div class="matchup-panel hidden" data-matchup-panel="spikes">
+        <div class="section-title"><span>POWER SPIKE LADDER</span><small>WHEN YOUR TOOLS CHANGE</small></div>
+        <div id="powerSpikes" class="spike-grid"></div>
+      </div>
+
+      <div class="matchup-panel hidden" data-matchup-panel="lead">
+        <div class="three-col">
+          <div class="plan-block"><span>1 · CREATE</span><h3>Manufacture the edge</h3><ul id="leadCreate"></ul></div>
+          <div class="plan-block"><span>2 · CONVERT</span><h3>Turn it into tempo</h3><ul id="leadConvert"></ul></div>
+          <div class="plan-block"><span>3 · PROTECT</span><h3>Don't give it back</h3><ul id="leadProtect"></ul></div>
+        </div>
+      </div>
+
+      <div class="matchup-panel hidden" data-matchup-panel="trades">
+        <div class="three-col">
+          <div class="plan-block good-block"><span>SAFE TRADE</span><h3>Your repeatable pattern</h3><ul id="tradeSafe"></ul></div>
+          <div class="plan-block"><span>PRESSURE</span><h3>When to push the matchup</h3><ul id="tradePressure"></ul></div>
+          <div class="plan-block danger-block"><span>AVOID</span><h3>How you lose the lane</h3><ul id="tradeAvoid"></ul></div>
+        </div>
+      </div>
+
+      <div class="matchup-panel hidden" data-matchup-panel="items">
+        <div class="three-col">
+          <div class="plan-block good-block"><span>ITEM LEAD</span><h3>You bought first</h3><ul id="itemAhead"></ul></div>
+          <div class="plan-block"><span>EQUAL ITEMS</span><h3>Still a matchup</h3><ul id="itemEven"></ul></div>
+          <div class="plan-block danger-block"><span>ENEMY ITEM LEAD</span><h3>Stabilise first</h3><ul id="itemBehind"></ul></div>
+        </div>
+      </div>
+
+      <div class="matchup-panel hidden" data-matchup-panel="states">
+        <div class="three-col">
+          <div class="plan-block good-block"><span>IF AHEAD</span><h3>Choke the lane</h3><ul id="stateAhead"></ul></div>
+          <div class="plan-block"><span>IF EVEN</span><h3>Create the first edge</h3><ul id="stateEven"></ul></div>
+          <div class="plan-block danger-block"><span>IF BEHIND</span><h3>Build the comeback</h3><ul id="stateBehind"></ul></div>
+        </div>
+      </div>
+
+      <div class="matchup-footer"><span id="matchupPatch">Patch —</span><span id="matchupSource">Detected automatically</span></div>
+    </div>
+  </section>
+
   <section id="settings" class="card hidden">
     <div class="setting"><div><b>Start with Windows</b><small>Keep the Companion ready automatically.</small></div><button id="autoStart" class="toggle" aria-label="Start with Windows"></button></div>
     <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
     <button id="unpair" class="danger">UNPAIR THIS PC</button>
   </section>
-  <footer>Runs quietly in the system tray. Coaching is built from your match for post-game improvement.</footer>
+  <footer>Runs quietly in the system tray. Matchup coaching is precomputed; post-game coaching learns from what actually happened.</footer>
 </main>
 <script src="renderer.js"></script>
 </body>

@@ -6,13 +6,15 @@ const path=require('node:path');
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
+const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 let mainWindow=null;
 let tray=null;
 let tracker=null;
 let trackerRestartTimer=null;
 let quitting=false;
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false};
+let matchupSignature='';
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2){
@@ -58,22 +60,58 @@ function setState(patch){
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
 }
 function publicState(){return {...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
+
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
+  if(clean.startsWith(MATCHUP_PREFIX)){parseTrackerLine(clean,kind);return}
   recentLogs.push({at:new Date().toISOString(),kind,line:clean});
   if(recentLogs.length>200)recentLogs=recentLogs.slice(-200);
   setState({lastLog:clean});
   parseTrackerLine(clean,kind);
 }
+
 function parseTrackerLine(line,kind){
+  if(line.startsWith(MATCHUP_PREFIX)){
+    try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}
+    return;
+  }
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
-  if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Draft context is being saved.'});
+  if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Building your matchup plan.'});
   if(lower.includes('recording')||lower.includes('match telemetry'))return setState({phase:'RECORDING',detail:'Match detected. Recording quietly in the background.'});
   if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
   if(lower.includes('review')&&lower.includes('post'))return setState({phase:'UPLOADING',detail:'Match finished. Preparing your OP CLIMB review.'});
   if(lower.includes('league client connected'))return setState({phase:'WAITING',detail:'League detected. Waiting for champ select or match.'});
   if(kind==='error'&&state.phase!=='RECORDING')setState({detail:line});
+}
+
+async function loadMatchupPlan(raw){
+  const champion=String(raw?.champion||'').trim();
+  const opponent=String(raw?.opponent||'').trim();
+  const role=String(raw?.role||'').trim();
+  const source=String(raw?.source||'DETECTED').trim();
+  if(!champion||!opponent||champion===opponent)return;
+  const signature=`${champion}|${opponent}|${role}`.toLowerCase();
+  if(signature===matchupSignature&&state.matchup?.status==='READY')return;
+  matchupSignature=signature;
+  setState({matchup:{status:'LOADING',champion,opponent,role:role||null,source,plan:null,error:null}});
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),12000);
+  try{
+    const query=new URLSearchParams({champion,opponent});
+    if(role)query.set('role',role);
+    const response=await fetch(`${currentConfig().webUrl}/api/matchup/live-plan?${query.toString()}`,{signal:controller.signal});
+    const body=await response.json().catch(()=>({}));
+    if(!response.ok||!body?.plan){
+      setState({matchup:{status:'ERROR',champion,opponent,role:role||null,source,plan:null,error:body?.error||`HTTP ${response.status}`}});
+      return;
+    }
+    if(signature!==matchupSignature)return;
+    setState({matchup:{status:'READY',champion,opponent,role:role||null,source,plan:body.plan,error:null}});
+  }catch(err){
+    if(signature!==matchupSignature)return;
+    setState({matchup:{status:'ERROR',champion,opponent,role:role||null,source,plan:null,error:err?.name==='AbortError'?'Matchup plan timed out.':'Could not load the matchup plan.'}});
+  }finally{clearTimeout(timeout)}
 }
 
 function trackerPath(){
@@ -142,13 +180,15 @@ async function handlePairUrl(rawUrl){
   cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');
   writeConfig(cfg);
   recentLogs=[];
+  matchupSignature='';
+  setState({matchup:null});
   stopTracker();
   startTracker();
 }
 
 function createWindow(show=true){
   if(mainWindow&&!mainWindow.isDestroyed()){if(show){mainWindow.show();mainWindow.focus()}return mainWindow}
-  mainWindow=new BrowserWindow({width:760,height:690,minWidth:660,minHeight:600,show:false,backgroundColor:'#090d0a',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  mainWindow=new BrowserWindow({width:920,height:860,minWidth:720,minHeight:650,show:false,backgroundColor:'#090d0a',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   mainWindow.loadFile(path.join(__dirname,'index.html'));
   mainWindow.once('ready-to-show',()=>{if(show)mainWindow.show()});
   mainWindow.on('close',event=>{if(!quitting){event.preventDefault();mainWindow.hide()}});
@@ -170,7 +210,7 @@ function updateTray(){
     {label:'Open OP CLIMB',click:()=>shell.openExternal(`${currentConfig().webUrl}/live`)},
     {label:'Restart Tracker',enabled:paired(),click:()=>{stopTracker();startTracker()}},
     {type:'separator'},
-    {label:'Quit',click:()=>{quitting=true;app.quit()}}
+    {label:'Quit',click:()=>{quitting=true;app.quit()}},
   ]));
 }
 function createTray(){tray=new Tray(appIcon().resize({width:24,height:24}));tray.on('double-click',()=>createWindow(true));updateTray()}
@@ -182,7 +222,13 @@ function applyAutoStart(enabled){
 }
 
 ipcMain.handle('companion:get-state',()=>publicState());
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false});return {ok:true}});
+ipcMain.handle('companion:unpair',()=>{
+  stopTracker();
+  const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);
+  recentLogs=[];matchupSignature='';
+  setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null});
+  return {ok:true};
+});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return {ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return {ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return {ok:true}});

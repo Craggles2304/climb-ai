@@ -1,8 +1,8 @@
 {
   "name": "op-climb-companion",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
-  "description": "OP CLIMB Windows companion for League of Legends match capture and post-game coaching.",
+  "description": "OP CLIMB Windows companion for League of Legends matchup planning, match capture and post-game coaching.",
   "main": "electron/main.cjs",
   "type": "module",
   "scripts": {
