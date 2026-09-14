@@ -18,6 +18,12 @@
     "appId": "com.opclimb.companion",
     "productName": "OP CLIMB Companion",
     "artifactName": "OP-Climb-Companion-Setup.${ext}",
+    "protocols": [
+      {
+        "name": "OP CLIMB Companion Pairing",
+        "schemes": ["opclimb"]
+      }
+    ],
     "files": [
       "electron/**/*",
       "package.json"
