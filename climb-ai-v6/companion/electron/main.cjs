@@ -5,6 +5,7 @@ const path=require('node:path');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
+const PAIR_PROTOCOL='opclimb';
 let mainWindow=null;
 let tray=null;
 let tracker=null;
@@ -12,6 +13,14 @@ let trackerRestartTimer=null;
 let quitting=false;
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false};
+
+function registerProtocol(){
+  if(process.defaultApp&&process.argv.length>=2){
+    return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
+  }
+  return app.setAsDefaultProtocolClient(PAIR_PROTOCOL);
+}
+registerProtocol();
 
 const singleInstance=app.requestSingleInstanceLock();
 if(!singleInstance){app.quit();process.exit(0)}
@@ -99,19 +108,42 @@ function startTracker(){
   });
 }
 
-async function redeemPairCode(rawCode,webUrl){
+async function redeemPairCode(rawCode){
   const code=String(rawCode||'').trim().toUpperCase();
-  if(code.replace(/[^A-Z0-9]/g,'').length!==12)return {ok:false,error:'Enter the 12-character pairing code shown on OP CLIMB.'};
+  if(code.replace(/[^A-Z0-9]/g,'').length!==12)return {ok:false,error:'The pairing link is invalid. Create a new pairing from OP CLIMB.'};
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),10000);
   try{
-    const response=await fetch(`${webUrl}/api/live/pair/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code}),signal:controller.signal});
+    const response=await fetch(`${DEFAULT_WEB}/api/live/pair/claim`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code}),signal:controller.signal});
     const body=await response.json().catch(()=>({}));
-    if(!response.ok||!body?.token)return {ok:false,error:body?.error||'Pairing failed. Create a new code on OP CLIMB and try again.'};
+    if(!response.ok||!body?.token)return {ok:false,error:body?.error||'Pairing failed. Create a new pairing on OP CLIMB and try again.'};
     return {ok:true,token:String(body.token)};
   }catch(err){
     return {ok:false,error:err?.name==='AbortError'?'Pairing timed out. Check your internet connection and try again.':'Could not reach OP CLIMB.'};
   }finally{clearTimeout(timer)}
+}
+
+function deepLinkFromArgs(argv){return argv.find(value=>typeof value==='string'&&value.toLowerCase().startsWith(`${PAIR_PROTOCOL}://`))||''}
+async function handlePairUrl(rawUrl){
+  let parsed;
+  try{parsed=new URL(rawUrl)}catch{return}
+  if(parsed.protocol!==`${PAIR_PROTOCOL}:`||parsed.hostname!=='pair')return;
+  createWindow(true);
+  const code=parsed.searchParams.get('code')||'';
+  if(!safeStorage.isEncryptionAvailable()){
+    setState({phase:'SETUP',detail:'Windows secure storage is unavailable on this PC. Pairing was not saved.'});
+    return;
+  }
+  setState({phase:'STARTING',detail:'Securely connecting this PC to OP CLIMB…'});
+  const claimed=await redeemPairCode(code);
+  if(!claimed.ok){setState({phase:'SETUP',detail:claimed.error||'Pairing failed.'});return}
+  const cfg=readConfig();
+  cfg.webUrl=DEFAULT_WEB;
+  cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');
+  writeConfig(cfg);
+  recentLogs=[];
+  stopTracker();
+  startTracker();
 }
 
 function createWindow(show=true){
@@ -150,27 +182,17 @@ function applyAutoStart(enabled){
 }
 
 ipcMain.handle('companion:get-state',()=>publicState());
-ipcMain.handle('companion:pair',async(_event,payload)=>{
-  const webUrl=String(payload?.webUrl||DEFAULT_WEB).trim().replace(/\/$/,'');
-  const safeWeb=/^https:\/\//i.test(webUrl)?webUrl:DEFAULT_WEB;
-  if(!safeStorage.isEncryptionAvailable())return {ok:false,error:'Windows secure storage is unavailable on this PC.'};
-  setState({phase:'STARTING',detail:'Securely pairing this PC with OP CLIMB…'});
-  const claimed=await redeemPairCode(payload?.code,safeWeb);
-  if(!claimed.ok){setState({phase:'SETUP',detail:'Pair this PC from OP CLIMB to start live tracking.'});return claimed}
-  const cfg=readConfig();
-  cfg.webUrl=safeWeb;
-  cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');
-  writeConfig(cfg);
-  recentLogs=[];
-  stopTracker();startTracker();
-  return {ok:true};
-});
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];setState({phase:'SETUP',detail:'This PC is unpaired. Create a new pairing code on OP CLIMB.',trackerRunning:false});return {ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false});return {ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return {ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return {ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return {ok:true}});
 
-app.on('second-instance',()=>createWindow(true));
+app.on('second-instance',(_event,argv)=>{
+  createWindow(true);
+  const link=deepLinkFromArgs(argv);
+  if(link)void handlePairUrl(link);
+});
+app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});
 app.on('before-quit',()=>{quitting=true;stopTracker()});
 app.on('window-all-closed',()=>{});
 
@@ -178,7 +200,10 @@ app.whenReady().then(()=>{
   const cfg=readConfig();
   state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};
   createTray();
-  const hidden=process.argv.includes('--hidden');
+  const initialLink=deepLinkFromArgs(process.argv);
+  const hidden=process.argv.includes('--hidden')&&!initialLink;
   createWindow(!hidden);
-  if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Pair this PC from OP CLIMB to start live tracking.'});
+  if(initialLink)void handlePairUrl(initialLink);
+  else if(state.paired)startTracker();
+  else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });
