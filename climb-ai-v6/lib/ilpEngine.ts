@@ -63,25 +63,11 @@ export const candidateTasks:Record<string,Candidate>={
 };
 
 function candidateForRole(role:Role){return Object.entries(candidateTasks).filter(([,c])=>!c.roles||c.roles.includes(role));}
-
-function candidateScore(candidate:Candidate,matches:Match[]){
-  const probe:ILPTask={id:'probe',accountId:'probe',...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};
-  const e=evaluateMetric(probe,matches);
-  const priority=candidate.priority||50;
-  if(!e.hasEvidence)return priority*.45;
-  return priority+(100-e.progress)*.72;
-}
-
-function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[]):ILPTask{
-  const probe:ILPTask={id:`system-${key}-${Date.now()}`,accountId,...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};
-  const e=evaluateMetric(probe,matches);
-  return{...probe,progress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Baseline hypothesis — waiting for enough match evidence to confirm or replace it.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Promoted into the active five while evidence is still building.',history:[{at:new Date().toISOString(),type:'PROMOTED',note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Promoted as a role baseline while evidence builds.'}]};
-}
+function candidateScore(candidate:Candidate,matches:Match[]){const probe:ILPTask={id:'probe',accountId:'probe',...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches);const priority=candidate.priority||50;return e.hasEvidence?priority+(100-e.progress)*.72:priority*.45;}
+function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[]):ILPTask{const probe:ILPTask={id:`system-${key}-${Date.now()}`,accountId,...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches);return{...probe,progress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Baseline hypothesis — waiting for enough match evidence to confirm or replace it.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Promoted into the active five while evidence is still building.',history:[{at:new Date().toISOString(),type:'PROMOTED',note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Promoted as a role baseline while evidence builds.'}]};}
 
 export function ensureFiveActive(tasks:ILPTask[],matches:Match[],accountId:string,role:Role):{tasks:ILPTask[];changes:string[]}{
-  const next=[...tasks];const changes:string[]=[];const live=()=>next.filter(active);
-  const usedTitles=new Set(next.map(t=>t.title.toLowerCase()));
-  const usedMetrics=new Set(live().map(t=>`${t.metric}:${t.category}`));
+  const next=[...tasks];const changes:string[]=[];const live=()=>next.filter(active);const usedTitles=new Set(next.map(t=>t.title.toLowerCase()));const usedMetrics=new Set(live().map(t=>`${t.metric}:${t.category}`));
   const candidates=candidateForRole(role).filter(([,candidate])=>!usedTitles.has(candidate.title.toLowerCase())&&!usedMetrics.has(`${candidate.metric}:${candidate.category}`)).sort((a,b)=>candidateScore(b[1],matches)-candidateScore(a[1],matches));
   while(live().length<5&&candidates.length){const [key,candidate]=candidates.shift()!;const task=instantiateCandidate(accountId,key,candidate,matches);next.push(task);usedTitles.add(task.title.toLowerCase());usedMetrics.add(`${task.metric}:${task.category}`);changes.push(`${task.title} promoted into the active five.`)}
   return{tasks:next,changes};
@@ -93,13 +79,8 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
   const next=tasks.map(t=>{
     if(t.status==='MASTERED'||t.status==='PAUSED')return t;
     const e=evaluateMetric(t,recent);if(!e.hasEvidence)return{...t,lastUpdatedReason:e.note};
-    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);
-    const successfulGames=passResults.filter(Boolean).length;
-    const gamesObserved=passResults.length;
-    const masteryRequired=t.masteryRequired||3;
-    const mastered=gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&e.progress>=85;
-    const status=mastered?'MASTERED' as const:e.progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
-    if(mastered&&t.status!=='MASTERED')changes.push(`${t.title} reached mastery evidence and left the active five.`);
+    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);const successfulGames=passResults.filter(Boolean).length;const gamesObserved=passResults.length;const masteryRequired=t.masteryRequired||3;const mastered=gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&e.progress>=85;const status=mastered?'MASTERED' as const:e.progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
+    if(mastered)changes.push(`${t.title} reached mastery evidence and left the active five.`);
     return{...t,progress:e.progress,status,successfulGames,gamesObserved,masteryRequired,lastUpdatedReason:e.note,evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')),`AUTO: ${e.note}`],history:[...(t.history||[]),{at:new Date().toISOString(),type:(mastered?'MASTERED':'PROGRESS') as 'MASTERED'|'PROGRESS',note:e.note}].slice(-10)};
   });
   return{tasks:next,changes};
