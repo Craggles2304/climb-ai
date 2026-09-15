@@ -7,12 +7,18 @@ let botLaneSimSignature='';
 let botLaneSim=null;
 let botLaneSimLoading=false;
 let fullPregameOpen=false;
+let activeCoachLevel={tier:'SILVER',depth:3,visiblePoints:3,summary:'Core coaching with a little more context.'};
 
 function phaseTitle(phase){
   return ({SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',CHAMP_SELECT:'Your game plan is ready',RECORDING:'Play. We are recording.',UPLOADING:'Building your review',REVIEW:'Your game review',RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'})[phase]||'OP CLIMB Companion';
 }
 function modeLabel(phase){
   return ({SETUP:'Setup',STARTING:'Starting',WAITING:'Ready',CHAMP_SELECT:'Pregame',RECORDING:'Recording',UPLOADING:'Reviewing',REVIEW:'Review Ready',RESTARTING:'Restarting',AUTH_ERROR:'Pairing Error',ERROR:'Error'})[phase]||phase;
+}
+function setCoachLevel(level){
+  if(level&&Number(level.depth))activeCoachLevel={...activeCoachLevel,...level,depth:Math.max(1,Math.min(10,Number(level.depth)||3))};
+  const signal=document.querySelector('.brand-signal b');
+  if(signal)signal.textContent=`${activeCoachLevel.tier} COACH · ${activeCoachLevel.depth}/10 DETAIL`;
 }
 
 function render(state){
@@ -25,7 +31,7 @@ function render(state){
   renderUpdate(updateState,state.phase);
   if(!state.paired)return;
   $('statusTitle').textContent=phaseTitle(state.phase);
-  $('statusCopy').textContent=state.phase==='REVIEW'?'Three good points. Three critical points. One thing to take into the next game.':state.detail||'Companion is running.';
+  $('statusCopy').textContent=state.phase==='REVIEW'?`${activeCoachLevel.tier} Coach has pulled out the points that matter for your level.`:state.detail||'Companion is running.';
   $('trackerState').textContent=state.trackerRunning?'Running':'Stopped';
   $('modeState').textContent=modeLabel(state.phase);
   $('statusPill').textContent=modeLabel(state.phase).toUpperCase();
@@ -43,13 +49,14 @@ function renderPostGameReview(review,phase){
   const visible=phase==='REVIEW'&&review;
   section.classList.toggle('hidden',!visible);
   if(!visible)return;
+  setCoachLevel(review.coachLevel);
   const match=review.match||{};
   $('simpleReviewMatch').textContent=[match.champion,match.role,match.kda?`${match.kda} KDA`:null,Number.isFinite(match.csPerMin)?`${match.csPerMin} CS/min`:null].filter(Boolean).join(' · ');
-  $('simpleReviewTag').textContent=review.partial?'PARTIAL REVIEW':'MATCH REVIEW';
+  $('simpleReviewTag').textContent=`${activeCoachLevel.tier} COACH · ${review.partial?'PARTIAL REVIEW':'MATCH REVIEW'}`;
   renderReviewList('simpleGood',review.good,'✓');
   renderReviewList('simpleCritical',review.critical,'!');
   $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
-  $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current learning-plan cue and build more evidence.';
+  $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current Active Five cue and build more evidence.';
 }
 
 function ensureReviewSection(){
@@ -75,7 +82,7 @@ function ensureReviewSection(){
 
 function renderReviewList(id,items,mark){
   const root=$(id);root.replaceChildren();
-  const values=Array.isArray(items)?items.slice(0,3):[];
+  const values=Array.isArray(items)?items.slice(0,Math.max(1,Number(activeCoachLevel.reviewPoints)||3)):[];
   for(const item of values){
     const row=document.createElement('div');row.style.display='grid';row.style.gridTemplateColumns='24px 1fr';row.style.gap='9px';row.style.padding='7px 0';
     const icon=document.createElement('b');icon.textContent=mark;icon.style.fontSize='18px';
@@ -109,6 +116,7 @@ function renderMatchup(matchup,teamPlan,paired){
   const visible=Boolean(paired&&matchup);
   box.classList.toggle('hidden',!visible);
   if(!visible)return;
+  setCoachLevel(teamPlan?.coachLevel);
   $('matchupLoading').classList.toggle('hidden',matchup.status!=='LOADING');
   $('matchupError').classList.toggle('hidden',matchup.status!=='ERROR');
   $('matchupReady').classList.toggle('hidden',matchup.status!=='READY');
@@ -126,7 +134,7 @@ function renderMatchup(matchup,teamPlan,paired){
   const edge=plan.laneEdge?.edge||'EVEN';
   $('matchupEdge').textContent=plan.laneEdge?.label||edge;
   $('matchupEdge').className=`edge-pill edge-${String(edge).toLowerCase()}`;
-  $('matchupRole').textContent=plan.role?`${plan.role} PLAN`:'GAME PLAN';
+  $('matchupRole').textContent=`${activeCoachLevel.tier} COACH · ${plan.role?`${plan.role} PLAN`:'GAME PLAN'}`;
   $('matchupPatch').textContent=plan.patch?`Patch ${plan.patch}`:'Current patch';
   $('matchupSource').textContent=hasOpponent?(matchup.source==='IN_GAME'?'Lane opponent confirmed in game':'Matchup resolved from champ select'):'Champion locked · matchup will enrich automatically';
   $('deepDiveTitle').textContent=hasOpponent?'FULL MATCHUP ANALYSIS':'FULL CHAMPION ANALYSIS';
@@ -138,7 +146,7 @@ function renderMatchup(matchup,teamPlan,paired){
   $('firstSpikeText').textContent=first?.fight||'Preserve HP and create the first clean pressure window.';
   $('majorSpikeLevel').textContent=major?`LV ${major.level}`:'—';
   $('majorSpikeText').textContent=major?.fight||'Reach the breakpoint with usable HP and resources.';
-  $('leadChain').textContent='TRADE → HP → WAVE → RESET → ITEM';
+  $('leadChain').textContent=activeCoachLevel.depth<=2?'TRADE → RESET':activeCoachLevel.depth<=4?'TRADE → WAVE → RESET':'TRADE → HP → WAVE → RESET → ITEM';
   $('yourJob').textContent=teamPlan?.yourJob||fallbackJob(plan.role);
 
   renderLaneDuel(plan,matchup,hasOpponent);
@@ -165,11 +173,22 @@ function renderMatchup(matchup,teamPlan,paired){
 }
 
 function applySimplePregame(box){
-  const advanced=[box.querySelector('.power-radar'),box.querySelector('.tactical-board'),$('laneDuelBrief'),$('botLaneBrief'),$('teamBrief'),$('deepDive'),box.querySelector('.matchup-footer')].filter(Boolean);
-  advanced.forEach(node=>node.style.display=fullPregameOpen?'':'none');
+  const depth=Math.max(1,Math.min(10,Number(activeCoachLevel.depth)||3));
+  const sections=[
+    [box.querySelector('.tactical-board'),3],
+    [box.querySelector('.power-radar'),4],
+    [$('botLaneBrief'),4],
+    [$('laneDuelBrief'),5],
+    [box.querySelector('.matchup-footer'),5],
+    [$('teamBrief'),6],
+    [$('deepDive'),7],
+  ].filter(([node])=>Boolean(node));
+  sections.forEach(([node,minDepth])=>{node.style.display=fullPregameOpen||depth>=minDepth?'':'none'});
   let button=$('simplePregameToggle');
   if(!button){button=document.createElement('button');button.id='simplePregameToggle';button.className='ghost';button.style.margin='12px auto';button.style.display='block';button.addEventListener('click',()=>{fullPregameOpen=!fullPregameOpen;applySimplePregame(box)});const rules=box.querySelector('.rules-brief');(rules||box).after(button)}
-  button.textContent=fullPregameOpen?'HIDE FULL MATCHUP':'OPEN FULL MATCHUP';
+  if(depth>=10&&!fullPregameOpen){button.style.display='none';return}
+  button.style.display='block';
+  button.textContent=fullPregameOpen?'SHOW MY RANK VIEW':`SHOW MORE DETAIL (${activeCoachLevel.tier})`;
 }
 
 function renderLaneDuel(plan,matchup,hasOpponent){
@@ -343,7 +362,8 @@ function fallbackJob(role){
 function fillList(id,values,numbered=false){
   const node=$(id);if(!node)return;
   node.replaceChildren();
-  const items=Array.isArray(values)?values.filter(Boolean):[];
+  const cap=Math.max(1,Number(activeCoachLevel.visiblePoints)||3);
+  const items=Array.isArray(values)?values.filter(Boolean).slice(0,cap):[];
   for(const value of items){
     const li=document.createElement('li');
     if(numbered){const text=document.createElement('span');text.textContent=String(value);li.appendChild(text)}else li.textContent=String(value);
@@ -354,7 +374,8 @@ function fillList(id,values,numbered=false){
 
 function renderSpikes(spikes){
   const root=$('powerSpikes');root.replaceChildren();
-  for(const spike of spikes){
+  const max=activeCoachLevel.depth<=4?3:activeCoachLevel.depth<=6?4:spikes.length;
+  for(const spike of spikes.slice(0,max)){
     const card=document.createElement('article');card.className=`spike-card edge-${String(spike.edge||'EVEN').toLowerCase()}`;
     const top=document.createElement('div');top.className='spike-top';
     const level=document.createElement('strong');level.textContent=`LV ${spike.level}`;
@@ -364,8 +385,8 @@ function renderSpikes(spikes){
     const lead=document.createElement('p');lead.className='spike-lead';lead.textContent=spike.createLead||'';
     const avoid=document.createElement('p');avoid.className='spike-avoid';avoid.textContent=spike.avoid||'';
     card.append(top,fight,lead,avoid);
-    const facts=Array.isArray(spike.facts)?spike.facts.filter(Boolean):[];
-    if(facts.length){
+    const facts=Array.isArray(spike.facts)?spike.facts.filter(Boolean).slice(0,Math.max(1,activeCoachLevel.visiblePoints)):[];
+    if(facts.length&&activeCoachLevel.depth>=5){
       const details=document.createElement('details');
       const summary=document.createElement('summary');summary.textContent='WHY THIS LEVEL';details.appendChild(summary);
       const list=document.createElement('ul');
