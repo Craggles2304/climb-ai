@@ -4,6 +4,7 @@ import {demoAccounts,matchesFor as demoMatchesFor,missionFor} from '@/data/demo'
 import {RiotAccount,Match,Role} from '@/lib/types';
 import {loadProfile,PlayerProfile,PROFILE_ACCOUNT_ID,PROFILE_EVENT} from '@/lib/profile';
 import {getBrowserClient} from '@/lib/supabase/client';
+import {deriveStoredLiveMetrics} from '@/lib/liveMatchMetricFallback';
 
 type LinkAccountInput={gameName:string;tagline:string;region:string;role:Role;champions?:string[]};
 type Ctx={
@@ -49,25 +50,61 @@ function accountRank(row:any,profile:any){
   return profile?.rank||'UNRANKED';
 }
 
+function firstNumber(...values:unknown[]){
+  for(const value of values){
+    if(value===null||value===undefined||value==='')continue;
+    const number=Number(value);
+    if(Number.isFinite(number))return number;
+  }
+  return undefined;
+}
+
+function stringArray(value:unknown){return Array.isArray(value)?value.map(v=>String(v||'').trim()).filter(Boolean):undefined}
+
 function mapMatch(row:any,metric:any):Match{
   const raw=metric?.raw&&typeof metric.raw==='object'?metric.raw:{};
+  const rawMetrics=raw.metrics&&typeof raw.metrics==='object'?raw.metrics:{};
   const n=(v:unknown,fallback=0)=>{const x=Number(v);return Number.isFinite(x)?x:fallback};
   const result=row.result as Match['result'];
   const source=String(row.source||'manual').toLowerCase() as Match['source'];
+  const durationSeconds=n(row.duration_seconds,1);
+  const cs=n(metric?.cs??rawMetrics.cs);
+  const live=deriveStoredLiveMetrics(raw,durationSeconds,cs);
+  const rawItems=stringArray(raw.items);
   return {
     id:row.id,riotAccountId:row.riot_account_id||PROFILE_ACCOUNT_ID,
-    champion:row.champion||'Unknown',role:roleOf(row.role),result,
-    kills:n(row.kills),deaths:n(row.deaths),assists:n(row.assists),durationSeconds:n(row.duration_seconds,1),
+    champion:row.champion||'Unknown',opponent:String(raw.opponent||live.opponent||'').trim()||undefined,
+    role:roleOf(row.role),result,
+    kills:n(row.kills),deaths:n(row.deaths),assists:n(row.assists),durationSeconds,
     rank:row.rank||'',source,createdAt:row.occurred_at||row.created_at||new Date().toISOString(),
+    items:rawItems?.length?rawItems:live.items,
     metrics:{
-      cs:n(metric?.cs),csPerMin:n(metric?.cs_per_min),deaths:n(row.deaths),
-      goldPerMin:metric?.gold_per_min==null?undefined:n(metric.gold_per_min),
-      damagePerMin:metric?.damage_per_min==null?undefined:n(metric.damage_per_min),
-      killParticipation:metric?.kill_participation==null?undefined:n(metric.kill_participation),
-      visionScore:metric?.vision_score==null?undefined:n(metric.vision_score),
-      post15CsPerMin:metric?.farm_after_15==null?undefined:n(metric.farm_after_15),
-      objectiveParticipation:metric?.objective_participation==null?undefined:n(metric.objective_participation),
-      ...(raw.metrics&&typeof raw.metrics==='object'?raw.metrics:{}),
+      cs,
+      csPerMin:firstNumber(metric?.cs_per_min,rawMetrics.csPerMin)??0,
+      deaths:n(row.deaths),
+      goldPerMin:firstNumber(metric?.gold_per_min,rawMetrics.goldPerMin),
+      damagePerMin:firstNumber(metric?.damage_per_min,rawMetrics.damagePerMin),
+      damageShare:firstNumber(metric?.damage_share,rawMetrics.damageShare),
+      killParticipation:firstNumber(metric?.kill_participation,rawMetrics.killParticipation),
+      visionScore:firstNumber(metric?.vision_score,rawMetrics.visionScore),
+      objectiveParticipation:firstNumber(metric?.objective_participation,rawMetrics.objectiveParticipation),
+      csAt10:firstNumber(metric?.cs_at_10,rawMetrics.csAt10,live.csAt10),
+      csAt15:firstNumber(metric?.cs_at_15,rawMetrics.csAt15,live.csAt15),
+      laneCsPerMin:firstNumber(metric?.lane_cs_per_min,rawMetrics.laneCsPerMin,live.laneCsPerMin),
+      post15CsPerMin:firstNumber(metric?.post15_cs_per_min,metric?.farm_after_15,rawMetrics.post15CsPerMin,live.post15CsPerMin),
+      goldDiffAt15:firstNumber(metric?.gold_diff_at_15,rawMetrics.goldDiffAt15),
+      xpDiffAt15:firstNumber(metric?.xp_diff_at_15,rawMetrics.xpDiffAt15),
+      levelAt15:firstNumber(rawMetrics.levelAt15,live.levelAt15),
+      deathsPre10:firstNumber(metric?.deaths_pre_10,rawMetrics.deathsPre10,live.deathsPre10),
+      deaths10to20:firstNumber(metric?.deaths_10_to_20,rawMetrics.deaths10to20,live.deaths10to20),
+      deathsPost20:firstNumber(metric?.deaths_post_20,rawMetrics.deathsPost20,live.deathsPost20),
+      soloDeaths:firstNumber(metric?.solo_deaths,rawMetrics.soloDeaths,live.soloDeaths),
+      teamfightDeaths:firstNumber(metric?.teamfight_deaths,rawMetrics.teamfightDeaths,live.teamfightDeaths),
+      firstItemMinute:firstNumber(metric?.first_item_minute,rawMetrics.firstItemMinute,live.firstItemMinute),
+      secondItemMinute:firstNumber(metric?.second_item_minute,rawMetrics.secondItemMinute,live.secondItemMinute),
+      thirdItemMinute:firstNumber(metric?.third_item_minute,rawMetrics.thirdItemMinute,live.thirdItemMinute),
+      wardsPlaced:firstNumber(rawMetrics.wardsPlaced),
+      controlWards:firstNumber(rawMetrics.controlWards),
     },
   };
 }
@@ -149,7 +186,7 @@ export function AccountProvider({children}:{children:React.ReactNode}){
     const ids=decidedRows.map((m:any)=>m.id);
     let metricRows:any[]=[];
     if(ids.length){
-      const metricResult=await client.from('match_metrics').select('match_id,cs,cs_per_min,gold_per_min,damage_per_min,kill_participation,vision_score,farm_after_15,objective_participation,raw').eq('user_id',user.id).in('match_id',ids);
+      const metricResult=await client.from('match_metrics').select('match_id,cs,cs_per_min,gold_per_min,damage_per_min,damage_share,kill_participation,vision_score,farm_after_15,objective_participation,lane_cs_per_min,post15_cs_per_min,cs_at_10,cs_at_15,gold_diff_at_15,xp_diff_at_15,deaths_pre_10,deaths_10_to_20,deaths_post_20,solo_deaths,teamfight_deaths,first_item_minute,second_item_minute,third_item_minute,raw').eq('user_id',user.id).in('match_id',ids);
       if(metricResult.error)console.error('[account] metrics load failed',metricResult.error);
       else metricRows=metricResult.data||[];
     }
