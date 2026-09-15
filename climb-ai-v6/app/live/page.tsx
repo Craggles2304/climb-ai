@@ -35,6 +35,7 @@ type Review={
   snapshotCount:number;latestSnapshot:Snapshot|null;
   summary?:{points?:StrengthPoint[];opportunities?:Opportunity[];strongestWindow?:StrengthPoint|null;weakestWindow?:StrengthPoint|null;modelNote?:string};
 };
+type Insight={title:string;detail:string};
 
 export default function Live(){
   const {active,isOwnAccount,profile}=useAccount();
@@ -58,9 +59,7 @@ export default function Live(){
         const body=await deviceRes.json();
         setDevices((body.devices??[]).filter((d:Device)=>d.account_key===active.id));
       }
-      if(reviewRes.ok){
-        const body=await reviewRes.json();setReview(body.review??null);
-      }
+      if(reviewRes.ok){const body=await reviewRes.json();setReview(body.review??null)}
     }catch{}
   },[active.id]);
 
@@ -72,16 +71,13 @@ export default function Live(){
   const complete=review?.status==='COMPLETE';
   const partial=review?.status==='ABORTED';
   const reviewReady=Boolean(complete||partial);
-  const status=live?'RECORDING':complete?'POST-GAME READY':partial?'PARTIAL REVIEW':stale?'COMPANION OFFLINE':paired?'WAITING FOR GAME':'NOT PAIRED';
-  const clock=review?.latestSnapshot?formatClock(review.latestSnapshot.gameTime):'—';
-  const timeline=reviewReady?(review?.summary?.points??[]):[];
-  const opportunities=reviewReady?(review?.summary?.opportunities??[]):[];
+  const status=live?'GAME DETECTED':complete?'REVIEW READY':partial?'PARTIAL REVIEW':stale?'COMPANION OFFLINE':paired?'READY FOR NEXT GAME':'SET UP COMPANION';
   const snapshot=review?.latestSnapshot??null;
   const me=useMemo(()=>snapshot?findMe(snapshot):null,[snapshot]);
   const laneOpponent=useMemo(()=>snapshot&&me?findLaneOpponent(snapshot,me):null,[snapshot,me]);
-  const myTeam=snapshot&&me?snapshot.players.filter(player=>player.team===me.team):[];
-  const enemyTeam=snapshot&&me?snapshot.players.filter(player=>player.team!==me.team&&player.team!=='UNKNOWN'):[];
   const result=snapshot?inferResult(snapshot.events):'UNKNOWN';
+  const clock=snapshot?formatClock(snapshot.gameTime):'—';
+  const postGame=useMemo(()=>snapshot&&me?buildPostGameReview({me,laneOpponent,review,snapshot,result,missionRule:mission?.gameRule,partial:Boolean(partial)}):null,[snapshot,me,laneOpponent,review,result,mission?.gameRule,partial]);
 
   async function pair(){
     if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing the tracker.');return}
@@ -91,217 +87,142 @@ export default function Live(){
         method:'POST',headers:{'content-type':'application/json'},
         body:JSON.stringify({
           accountId:active.id,deviceName,
-          riotProfile:{
-            gameName:active.gameName,tagline:active.tagline,region:active.region,
-            role:active.role,rank:active.rank,champions:active.champions??[],
-            frustration:profile?.frustration??'',
-          },
+          riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''},
         }),
       });
       const body=await response.json();
       if(!response.ok){setMessage(body.error||'Pairing failed.');return}
       setPairToken(body.token||'');
-      setMessage(`PC paired to ${body.riotAccount?.game_name||active.gameName}. Download the Windows tracker below and run the setup once.`);
+      setMessage(`PC paired to ${body.riotAccount?.game_name||active.gameName}. Run the Windows tracker before League.`);
       await refresh();
-    }catch{setMessage('Could not reach the pairing service.')}
-    finally{setBusy(false)}
+    }catch{setMessage('Could not reach the pairing service.')}finally{setBusy(false)}
   }
 
+  const setup=<div className="glass card">
+    <div className="eyebrow">ONE-TIME SETUP</div>
+    <h3>Connect the PC running League</h3>
+    <p className="muted">Once paired, the Companion detects matches and records permitted telemetry automatically.</p>
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end',marginTop:14}}>
+      <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
+      <button className="btn primary" disabled={busy||!isOwnAccount} onClick={pair}>{busy?'PAIRING…':'PAIR THIS PC'}</button>
+    </div>
+    {!isOwnAccount&&<p className="muted" style={{marginTop:10}}>Switch to your own Riot account before pairing.</p>}
+    {message&&<p style={{marginTop:12}}>{message}</p>}
+    {pairToken&&<WindowsTrackerInstaller token={pairToken} origin={origin}/>} 
+  </div>;
+
   return <AppShell>
-    <PageHead title="Live Tracker" subtitle="Silent in-game recording → full post-game match breakdown → saved coaching evidence."/>
+    <PageHead title="League Companion" subtitle="One focus during the game. The important lessons after it."/>
 
-    <section className="wow-grid">
-      <div className="glass wow-main">
-        <div className="eyebrow">COMPANION STATUS</div>
-        <h2>{status}</h2>
-        {live?<>
-          <p>OVERPOWERED is recording permitted League telemetry in the background. It deliberately does not show live fight recommendations or hidden enemy cooldowns.</p>
-          <div className="grid three" style={{marginTop:18}}>
-            <Mini label="GAME CLOCK" value={clock}/>
-            <Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/>
-            <Mini label="CHAMPION" value={review?.latestSnapshot?.active.championName||'Detecting'}/>
-          </div>
-        </>:<p>{reviewReady?'Your latest recorded game is ready below.':paired?'Your PC is paired. Open the OVERPOWERED Tracker desktop shortcut before League; recording starts automatically when a match becomes available.':'Pair the Windows PC that runs League. Your Riot profile is saved to your login and the companion sends match snapshots to that account.'}</p>}
-        <div className="mission-command"><span>{reviewReady?'ILP LEARNING LOOP':'PRE-GAME ILP CUE'}</span><b>{reviewReady?'Completed live games become evidence for your learning plan.':mission?.gameRule||'Open your ILP before queueing.'}</b></div>
+    <section className="glass card" style={{padding:24}}>
+      <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-start',flexWrap:'wrap'}}>
+        <div>
+          <div className="eyebrow">COMPANION</div>
+          <h1 style={{margin:'5px 0 6px'}}>{status}</h1>
+          <p className="muted" style={{margin:0}}>{live?'The Companion is recording quietly. Keep playing — no live shotcalling or clutter.':reviewReady?'Your match is finished. Read the short review below.':paired?'Open the Windows tracker before League. The rest is automatic.':'Pair this PC once, then the Companion stays simple.'}</p>
+        </div>
+        <span className={`op-tier ${live?'op-tier-pro':paired?'op-tier-plus':'op-tier-free'}`}>{live?'RECORDING':paired?'CONNECTED':'SETUP'}</span>
       </div>
 
-      <div className="dashboard-stack">
-        <div className="glass stat-feature"><span>ACTIVE ACCOUNT</span><strong>{active.gameName}{active.tagline}</strong><small>{active.region} · {active.role}</small></div>
-        <div className="glass stat-feature"><span>DURING GAME</span><strong>SILENT RECORDING</strong><small>No automatic shotcalling</small></div>
-        <div className="glass stat-feature"><span>AFTER GAME</span><strong>FULL MATCH REVIEW</strong><small>Stats · teams · events · power windows</small></div>
-      </div>
+      {live&&<div style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:16,alignItems:'center',marginTop:22,padding:18,borderRadius:16,background:'rgba(255,255,255,.04)'}}>
+        <div><div className="eyebrow">ONE FOCUS</div><h2 style={{margin:'5px 0'}}>{mission?.title||'Play your normal game'}</h2><p style={{margin:0}}>{mission?.gameRule||'The Companion will find the useful review points after the game.'}</p></div>
+        <div style={{textAlign:'right'}}><div className="eyebrow">{snapshot?.active.championName||'LEAGUE'}</div><strong style={{fontSize:30}}>{clock}</strong></div>
+      </div>}
+
+      {!live&&!reviewReady&&paired&&<div className="mission-command" style={{marginTop:18}}><span>NEXT GAME FOCUS</span><b>{mission?.gameRule||'Play a tracked game so OP CLIMB can create evidence.'}</b></div>}
     </section>
 
-    <section className="glass card dash-section">
-      <div className="eyebrow">PAIR A WINDOWS PC</div>
-      <h3>Connect the PC running League</h3>
-      <p className="muted">Pairing permanently links this Riot profile, this PC and future live sessions to your signed-in OVERPOWERED account.</p>
-      <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end',marginTop:14}}>
-        <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
-        <button className="btn primary" disabled={busy||!isOwnAccount} onClick={pair}>{busy?'PAIRING…':'PAIR THIS PC'}</button>
-      </div>
-      {!isOwnAccount&&<p className="muted" style={{marginTop:10}}>Switch to your own Riot account before pairing.</p>}
-      {message&&<p style={{marginTop:12}}>{message}</p>}
-      {pairToken&&<WindowsTrackerInstaller token={pairToken} origin={origin}/>} 
-    </section>
+    {!paired?<section className="dash-section">{setup}</section>:<details className="glass card dash-section"><summary style={{cursor:'pointer',fontWeight:800}}>COMPANION SETUP / RE-PAIR PC</summary><div style={{marginTop:14}}>{setup}</div></details>}
 
-    {reviewReady&&snapshot&&<section className="dash-section" style={{display:'grid',gap:18}}>
-      <div className="glass card" style={{borderColor:partial?'rgba(255,170,70,.45)':undefined}}>
-        <div className="eyebrow">{partial?'PARTIAL GAME REVIEW':'MATCH BREAKDOWN'}</div>
-        <h2 style={{marginBottom:6}}>{snapshot.active.championName} · {positionLabel(snapshot.active.position)} · {formatClock(snapshot.gameTime)}</h2>
-        <p className="muted" style={{marginTop:0}}>{partial?'Recording ended before the match finished. This review is shown for learning, but it is not treated as a completed game for ILP/mastery scoring.':'Recorded match complete. The review below is built from the telemetry captured during this game.'}</p>
-
-        {me&&<>
-          <div className="grid three" style={{marginTop:18}}>
-            <Mini label="K / D / A" value={`${me.scores.kills} / ${me.scores.deaths} / ${me.scores.assists}`}/>
-            <Mini label="CS" value={`${me.scores.creepScore} · ${csPerMinute(me.scores.creepScore,snapshot.gameTime)} / min`}/>
-            <Mini label="VISION" value={formatOne(me.scores.wardScore)}/>
-          </div>
-          <div className="grid three" style={{marginTop:12}}>
-            <Mini label="LEVEL" value={String(me.level)}/>
-            <Mini label="VISIBLE ITEM VALUE" value={`${Math.round(me.itemGold)}g`}/>
-            <Mini label="RESULT" value={partial?'INCOMPLETE':result}/>
-          </div>
-
-          <div className="grid two" style={{marginTop:18}}>
-            <div className="glass card">
-              <div className="eyebrow">YOUR FINAL BUILD</div>
-              <h3 style={{marginTop:8}}>{me.championName}</h3>
-              <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{me.items.length?me.items.map((item,index)=><span key={`${item.itemId}-${index}`} style={pillStyle}>{item.displayName}{item.count>1?` ×${item.count}`:''}</span>):<span className="muted">No item data captured.</span>}</div>
-              <p className="muted" style={{marginBottom:0,marginTop:12}}>Pocket gold at final snapshot: {Math.round(snapshot.active.currentGold)}g</p>
-            </div>
-            <div className="glass card">
-              <div className="eyebrow">LANE MATCHUP</div>
-              {laneOpponent?<><h3 style={{marginTop:8}}>{me.championName} vs {laneOpponent.championName}</h3><p className="muted">You: {me.scores.kills}/{me.scores.deaths}/{me.scores.assists}, {me.scores.creepScore} CS · Them: {laneOpponent.scores.kills}/{laneOpponent.scores.deaths}/{laneOpponent.scores.assists}, {laneOpponent.scores.creepScore} CS</p><p style={{marginBottom:0}}>Visible item value difference: <b>{signedGold(me.itemGold-laneOpponent.itemGold)}</b></p></>:<p className="muted">A same-role lane opponent could not be resolved from the final snapshot.</p>}
-            </div>
-          </div>
-        </>}
+    {reviewReady&&snapshot&&me&&postGame&&<section className="dash-section" style={{display:'grid',gap:16}}>
+      <div className="glass card" style={{padding:22,borderColor:partial?'rgba(255,170,70,.45)':undefined}}>
+        <div className="eyebrow">{partial?'PARTIAL REVIEW':'POST-GAME REVIEW'}</div>
+        <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'end',flexWrap:'wrap'}}>
+          <div><h2 style={{margin:'5px 0'}}>{me.championName} · {partial?'INCOMPLETE':result}</h2><p className="muted" style={{margin:0}}>{positionLabel(me.position)} · {formatClock(snapshot.gameTime)} · {me.scores.kills}/{me.scores.deaths}/{me.scores.assists} · {csPerMinuteNumber(me.scores.creepScore,snapshot.gameTime).toFixed(1)} CS/min</p></div>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap'}}><span className="op-tier op-tier-plus">{postGame.good.length} GOOD</span><span className="op-tier op-tier-free">{postGame.critical.length} CRITICAL</span></div>
+        </div>
       </div>
 
       <div className="grid two">
-        <TeamCard title="YOUR TEAM" players={myTeam} highlightRiotId={snapshot.active.riotId}/>
-        <TeamCard title="ENEMY TEAM" players={enemyTeam}/>
+        <ReviewColumn title="GOOD POINTS" tone="good" items={postGame.good}/>
+        <ReviewColumn title="CRITICAL POINTS" tone="critical" items={postGame.critical}/>
       </div>
 
-      <div className="glass card">
-        <div className="eyebrow">MATCH EVENT TIMELINE</div>
-        <h3>Kills, objectives and major recorded events</h3>
-        <p className="muted">Events are taken from Riot&apos;s local match feed. The final snapshot carries the most recent recorded event history.</p>
-        <div style={{display:'grid',gap:8,marginTop:14}}>
-          {importantEvents(snapshot.events).length?importantEvents(snapshot.events).map((event,index)=><EventRow key={`${event.id??event.time}-${index}`} event={event}/>):<p className="muted">No major events were present in the final snapshot.</p>}
-        </div>
+      <div className="glass card" style={{padding:22}}>
+        <div className="eyebrow">ONE THING NEXT GAME</div>
+        <h2 style={{margin:'6px 0 8px'}}>{postGame.nextTitle}</h2>
+        <p style={{margin:0,fontSize:16}}>{postGame.nextFocus}</p>
       </div>
 
-      <div className="glass card">
-        <div className="eyebrow">POST-GAME POWER REVIEW</div>
-        <h3>Who was stronger — and when it changed</h3>
-        <p className="muted">The model uses visible level, visible item value, your available health/mana and match state. It never pretends enemy pocket gold, proximity or hidden cooldowns are known.</p>
-        <div className="grid two" style={{marginTop:16}}>
-          <WindowCard title="STRONGEST WINDOW" point={review?.summary?.strongestWindow??null}/>
-          <WindowCard title="HARDEST WINDOW" point={review?.summary?.weakestWindow??null}/>
-        </div>
-
-        {opportunities.length>0&&<div style={{marginTop:24}}>
-          <div className="eyebrow">TIMESTAMPED COACHING WINDOWS</div>
-          <h3>Where the game state said act — or back off</h3>
-          <div style={{display:'grid',gap:10,marginTop:14}}>
-            {opportunities.map((window,index)=><OpportunityRow key={`${window.atSeconds}-${window.opponent}-${index}`} window={window}/>) }
+      <details className="glass card">
+        <summary style={{cursor:'pointer',fontWeight:800}}>VIEW EVIDENCE BEHIND THE REVIEW</summary>
+        <div style={{display:'grid',gap:12,marginTop:16}}>
+          <div className="grid three">
+            <Mini label="K / D / A" value={`${me.scores.kills} / ${me.scores.deaths} / ${me.scores.assists}`}/>
+            <Mini label="CS / MIN" value={csPerMinuteNumber(me.scores.creepScore,snapshot.gameTime).toFixed(1)}/>
+            <Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/>
           </div>
-        </div>}
-
-        <div style={{display:'grid',gap:10,marginTop:24}}>
-          {timeline.length?timeline.map((point,index)=><TimelineRow key={`${point.atSeconds}-${index}`} point={point}/>):<p className="muted">The session did not contain enough comparable snapshots to build a timeline.</p>}
+          <div className="grid two">
+            <WindowCard title="BEST VISIBLE WINDOW" point={review?.summary?.strongestWindow??null}/>
+            <WindowCard title="HARDEST VISIBLE WINDOW" point={review?.summary?.weakestWindow??null}/>
+          </div>
+          {review?.summary?.modelNote&&<p className="muted" style={{margin:0}}>{review.summary.modelNote}</p>}
+          <p className="muted" style={{margin:0,fontSize:12}}>The Companion uses visible game state only. It does not pretend to know hidden cooldowns, enemy pocket gold or exact intentions.</p>
         </div>
-        {review?.summary?.modelNote&&<p className="muted" style={{fontSize:12,marginTop:14}}>{review.summary.modelNote}</p>}
-      </div>
-
-      <div className="glass card">
-        <div className="eyebrow">DATA QUALITY</div>
-        <h3>{review?.snapshotCount??0} telemetry snapshots captured</h3>
-        <p className="muted" style={{marginBottom:0}}>Captured through {clock}. {complete?'This session closed normally and can be used by the post-game learning loop.':'This session is incomplete and is displayed for review only.'}</p>
-      </div>
+      </details>
     </section>}
-
-    <div className="grid three dash-section">
-      <div className="glass card"><div className="eyebrow">SAVED IDENTITY</div><h3>One player history</h3><p className="muted">Pairing saves the Riot identity to the signed-in user so later sessions build one evidence history instead of isolated demos.</p></div>
-      <div className="glass card"><div className="eyebrow">POLICY-SAFE DESIGN</div><h3>No live shotcaller</h3><p className="muted">The companion records permitted local state silently. Fight-window verdicts are withheld while the match is active and exposed after the session closes.</p></div>
-      <div className="glass card"><div className="eyebrow">NEXT LEARNING LOOP</div><h3>Feed the ILP</h3><p className="muted">Completed post-game windows become evidence for missions such as recognising level/item spikes and avoiding enemy-favoured fights.</p></div>
-    </div>
   </AppShell>;
 }
 
-const pillStyle:React.CSSProperties={padding:'7px 10px',border:'1px solid rgba(255,255,255,.12)',borderRadius:999,fontSize:12,background:'rgba(255,255,255,.04)'};
+function ReviewColumn({title,tone,items}:{title:string;tone:'good'|'critical';items:Insight[]}){
+  return <div className="glass card" style={{padding:20}}><div className="eyebrow">{title}</div><div style={{display:'grid',gap:12,marginTop:12}}>{items.map((item,index)=><div key={`${tone}-${index}`} style={{padding:'12px 0',borderBottom:index===items.length-1?'none':'1px solid rgba(255,255,255,.08)'}}><div style={{display:'grid',gridTemplateColumns:'30px 1fr',gap:10}}><strong>{tone==='good'?'✓':'!'}</strong><div><b>{item.title}</b><p className="muted" style={{margin:'4px 0 0'}}>{item.detail}</p></div></div></div>)}</div></div>;
+}
 
+function buildPostGameReview({me,laneOpponent,review,snapshot,result,missionRule,partial}:{me:Player;laneOpponent:Player|null;review:Review|null;snapshot:Snapshot;result:string;missionRule?:string;partial:boolean}){
+  const good:Insight[]=[];
+  const critical:Insight[]=[];
+  const cspm=csPerMinuteNumber(me.scores.creepScore,snapshot.gameTime);
+  const itemDiff=laneOpponent?me.itemGold-laneOpponent.itemGold:null;
+  const strongest=review?.summary?.strongestWindow??null;
+  const weakest=review?.summary?.weakestWindow??null;
+  const opportunities=review?.summary?.opportunities??[];
+  const caution=opportunities.filter(o=>o.type==='CAUTION_WINDOW');
+  const favourable=opportunities.filter(o=>o.type==='ALL_IN_CANDIDATE'||o.type==='PRESSURE_WINDOW');
+
+  if(result==='WIN')good.push({title:'You converted the game',detail:'The recorded game ended in a win. Keep the behaviours that created repeatable value, not just the final result.'});
+  if(me.scores.deaths<=3)good.push({title:'Deaths were controlled',detail:`You finished with ${me.scores.deaths} deaths, which protected your uptime and map presence.`});
+  if(cspm>=6.5)good.push({title:'Economy stayed healthy',detail:`You finished at ${cspm.toFixed(1)} CS/min, a solid resource baseline for this review.`});
+  if(itemDiff!==null&&itemDiff>=350)good.push({title:'You finished ahead in visible item value',detail:`You were about ${Math.round(itemDiff)}g ahead of the resolved lane opponent in completed visible items at the final snapshot.`});
+  if(strongest?.verdict==='YOU_STRONGER')good.push({title:`Real power window at ${formatClock(strongest.atSeconds)}`,detail:shortReasons(strongest.reasons,'The visible level/item state favoured you in this window.')});
+  if(favourable.length>=2)good.push({title:'You created multiple favourable states',detail:`The tracker found ${favourable.length} visible pressure/all-in windows across the game.`});
+
+  if(me.scores.deaths>=5)critical.push({title:'Too many deaths reduced your control',detail:`You died ${me.scores.deaths} times. Review the first avoidable death before worrying about mechanics later in the game.`});
+  if(cspm<5.8)critical.push({title:'Farm dropped too low',detail:`You finished at ${cspm.toFixed(1)} CS/min. That makes later item windows harder to reach on time.`});
+  if(itemDiff!==null&&itemDiff<=-350)critical.push({title:'You finished behind the lane opponent in visible items',detail:`The final visible item-value gap was about ${Math.abs(Math.round(itemDiff))}g against you.`});
+  if(weakest?.verdict==='THEM_STRONGER')critical.push({title:`Hardest window at ${formatClock(weakest.atSeconds)}`,detail:shortReasons(weakest.reasons,'The visible state favoured the opponent here. This is a key moment to review.')});
+  if(caution.length>=2)critical.push({title:'Repeated enemy-favoured windows',detail:`The tracker found ${caution.length} caution windows. The pattern matters more than any single fight.`});
+  if(partial)critical.push({title:'The recording was incomplete',detail:'Use these points as partial evidence only. This session should not decide ILP mastery.'});
+
+  const goodTrimmed=dedupeInsights(good).slice(0,3);
+  const criticalTrimmed=dedupeInsights(critical).slice(0,3);
+  if(!goodTrimmed.length)goodTrimmed.push({title:'No fake praise',detail:'The captured telemetry did not confirm a strong positive performance signal clearly enough. More complete games will make this section stronger.'});
+  if(!criticalTrimmed.length)criticalTrimmed.push({title:'No major red flag confirmed',detail:'The captured telemetry did not show a clear critical leak. Keep the current ILP focus until repeated evidence says otherwise.'});
+
+  const nextTitle=missionRule?'KEEP THE ILP CUE':'FIX THE CLEAREST LEAK';
+  const nextFocus=missionRule||criticalTrimmed[0].detail;
+  return{good:goodTrimmed,critical:criticalTrimmed,nextTitle,nextFocus};
+}
+
+function dedupeInsights(items:Insight[]){const seen=new Set<string>();return items.filter(item=>{const key=item.title.toLowerCase();if(seen.has(key))return false;seen.add(key);return true})}
+function shortReasons(reasons:string[],fallback:string){return reasons.length?reasons.slice(0,2).join(' · '):fallback}
 function Mini({label,value}:{label:string;value:string}){return <div className="glass card"><span className="eyebrow">{label}</span><strong style={{display:'block',fontSize:22,marginTop:4}}>{value}</strong></div>}
-
-function TeamCard({title,players,highlightRiotId}:{title:string;players:Player[];highlightRiotId?:string|null}){
-  return <div className="glass card"><div className="eyebrow">{title}</div><div style={{display:'grid',gap:8,marginTop:12}}>{players.map((player,index)=><div key={`${player.riotId||player.summonerName}-${index}`} style={{display:'grid',gridTemplateColumns:'minmax(100px,1.2fr) 70px 70px',gap:10,alignItems:'center',padding:'9px 0',borderBottom:index===players.length-1?'none':'1px solid rgba(255,255,255,.07)'}}><div><b>{player.championName}</b>{player.riotId===highlightRiotId&&<span style={{marginLeft:7,fontSize:10,opacity:.7}}>YOU</span>}<div className="muted" style={{fontSize:11}}>{positionLabel(player.position)} · L{player.level}</div></div><div style={{fontSize:12}}>{player.scores.kills}/{player.scores.deaths}/{player.scores.assists}</div><div className="muted" style={{fontSize:12,textAlign:'right'}}>{player.scores.creepScore} CS</div></div>)}</div></div>;
-}
-
-function EventRow({event}:{event:MatchEvent}){
-  const label=event.name==='ChampionKill'&&event.actor&&event.target?`${event.actor} killed ${event.target}`:eventLabel(event);
-  return <div style={{display:'grid',gridTemplateColumns:'70px minmax(0,1fr)',gap:12,padding:'8px 0',borderBottom:'1px solid rgba(255,255,255,.06)'}}><strong>{formatClock(event.time)}</strong><div><b>{prettyEventName(event.name)}</b><div className="muted" style={{fontSize:12,marginTop:2}}>{label}</div></div></div>;
-}
-
-function WindowCard({title,point}:{title:string;point:StrengthPoint|null}){
-  return <div className="glass card"><div className="eyebrow">{title}</div>{point?<><h3>{formatClock(point.atSeconds)} · {labelOf(point.verdict)}</h3><p className="muted">vs {point.opponent||'enemy'} · score {signed(point.score)}</p><p>{point.reasons.join(' · ')}</p></>:<p className="muted">No reliable comparison yet.</p>}</div>;
-}
-
-function OpportunityRow({window}:{window:Opportunity}){
-  const item=window.evidence.itemGoldDelta;
-  return <div className="glass card" style={{display:'grid',gridTemplateColumns:'90px minmax(0,1fr)',gap:14,alignItems:'start'}}>
-    <strong>{formatClock(window.atSeconds)}</strong>
-    <div>
-      <b>{window.headline} · {window.confidence} CONFIDENCE</b>
-      <div className="muted" style={{marginTop:4}}>vs {window.opponent} · {window.evidence.levelDelta>0?'+':''}{window.evidence.levelDelta} level · {item>0?'+':''}{Math.round(item)}g visible items · {Math.round(window.evidence.currentGold)}g in pocket</div>
-      <div style={{marginTop:6}}>{window.detail}</div>
-      <small className="muted" style={{display:'block',marginTop:6}}>{window.limitation}</small>
-    </div>
-  </div>;
-}
-
-function TimelineRow({point}:{point:StrengthPoint}){
-  return <div className="glass card" style={{display:'grid',gridTemplateColumns:'90px minmax(0,1fr)',gap:14,alignItems:'start'}}>
-    <strong>{formatClock(point.atSeconds)}</strong>
-    <div><b>{labelOf(point.verdict)} · {signed(point.score)}</b><div className="muted" style={{marginTop:4}}>vs {point.opponent||'enemy'} · You L{point.you.level} / {Math.round(point.you.itemGold)}g visible items{point.them?` · Them L${point.them.level} / ${Math.round(point.them.itemGold)}g`:''}</div><div style={{marginTop:6}}>{point.reasons.join(' · ')}</div><small className="muted" style={{display:'block',marginTop:6}}>{point.comparisonReason}</small></div>
-  </div>;
-}
-
-function findMe(snapshot:Snapshot){
-  return snapshot.players.find(player=>Boolean(snapshot.active.riotId&&player.riotId===snapshot.active.riotId))
-    ??snapshot.players.find(player=>Boolean(snapshot.active.summonerName&&player.summonerName===snapshot.active.summonerName))
-    ??snapshot.players.find(player=>player.championName===snapshot.active.championName&&player.team===snapshot.active.team)
-    ??null;
-}
-function findLaneOpponent(snapshot:Snapshot,me:Player){
-  if(!me.position)return null;
-  return snapshot.players.find(player=>player.team!==me.team&&player.position===me.position)??null;
-}
-function importantEvents(events:MatchEvent[]){
-  const allowed=new Set(['ChampionKill','DragonKill','BaronKill','HeraldKill','HordeKill','TurretKilled','InhibKilled','FirstBlood','Multikill','GameEnd']);
-  return events.filter(event=>allowed.has(event.name));
-}
-function inferResult(events:MatchEvent[]){
-  for(let i=events.length-1;i>=0;i--){
-    if(events[i].name.toLowerCase()!=='gameend')continue;
-    const value=String(events[i].raw?.Result??events[i].raw?.result??'').toLowerCase();
-    if(value.includes('win'))return'WIN';
-    if(value.includes('lose')||value.includes('loss'))return'LOSS';
-  }
-  return'UNKNOWN';
-}
-function eventLabel(event:MatchEvent){
-  if(event.actor&&event.target)return`${event.actor} → ${event.target}`;
-  if(event.actor)return event.actor;
-  if(event.target)return event.target;
-  return prettyEventName(event.name);
-}
-function prettyEventName(name:string){return name.replace(/([a-z])([A-Z])/g,'$1 $2').replace(/Kill$/,' Kill')}
+function WindowCard({title,point}:{title:string;point:StrengthPoint|null}){return <div className="glass card"><div className="eyebrow">{title}</div>{point?<><h3>{formatClock(point.atSeconds)} · {labelOf(point.verdict)}</h3><p className="muted">vs {point.opponent||'enemy'} · score {signed(point.score)}</p><p>{shortReasons(point.reasons,point.comparisonReason)}</p></>:<p className="muted">No reliable comparison yet.</p>}</div>}
+function findMe(snapshot:Snapshot){return snapshot.players.find(player=>Boolean(snapshot.active.riotId&&player.riotId===snapshot.active.riotId))??snapshot.players.find(player=>Boolean(snapshot.active.summonerName&&player.summonerName===snapshot.active.summonerName))??snapshot.players.find(player=>player.championName===snapshot.active.championName&&player.team===snapshot.active.team)??null}
+function findLaneOpponent(snapshot:Snapshot,me:Player){if(!me.position)return null;return snapshot.players.find(player=>player.team!==me.team&&player.position===me.position)??null}
+function inferResult(events:MatchEvent[]){for(let i=events.length-1;i>=0;i--){if(events[i].name.toLowerCase()!=='gameend')continue;const value=String(events[i].raw?.Result??events[i].raw?.result??'').toLowerCase();if(value.includes('win'))return'WIN';if(value.includes('lose')||value.includes('loss'))return'LOSS'}return'UNKNOWN'}
 function positionLabel(value:string|null){const v=(value||'').toUpperCase();return v==='BOTTOM'?'ADC':v==='UTILITY'?'SUPPORT':v==='MIDDLE'?'MID':v==='TOP'?'TOP':v==='JUNGLE'?'JUNGLE':v||'UNKNOWN'}
-function csPerMinute(cs:number,seconds:number){if(seconds<=0)return'0.0';return (cs/(seconds/60)).toFixed(1)}
-function formatOne(value:number){return Number.isFinite(value)?value.toFixed(1):'0.0'}
-function signedGold(value:number){return`${value>0?'+':''}${Math.round(value)}g`}
-function labelOf(value:StrengthPoint['verdict']){return value==='YOU_STRONGER'?'YOU STRONGER':value==='THEM_STRONGER'?'THEY ARE STRONGER':'EVEN WINDOW'}
+function csPerMinuteNumber(cs:number,seconds:number){return seconds>0?cs/(seconds/60):0}
+function labelOf(value:StrengthPoint['verdict']){return value==='YOU_STRONGER'?'YOU STRONGER':value==='THEM_STRONGER'?'THEY ARE STRONGER':'EVEN'}
 function signed(value:number){return `${value>0?'+':''}${Math.round(value*10)/10}`}
 function formatClock(seconds:number){const s=Math.max(0,Math.floor(seconds));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
 function isRecent(value:string|null|undefined,windowMs:number){if(!value)return false;const time=Date.parse(value);return Number.isFinite(time)&&Date.now()-time<=windowMs}
