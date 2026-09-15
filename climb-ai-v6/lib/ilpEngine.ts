@@ -79,7 +79,12 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
   const next=tasks.map(t=>{
     if(t.status==='MASTERED'||t.status==='PAUSED')return t;
     const e=evaluateMetric(t,recent);if(!e.hasEvidence)return{...t,lastUpdatedReason:e.note};
-    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);const successfulGames=passResults.filter(Boolean).length;const gamesObserved=passResults.length;const masteryRequired=t.masteryRequired||3;const mastered=gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&e.progress>=85;const status=mastered?'MASTERED' as const:e.progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
+    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);
+    const successfulGames=passResults.filter(Boolean).length;
+    const gamesObserved=passResults.length;
+    const masteryRequired=t.masteryRequired||3;
+    const mastered=gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&e.progress>=85;
+    const status=mastered?'MASTERED' as const:e.progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
     if(mastered)changes.push(`${t.title} reached mastery evidence and left the active five.`);
     return{...t,progress:e.progress,status,successfulGames,gamesObserved,masteryRequired,lastUpdatedReason:e.note,evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')),`AUTO: ${e.note}`],history:[...(t.history||[]),{at:new Date().toISOString(),type:(mastered?'MASTERED':'PROGRESS') as 'MASTERED'|'PROGRESS',note:e.note}].slice(-10)};
   });
