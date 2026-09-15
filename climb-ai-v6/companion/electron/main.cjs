@@ -7,10 +7,10 @@ const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null;
-let championPlanInFlight=false,quitting=false,matchupSignature='';
+let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null;
+let championPlanInFlight=false,reviewPollInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null};
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,postGameReview:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -46,6 +46,7 @@ function setState(patch){
   const previousPhase=state.phase;
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
+  if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(enteringChampSelect){matchupSignature='';state={...state,matchup:null,teamPlan:null};startChampionPlanPoll()}
   else if(enteringRecording&&needsRecordingPlanRecovery())startChampionPlanPoll();
@@ -99,6 +100,28 @@ async function pollChampionPlan(){
   }
 }
 
+function stopPostGameReviewPoll(){if(reviewPollTimer){clearTimeout(reviewPollTimer);reviewPollTimer=null}}
+function schedulePostGameReviewPoll(delay=1800){stopPostGameReviewPoll();reviewPollTimer=setTimeout(()=>{reviewPollTimer=null;void pollPostGameReview()},delay)}
+function startPostGameReviewPoll(){reviewPollAttempts=0;stopPostGameReviewPoll();void pollPostGameReview()}
+async function pollPostGameReview(){
+  if(reviewPollInFlight)return;
+  const cfg=currentConfig();if(!cfg.token)return;
+  if(reviewPollAttempts>=40){stopPostGameReviewPoll();setState({detail:'Match saved. Open OP CLIMB for the full review if the short summary has not appeared yet.'});return}
+  reviewPollAttempts+=1;reviewPollInFlight=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
+  try{
+    const response=await fetch(`${cfg.webUrl}/api/live/companion-review`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
+    if(response.status===202){schedulePostGameReviewPoll();return}
+    const body=await response.json().catch(()=>({}));
+    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
+    if(!response.ok||!body?.ready||!body?.review){schedulePostGameReviewPoll(2500);return}
+    stopPostGameReviewPoll();
+    setState({phase:'REVIEW',detail:'Your key good points and critical points are ready.',postGameReview:body.review});
+    createWindow(true);
+  }catch{schedulePostGameReviewPoll(2500)}
+  finally{clearTimeout(timeout);reviewPollInFlight=false}
+}
+
 function parseTrackerLine(line,kind){
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
   const lower=line.toLowerCase();
@@ -106,7 +129,7 @@ function parseTrackerLine(line,kind){
   if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Lock your champion to build your briefing.'});
   if(lower.includes('recording')||lower.includes('match telemetry'))return setState({phase:'RECORDING',detail:'Match detected. Recording quietly in the background.'});
   if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
-  if(lower.includes('review')&&lower.includes('post'))return setState({phase:'UPLOADING',detail:'Match finished. Preparing your OP CLIMB review.'});
+  if(lower.includes('review')&&lower.includes('post')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
   if(lower.includes('league client connected'))return setState({phase:'WAITING',detail:'League detected. Waiting for champ select or match.'});
   if(kind==='error'&&state.phase!=='RECORDING')setState({detail:line});
 }
@@ -134,7 +157,7 @@ async function loadMatchupPlan(raw){
 
 function trackerPath(){return app.isPackaged?path.join(process.resourcesPath,'tracker','main.mjs'):path.join(__dirname,'..','src','main.mjs')}
 function stopTracker(){
-  stopChampionPlanPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
+  stopChampionPlanPoll();stopPostGameReviewPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
 }
 function startTracker(){
@@ -175,7 +198,7 @@ async function handlePairUrl(rawUrl){
   setState({phase:'STARTING',detail:'Securely connecting this PC to OP CLIMB…'});
   const claimed=await redeemPairCode(code);if(!claimed.ok){setState({phase:'SETUP',detail:claimed.error||'Pairing failed.'});return}
   const cfg=readConfig();cfg.webUrl=DEFAULT_WEB;cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');writeConfig(cfg);
-  recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null});stopTracker();startTracker();
+  recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null,postGameReview:null});stopTracker();startTracker();
 }
 
 function createWindow(show=true){
@@ -187,7 +210,7 @@ function createWindow(show=true){
   mainWindow.webContents.setWindowOpenHandler(({url})=>{if(/^https:\/\//i.test(url))shell.openExternal(url);return{action:'deny'}});
   return mainWindow;
 }
-function trayLabel(){return({SETUP:'Setup required',WAITING:'Waiting for League',CHAMP_SELECT:'Champ select',RECORDING:'Recording match',UPLOADING:'Preparing review',AUTH_ERROR:'Re-pair required',RESTARTING:'Restarting tracker',ERROR:'Tracker problem',STARTING:'Starting'})[state.phase]||state.phase}
+function trayLabel(){return({SETUP:'Setup required',WAITING:'Waiting for League',CHAMP_SELECT:'Champ select',RECORDING:'Recording match',UPLOADING:'Preparing review',REVIEW:'Review ready',AUTH_ERROR:'Re-pair required',RESTARTING:'Restarting tracker',ERROR:'Tracker problem',STARTING:'Starting'})[state.phase]||state.phase}
 function updateTray(){
   if(!tray)return;tray.setToolTip(`${APP_NAME} — ${trayLabel()}`);
   tray.setContextMenu(Menu.buildFromTemplate([{label:`Status: ${trayLabel()}`,enabled:false},{type:'separator'},{label:'Open Companion',click:()=>createWindow(true)},{label:'Open OP CLIMB',click:()=>shell.openExternal(`${currentConfig().webUrl}/live`)},{label:'Restart Tracker',enabled:paired(),click:()=>{stopTracker();startTracker()}},{type:'separator'},{label:'Quit',click:()=>{quitting=true;app.quit()}}]));
@@ -196,7 +219,7 @@ function createTray(){tray=new Tray(appIcon().resize({width:24,height:24}));tray
 function applyAutoStart(enabled){const next=Boolean(enabled);try{app.setLoginItemSettings({openAtLogin:next,args:next?['--hidden']:[]})}catch{}const cfg=readConfig();cfg.autoStart=next;writeConfig(cfg);setState({autoStart:next})}
 
 ipcMain.handle('companion:get-state',()=>publicState());
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null});return{ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
