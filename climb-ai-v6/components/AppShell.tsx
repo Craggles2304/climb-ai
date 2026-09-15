@@ -6,7 +6,6 @@ import {useSubscription} from './SubscriptionContext';
 import {BRAND} from '@/lib/brand';
 import {Wordmark} from './UI';
 import {SessionBar} from './SessionBar';
-import {TrackerDiagnosticMount} from './TrackerDiagnosticMount';
 import {LivePregameMount} from './LivePregameMount';
 import {LiveFightReviewMount} from './LiveFightReviewMount';
 import {LiveCommandCenter} from './LiveCommandCenter';
@@ -96,7 +95,7 @@ export function AppShell({children}:{children:React.ReactNode}){
       </header>
       <div className="op-energy-rail"><i/><span>OP CLIMB // READ THE GAME. FIX THE LEAK. CLIMB.</span></div>
       <div className="op-screen-frame">
-        {live?<><TrackerDiagnosticMount/><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:children}
+        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:children}
       </div>
     </main>
 
