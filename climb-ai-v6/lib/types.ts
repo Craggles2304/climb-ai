@@ -1,7 +1,7 @@
 import type {KeyMoment} from './riot/keyMoments';
 
 export type Role='TOP'|'JUNGLE'|'MID'|'ADC'|'SUPPORT';
-export type Rank='Iron'|'Bronze'|'Silver'|'Gold'|'Platinum'|'Emerald'|'Diamond'|'Master+';
+export type Rank='Iron'|'Bronze'|'Silver'|'Gold'|'Platinum'|'Emerald'|'Diamond'|'Master'|'Grandmaster'|'Challenger';
 export type MatchResult='WIN'|'LOSS';
 export interface RiotAccount{id:string;label:string;gameName:string;tagline:string;region:string;role:Role;rank:string;champions:string[];isPrimary?:boolean;puuid?:string;syncStatus:string}
 export interface PlayerProfile{role:Role;rank:Rank;champions:string[];frustration:string;founder?:boolean}
