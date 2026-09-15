@@ -7,10 +7,14 @@
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="lane.css">
 <link rel="stylesheet" href="updates.css">
+<link rel="stylesheet" href="arena.css">
 </head>
 <body>
 <main class="shell">
-  <header class="brand"><div class="mark">OP</div><div><h1>OP CLIMB Companion</h1><p>Pregame intelligence · live capture · post-game coaching</p></div></header>
+  <header class="brand esports-brand">
+    <div class="brand-lockup"><div class="mark">OP</div><div><h1>OP CLIMB</h1><p>COMPANION // MATCH INTELLIGENCE</p></div></div>
+    <div class="brand-signal"><span></span><b>LIVE COACHING SYSTEM</b></div>
+  </header>
 
   <section id="setup" class="card hidden">
     <div class="eyebrow">ONE-TIME SETUP</div>
@@ -23,7 +27,7 @@
   <section id="status" class="card status-card hidden">
     <div class="status-main">
       <div>
-        <div class="eyebrow">COMPANION</div>
+        <div class="eyebrow">COMPANION STATUS</div>
         <h2 id="statusTitle">Starting…</h2>
         <p id="statusCopy">Starting OP CLIMB Companion.</p>
       </div>
@@ -49,63 +53,94 @@
     </div>
 
     <div id="matchupReady" class="hidden">
-      <div class="brief-head">
-        <div class="brief-title">
-          <div class="eyebrow">YOUR PREGAME BRIEFING</div>
-          <h2><span id="matchupYou">—</span><em id="matchupVs">VS</em><span id="matchupThem">—</span></h2>
-          <p id="matchupSummary">Your plan is ready.</p>
+      <section class="arena-hero" aria-label="Lane matchup">
+        <div class="arena-side arena-you">
+          <div id="youSplash" class="arena-splash"></div>
+          <div class="arena-shade"></div>
+          <div class="arena-champion">
+            <span class="arena-side-label">YOU</span>
+            <div class="arena-champion-lockup"><div class="arena-portrait"><img id="youPortrait" alt="Your champion"></div><div><small id="heroYouRole">LOCKED</small><h2 id="matchupYou">—</h2></div></div>
+          </div>
         </div>
-        <div class="brief-meta">
+        <div class="arena-vs">
+          <span>LANE</span>
+          <strong id="matchupVs">VS</strong>
           <div id="matchupEdge" class="edge-pill">YOUR POWER CURVE</div>
-          <small id="matchupRole">LANE PLAN</small>
+          <small id="matchupRole">GAME PLAN</small>
         </div>
-      </div>
-
-      <div class="priority-grid">
-        <article class="priority-card accent">
-          <span>FIRST WINDOW</span>
-          <strong id="firstSpikeLevel">LV 2</strong>
-          <p id="firstSpikeText">Create the first pressure window.</p>
-        </article>
-        <article class="priority-card">
-          <span>MAJOR SPIKE</span>
-          <strong id="majorSpikeLevel">LV 6</strong>
-          <p id="majorSpikeText">Your first major all-in breakpoint.</p>
-        </article>
-        <article class="priority-card wide">
-          <span>YOUR JOB</span>
-          <strong id="yourJob">Stay connected to the fight.</strong>
-          <p>What your champion should contribute when the game moves from lane into grouped play.</p>
-        </article>
-        <article class="priority-card wide">
-          <span>LEAD PATH</span>
-          <strong id="leadChain">TRADE → HP → WAVE → RESET → ITEM</strong>
-          <p>Build the advantage in stages instead of forcing a kill.</p>
-        </article>
-      </div>
-
-      <section id="laneDuelBrief" class="lane-duel hidden">
-        <div class="lane-duel-head">
-          <div><span class="eyebrow">BEAT YOUR LANE OPPONENT</span><h3 id="laneDuelTitle">HOW TO WIN THE MATCHUP</h3></div>
-          <strong id="laneAdvantage">Create the first advantage.</strong>
-        </div>
-        <div class="lane-action-grid">
-          <article class="lane-action hero"><span>YOUR PATTERN</span><strong>DO THIS REPEATEDLY</strong><p id="laneYourPattern"></p></article>
-          <article class="lane-action"><span>THEY WANT</span><strong>DENY THIS</strong><p id="laneTheirPattern"></p></article>
-          <article class="lane-action"><span>KILL WINDOW</span><strong>WHEN TO COMMIT</strong><p id="laneKillWindow"></p></article>
-          <article class="lane-action"><span>WAVE</span><strong>WHERE YOU WANT IT</strong><p id="laneWave"></p></article>
-          <article class="lane-action danger"><span>NEVER</span><strong>BIGGEST LANE MISTAKE</strong><p id="laneNever"></p></article>
+        <div class="arena-side arena-enemy">
+          <div id="themSplash" class="arena-splash"></div>
+          <div class="arena-shade"></div>
+          <div class="arena-champion enemy-align">
+            <span class="arena-side-label">OPPONENT</span>
+            <div class="arena-champion-lockup enemy-lockup"><div><small id="heroThemRole">MATCHUP</small><h2 id="matchupThem">PENDING</h2></div><div class="arena-portrait"><img id="themPortrait" alt="Lane opponent"></div></div>
+          </div>
         </div>
       </section>
 
-      <section id="botLaneBrief" class="botlane-brief hidden">
-        <div class="botlane-head">
-          <div>
-            <span class="eyebrow">BOT LANE 2V2 PLAN</span>
-            <h3><span id="botYourLane">Your duo</span><em>VS</em><span id="botEnemyLane">Enemy duo</span></h3>
-            <div class="duo-identities"><b id="botOurIdentity">OUR DUO</b><i>vs</i><b id="botTheirIdentity">THEIR DUO</b></div>
+      <section class="command-deck">
+        <div class="command-main">
+          <div class="command-kicker"><span></span> WIN THIS LANE</div>
+          <h1 id="heroCommand">BUILD THE FIRST CLEAN ADVANTAGE</h1>
+          <p id="matchupSummary">Your plan is ready.</p>
+        </div>
+        <div class="mission-grid">
+          <article><span>YOUR JOB</span><strong id="yourJob">Stay connected to the fight.</strong></article>
+          <article><span>LEAD PATH</span><strong id="leadChain">TRADE → HP → WAVE → RESET → ITEM</strong></article>
+        </div>
+      </section>
+
+      <div class="renderer-hooks" aria-hidden="true">
+        <span id="firstSpikeLevel">LV 2</span><p id="firstSpikeText"></p><span id="majorSpikeLevel">LV 6</span><p id="majorSpikeText"></p>
+      </div>
+
+      <section class="power-radar">
+        <div class="arena-section-head"><div><span class="eyebrow">POWER SPIKE RADAR</span><h3>When your fight changes</h3></div><small>Click a level for full detail</small></div>
+        <div id="powerTimeline" class="power-timeline"></div>
+      </section>
+
+      <section class="tactical-board">
+        <div class="arena-section-head"><div><span class="eyebrow">LANE COMMANDS</span><h3>Only remember these first</h3></div><small id="tacticalContext">Matchup plan</small></div>
+        <div class="tactical-grid">
+          <button class="tactical-call trade-call" data-open-tab="trades"><span>01 · TRADE</span><strong id="tacticalTradeTitle">SHORT TRADE → RESET</strong><p id="tacticalTradeCopy">Take the first clean hit, then leave before the trade extends.</p></button>
+          <button class="tactical-call commit-call" data-open-tab="spikes"><span>02 · COMMIT</span><strong id="tacticalCommitTitle">CREATE THE EDGE FIRST</strong><p id="tacticalCommitCopy">All-in after HP, cooldown or wave advantage.</p></button>
+          <button class="tactical-call wave-call" data-open-tab="lead"><span>03 · WAVE</span><strong id="tacticalWaveTitle">MAKE THEM WALK UP</strong><p id="tacticalWaveCopy">Use the wave to force the opponent into your preferred range.</p></button>
+          <button class="tactical-call danger-call" data-open-tab="trades"><span>04 · NEVER</span><strong id="tacticalNeverTitle">DON'T GIVE THEIR FIGHT</strong><p id="tacticalNeverCopy">Do not turn a small advantage into the extended fight they want.</p></button>
+        </div>
+      </section>
+
+      <div class="rules-brief">
+        <div><span>3 THINGS TO REMEMBER</span><small>Read these before loading screen</small></div>
+        <ol id="matchupRules"></ol>
+      </div>
+
+      <details id="laneDuelBrief" class="lane-duel hidden">
+        <summary><div><span class="eyebrow">LANE DETAIL</span><strong id="laneDuelTitle">HOW TO WIN THE MATCHUP</strong></div><b>OPEN</b></summary>
+        <div class="lane-duel-body">
+          <div class="lane-duel-head"><strong id="laneAdvantage">Create the first advantage.</strong></div>
+          <div class="lane-action-grid">
+            <article class="lane-action hero"><span>YOUR PATTERN</span><strong>DO THIS REPEATEDLY</strong><p id="laneYourPattern"></p></article>
+            <article class="lane-action"><span>THEY WANT</span><strong>DENY THIS</strong><p id="laneTheirPattern"></p></article>
+            <article class="lane-action"><span>KILL WINDOW</span><strong>WHEN TO COMMIT</strong><p id="laneKillWindow"></p></article>
+            <article class="lane-action"><span>WAVE</span><strong>WHERE YOU WANT IT</strong><p id="laneWave"></p></article>
+            <article class="lane-action danger"><span>NEVER</span><strong>BIGGEST LANE MISTAKE</strong><p id="laneNever"></p></article>
           </div>
-          <span id="botConfidence" class="bot-confidence">ROLE READ</span>
+        </div>
+      </details>
+
+      <section id="botLaneBrief" class="botlane-brief hidden">
+        <div class="arena-section-head botlane-title"><div><span class="eyebrow">BOT LANE 2V2</span><h3>Fight the lane as four champions</h3></div><span id="botConfidence" class="bot-confidence">ROLE READ</span></div>
+
+        <div class="duo-stage">
+          <div class="duo-team ours">
+            <div class="duo-portraits"><div><img id="botYourAdcImg" alt="Your ADC"></div><div><img id="botYourSupportImg" alt="Your support"></div></div>
+            <div class="duo-copy"><span>OUR BOT LANE</span><strong id="botYourLane">Your duo</strong><small id="botOurIdentity">OUR DUO</small></div>
+          </div>
+          <div class="duo-vs">2V2</div>
+          <div class="duo-team theirs">
+            <div class="duo-copy enemy-copy"><span>THEIR BOT LANE</span><strong id="botEnemyLane">Enemy duo</strong><small id="botTheirIdentity">THEIR DUO</small></div>
+            <div class="duo-portraits"><div><img id="botEnemyAdcImg" alt="Enemy ADC"></div><div><img id="botEnemySupportImg" alt="Enemy support"></div></div>
+          </div>
         </div>
 
         <div class="bot-main-call">
@@ -123,15 +158,18 @@
 
         <div class="bot-danger"><div><span>THEIR 2V2 WIN CONDITION</span><strong id="botDangerLabel">DENY THEIR ENTRY</strong></div><p id="botDangerSummary"></p></div>
 
-        <div class="bot-engine">
-          <div class="bot-engine-head"><span id="botEngineState">MATCHUP LAB · READY</span><small>4-champion shared-clock model</small></div>
-          <div class="bot-engine-grid">
-            <div><span>LV 2 READ</span><b id="botEngineLevel2">Waiting…</b></div>
-            <div><span>LV 6 READ</span><b id="botEngineLevel6">Waiting…</b></div>
-            <div><span>FOCUS</span><b id="botEngineFocus">Waiting…</b></div>
+        <details class="bot-engine-details">
+          <summary><div><span>MATCHUP LAB 2V2 MODEL</span><small>4-champion shared-clock simulation</small></div><b>OPEN</b></summary>
+          <div class="bot-engine">
+            <div class="bot-engine-head"><span id="botEngineState">MATCHUP LAB · READY</span><small>Static pregame fight-shape model</small></div>
+            <div class="bot-engine-grid">
+              <div><span>LV 2 READ</span><b id="botEngineLevel2">Waiting…</b></div>
+              <div><span>LV 6 READ</span><b id="botEngineLevel6">Waiting…</b></div>
+              <div><span>FOCUS</span><b id="botEngineFocus">Waiting…</b></div>
+            </div>
+            <small id="botEngineNote"></small>
           </div>
-          <small id="botEngineNote"></small>
-        </div>
+        </details>
 
         <details class="bot-extra">
           <summary>MORE 2V2 DETAIL <b>OPEN</b></summary>
@@ -141,20 +179,15 @@
         </details>
       </section>
 
-      <div class="rules-brief">
-        <div><span>3 THINGS TO REMEMBER</span><small>Read these before loading screen</small></div>
-        <ol id="matchupRules"></ol>
-      </div>
-
       <section id="teamBrief" class="team-brief hidden">
         <div class="team-title-row">
-          <div><span class="eyebrow">5V5 GAME PLAN</span><h3>Our team vs their team</h3></div>
+          <div><span class="eyebrow">5V5 ANALYST DESK</span><h3>Our team vs their team</h3></div>
           <small id="teamNote">Composition still forming.</small>
         </div>
 
         <div class="versus-grid">
           <div class="team-roster ours"><div class="team-label"><span>OUR TEAM</span><b id="ourIdentity">—</b></div><div id="ourTeamPicks" class="pick-row"></div></div>
-          <div class="versus-mark">VS</div>
+          <div class="versus-mark"><span>VS</span></div>
           <div class="team-roster theirs"><div class="team-label"><span>THEIR TEAM</span><b id="theirIdentity">—</b></div><div id="theirTeamPicks" class="pick-row"></div></div>
         </div>
 
@@ -204,8 +237,9 @@
     <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
     <button id="unpair" class="danger">UNPAIR THIS PC</button>
   </section>
-  <footer>Lock champion → read briefing → play. OP CLIMB records the match quietly and builds the post-game review afterwards.</footer>
+  <footer>LOCK IN → READ THE CALL → PLAY. OP CLIMB records the match quietly and builds the post-game review afterwards.</footer>
 </main>
 <script src="renderer.js"></script>
+<script src="arena.js"></script>
 </body>
 </html>
