@@ -56,7 +56,7 @@ export function LiveCommandCenter(){
     if(!pairCode)return;
     const tick=()=>{
       if(pairExpiresAt&&Date.now()>=new Date(pairExpiresAt).getTime()){
-        setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Download & connect this PC to create a fresh one.');return;
+        setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Connect installed Companion to create a fresh one.');return;
       }
       void refreshDevices();
     };
@@ -93,7 +93,7 @@ export function LiveCommandCenter(){
       const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});
       const body=await res.json();
       if(!res.ok){setPairStartedAt(0);setMessage(body.error||'Pairing failed.');return}
-      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Installer download opened. Install OP CLIMB Companion, then click Open Companion & Connect below. The page will only show connected after a real Companion heartbeat is received.');
+      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Secure pairing ready. If the Companion is already installed, use Open Companion & Connect below — no reinstall is needed.');
     }catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}
     finally{setBusy(false)}
   }
@@ -103,7 +103,7 @@ export function LiveCommandCenter(){
 
     <section className={`glass card op-live-status ${recording?'is-recording':online?'is-ready':''}`}>
       <div className="op-live-status-copy">
-        <div><div className="eyebrow">OP CLIMB COMPANION</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion heartbeat is live. Leave it quietly in your Windows tray and play League normally.':linked?'A PC is registered to this account, but OP CLIMB is not receiving a live Companion heartbeat. Download/open the Companion on this PC to reconnect.':'Install and pair the Windows Companion once to start recording League matches.'}</p></div>
+        <div><div className="eyebrow">OP CLIMB COMPANION</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion heartbeat is live. Leave it quietly in your Windows tray and play League normally.':linked?'A PC is registered to this account, but OP CLIMB is not receiving a live Companion heartbeat. Open the installed Companion and reconnect it below.':'Install the Windows Companion once, then pair this PC to start recording League matches.'}</p></div>
         <span className="op-live-status-pill">{recording?'● LIVE':online?'● ONLINE':linked?'○ OFFLINE':'SETUP'}</span>
       </div>
       {recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/><Mini label="GAME TIME" value={clock(snapshot.gameTime)}/><Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/></div>}
@@ -138,12 +138,13 @@ export function LiveCommandCenter(){
     </section>}
 
     <details className="glass card op-quiet-details op-tracker-setup" open={!online||Boolean(pairCode)}>
-      <summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'INSTALL & CONNECT THIS WINDOWS PC'}</summary>
+      <summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'CONNECT THIS WINDOWS PC'}</summary>
       <div style={{marginTop:16}}>
-        <p className="muted">You only need this section for first-time setup, another PC or reinstalling the Companion.</p>
+        <p className="muted">Already installed? Connect it directly below. Only download the installer if this PC does not have OP CLIMB Companion yet.</p>
         <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
           <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
-          <a className="btn primary" href="/download/windows" target="_blank" rel="noopener" aria-disabled={busy||!isOwnAccount} onClick={e=>{if(busy||!isOwnAccount){e.preventDefault();return}void pair()}}>{busy?'CREATING SECURE PAIRING…':online?'PAIR ANOTHER PC':'DOWNLOAD & CONNECT THIS PC'}</a>
+          <button className="btn primary" type="button" disabled={busy||!isOwnAccount} onClick={()=>void pair()}>{busy?'CREATING SECURE PAIRING…':online?'PAIR ANOTHER PC':'CONNECT INSTALLED COMPANION'}</button>
+          <a className="btn" href="/download/windows" target="_blank" rel="noopener">DOWNLOAD COMPANION</a>
         </div>
         {message&&<p style={{marginTop:12}}>{message}</p>}
         {pairCode&&<WindowsTrackerInstaller code={pairCode}/>} 
