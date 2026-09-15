@@ -2,6 +2,8 @@ import {NextRequest,NextResponse} from 'next/server';
 import {authenticateTrackerToken,latestLiveReview} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {riotService} from '@/lib/services/riotService';
+import {riotEnabled} from '@/lib/riot/client';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -21,6 +23,17 @@ type FightReview={
   evidence?:{currentGold?:number;itemGoldDelta?:number|null;levelDelta?:number|null};
 };
 
+type RankChange={
+  previous:string;
+  current:string;
+  previousTier:string;
+  currentTier:string;
+  previousDivision:string;
+  currentDivision:string;
+  movedUp:boolean;
+  coachingLayerChanged:boolean;
+};
+
 export async function GET(req:NextRequest){
   const auth=req.headers.get('authorization')??'';
   const token=/^Bearer\s+(.+)$/i.exec(auth.trim())?.[1]?.trim();
@@ -31,7 +44,8 @@ export async function GET(req:NextRequest){
   const latest=await latestLiveReview(device.userId,device.accountKey);
   if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
 
-  const rank=await resolvePlayerRank(device.userId,device.riotAccountId);
+  const rankChange=await refreshPlayerRank(device.userId,device.riotAccountId).catch(()=>null);
+  const rank=rankChange?.current||await resolvePlayerRank(device.userId,device.riotAccountId);
   const coach=coachingLevelFor(rank);
   const snapshot=latest.latestSnapshot as any;
   const summary=latest.summary as any;
@@ -58,6 +72,7 @@ export async function GET(req:NextRequest){
       sessionId:latest.sessionId,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
+      rankChange,
       match:me?{
         champion:me.championName||snapshot?.active?.championName||'Unknown',
         role:roleLabel(snapshot?.active?.position||me.position),
@@ -71,6 +86,61 @@ export async function GET(req:NextRequest){
   });
 }
 
+async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promise<RankChange|null>{
+  const db=getSupabaseAdmin();
+  if(!db||!riotAccountId||!riotEnabled())return null;
+  const {data:account,error}=await db.from('riot_accounts')
+    .select('id,game_name,tagline,region,puuid,rank_tier,rank_division,league_points')
+    .eq('id',riotAccountId)
+    .eq('user_id',userId)
+    .maybeSingle();
+  if(error||!account)return null;
+
+  let puuid=String(account.puuid||'').trim();
+  if(!puuid){
+    const resolved=await riotService.getAccountByRiotId(String(account.game_name||''),String(account.tagline||''),String(account.region||''));
+    puuid=resolved.puuid;
+  }
+  if(!puuid)return null;
+
+  const fresh=await riotService.getSummonerRank(puuid,String(account.region||''));
+  if(!fresh?.tier)return null;
+
+  const previousTier=cleanTier(account.rank_tier);
+  const previousDivision=cleanDivision(account.rank_division);
+  const currentTier=cleanTier(fresh.tier);
+  const currentDivision=cleanDivision(fresh.division);
+  const now=new Date().toISOString();
+
+  await db.from('riot_accounts').update({
+    puuid,
+    rank_tier:fresh.tier,
+    rank_division:fresh.division||null,
+    league_points:fresh.leaguePoints,
+    last_synced_at:now,
+    updated_at:now,
+  }).eq('id',riotAccountId).eq('user_id',userId);
+  await db.from('profiles').update({rank:fresh.label,updated_at:now}).eq('id',userId);
+
+  if(!previousTier)return null;
+  const previous=rankLabel(previousTier,previousDivision,account.league_points);
+  const current=rankLabel(currentTier,currentDivision,fresh.leaguePoints);
+  const movedUp=rankStrength(currentTier,currentDivision)>rankStrength(previousTier,previousDivision);
+  const changed=previousTier!==currentTier||previousDivision!==currentDivision;
+  if(!changed)return null;
+
+  return{
+    previous,
+    current,
+    previousTier,
+    currentTier,
+    previousDivision,
+    currentDivision,
+    movedUp,
+    coachingLayerChanged:previousTier!==currentTier,
+  };
+}
+
 async function resolvePlayerRank(userId:string,riotAccountId:string|null){
   const db=getSupabaseAdmin();
   if(!db)return'Silver';
@@ -81,6 +151,20 @@ async function resolvePlayerRank(userId:string,riotAccountId:string|null){
   const division=String(riotResult?.data?.rank_division??'').trim();
   if(tier)return`${tier}${division?` ${division}`:''}`;
   return String(profileResult?.data?.rank||'Silver');
+}
+
+const TIER_ORDER=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'];
+const DIVISION_ORDER:Record<string,number>={IV:0,III:1,II:2,I:3};
+function cleanTier(value:unknown){return String(value||'').trim().toUpperCase()}
+function cleanDivision(value:unknown){return String(value||'').trim().toUpperCase()}
+function rankStrength(tier:string,division:string){
+  const tierIndex=Math.max(0,TIER_ORDER.indexOf(cleanTier(tier)));
+  return tierIndex*10+(DIVISION_ORDER[cleanDivision(division)]??0);
+}
+function rankLabel(tier:string,division:string,lp:unknown){
+  const pretty=tier?`${tier[0]}${tier.slice(1).toLowerCase()}`:'Unranked';
+  const points=Number(lp);
+  return`${pretty}${division?` ${division}`:''}${Number.isFinite(points)?` · ${points} LP`:''}`;
 }
 
 function buildGood(fights:FightReview[],detailLimit:number):ReviewPoint[]{
