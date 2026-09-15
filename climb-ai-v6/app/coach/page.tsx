@@ -18,10 +18,10 @@ const MAX_SAVED_MESSAGES=30;
 const MAX_CONTEXT_MESSAGES=10;
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const promptCards=[
-  {icon:'↗',title:'CLIMB',text:'What is stopping my next rank?',ask:'What is stopping me reaching the next rank based on my Active Five and recent games?'},
-  {icon:'◫',title:'FARM',text:'Where am I losing farm?',ask:'Why does my CS drop and what should I change in my Active Five?'},
-  {icon:'✕',title:'DEATHS',text:'Why am I dying?',ask:'What is the main reason I am dying and what should I practise next?'},
-  {icon:'◎',title:'OBJECTIVES',text:'Am I arriving too late?',ask:'Am I setting up objectives too late and what is the next-game cue?'},
+  {icon:'↗',title:'NEXT',text:'What should I fix next?',ask:'What is the single most important thing I should fix next based on my recent games?'},
+  {icon:'✕',title:'DEATHS',text:'Why do I keep dying?',ask:'What is the main reason I am dying and what should I do differently next game?'},
+  {icon:'◫',title:'FARM',text:'Why does my farm drop?',ask:'Why does my CS drop and what simple change should I make next game?'},
+  {icon:'◎',title:'PROGRESS',text:'Am I getting better?',ask:'Based on my recent games, what has improved and what is still holding me back?'},
 ];
 
 const avgDefined=(values:(number|undefined)[])=>{const clean=values.filter((v):v is number=>typeof v==='number'&&Number.isFinite(v));return clean.length?clean.reduce((a,b)=>a+b,0)/clean.length:undefined};
@@ -59,14 +59,14 @@ function validStoredMessages(value:unknown):Msg[]{
 function threadHistory(messages:Msg[]):HistoryTurn[]{
   return messages.filter(m=>m.text.trim()).slice(-MAX_CONTEXT_MESSAGES).map(m=>({role:m.who==='ai'?'assistant':'user',content:m.text.slice(0,2200)}));
 }
-function welcome(priority:string|undefined,tier:string,summary:string):Msg{
-  return{who:'ai',text:`I’m your ${tier} Coach. ${summary}${priority?` Your first focus is “${priority}”.`:' Play a tracked game and I’ll build your first evidence-backed focus.'}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks','rank']};
+function welcome(priority:string|undefined,tier:string):Msg{
+  return{who:'ai',text:priority?`I’ve got your recent games. Right now I want you working on “${priority}”. Ask me why it keeps happening or what to do differently next game.`:`I need a tracked game before I pretend to know what you should fix. Play one, then come back and ask me anything about it.`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks','rank']};
 }
 
 function Grounding({m}:{m:Msg}){
   if(m.who!=='ai'||!m.grounding)return null;
-  const label=m.grounding==='recorded-live-telemetry'?'LIVE EVIDENCE':m.grounding.includes('recent-match')?'RECENT GAMES + ACTIVE FIVE':m.grounding.includes('conversation')?'THREAD + ACTIVE FIVE':m.grounding.includes('champion')?'CHAMPION + ACTIVE FIVE':'ACTIVE FIVE';
-  return <div style={{display:'flex',gap:7,alignItems:'center',flexWrap:'wrap',marginBottom:7}}><span className="op-tier op-tier-plus" style={{fontSize:8}}>{label}</span>{m.factsUsed?.slice(0,3).map(f=><span key={f} className="muted" style={{fontSize:9}}>{f.replaceAll('_',' ')}</span>)}</div>;
+  const label=m.grounding==='recorded-live-telemetry'?'FROM THIS MATCH':m.grounding.includes('recent-match')?'FROM YOUR RECENT GAMES':m.grounding.includes('conversation')?'FROM THIS CHAT + YOUR GAMES':m.grounding.includes('champion')?'FROM YOUR CHAMPION + GAMES':'FROM YOUR CURRENT PLAN';
+  return <div style={{marginBottom:7}}><span className="op-tier op-tier-plus" style={{fontSize:8}}>{label}</span></div>;
 }
 
 function Message({m,collapseAt}:{m:Msg;collapseAt:number}){
@@ -74,7 +74,7 @@ function Message({m,collapseAt}:{m:Msg;collapseAt:number}){
   const long=m.who==='ai'&&m.text.length>collapseAt;
   if(!long)return <div className={`vf-message ${m.who}`}>{body}</div>;
   const preview=m.text.slice(0,Math.max(180,collapseAt-80)).replace(/\s+\S*$/,'').trim();
-  return <details className="vf-message ai"><summary><span>{preview}…</span><b>SHOW MORE</b></summary><div className="vf-message-full"><Grounding m={m}/><div style={{whiteSpace:'pre-line'}}>{m.text}</div></div></details>;
+  return <details className="vf-message ai"><summary><span>{preview}…</span><b>KEEP READING</b></summary><div className="vf-message-full"><Grounding m={m}/><div style={{whiteSpace:'pre-line'}}>{m.text}</div></div></details>;
 }
 
 export default function Coach(){
@@ -97,8 +97,8 @@ export default function Coach(){
     let restored:Msg[]=[];
     try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}
     loadedAccount.current=active.id;
-    setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier,detail.summary)]);
-  },[active.id,priorityTitle,detail.tier,detail.summary]);
+    setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier)]);
+  },[active.id,priorityTitle,detail.tier]);
 
   useEffect(()=>{
     if(loadedAccount.current!==active.id||!messages.length)return;
@@ -120,10 +120,10 @@ export default function Coach(){
       const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await res.json() as CoachResponse;
       if(!res.ok)throw new Error(body.error||'Coach request failed.');
-      const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough evidence to answer that yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};
+      const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough from your games to answer that properly yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};
       setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES));
     }catch(error){
-      const errorMessage:Msg={who:'ai',text:`I couldn’t load that evidence just now. Your first focus is still “${activeFive[0]?.title||'waiting for evidence'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};
+      const errorMessage:Msg={who:'ai',text:`I can’t pull that game evidence right now. Keep your current focus: “${activeFive[0]?.title||'play one tracked game'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};
       setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES));
     }finally{setPending(false)}
   }
@@ -134,34 +134,30 @@ export default function Coach(){
   }
 
   function resetThread(){
-    const next:Msg[]=[welcome(activeFive[0]?.title,detail.tier,detail.summary)];
+    const next:Msg[]=[welcome(activeFive[0]?.title,detail.tier)];
     setMessages(next);
     try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(next))}catch{}
   }
 
   return <AppShell>
-    <PageHead title={`${detail.tier} Coach`} subtitle={context} action={<Link href="/ilp" className="btn secondary">MY ACTIVE FIVE</Link>}/>
+    <PageHead title="Coach" subtitle={context} action={<Link href="/dashboard" className="btn secondary">BACK HOME</Link>}/>
 
     <section className="vf-coach-hero">
-      <div><div className="eyebrow">COACHING DEPTH · {detail.depth}/10</div><h2>{activeFive[0]?.title||'Build your first focus'}</h2><p>{detail.summary} {activeFive[0]?.gameRule||'Track a game and your Coach will turn the strongest evidence into one clear next-game action.'}</p><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}><span className="op-tier op-tier-pro">{detail.tier} COACH</span><span className="op-tier op-tier-plus">5 ACTIVE</span><span className="op-tier op-tier-plus">{summary.games} RECENT GAME{summary.games===1?'':'S'}</span></div></div>
-      <Link href="/live" className="vf-live-orb"><span>●</span><b>LIVE</b><small>TRACK GAME</small></Link>
+      <div><div className="eyebrow">{detail.tier} COACH</div><h2>{activeFive[0]?.title||'Play one game first'}</h2><p>{activeFive[0]?.gameRule||'Once there is a real game to work from, this becomes your one clear next-game instruction.'}</p><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:10}}><span className="op-tier op-tier-pro">{detail.tier} COACH</span><span className="op-tier op-tier-plus">{summary.games} RECENT GAME{summary.games===1?'':'S'}</span></div></div>
+      <Link href="/live" className="vf-live-orb"><span>●</span><b>PLAY</b><small>TRACK GAME</small></Link>
     </section>
-
-    <div className="vf-plan-rail">
-      {activeFive.map((t,i)=><Link href="/ilp" key={t.id} className={i===0?'active':''}><span>0{i+1}</span><div><b>{t.title}</b><i style={{width:`${t.progress}%`}}/></div><strong>{t.progress}%</strong></Link>)}
-    </div>
 
     <section className="vf-coach-prompts">
       {promptCards.slice(0,detail.visiblePoints<=2?3:4).map(card=><button key={card.title} onClick={()=>void send(card.ask)} disabled={pending}><span>{card.icon}</span><div><b>{card.title}</b><small>{card.text}</small></div></button>)}
     </section>
 
     <section className="vf-coach-console">
-      <div className="vf-chat-head"><div><div className="eyebrow">{detail.tier} COACH</div><b>Ask one thing. Get the amount of detail that matches your rank.</b></div><div style={{display:'flex',gap:8,alignItems:'center'}}><span>{pending?'READING YOUR GAMES…':`${messages.length} MESSAGES`}</span><button className="btn secondary" style={{padding:'7px 9px',fontSize:9}} onClick={resetThread} disabled={pending}>RESET</button></div></div>
+      <div className="vf-chat-head"><div><div className="eyebrow">ASK YOUR COACH</div><b>Ask about a death, a bad game, a pattern, or what to do next.</b></div><div style={{display:'flex',gap:8,alignItems:'center'}}><span>{pending?'CHECKING YOUR GAMES…':`${messages.length} MESSAGES`}</span><button className="btn secondary" style={{padding:'7px 9px',fontSize:9}} onClick={resetThread} disabled={pending}>NEW CHAT</button></div></div>
       <div className="vf-chat-list">
-        {messages.map((m,i)=><div key={i}><Message m={m} collapseAt={collapseAt}/>{m.task&&<div className="vf-coach-proposal"><div><span>{m.applied?'ACTIVE FIVE UPDATED':'NEXT FOCUS'}</span><h3>{m.task.title}</h3><p>{m.task.gameRule}</p>{detail.depth>=3&&<small className="muted">{m.task.target}</small>}</div><button className={`btn ${m.applied?'secondary':'primary'}`} disabled={m.applied} onClick={()=>applyProposal(i,m.task!)}>{m.applied?'IN ACTIVE FIVE':'ADD TO ACTIVE FIVE'}</button></div>}</div>)}
-        {pending&&<div className="vf-message ai"><div>Reading your Active Five and recent evidence…</div></div>}
+        {messages.map((m,i)=><div key={i}><Message m={m} collapseAt={collapseAt}/>{m.task&&<div className="vf-coach-proposal"><div><span>{m.applied?'FOCUS UPDATED':'TRY THIS NEXT'}</span><h3>{m.task.title}</h3><p>{m.task.gameRule}</p>{detail.depth>=3&&<small className="muted">{m.task.target}</small>}</div><button className={`btn ${m.applied?'secondary':'primary'}`} disabled={m.applied} onClick={()=>applyProposal(i,m.task!)}>{m.applied?'USING THIS FOCUS':'USE THIS FOCUS'}</button></div>}</div>)}
+        {pending&&<div className="vf-message ai"><div>Checking your recent games…</div></div>}
       </div>
-      <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="Ask your Coach about a death, farm, fight, objective or recent game…" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'SEND ↗'}</button></div>
+      <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="What went wrong in my last game?" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'ASK ↗'}</button></div>
     </section>
   </AppShell>;
 }
