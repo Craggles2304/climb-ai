@@ -8,6 +8,7 @@ import {VisualMapTempoReview} from './VisualMapTempoReview';
 import {CompactMapTimerRoutine} from './CompactMapTimerRoutine';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
+import {coachingLevelFor} from '@/lib/coachingLevel';
 
 type Review={sessionId:string;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
 type Pick={championId:number;championName:string|null;role:string|null;lockedIn:boolean};
@@ -18,6 +19,7 @@ type Point={title:string;detail:string;time?:number};
 export function LiveFightReviewMount(){
   const {active}=useAccount();
   const {tasks}=useLearningPlan();
+  const detail=coachingLevelFor(active.rank);
   const [review,setReview]=useState<Review|null>(null);
   const [pregame,setPregame]=useState<Pregame|null>(null);
   const loadedDraftFor=useRef('');
@@ -52,16 +54,18 @@ export function LiveFightReviewMount(){
   const matchDraft=pregame?.linkedSessionId===review.sessionId?pregame:null;
   const nextRule=summary.next?.detail||currentMission?.gameRule||'Keep the same learning-plan cue until repeated match evidence shows a clearer priority.';
   const nextTitle=summary.next?.title||currentMission?.title||'BUILD MORE EVIDENCE';
+  const good=summary.good.slice(0,detail.reviewPoints);
+  const critical=summary.critical.slice(0,detail.reviewPoints);
 
   return <section className="dash-section op-coaching-zone" style={{display:'grid',gap:14}}>
     <div className="op-section-title">
-      <div><div className="eyebrow">POST-GAME COMPANION</div><h2>The points that matter.</h2></div>
-      <p>{review.status==='ABORTED'?'Partial capture — useful, but not enough for mastery.':'Three good points, three critical points, then one focus for the next game.'}</p>
+      <div><div className="eyebrow">POST-GAME · {detail.tier} REVIEW {detail.depth}/10</div><h2>{detail.depth<=2?'What mattered.':'The points that matter.'}</h2></div>
+      <p>{review.status==='ABORTED'?'Partial capture — useful, but not enough for mastery.':detail.depth<=2?'One good point. One problem. One thing next game.':`${detail.reviewPoints} useful point${detail.reviewPoints===1?'':'s'} each side, then one focus for the next game.`}</p>
     </div>
 
     <div className="grid two">
-      <PointCard title="GOOD POINTS" mark="✓" points={summary.good}/>
-      <PointCard title="CRITICAL POINTS" mark="!" points={summary.critical}/>
+      <PointCard title="GOOD" mark="✓" points={good} showDetail={detail.depth>=2}/>
+      <PointCard title="FIX" mark="!" points={critical} showDetail={detail.depth>=2}/>
     </div>
 
     <div className="glass card" style={{padding:20,borderColor:'rgba(67,140,255,.34)'}}>
@@ -70,22 +74,22 @@ export function LiveFightReviewMount(){
       <p style={{margin:0,fontSize:15,lineHeight:1.55}}>{nextRule}</p>
     </div>
 
-    <details className="glass card op-quiet-details">
-      <summary>OPEN FULL MATCH ANALYSIS <span>grade, fix ladder, map timing & fight evidence</span></summary>
+    {detail.depth>=4&&<details className="glass card op-quiet-details">
+      <summary>OPEN MORE MATCH ANALYSIS <span>{detail.depth>=7?'grade, fix ladder, map timing & fight evidence':'extra evidence behind the review'}</span></summary>
       <div style={{display:'grid',gap:16,marginTop:18}}>
-        {matchDraft&&<DraftEvidence pregame={matchDraft}/>} 
+        {detail.depth>=6&&matchDraft&&<DraftEvidence pregame={matchDraft}/>} 
         <CompactFixLadder fights={fights} historyProfile={review.historyProfile}/>
-        <CompactMapTimerRoutine analysis={review.proAnalysis}/>
-        <VisualMapTempoReview fights={fights} analysis={review.proAnalysis}/>
-        <div className="op-review-with-compact-ladder"><FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/></div>
+        {detail.depth>=5&&<CompactMapTimerRoutine analysis={review.proAnalysis}/>} 
+        {detail.depth>=6&&<VisualMapTempoReview fights={fights} analysis={review.proAnalysis}/>} 
+        {detail.depth>=7&&<div className="op-review-with-compact-ladder"><FightDecisionReview fights={fights} proAnalysis={review.proAnalysis} historyProfile={review.historyProfile}/></div>}
       </div>
-    </details>
-    <style jsx global>{`.op-review-with-compact-ladder > div > section:nth-of-type(4){display:none!important;}`}</style>
+    </details>}
+    {detail.depth>=7&&<style jsx global>{`.op-review-with-compact-ladder > div > section:nth-of-type(4){display:none!important;}`}</style>}
   </section>;
 }
 
-function PointCard({title,mark,points}:{title:string;mark:string;points:Point[]}){
-  return <div className="glass card" style={{padding:20}}><div className="eyebrow">{title}</div><div style={{display:'grid',gap:12,marginTop:12}}>{points.map((point,index)=><div key={`${title}-${index}`} style={{display:'grid',gridTemplateColumns:'28px minmax(0,1fr)',gap:10,paddingBottom:index===points.length-1?0:11,borderBottom:index===points.length-1?'none':'1px solid rgba(255,255,255,.07)'}}><b style={{fontSize:18}}>{mark}</b><div><b>{point.title}</b><p className="muted" style={{margin:'4px 0 0',lineHeight:1.45}}>{point.detail}</p></div></div>)}</div></div>;
+function PointCard({title,mark,points,showDetail}:{title:string;mark:string;points:Point[];showDetail:boolean}){
+  return <div className="glass card" style={{padding:20}}><div className="eyebrow">{title}</div><div style={{display:'grid',gap:12,marginTop:12}}>{points.map((point,index)=><div key={`${title}-${index}`} style={{display:'grid',gridTemplateColumns:'28px minmax(0,1fr)',gap:10,paddingBottom:index===points.length-1?0:11,borderBottom:index===points.length-1?'none':'1px solid rgba(255,255,255,.07)'}}><b style={{fontSize:18}}>{mark}</b><div><b>{point.title}</b>{showDetail&&<p className="muted" style={{margin:'4px 0 0',lineHeight:1.45}}>{point.detail}</p>}</div></div>)}</div></div>;
 }
 
 function buildSimpleReview(fights:FightReview[]){
@@ -93,7 +97,7 @@ function buildSimpleReview(fights:FightReview[]){
   const weaknesses=fights.filter(f=>f.category==='WEAKNESS').sort((a,b)=>weaknessScore(b)-weaknessScore(a));
   const good=dedupe(strengths.map(f=>({title:f.verdict==='YOU_STRONGER'?`Converted your edge at ${formatClock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Won from a harder state at ${formatClock(f.atSeconds)}`:`Clean conversion at ${formatClock(f.atSeconds)}`,detail:short(f.summary),time:f.atSeconds}))).slice(0,3);
   const critical=dedupe(weaknesses.map(f=>({title:f.verdict==='YOU_STRONGER'?`Threw a favourable state at ${formatClock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Took an enemy-favoured fight at ${formatClock(f.atSeconds)}`:`Death from an even state at ${formatClock(f.atSeconds)}`,detail:short(f.betterDecision?.[0]||f.summary),time:f.atSeconds}))).slice(0,3);
-  if(!good.length)good.push({title:'No fake praise',detail:'This match did not contain a strong positive decision signal that OP CLIMB can verify from the captured evidence.'});
+  if(!good.length)good.push({title:'No clear positive signal',detail:'This match did not contain a strong positive decision signal OP CLIMB can verify from the captured evidence.'});
   if(!critical.length)critical.push({title:'No critical leak confirmed',detail:'No single critical decision leak was clear enough to promote from this match. Keep building evidence.'});
   const top=weaknesses[0];
   const next=top?{title:top.verdict==='YOU_STRONGER'?'PROTECT THE ADVANTAGE':top.verdict==='THEM_STRONGER'?'STOP TAKING THE BAD FIGHT':'CREATE AN EDGE BEFORE COMMITTING',detail:top.betterDecision?.[0]||top.summary}:null;
