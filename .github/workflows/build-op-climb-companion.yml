@@ -34,14 +34,29 @@ jobs:
       - name: Build Windows installer
         run: npm run build:win
 
+      - name: Verify updater assets
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/OP-Climb-Companion-Setup.exe',
+            'dist/OP-Climb-Companion-Setup.exe.blockmap',
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) { throw "Missing updater asset: $file" }
+          }
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: op-climb-companion-windows
-          path: climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe
+          path: |
+            climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe
+            climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe.blockmap
+            climb-ai-v6/companion/dist/latest.yml
           if-no-files-found: error
 
-      - name: Publish beta installer
+      - name: Publish beta installer and update feed
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -50,4 +65,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) {
             gh release create companion-beta --repo $env:GITHUB_REPOSITORY --prerelease --title 'OP CLIMB Companion Beta' --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
           }
-          gh release upload companion-beta 'dist/OP-Climb-Companion-Setup.exe' --clobber --repo $env:GITHUB_REPOSITORY
+          gh release upload companion-beta `
+            'dist/OP-Climb-Companion-Setup.exe' `
+            'dist/OP-Climb-Companion-Setup.exe.blockmap' `
+            'dist/latest.yml' `
+            --clobber --repo $env:GITHUB_REPOSITORY

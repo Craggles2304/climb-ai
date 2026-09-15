@@ -1,5 +1,6 @@
 const $=id=>document.getElementById(id);
 let current=null;
+let updateState=null;
 let diagnosticsOpen=false;
 let activeMatchupTab='overview';
 
@@ -23,6 +24,7 @@ function render(state){
   $('status').classList.toggle('hidden',!state.paired);
   $('settings').classList.toggle('hidden',!state.paired);
   renderMatchup(state.matchup,state.paired);
+  renderUpdate(updateState,state.phase);
   if(!state.paired)return;
   $('statusTitle').textContent=phaseTitle(state.phase);
   $('statusCopy').textContent=state.detail||'Companion is running.';
@@ -34,6 +36,36 @@ function render(state){
   $('autoStart').classList.toggle('on',Boolean(state.autoStart));
   const rows=Array.isArray(state.logs)?state.logs:[];
   $('logs').textContent=rows.length?rows.map(row=>`[${new Date(row.at).toLocaleTimeString()}] ${row.line}`).join('\n'):'No tracker activity yet.';
+}
+
+function renderUpdate(next,phase){
+  if(next)updateState=next;
+  const update=updateState||{status:'IDLE',currentVersion:'—',latestVersion:null,progress:0,error:null};
+  const status=String(update.status||'IDLE');
+  const version=update.currentVersion?`v${update.currentVersion}`:'Current version';
+  const latest=update.latestVersion?`v${update.latestVersion}`:'';
+  const busy=['CHAMP_SELECT','RECORDING','UPLOADING'].includes(String(phase||''));
+  const copy={
+    IDLE:`${version} · Automatic update checks are enabled.`,
+    CHECKING:`${version} · Checking for a newer Companion…`,
+    CURRENT:`${version} · You're up to date.`,
+    AVAILABLE:`${latest||'A new version'} is ready to download.`,
+    DOWNLOADING:`Downloading ${latest||'update'} · ${Math.round(Number(update.progress)||0)}%`,
+    READY:busy?`${latest||'Update'} downloaded. Finish the current League session before restarting.`:`${latest||'Update'} downloaded and ready.`,
+    INSTALLING:'Restarting into the new version…',
+    ERROR:update.error||'The update check failed. Your current Companion will keep working.',
+  }[status]||`${version} · Automatic update checks are enabled.`;
+  $('updateCopy').textContent=copy;
+  $('updateVersion').textContent=version;
+  $('checkUpdate').classList.toggle('hidden',!['IDLE','CURRENT','ERROR'].includes(status));
+  $('downloadUpdate').classList.toggle('hidden',status!=='AVAILABLE');
+  $('installUpdate').classList.toggle('hidden',status!=='READY');
+  $('checkUpdate').disabled=status==='CHECKING';
+  $('downloadUpdate').disabled=status==='DOWNLOADING';
+  $('installUpdate').disabled=busy;
+  $('installUpdate').textContent=busy?'FINISH GAME TO UPDATE':'RESTART & UPDATE';
+  $('updateProgress').classList.toggle('hidden',status!=='DOWNLOADING');
+  $('updateProgressBar').style.width=`${Math.max(0,Math.min(100,Number(update.progress)||0))}%`;
 }
 
 function renderMatchup(matchup,paired){
@@ -123,8 +155,15 @@ function setMatchupTab(name){
 }
 
 async function boot(){
-  render(await window.opCompanion.getState());
+  const [appState,updater]=await Promise.all([
+    window.opCompanion.getState(),
+    window.opCompanion.getUpdateState().catch(()=>null),
+  ]);
+  updateState=updater;
+  render(appState);
+  renderUpdate(updateState,appState?.phase);
   window.opCompanion.onState(render);
+  window.opCompanion.onUpdateState(next=>renderUpdate(next,current?.phase));
 }
 
 $('openSetup').addEventListener('click',()=>window.opCompanion.openClimb());
@@ -134,6 +173,12 @@ $('unpair').addEventListener('click',async()=>{
   if(confirm('Unpair this PC from OP CLIMB? You can reconnect it from the Live Companion page.'))await window.opCompanion.unpair();
 });
 $('autoStart').addEventListener('click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
+$('checkUpdate').addEventListener('click',()=>window.opCompanion.checkUpdate());
+$('downloadUpdate').addEventListener('click',()=>window.opCompanion.downloadUpdate());
+$('installUpdate').addEventListener('click',async()=>{
+  const result=await window.opCompanion.installUpdate(current?.phase||'');
+  if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error;
+});
 $('showLogs').addEventListener('click',()=>{
   diagnosticsOpen=!diagnosticsOpen;
   $('logs').classList.toggle('hidden',!diagnosticsOpen);

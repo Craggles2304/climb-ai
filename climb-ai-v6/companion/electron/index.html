@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OP CLIMB Companion</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="updates.css">
 </head>
 <body>
 <main class="shell">
@@ -110,6 +111,16 @@
 
   <section id="settings" class="card hidden">
     <div class="setting"><div><b>Start with Windows</b><small>Keep the Companion ready automatically.</small></div><button id="autoStart" class="toggle" aria-label="Start with Windows"></button></div>
+    <div class="settings-divider"></div>
+    <div class="update-setting">
+      <div class="update-copy"><div class="update-title"><b>App updates</b><span id="updateVersion">v—</span></div><small id="updateCopy">Automatic update checks are enabled.</small></div>
+      <div class="update-actions">
+        <button id="checkUpdate">CHECK FOR UPDATES</button>
+        <button id="downloadUpdate" class="primary hidden">UPDATE NOW</button>
+        <button id="installUpdate" class="primary hidden">RESTART & UPDATE</button>
+      </div>
+    </div>
+    <div id="updateProgress" class="update-progress hidden"><span id="updateProgressBar"></span></div>
     <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
     <button id="unpair" class="danger">UNPAIR THIS PC</button>
   </section>

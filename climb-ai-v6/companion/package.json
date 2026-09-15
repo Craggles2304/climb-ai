@@ -1,14 +1,17 @@
 {
   "name": "op-climb-companion",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "OP CLIMB Windows companion for League of Legends matchup planning, match capture and post-game coaching.",
-  "main": "electron/main.cjs",
+  "main": "electron/bootstrap.cjs",
   "type": "module",
   "scripts": {
     "tracker": "node src/main.mjs",
     "desktop": "electron .",
     "build:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "electron-updater": "6.6.2"
   },
   "devDependencies": {
     "electron": "44.3.0",
@@ -18,6 +21,12 @@
     "appId": "com.opclimb.companion",
     "productName": "OP CLIMB Companion",
     "artifactName": "OP-Climb-Companion-Setup.${ext}",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/Craggles2304/climb-ai/releases/download/companion-beta"
+      }
+    ],
     "protocols": [
       {
         "name": "OP CLIMB Companion Pairing",
@@ -36,6 +45,7 @@
     ],
     "win": {
       "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": false,
       "target": [
         {
           "target": "nsis",
