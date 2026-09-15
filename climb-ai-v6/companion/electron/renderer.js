@@ -34,7 +34,7 @@ function phaseCopy(state){
   if(phase==='STARTING')return'Starting quietly in the background.';
   if(phase==='WAITING')return"You're connected. Open League and play normally — OP CLIMB will take it from here.";
   if(phase==='CHAMP_SELECT')return'Reading champion select and building a short plan for this game.';
-  if(phase==='RECORDING')return'Play normally. OP CLIMB is recording quietly. No live tactical advice will distract you.';
+  if(phase==='RECORDING')return'Play normally. OP CLIMB is recording quietly. Keep the three cues short, then get your eyes back on League.';
   if(phase==='UPLOADING')return'Game finished. OP CLIMB is turning the recording into your review.';
   if(phase==='REVIEW')return'Your review is ready.';
   if(phase==='RESTARTING')return'Restarting the tracker. This should only take a moment.';
@@ -54,7 +54,7 @@ function setCoachLevel(level){
     };
   }
   const signal=document.querySelector('.brand-signal b');
-  if(signal)signal.textContent=`${activeCoachLevel.tier} COACH · SIMPLE ${activeCoachLevel.depth}/10`;
+  if(signal)signal.textContent=`${activeCoachLevel.tier} COACH`;
 }
 
 function render(state){
@@ -157,7 +157,7 @@ function renderPregame(matchup,teamPlan,visible){
   const rules=safeArray(plan.rules).length?safeArray(plan.rules):safeArray(plan.winCondition);
   const ruleCap=clamp(Number(activeCoachLevel.visiblePoints)||2,1,5);
 
-  $('simplePregameTier').textContent=`${activeCoachLevel.tier} COACH · ${activeCoachLevel.depth}/10`;
+  $('simplePregameTier').textContent=`${activeCoachLevel.tier} COACH`;
   $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:`${you} game plan`;
   $('simplePregameSummary').textContent=plan.laneEdge?.summary||'Keep the plan simple and play the first clean advantage.';
   $('simplePregameJob').textContent=teamPlan?.yourJob||fallbackJob(role);
