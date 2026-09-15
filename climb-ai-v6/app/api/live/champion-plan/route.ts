@@ -1,6 +1,8 @@
 import {NextRequest,NextResponse} from 'next/server';
 import type {ChampionDetail} from '@/lib/champions/ddragon';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
+import {latestLiveRead} from '@/lib/server/liveReadRepository';
+import {getProLearningProfile} from '@/lib/server/proLearningRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib/champions/source';
@@ -9,6 +11,7 @@ import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {buildLiveMissionTips,nextRankTier,type LiveMissionTask} from '@/lib/liveMissionCoach';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -47,9 +50,21 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     if(!Boolean(context?.localLockedIn)||!champion)return NextResponse.json({ok:true,ready:false},{status:202});
 
-    const [patch,playerRank]=await Promise.all([latestPatch(),resolvePlayerRank(db,device)]);
+    const [patch,playerRank,missionTasks,liveRead,history]=await Promise.all([
+      latestPatch(),
+      resolvePlayerRank(db,device),
+      loadMissionTasks(db,device),
+      trackerState==='RECORDING'?latestLiveRead(device.userId,device.accountKey).catch(()=>null):Promise.resolve(null),
+      trackerState==='RECORDING'?getProLearningProfile(device.userId,device.riotAccountId).catch(()=>null):Promise.resolve(null),
+    ]);
     const coach=coachingLevelFor(playerRank);
-    const missionTips=await loadMissionTips(db,device,coach.depth);
+    const missionTips=buildLiveMissionTips({
+      tasks:missionTasks,
+      snapshot:liveRead?.latestSnapshot??null,
+      history,
+      currentTier:coach.tier,
+      depth:coach.depth,
+    });
     const roster=await championRoster(patch);
     const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
       .filter((pick:any)=>String(pick?.championName??'').trim())
@@ -69,16 +84,16 @@ export async function GET(req:NextRequest){
     const teamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
-    const coachLevel={rank:playerRank,tier:coach.tier,depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
+    const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
     const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,live:trackerState==='RECORDING',liveSnapshotAt:liveRead?.latestSnapshot?.receivedAt??null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
   }
 }
 
-async function loadMissionTips(db:any,device:{userId:string;riotAccountId:string|null},depth:number){
+async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:string|null}):Promise<LiveMissionTask[]>{
   if(!device.riotAccountId)return[];
   const {data,error}=await db.from('ilp_tasks')
     .select('id,payload,updated_at')
@@ -87,7 +102,7 @@ async function loadMissionTips(db:any,device:{userId:string;riotAccountId:string
     .order('updated_at',{ascending:false})
     .limit(20);
   if(error)throw new Error(error.message);
-  const active=(data??[])
+  return (data??[])
     .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??'')}))
     .filter((task:any)=>{
       const status=String(task?.status??'ACTIVE').toUpperCase();
@@ -99,22 +114,6 @@ async function loadMissionTips(db:any,device:{userId:string;riotAccountId:string
       return (Number(a?.progress)||0)-(Number(b?.progress)||0);
     })
     .slice(0,3);
-  return active.map((task:any,index:number)=>({
-    id:String(task.id||`mission-${index+1}`),
-    number:index+1,
-    title:String(task.title||`Mission ${index+1}`).trim(),
-    cue:shortMissionCue(task.gameRule,depth),
-    category:String(task.category||'DEVELOPMENT').replaceAll('_',' '),
-  }));
-}
-
-function shortMissionCue(value:any,depth:number){
-  const text=String(value??'').replace(/\s+/g,' ').trim();
-  if(!text)return'';
-  const limits=[0,72,80,90,100,110,120,130,140,150,160];
-  const max=limits[Math.max(1,Math.min(10,depth))]||100;
-  if(text.length<=max)return text;
-  return`${text.slice(0,max-1).replace(/\s+\S*$/,'')}…`;
 }
 
 async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:string|null}){
