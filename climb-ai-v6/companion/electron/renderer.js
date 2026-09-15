@@ -6,12 +6,13 @@ let activeMatchupTab='overview';
 let botLaneSimSignature='';
 let botLaneSim=null;
 let botLaneSimLoading=false;
+let fullPregameOpen=false;
 
 function phaseTitle(phase){
-  return ({SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',CHAMP_SELECT:'Champ select detected',RECORDING:'Recording your match',UPLOADING:'Building your review',RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'})[phase]||'OP CLIMB Companion';
+  return ({SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',CHAMP_SELECT:'Your game plan is ready',RECORDING:'Play. We are recording.',UPLOADING:'Building your review',REVIEW:'Your game review',RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'})[phase]||'OP CLIMB Companion';
 }
 function modeLabel(phase){
-  return ({SETUP:'Setup',STARTING:'Starting',WAITING:'Waiting',CHAMP_SELECT:'Champ Select',RECORDING:'Live Recording',UPLOADING:'Post-game',RESTARTING:'Restarting',AUTH_ERROR:'Pairing Error',ERROR:'Error'})[phase]||phase;
+  return ({SETUP:'Setup',STARTING:'Starting',WAITING:'Ready',CHAMP_SELECT:'Pregame',RECORDING:'Recording',UPLOADING:'Reviewing',REVIEW:'Review Ready',RESTARTING:'Restarting',AUTH_ERROR:'Pairing Error',ERROR:'Error'})[phase]||phase;
 }
 
 function render(state){
@@ -19,19 +20,67 @@ function render(state){
   $('setup').classList.toggle('hidden',state.paired);
   $('status').classList.toggle('hidden',!state.paired);
   $('settings').classList.toggle('hidden',!state.paired);
-  renderMatchup(state.matchup,state.teamPlan,state.paired);
+  renderMatchup(state.matchup,state.teamPlan,Boolean(state.paired&&state.phase==='CHAMP_SELECT'));
+  renderPostGameReview(state.postGameReview,state.phase);
   renderUpdate(updateState,state.phase);
   if(!state.paired)return;
   $('statusTitle').textContent=phaseTitle(state.phase);
-  $('statusCopy').textContent=state.detail||'Companion is running.';
+  $('statusCopy').textContent=state.phase==='REVIEW'?'Three good points. Three critical points. One thing to take into the next game.':state.detail||'Companion is running.';
   $('trackerState').textContent=state.trackerRunning?'Running':'Stopped';
   $('modeState').textContent=modeLabel(state.phase);
   $('statusPill').textContent=modeLabel(state.phase).toUpperCase();
-  $('statusPill').classList.toggle('good',['WAITING','CHAMP_SELECT','RECORDING','UPLOADING'].includes(state.phase));
+  $('statusPill').classList.toggle('good',['WAITING','CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(state.phase));
   $('statusPill').classList.toggle('bad',['AUTH_ERROR','ERROR','RESTARTING'].includes(state.phase));
   $('autoStart').classList.toggle('on',Boolean(state.autoStart));
+  const statusBottom=document.querySelector('.status-bottom');
+  if(statusBottom)statusBottom.style.display=['AUTH_ERROR','ERROR','RESTARTING'].includes(state.phase)?'flex':'none';
   const rows=Array.isArray(state.logs)?state.logs:[];
   $('logs').textContent=rows.length?rows.map(row=>`[${new Date(row.at).toLocaleTimeString()}] ${row.line}`).join('\n'):'No tracker activity yet.';
+}
+
+function renderPostGameReview(review,phase){
+  const section=ensureReviewSection();
+  const visible=phase==='REVIEW'&&review;
+  section.classList.toggle('hidden',!visible);
+  if(!visible)return;
+  const match=review.match||{};
+  $('simpleReviewMatch').textContent=[match.champion,match.role,match.kda?`${match.kda} KDA`:null,Number.isFinite(match.csPerMin)?`${match.csPerMin} CS/min`:null].filter(Boolean).join(' · ');
+  $('simpleReviewTag').textContent=review.partial?'PARTIAL REVIEW':'MATCH REVIEW';
+  renderReviewList('simpleGood',review.good,'✓');
+  renderReviewList('simpleCritical',review.critical,'!');
+  $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
+  $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current learning-plan cue and build more evidence.';
+}
+
+function ensureReviewSection(){
+  let section=$('simplePostgameReview');
+  if(section)return section;
+  section=document.createElement('section');section.id='simplePostgameReview';section.className='card hidden';
+  section.style.marginTop='14px';section.style.padding='22px';
+  section.innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:14px;align-items:end;flex-wrap:wrap">
+      <div><div class="eyebrow" id="simpleReviewTag">MATCH REVIEW</div><h2 style="margin:5px 0 4px">THE POINTS THAT MATTER</h2><p id="simpleReviewMatch" style="margin:0;opacity:.72"></p></div>
+      <div class="pill good">REVIEW READY</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:18px">
+      <div style="border:1px solid rgba(214,255,47,.22);border-radius:16px;padding:16px"><div class="eyebrow">GOOD POINTS</div><div id="simpleGood" style="display:grid;gap:11px;margin-top:10px"></div></div>
+      <div style="border:1px solid rgba(255,110,90,.26);border-radius:16px;padding:16px"><div class="eyebrow">CRITICAL POINTS</div><div id="simpleCritical" style="display:grid;gap:11px;margin-top:10px"></div></div>
+    </div>
+    <div style="margin-top:14px;border:1px solid rgba(67,140,255,.3);border-radius:16px;padding:17px;background:rgba(67,140,255,.06)"><div class="eyebrow">ONE THING NEXT GAME</div><h3 id="simpleNextTitle" style="margin:6px 0"></h3><p id="simpleNextRule" style="margin:0;line-height:1.55"></p></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="simpleOpenClimb" class="ghost">OPEN FULL REVIEW</button></div>`;
+  $('status').after(section);
+  $('simpleOpenClimb').addEventListener('click',()=>window.opCompanion.openClimb());
+  return section;
+}
+
+function renderReviewList(id,items,mark){
+  const root=$(id);root.replaceChildren();
+  const values=Array.isArray(items)?items.slice(0,3):[];
+  for(const item of values){
+    const row=document.createElement('div');row.style.display='grid';row.style.gridTemplateColumns='24px 1fr';row.style.gap='9px';row.style.padding='7px 0';
+    const icon=document.createElement('b');icon.textContent=mark;icon.style.fontSize='18px';
+    const copy=document.createElement('div');const title=document.createElement('b');title.textContent=item.title||'Review point';const detail=document.createElement('p');detail.textContent=item.detail||'';detail.style.margin='3px 0 0';detail.style.opacity='.72';detail.style.fontSize='12px';detail.style.lineHeight='1.45';copy.append(title,detail);row.append(icon,copy);root.appendChild(row);
+  }
 }
 
 function renderUpdate(next,phase){
@@ -112,6 +161,15 @@ function renderMatchup(matchup,teamPlan,paired){
   renderSpikes(spikes);
   renderTeamPlan(teamPlan);
   setMatchupTab(activeMatchupTab);
+  applySimplePregame(box);
+}
+
+function applySimplePregame(box){
+  const advanced=[box.querySelector('.power-radar'),box.querySelector('.tactical-board'),$('laneDuelBrief'),$('botLaneBrief'),$('teamBrief'),$('deepDive'),box.querySelector('.matchup-footer')].filter(Boolean);
+  advanced.forEach(node=>node.style.display=fullPregameOpen?'':'none');
+  let button=$('simplePregameToggle');
+  if(!button){button=document.createElement('button');button.id='simplePregameToggle';button.className='ghost';button.style.margin='12px auto';button.style.display='block';button.addEventListener('click',()=>{fullPregameOpen=!fullPregameOpen;applySimplePregame(box)});const rules=box.querySelector('.rules-brief');(rules||box).after(button)}
+  button.textContent=fullPregameOpen?'HIDE FULL MATCHUP':'OPEN FULL MATCHUP';
 }
 
 function renderLaneDuel(plan,matchup,hasOpponent){
