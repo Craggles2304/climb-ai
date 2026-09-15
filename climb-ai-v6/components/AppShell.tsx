@@ -26,11 +26,13 @@ const routeTitle=(path:string)=>{
   if(path==='/coach')return'COACH';
   if(path==='/live')return'COMPANION';
   if(path==='/analyse'||path.startsWith('/analyse/'))return'GAMES';
+  if(path==='/advanced-statistics')return'ADVANCED STATISTICS';
   if(path==='/ilp')return'YOUR PLAN';
   if(path==='/progress')return'PROGRESS';
+  if(path==='/matchups')return'MATCHUP ASSISTANT';
   if(path.startsWith('/matchup-lab'))return'ADVANCED MATCHUP';
   if(path.startsWith('/champions'))return'CHAMPIONS';
-  if(path==='/missions')return'YOUR PLAN';
+  if(path==='/missions')return'MISSION LAB';
   if(path==='/uploads')return'ADD A GAME';
   if(path==='/account')return'ACCOUNT';
   if(path==='/pricing')return'SUBSCRIPTION';
@@ -57,6 +59,7 @@ export function AppShell({children}:{children:React.ReactNode}){
   const coaching=coachingLevelFor(active.rank);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<7;
+  const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||path.startsWith('/champions')||path==='/missions'||path==='/uploads';
   useEffect(()=>setAdvancedOpen(false),[path]);
 
   return <div className={`app-layout op-shell ${live?'is-live':''}`}>
@@ -84,12 +87,18 @@ export function AppShell({children}:{children:React.ReactNode}){
             </Link>;
           })}
         </div>
+
+        <div className="op-nav-group">
+          <div className="op-nav-label"><span>OPTIONAL</span></div>
+          <Link className={advancedRoute?'active-nav':''} href="/advanced-statistics">
+            <span className="op-nav-icon">▦</span><span>Advanced Statistics</span>{advancedRoute&&<i/>}
+          </Link>
+        </div>
       </nav>
 
       <div className="op-nav-group" style={{marginTop:'auto'}}>
         <div className="op-nav-label"><span>MORE</span></div>
         <Link href="/ilp"><span className="op-nav-icon">◎</span><span>Your plan</span></Link>
-        <Link href="/champions"><span className="op-nav-icon">★</span><span>Champions</span></Link>
         <Link href="/account"><span className="op-nav-icon">◉</span><span>Account</span></Link>
         <Link href="/settings"><span className="op-nav-icon">⚙</span><span>Settings</span></Link>
       </div>
