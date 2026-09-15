@@ -64,7 +64,7 @@ export const candidateTasks:Record<string,Candidate>={
 
 function candidateForRole(role:Role){return Object.entries(candidateTasks).filter(([,c])=>!c.roles||c.roles.includes(role));}
 function candidateScore(candidate:Candidate,matches:Match[]){const probe:ILPTask={id:'probe',accountId:'probe',...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches);const priority=candidate.priority||50;return e.hasEvidence?priority+(100-e.progress)*.72:priority*.45;}
-function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[]):ILPTask{const probe:ILPTask={id:`system-${key}-${Date.now()}`,accountId,...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches);return{...probe,progress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Baseline hypothesis — waiting for enough match evidence to confirm or replace it.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Promoted into the active five while evidence is still building.',history:[{at:new Date().toISOString(),type:'PROMOTED' as const,note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Promoted as a role baseline while evidence builds.'}]};}
+function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[]):ILPTask{const probe:ILPTask={id:`system-${key}-${Date.now()}`,accountId,...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches);return{...probe,progress:e.hasEvidence?e.progress:0,metricProgress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Baseline hypothesis — waiting for enough match evidence to confirm or replace it.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Promoted into the active five while evidence is still building.',history:[{at:new Date().toISOString(),type:'PROMOTED' as const,note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Promoted as a role baseline while evidence builds.'}]};}
 
 export function ensureFiveActive(tasks:ILPTask[],matches:Match[],accountId:string,role:Role):{tasks:ILPTask[];changes:string[]}{
   const next=[...tasks];const changes:string[]=[];const live=()=>next.filter(active);const usedTitles=new Set(next.map(t=>t.title.toLowerCase()));const usedMetrics=new Set(live().map(t=>`${t.metric}:${t.category}`));
@@ -79,14 +79,29 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
   const next=tasks.map(t=>{
     if(t.status==='MASTERED'||t.status==='PAUSED')return t;
     const e=evaluateMetric(t,recent);if(!e.hasEvidence)return{...t,lastUpdatedReason:e.note};
-    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);const successfulGames=passResults.filter(Boolean).length;const gamesObserved=passResults.length;const masteryRequired=t.masteryRequired||3;const mastered=gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&e.progress>=85;const status=mastered?'MASTERED' as const:e.progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
+    const passResults=recent.map(m=>matchPass(t,m)).filter((v):v is boolean=>v!==null);
+    const rawSuccessful=passResults.filter(Boolean).length;
+    const attempts=t.missionHistory??[];
+    const hasMissionEvidence=attempts.length>0;
+    const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
+    const masteryRequired=t.masteryRequired||3;
+    const missionProgress=hasMissionEvidence?clamp(confirmed/masteryRequired*100):undefined;
+    const metricProgress=e.progress;
+    const progress=hasMissionEvidence&&typeof missionProgress==='number'?clamp(metricProgress*.7+missionProgress*.3):metricProgress;
+    const successfulGames=hasMissionEvidence?confirmed:rawSuccessful;
+    const gamesObserved=hasMissionEvidence?attempts.length:passResults.length;
+    const mastered=hasMissionEvidence
+      ?confirmed>=masteryRequired&&metricProgress>=85
+      :gamesObserved>=masteryRequired&&successfulGames>=masteryRequired&&metricProgress>=85;
+    const status=mastered?'MASTERED' as const:progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
     if(mastered)changes.push(`${t.title} reached mastery evidence and left the active five.`);
-    return{...t,progress:e.progress,status,successfulGames,gamesObserved,masteryRequired,lastUpdatedReason:e.note,evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')),`AUTO: ${e.note}`],history:[...(t.history||[]),{at:new Date().toISOString(),type:(mastered?'MASTERED':'PROGRESS') as 'MASTERED'|'PROGRESS',note:e.note}].slice(-10)};
+    const missionNote=hasMissionEvidence?` Mission evidence: ${confirmed}/${masteryRequired} confirmed reps.`:'';
+    return{...t,progress,metricProgress,missionProgress,status,successfulGames,gamesObserved,masteryRequired,lastUpdatedReason:`${e.note}${missionNote}`,evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')),`AUTO: ${e.note}`],history:[...(t.history||[]),{at:new Date().toISOString(),type:(mastered?'MASTERED':'PROGRESS') as 'MASTERED'|'PROGRESS',note:`${e.note}${missionNote}`}].slice(-12)};
   });
   return{tasks:next,changes};
 }
 
 export function adaptAndRefill(tasks:ILPTask[],matches:Match[],accountId:string,role:Role){const adapted=adaptILP(tasks,matches);const refilled=ensureFiveActive(adapted.tasks,matches,accountId,role);return{tasks:refilled.tasks,changes:[...adapted.changes,...refilled.changes]};}
 export function rankTasks(tasks:ILPTask[]){return [...tasks].sort((a,b)=>(b.priority||50)-(a.priority||50));}
-export function createCoachTask(accountId:string,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{id:`coach-${Date.now()}`,accountId,...input,progress:0,status:'ACTIVE',source:'COACH',evidence:['Added from Coach conversation'],priority:input.priority||75,successfulGames:0,gamesObserved:0,masteryRequired:3,lastUpdatedReason:'Coach added this task.',history:[{at:new Date().toISOString(),type:'COACH_EDIT' as const,note:'Added by Coach.'}]};}
-export function reviseTaskFromCoach(task:ILPTask,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{...task,...input,source:'COACH',priority:Math.max(task.priority||50,input.priority||75),lastUpdatedReason:'Coach revised this mission from the current conversation.',evidence:[...task.evidence.filter(x=>!x.startsWith('COACH:')),'COACH: Mission wording and cue updated from the latest coaching conversation.'],history:[...(task.history||[]),{at:new Date().toISOString(),type:'COACH_EDIT' as const,note:`Coach revised mission: ${input.title}`}].slice(-10)}}
+export function createCoachTask(accountId:string,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{id:`coach-${Date.now()}`,accountId,...input,progress:0,metricProgress:0,status:'ACTIVE',source:'COACH',evidence:['Added from Coach conversation'],priority:input.priority||75,successfulGames:0,gamesObserved:0,masteryRequired:3,lastUpdatedReason:'Coach added this task.',history:[{at:new Date().toISOString(),type:'COACH_EDIT' as const,note:'Added by Coach.'}]};}
+export function reviseTaskFromCoach(task:ILPTask,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{...task,...input,source:'COACH',priority:Math.max(task.priority||50,input.priority||75),lastUpdatedReason:'Coach revised this mission from the current conversation.',evidence:[...task.evidence.filter(x=>!x.startsWith('COACH:')),'COACH: Mission wording and cue updated from the latest coaching conversation.'],history:[...(task.history||[]),{at:new Date().toISOString(),type:'COACH_EDIT' as const,note:`Coach revised mission: ${input.title}`}].slice(-12)}}

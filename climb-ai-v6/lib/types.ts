@@ -19,10 +19,21 @@ export interface Mission{ id:string; riotAccountId:string; category:IssueCategor
 export interface AnalysisReport{matchId:string;performance:number;good:string[];primary:Signal;mission:Mission;summary:string}
 
 export type ILPStatus='ACTIVE'|'EVIDENCE_BUILDING'|'MASTERED'|'PAUSED';
-export interface ILPHistoryEntry{at:string;type:'PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED';note:string}
+export type ILPMissionAdherence='YES'|'PARTLY'|'NO';
+export type ILPMissionOutcome='CONFIRMED'|'UNREWARDED'|'UNEARNED'|'NO_REP';
+export interface ILPMissionAttempt{
+  matchId:string;
+  at:string;
+  adherence:ILPMissionAdherence;
+  clearedBar:boolean;
+  outcome:ILPMissionOutcome;
+  banksPass:boolean;
+}
+export interface ILPHistoryEntry{at:string;type:'PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';note:string}
 export interface ILPTask{
   id:string;accountId:string;title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;progress:number;status:ILPStatus;source:'SYSTEM'|'COACH'|'USER';evidence:string[];
   priority?:number;successfulGames?:number;gamesObserved?:number;masteryRequired?:number;lastUpdatedReason?:string;history?:ILPHistoryEntry[];
+  missionHistory?:ILPMissionAttempt[];metricProgress?:number;missionProgress?:number;
 }
 export interface ChampionPlan{ champion:string; role:Role; rankBand:string; identity:string; lanePlan:string[]; farmPlan:string[]; teamfightPlan:string[]; sideLanePlan:string[]; powerSpikes:string[]; commonLeaks:string[]; rankFocus:string[]; build:{label:string;items:string[];boots:string;note:string;sourceLabel:string;sourceUrl?:string}; runes:{primary:string;secondary:string;note:string}; }
 export interface LiveTelemetrySnapshot{accountId:string;gameTime:number;championName?:string;level?:number;currentGold?:number;cs?:number;kills?:number;deaths?:number;assists?:number;events?:{name:string;time:number}[];receivedAt:string}
