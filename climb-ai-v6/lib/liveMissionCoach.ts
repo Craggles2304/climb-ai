@@ -40,19 +40,15 @@ export function buildLiveMissionTips(input:Input):LiveMissionTip[]{
   return input.tasks.slice(0,3).map((task,index)=>{
     const category=String(task.category||'CONSISTENCY').toUpperCase();
     const historyFix=matchingHistoryFix(task,input.history);
-    const read=buildRead(category,task,view,historyFix,input.depth);
-    const cue=buildCue(category,task,view,historyFix,input.depth);
-    const next=buildNextLevel(category,task,view,historyFix,nextTier,input.depth);
-    const evidence=buildEvidence(task,view,historyFix,input.history,input.depth);
     return{
       id:String(task.id||`mission-${index+1}`),
       number:index+1,
       title:short(String(task.title||`Mission ${index+1}`),input.depth<=2?42:64),
       category:category.replaceAll('_',' '),
-      liveRead:short(read,input.depth<=2?68:input.depth<=5?92:125),
-      cue:short(cue,input.depth<=2?76:input.depth<=5?105:145),
-      nextLevel:short(next,input.depth<=2?72:input.depth<=5?100:140),
-      evidence:short(evidence,input.depth<=3?70:input.depth<=6?105:150),
+      liveRead:short(buildRead(category,view,historyFix,input.depth),input.depth<=2?68:input.depth<=5?92:125),
+      cue:short(buildCue(category,task,view,historyFix),input.depth<=2?76:input.depth<=5?105:145),
+      nextLevel:short(buildNextLevel(category,task,historyFix,nextTier,input.depth),input.depth<=2?72:input.depth<=5?100:140),
+      evidence:short(buildEvidence(task,view,historyFix,input.history,input.depth),input.depth<=3?70:input.depth<=6?105:150),
       source:view?'LIVE':historyFix?'HISTORY':'MISSION',
     };
   });
@@ -71,12 +67,12 @@ type View={
   opponent:LiveTelemetryPlayer|null;
   csPerMin:number;
   kp:number|null;
-  teamKills:number;
   levelDelta:number|null;
   itemGoldDelta:number|null;
   currentGold:number;
   healthPct:number|null;
   recentDeath:boolean;
+  teamEconomyRank:number;
 };
 
 function liveView(snapshot:LiveTelemetrySnapshot|null):View|null{
@@ -85,6 +81,8 @@ function liveView(snapshot:LiveTelemetrySnapshot|null):View|null{
   const team=snapshot.players.filter(p=>p.team===me.team);
   const teamKills=Math.max(0,team.reduce((sum,p)=>sum+p.scores.kills,0));
   const kp=teamKills>0?Math.min(100,Math.round(((me.scores.kills+me.scores.assists)/teamKills)*100)):null;
+  const economy=[...team].sort((a,b)=>b.itemGold-a.itemGold);
+  const teamEconomyRank=Math.max(1,economy.findIndex(p=>samePlayer(p,me))+1);
   const opponent=findRoleOpponent(snapshot,me);
   const maxHealth=snapshot.active.stats.maxHealth;
   const health=snapshot.active.stats.currentHealth;
@@ -98,21 +96,26 @@ function liveView(snapshot:LiveTelemetrySnapshot|null):View|null{
   const minutes=Math.max(snapshot.gameTime/60,1/60);
   return{
     timeMin:Number(minutes.toFixed(1)),me,opponent,
-    csPerMin:Number((me.scores.creepScore/minutes).toFixed(1)),
-    kp,teamKills,
+    csPerMin:Number((me.scores.creepScore/minutes).toFixed(1)),kp,
     levelDelta:opponent?me.level-opponent.level:null,
     itemGoldDelta:opponent?me.itemGold-opponent.itemGold:null,
     currentGold:Math.max(0,Math.round(snapshot.active.currentGold||0)),
-    healthPct,recentDeath,
+    healthPct,recentDeath,teamEconomyRank,
   };
 }
 
 function findMe(snapshot:LiveTelemetrySnapshot){
   const active=snapshot.active;
-  const exact=snapshot.players.find(p=>active.riotId&&p.riotId===active.riotId)
+  return snapshot.players.find(p=>active.riotId&&p.riotId===active.riotId)
     ??snapshot.players.find(p=>active.summonerName&&p.summonerName===active.summonerName)
-    ??snapshot.players.find(p=>active.championName&&p.championName===active.championName);
-  return exact??null;
+    ??snapshot.players.find(p=>active.championName&&p.championName===active.championName)
+    ??null;
+}
+
+function samePlayer(a:LiveTelemetryPlayer,b:LiveTelemetryPlayer){
+  if(a.riotId&&b.riotId)return a.riotId===b.riotId;
+  if(a.summonerName&&b.summonerName)return a.summonerName===b.summonerName;
+  return a.championName===b.championName;
 }
 
 function findRoleOpponent(snapshot:LiveTelemetrySnapshot,me:LiveTelemetryPlayer){
@@ -121,7 +124,7 @@ function findRoleOpponent(snapshot:LiveTelemetrySnapshot,me:LiveTelemetryPlayer)
   return snapshot.players.find(p=>p.team!==me.team&&normaliseRole(p.position)===role)??null;
 }
 
-function buildRead(category:string,task:LiveMissionTask,view:View|null,fix:ProHistoryFix|null,depth:number){
+function buildRead(category:string,view:View|null,fix:ProHistoryFix|null,depth:number){
   if(!view){
     if(fix)return`History: ${fix.occurrences} repeat${fix.occurrences===1?'':'s'} across ${fix.gamesSeen} tracked game${fix.gamesSeen===1?'':'s'}.`;
     return'Waiting for enough live match evidence.';
@@ -139,7 +142,7 @@ function buildRead(category:string,task:LiveMissionTask,view:View|null,fix:ProHi
   return`${view.me.scores.kills}/${deaths}/${view.me.scores.assists} at ${Math.floor(view.timeMin)}m.`;
 }
 
-function buildCue(category:string,task:LiveMissionTask,view:View|null,fix:ProHistoryFix|null,depth:number){
+function buildCue(category:string,task:LiveMissionTask,view:View|null,fix:ProHistoryFix|null){
   const base=String(task.gameRule||'').trim();
   if(!view)return fix?.rule||base||'Play the next clean decision and build evidence.';
   const deaths=view.me.scores.deaths;
@@ -151,12 +154,13 @@ function buildCue(category:string,task:LiveMissionTask,view:View|null,fix:ProHis
     return deaths===0?'Keep the zero: do not spend a life for a low-value chase or facecheck.':'Make this death the last one: reset the quality of the next decision.';
   }
   if(isFarm(category)){
-    if(target&&view.csPerMin<target-.35)return`Farm is below your mission pace. For the next 3 minutes, take the safe wave before moving to a low-value fight.`;
+    if(target&&view.csPerMin<target-.35)return'Farm is below your mission pace. For the next 3 minutes, take the safe wave before moving to a low-value fight.';
     return'Farm pace is usable. Keep taking the nearest safe wave before you move, then arrive to the important fight.';
   }
   if(category==='POSITIONING'){
     if(view.me.isDead||view.recentDeath)return'Reset your positioning rule: do not be first into threat. Re-enter behind the player who can safely take first contact.';
     if(view.healthPct!==null&&view.healthPct<38)return'You are low. Preserve uptime: back out of first-contact range and only re-enter after the threat cycle.';
+    if(view.teamEconomyRank<=2)return'You are carrying high team economy. Stay one layer behind first contact and hit the nearest safe target.';
     return'Play one layer behind first contact. Hit the nearest safe target instead of reaching through danger.';
   }
   if(['TRADING','LANING','MATCHUPS'].includes(category)){
@@ -174,12 +178,12 @@ function buildCue(category:string,task:LiveMissionTask,view:View|null,fix:ProHis
     if(deaths>=3)return'Stop forcing the map through fights. Catch the next safe resource, group on timing, then contest with your team.';
     return'After the next won exchange, convert immediately: objective, tower or wave. Do not turn the win into a low-value chase.';
   }
-  if(category==='CONSISTENCY'&&fix)return liveAdjustmentForFix(fix,view)||fix.rule;
+  if(category==='CONSISTENCY'&&fix)return liveAdjustmentForFix(fix,view);
   return fix?.rule||base||'Play the next decision cleanly and stay connected to the mission.';
 }
 
-function buildNextLevel(category:string,task:LiveMissionTask,view:View|null,fix:ProHistoryFix|null,nextTier:string,depth:number){
-  const prefix=nextTier==='CHALLENGER'?'CHALLENGER standard':'To reach '+titleCase(nextTier);
+function buildNextLevel(category:string,task:LiveMissionTask,fix:ProHistoryFix|null,nextTier:string,depth:number){
+  const prefix=nextTier==='CHALLENGER'?'Challenger standard':`To reach ${titleCase(nextTier)}`;
   if(fix&&depth>=4)return`${prefix}: ${fix.mastery}`;
   if(category==='DEATHS')return`${prefix}: remove the repeat death after the first mistake and protect bad-game floors.`;
   if(isFarm(category))return`${prefix}: keep useful farm after lane without arriving late to the fights that matter.`;
@@ -195,7 +199,7 @@ function buildNextLevel(category:string,task:LiveMissionTask,view:View|null,fix:
 
 function buildEvidence(task:LiveMissionTask,view:View|null,fix:ProHistoryFix|null,history:ProLearningProfile|null,depth:number){
   if(depth<=2)return fix?`Repeated in ${fix.gamesSeen} tracked game${fix.gamesSeen===1?'':'s'}.`:'Live match + Active Five.';
-  const parts=[] as string[];
+  const parts:string[]=[];
   if(view)parts.push(`Live: ${view.csPerMin.toFixed(1)} CS/min, ${view.me.scores.deaths} deaths${view.kp!==null?`, ${view.kp}% KP`:''}`);
   if(fix)parts.push(`History: ${fix.occurrences} occurrences / ${fix.gamesSeen} games`);
   else if(history?.gamesAnalyzed)parts.push(`History: ${history.gamesAnalyzed} tracked games`);
@@ -220,36 +224,31 @@ function liveAdjustmentForFix(fix:ProHistoryFix,view:View){
   if(fix.key==='BANKING_LEAK'&&view.currentGold>=1100)return`Spend the ${view.currentGold}g before the next voluntary fight if a meaningful purchase is available.`;
   if(fix.key==='CHAIN_DEATH'&&view.recentDeath)return'Your repeat leak is live: break the second death with safe resources and information before re-entering.';
   if(fix.key==='RED_STATE'&&((view.levelDelta??0)<0||(view.itemGoldDelta??0)<-300))return'The visible state is red right now. Add numbers, first damage or a cooldown edge before committing.';
-  if(fix.key==='CARRY_DEATH'&&teamEconomyRank(view)<=2)return'You are carrying high team economy. Survival is worth more than reaching a lower-value target.';
+  if(fix.key==='CARRY_DEATH'&&view.teamEconomyRank<=2)return'You are carrying high team economy. Survival is worth more than reaching a lower-value target.';
   if(fix.key==='LEAD_THROW'&&((view.levelDelta??0)>0||(view.itemGoldDelta??0)>350))return'You are ahead. Make the enemy enter your threat; do not turn the lead into an uncontrolled chase.';
   return fix.rule;
 }
 
-function teamEconomyRank(view:View){
-  return 1;
-}
-
 function positionRead(view:View){
-  if(view.me.isDead)return`Dead at ${Math.floor(view.timeMin)}m · review the entry that removed your uptime.`;
+  if(view.me.isDead)return`Dead at ${Math.floor(view.timeMin)}m · your damage uptime is currently zero.`;
   const health=view.healthPct===null?'HP unknown':`${view.healthPct}% HP`;
-  return`${health} · ${laneState(view)}.`;
+  const economy=view.teamEconomyRank<=2?`top-${view.teamEconomyRank} team economy`:`team economy #${view.teamEconomyRank}`;
+  return`${health} · ${economy} · ${laneState(view)}.`;
 }
 
 function laneRead(view:View){
   if(view.levelDelta===null&&view.itemGoldDelta===null)return`Lane opponent unresolved at ${Math.floor(view.timeMin)}m.`;
-  const level=view.levelDelta===null?'level even':view.levelDelta===0?'level even':`${signed(view.levelDelta)} level`;
+  const level=view.levelDelta===null?'level unknown':view.levelDelta===0?'level even':`${signed(view.levelDelta)} level`;
   const gold=view.itemGoldDelta===null?'item state unknown':Math.abs(view.itemGoldDelta)<150?'items even':`${signed(view.itemGoldDelta)}g items`;
   return`${level} · ${gold}.`;
 }
 
 function laneState(view:View){
-  const l=view.levelDelta??0,g=view.itemGoldDelta??0;
-  if(l>0||g>=350)return'ahead state';
-  if(l<0||g<=-350)return'behind state';
+  const level=view.levelDelta??0,gold=view.itemGoldDelta??0;
+  if(level>0||gold>=350)return'ahead state';
+  if(level<0||gold<=-350)return'behind state';
   return'even state';
 }
-
-function teamEconomyRankPlaceholder(){return 1}
 
 function isFarm(category:string){return['FARMING','RESOURCE_COLLECTION'].includes(category)}
 function normaliseRole(value:unknown){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
