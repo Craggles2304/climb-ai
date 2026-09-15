@@ -47,7 +47,7 @@ function installMissionReminderView(){
     .op-coach-now .op-coach-label{color:#d6ff2f}
     .op-coach-now .op-coach-copy{font-size:13px;font-weight:850;color:#f5f8fa}
     .op-coach-next .op-coach-label{color:#74a9ff}
-    .op-coach-evidence{margin-top:9px;font-size:7px;line-height:1.45;letter-spacing:.06em;color:#596773}
+    .op-coach-evidence{margin-top:9px;font-size:7px;line-height:1.45;letter-spacing:.04em;color:#596773}
     .op-mission-foot{margin-top:11px;font-size:7px;letter-spacing:.16em;color:#51606d;text-align:center;text-transform:uppercase}
     @media(max-width:760px){.op-mission-grid{grid-template-columns:1fr}.op-mission-card{min-height:0}}
   `;
@@ -60,14 +60,14 @@ function installMissionReminderView(){
   section.innerHTML=`
     <div class="op-mission-head">
       <div>
-        <div class="op-mission-kicker">ACTIVE FIVE · LIVE COACHING</div>
-        <h3>Your three decisions right now</h3>
-        <p class="op-mission-sub">OP CLIMB updates these from this match, your tracked patterns and what your next coaching level demands.</p>
+        <div class="op-mission-kicker">YOUR COACH · IN GAME</div>
+        <h3>Three things worth remembering</h3>
+        <p class="op-mission-sub">These change with the game. Read the cue, then get your eyes back on League.</p>
       </div>
       <span id="opMissionRank" class="op-mission-rank">COACH</span>
     </div>
     <div id="opMissionGrid" class="op-mission-grid"></div>
-    <div class="op-mission-foot">Live evidence changes the cue. Your Active Five decides what OP CLIMB coaches.</div>`;
+    <div class="op-mission-foot">The game changes. Your focus stays simple.</div>`;
   const status=document.getElementById('status');
   if(status)status.insertAdjacentElement('afterend',section);
   else document.querySelector('main')?.appendChild(section);
@@ -96,19 +96,19 @@ function renderMissionReminders(state){
   const depth=Math.max(1,Math.min(10,Number(coach.depth)||3));
   const current=String(coach.tier||'COACH').toUpperCase();
   const next=String(coach.nextTier||'NEXT').toUpperCase();
-  if(rank)rank.textContent=current===next?`${current} · MASTERY`:`${current} → ${next}`;
+  if(rank)rank.textContent=`${current} COACH`;
   grid.replaceChildren();
 
   tips.forEach((tip,index)=>{
     const card=document.createElement('article');card.className='op-mission-card';
-    const number=document.createElement('span');number.className='op-mission-number';number.textContent=`PRIORITY ${String(index+1).padStart(2,'0')} · ${String(tip?.category||'MISSION')}`;
-    const title=document.createElement('b');title.className='op-mission-title';title.textContent=String(tip?.title||`Mission ${index+1}`);
+    const number=document.createElement('span');number.className='op-mission-number';number.textContent=`0${index+1} · ${String(tip?.category||'FOCUS')}`;
+    const title=document.createElement('b');title.className='op-mission-title';title.textContent=String(tip?.title||`Focus ${index+1}`);
     card.append(number,title);
 
-    if(depth>=2&&tip?.liveRead)card.append(row('LIVE READ',tip.liveRead));
-    card.append(row('DO THIS NOW',tip?.cue||'Stay with the mission and make the next clean decision.','op-coach-now'));
-    if(tip?.nextLevel)card.append(row(current===next?'MASTERY STANDARD':`${next} STANDARD`,tip.nextLevel,'op-coach-next'));
-    if(depth>=6&&tip?.evidence){const evidence=document.createElement('div');evidence.className='op-coach-evidence';evidence.textContent=String(tip.evidence);card.appendChild(evidence)}
+    if(depth>=2&&tip?.liveRead)card.append(row('RIGHT NOW',tip.liveRead));
+    card.append(row('DO THIS',tip?.cue||'Stay with the focus and make the next clean decision.','op-coach-now'));
+    if(tip?.nextLevel)card.append(row(current===next?'KEEP MASTERING':`TO REACH ${next}`,tip.nextLevel,'op-coach-next'));
+    if(depth>=6&&tip?.evidence){const evidence=document.createElement('div');evidence.className='op-coach-evidence';evidence.textContent=`Why: ${String(tip.evidence)}`;card.appendChild(evidence)}
     grid.appendChild(card);
   });
 }
