@@ -1,8 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
 import type {ChampionDetail} from '@/lib/champions/ddragon';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
-import {latestLiveRead} from '@/lib/server/liveReadRepository';
-import {getProLearningProfile} from '@/lib/server/proLearningRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib/champions/source';
@@ -50,18 +48,19 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     if(!Boolean(context?.localLockedIn)||!champion)return NextResponse.json({ok:true,ready:false},{status:202});
 
-    const [patch,playerRank,missionTasks,liveRead,history]=await Promise.all([
+    const [patch,playerRank,missionTasks]=await Promise.all([
       latestPatch(),
       resolvePlayerRank(db,device),
       loadMissionTasks(db,device),
-      trackerState==='RECORDING'?latestLiveRead(device.userId,device.accountKey).catch(()=>null):Promise.resolve(null),
-      trackerState==='RECORDING'?getProLearningProfile(device.userId,device.riotAccountId).catch(()=>null):Promise.resolve(null),
     ]);
     const coach=coachingLevelFor(playerRank);
+    // Mission guidance is intentionally frozen to pre-game player context. The
+    // endpoint can recover the briefing after match start, but it must not turn
+    // current telemetry into new tactical calls while the game is being played.
     const missionTips=buildLiveMissionTips({
       tasks:missionTasks,
-      snapshot:liveRead?.latestSnapshot??null,
-      history,
+      snapshot:null,
+      history:null,
       currentTier:coach.tier,
       depth:coach.depth,
     });
@@ -86,7 +85,7 @@ export async function GET(req:NextRequest){
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
     const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,live:trackerState==='RECORDING',liveSnapshotAt:liveRead?.latestSnapshot?.receivedAt??null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
@@ -121,7 +120,7 @@ async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:stri
   const riotPromise=device.riotAccountId
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
-  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
+  const [profileResult,riotResult]=await Promise.all([profilePromise,riotResult]);
   const tier=String(riotResult?.data?.rank_tier??'').trim();
   const division=String(riotResult?.data?.rank_division??'').trim();
   if(tier)return`${tier}${division?` ${division}`:''}`;
