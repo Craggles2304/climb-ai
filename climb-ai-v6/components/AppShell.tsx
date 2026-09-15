@@ -58,7 +58,7 @@ export function AppShell({children}:{children:React.ReactNode}){
   const title=routeTitle(path);
   const coaching=coachingLevelFor(active.rank);
   const [advancedOpen,setAdvancedOpen]=useState(false);
-  const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<5;
+  const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<7;
   useEffect(()=>setAdvancedOpen(false),[path]);
   return <div className={`app-layout op-shell ${live?'is-live':''}`}>
     <aside className="sidebar op-sidebar">
