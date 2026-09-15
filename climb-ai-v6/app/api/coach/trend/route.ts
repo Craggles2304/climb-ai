@@ -2,6 +2,7 @@ import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {clampCoachText} from '@/lib/coachingLevel';
 
 const historyTurnSchema=z.object({role:z.enum(['user','assistant']),content:z.string().min(1).max(2200)});
 const taskSchema=z.object({title:z.string(),category:z.string(),metric:z.string(),progress:z.number(),target:z.string(),gameRule:z.string()});
@@ -11,6 +12,7 @@ const schema=z.object({
   accountId:z.string().uuid(),
   requestedGames:z.number().int().min(2).max(5).default(3),
   activeTasks:z.array(taskSchema).max(5).optional(),
+  rank:z.string().optional(),
 });
 
 type ProMetric={score?:number|null;value?:string;summary?:string};
@@ -49,7 +51,7 @@ export async function POST(req:Request){
       .not('match_id','is',null).order('created_at',{ascending:false}).limit(15);
     if(analysisError)throw new Error(analysisError.message);
     const ids=(analysisRows??[]).map((row:any)=>String(row.match_id||'')).filter(Boolean);
-    if(!ids.length)return NextResponse.json(noGames(input.requestedGames));
+    if(!ids.length)return NextResponse.json(noGames(input.requestedGames,input.rank));
 
     const [matchesResult,metricsResult]=await Promise.all([
       db.from('matches').select('id,champion,role,result,kills,deaths,assists,duration_seconds,occurred_at,created_at').eq('user_id',user.id).in('id',ids),
@@ -75,13 +77,13 @@ export async function POST(req:Request){
       });
       if(games.length>=input.requestedGames)break;
     }
-    if(!games.length)return NextResponse.json(noGames(input.requestedGames));
+    if(!games.length)return NextResponse.json(noGames(input.requestedGames,input.rank));
 
-    const answer=buildAnswer(games,input.requestedGames,input.activeTasks??[],excluded);
+    const answer=clampCoachText(buildAnswer(games,input.requestedGames,input.activeTasks??[],excluded),input.rank);
     return NextResponse.json({
       answer,
       grounding:'recent-match-trend+ilp',
-      factsUsed:['recent_game_rows','historical_pro_analysis','active_ilp_tasks',...(excluded?['invalid_sessions_excluded']:[])],
+      factsUsed:['recent_game_rows','historical_pro_analysis','active_ilp_tasks','rank',...(excluded?['invalid_sessions_excluded']:[])],
       gamesUsed:games.length,
       requestedGames:input.requestedGames,
       excludedSessions:excluded,
@@ -149,8 +151,8 @@ function buildAnswer(newestFirst:TrendGame[],requested:number,tasks:z.infer<type
     :`STILL COSTING YOU: no major measured regression stands out across the usable sample.`;
   const primary=tasks[0];
   const priority=primary
-    ?`YOUR CURRENT PRIORITY: “${primary.title}”. Next-game rule: ${primary.gameRule}`
-    :`YOUR CURRENT PRIORITY: keep collecting full-game evidence so OP CLIMB can promote the next repeated behaviour.`;
+    ?`CURRENT FOCUS: “${primary.title}”. Next-game rule: ${primary.gameRule}`
+    :`CURRENT FOCUS: keep collecting full-game evidence so OP CLIMB can promote the next repeated behaviour.`;
   const context=oldest===latest?'':` The latest game was ${latest.champion} ${latest.result} (${latest.kills}/${latest.deaths}/${latest.assists}).`;
   const excludedLine=excluded?` I ignored ${excluded} incomplete/invalid tracker capture${excluded===1?'':'s'} in the search window.`:'';
   return `${countLine}${context}${excludedLine}\n\n${improved}\n\n${regressed}\n\n${priority}`;
@@ -158,4 +160,4 @@ function buildAnswer(newestFirst:TrendGame[],requested:number,tasks:z.infer<type
 
 function score(analysis:Analysis,key:string){return num(analysis?.metrics?.[key]?.score)}
 function num(value:unknown){const n=Number(value);return Number.isFinite(n)?n:null}
-function noGames(requested:number){return{answer:`I do not have enough meaningful completed match evidence to compare the last ${requested} games yet. Short/empty tracker captures are excluded from trends.`,grounding:'recent-match-trend+ilp',factsUsed:['invalid_sessions_excluded'],gamesUsed:0,requestedGames:requested,excludedSessions:0}}
+function noGames(requested:number,rank?:string){return{answer:clampCoachText(`I do not have enough meaningful completed match evidence to compare the last ${requested} games yet. Short or empty tracker captures are excluded from trends.`,rank),grounding:'recent-match-trend+ilp',factsUsed:['invalid_sessions_excluded','rank'],gamesUsed:0,requestedGames:requested,excludedSessions:0}}
