@@ -3,6 +3,7 @@ import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useAccount} from './AccountContext';
 import {PageHead} from './UI';
 import {WindowsTrackerInstaller} from './WindowsTrackerInstaller';
+import {coachingLevelFor} from '@/lib/coachingLevel';
 
 type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};
 type Item={itemId:number;displayName:string;count:number;price:number};
@@ -12,6 +13,7 @@ type Review={status:string;lastSeenAt:string|null;snapshotCount:number;latestSna
 
 export function LiveCommandCenter(){
   const {active,isOwnAccount,profile,hydrated}=useAccount();
+  const detail=coachingLevelFor(active.rank);
   const [devices,setDevices]=useState<Device[]>([]);
   const [devicesLoaded,setDevicesLoaded]=useState(false);
   const [review,setReview]=useState<Review|null>(null);
@@ -111,42 +113,42 @@ export function LiveCommandCenter(){
   },[hydrated,devicesLoaded,isOwnAccount,online,pairCode,busy,active.id]);
 
   return <div className="op-live-command">
-    <PageHead title="Live Companion" subtitle="Record quietly. Review the decisions that actually move your rank."/>
+    <PageHead title="Live Companion" subtitle={`${detail.tier} VIEW ${detail.depth}/10 · Record quietly. Review only the amount of information useful at your rank.`}/>
 
     <section className={`glass card op-live-status ${recording?'is-recording':online?'is-ready':''}`}>
       <div className="op-live-status-copy">
-        <div><div className="eyebrow">OP CLIMB COMPANION</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion heartbeat is live. Leave it quietly in your Windows tray and play League normally.':linked?'A PC is registered to this account, but OP CLIMB is not receiving a live Companion heartbeat. Open the installed Companion and reconnect it below.':'Install the Windows Companion once, then pair this PC to start recording League matches.'}</p></div>
+        <div><div className="eyebrow">OP CLIMB COMPANION · {detail.tier}</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion is ready. Leave it quietly in your Windows tray and play normally.':linked?'Your PC is registered, but the Companion is offline. Open the installed Companion and reconnect below.':'Connect the Windows Companion once, then OP CLIMB can record your League matches.'}</p></div>
         <span className="op-live-status-pill">{recording?'● LIVE':online?'● ONLINE':linked?'○ OFFLINE':'SETUP'}</span>
       </div>
-      {recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/><Mini label="GAME TIME" value={clock(snapshot.gameTime)}/><Mini label="SNAPSHOTS" value={String(review?.snapshotCount??0)}/></div>}
+      {recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/>{detail.depth>=2&&<Mini label="GAME TIME" value={clock(snapshot.gameTime)}/>} {detail.depth>=5&&<Mini label="CAPTURE POINTS" value={String(review?.snapshotCount??0)}/>}</div>}
     </section>
 
     {ready&&snapshot&&me&&<section className="op-latest-match">
       <div className="glass card op-match-card">
         <div className="op-match-head">
-          <div><div className="eyebrow">LATEST MATCH</div><h2>{me.championName} <span>· {role(snapshot.active.position)}</span></h2></div>
-          <b>{clock(snapshot.gameTime)}</b>
+          <div><div className="eyebrow">LATEST MATCH · {detail.tier} DETAIL</div><h2>{me.championName}{detail.depth>=2&&<span> · {role(snapshot.active.position)}</span>}</h2></div>
+          {detail.depth>=3&&<b>{clock(snapshot.gameTime)}</b>}
         </div>
         <div className="grid three op-match-metrics">
           <Mini label="K / D / A" value={`${me.scores.kills} / ${me.scores.deaths} / ${me.scores.assists}`}/>
-          <Mini label="CS / MIN" value={csMin}/>
-          <Mini label="VISION" value={format(me.scores.wardScore)}/>
-          <Mini label="LEVEL" value={String(me.level)}/>
-          <Mini label="ITEM POWER" value={`${Math.round(me.itemGold)}g`}/>
-          <Mini label="UNSPENT" value={`${Math.round(snapshot.active.currentGold)}g`}/>
+          {detail.depth>=2&&<Mini label="CS / MIN" value={csMin}/>} 
+          {detail.depth>=3&&<Mini label="LEVEL" value={String(me.level)}/>} 
+          {detail.depth>=4&&<Mini label="VISION" value={format(me.scores.wardScore)}/>} 
+          {detail.depth>=5&&<Mini label="ITEM POWER" value={`${Math.round(me.itemGold)}g`}/>} 
+          {detail.depth>=6&&<Mini label="UNSPENT" value={`${Math.round(snapshot.active.currentGold)}g`}/>} 
         </div>
-        <div className="op-next-read"><div className="eyebrow">READ THIS REPORT IN ORDER</div><b>OP Grade → Fix Ladder → Map Timing → Evidence</b><p className="muted">Raw telemetry stays hidden unless it helps explain a coaching decision.</p></div>
+        <div className="op-next-read"><div className="eyebrow">{detail.depth<=2?'WHAT MATTERS NEXT':'READ THIS REPORT IN ORDER'}</div><b>{detail.depth<=2?'One result → one problem → one next-game action':'OP Grade → Active Five → Match Review → Evidence'}</b>{detail.depth>=4&&<p className="muted">The full telemetry remains stored underneath. Your rank decides how much is displayed.</p>}</div>
       </div>
 
-      <details className="glass card op-quiet-details">
-        <summary>SHOW MATCH DETAILS <span>build, matchup, teams & capture quality</span></summary>
+      {detail.depth>=4&&<details className="glass card op-quiet-details">
+        <summary>SHOW MORE MATCH DETAILS <span>build, matchup, teams & capture quality</span></summary>
         <div style={{display:'grid',gap:16,marginTop:18}}>
           <div><div className="eyebrow">FINAL BUILD</div><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:9}}>{me.items.length?me.items.map((item,i)=><span key={`${item.itemId}-${i}`} style={chip}>{item.displayName}{item.count>1?` ×${item.count}`:''}</span>):<span className="muted">No item data captured.</span>}</div></div>
           <Matchup snapshot={snapshot} me={me}/>
-          <div className="grid two"><Team title="YOUR TEAM" players={snapshot.players.filter(p=>p.team===me.team)} /><Team title="ENEMY TEAM" players={snapshot.players.filter(p=>p.team!==me.team&&p.team!=='UNKNOWN')} /></div>
-          <div><div className="eyebrow">CAPTURE QUALITY</div><p className="muted" style={{margin:'6px 0 0'}}>{review?.snapshotCount??0} snapshots · captured through {clock(snapshot.gameTime)} · {review?.status==='COMPLETE'?'session closed normally':'partial session'}</p></div>
+          {detail.depth>=6&&<div className="grid two"><Team title="YOUR TEAM" players={snapshot.players.filter(p=>p.team===me.team)} /><Team title="ENEMY TEAM" players={snapshot.players.filter(p=>p.team!==me.team&&p.team!=='UNKNOWN')} /></div>}
+          {detail.depth>=7&&<div><div className="eyebrow">CAPTURE QUALITY</div><p className="muted" style={{margin:'6px 0 0'}}>{review?.snapshotCount??0} snapshots · captured through {clock(snapshot.gameTime)} · {review?.status==='COMPLETE'?'session closed normally':'partial session'}</p></div>}
         </div>
-      </details>
+      </details>}
     </section>}
 
     <details className="glass card op-quiet-details op-tracker-setup" open={!online||Boolean(pairCode)}>
