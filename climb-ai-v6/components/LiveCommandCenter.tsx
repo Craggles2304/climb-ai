@@ -1,5 +1,5 @@
 'use client';
-import {useCallback,useEffect,useMemo,useState} from 'react';
+import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
 import {useAccount} from './AccountContext';
 import {PageHead} from './UI';
 import {WindowsTrackerInstaller} from './WindowsTrackerInstaller';
@@ -11,8 +11,9 @@ type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;ch
 type Review={status:string;lastSeenAt:string|null;snapshotCount:number;latestSnapshot:Snapshot|null};
 
 export function LiveCommandCenter(){
-  const {active,isOwnAccount,profile}=useAccount();
+  const {active,isOwnAccount,profile,hydrated}=useAccount();
   const [devices,setDevices]=useState<Device[]>([]);
+  const [devicesLoaded,setDevicesLoaded]=useState(false);
   const [review,setReview]=useState<Review|null>(null);
   const [pairCode,setPairCode]=useState('');
   const [pairExpiresAt,setPairExpiresAt]=useState('');
@@ -20,6 +21,7 @@ export function LiveCommandCenter(){
   const [deviceName,setDeviceName]=useState('My Windows PC');
   const [busy,setBusy]=useState(false);
   const [message,setMessage]=useState('');
+  const autoPairStarted=useRef(false);
 
   const refreshDevices=useCallback(async()=>{
     try{
@@ -28,6 +30,7 @@ export function LiveCommandCenter(){
       const body=await response.json();
       setDevices((body.devices??[]).filter((x:Device)=>x.account_key===active.id));
     }catch{}
+    finally{setDevicesLoaded(true)}
   },[active.id]);
 
   const refreshReview=useCallback(async()=>{
@@ -42,6 +45,8 @@ export function LiveCommandCenter(){
   const refresh=useCallback(async()=>{await Promise.all([refreshDevices(),refreshReview()])},[refreshDevices,refreshReview]);
 
   useEffect(()=>{
+    setDevicesLoaded(false);
+    autoPairStarted.current=false;
     void refresh();
     const reviewTick=()=>{if(document.visibilityState==='visible')void refreshReview()};
     const deviceTick=()=>{if(document.visibilityState==='visible')void refreshDevices()};
@@ -97,6 +102,13 @@ export function LiveCommandCenter(){
     }catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}
     finally{setBusy(false)}
   }
+
+  useEffect(()=>{
+    if(!hydrated||!devicesLoaded||!isOwnAccount||online||pairCode||busy||autoPairStarted.current)return;
+    autoPairStarted.current=true;
+    setMessage('Installed Companion detected. Creating a secure one-time pairing…');
+    void pair();
+  },[hydrated,devicesLoaded,isOwnAccount,online,pairCode,busy,active.id]);
 
   return <div className="op-live-command">
     <PageHead title="Live Companion" subtitle="Record quietly. Review the decisions that actually move your rank."/>
