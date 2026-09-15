@@ -120,7 +120,7 @@ async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:stri
   const riotPromise=device.riotAccountId
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
-  const [profileResult,riotResult]=await Promise.all([profilePromise,riotResult]);
+  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
   const tier=String(riotResult?.data?.rank_tier??'').trim();
   const division=String(riotResult?.data?.rank_division??'').trim();
   if(tier)return`${tier}${division?` ${division}`:''}`;
