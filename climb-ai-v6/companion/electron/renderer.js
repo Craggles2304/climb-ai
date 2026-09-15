@@ -5,17 +5,10 @@ let diagnosticsOpen=false;
 let activeMatchupTab='overview';
 
 function phaseTitle(phase){
-  return ({
-    SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',
-    CHAMP_SELECT:'Champ select detected',RECORDING:'Recording your match',UPLOADING:'Building your review',
-    RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'
-  })[phase]||'OP CLIMB Companion';
+  return ({SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',CHAMP_SELECT:'Champ select detected',RECORDING:'Recording your match',UPLOADING:'Building your review',RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'})[phase]||'OP CLIMB Companion';
 }
 function modeLabel(phase){
-  return ({
-    SETUP:'Setup',STARTING:'Starting',WAITING:'Waiting',CHAMP_SELECT:'Champ Select',
-    RECORDING:'Live Recording',UPLOADING:'Post-game',RESTARTING:'Restarting',AUTH_ERROR:'Pairing Error',ERROR:'Error'
-  })[phase]||phase;
+  return ({SETUP:'Setup',STARTING:'Starting',WAITING:'Waiting',CHAMP_SELECT:'Champ Select',RECORDING:'Live Recording',UPLOADING:'Post-game',RESTARTING:'Restarting',AUTH_ERROR:'Pairing Error',ERROR:'Error'})[phase]||phase;
 }
 
 function render(state){
@@ -23,7 +16,7 @@ function render(state){
   $('setup').classList.toggle('hidden',state.paired);
   $('status').classList.toggle('hidden',!state.paired);
   $('settings').classList.toggle('hidden',!state.paired);
-  renderMatchup(state.matchup,state.paired);
+  renderMatchup(state.matchup,state.teamPlan,state.paired);
   renderUpdate(updateState,state.phase);
   if(!state.paired)return;
   $('statusTitle').textContent=phaseTitle(state.phase);
@@ -45,16 +38,7 @@ function renderUpdate(next,phase){
   const version=update.currentVersion?`v${update.currentVersion}`:'Current version';
   const latest=update.latestVersion?`v${update.latestVersion}`:'';
   const busy=['CHAMP_SELECT','RECORDING','UPLOADING'].includes(String(phase||''));
-  const copy={
-    IDLE:`${version} · Automatic update checks are enabled.`,
-    CHECKING:`${version} · Checking for a newer Companion…`,
-    CURRENT:`${version} · You're up to date.`,
-    AVAILABLE:`${latest||'A new version'} is ready to download.`,
-    DOWNLOADING:`Downloading ${latest||'update'} · ${Math.round(Number(update.progress)||0)}%`,
-    READY:busy?`${latest||'Update'} downloaded. Finish the current League session before restarting.`:`${latest||'Update'} downloaded and ready.`,
-    INSTALLING:'Restarting into the new version…',
-    ERROR:update.error||'The update check failed. Your current Companion will keep working.',
-  }[status]||`${version} · Automatic update checks are enabled.`;
+  const copy={IDLE:`${version} · Automatic update checks are enabled.`,CHECKING:`${version} · Checking for a newer Companion…`,CURRENT:`${version} · You're up to date.`,AVAILABLE:`${latest||'A new version'} is ready to download.`,DOWNLOADING:`Downloading ${latest||'update'} · ${Math.round(Number(update.progress)||0)}%`,READY:busy?`${latest||'Update'} downloaded. Finish the current League session before restarting.`:`${latest||'Update'} downloaded and ready.`,INSTALLING:'Restarting into the new version…',ERROR:update.error||'The update check failed. Your current Companion will keep working.'}[status]||`${version} · Automatic update checks are enabled.`;
   $('updateCopy').textContent=copy;
   $('updateVersion').textContent=version;
   $('checkUpdate').classList.toggle('hidden',!['IDLE','CURRENT','ERROR'].includes(status));
@@ -68,7 +52,7 @@ function renderUpdate(next,phase){
   $('updateProgressBar').style.width=`${Math.max(0,Math.min(100,Number(update.progress)||0))}%`;
 }
 
-function renderMatchup(matchup,paired){
+function renderMatchup(matchup,teamPlan,paired){
   const box=$('matchup');
   const visible=Boolean(paired&&matchup);
   box.classList.toggle('hidden',!visible);
@@ -77,20 +61,33 @@ function renderMatchup(matchup,paired){
   $('matchupError').classList.toggle('hidden',matchup.status!=='ERROR');
   $('matchupReady').classList.toggle('hidden',matchup.status!=='READY');
   if(matchup.status==='ERROR'){
-    $('matchupErrorCopy').textContent=matchup.error||'OP CLIMB could not build this matchup.';
+    $('matchupErrorCopy').textContent=matchup.error||'OP CLIMB could not build this plan.';
     return;
   }
   if(matchup.status!=='READY'||!matchup.plan)return;
   const plan=matchup.plan;
+  const hasOpponent=Boolean(matchup.opponent&&matchup.source!=='CHAMPION_LOCK');
   $('matchupYou').textContent=plan.you?.name||matchup.champion||'You';
-  $('matchupThem').textContent=plan.them?.name||matchup.opponent||'Opponent';
-  $('matchupSummary').textContent=plan.laneEdge?.summary||'Your matchup plan is ready.';
+  $('matchupThem').textContent=hasOpponent?(plan.them?.name||matchup.opponent):'OPPONENT PENDING';
+  $('matchupVs').textContent=hasOpponent?'VS':'·';
+  $('matchupSummary').textContent=plan.laneEdge?.summary||'Your pregame plan is ready.';
   const edge=plan.laneEdge?.edge||'EVEN';
   $('matchupEdge').textContent=plan.laneEdge?.label||edge;
   $('matchupEdge').className=`edge-pill edge-${String(edge).toLowerCase()}`;
-  $('matchupRole').textContent=plan.role?`${plan.role} LANE`:'LANE PLAN';
+  $('matchupRole').textContent=plan.role?`${plan.role} PLAN`:'GAME PLAN';
   $('matchupPatch').textContent=plan.patch?`Patch ${plan.patch}`:'Current patch';
-  $('matchupSource').textContent=matchup.source==='IN_GAME'?'Lane opponent confirmed in game':'Detected from champ select';
+  $('matchupSource').textContent=hasOpponent?(matchup.source==='IN_GAME'?'Lane opponent confirmed in game':'Matchup resolved from champ select'):'Champion locked · matchup will enrich automatically';
+  $('deepDiveTitle').textContent=hasOpponent?'FULL MATCHUP ANALYSIS':'FULL CHAMPION ANALYSIS';
+
+  const spikes=Array.isArray(plan.powerSpikes)?plan.powerSpikes:[];
+  const first=spikes.find(spike=>Number(spike.level)===2)||spikes[0];
+  const major=spikes.find(spike=>Number(spike.level)===6)||spikes.find(spike=>Number(spike.level)>2)||spikes[0];
+  $('firstSpikeLevel').textContent=first?`LV ${first.level}`:'—';
+  $('firstSpikeText').textContent=first?.fight||'Preserve HP and create the first clean pressure window.';
+  $('majorSpikeLevel').textContent=major?`LV ${major.level}`:'—';
+  $('majorSpikeText').textContent=major?.fight||'Reach the breakpoint with usable HP and resources.';
+  $('leadChain').textContent='TRADE → HP → WAVE → RESET → ITEM';
+  $('yourJob').textContent=teamPlan?.yourJob||fallbackJob(plan.role);
 
   fillList('matchupRules',plan.rules,true);
   fillList('winCondition',plan.winCondition,true);
@@ -106,8 +103,60 @@ function renderMatchup(matchup,paired){
   fillList('stateAhead',plan.states?.ahead);
   fillList('stateEven',plan.states?.even);
   fillList('stateBehind',plan.states?.behind);
-  renderSpikes(plan.powerSpikes||[]);
+  renderSpikes(spikes);
+  renderTeamPlan(teamPlan);
   setMatchupTab(activeMatchupTab);
+}
+
+function renderTeamPlan(teamPlan){
+  const root=$('teamBrief');
+  root.classList.toggle('hidden',!teamPlan);
+  if(!teamPlan)return;
+  $('ourIdentity').textContent=teamPlan.ourIdentity||'Composition forming';
+  $('theirIdentity').textContent=teamPlan.theirIdentity||'Composition forming';
+  $('teamNote').textContent=teamPlan.note||'';
+  renderPicks('ourTeamPicks',teamPlan.ourTeam||[],true);
+  renderPicks('theirTeamPicks',teamPlan.theirTeam||[],false);
+  $('teamfightLabel').textContent=teamPlan.teamfight?.label||'CONTROLLED 5V5';
+  $('teamfightSummary').textContent=teamPlan.teamfight?.summary||'';
+  $('sidelaneLabel').textContent=teamPlan.sidelane?.label||'GROUP';
+  $('sidelaneSummary').textContent=teamPlan.sidelane?.summary||'';
+  $('startFight').textContent=teamPlan.startFight||'';
+  $('playAround').textContent=teamPlan.playAround||'';
+  $('theirWin').textContent=teamPlan.theirWinCondition||'';
+  $('biggestThrow').textContent=teamPlan.biggestThrow||'';
+  if(teamPlan.yourJob)$('yourJob').textContent=teamPlan.yourJob;
+}
+
+function renderPicks(id,picks,ours){
+  const root=$(id);root.replaceChildren();
+  const items=Array.isArray(picks)?picks:[];
+  for(const pick of items){
+    const card=document.createElement('div');card.className=`pick-chip ${ours?'ally':'enemy'}`;
+    const initial=document.createElement('b');initial.textContent=String(pick.name||'?').slice(0,2).toUpperCase();
+    const text=document.createElement('span');
+    const name=document.createElement('strong');name.textContent=pick.name||'Unknown';
+    const role=document.createElement('small');role.textContent=pick.role||'ROLE TBD';
+    text.append(name,role);card.append(initial,text);root.appendChild(card);
+  }
+  for(let i=items.length;i<5;i++){
+    const card=document.createElement('div');card.className='pick-chip pending';
+    const initial=document.createElement('b');initial.textContent='?';
+    const text=document.createElement('span');
+    const name=document.createElement('strong');name.textContent='Waiting';
+    const role=document.createElement('small');role.textContent='PICK';
+    text.append(name,role);card.append(initial,text);root.appendChild(card);
+  }
+}
+
+function fallbackJob(role){
+  const value=String(role||'').toUpperCase();
+  if(value==='ADC')return'SAFE DPS. Keep range, hit the nearest safe target and arrive to grouped fights with farm and items.';
+  if(value==='SUPPORT')return'CREATE SPACE. Start or peel based on what keeps your carries able to deal damage.';
+  if(value==='JUNGLE')return'CONNECT THE TEAM. Help create first contact and be present for the grouped moments your comp is built around.';
+  if(value==='TOP')return'PRESSURE WITH PURPOSE. Use side-lane windows, then reconnect when your team needs your front line or engage.';
+  if(value==='MID')return'CATCH WAVES, THEN CONNECT. Use your pressure to reach fights without becoming isolated.';
+  return'STAY CONNECTED. Use your champion power without breaking the team formation.';
 }
 
 function fillList(id,values,numbered=false){
@@ -116,21 +165,19 @@ function fillList(id,values,numbered=false){
   const items=Array.isArray(values)?values.filter(Boolean):[];
   for(const value of items){
     const li=document.createElement('li');
-    if(numbered){const text=document.createElement('span');text.textContent=String(value);li.appendChild(text)}
-    else li.textContent=String(value);
+    if(numbered){const text=document.createElement('span');text.textContent=String(value);li.appendChild(text)}else li.textContent=String(value);
     node.appendChild(li);
   }
-  if(!items.length){const li=document.createElement('li');li.textContent='No reliable matchup read available for this section yet.';node.appendChild(li)}
+  if(!items.length){const li=document.createElement('li');li.textContent='No reliable read available for this section yet.';node.appendChild(li)}
 }
 
 function renderSpikes(spikes){
   const root=$('powerSpikes');root.replaceChildren();
   for(const spike of spikes){
-    const card=document.createElement('article');
-    card.className=`spike-card edge-${String(spike.edge||'EVEN').toLowerCase()}`;
+    const card=document.createElement('article');card.className=`spike-card edge-${String(spike.edge||'EVEN').toLowerCase()}`;
     const top=document.createElement('div');top.className='spike-top';
     const level=document.createElement('strong');level.textContent=`LV ${spike.level}`;
-    const tag=document.createElement('span');tag.textContent=spike.label||'CONTESTED';
+    const tag=document.createElement('span');tag.textContent=spike.label||'POWER WINDOW';
     top.append(level,tag);
     const fight=document.createElement('h3');fight.textContent=spike.fight||'Create an advantage before committing.';
     const lead=document.createElement('p');lead.className='spike-lead';lead.textContent=spike.createLead||'';
@@ -155,13 +202,8 @@ function setMatchupTab(name){
 }
 
 async function boot(){
-  const [appState,updater]=await Promise.all([
-    window.opCompanion.getState(),
-    window.opCompanion.getUpdateState().catch(()=>null),
-  ]);
-  updateState=updater;
-  render(appState);
-  renderUpdate(updateState,appState?.phase);
+  const [appState,updater]=await Promise.all([window.opCompanion.getState(),window.opCompanion.getUpdateState().catch(()=>null)]);
+  updateState=updater;render(appState);renderUpdate(updateState,appState?.phase);
   window.opCompanion.onState(render);
   window.opCompanion.onUpdateState(next=>renderUpdate(next,current?.phase));
 }
@@ -169,21 +211,12 @@ async function boot(){
 $('openSetup').addEventListener('click',()=>window.opCompanion.openClimb());
 $('openClimb').addEventListener('click',()=>window.opCompanion.openClimb());
 $('restart').addEventListener('click',()=>window.opCompanion.restart());
-$('unpair').addEventListener('click',async()=>{
-  if(confirm('Unpair this PC from OP CLIMB? You can reconnect it from the Live Companion page.'))await window.opCompanion.unpair();
-});
+$('unpair').addEventListener('click',async()=>{if(confirm('Unpair this PC from OP CLIMB? You can reconnect it from the Live Companion page.'))await window.opCompanion.unpair()});
 $('autoStart').addEventListener('click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
 $('checkUpdate').addEventListener('click',()=>window.opCompanion.checkUpdate());
 $('downloadUpdate').addEventListener('click',()=>window.opCompanion.downloadUpdate());
-$('installUpdate').addEventListener('click',async()=>{
-  const result=await window.opCompanion.installUpdate(current?.phase||'');
-  if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error;
-});
-$('showLogs').addEventListener('click',()=>{
-  diagnosticsOpen=!diagnosticsOpen;
-  $('logs').classList.toggle('hidden',!diagnosticsOpen);
-  $('showLogs').textContent=diagnosticsOpen?'HIDE DIAGNOSTICS':'DIAGNOSTICS';
-});
+$('installUpdate').addEventListener('click',async()=>{const result=await window.opCompanion.installUpdate(current?.phase||'');if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error});
+$('showLogs').addEventListener('click',()=>{diagnosticsOpen=!diagnosticsOpen;$('logs').classList.toggle('hidden',!diagnosticsOpen);$('showLogs').textContent=diagnosticsOpen?'HIDE DIAGNOSTICS':'DIAGNOSTICS'});
 document.querySelectorAll('[data-matchup-tab]').forEach(button=>button.addEventListener('click',()=>setMatchupTab(button.dataset.matchupTab)));
 
 boot();
