@@ -33,13 +33,23 @@ function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync
 function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart)}}
 function paired(){return Boolean(currentConfig().token)}
 function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
+function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';return role}
+function needsRecordingPlanRecovery(){
+  if(state.phase!=='RECORDING')return false;
+  if(!state.teamPlan)return true;
+  const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
+  return (role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
+}
+function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'||needsRecordingPlanRecovery()}
 
 function setState(patch){
   const previousPhase=state.phase;
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
+  const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(enteringChampSelect){matchupSignature='';state={...state,matchup:null,teamPlan:null};startChampionPlanPoll()}
-  else if(previousPhase==='CHAMP_SELECT'&&state.phase!=='CHAMP_SELECT')stopChampionPlanPoll();
+  else if(enteringRecording&&needsRecordingPlanRecovery())startChampionPlanPoll();
+  else if(previousPhase==='CHAMP_SELECT'&&state.phase!=='CHAMP_SELECT'&&!needsRecordingPlanRecovery())stopChampionPlanPoll();
   updateTray();
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
 }
@@ -53,12 +63,12 @@ function addLog(line,kind='info'){
 
 function stopChampionPlanPoll(){if(championPlanTimer){clearTimeout(championPlanTimer);championPlanTimer=null}}
 function scheduleChampionPlanPoll(delay=2200){
-  stopChampionPlanPoll();if(state.phase!=='CHAMP_SELECT')return;
+  stopChampionPlanPoll();if(!canPollChampionPlan())return;
   championPlanTimer=setTimeout(()=>{championPlanTimer=null;void pollChampionPlan()},delay);
 }
-function startChampionPlanPoll(){stopChampionPlanPoll();if(state.phase==='CHAMP_SELECT')void pollChampionPlan()}
+function startChampionPlanPoll(){stopChampionPlanPoll();if(canPollChampionPlan())void pollChampionPlan()}
 async function pollChampionPlan(){
-  if(championPlanInFlight||state.phase!=='CHAMP_SELECT')return;
+  if(championPlanInFlight||!canPollChampionPlan())return;
   const cfg=currentConfig();if(!cfg.token)return;
   championPlanInFlight=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
@@ -68,7 +78,7 @@ async function pollChampionPlan(){
     const body=await response.json().catch(()=>({}));
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
     if(!response.ok||!body?.ready||!body?.plan||!body?.champion)return;
-    if(state.phase!=='CHAMP_SELECT')return;
+    if(!canPollChampionPlan()&&state.phase!=='RECORDING')return;
     const champion=String(body.champion).trim(),role=String(body.role||'').trim();
     const teamPlan=body.teamPlan||null;
     const fullOpponent=Boolean(state.matchup?.opponent&&state.matchup?.source!=='CHAMPION_LOCK');
@@ -76,10 +86,17 @@ async function pollChampionPlan(){
     const signature=`self|${champion}|${role}|${JSON.stringify(teamPlan?.ourTeam||[])}|${JSON.stringify(teamPlan?.theirTeam||[])}`.toLowerCase();
     if(signature!==matchupSignature||state.matchup?.status!=='READY'){
       matchupSignature=signature;
-      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source:'CHAMPION_LOCK',plan:body.plan,error:null},teamPlan,detail:`${champion} locked. Your briefing is ready; matchup details will enrich automatically.`});
+      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source:body.recoveredFromEndedPregame?'PREGAME_RECOVERY':'CHAMPION_LOCK',plan:body.plan,error:null},teamPlan,detail:body.recoveredFromEndedPregame?`${champion} pregame briefing recovered for this match.`:`${champion} locked. Your briefing is ready; matchup details will enrich automatically.`});
     }else if(teamPlan)setState({teamPlan});
   }catch{}
-  finally{clearTimeout(timeout);championPlanInFlight=false;if(state.phase==='CHAMP_SELECT')scheduleChampionPlanPoll(state.matchup?.status==='READY'?4000:1800)}
+  finally{
+    clearTimeout(timeout);championPlanInFlight=false;
+    if(state.phase==='CHAMP_SELECT'){
+      const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
+      const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
+      scheduleChampionPlanPoll(botMissing?1200:(state.matchup?.status==='READY'?3000:1500));
+    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(2200);
+  }
 }
 
 function parseTrackerLine(line,kind){
