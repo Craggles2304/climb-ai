@@ -1,8 +1,8 @@
 {
   "name": "op-climb-companion",
-  "version": "0.5.3",
+  "version": "0.5.4",
   "private": true,
-  "description": "OP CLIMB Windows companion with rank-scaled live coaching from Active Five, current-match telemetry and tracked player feedback.",
+  "description": "OP CLIMB Windows companion with rank-scaled adaptive live coaching from Active Five, current-match telemetry, tracked feedback and next-rank standards.",
   "main": "electron/bootstrap.cjs",
   "type": "module",
   "scripts": {
