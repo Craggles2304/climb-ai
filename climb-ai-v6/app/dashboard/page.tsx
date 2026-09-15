@@ -4,115 +4,69 @@ import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
-import {AnimatedBar,CountUp,useMounted,revealProps} from '@/components/Motion';
-import dynamic from 'next/dynamic';
-import {SyncPanel} from '@/components/SyncPanel';
-import {LeakPriceCard} from '@/components/LeakPrice';
+import {AnimatedBar} from '@/components/Motion';
 import {TrackView} from '@/components/TrackView';
-import {TiltBanner} from '@/components/TiltBanner';
 import {FirstRun} from '@/components/FirstRun';
 import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
-import {BehaviourCheck} from '@/components/BehaviourCheck';
-import {readTilt,sessionResults} from '@/lib/tilt';
-import {currentSession} from '@/lib/sessions';
-import {missionEvidence,missionSummary} from '@/lib/missionLoop';
-import {priceLeak} from '@/lib/costOfLeak';
-import {climbScore} from '@/lib/engine';
-import {championPlans} from '@/data/learning';
-import {Match} from '@/lib/types';
+import {missionEvidence} from '@/lib/missionLoop';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 
-const EconomyCurve=dynamic(
-  ()=>import('@/components/EconomyCurve').then(m=>m.EconomyCurve),
-  {ssr:false,loading:()=><div className="glass chart-card" aria-busy="true"><div className="chart-head"><div><div className="eyebrow">ECONOMY TREND</div><div className="skeleton skeleton-lg" style={{marginTop:12}}/></div></div><div className="skeleton" style={{height:286,borderRadius:16}}/></div>},
-);
-
-export default function DevelopmentHQ(){
-  const mounted=useMounted();
+export default function Home(){
   const {active,isEmpty,profile}=useAccount();
   const matches=matchesFor(active.id);
-  const last=matches[0];
-  const {tasks,recordMissionResult}=useLearningPlan();
+  const {tasks}=useLearningPlan();
   const detail=coachingLevelFor(active.rank);
-  const score=climbScore(matches);
-
   const activeTasks=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,5);
   const leadTask=activeTasks[0];
-  const leadMission=leadTask?missionSummary(leadTask):null;
+  const last=matches[0];
+  const recent=matches.slice(0,3);
   const leadEvidence=leadTask?missionEvidence(leadTask,last):null;
-  const masteredCount=tasks.filter(t=>t.status==='MASTERED').length;
-  const passes=activeTasks.reduce((n,t)=>n+(t.successfulGames||0),0);
-  const required=activeTasks.reduce((n,t)=>n+(t.masteryRequired||3),0)||1;
-  const onTrack=activeTasks.filter(t=>t.progress>=55).length;
-  const leadMetric=leadTask?.metric||'post15CsPerMin';
-  const leakPrice=priceLeak(matches,leadMetric);
-  const tilt=readTilt(matches);
-  const session=currentSession(matches);
-
-  const recent=matches.slice(0,5);
-  const avgOf=(k:keyof Match['metrics'])=>{const v=recent.map(m=>m.metrics[k]).filter((x):x is number=>typeof x==='number');return v.length?v.reduce((a,b)=>a+b,0)/v.length:null};
-  const lane=avgOf('laneCsPerMin');
-  const post=avgOf('post15CsPerMin');
-  const objective=avgOf('objectiveParticipation');
-  const lanePhaseRole=active.role!=='JUNGLE';
-  const laneSignal=lane!==null&&post!==null?{value:`${lane.toFixed(1)} → ${post.toFixed(1)}`,detail:`Lane to post-15 CS/min across your last ${recent.length}. ${post>=6?'You are currently clearing the 6.0 target.':`You are ${(6-post).toFixed(1)} below the 6.0 target.`}`}:null;
-  const objectiveSignal=objective!==null?{value:`${Math.round(objective*100)}%`,detail:`Objective involvement across your last ${recent.length}.`}:null;
-  const economy=(lanePhaseRole?laneSignal??objectiveSignal:objectiveSignal??laneSignal)??{value:'UNAVAILABLE',detail:'Connect or upload matches to generate a signal.'};
-  const headline=leadTask?leadTask.title.toUpperCase():(active.role==='JUNGLE'?'ARRIVE BEFORE THE OBJECTIVE IS LOST.':'BUILD YOUR FIRST NEXT-GAME MISSION.');
-  const championCount=detail.depth<=1?1:detail.depth<=3?2:3;
+  const goodGames=leadTask?.successfulGames||0;
+  const needed=leadTask?.masteryRequired||3;
 
   if(isEmpty){
-    return <AppShell><TrackView event="dashboard_view" props={{state:'empty'}}/><PageHead title="Development HQ" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} VIEW ${detail.depth}/10`} action={<Link className="btn secondary" href="/account">SWITCH ACCOUNT</Link>}/>{profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}<FirstRun task={leadTask} gameName={active.gameName}/></AppShell>;
+    return <AppShell>
+      <TrackView event="dashboard_view" props={{state:'empty'}}/>
+      <PageHead title="Home" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`}/>
+      {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
+      <FirstRun task={leadTask} gameName={active.gameName}/>
+    </AppShell>;
   }
 
   return <AppShell>
     <TrackView event="dashboard_view"/>
-    <PageHead title="Development HQ" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} VIEW ${detail.depth}/10 · ${detail.summary}`} action={<Link className="btn secondary" href="/account">SWITCH ACCOUNT</Link>}/>
+    <PageHead title="Home" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`}/>
 
     <div className="v7-stack">
       {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
-      {detail.depth>=2&&<ErrorBoundary label="tilt" compact><TiltBanner read={tilt} results={sessionResults(session)}/></ErrorBoundary>}
 
       <section className="hq-command">
-        <div className="hq-top"><span className="v7-badge engine">{detail.tier} COACH</span><span className="v7-badge">#1 FOCUS</span>{detail.depth>=3&&<span className="v7-badge">{leadMission?.stage||'DISCOVER'}</span>}</div>
-        <h2>{headline}</h2>
-        <p>{leadTask?.gameRule||'Track a meaningful game and OP CLIMB will promote the first evidence-backed behaviour.'}</p>
+        <div className="hq-top"><span className="v7-badge engine">{detail.tier} COACH</span><span className="v7-badge">THIS IS WHAT YOU'RE FIXING</span></div>
+        <h2>{leadTask?.title||'Play one tracked game'}</h2>
+        <p>{leadTask?.why||'Give OP CLIMB one proper game and it will find the first repeat worth fixing.'}</p>
 
         <div className="hq-rules">
-          <div><span className="label">DO THIS NEXT GAME</span><b>{leadTask?.gameRule||'Collect a full match first.'}</b></div>
-          {detail.depth>=2&&<div><span className="label">WHY</span><b>{leadTask?.why||'The plan is waiting for enough evidence to isolate the next behaviour.'}</b></div>}
-          {detail.depth>=3&&<div><span className="label">PASS WHEN</span><b>{leadTask?.target||'Complete one meaningful tracked game.'}</b></div>}
+          <div><span className="label">NEXT GAME</span><b>{leadTask?.gameRule||'Play normally. We need a real game before giving you a rule.'}</b></div>
+          {detail.depth>=3&&leadTask?.target&&<div><span className="label">YOU'VE GOT IT WHEN</span><b>{leadTask.target}</b></div>}
         </div>
 
-        <div className="hq-progress"><AnimatedBar value={leadTask?.progress||0} delay={220}/><span>{detail.depth<=2?`${leadTask?.progress||0}% COMPLETE`:(leadMission?`${leadMission.confirmed}/${leadMission.required} CONFIRMED REPS · ${leadTask?.progress||0}%`:'0/3 CONFIRMED REPS')}</span></div>
+        {leadTask&&<div className="hq-progress"><AnimatedBar value={leadTask.progress||0} delay={180}/><span>{goodGames}/{needed} CLEAN GAMES · {leadTask.progress||0}%</span></div>}
 
-        {detail.depth>=3&&(last&&leadTask&&leadEvidence?.available?<BehaviourCheck matchId={last.id} taskId={leadTask.id} behaviour={leadTask.gameRule} clearedBar={leadEvidence.clearedBar} onResult={attempt=>recordMissionResult(leadTask.id,attempt)}/>:leadTask&&leadEvidence?<div className="rep"><div className="eyebrow">MISSION EVIDENCE</div><b className="rep-headline">No guessed pass.</b><p className="rep-detail">{leadEvidence.reason}</p></div>:null)}
+        {leadTask&&leadEvidence&&detail.depth>=2&&<div className="rep" style={{marginTop:14}}><div className="eyebrow">WHAT WE SAW</div><b className="rep-headline">{leadEvidence.available?'This came from your game.':'We need more proof.'}</b><p className="rep-detail">{leadEvidence.reason}</p></div>}
 
-        <div className="hero-actions"><Link className="btn primary" href="/live">PLAY + TRACK</Link><Link className="btn secondary" href="/ilp">MY ACTIVE FIVE</Link>{detail.depth>=3&&<Link className="btn secondary" href="/missions">MISSION LAB</Link>}</div>
+        <div className="hero-actions"><Link className="btn primary" href="/live">PLAY WITH THIS →</Link><Link className="btn secondary" href="/coach">ASK COACH</Link></div>
       </section>
-
-      {detail.depth>=5&&<><TrackView event={leakPrice.status==='READY'?'leak_priced':'leak_insufficient_sample'} props={{metric:leadMetric,gap:leakPrice.gapPoints,confidence:leakPrice.confidence,sample:leakPrice.sample}}/><ErrorBoundary label="leak_price"><LeakPriceCard price={leakPrice} rankBand={active.rank} role={active.role}/></ErrorBoundary></>}
-
-      <section className="hq-signals">
-        <div {...revealProps(mounted,0,'glass hq-signal')}><span>{detail.depth<=2?'YOUR LEVEL':'OP SCORE'}</span><strong><CountUp value={score}/></strong><small>{detail.depth<=2?'A simple improvement score. Higher means your recent habits are moving the right way.':'Internal improvement score across your last 10. It does not predict Riot MMR.'}</small></div>
-        {detail.depth>=2&&<div {...revealProps(mounted,1,'glass hq-signal')}><span>{lanePhaseRole?'FARM AFTER LANE':'OBJECTIVE SETUP'}</span><strong>{economy.value}</strong><small>{detail.depth>=4?economy.detail:'This is the main economy signal worth watching right now.'}</small></div>}
-        {detail.depth>=3&&<div {...revealProps(mounted,2,'glass hq-signal')}><span>LAST GAME</span><strong className={last?.result==='WIN'?'success':'danger'}>{last?last.result:'NO GAMES'}</strong><small>{last?`${last.champion} · ${last.kills}/${last.deaths}/${last.assists}${detail.depth>=4?` · ${last.metrics.csPerMin.toFixed(1)} CS/min`:''}${detail.depth>=6?` · ${last.metrics.deathsPost20??0} post-20 deaths`:''}`:'Upload or connect a match to generate a verdict.'}</small></div>}
-        {detail.depth>=4&&<div {...revealProps(mounted,3,'glass hq-signal')}><span>ACTIVE FIVE HEALTH</span><strong>{onTrack}/{activeTasks.length} on track</strong><small>{passes} of {required} passes banked · {masteredCount} mastered.</small></div>}
-      </section>
-      {detail.depth>=3&&<SyncPanel/>}
     </div>
 
-    {detail.depth>=4&&<section className="v7-section"><ErrorBoundary label="economy_curve"><EconomyCurve matches={matches} role={active.role} target={lanePhaseRole?6:.7}/></ErrorBoundary></section>}
+    {activeTasks.length>1&&<section className="v7-section">
+      <div className="v7-section-head"><div><div className="eyebrow">IN THE BACKGROUND</div><h2>You do not need to fix five things at once.</h2><p className="muted">These are being watched quietly. Your first focus stays first until the evidence says otherwise.</p></div><Link className="v7-link" href="/ilp">SEE YOUR PLAN →</Link></div>
+      <div className="hq-behaviours">{activeTasks.slice(1).map((task,index)=><Link key={task.id} className="glass hq-behaviour" href="/ilp"><div className="hq-bfoot"><span className="dc-index">0{index+2}</span><span className="v7-badge">WATCHING</span></div><h3>{task.title}</h3>{detail.depth>=4&&<><AnimatedBar value={task.progress||0} delay={index*60}/><div className="hq-bfoot"><span>{task.progress||0}%</span><span>{task.successfulGames||0}/{task.masteryRequired||3} CLEAN GAMES</span></div></>}</Link>)}</div>
+    </section>}
 
     <section className="v7-section">
-      <div className="v7-section-head"><div><div className="eyebrow">MY ACTIVE FIVE</div><h2>{detail.depth<=2?'Five simple things to improve. #1 matters most.':'The behaviours your games are currently testing.'}</h2></div><Link className="v7-link" href="/ilp">OPEN ACTIVE FIVE →</Link></div>
-      <div className="hq-behaviours">{activeTasks.map((t,i)=>{const req=t.masteryRequired||3;const done=t.successfulGames||0;return <Link key={t.id} {...revealProps(mounted,i,'glass hq-behaviour')} href="/ilp"><div className="hq-bfoot"><span className="dc-index">0{i+1}</span>{detail.depth>=4&&<span className={`v7-badge ${t.source==='COACH'?'coach':'engine'}`}>{t.source==='COACH'?'COACH':'GAME DATA'}</span>}</div>{detail.depth>=3&&<span className="label">{t.category.replaceAll('_',' ')}</span>}<h3>{t.title}</h3><AnimatedBar value={t.progress} delay={i*60}/><div className="hq-bfoot"><span>{t.progress}%</span>{detail.depth>=3&&<span>{done}/{req} GOOD GAMES</span>}</div></Link>})}</div>
-    </section>
-
-    <section className="v7-section">
-      <div className="v7-section-head"><div><div className="eyebrow">CHAMPION DEVELOPMENT</div><h2>{detail.depth<=2?'Only the champion advice you need at your level.':'Champion plans grow in detail as your rank grows.'}</h2></div><Link className="v7-link" href="/champions">CHAMPIONS →</Link></div>
-      <div className="hq-champs">{active.champions.slice(0,championCount).map((c,i)=>{const plan=championPlans[c];return <Link key={c} {...revealProps(mounted,i,'glass hq-champ')} href={`/champions/${encodeURIComponent(c)}`}><span className="hq-rank">0{i+1}</span><div><div className="eyebrow">{detail.tier} · {active.role}</div><h3>{c}</h3>{detail.depth>=2&&<p>{plan?.rankFocus[0]||'Your next champion-specific focus.'}</p>}<b>OPEN {detail.tier} PLAN →</b></div></Link>})}</div>
+      <div className="v7-section-head"><div><div className="eyebrow">RECENT GAMES</div><h2>What happened. What matters next.</h2></div><Link className="v7-link" href="/analyse">ALL GAMES →</Link></div>
+      {recent.length?<div className="grid three">{recent.map(match=><Link href={`/analyse/${encodeURIComponent(match.id)}`} key={match.id} className="glass card" style={{display:'grid',gap:8}}><div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center'}}><span className="label">{match.champion}</span><strong className={match.result==='WIN'?'success':'danger'}>{match.result}</strong></div><h3 style={{margin:0}}>{match.kills}/{match.deaths}/{match.assists}</h3><small className="muted">Open the review →</small></Link>)}</div>:<div className="glass card"><b>No tracked games yet.</b><p className="muted">Play with the Companion or add a game and this page starts becoming personal.</p><Link className="btn primary" href="/live">START COMPANION</Link></div>}
     </section>
   </AppShell>;
 }
