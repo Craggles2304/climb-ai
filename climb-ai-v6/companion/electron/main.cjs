@@ -128,8 +128,9 @@ function parseTrackerLine(line,kind){
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
   if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Lock your champion to build your briefing.'});
   if(lower.includes('recording')||lower.includes('match telemetry'))return setState({phase:'RECORDING',detail:'Match detected. Recording quietly in the background.'});
-  if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
+  if(lower.includes('match recording closed')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
   if(lower.includes('review')&&lower.includes('post')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
+  if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
   if(lower.includes('league client connected'))return setState({phase:'WAITING',detail:'League detected. Waiting for champ select or match.'});
   if(kind==='error'&&state.phase!=='RECORDING')setState({detail:line});
 }
