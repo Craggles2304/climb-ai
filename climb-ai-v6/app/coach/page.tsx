@@ -15,6 +15,7 @@ type HistoryTurn={role:'user'|'assistant';content:string};
 const THREAD_KEY='op_climb_coach_thread_v1';
 const MAX_SAVED_MESSAGES=30;
 const MAX_CONTEXT_MESSAGES=10;
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const promptCards=[
   {icon:'↗',title:'CLIMB',text:'What is actually blocking the next rank?',ask:'What is stopping me reaching the next rank based on my plan and recent games?'},
   {icon:'◫',title:'ECONOMY',text:'Find where my farm is actually leaking.',ask:'Why does my CS drop and what should I change in my ILP?'},
@@ -39,6 +40,17 @@ function recentSummary(matches:Match[]){
     secondItemMinute:avgDefined(r.map(m=>m.metrics.secondItemMinute)),
   };
 }
+function isTrendQuestion(text:string){
+  const q=text.toLowerCase();
+  if(/\b(last|past|previous|recent)\s+[2-5]\s+games?\b/.test(q))return true;
+  if(/\b(over|across|based on)\b.{0,35}\b(last|past|previous|recent)\b.{0,25}\bgames?\b/.test(q))return true;
+  return /\b(improv(?:e|ed|ement)?|progress|trend|better|worse|changed?|compare|comparison)\b/.test(q)&&/\bgames?\b/.test(q);
+}
+function requestedTrendGames(text:string){
+  const match=text.toLowerCase().match(/\b(?:last|past|previous|recent)\s+([2-5])\s+games?\b/);
+  const n=match?Number(match[1]):3;
+  return Math.max(2,Math.min(5,Number.isFinite(n)?n:3));
+}
 function validStoredMessages(value:unknown):Msg[]{
   if(!Array.isArray(value))return [];
   return value.filter((m):m is Msg=>Boolean(m&&typeof m==='object'&&((m as Msg).who==='user'||(m as Msg).who==='ai')&&typeof (m as Msg).text==='string')).slice(-MAX_SAVED_MESSAGES);
@@ -57,16 +69,16 @@ function Grounding({m}:{m:Msg}){
 }
 
 function Message({m}:{m:Msg}){
-  const body=<><Grounding m={m}/><div>{m.text}</div></>;
+  const body=<><Grounding m={m}/><div style={{whiteSpace:'pre-line'}}>{m.text}</div></>;
   const long=m.who==='ai'&&m.text.length>340;
   if(!long)return <div className={`vf-message ${m.who}`}>{body}</div>;
   const preview=m.text.slice(0,240).replace(/\s+\S*$/,'').trim();
-  return <details className="vf-message ai"><summary><span>{preview}…</span><b>OPEN FULL COACHING</b></summary><div className="vf-message-full"><Grounding m={m}/>{m.text}</div></details>;
+  return <details className="vf-message ai"><summary><span>{preview}…</span><b>OPEN FULL COACHING</b></summary><div className="vf-message-full"><Grounding m={m}/><div style={{whiteSpace:'pre-line'}}>{m.text}</div></div></details>;
 }
 
 export default function Coach(){
   const {active}=useAccount();
-  const matches=matchesFor(active.id);
+  const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
   const {tasks,addTask}=useLearningPlan();
   const activeFive=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,5);
   const priorityTitle=activeFive[0]?.title;
@@ -94,9 +106,15 @@ export default function Coach(){
     const text=(t??q).trim();if(!text||pending)return;
     const history=threadHistory(messages);
     const userMessage:Msg={who:'user',text};
+    const activeTaskContext=activeFive.map(task=>({title:task.title,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule}));
+    const useTrend=isTrendQuestion(text)&&UUID.test(active.id);
     setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));
     try{
-      const res=await fetch('/api/coach',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({message:text,history,context:{rank:active.rank,role:active.role,mission:activeFive[0]?.title,champions:active.champions,activeTasks:activeFive.map(task=>({title:task.title,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule})),recent:summary}})});
+      const endpoint=useTrend?'/api/coach/trend':'/api/coach';
+      const payload=useTrend
+        ?{message:text,history,accountId:active.id,requestedGames:requestedTrendGames(text),activeTasks:activeTaskContext}
+        :{message:text,history,context:{rank:active.rank,role:active.role,mission:activeFive[0]?.title,champions:active.champions,activeTasks:activeTaskContext,recent:summary}};
+      const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await res.json() as CoachResponse;
       if(!res.ok)throw new Error(body.error||'Coach request failed.');
       const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough evidence to answer that yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};
@@ -140,7 +158,7 @@ export default function Coach(){
         {messages.map((m,i)=><div key={i}><Message m={m}/>{m.task&&<div className="vf-coach-proposal"><div><span>{m.applied?'ILP UPDATED':'ILP PROPOSAL'}</span><h3>{m.task.title}</h3><p>{m.task.gameRule}</p><small className="muted">{m.task.target}</small></div><button className={`btn ${m.applied?'secondary':'primary'}`} disabled={m.applied} onClick={()=>applyProposal(i,m.task!)}>{m.applied?'APPLIED TO ACTIVE FIVE':'APPLY TO ACTIVE FIVE'}</button></div>}</div>)}
         {pending&&<div className="vf-message ai"><div>Reading your five active missions, recent match evidence and coaching thread…</div></div>}
       </div>
-      <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="Ask a follow-up, death, farm drop, objective, recall, champion or timestamp…" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'SEND ↗'}</button></div>
+      <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="Ask a follow-up, trend, death, farm drop, objective, recall, champion or timestamp…" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'SEND ↗'}</button></div>
     </section>
   </AppShell>;
 }
