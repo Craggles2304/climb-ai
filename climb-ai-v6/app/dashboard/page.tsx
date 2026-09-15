@@ -1,4 +1,5 @@
 'use client';
+import {useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
@@ -11,12 +12,14 @@ import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
 import {missionEvidence} from '@/lib/missionLoop';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {track} from '@/lib/analytics';
 
 export default function Home(){
   const {active,isEmpty,profile}=useAccount();
   const matches=matchesFor(active.id);
   const {tasks}=useLearningPlan();
   const detail=coachingLevelFor(active.rank);
+  const [feedback,setFeedback]=useState<'yes'|'no'|null>(null);
   const activeTasks=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,5);
   const leadTask=activeTasks[0];
   const last=matches[0];
@@ -24,6 +27,12 @@ export default function Home(){
   const leadEvidence=leadTask?missionEvidence(leadTask,last):null;
   const goodGames=leadTask?.successfulGames||0;
   const needed=leadTask?.masteryRequired||3;
+
+  const leaveFeedback=(value:'yes'|'no')=>{
+    if(!leadTask||feedback)return;
+    setFeedback(value);
+    track('feedback_given',{surface:'home_focus',helpful:value==='yes',rank:active.rank,category:leadTask.category,taskId:leadTask.id});
+  };
 
   if(isEmpty){
     return <AppShell>
@@ -56,6 +65,12 @@ export default function Home(){
         {leadTask&&leadEvidence&&detail.depth>=2&&<div className="rep" style={{marginTop:14}}><div className="eyebrow">WHAT WE SAW</div><b className="rep-headline">{leadEvidence.available?'This came from your game.':'We need more proof.'}</b><p className="rep-detail">{leadEvidence.reason}</p></div>}
 
         <div className="hero-actions"><Link className="btn primary" href="/live">PLAY WITH THIS →</Link><Link className="btn secondary" href="/coach">ASK COACH</Link></div>
+
+        {leadTask&&<div style={{display:'flex',gap:9,alignItems:'center',flexWrap:'wrap',marginTop:16,paddingTop:14,borderTop:'1px solid rgba(255,255,255,.08)'}}>
+          <span className="muted" style={{fontSize:11}}>Did this focus actually help?</span>
+          {!feedback?<><button className="btn secondary" style={{padding:'6px 9px',fontSize:9}} onClick={()=>leaveFeedback('yes')}>YES</button><button className="btn secondary" style={{padding:'6px 9px',fontSize:9}} onClick={()=>leaveFeedback('no')}>NOT REALLY</button></>:<span style={{fontSize:11,fontWeight:800}}>{feedback==='yes'?'Good — keep that one job for your next game.':'Thanks. Tell Coach what feels off and we’ll use that feedback.'}</span>}
+          {feedback==='no'&&<Link className="text-link" href="/coach" style={{fontSize:10}}>TELL COACH →</Link>}
+        </div>}
       </section>
     </div>
 
