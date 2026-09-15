@@ -10,16 +10,6 @@ import {track} from '@/lib/analytics';
 
 interface SyncStatus{enabled:boolean;regions:string[];message:string}
 
-type GradeBand='BROKEN'|'EXPOSED'|'STABLE'|'SHARP'|'OVERPOWERED';
-
-function gradeBand(score:number):GradeBand{
-  if(score<40)return 'BROKEN';
-  if(score<55)return 'EXPOSED';
-  if(score<70)return 'STABLE';
-  if(score<85)return 'SHARP';
-  return 'OVERPOWERED';
-}
-
 function durationSeconds(raw:string):number|null{
   const value=raw.trim();
   const clock=value.match(/^(\d{1,2}):(\d{2})$/);
@@ -46,7 +36,7 @@ export default function Activate(){
   const activationTracked=useRef(false);
   const completionTracked=useRef('');
   const ladderTracked=useRef('');
-  const fixLadderRef=useRef<HTMLElement|null>(null);
+  const nextStepsRef=useRef<HTMLElement|null>(null);
 
   const [champion,setChampion]=useState('');
   const [result,setResult]=useState<'WIN'|'LOSS'>('WIN');
@@ -116,19 +106,14 @@ export default function Activate(){
     if(!latest||!report||completionTracked.current===latest.id)return;
     completionTracked.current=latest.id;
     const grade=Math.round(report.performance*10);
-    track('analysis_completed',{
-      source:latest.source,
-      activation:true,
-      grade,
-      category:report.primary.category,
-    });
+    track('analysis_completed',{source:latest.source,activation:true,grade,category:report.primary.category});
     track('op_grade_viewed',{source:latest.source,grade,category:report.primary.category});
     track('activation_completed',{source:latest.source,grade});
   },[latest,report]);
 
   useEffect(()=>{
-    if(!latest||!report||!fixLadderRef.current||ladderTracked.current===latest.id)return;
-    const node=fixLadderRef.current;
+    if(!latest||!report||!nextStepsRef.current||ladderTracked.current===latest.id)return;
+    const node=nextStepsRef.current;
     const mark=()=>{
       if(ladderTracked.current===latest.id)return;
       ladderTracked.current=latest.id;
@@ -158,10 +143,7 @@ export default function Activate(){
     try{
       const res=await fetch('/api/matches/manual',{
         method:'POST',headers:{'content-type':'application/json'},
-        body:JSON.stringify({
-          champion:champion.trim(),result,
-          kills:values[0],deaths:values[1],assists:values[2],cs:values[3],durationSeconds:seconds,
-        }),
+        body:JSON.stringify({champion:champion.trim(),result,kills:values[0],deaths:values[1],assists:values[2],cs:values[3],durationSeconds:seconds}),
       });
       const body=await res.json().catch(()=>({}));
       if(!res.ok||!body.ok)throw new Error(body.error||'The match could not be saved.');
@@ -176,75 +158,49 @@ export default function Activate(){
     return <main className="container section onboarding-page">
       <Wordmark/>
       <section className="glass card" style={{maxWidth:780,margin:'42px auto',textAlign:'center'}}>
-        <div className="eyebrow">ACTIVATING OP CLIMB</div>
-        <h1>Preparing your player profile…</h1>
-        <p className="muted">Your first useful coaching screen comes before the full dashboard.</p>
+        <div className="eyebrow">GETTING YOUR GAME READY</div>
+        <h1>Finding something worth fixing…</h1>
+        <p className="muted">We’ll show you the focus before we show you the rest of the app.</p>
       </section>
     </main>;
   }
 
   if(latest&&report&&review&&score!==null){
-    const band=gradeBand(score);
-    const ladder=[
-      {stage:'QUICK WIN',body:report.mission.rules[0],state:'READY'},
-      {stage:'CONTROL',body:report.mission.rules[1],state:'READY'},
-      {stage:'DISCIPLINE',body:report.mission.rules[2],state:'READY'},
-      {stage:'ADVANCED',body:'Unlocks when richer match or live telemetry shows how this leak repeats in real decision windows.',state:'BUILDING'},
-      {stage:'MASTERY',body:`Prove the behaviour across ${report.mission.gamesRequired} relevant games. OP CLIMB will track whether the leak actually disappears.`,state:'LOCKED'},
-    ];
-
     return <main className="container section onboarding-page">
       <Wordmark/>
       <div style={{maxWidth:980,margin:'34px auto 70px',display:'grid',gap:16}}>
-        <section className="glass card" style={{padding:'clamp(22px,4vw,42px)'}}>
-          <div className="eyebrow">ACTIVATION COMPLETE · FIRST REAL EVIDENCE</div>
-          <div style={{display:'grid',gridTemplateColumns:'minmax(150px,.55fr) minmax(0,1.45fr)',gap:28,alignItems:'center',marginTop:18}}>
-            <div>
-              <div style={{fontSize:'clamp(64px,10vw,104px)',lineHeight:.82,fontWeight:950,letterSpacing:'-.07em'}}>{score}</div>
-              <div style={{fontWeight:950,letterSpacing:'.14em',fontSize:18,marginTop:14}}>{band}</div>
-              <div className="muted" style={{fontSize:11,marginTop:5}}>FIRST OP GRADE / 100</div>
-            </div>
-            <div>
-              <span className="v7-badge engine">FOUNDATION GRADE · {latest.source.toUpperCase()} EVIDENCE</span>
-              <h1 style={{marginBottom:8}}>{review.headline}</h1>
-              <p className="muted" style={{fontSize:15,lineHeight:1.65}}>
-                {latest.champion} · {latest.result} · {latest.kills}/{latest.deaths}/{latest.assists} · {latest.metrics.csPerMin.toFixed(1)} CS/min. This is useful immediately, but OP CLIMB will upgrade the confidence as timeline and live decision evidence arrives.
-              </p>
-            </div>
+        <section className="glass card" style={{padding:'clamp(24px,4vw,46px)',border:'1px solid rgba(214,255,47,.25)'}}>
+          <div className="eyebrow">WE FOUND YOUR FIRST FOCUS</div>
+          <h1 style={{fontSize:'clamp(38px,6vw,68px)',lineHeight:.95,margin:'12px 0 14px'}}>{review.biggestMistake.title}</h1>
+          <p style={{fontSize:18,lineHeight:1.6,maxWidth:820}}>{report.primary.inference}</p>
+          <div className="grid three" style={{marginTop:20}}>
+            <div><span className="label">THE GAME</span><b>{latest.champion} · {latest.result} · {latest.kills}/{latest.deaths}/{latest.assists}</b></div>
+            <div><span className="label">WHAT WE SAW</span><b>{report.primary.facts[1]}</b></div>
+            <div><span className="label">FOR NOW</span><b>One game is enough to start. More games make this more certain.</b></div>
           </div>
         </section>
 
         <section className="glass card">
-          <div className="eyebrow">YOUR #1 LEAK</div>
-          <h2 style={{marginBottom:6}}>{review.biggestMistake.title}</h2>
-          <p style={{fontSize:17,lineHeight:1.6,maxWidth:820}}>{report.primary.inference}</p>
-          <div className="grid three" style={{marginTop:16}}>
-            <div><span className="label">EVIDENCE</span><b>{report.primary.facts[1]}</b></div>
-            <div><span className="label">CONFIDENCE</span><b>{Math.round(report.primary.confidence*100)}% · FIRST SAMPLE</b></div>
-            <div><span className="label">NEXT GAME TARGET</span><b>{report.mission.target} {report.mission.unit}</b></div>
-          </div>
-        </section>
-
-        <section ref={fixLadderRef} className="glass card">
-          <div className="eyebrow">OP FIX LADDER</div>
-          <h2>Do the first fix. Earn the deeper ones.</h2>
-          <div style={{display:'grid',gap:9,marginTop:18}}>
-            {ladder.map((item,index)=><div key={item.stage} style={{display:'grid',gridTemplateColumns:'56px minmax(110px,.35fr) minmax(0,1.65fr) auto',gap:14,alignItems:'center',padding:'14px 16px',border:'1px solid rgba(255,255,255,.1)',borderRadius:14}}>
-              <b style={{fontSize:20}}>0{index+1}</b>
-              <span className="eyebrow">{item.stage}</span>
-              <span style={{lineHeight:1.45}}>{item.body}</span>
-              <span className="v7-badge">{item.state}</span>
-            </div>)}
-          </div>
-        </section>
-
-        <section className="glass card" style={{border:'1px solid rgba(214,255,47,.25)'}}>
-          <div className="eyebrow">TAKE THIS INTO YOUR NEXT GAME</div>
+          <div className="eyebrow">YOUR NEXT GAME HAS ONE JOB</div>
           <h2 style={{marginBottom:8}}>{report.mission.title}</h2>
-          <p style={{fontSize:18,lineHeight:1.55}}>{report.mission.rules[0]}</p>
-          <div className="hero-actions" style={{marginTop:18}}>
-            <Link className="btn primary" href="/dashboard" onClick={()=>track('development_hq_entered',{source:'activation',grade:score})}>OPEN DEVELOPMENT HQ</Link>
-            <Link className="btn secondary" href={`/analyse/${encodeURIComponent(latest.id)}`}>OPEN FULL MATCH REVIEW</Link>
+          <p style={{fontSize:20,lineHeight:1.55,maxWidth:820}}>{report.mission.rules[0]}</p>
+          <div style={{marginTop:18,padding:'15px 16px',border:'1px solid rgba(255,255,255,.1)'}}><span className="label">WE'LL KNOW IT'S IMPROVING WHEN</span><b style={{display:'block',marginTop:6}}>{report.mission.target} {report.mission.unit}</b></div>
+        </section>
+
+        <section ref={nextStepsRef} className="glass card">
+          <div className="eyebrow">WHAT HAPPENS NOW</div>
+          <h2>Do not try to fix everything.</h2>
+          <div className="grid three" style={{marginTop:18}}>
+            <div><span className="label">01 · PLAY</span><b>Take that one rule into your next game.</b></div>
+            <div><span className="label">02 · CHECK</span><b>We look for the same behaviour again.</b></div>
+            <div><span className="label">03 · MOVE ON</span><b>When it improves, your Coach gives you the next focus.</b></div>
+          </div>
+        </section>
+
+        <section className="glass card">
+          <div className="hero-actions">
+            <Link className="btn primary" href="/dashboard" onClick={()=>track('development_hq_entered',{source:'activation',grade:score})}>GO TO MY HOME →</Link>
+            <Link className="btn secondary" href={`/analyse/${encodeURIComponent(latest.id)}`}>SEE THIS GAME</Link>
           </div>
         </section>
       </div>
@@ -257,30 +213,28 @@ export default function Activate(){
     <Wordmark/>
     <div style={{maxWidth:860,margin:'34px auto 70px',display:'grid',gap:16}}>
       <section className="glass card" style={{textAlign:'center',padding:'clamp(24px,4vw,44px)'}}>
-        <div className="eyebrow">ONE MATCH → FIRST OP GRADE</div>
-        <h1 style={{fontSize:'clamp(34px,6vw,62px)',lineHeight:.95,marginBottom:14}}>Get your first fix before you see the app.</h1>
-        <p className="muted" style={{fontSize:16,lineHeight:1.65,maxWidth:650,margin:'0 auto'}}>
-          No empty dashboard. OP CLIMB needs one real game to replace your onboarding guess with evidence and build your first Fix Ladder.
-        </p>
+        <div className="eyebrow">START WITH ONE REAL GAME</div>
+        <h1 style={{fontSize:'clamp(34px,6vw,62px)',lineHeight:.95,marginBottom:14}}>Let’s find the first thing worth fixing.</h1>
+        <p className="muted" style={{fontSize:16,lineHeight:1.65,maxWidth:650,margin:'0 auto'}}>We would rather wait for a real game than fill your screen with guesses.</p>
       </section>
 
       {syncStatus===null&&<section className="glass card" style={{textAlign:'center'}}>
-        <div className="eyebrow">CHECKING RIOT CONNECTION</div><h3>Looking for the fastest route to your latest ranked game…</h3>
+        <div className="eyebrow">CHECKING RIOT</div><h3>Looking for your latest ranked game…</h3>
       </section>}
 
       {syncStatus?.enabled&&!syncError&&<section className="glass card">
-        <div className="eyebrow">RIOT MATCH IMPORT</div>
-        <h2>{syncing?'Importing your latest Ranked Solo/Duo game…':'Your Riot account is ready to import.'}</h2>
-        <p className="muted">OP CLIMB only needs the newest game to create the first grade. More history can sync after activation.</p>
-        {!syncing&&<button className="btn primary" onClick={()=>void runSync()}>IMPORT LATEST GAME</button>}
+        <div className="eyebrow">LATEST RANKED GAME</div>
+        <h2>{syncing?'Getting your latest game…':'Your Riot account is connected.'}</h2>
+        <p className="muted">One game is enough to give you a useful starting focus. We’ll learn more as you play.</p>
+        {!syncing&&<button className="btn primary" onClick={()=>void runSync()}>GET MY LATEST GAME</button>}
       </section>}
 
-      {syncError&&<div className="glass card"><div className="eyebrow">RIOT IMPORT DID NOT COMPLETE</div><p>{syncError}</p><p className="muted">You can still get your first grade immediately from the essentials below.</p></div>}
+      {syncError&&<div className="glass card"><div className="eyebrow">RIOT DIDN'T GIVE US THE GAME</div><p>{syncError}</p><p className="muted">You can still start with the basics below.</p></div>}
 
       {manualFallback&&<form className="glass card" onSubmit={submitManual}>
-        <div className="eyebrow">FAST FALLBACK · ABOUT 30 SECONDS</div>
-        <h2>Enter your last ranked game</h2>
-        <p className="muted">These numbers create a real foundation grade. OP CLIMB will not pretend they prove spacing, target selection or exact fight timing.</p>
+        <div className="eyebrow">QUICK FALLBACK · ABOUT 30 SECONDS</div>
+        <h2>Tell us about your last ranked game</h2>
+        <p className="muted">This is enough for a starting focus. We won’t pretend KDA and CS can tell us exact spacing, target choice or fight timing.</p>
         <div className="grid two" style={{marginTop:18}}>
           <label className="field">Champion<input className="input" value={champion} onChange={e=>setChampion(e.target.value)} placeholder="e.g. Galio" autoFocus/></label>
           <label className="field">Result<select className="input" value={result} onChange={e=>setResult(e.target.value as 'WIN'|'LOSS')}><option value="WIN">Victory</option><option value="LOSS">Defeat</option></select></label>
@@ -291,8 +245,8 @@ export default function Activate(){
           <label className="field">Game length<input className="input" value={duration} onChange={e=>setDuration(e.target.value)} placeholder="32:10"/></label>
         </div>
         {manualError&&<p style={{marginTop:14}}>{manualError}</p>}
-        {!authenticated&&<p className="muted">Your session is not signed in. Log in again so this match can be attached to your player profile.</p>}
-        <button className="btn primary" disabled={manualBusy||!authenticated} style={{marginTop:18}}>{manualBusy?'BUILDING YOUR GRADE…':'BUILD MY FIRST OP GRADE'}</button>
+        {!authenticated&&<p className="muted">Your session is not signed in. Log in again so this game can be attached to your player profile.</p>}
+        <button className="btn primary" disabled={manualBusy||!authenticated} style={{marginTop:18}}>{manualBusy?'CHECKING THE GAME…':'FIND MY FIRST FOCUS'}</button>
       </form>}
     </div>
   </main>;
