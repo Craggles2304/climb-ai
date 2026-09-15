@@ -8,6 +8,7 @@ import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {humanError} from '@/lib/errors';
+import {coachingLevelFor} from '@/lib/coachingLevel';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -46,7 +47,8 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     if(!Boolean(context?.localLockedIn)||!champion)return NextResponse.json({ok:true,ready:false},{status:202});
 
-    const patch=await latestPatch();
+    const [patch,playerRank]=await Promise.all([latestPatch(),resolvePlayerRank(db,device)]);
+    const coach=coachingLevelFor(playerRank);
     const roster=await championRoster(patch);
     const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
       .filter((pick:any)=>String(pick?.championName??'').trim())
@@ -61,16 +63,71 @@ export async function GET(req:NextRequest){
     const you=details.get(key(champion));
     if(!you)return NextResponse.json({ok:false,error:`No champion called "${champion}".`},{status:404});
 
-    const plan=buildChampionPowerPlan({you,roster,patch,role});
+    const rawPlan=buildChampionPowerPlan({you,roster,patch,role});
+    const plan=adaptPlanForRank(rawPlan,coach.depth,coach.visiblePoints);
     const teamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
-    const teamPlan={...teamBase,botLane};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    const coachLevel={rank:playerRank,tier:coach.tier,depth:coach.depth,visiblePoints:coach.visiblePoints,summary:coach.summary};
+    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel};
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
   }
+}
+
+async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:string|null}){
+  const profilePromise=db.from('profiles').select('rank').eq('id',device.userId).maybeSingle();
+  const riotPromise=device.riotAccountId
+    ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
+    :Promise.resolve({data:null,error:null});
+  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
+  const tier=String(riotResult?.data?.rank_tier??'').trim();
+  const division=String(riotResult?.data?.rank_division??'').trim();
+  if(tier)return`${tier}${division?` ${division}`:''}`;
+  return String(profileResult?.data?.rank||'Silver');
+}
+
+function adaptPlanForRank(plan:any,depth:number,visiblePoints:number){
+  const list=(value:any,minimum=1)=>Array.isArray(value)?value.slice(0,Math.max(minimum,visiblePoints)):value;
+  const trim=(value:any)=>shortForDepth(value,depth);
+  const spikes=Array.isArray(plan?.powerSpikes)?(depth<=2?plan.powerSpikes.filter((s:any)=>[2,6].includes(Number(s?.level))).slice(0,2):depth<=4?plan.powerSpikes.slice(0,3):plan.powerSpikes):plan?.powerSpikes;
+  return{
+    ...plan,
+    laneEdge:plan?.laneEdge?{...plan.laneEdge,summary:trim(plan.laneEdge.summary)}:plan?.laneEdge,
+    rules:list(plan?.rules),
+    winCondition:list(plan?.winCondition),
+    powerSpikes:spikes,
+    leadPlan:plan?.leadPlan?{...plan.leadPlan,create:list(plan.leadPlan.create),convert:list(plan.leadPlan.convert),protect:list(plan.leadPlan.protect)}:plan?.leadPlan,
+    trades:plan?.trades?{...plan.trades,safe:list(plan.trades.safe),pressure:list(plan.trades.pressure),avoid:list(plan.trades.avoid)}:plan?.trades,
+    itemPlan:plan?.itemPlan?{...plan.itemPlan,ahead:list(plan.itemPlan.ahead),even:list(plan.itemPlan.even),behind:list(plan.itemPlan.behind)}:plan?.itemPlan,
+    states:plan?.states?{...plan.states,ahead:list(plan.states.ahead),even:list(plan.states.even),behind:list(plan.states.behind)}:plan?.states,
+  };
+}
+
+function adaptBotLaneForRank(bot:any,depth:number){
+  if(!bot)return bot;
+  const trim=(value:any)=>shortForDepth(value,depth);
+  return{
+    ...bot,
+    laneCall:bot.laneCall?{...bot.laneCall,summary:trim(bot.laneCall.summary)}:bot.laneCall,
+    level2:bot.level2?{...bot.level2,summary:trim(bot.level2.summary)}:bot.level2,
+    trade:bot.trade?{...bot.trade,summary:trim(bot.trade.summary)}:bot.trade,
+    wave:bot.wave?{...bot.wave,summary:trim(bot.wave.summary)}:bot.wave,
+    allIn:bot.allIn?{...bot.allIn,summary:trim(bot.allIn.summary)}:bot.allIn,
+    danger:bot.danger?{...bot.danger,summary:trim(bot.danger.summary)}:bot.danger,
+    focus:trim(bot.focus),supportRoam:trim(bot.supportRoam),note:trim(bot.note),
+  };
+}
+
+function shortForDepth(value:any,depth:number){
+  const text=String(value??'').replace(/\s+/g,' ').trim();
+  if(!text)return text;
+  const limits=[0,95,125,165,210,260,320,390,470,560,680];
+  const max=limits[Math.max(1,Math.min(10,depth))]||320;
+  if(text.length<=max)return text;
+  return`${text.slice(0,max-1).replace(/\s+\S*$/,'')}…`;
 }
 
 function pendingBotLanePlan(input:{localChampion:string;localRole?:string|null;allies:{name:string;role?:string|null}[];enemies:{name:string;role?:string|null}[]}){
