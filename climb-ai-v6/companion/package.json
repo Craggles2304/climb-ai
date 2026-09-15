@@ -1,8 +1,8 @@
 {
   "name": "op-climb-companion",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "private": true,
-  "description": "OP CLIMB Windows companion for simple rank-scaled pregame plans, quiet match capture and focused post-game coaching.",
+  "description": "OP CLIMB Windows companion for simple rank-scaled pregame plans, three Active Five in-game reminders, quiet match capture and focused post-game coaching.",
   "main": "electron/bootstrap.cjs",
   "type": "module",
   "scripts": {
