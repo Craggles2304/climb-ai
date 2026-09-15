@@ -32,7 +32,7 @@ export interface LiveMatchupPlan{
   you:{name:string};
   them:{name:string};
   laneEdge:{edge:LivePlanEdge;label:string;summary:string};
-  laneDuel:LaneDuelPlan;
+  laneDuel?:LaneDuelPlan;
   winCondition:string[];
   powerSpikes:LivePowerSpike[];
   leadPlan:{create:string[];convert:string[];protect:string[]};
