@@ -49,6 +49,7 @@ export async function GET(req:NextRequest){
 
     const [patch,playerRank]=await Promise.all([latestPatch(),resolvePlayerRank(db,device)]);
     const coach=coachingLevelFor(playerRank);
+    const missionTips=await loadMissionTips(db,device,coach.depth);
     const roster=await championRoster(patch);
     const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
       .filter((pick:any)=>String(pick?.championName??'').trim())
@@ -68,13 +69,52 @@ export async function GET(req:NextRequest){
     const teamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
-    const coachLevel={rank:playerRank,tier:coach.tier,depth:coach.depth,visiblePoints:coach.visiblePoints,summary:coach.summary};
-    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    const coachLevel={rank:playerRank,tier:coach.tier,depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
+    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips};
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
   }
+}
+
+async function loadMissionTips(db:any,device:{userId:string;riotAccountId:string|null},depth:number){
+  if(!device.riotAccountId)return[];
+  const {data,error}=await db.from('ilp_tasks')
+    .select('id,payload,updated_at')
+    .eq('user_id',device.userId)
+    .eq('riot_account_id',device.riotAccountId)
+    .order('updated_at',{ascending:false})
+    .limit(20);
+  if(error)throw new Error(error.message);
+  const active=(data??[])
+    .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??'')}))
+    .filter((task:any)=>{
+      const status=String(task?.status??'ACTIVE').toUpperCase();
+      return status!=='MASTERED'&&status!=='PAUSED'&&String(task?.gameRule??'').trim();
+    })
+    .sort((a:any,b:any)=>{
+      const priority=(Number(b?.priority)||50)-(Number(a?.priority)||50);
+      if(priority!==0)return priority;
+      return (Number(a?.progress)||0)-(Number(b?.progress)||0);
+    })
+    .slice(0,3);
+  return active.map((task:any,index:number)=>({
+    id:String(task.id||`mission-${index+1}`),
+    number:index+1,
+    title:String(task.title||`Mission ${index+1}`).trim(),
+    cue:shortMissionCue(task.gameRule,depth),
+    category:String(task.category||'DEVELOPMENT').replaceAll('_',' '),
+  }));
+}
+
+function shortMissionCue(value:any,depth:number){
+  const text=String(value??'').replace(/\s+/g,' ').trim();
+  if(!text)return'';
+  const limits=[0,72,80,90,100,110,120,130,140,150,160];
+  const max=limits[Math.max(1,Math.min(10,depth))]||100;
+  if(text.length<=max)return text;
+  return`${text.slice(0,max-1).replace(/\s+\S*$/,'')}…`;
 }
 
 async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:string|null}){
