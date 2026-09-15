@@ -1,6 +1,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const hud=document.createElement('link');hud.rel='stylesheet';hud.href='broadcast-v2.css';document.head.appendChild(hud);
+  const brand=document.createElement('link');brand.rel='stylesheet';brand.href='brand-sync.css';document.head.appendChild(brand);
   const specialIds={
     'Aurelion Sol':'AurelionSol','Bel\'Veth':'Belveth','Cho\'Gath':'Chogath','Dr. Mundo':'DrMundo',
     'Jarvan IV':'JarvanIV','Kai\'Sa':'Kaisa','Kha\'Zix':'Khazix','K\'Sante':'KSante','LeBlanc':'Leblanc',
