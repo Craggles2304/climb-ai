@@ -40,7 +40,7 @@ function needsRecordingPlanRecovery(){
   const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
   return (role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
 }
-function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'||needsRecordingPlanRecovery()}
+function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'||state.phase==='RECORDING'}
 
 function setState(patch){
   const previousPhase=state.phase;
@@ -49,8 +49,8 @@ function setState(patch){
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(enteringChampSelect){matchupSignature='';state={...state,matchup:null,teamPlan:null};startChampionPlanPoll()}
-  else if(enteringRecording&&needsRecordingPlanRecovery())startChampionPlanPoll();
-  else if(previousPhase==='CHAMP_SELECT'&&state.phase!=='CHAMP_SELECT'&&!needsRecordingPlanRecovery())stopChampionPlanPoll();
+  else if(enteringRecording)startChampionPlanPoll();
+  else if((previousPhase==='CHAMP_SELECT'||previousPhase==='RECORDING')&&!canPollChampionPlan())stopChampionPlanPoll();
   updateTray();
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
 }
@@ -96,7 +96,7 @@ async function pollChampionPlan(){
       const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
       const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
       scheduleChampionPlanPoll(botMissing?1200:(state.matchup?.status==='READY'?3000:1500));
-    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(2200);
+    }else if(state.phase==='RECORDING')scheduleChampionPlanPoll(needsRecordingPlanRecovery()?2500:6500);
   }
 }
 
