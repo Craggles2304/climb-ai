@@ -7,7 +7,9 @@
  */
 
 export type AnalyticsEvent=
-  |'landing_view'|'signup_started'|'signup_completed'|'riot_profile_added'
+  |'landing_view'|'landing_scroll_depth'|'landing_cta_clicked'|'landing_glossary_opened'|'landing_faq_opened'
+  |'public_demo_started'|'public_demo_completed'|'public_demo_failed'
+  |'signup_started'|'signup_completed'|'riot_profile_added'
   |'activation_started'|'first_match_added'|'op_grade_viewed'|'fix_ladder_viewed'
   |'activation_completed'|'development_hq_entered'
   |'match_uploaded'|'match_synced'|'analysis_started'|'analysis_completed'

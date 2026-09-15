@@ -4,6 +4,7 @@ import {Wordmark} from '@/components/UI';
 import {PublicFooter} from '@/components/PublicFooter';
 import {HUNT_STAGES} from '@/lib/brand';
 import {TrackView} from '@/components/TrackView';
+import {BeginnerGlossary,LandingFaq,LandingFunnelTracking,ProofWithoutPretending,PublicMatchPreview} from '@/components/LandingConversion';
 
 export const metadata:Metadata={
   title:{absolute:'OP CLIMB — League of Legends Coaching That Learns How You Play'},
@@ -17,11 +18,14 @@ const signals=[
   {k:'NEXT RULE',v:'ADD AN EDGE',tone:'good'},
 ] as const;
 
+const StartFree=({placement}:{placement:string})=><div className="hero-actions" style={{display:'inline-flex',flexDirection:'column',alignItems:'flex-start',gap:7}}><Link className="btn primary" href="/signup" data-landing-cta={placement}>START FREE</Link><small className="muted" style={{fontSize:11}}>Free to start · No card required</small></div>;
+
 export default function Landing(){return <>
   <TrackView event="landing_view"/>
+  <LandingFunnelTracking/>
   <header className="container public-topbar">
     <Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link>
-    <nav><Link href="/demo">DEMO</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav>
+    <nav><Link href="/demo">DEMO</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup" data-landing-cta="top-nav">START FREE</Link></nav>
   </header>
 
   <main className="landing-v2">
@@ -30,7 +34,8 @@ export default function Landing(){return <>
         <div className="eyebrow">LEAGUE COACHING THAT REMEMBERS YOUR MISTAKES</div>
         <h1>STOP READING STATS.<br/><span>FIX THE DECISION.</span></h1>
         <p>OP CLIMB watches the evidence from your games, finds the habit that keeps costing you, gives you one rule to carry into the next match, then checks whether you fixed it.</p>
-        <div className="hero-actions"><Link className="btn primary" href="/demo">TRY THE DEMO</Link><Link className="btn secondary" href="/signup">START FREE</Link></div>
+        <StartFree placement="hero"/>
+        <a href="#try-it" className="text-link" style={{display:'block',marginTop:14}}>OR TRY THE COACHING INTERACTION FIRST ↓</a>
         <div className="public-proof-strip"><span>POST-GAME COACHING</span><span>FIX LADDER</span><span>MULTI-GAME MEMORY</span><span>NO LIVE SHOTCALLING</span></div>
       </div>
 
@@ -41,9 +46,12 @@ export default function Landing(){return <>
         <div className="console-signals">{signals.map(x=><div key={x.k} className={`console-signal is-${x.tone}`}><span>{x.k}</span><b>{x.v}</b></div>)}</div>
         <div className="console-ladder" aria-label="Fix Ladder"><i className="done"/><i className="active"/><i/><i/><i/></div>
         <div className="console-timeline"><div><i className="warn"/><b>02:12</b><span>RESET</span></div><div><i className="blue"/><b>08:50</b><span>POWER</span></div><div><i className="good"/><b>12:27</b><span>GOOD</span></div></div>
-        <Link href="/demo" className="console-link">OPEN FULL INTERACTIVE DEMO →</Link>
+        <a href="#try-it" className="console-link">TRY THE INTERACTIVE SAMPLE →</a>
       </div>
     </section>
+
+    <PublicMatchPreview/>
+    <BeginnerGlossary/>
 
     <section className="container landing-loop-v2" id="loop">
       <div className="landing-section-head"><div><div className="eyebrow">THE LOOP</div><h2>ONE FOCUS. UNTIL THE EVIDENCE CHANGES.</h2></div><p>Stats are evidence. The product is the behaviour change.</p></div>
@@ -56,18 +64,23 @@ export default function Landing(){return <>
       <article><span>03</span><div><b>DECISION FINGERPRINT</b><strong>What keeps repeating?</strong><small>PRO remembers patterns across games instead of judging one match in isolation.</small></div></article>
     </section>
 
+    <ProofWithoutPretending/>
+
     <section className="container landing-tier-preview">
-      <div className="landing-section-head"><div><div className="eyebrow">COACHING DEPTH</div><h2>START USEFUL. UNLOCK DEEPER DIAGNOSIS.</h2></div><Link className="text-link" href="/pricing">COMPARE PLANS →</Link></div>
+      <div className="landing-section-head"><div><div className="eyebrow">COACHING DEPTH</div><h2>START USEFUL. UNLOCK DEEPER DIAGNOSIS.</h2></div><p>One product path. More depth as you need it.</p></div>
       <div className="tier-preview-grid">
         <div><span>FREE</span><strong>See the leak</strong><small>OP Grade · basic fight/death coaching · first Fix Ladder stages</small></div>
         <div><span>PLUS</span><strong>Understand the leak</strong><small>Economy · red-state fights · chain deaths · power conversion</small></div>
         <div className="is-pro"><span>PRO</span><strong>Build your player model</strong><small>Decision Fingerprint · long-term history · champion identity · deepest ILP</small></div>
       </div>
+      <StartFree placement="tiers"/>
     </section>
 
-    <section className="container landing-trust-strip"><div><b>YOUR DATA</b><span>Your own Riot/tracker evidence.</span></div><div><b>POST-GAME ONLY</b><span>No live tactical shotcalling.</span></div><div><b>TRY FIRST</b><span>Public demo before signup.</span></div><div><b>NO FAKE PROOF</b><span>No invented testimonials or player counts.</span></div></section>
+    <section className="container landing-trust-strip"><div><b>TRY FIRST</b><span>Interactive coaching sample before signup.</span></div><div><b>POST-GAME COACHING</b><span>No hidden-info live shotcalling.</span></div><div><b>FREE TO START</b><span>No card required to create an account.</span></div><div><b>REAL PROOF ONLY</b><span>No invented testimonials or rank climbs.</span></div></section>
 
-    <section className="container landing-final-cta"><div className="eyebrow">YOUR NEXT GAME SHOULD HAVE A PURPOSE</div><h2>FIND THE LEAK.<br/>PLAY WITH ONE RULE.</h2><div><Link className="btn primary" href="/demo">TRY THE DEMO</Link><Link className="btn secondary" href="/signup">START FREE</Link></div></section>
+    <LandingFaq/>
+
+    <section className="container landing-final-cta"><div className="eyebrow">YOUR NEXT GAME SHOULD HAVE A PURPOSE</div><h2>FIND THE LEAK.<br/>PLAY WITH ONE RULE.</h2><StartFree placement="final"/></section>
   </main>
 
   <PublicFooter/>
