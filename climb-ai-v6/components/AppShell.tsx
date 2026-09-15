@@ -12,47 +12,45 @@ import {LiveFightReviewMount} from './LiveFightReviewMount';
 import {LiveCommandCenter} from './LiveCommandCenter';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 
-const groups=[
-  {label:'CLIMB',items:[['Dashboard','/dashboard','⌂'],['My Active Five','/ilp','◎'],['Missions','/missions','↗'],['Progress','/progress','◫']]},
-  {label:'ANALYSE',items:[['Analyse','/analyse','◇'],['Live Companion','/live','●'],['Matchup Lab','/matchup-lab','⚔'],['Bot Duo Lab','/matchup-lab/bot-duo','◆']]},
-  {label:'DEVELOP',items:[['My Main','/champions/main','★'],['Coach','/coach','✦'],['Uploads','/uploads','↑']]},
-  {label:'ACCOUNT',items:[['Accounts','/account','◉'],['Subscription','/pricing','◇'],['Settings','/settings','⚙']]},
+const primary=[
+  ['Home','/dashboard','⌂'],
+  ['Coach','/coach','✦'],
+  ['Games','/analyse','◇'],
+  ['Companion','/live','●'],
 ] as const;
-const mobile=[['Home','/dashboard'],['Active Five','/ilp'],['Analyse','/analyse'],['TFT','/tft'],['Profile','/account']];
+
+const mobile=primary.map(([name,href])=>[name,href] as const);
 
 const routeTitle=(path:string)=>{
-  if(path==='/dashboard')return'DEVELOPMENT HQ';
-  if(path==='/ilp')return'MY ACTIVE FIVE';
-  if(path==='/live')return'LIVE COMPANION';
-  if(path==='/analyse'||path.startsWith('/analyse/'))return'MATCH REVIEW';
-  if(path==='/progress')return'PERFORMANCE';
+  if(path==='/dashboard')return'HOME';
   if(path==='/coach')return'COACH';
-  if(path.startsWith('/matchup-lab'))return'MATCHUP LAB';
-  if(path.startsWith('/champions'))return'CHAMPION LAB';
-  if(path==='/missions')return'MISSIONS';
-  if(path==='/uploads')return'UPLOADS';
+  if(path==='/live')return'COMPANION';
+  if(path==='/analyse'||path.startsWith('/analyse/'))return'GAMES';
+  if(path==='/ilp')return'YOUR PLAN';
+  if(path==='/progress')return'PROGRESS';
+  if(path.startsWith('/matchup-lab'))return'ADVANCED MATCHUP';
+  if(path.startsWith('/champions'))return'CHAMPIONS';
+  if(path==='/missions')return'YOUR PLAN';
+  if(path==='/uploads')return'ADD A GAME';
   if(path==='/account')return'ACCOUNT';
   if(path==='/pricing')return'SUBSCRIPTION';
+  if(path==='/settings')return'SETTINGS';
   return'OP CLIMB';
 };
 
-function RankLabGate({tier,depth,path,onOpen}:{tier:string;depth:number;path:string;onOpen:()=>void}){
+function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void}){
   const isChampion=path.startsWith('/champions/main');
   return <section className="glass card" style={{maxWidth:820,margin:'26px auto',padding:'clamp(24px,4vw,46px)'}}>
-    <div className="eyebrow">{tier} VIEW · DETAIL {depth}/10</div>
-    <h1 style={{fontSize:'clamp(34px,5vw,58px)',lineHeight:.96,margin:'10px 0 14px'}}>{isChampion?'Keep your champion plan useful.':'Keep the matchup useful.'}</h1>
-    <p className="muted" style={{fontSize:16,lineHeight:1.65,maxWidth:690}}>{isChampion?'Your normal Champion page already shows the stats, plans and power spikes that matter at your rank. The Main Champion Lab contains raw DPS, item-value tables and deeper modelling, so OP CLIMB keeps that technical layer closed by default.':'Your Coach and Companion already turn matchup evidence into rank-sized instructions. The full Matchup Lab contains combat scripts, derived stats, confidence reports and raw simulation detail, so it stays closed by default at this rank.'}</p>
-    <div style={{display:'grid',gap:10,margin:'22px 0'}}>
-      <div style={{padding:'14px 16px',border:'1px solid var(--border)'}}><span className="label">DEFAULT FOR {tier}</span><b style={{display:'block',marginTop:5}}>See the decision first. Hide the spreadsheet.</b></div>
-      <div style={{padding:'14px 16px',border:'1px solid var(--border)'}}><span className="label">NOT DELETED</span><b style={{display:'block',marginTop:5}}>The full engine still runs underneath and the advanced lab is available whenever you choose.</b></div>
-    </div>
-    <div style={{display:'flex',gap:10,flexWrap:'wrap'}}><Link className="btn primary" href={isChampion?'/champions':'/coach'}>{isChampion?'OPEN MY RANK-SIZED CHAMPION PLAN':'ASK MY COACH'}</Link><button className="btn secondary" onClick={onOpen}>OPEN ADVANCED LAB ANYWAY</button></div>
+    <div className="eyebrow">ADVANCED TOOLS</div>
+    <h1 style={{fontSize:'clamp(34px,5vw,58px)',lineHeight:.96,margin:'10px 0 14px'}}>{isChampion?'Your normal champion plan is enough for most games.':'You probably do not need the spreadsheet.'}</h1>
+    <p className="muted" style={{fontSize:16,lineHeight:1.65,maxWidth:690}}>{isChampion?`Your ${tier} plan already gives you the champion advice worth carrying into game. This page is the deeper numbers layer if you genuinely want it.`:`Your ${tier} Coach already turns the matchup into decisions you can use. This page is the deeper modelling layer if you genuinely want it.`}</p>
+    <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:22}}><Link className="btn primary" href={isChampion?'/champions':'/coach'}>{isChampion?'BACK TO MY CHAMPION PLAN':'ASK MY COACH'}</Link><button className="btn secondary" onClick={onOpen}>OPEN ADVANCED VIEW</button></div>
   </section>;
 }
 
 export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
-  const {tier,tftTier}=useSubscription();
+  const {tier}=useSubscription();
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -60,65 +58,60 @@ export function AppShell({children}:{children:React.ReactNode}){
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<7;
   useEffect(()=>setAdvancedOpen(false),[path]);
+
   return <div className={`app-layout op-shell ${live?'is-live':''}`}>
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
         <Link href="/dashboard" className="logo-link" aria-label={BRAND.name+' home'}><Wordmark size="sm" priority/></Link>
-        <span className={`op-tier op-tier-${tier.toLowerCase()}`}>LOL · {tier}</span>
-      </div>
-
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'10px 0 16px'}}>
-        <Link className="btn primary" href="/dashboard" style={{padding:'9px 8px',fontSize:11,textAlign:'center'}}>LEAGUE</Link>
-        <Link className="btn secondary" href="/tft" style={{padding:'9px 8px',fontSize:11,textAlign:'center'}}>TFT · {tftTier}</Link>
+        <span className={`op-tier op-tier-${tier.toLowerCase()}`}>LEAGUE · {tier}</span>
       </div>
 
       <div className="account-switch op-account-card">
-        <div className="op-player-kicker"><span>PLAYER</span><i/></div>
+        <div className="op-player-kicker"><span>YOU</span><i/></div>
         <select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>
           {accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline} · {a.region}</option>)}
         </select>
-        <div className="op-account-meta"><strong>{active.rank}</strong><span>{active.role} · {coaching.tier} VIEW {coaching.depth}/10</span></div>
+        <div className="op-account-meta"><strong>{active.rank}</strong><span>{active.role} · {coaching.tier} COACH</span></div>
       </div>
 
       <nav className="op-nav" aria-label="Main navigation">
-        {groups.map(group=><div className="op-nav-group" key={group.label}>
-          <div className="op-nav-label"><span>{group.label}</span></div>
-          {group.items.map(([n,h,icon])=>{
-            const activeLink=path===h||((h==='/champions/main'||h==='/matchup-lab')&&path.startsWith(h+'/'));
-            return <Link className={activeLink?'active-nav':''} key={h} href={h}>
-              <span className="op-nav-icon">{icon}</span><span>{n}</span>{activeLink&&<i/>}
+        <div className="op-nav-group">
+          <div className="op-nav-label"><span>PLAY BETTER</span></div>
+          {primary.map(([name,href,icon])=>{
+            const activeLink=path===href||(href==='/analyse'&&path.startsWith('/analyse/'));
+            return <Link className={activeLink?'active-nav':''} key={href} href={href}>
+              <span className="op-nav-icon">{icon}</span><span>{name}</span>{activeLink&&<i/>}
             </Link>;
           })}
-        </div>)}
+        </div>
       </nav>
 
-      <div className="your-champs op-champ-stack">
-        <div className="op-nav-label"><span>CHAMPION POOL</span></div>
-        {active.champions.slice(0,coaching.depth<=2?1:coaching.depth<=4?2:3).map((c,i)=><Link href={'/champions/'+encodeURIComponent(c)} key={c}>
-          <span className="champ-index">0{i+1}</span><div><b>{c}</b><small>{coaching.depth<=2?'OPEN SIMPLE PLAN':'OPEN DEVELOPMENT PLAN'}</small></div><span className="op-arrow">›</span>
-        </Link>)}
-        <Link className="all-champs" href="/champions">OPEN CHAMPION LAB ›</Link>
+      <div className="op-nav-group" style={{marginTop:'auto'}}>
+        <div className="op-nav-label"><span>MORE</span></div>
+        <Link href="/ilp"><span className="op-nav-icon">◎</span><span>Your plan</span></Link>
+        <Link href="/champions"><span className="op-nav-icon">★</span><span>Champions</span></Link>
+        <Link href="/account"><span className="op-nav-icon">◉</span><span>Account</span></Link>
+        <Link href="/settings"><span className="op-nav-icon">⚙</span><span>Settings</span></Link>
       </div>
       <SessionBar/>
     </aside>
 
     <main className={`app-main op-main ${live?'op-live-main':''}`}>
       <header className="op-broadcast-hud">
-        <div className="op-hud-brand"><span className="op-hud-mark">OP</span><div><small>{coaching.tier} COACHING VIEW · {coaching.depth}/10</small><strong>{title}</strong></div></div>
+        <div className="op-hud-brand"><span className="op-hud-mark">OP</span><div><small>{coaching.tier} COACH</small><strong>{title}</strong></div></div>
         <div className="op-hud-player">
-          <div><small>SUMMONER</small><strong>{active.gameName}{active.tagline}</strong></div>
+          <div><small>PLAYER</small><strong>{active.gameName}{active.tagline}</strong></div>
           <div><small>RANK</small><strong>{active.rank}</strong></div>
           <div><small>ROLE</small><strong>{active.role}</strong></div>
-          <div><small>LOL ACCESS</small><strong className={tier==='PRO'?'volt':''}>{tier}</strong></div>
-          <span className={`op-hud-state ${live?'live':''}`}><i/>{live?'COMPANION':'SYSTEM'} ONLINE</span>
+          <span className={`op-hud-state ${live?'live':''}`}><i/>{live?'MATCH MODE':'READY'}</span>
         </div>
       </header>
-      <div className="op-energy-rail"><i/><span>OP CLIMB // YOUR RANK SETS THE DETAIL. THE ENGINE KEEPS THE FULL DATA.</span></div>
+      <div className="op-energy-rail"><i/><span>ONE FOCUS. ONE GAME AT A TIME.</span></div>
       <div className="op-screen-frame">
-        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} depth={coaching.depth} path={path} onOpen={()=>setAdvancedOpen(true)}/>:children}
+        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:children}
       </div>
     </main>
 
-    <nav className="mobile-nav"><div>{mobile.map(([n,h])=><Link className={path===h?'active':''} key={h} href={h}>{n}</Link>)}</div></nav>
+    <nav className="mobile-nav"><div>{mobile.map(([name,href])=><Link className={path===href||(href==='/analyse'&&path.startsWith('/analyse/'))?'active':''} key={href} href={href}>{name}</Link>)}</div></nav>
   </div>;
 }
