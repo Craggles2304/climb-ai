@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>OP CLIMB Companion</title>
 <link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="lane.css">
 <link rel="stylesheet" href="updates.css">
 </head>
 <body>
@@ -82,6 +83,63 @@
           <p>Build the advantage in stages instead of forcing a kill.</p>
         </article>
       </div>
+
+      <section id="laneDuelBrief" class="lane-duel hidden">
+        <div class="lane-duel-head">
+          <div><span class="eyebrow">BEAT YOUR LANE OPPONENT</span><h3 id="laneDuelTitle">HOW TO WIN THE MATCHUP</h3></div>
+          <strong id="laneAdvantage">Create the first advantage.</strong>
+        </div>
+        <div class="lane-action-grid">
+          <article class="lane-action hero"><span>YOUR PATTERN</span><strong>DO THIS REPEATEDLY</strong><p id="laneYourPattern"></p></article>
+          <article class="lane-action"><span>THEY WANT</span><strong>DENY THIS</strong><p id="laneTheirPattern"></p></article>
+          <article class="lane-action"><span>KILL WINDOW</span><strong>WHEN TO COMMIT</strong><p id="laneKillWindow"></p></article>
+          <article class="lane-action"><span>WAVE</span><strong>WHERE YOU WANT IT</strong><p id="laneWave"></p></article>
+          <article class="lane-action danger"><span>NEVER</span><strong>BIGGEST LANE MISTAKE</strong><p id="laneNever"></p></article>
+        </div>
+      </section>
+
+      <section id="botLaneBrief" class="botlane-brief hidden">
+        <div class="botlane-head">
+          <div>
+            <span class="eyebrow">BOT LANE 2V2 PLAN</span>
+            <h3><span id="botYourLane">Your duo</span><em>VS</em><span id="botEnemyLane">Enemy duo</span></h3>
+            <div class="duo-identities"><b id="botOurIdentity">OUR DUO</b><i>vs</i><b id="botTheirIdentity">THEIR DUO</b></div>
+          </div>
+          <span id="botConfidence" class="bot-confidence">ROLE READ</span>
+        </div>
+
+        <div class="bot-main-call">
+          <span>HOW TO PLAY THE LANE</span>
+          <strong id="botLaneCallLabel">PLAY THE FIRST CLEAN EDGE</strong>
+          <p id="botLaneCallSummary"></p>
+        </div>
+
+        <div class="bot-key-grid">
+          <article><span>LEVEL 2</span><strong id="botLevel2Label">—</strong><p id="botLevel2Summary"></p></article>
+          <article><span>TRADE</span><strong id="botTradeLabel">—</strong><p id="botTradeSummary"></p></article>
+          <article><span>WAVE</span><strong id="botWaveLabel">—</strong><p id="botWaveSummary"></p></article>
+          <article><span>ALL-IN</span><strong id="botAllInLabel">—</strong><p id="botAllInSummary"></p></article>
+        </div>
+
+        <div class="bot-danger"><div><span>THEIR 2V2 WIN CONDITION</span><strong id="botDangerLabel">DENY THEIR ENTRY</strong></div><p id="botDangerSummary"></p></div>
+
+        <div class="bot-engine">
+          <div class="bot-engine-head"><span id="botEngineState">MATCHUP LAB · READY</span><small>4-champion shared-clock model</small></div>
+          <div class="bot-engine-grid">
+            <div><span>LV 2 READ</span><b id="botEngineLevel2">Waiting…</b></div>
+            <div><span>LV 6 READ</span><b id="botEngineLevel6">Waiting…</b></div>
+            <div><span>FOCUS</span><b id="botEngineFocus">Waiting…</b></div>
+          </div>
+          <small id="botEngineNote"></small>
+        </div>
+
+        <details class="bot-extra">
+          <summary>MORE 2V2 DETAIL <b>OPEN</b></summary>
+          <div><span>FOCUS RULE</span><p id="botFocus"></p></div>
+          <div><span>IF SUPPORT ROAMS</span><p id="botRoam"></p></div>
+          <small id="botRoleNote"></small>
+        </details>
+      </section>
 
       <div class="rules-brief">
         <div><span>3 THINGS TO REMEMBER</span><small>Read these before loading screen</small></div>

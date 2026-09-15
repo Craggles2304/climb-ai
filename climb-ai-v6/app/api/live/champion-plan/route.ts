@@ -6,6 +6,7 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
+import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {humanError} from '@/lib/errors';
 
 export const runtime='nodejs';
@@ -47,7 +48,9 @@ export async function GET(req:NextRequest){
     if(!you)return NextResponse.json({ok:false,error:`No champion called "${champion}".`},{status:404});
 
     const plan=buildChampionPowerPlan({you,roster,patch,role});
-    const teamPlan=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
+    const teamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
+    const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
+    const teamPlan={...teamBase,botLane};
     return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,pregameUpdatedAt:data?.pregame_updated_at??null});
   }catch(err){
     const {title,body}=humanError(err);

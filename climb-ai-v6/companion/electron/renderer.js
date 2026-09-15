@@ -3,6 +3,9 @@ let current=null;
 let updateState=null;
 let diagnosticsOpen=false;
 let activeMatchupTab='overview';
+let botLaneSimSignature='';
+let botLaneSim=null;
+let botLaneSimLoading=false;
 
 function phaseTitle(phase){
   return ({SETUP:'Connect this PC',STARTING:'Starting Companion',WAITING:'Ready for League',CHAMP_SELECT:'Champ select detected',RECORDING:'Recording your match',UPLOADING:'Building your review',RESTARTING:'Restarting tracker',AUTH_ERROR:'Re-pair required',ERROR:'Tracker needs attention'})[phase]||'OP CLIMB Companion';
@@ -89,6 +92,9 @@ function renderMatchup(matchup,teamPlan,paired){
   $('leadChain').textContent='TRADE → HP → WAVE → RESET → ITEM';
   $('yourJob').textContent=teamPlan?.yourJob||fallbackJob(plan.role);
 
+  renderLaneDuel(plan,matchup,hasOpponent);
+  renderBotLane(teamPlan?.botLane||null);
+
   fillList('matchupRules',plan.rules,true);
   fillList('winCondition',plan.winCondition,true);
   fillList('leadCreate',plan.leadPlan?.create);
@@ -106,6 +112,123 @@ function renderMatchup(matchup,teamPlan,paired){
   renderSpikes(spikes);
   renderTeamPlan(teamPlan);
   setMatchupTab(activeMatchupTab);
+}
+
+function renderLaneDuel(plan,matchup,hasOpponent){
+  const root=$('laneDuelBrief');
+  if(!root)return;
+  root.classList.toggle('hidden',!hasOpponent);
+  if(!hasOpponent)return;
+  const opponent=plan.them?.name||matchup.opponent||'opponent';
+  const duel=plan.laneDuel||{
+    headline:`HOW TO BEAT ${String(opponent).toUpperCase()}`,
+    advantage:plan.winCondition?.[0]||'Create the first HP, cooldown or wave advantage.',
+    yourPattern:plan.trades?.safe?.[0]||'Take a short favourable trade, then reset spacing.',
+    theirPattern:plan.trades?.avoid?.[0]||`${opponent} wants you to extend the fight on their terms.`,
+    killWindow:plan.trades?.pressure?.[0]||'Commit after you have already created HP or cooldown advantage.',
+    wave:plan.leadPlan?.create?.[0]||'Use the wave to make the opponent expose themselves for farm.',
+    never:plan.trades?.avoid?.[1]||`Do not neutral all-in ${opponent} from an even state.`,
+  };
+  $('laneDuelTitle').textContent=duel.headline||`HOW TO BEAT ${String(opponent).toUpperCase()}`;
+  $('laneAdvantage').textContent=duel.advantage||'';
+  $('laneYourPattern').textContent=duel.yourPattern||'';
+  $('laneTheirPattern').textContent=duel.theirPattern||'';
+  $('laneKillWindow').textContent=duel.killWindow||'';
+  $('laneWave').textContent=duel.wave||'';
+  $('laneNever').textContent=duel.never||'';
+}
+
+function renderBotLane(bot){
+  const root=$('botLaneBrief');
+  if(!root)return;
+  root.classList.toggle('hidden',!bot);
+  if(!bot)return;
+  $('botYourLane').textContent=`${bot.yourAdc} + ${bot.yourSupport}`;
+  $('botEnemyLane').textContent=`${bot.enemyAdc} + ${bot.enemySupport}`;
+  $('botOurIdentity').textContent=bot.ourIdentity||'OUR DUO';
+  $('botTheirIdentity').textContent=bot.theirIdentity||'THEIR DUO';
+  $('botConfidence').textContent=bot.confidence==='HIGH'?'ROLES CONFIRMED':'ROLE READ';
+  $('botLaneCallLabel').textContent=bot.laneCall?.label||'PLAY THE FIRST CLEAN EDGE';
+  $('botLaneCallSummary').textContent=bot.laneCall?.summary||'';
+  $('botLevel2Label').textContent=bot.level2?.label||'LEVEL 2';
+  $('botLevel2Summary').textContent=bot.level2?.summary||'';
+  $('botTradeLabel').textContent=bot.trade?.label||'SHORT TRADE';
+  $('botTradeSummary').textContent=bot.trade?.summary||'';
+  $('botWaveLabel').textContent=bot.wave?.label||'CONTROL THE WAVE';
+  $('botWaveSummary').textContent=bot.wave?.summary||'';
+  $('botAllInLabel').textContent=bot.allIn?.label||'ALL-IN AFTER EDGE';
+  $('botAllInSummary').textContent=bot.allIn?.summary||'';
+  $('botDangerLabel').textContent=bot.danger?.label||'DENY THEIR ENTRY';
+  $('botDangerSummary').textContent=bot.danger?.summary||'';
+  $('botFocus').textContent=bot.focus||'';
+  $('botRoam').textContent=bot.supportRoam||'';
+  $('botRoleNote').textContent=bot.note||'';
+
+  const sig=simulationSignature(bot.simulation);
+  if(sig&&sig!==botLaneSimSignature){
+    botLaneSimSignature=sig;
+    botLaneSim=null;
+    botLaneSimLoading=false;
+  }
+  renderBotLaneEngine(bot);
+  if(sig&&!botLaneSim&&!botLaneSimLoading)void loadBotLaneSimulation(bot,sig);
+}
+
+function simulationSignature(context){
+  if(!context)return'';
+  return [context.yourAdc,context.yourSupport,context.enemyAdc,context.enemySupport].map(v=>String(v||'').trim().toLowerCase()).join('|');
+}
+
+async function loadBotLaneSimulation(bot,sig){
+  if(!window.opCompanion?.simulateBotLane||!bot?.simulation)return;
+  botLaneSimLoading=true;
+  renderBotLaneEngine(bot);
+  try{
+    const result=await window.opCompanion.simulateBotLane(bot.simulation);
+    if(sig!==botLaneSimSignature)return;
+    botLaneSim=result||{ok:false,error:'2v2 engine returned no result.'};
+  }catch(err){
+    if(sig!==botLaneSimSignature)return;
+    botLaneSim={ok:false,error:err?.message||'2v2 engine unavailable.'};
+  }finally{
+    if(sig===botLaneSimSignature){botLaneSimLoading=false;renderBotLaneEngine(bot)}
+  }
+}
+
+function renderBotLaneEngine(bot){
+  if(!$('botEngineState'))return;
+  if(botLaneSimLoading){
+    $('botEngineState').textContent='MATCHUP LAB · CALCULATING';
+    $('botEngineLevel2').textContent='Running the four-champion level-2 fight shape…';
+    $('botEngineLevel6').textContent='Running level-6 fight shape…';
+    $('botEngineFocus').textContent='Comparing focus targets…';
+    $('botEngineNote').textContent='Static pregame plan stays usable while the deeper simulation runs.';
+    return;
+  }
+  if(!botLaneSim){
+    $('botEngineState').textContent='MATCHUP LAB · READY';
+    $('botEngineLevel2').textContent=bot.level2?.label||'Level 2 plan ready.';
+    $('botEngineLevel6').textContent='Level 6 simulation will appear automatically.';
+    $('botEngineFocus').textContent=bot.focus||'Focus the nearest safe target.';
+    $('botEngineNote').textContent='Waiting for the four-champion engine.';
+    return;
+  }
+  if(!botLaneSim.ok){
+    $('botEngineState').textContent='MATCHUP LAB · STATIC PLAN ONLY';
+    $('botEngineLevel2').textContent=bot.level2?.label||'Use the static level-2 plan.';
+    $('botEngineLevel6').textContent='Deep 2v2 simulation unavailable for this setup.';
+    $('botEngineFocus').textContent=bot.focus||'Focus the nearest safe target.';
+    $('botEngineNote').textContent=botLaneSim.error||'The static 2v2 plan remains valid.';
+    return;
+  }
+  const early=botLaneSim.level2||{};
+  const six=botLaneSim.level6||{};
+  const confidence=early.confidence||six.confidence||'MODELLED';
+  $('botEngineState').textContent=`MATCHUP LAB · ${confidence}`;
+  $('botEngineLevel2').textContent=early.headline||bot.level2?.label||'Level 2 modelled.';
+  $('botEngineLevel6').textContent=six.headline||'Level 6 modelled.';
+  $('botEngineFocus').textContent=early.targetChampion?`FOCUS: ${String(early.targetChampion).toUpperCase()}`:(bot.focus||'Focus nearest safe target.');
+  $('botEngineNote').textContent=botLaneSim.note||'';
 }
 
 function renderTeamPlan(teamPlan){

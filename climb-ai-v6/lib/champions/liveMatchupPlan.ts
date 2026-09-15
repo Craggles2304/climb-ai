@@ -14,6 +14,16 @@ export interface LivePowerSpike{
   facts:string[];
 }
 
+export interface LaneDuelPlan{
+  headline:string;
+  advantage:string;
+  yourPattern:string;
+  theirPattern:string;
+  killWindow:string;
+  wave:string;
+  never:string;
+}
+
 export interface LiveMatchupPlan{
   version:1;
   generatedAt:string;
@@ -22,6 +32,7 @@ export interface LiveMatchupPlan{
   you:{name:string};
   them:{name:string};
   laneEdge:{edge:LivePlanEdge;label:string;summary:string};
+  laneDuel:LaneDuelPlan;
   winCondition:string[];
   powerSpikes:LivePowerSpike[];
   leadPlan:{create:string[];convert:string[];protect:string[]};
@@ -52,6 +63,9 @@ export function buildLiveMatchupPlan(input:{
   const durabilityFact=levelSix.facts.find(f=>f.key==='effectiveHp');
   const scalingLine=levelSix.howToPlayIt.find(line=>/strongest|surviving|mid-game|later/i.test(line));
   const enemyUlt=levelSix.facts.find(f=>f.key==='ultimate');
+  const rangeDelta=Math.round(you.stats.attackrange-them.stats.attackrange);
+  const yourUlt=you.spells?.[3]?.name||'your ultimate';
+  const enemyTip=theirs.riotEnemyTips[0]?.trim();
 
   const winCondition=unique([
     rangeFact?.edge==='YOU'
@@ -88,10 +102,10 @@ export function buildLiveMatchupPlan(input:{
   ]);
 
   const safeTrades=unique([
-    rangeFact?.edge==='YOU'
-      ?`Auto or ability from the edge of your range, then step back before ${them.name} can answer on equal terms.`
-      :rangeFact?.edge==='THEM'
-        ?`Use their last-hit animation, a missed ability or your minion wave as the trigger. Do not begin with a neutral walk into their range.`
+    rangeDelta>=25
+      ?`You have about ${rangeDelta} more basic-attack range. Hit ${them.name} as they step up for a last hit, then leave before the trade becomes extended.`
+      :rangeDelta<=-25
+        ?`${them.name} has about ${Math.abs(rangeDelta)} more basic-attack range. Use their last-hit animation, a missed ability or your minion wave as the trigger instead of walking into free damage.`
         :`Keep the trade short unless you have already created an HP, cooldown or wave advantage.`,
     mine.lanePlan[0],
   ]).slice(0,3);
@@ -104,9 +118,31 @@ export function buildLiveMatchupPlan(input:{
   const avoidTrades=unique([
     rangeFact?.edge==='THEM'?rangeFact.note:null,
     durabilityFact?.edge==='THEM'?durabilityFact.note:null,
-    theirs.riotEnemyTips[0],
+    enemyTip,
     `Do not turn a small poke win into an extended fight just because ${them.name} is lower HP. Re-check wave, cooldowns and escape space first.`,
   ]).slice(0,4);
+
+  const laneDuel:LaneDuelPlan={
+    headline:`HOW TO BEAT ${them.name.toUpperCase()}`,
+    advantage:rangeDelta>=25
+      ?`${you.name}: +${rangeDelta} AA range. Make ${them.name} pay HP for last-hitting.`
+      :rangeDelta<=-25
+        ?`${them.name}: +${Math.abs(rangeDelta)} AA range. Do not start the lane by trading autos on their terms.`
+        :`Auto ranges are close. The lane is decided by who creates the first HP, cooldown or wave edge.`,
+    yourPattern:rangeDelta>=25
+      ?`LAST-HIT PUNISH → STEP OUT → REPEAT. Use your extra range for one clean hit, then reset before ${them.name} gets the extended trade.`
+      :`WAIT FOR A TRIGGER → SHORT TRADE → RESET. Use a missed spell, last-hit animation or wave cover to start; do not neutral-walk into ${them.name}.`,
+    theirPattern:enemyTip
+      ?`${them.name}'s lane wants you to give them their preferred interaction. Key warning: ${enemyTip}`
+      :`${them.name} wants you to stay in the trade after your first advantage disappears. Their best lane is an extended fight from an even state.`,
+    killWindow:`CREATE HP FIRST → THEN COMMIT. Your clean kill attempt is after ${them.name} is already lower, has spent a key spell, or is trapped by the wave; at level 6, ${yourUlt} makes that created advantage much easier to convert.`,
+    wave:rangeDelta>=25
+      ?`Keep the wave playable enough that ${them.name} must step into your attack range for CS. Do not auto-shove every wave and remove the space you need to punish last hits.`
+      :rangeDelta<=-25
+        ?`Keep the wave closer to your side when possible so ${them.name} cannot use the longer lane to chase after a range poke. Use minions as cover before you trade.`
+        :`Use wave position to create the long retreat for ${them.name}. A good wave makes your short trade safe and their return trade awkward.`,
+    never:avoidTrades[0]||`Never begin a full-health extended fight from an even wave just because ${them.name} is in range. Create one advantage first.`,
+  };
 
   const itemPlan={
     ahead:[
@@ -125,12 +161,12 @@ export function buildLiveMatchupPlan(input:{
 
   const states={
     ahead:[
-      `Make the lane smaller for ${them.name}: keep the wave in a place where they must expose themselves to farm.` ,
+      `Make the lane smaller for ${them.name}: keep the wave in a place where they must expose themselves to farm.`,
       `Convert HP pressure into farm denial, plates or the first move. Do not make a kill the only definition of success.`,
       `Your biggest throw condition is giving ${them.name} a clean engage while you are overextended or sitting on unspent gold.`,
     ],
     even:[
-      `Manufacture the first edge through spacing, wave timing and a cooldown advantage.` ,
+      `Manufacture the first edge through spacing, wave timing and a cooldown advantage.`,
       `Choose the level spike below where your measured tools improve, then preserve HP so that spike is actually usable.`,
       `If nothing is available, take the guaranteed CS and keep the lane even. Even is a valid state when your later profile improves.`,
     ],
@@ -142,13 +178,13 @@ export function buildLiveMatchupPlan(input:{
   };
 
   const rules=unique([
-    winCondition[0],
+    laneDuel.yourPattern,
     powerSpikes.find(spike=>spike.level===6)?.fight,
     protect[0],
     ...levelSix.howToPlayIt,
   ]).slice(0,3);
 
-  return {
+  return{
     version:1,
     generatedAt:new Date().toISOString(),
     patch,
@@ -156,6 +192,7 @@ export function buildLiveMatchupPlan(input:{
     you:{name:you.name},
     them:{name:them.name},
     laneEdge:{edge:laneEdge,label:edgeLabel(laneEdge),summary:edgeSummary(laneEdge,you.name,them.name,rangeFact?.note)},
+    laneDuel,
     winCondition,
     powerSpikes,
     leadPlan:{create,convert,protect},
@@ -198,7 +235,7 @@ function powerSpike(read:MatchupRead,mySpikes:{level:number;title:string;fact:st
     ?`Avoid matching ${read.them.name}'s preferred extended fight from an even state.`
     :`Avoid chasing past the point where your original advantage — range, wave or cooldown — still exists.`;
 
-  return {level:read.level,edge,label:edgeLabel(edge),fight,createLead,avoid,facts};
+  return{level:read.level,edge,label:edgeLabel(edge),fight,createLead,avoid,facts};
 }
 
 function edgeFromRead(read:MatchupRead):Edge{
@@ -208,29 +245,29 @@ function edgeFromRead(read:MatchupRead):Edge{
     if(fact.edge==='YOU')score+=weight;
     else if(fact.edge==='THEM')score-=weight;
   }
-  if(score>=1.5)return 'YOU';
-  if(score<=-1.5)return 'THEM';
-  return 'EVEN';
+  if(score>=1.5)return'YOU';
+  if(score<=-1.5)return'THEM';
+  return'EVEN';
 }
 
 function edgeLabel(edge:Edge){
-  if(edge==='YOU')return 'YOUR TOOLS FAVOURABLE';
-  if(edge==='THEM')return 'THEIR TOOLS FAVOURABLE';
-  return 'CONTESTED / EVEN';
+  if(edge==='YOU')return'YOUR TOOLS FAVOURABLE';
+  if(edge==='THEM')return'THEIR TOOLS FAVOURABLE';
+  return'CONTESTED / EVEN';
 }
 
 function edgeSummary(edge:Edge,you:string,them:string,rangeNote?:string){
-  if(edge==='YOU')return `${you} has the more favourable measured static tools around level 6. ${rangeNote??'Convert the edge through clean trades and tempo rather than forcing a kill.'}`;
-  if(edge==='THEM')return `${them} has the more favourable measured static tools around level 6. ${rangeNote??'Create a wave, cooldown or HP advantage before committing.'}`;
-  return `Neither champion owns a large measured static edge around level 6. The first real HP, wave, cooldown or item advantage should decide who gets to pressure.`;
+  if(edge==='YOU')return`${you} has the more favourable measured static tools around level 6. ${rangeNote??'Convert the edge through clean trades and tempo rather than forcing a kill.'}`;
+  if(edge==='THEM')return`${them} has the more favourable measured static tools around level 6. ${rangeNote??'Create a wave, cooldown or HP advantage before committing.'}`;
+  return`Neither champion owns a large measured static edge around level 6. The first real HP, wave, cooldown or item advantage should decide who gets to pressure.`;
 }
 
 function normalizeRole(value?:string|null){
   const role=(value??'').trim().toUpperCase();
   if(!role||role==='NONE')return null;
-  if(role==='BOTTOM'||role==='ADC')return 'ADC';
-  if(role==='UTILITY'||role==='SUPPORT')return 'SUPPORT';
-  if(role==='MIDDLE')return 'MID';
+  if(role==='BOTTOM'||role==='ADC')return'ADC';
+  if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';
+  if(role==='MIDDLE')return'MID';
   return role;
 }
 

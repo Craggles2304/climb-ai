@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('opCompanion',{
   checkUpdate:()=>ipcRenderer.invoke('companion:check-update'),
   downloadUpdate:()=>ipcRenderer.invoke('companion:download-update'),
   installUpdate:(phase)=>ipcRenderer.invoke('companion:install-update',phase),
+  simulateBotLane:(context)=>ipcRenderer.invoke('companion:botlane-sim',context),
   onState:(handler)=>{
     const listener=(_event,state)=>handler(state);
     ipcRenderer.on('companion:state',listener);
