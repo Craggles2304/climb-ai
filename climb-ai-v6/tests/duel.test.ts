@@ -140,5 +140,6 @@ test('resistance shred affects only future timestamps in the duel',()=>{
   );
   const hits=result.timeline.flatMap(f=>f.actions).filter(a=>a.side==='YOU');
   assert.equal(hits[0].mitigatedDamage,50);
-  assert.equal(hits[1].mitigatedDamage,55.56);
+  // The shared damage layer intentionally reports mitigated damage to one decimal.
+  assert.equal(hits[1].mitigatedDamage,55.6);
 });
