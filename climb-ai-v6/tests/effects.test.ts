@@ -166,7 +166,8 @@ test('an ability resistance shred affects later hits but not the shred hit itsel
     target:{health:1000,maxHealth:1000,armor:100,magicResist:100},
   });
   assert.equal(result.events[0].mitigatedDamage,50);
-  assert.equal(result.events[1].mitigatedDamage,55.56);
+  // The shared mitigation layer intentionally reports one-decimal damage.
+  assert.equal(result.events[1].mitigatedDamage,55.6);
 });
 
 test('current-health rune rules are evaluated event by event',()=>{

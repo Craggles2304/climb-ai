@@ -1,4 +1,5 @@
 import type {DamageType} from './damage';
+import {roundCombat} from './decimal';
 
 /** Runtime-only combat effects shared by the combo and trade engines. */
 export interface OnHitEffect{
@@ -173,7 +174,7 @@ export function buildRuneCombatProfile(
     attackStack={
       label:'Lethal Tempo',
       maxStacks,
-      attackSpeedPerStack:opts.baseAttackSpeed*stackRatio,
+      attackSpeedPerStack:roundCombat(opts.baseAttackSpeed*stackRatio,12),
       onHitAtMax:{
         label:'Lethal Tempo',type:opts.adaptiveDamageType,flatDamage:round(onHitAtMax),
       },
@@ -266,4 +267,4 @@ export const scaleLevel=(min:number,max:number,level:number)=>{
 };
 
 const clampLevel=(level:number)=>Math.max(1,Math.min(18,Math.round(level)));
-const round=(n:number)=>Math.round(n*10)/10;
+const round=(n:number)=>roundCombat(n,1);

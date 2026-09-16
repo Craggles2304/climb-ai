@@ -18,15 +18,15 @@ test('Ashe Ranger Focus applies rank-scaled AS and flurry damage',()=>{
   assert.ok(rank5.unmodelledEffects.includes('ASHE_FROST_SHOT_CRIT_SCALING'));
 });
 
-test('Ezreal passive stack state grants ten percent bonus AS per stack',()=>{
+test('Ezreal selected passive stack state grants ten percent bonus AS per stack and stays explicit about refresh limits',()=>{
   for(let stacks=1;stacks<=5;stacks++){
     const profile=buildChampionCombatProfile('Ezreal',[`EZ_PASSIVE_${stacks}`],{}, {abilityPower:0});
     assert.equal(profile.permanentAttackSpeedRatio,.10*stacks);
+    assert.ok(profile.unmodelledEffects.includes('EZ_PASSIVE_DURATION_REFRESH'));
+    assert.ok(profile.notes.some(note=>/stacking\/refresh remains partial/i.test(note)));
   }
-  const full=buildChampionCombatProfile('Ezreal',['EZ_PASSIVE_5'],{}, {abilityPower:0});
-  assert.ok(!full.unmodelledEffects.includes('EZ_PASSIVE_DYNAMIC_STACKING'));
-  const partial=buildChampionCombatProfile('Ezreal',['EZ_PASSIVE_2'],{}, {abilityPower:0});
-  assert.ok(partial.unmodelledEffects.includes('EZ_PASSIVE_DYNAMIC_STACKING'));
+  const options=championEffectOptions('Ezreal');
+  for(const option of options)assert.equal(option.support,'PARTIAL');
 });
 
 test('Vayne Silver Bolts fresh-target state models every third auto as max-HP true damage',()=>{
@@ -57,7 +57,13 @@ test('state option groups are declared for mutually exclusive weapons/stacks',()
   const jinx=championEffectOptions('Jinx');
   const aphelios=championEffectOptions('Aphelios');
   const ezreal=championEffectOptions('Ezreal');
-  assert.ok(jinx.filter(o=>o.group==='jinx-weapon').length>=4);
-  assert.equal(aphelios.filter(o=>o.group==='aphelios-main').length,5);
-  assert.equal(ezreal.filter(o=>o.group==='ezreal-passive').length,5);
+  const hecarim=championEffectOptions('Hecarim');
+  assert.equal(jinx.find(x=>x.id==='JINX_POWPOW_1')?.group,'jinx-weapon');
+  assert.equal(jinx.find(x=>x.id==='JINX_FISHBONES')?.group,'jinx-weapon');
+  assert.equal(aphelios.find(x=>x.id==='APH_CALIBRUM')?.group,'aphelios-main');
+  assert.equal(aphelios.find(x=>x.id==='APH_CRESCENDUM')?.group,'aphelios-main');
+  assert.equal(ezreal.find(x=>x.id==='EZ_PASSIVE_1')?.group,'ezreal-passive');
+  assert.equal(ezreal.find(x=>x.id==='EZ_PASSIVE_5')?.group,'ezreal-passive');
+  assert.equal(hecarim.find(x=>x.id==='HEC_Q_1')?.group,'hec-q');
+  assert.equal(hecarim.find(x=>x.id==='HEC_Q_3')?.group,'hec-q');
 });

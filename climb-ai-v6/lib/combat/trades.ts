@@ -93,8 +93,10 @@ export interface TradeReport{
 interface ActiveDebuff{effect:TargetDebuffEffect;expiresAt:number}
 
 const MODEL_NOTE=
-  'A damage race, not a full simultaneous duel: both sides commit, every selected damage ability hits, '+
-  'and temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. '+
+  'A damage race, not a fight: both sides commit and every selected damage ability hits. '+
+  'It assumes both champions are in range of each other; with a real range or spacing gap, the shorter-ranged champion may simply never get to start it. '+
+  'There is no crowd control, movement, dodge chance or opponent-side interruption unless another model explicitly supplies it, so this is not the same question as who wins the lane. '+
+  'Temporary offensive states/stacks/marks/rechargeable attack passives advance on each side’s own timeline. '+
   'Validated basic attacks deal damage when their windup lands, and a timed trade counts that attack only if impact occurs inside the window. '+
   'Cast-generated self-shields and attack resets are recorded but do not yet intercept the opponent timeline.';
 

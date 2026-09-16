@@ -1,5 +1,6 @@
 import type {AbilitySlot} from './combos';
 import type {OnHitEffect} from './effects';
+import {roundCombat} from './decimal';
 
 export interface TimedAutoState{
   id:string;
@@ -164,7 +165,7 @@ export function abilityDamageMultiplier(
   if(!rule)return 1;
   const stacks=currentAbilityStacks(runtime,rule,clock);
   const per=finite(rule.damageMultiplierPerStack,0);
-  return Math.max(0,1+per*stacks);
+  return roundCombat(Math.max(0,1+per*stacks),12);
 }
 
 export function abilityCooldownSeconds(
@@ -177,7 +178,7 @@ export function abilityCooldownSeconds(
   if(!rule)return base;
   const stacks=currentAbilityStacks(runtime,rule,clock);
   const reduction=Math.max(0,finite(rule.cooldownFlatReductionPerStack,0))*stacks;
-  return Math.max(0,base-reduction);
+  return roundCombat(Math.max(0,base-reduction),12);
 }
 
 export function applyAbilityStackAfterCast(

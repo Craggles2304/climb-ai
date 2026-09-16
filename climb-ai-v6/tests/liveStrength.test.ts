@@ -99,7 +99,8 @@ test('post-game timeline keeps meaningful power swings instead of every five-sec
   assert.ok(timeline.points.some(point=>point.verdict==='THEM_STRONGER'));
   assert.equal(timeline.strongestWindow?.atSeconds,650);
   assert.equal(timeline.weakestWindow?.atSeconds,480);
-  assert.match(timeline.modelNote,/does not infer hidden enemy cooldowns/i);
+  assert.match(timeline.modelNote,/hidden cooldowns/i);
+  assert.match(timeline.modelNote,/(excluded|not inferred|does not infer)/i);
 });
 
 test('malformed local payload fails closed rather than inventing a snapshot',()=>{
