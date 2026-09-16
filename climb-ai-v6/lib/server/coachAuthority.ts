@@ -43,11 +43,17 @@ export function authoritativeContext(client:any,authority:CoachAuthority){
   return{...(client??{}),activeTasks:authority.tasks.length?authority.tasks:client?.activeTasks??[],mission:authority.primary?.title??client?.mission,proAuthority:authority.latestPro?{primaryMission:authority.primary,primaryMetric:authority.proMetric,fingerprint:authority.latestPro?.fingerprint??null,leakSignals:authority.latestPro?.leakSignals??[]}:null};
 }
 
+function matchingActiveTask(input:any,authority:CoachAuthority){
+  if(!input)return null;
+  return authority.tasks.find(task=>input.metric===task.metric)
+    ??authority.tasks.find(task=>input.category===task.category)
+    ??null;
+}
+
 export function enforceCoachSuggestion(input:any,authority:CoachAuthority){
   if(!input)return undefined;
-  const primary=authority.primary;
-  if(!primary)return input;
-  const same=input.metric===primary.metric||input.category===primary.category;
-  if(!same)return undefined;
-  return{...input,metric:primary.metric,category:primary.category,title:primary.title,gameRule:primary.gameRule,target:primary.target,priority:Math.max(primary.priority,input.priority||0),source:'COACH'};
+  if(!authority.primary)return input;
+  const task=matchingActiveTask(input,authority);
+  if(!task)return undefined;
+  return{...input,metric:task.metric,category:task.category,title:task.title,gameRule:task.gameRule,target:task.target,priority:Math.max(task.priority,input.priority||0),source:'COACH'};
 }
