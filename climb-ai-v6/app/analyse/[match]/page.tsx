@@ -7,6 +7,7 @@ import {AppShell} from '@/components/AppShell';
 import {MetricCard,PageHead} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {useProMatch} from '@/components/useProMatch';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {TurningPoints} from '@/components/TurningPoints';
@@ -25,13 +26,14 @@ export default function Analysis(){
   const matches=matchesFor(active.id);
   const match=matches.find(m=>m.id===id);
   const detail=coachingLevelFor(active.rank);
+  const {analysis:proAnalysis,loading:proLoading}=useProMatch(match?.id);
 
   if(!hydrated)return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading your evidence…</h2></section></AppShell>;
 
   if(!match)return <AppShell><PageHead title="Match not found" subtitle="This review is not attached to the active Riot account."/><section className="glass card"><p className="muted">Switch back to the account that played this game or open a match from Analyse.</p><Link className="btn primary" href="/analyse">OPEN ANALYSE</Link></section></AppShell>;
 
   const recent=matches.filter(m=>m.id!==match.id);
-  const report=analyseMatch(match,recent);
+  const report=analyseMatch({...match,proAnalysis:proAnalysis??undefined},recent);
   const review=buildReview(match,report);
   const visible=detail.visiblePoints;
   const reviewPoints=detail.reviewPoints;
@@ -53,6 +55,8 @@ export default function Analysis(){
 
   return <AppShell>
     <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''}`}/>
+
+    {proLoading&&<div className="glass card" style={{marginBottom:18}}><div className="eyebrow">COACHING EVIDENCE</div><p className="muted">Loading the full Riot/timeline evidence before finalising this review…</p></div>}
 
     <div className="grid five">
       <MetricCard label={detail.depth<=2?'SCORELINE':'KDA'} value={`${match.kills}/${match.deaths}/${match.assists}`}/>
@@ -99,7 +103,7 @@ export default function Analysis(){
         <div><span className="label">DO THIS INSTEAD</span><ol className="review-list is-ordered">{review.whatToDoInstead.slice(0,reviewPoints).map(line=><li key={line}>{line}</li>)}</ol></div>
       </div>
       <div className="review-mistake"><span className="label">#1 PROBLEM</span><h3>{review.biggestMistake.title}</h3>{detail.depth>=2&&<ul className="review-evidence">{review.biggestMistake.evidence.slice(0,visible).map(fact=><li key={fact}>{fact}</li>)}</ul>}{detail.depth>=3&&<p className="review-why">{review.biggestMistake.whyItMatters}</p>}</div>
-      {detail.depth>=6&&<p className="review-note">Written from measured metrics. Missing evidence stays unavailable instead of being guessed.</p>}
+      {detail.depth>=6&&<p className="review-note">{proAnalysis?'Coaching priority selected from persisted Riot/timeline/telemetry evidence.':'Full PRO evidence is unavailable for this match, so OP CLIMB is using the measured scoreboard fallback without inventing missing evidence.'}</p>}
     </section>
 
     <div className="glass card mission-card" style={{marginTop:18}}>
