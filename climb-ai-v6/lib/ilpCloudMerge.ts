@@ -32,6 +32,21 @@ function localOverRemote(remote:ILPTask,local:ILPTask){
     ...(remoteAny.adaptive?{adaptive:remoteAny.adaptive}:localAny.adaptive?{adaptive:localAny.adaptive}:{}),
   } as ILPTask;
 }
+function serverEvidenceManaged(task:ILPTask){
+  const anyTask=task as any;
+  if(anyTask.adaptive?.managedBy==='POST_GAME_EVIDENCE')return true;
+  if(String(task.id).startsWith('op-pro-')||String(task.id).includes('adaptive-fill'))return true;
+  const text=`${task.lastUpdatedReason??''} ${(task.history??[]).map(entry=>entry.note).join(' ')}`.toLowerCase();
+  return /repeated evidence|active five vacancy|active five cap|role-safe baseline|post-game evidence/.test(text);
+}
+function explicitLocalActionAfter(task:ILPTask,remoteAt:number){
+  const recent=[...(task.history??[])].filter(entry=>stamp(entry.at)>remoteAt);
+  if(recent.some(entry=>{
+    const type=String(entry.type||'').toUpperCase(),note=String(entry.note||'');
+    return type==='COACH_EDIT'||/paused by player|marked mastered after reviewed evidence|replaced by coach|coach mission/i.test(note);
+  }))return true;
+  return (task.missionHistory??[]).some(entry=>stamp(entry.at)>remoteAt);
+}
 
 /**
  * Reconcile a possibly stale browser plan with the server-owned ILP snapshot.
@@ -39,8 +54,10 @@ function localOverRemote(remote:ILPTask,local:ILPTask){
  * Rules:
  * - server-only rows are never deleted just because a tab has not seen them yet;
  * - a newer server row wins over stale local state;
- * - an explicit local action that happened after the server write may update the row;
- * - server adaptive metadata survives a later local pause/complete/Coach edit.
+ * - post-game evidence decisions stay server-authoritative even if a stale tab
+ *   runs a later automatic client calculation;
+ * - an explicit player/Coach action after the server write may still update it;
+ * - server adaptive metadata survives that later local action.
  */
 export function mergeIlpCloudSnapshot(localTasks:ILPTask[],remoteRows:CloudIlpRow[],accountId:string):CloudIlpMerge{
   const remoteById=new Map(remoteRows.map(row=>[String(row.id),row]));
@@ -60,7 +77,8 @@ export function mergeIlpCloudSnapshot(localTasks:ILPTask[],remoteRows:CloudIlpRo
     const remoteTask={...remotePayload,id:String(remoteRow.id),accountId} as ILPTask;
     const remoteAt=stamp(remoteRow.updated_at);
     const localAt=taskFreshness(localTask);
-    if(localAt>remoteAt){const combined=localOverRemote(remoteTask,localTask);mergedById.set(local.id,combined);writes.push(combined)}
+    const mayOverride=serverEvidenceManaged(remoteTask)?explicitLocalActionAfter(localTask,remoteAt):localAt>remoteAt;
+    if(mayOverride){const combined=localOverRemote(remoteTask,localTask);mergedById.set(local.id,combined);writes.push(combined)}
   }
 
   return{tasks:[...mergedById.values()],writes};
