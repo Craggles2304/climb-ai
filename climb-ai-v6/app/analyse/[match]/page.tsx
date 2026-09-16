@@ -1,10 +1,12 @@
 'use client';
 
+import {useState} from 'react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
 import {MetricCard,PageHead} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
+import {useLearningPlan} from '@/components/LearningPlanContext';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {TurningPoints} from '@/components/TurningPoints';
@@ -12,10 +14,13 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
+const liveTask=(status:string)=>status!=='MASTERED'&&status!=='PAUSED';
 
 export default function Analysis(){
   const params=useParams<{match:string}>();
   const {active,hydrated}=useAccount();
+  const {tasks,addTask}=useLearningPlan();
+  const [tracked,setTracked]=useState(false);
   const id=String(params.match||'');
   const matches=matchesFor(active.id);
   const match=matches.find(m=>m.id===id);
@@ -30,6 +35,21 @@ export default function Analysis(){
   const review=buildReview(match,report);
   const visible=detail.visiblePoints;
   const reviewPoints=detail.reviewPoints;
+  const existingTask=tasks.find(task=>liveTask(task.status)&&(task.metric===report.mission.metric||task.category===report.mission.category));
+  const trackMission=()=>{
+    if(tracked)return;
+    addTask({
+      title:report.mission.title,
+      category:report.mission.category,
+      why:`Post-game review detected this as the highest-value repeatable behaviour. ${report.primary.inference}`,
+      gameRule:report.mission.rules[0]||report.primary.suggestion,
+      metric:report.mission.metric,
+      target:`${report.mission.target} ${report.mission.unit} across ${report.mission.gamesRequired} relevant games`,
+      source:'COACH',
+      priority:96,
+    });
+    setTracked(true);
+  };
 
   return <AppShell>
     <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''}`}/>
@@ -95,7 +115,11 @@ export default function Analysis(){
       <div className="eyebrow">NEXT GAME</div><h2>{report.mission.title}</h2>
       {report.mission.rules.slice(0,detail.depth<=1?1:detail.depth<=2?2:3).map((rule,index)=><div className="cue-row" key={rule}><span>{['WHEN','DO','CHECK'][index]??'RULE'}</span><b>{rule}</b></div>)}
       {detail.depth>=3&&<p className="muted">Pass condition: {report.mission.target} {report.mission.unit} across {report.mission.gamesRequired} relevant games.</p>}
-      <Link href="/missions" className="btn primary">TRACK THIS MISSION</Link>
+      {existingTask&&!tracked
+        ?<><p className="muted">This matches an active development mission. Tracking it will update that mission instead of creating a duplicate.</p><button type="button" className="btn primary" onClick={trackMission}>UPDATE ACTIVE MISSION</button></>
+        :tracked
+          ?<><p className="success">Development plan updated. This review is now connected to your active five.</p><Link href="/ilp" className="btn primary">OPEN DEVELOPMENT PLAN</Link></>
+          :<button type="button" className="btn primary" onClick={trackMission}>ADD TO DEVELOPMENT PLAN</button>}
     </div>
 
     {detail.depth>=7&&<div className="glass card data-note" style={{marginTop:18}}><div className="eyebrow">DATA RELIABILITY</div><p className="muted">Scoreboard-only matches create a foundation grade from KDA, CS and duration. Exact recall quality, spacing, target selection and fight timing require Riot timeline, live telemetry or reviewed video evidence.</p></div>}
