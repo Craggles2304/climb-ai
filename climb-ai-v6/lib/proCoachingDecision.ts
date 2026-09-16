@@ -1,14 +1,10 @@
 import type {AnalysisReport,IssueCategory,Match,Mission,Signal} from './types';
 import type {ProConfidence,ProMatchAnalysis,ProMetric} from './riot/proAnalysis';
+import {leakMetricBoosts} from './proLeakWeighting';
 
 type Candidate={key:string;metric:ProMetric;priority:number};
 
-type CoachingSpec={
-  category:IssueCategory;
-  title:string;
-  rules:string[];
-  suggestion:string;
-};
+type CoachingSpec={category:IssueCategory;title:string;rules:string[];suggestion:string};
 
 const SPECS:Record<string,CoachingSpec>={
   fight_selection:{category:'TEAMFIGHTING',title:'FIGHT SELECTION',suggestion:'Before committing, classify the visible fight state: stronger, even, or enemy-favoured. Do not enter an already losing state without a clear reason.',rules:['Before each major fight, identify whether your visible level/item state is stronger, even, or weaker.','If the enemy already has the stronger state, delay the commit until the state changes or your team creates a numbers advantage.','After the fight, check whether your decision matched the state you identified.']},
@@ -32,12 +28,9 @@ const confidenceWeight:Record<ProConfidence,number>={HIGH:1,MEDIUM:.82,LOW:.58};
 const statusWeight:Record<ProMetric['status'],number>={MEASURED:1,DERIVED:.92,BUILDING:.45,UNAVAILABLE:0};
 
 export function analyseProMatch(match:Match,analysis:ProMatchAnalysis):AnalysisReport|null{
-  const candidate=pickCandidate(analysis);
-  if(!candidate)return null;
-  const {key,metric}=candidate;
-  const spec=SPECS[key]??genericSpec(metric.label);
-  const confidence=confidenceWeight[metric.confidence];
-  const score=metric.score??50;
+  const candidate=pickCandidate(analysis); if(!candidate)return null;
+  const {key,metric}=candidate; const spec=SPECS[key]??genericSpec(metric.label);
+  const confidence=confidenceWeight[metric.confidence]; const score=metric.score??50;
   const severity=Math.max(0,Math.min(1,(100-score)/100));
   const evidence=metric.evidence.slice(0,3).map(item=>item.atSeconds!==undefined?`${clock(item.atSeconds)} — ${item.label}: ${item.detail}`:`${item.label}: ${item.detail}`);
   const facts=evidence.length?evidence:[metric.value,metric.summary].filter(Boolean);
@@ -49,13 +42,8 @@ export function analyseProMatch(match:Match,analysis:ProMatchAnalysis):AnalysisR
   return {matchId:match.id,performance,good:positiveEvidence(analysis),primary,mission,summary:`${spec.title} is the highest-priority evidence-backed behaviour in this match. The target is improvement against your own current PRO evidence baseline, not a generic rank benchmark.`};
 }
 
-function pickCandidate(analysis:ProMatchAnalysis):Candidate|null{
-  const leakBoost=new Map<string,number>();
-  for(const leak of analysis.leakSignals){
-    const boost=leak.severity==='CRITICAL'?28:leak.severity==='MAJOR'?20:leak.severity==='ACTIVE'?12:5;
-    leakBoost.set(leak.key,boost+Math.min(12,Math.max(0,leak.count-1)*4));
-  }
-  const candidates:Candidate[]=[];
+export function pickProCoachingCandidate(analysis:ProMatchAnalysis):Candidate|null{
+  const leakBoost=leakMetricBoosts(analysis.leakSignals); const candidates:Candidate[]=[];
   for(const [key,metric] of Object.entries(analysis.metrics)){
     if(!metric||metric.score===null||metric.status==='UNAVAILABLE'||metric.status==='BUILDING')continue;
     if(key==='decision_fingerprint'||key==='champion_identity'||key==='historical_leak_rate')continue;
@@ -63,13 +51,10 @@ function pickCandidate(analysis:ProMatchAnalysis):Candidate|null{
     const priority=weakness*confidenceWeight[metric.confidence]*statusWeight[metric.status]+(leakBoost.get(key)??0);
     candidates.push({key,metric,priority});
   }
-  candidates.sort((a,b)=>b.priority-a.priority);
-  return candidates[0]??null;
+  candidates.sort((a,b)=>b.priority-a.priority); return candidates[0]??null;
 }
 
-function positiveEvidence(analysis:ProMatchAnalysis){
-  return Object.values(analysis.metrics).filter((m):m is ProMetric=>Boolean(m&&typeof m.score==='number'&&m.status!=='UNAVAILABLE')).sort((a,b)=>(b.score??0)-(a.score??0)).slice(0,3).map(m=>`${m.label}: ${m.value}. ${m.summary}`);
-}
-
+function pickCandidate(analysis:ProMatchAnalysis){return pickProCoachingCandidate(analysis)}
+function positiveEvidence(analysis:ProMatchAnalysis){return Object.values(analysis.metrics).filter((m):m is ProMetric=>Boolean(m&&typeof m.score==='number'&&m.status!=='UNAVAILABLE')).sort((a,b)=>(b.score??0)-(a.score??0)).slice(0,3).map(m=>`${m.label}: ${m.value}. ${m.summary}`)}
 function genericSpec(label:string):CoachingSpec{return{category:'CONSISTENCY',title:label.toUpperCase(),suggestion:`Use the next games to improve ${label.toLowerCase()} against your own current evidence baseline.`,rules:[`Before the relevant decision, name the ${label.toLowerCase()} behaviour you are trying to improve.`,'Make the decision deliberately rather than on autopilot.','After the game, use the recorded evidence to check whether the behaviour improved.']}}
 function clock(seconds:number){const s=Math.max(0,Math.round(seconds));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
