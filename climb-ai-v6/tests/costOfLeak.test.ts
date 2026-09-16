@@ -154,8 +154,8 @@ test('thresholds agree with the pass conditions in ilpEngine',()=>{
     };
     const at=Array.from({length:5},()=>match('WIN',{[spec.key]:pass} as Partial<MatchMetrics>));
     const below=Array.from({length:5},()=>match('WIN',{[spec.key]:fail} as Partial<MatchMetrics>));
-    assert.equal(adaptILP([task],at).tasks[0].successfulGames,1,
-      `ilpEngine should bank a pass for ${metric} at ${pass}`);
+    assert.equal(adaptILP([task],at).tasks[0].successfulGames,5,
+      `ilpEngine should recognise all five passing games for ${metric} at ${pass}`);
     assert.equal(adaptILP([task],below).tasks[0].successfulGames,0,
       `ilpEngine should not bank a pass for ${metric} at ${fail}`);
   }
