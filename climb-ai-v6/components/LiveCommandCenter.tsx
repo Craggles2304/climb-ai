@@ -1,180 +1,25 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
-import {useAccount} from './AccountContext';
+import Link from 'next/link';
+import {useAccount,matchesFor} from './AccountContext';
+import {useLearningPlan} from './LearningPlanContext';
 import {PageHead} from './UI';
 import {WindowsTrackerInstaller} from './WindowsTrackerInstaller';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {missionEvidence} from '@/lib/missionLoop';
+import {readClimbSession,sessionGames as gamesInSession,type ClimbSessionState} from '@/lib/climbSession';
 
-type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};
-type Item={itemId:number;displayName:string;count:number;price:number};
-type Player={summonerName:string;riotId:string|null;championName:string;team:string;level:number;position:string|null;itemGold:number;items:Item[];scores:{kills:number;deaths:number;assists:number;creepScore:number;wardScore:number}};
-type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;championName:string;position:string|null;currentGold:number};players:Player[]};
-type Review={status:string;lastSeenAt:string|null;snapshotCount:number;latestSnapshot:Snapshot|null};
-
-export function LiveCommandCenter(){
-  const {active,isOwnAccount,profile,hydrated}=useAccount();
-  const detail=coachingLevelFor(active.rank);
-  const [devices,setDevices]=useState<Device[]>([]);
-  const [devicesLoaded,setDevicesLoaded]=useState(false);
-  const [review,setReview]=useState<Review|null>(null);
-  const [pairCode,setPairCode]=useState('');
-  const [pairExpiresAt,setPairExpiresAt]=useState('');
-  const [pairStartedAt,setPairStartedAt]=useState(0);
-  const [deviceName,setDeviceName]=useState('My Windows PC');
-  const [busy,setBusy]=useState(false);
-  const [message,setMessage]=useState('');
-  const autoPairStarted=useRef(false);
-
-  const refreshDevices=useCallback(async()=>{
-    try{
-      const response=await fetch('/api/live/pair',{cache:'no-store'});
-      if(!response.ok)return;
-      const body=await response.json();
-      setDevices((body.devices??[]).filter((x:Device)=>x.account_key===active.id));
-    }catch{}
-    finally{setDevicesLoaded(true)}
-  },[active.id]);
-
-  const refreshReview=useCallback(async()=>{
-    try{
-      const response=await fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});
-      if(!response.ok)return;
-      const body=await response.json();
-      setReview(body.review??null);
-    }catch{}
-  },[active.id]);
-
-  const refresh=useCallback(async()=>{await Promise.all([refreshDevices(),refreshReview()])},[refreshDevices,refreshReview]);
-
-  useEffect(()=>{
-    setDevicesLoaded(false);
-    autoPairStarted.current=false;
-    void refresh();
-    const reviewTick=()=>{if(document.visibilityState==='visible')void refreshReview()};
-    const deviceTick=()=>{if(document.visibilityState==='visible')void refreshDevices()};
-    const onVisibility=()=>{if(document.visibilityState==='visible')void refresh()};
-    const reviewId=window.setInterval(reviewTick,10_000);
-    const deviceId=window.setInterval(deviceTick,15_000);
-    document.addEventListener('visibilitychange',onVisibility);
-    return()=>{window.clearInterval(reviewId);window.clearInterval(deviceId);document.removeEventListener('visibilitychange',onVisibility)};
-  },[refresh,refreshDevices,refreshReview]);
-
-  useEffect(()=>{
-    if(!pairCode)return;
-    const tick=()=>{
-      if(pairExpiresAt&&Date.now()>=new Date(pairExpiresAt).getTime()){
-        setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Connect installed Companion to create a fresh one.');return;
-      }
-      void refreshDevices();
-    };
-    tick();
-    const id=window.setInterval(tick,3_000);
-    return()=>window.clearInterval(id);
-  },[pairCode,pairExpiresAt,refreshDevices]);
-
-  useEffect(()=>{
-    if(!pairCode||!pairStartedAt)return;
-    const newPcOnline=devices.some(device=>{
-      const createdAt=new Date(device.created_at).getTime();
-      return Number.isFinite(createdAt)&&createdAt>=pairStartedAt-5_000&&recent(device.last_seen_at,45_000);
-    });
-    if(newPcOnline){
-      setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('Companion heartbeat confirmed. This PC is connected and ready for League.');
-    }
-  },[devices,pairStartedAt,pairCode]);
-
-  const linked=devices.length>0;
-  const online=devices.some(device=>recent(device.last_seen_at,45_000));
-  const snapshot=review?.latestSnapshot??null;
-  const me=useMemo(()=>snapshot?findMe(snapshot):null,[snapshot]);
-  const ready=Boolean(review&&['COMPLETE','ABORTED'].includes(review.status)&&snapshot);
-  const recording=Boolean(review?.status==='ACTIVE'&&recent(review.lastSeenAt,30_000));
-  const status=recording?'RECORDING':online?'READY FOR LEAGUE':linked?'COMPANION OFFLINE':'SETUP REQUIRED';
-  const csMin=me&&snapshot?((me.scores.creepScore/Math.max(snapshot.gameTime/60,1/60))).toFixed(1):'—';
-
-  async function pair(){
-    if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing.');return}
-    const startedAt=Date.now();
-    setBusy(true);setMessage('');setPairCode('');setPairExpiresAt('');setPairStartedAt(startedAt);
-    try{
-      const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});
-      const body=await res.json();
-      if(!res.ok){setPairStartedAt(0);setMessage(body.error||'Pairing failed.');return}
-      setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Secure pairing ready. If the Companion is already installed, use Open Companion & Connect below — no reinstall is needed.');
-    }catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}
-    finally{setBusy(false)}
-  }
-
-  useEffect(()=>{
-    if(!hydrated||!devicesLoaded||!isOwnAccount||online||pairCode||busy||autoPairStarted.current)return;
-    autoPairStarted.current=true;
-    setMessage('Installed Companion detected. Creating a secure one-time pairing…');
-    void pair();
-  },[hydrated,devicesLoaded,isOwnAccount,online,pairCode,busy,active.id]);
-
-  return <div className="op-live-command">
-    <PageHead title="Live Companion" subtitle={`${detail.tier} VIEW ${detail.depth}/10 · Record quietly. Review only the amount of information useful at your rank.`}/>
-
-    <section className={`glass card op-live-status ${recording?'is-recording':online?'is-ready':''}`}>
-      <div className="op-live-status-copy">
-        <div><div className="eyebrow">OP CLIMB COMPANION · {detail.tier}</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?'Companion is ready. Leave it quietly in your Windows tray and play normally.':linked?'Your PC is registered, but the Companion is offline. Open the installed Companion and reconnect below.':'Connect the Windows Companion once, then OP CLIMB can record your League matches.'}</p></div>
-        <span className="op-live-status-pill">{recording?'● LIVE':online?'● ONLINE':linked?'○ OFFLINE':'SETUP'}</span>
-      </div>
-      {recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/>{detail.depth>=2&&<Mini label="GAME TIME" value={clock(snapshot.gameTime)}/>} {detail.depth>=5&&<Mini label="CAPTURE POINTS" value={String(review?.snapshotCount??0)}/>}</div>}
-    </section>
-
-    {ready&&snapshot&&me&&<section className="op-latest-match">
-      <div className="glass card op-match-card">
-        <div className="op-match-head">
-          <div><div className="eyebrow">LATEST MATCH · {detail.tier} DETAIL</div><h2>{me.championName}{detail.depth>=2&&<span> · {role(snapshot.active.position)}</span>}</h2></div>
-          {detail.depth>=3&&<b>{clock(snapshot.gameTime)}</b>}
-        </div>
-        <div className="grid three op-match-metrics">
-          <Mini label="K / D / A" value={`${me.scores.kills} / ${me.scores.deaths} / ${me.scores.assists}`}/>
-          {detail.depth>=2&&<Mini label="CS / MIN" value={csMin}/>} 
-          {detail.depth>=3&&<Mini label="LEVEL" value={String(me.level)}/>} 
-          {detail.depth>=4&&<Mini label="VISION" value={format(me.scores.wardScore)}/>} 
-          {detail.depth>=5&&<Mini label="ITEM POWER" value={`${Math.round(me.itemGold)}g`}/>} 
-          {detail.depth>=6&&<Mini label="UNSPENT" value={`${Math.round(snapshot.active.currentGold)}g`}/>} 
-        </div>
-        <div className="op-next-read"><div className="eyebrow">{detail.depth<=2?'WHAT MATTERS NEXT':'READ THIS REPORT IN ORDER'}</div><b>{detail.depth<=2?'One result → one problem → one next-game action':'OP Grade → Active Five → Match Review → Evidence'}</b>{detail.depth>=4&&<p className="muted">The full telemetry remains stored underneath. Your rank decides how much is displayed.</p>}</div>
-      </div>
-
-      {detail.depth>=4&&<details className="glass card op-quiet-details">
-        <summary>SHOW MORE MATCH DETAILS <span>build, matchup, teams & capture quality</span></summary>
-        <div style={{display:'grid',gap:16,marginTop:18}}>
-          <div><div className="eyebrow">FINAL BUILD</div><div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:9}}>{me.items.length?me.items.map((item,i)=><span key={`${item.itemId}-${i}`} style={chip}>{item.displayName}{item.count>1?` ×${item.count}`:''}</span>):<span className="muted">No item data captured.</span>}</div></div>
-          <Matchup snapshot={snapshot} me={me}/>
-          {detail.depth>=6&&<div className="grid two"><Team title="YOUR TEAM" players={snapshot.players.filter(p=>p.team===me.team)} /><Team title="ENEMY TEAM" players={snapshot.players.filter(p=>p.team!==me.team&&p.team!=='UNKNOWN')} /></div>}
-          {detail.depth>=7&&<div><div className="eyebrow">CAPTURE QUALITY</div><p className="muted" style={{margin:'6px 0 0'}}>{review?.snapshotCount??0} snapshots · captured through {clock(snapshot.gameTime)} · {review?.status==='COMPLETE'?'session closed normally':'partial session'}</p></div>}
-        </div>
-      </details>}
-    </section>}
-
-    <details className="glass card op-quiet-details op-tracker-setup" open={!online||Boolean(pairCode)}>
-      <summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'CONNECT THIS WINDOWS PC'}</summary>
-      <div style={{marginTop:16}}>
-        <p className="muted">Already installed? Connect it directly below. Only download the installer if this PC does not have OP CLIMB Companion yet.</p>
-        <div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}>
-          <label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label>
-          <button className="btn primary" type="button" disabled={busy||!isOwnAccount} onClick={()=>void pair()}>{busy?'CREATING SECURE PAIRING…':online?'PAIR ANOTHER PC':'CONNECT INSTALLED COMPANION'}</button>
-          <a className="btn" href="/download/windows" target="_blank" rel="noopener">DOWNLOAD COMPANION</a>
-        </div>
-        {message&&<p style={{marginTop:12}}>{message}</p>}
-        {pairCode&&<WindowsTrackerInstaller code={pairCode}/>} 
-      </div>
-    </details>
-  </div>;
-}
-
-function Mini({label,value}:{label:string;value:string}){return <div className="glass op-live-metric"><div className="eyebrow">{label}</div><strong>{value}</strong></div>}
-function Matchup({snapshot,me}:{snapshot:Snapshot;me:Player}){const opponent=findOpponent(snapshot,me);return <div><div className="eyebrow">MATCHUP</div>{opponent?<p style={{margin:'6px 0 0'}}><b>{me.championName}</b> vs <b>{opponent.championName}</b> · CS {me.scores.creepScore}–{opponent.scores.creepScore} · visible item power {signed(me.itemGold-opponent.itemGold)}</p>:<p className="muted" style={{margin:'6px 0 0'}}>Same-role opponent could not be resolved.</p>}</div>}
-function Team({title,players}:{title:string;players:Player[]}){return <div><div className="eyebrow">{title}</div><div style={{display:'grid',gap:7,marginTop:8}}>{players.map((p,i)=><div key={`${p.riotId||p.summonerName}-${i}`} style={{display:'flex',justifyContent:'space-between',gap:10,borderBottom:'1px solid rgba(255,255,255,.06)',paddingBottom:7}}><span><b>{p.championName}</b> <span className="muted">Lv {p.level}</span></span><span>{p.scores.kills}/{p.scores.deaths}/{p.scores.assists} · {p.scores.creepScore} CS</span></div>)}</div></div>}
-function findMe(s:Snapshot){return s.players.find(p=>Boolean(s.active.riotId&&p.riotId===s.active.riotId))||s.players.find(p=>p.summonerName===s.active.summonerName)||s.players.find(p=>p.championName===s.active.championName)||null}
-function findOpponent(s:Snapshot,me:Player){const enemies=s.players.filter(p=>p.team!==me.team&&p.team!=='UNKNOWN');return enemies.find(p=>Boolean(me.position&&p.position===me.position))||null}
-function role(v:string|null){const x=(v||'').toUpperCase();return x==='BOTTOM'?'ADC':x||'ROLE UNKNOWN'}
-function clock(sec:number){const n=Math.max(0,Math.round(sec));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`}
-function format(n:number){return Number.isInteger(n)?String(n):n.toFixed(1)}
-function signed(n:number){return `${n>=0?'+':''}${Math.round(n)}g`}
-function recent(value:string|null,ms:number){if(!value)return false;return Date.now()-new Date(value).getTime()<=ms}
-const chip:React.CSSProperties={padding:'7px 10px',border:'1px solid rgba(255,255,255,.12)',borderRadius:999,fontSize:12};
+type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};type Item={itemId:number;displayName:string;count:number;price:number};type Player={summonerName:string;riotId:string|null;championName:string;team:string;level:number;position:string|null;itemGold:number;items:Item[];scores:{kills:number;deaths:number;assists:number;creepScore:number;wardScore:number}};type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;championName:string;position:string|null;currentGold:number};players:Player[]};type Review={status:string;lastSeenAt:string|null;snapshotCount:number;latestSnapshot:Snapshot|null};
+export function LiveCommandCenter(){const {active,isOwnAccount,profile,hydrated}=useAccount();const {tasks}=useLearningPlan();const detail=coachingLevelFor(active.rank);const [devices,setDevices]=useState<Device[]>([]);const [devicesLoaded,setDevicesLoaded]=useState(false);const [review,setReview]=useState<Review|null>(null);const [pairCode,setPairCode]=useState('');const [pairExpiresAt,setPairExpiresAt]=useState('');const [pairStartedAt,setPairStartedAt]=useState(0);const [deviceName,setDeviceName]=useState('My Windows PC');const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [session,setSession]=useState<ClimbSessionState|null>(null);const autoPairStarted=useRef(false);
+const refreshDevices=useCallback(async()=>{try{const response=await fetch('/api/live/pair',{cache:'no-store'});if(!response.ok)return;const body=await response.json();setDevices((body.devices??[]).filter((x:Device)=>x.account_key===active.id))}catch{}finally{setDevicesLoaded(true)}},[active.id]);const refreshReview=useCallback(async()=>{try{const response=await fetch(`/api/live/telemetry?accountId=${encodeURIComponent(active.id)}`,{cache:'no-store'});if(!response.ok)return;const body=await response.json();setReview(body.review??null)}catch{}},[active.id]);const refresh=useCallback(async()=>{await Promise.all([refreshDevices(),refreshReview()])},[refreshDevices,refreshReview]);
+useEffect(()=>{setSession(readClimbSession(active.id));const sync=()=>setSession(readClimbSession(active.id));window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[active.id]);useEffect(()=>{setDevicesLoaded(false);autoPairStarted.current=false;void refresh();const reviewTick=()=>{if(document.visibilityState==='visible'){void refreshReview();setSession(readClimbSession(active.id))}};const deviceTick=()=>{if(document.visibilityState==='visible')void refreshDevices()};const onVisibility=()=>{if(document.visibilityState==='visible')void refresh()};const reviewId=window.setInterval(reviewTick,10_000);const deviceId=window.setInterval(deviceTick,15_000);document.addEventListener('visibilitychange',onVisibility);return()=>{window.clearInterval(reviewId);window.clearInterval(deviceId);document.removeEventListener('visibilitychange',onVisibility)}},[active.id,refresh,refreshDevices,refreshReview]);
+useEffect(()=>{if(!pairCode)return;const tick=()=>{if(pairExpiresAt&&Date.now()>=new Date(pairExpiresAt).getTime()){setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Connect installed Companion to create a fresh one.');return}void refreshDevices()};tick();const id=window.setInterval(tick,3_000);return()=>window.clearInterval(id)},[pairCode,pairExpiresAt,refreshDevices]);useEffect(()=>{if(!pairCode||!pairStartedAt)return;const newPcOnline=devices.some(device=>{const createdAt=new Date(device.created_at).getTime();return Number.isFinite(createdAt)&&createdAt>=pairStartedAt-5_000&&recent(device.last_seen_at,45_000)});if(newPcOnline){setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('Companion heartbeat confirmed. This PC is connected and ready for League.')}},[devices,pairStartedAt,pairCode]);
+const linked=devices.length>0,online=devices.some(device=>recent(device.last_seen_at,45_000)),snapshot=review?.latestSnapshot??null,me=useMemo(()=>snapshot?findMe(snapshot):null,[snapshot]),ready=Boolean(review&&['COMPLETE','ABORTED'].includes(review.status)&&snapshot),recording=Boolean(review?.status==='ACTIVE'&&recent(review.lastSeenAt,30_000)),status=recording?'RECORDING':online?'READY FOR LEAGUE':linked?'COMPANION OFFLINE':'SETUP REQUIRED',csMin=me&&snapshot?((me.scores.creepScore/Math.max(snapshot.gameTime/60,1/60))).toFixed(1):'—';const accountMatches=matchesFor(active.id);const climbGames=session?gamesInSession(session,accountMatches):[];const sessionTask=session?tasks.find(task=>task.id===session.taskId):undefined;const nextGame=Math.min((climbGames.length+1),session?.targetGames||3);const latestSessionGame=climbGames.at(-1);const latestEvidence=sessionTask&&latestSessionGame?missionEvidence(sessionTask,latestSessionGame):null;
+async function pair(){if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing.');return}const startedAt=Date.now();setBusy(true);setMessage('');setPairCode('');setPairExpiresAt('');setPairStartedAt(startedAt);try{const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});const body=await res.json();if(!res.ok){setPairStartedAt(0);setMessage(body.error||'Pairing failed.');return}setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Secure pairing ready. If the Companion is already installed, use Open Companion & Connect below — no reinstall is needed.')}catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}finally{setBusy(false)}}
+useEffect(()=>{if(!hydrated||!devicesLoaded||!isOwnAccount||online||pairCode||busy||autoPairStarted.current)return;autoPairStarted.current=true;setMessage('Installed Companion detected. Creating a secure one-time pairing…');void pair()},[hydrated,devicesLoaded,isOwnAccount,online,pairCode,busy,active.id]);
+return <div className="op-live-command"><PageHead title="Live Companion" subtitle={session?`CLIMB SESSION · GAME ${nextGame}/${session.targetGames} · One focus, recorded quietly.`:`${detail.tier} VIEW ${detail.depth}/10 · Record quietly. Review after the game.`}/>
+{session&&<section className="hq-command" style={{marginBottom:18}}><div className="hq-top"><span className="v7-badge engine">CLIMB SESSION</span><span className="v7-badge">GAME {nextGame}/{session.targetGames}</span></div><h2>{session.taskTitle}</h2><p>{sessionTask?.why||'This is the behaviour your development plan has chosen to train.'}</p><div className="hq-rules"><div><span className="label">YOUR ONE RULE</span><b>{session.gameRule}</b></div><div><span className="label">MISSION BAR</span><b>{session.target}</b></div></div>{recording?<div className="glass card" style={{marginTop:14}}><div className="eyebrow">FOCUS MODE</div><b>{session.gameRule}</b><p className="muted" style={{marginBottom:0}}>● RECORDING · No reactive tactical advice. Play League — OP CLIMB is collecting evidence for this lesson.</p></div>:latestSessionGame&&<div className="glass card" style={{marginTop:14}}><div className="eyebrow">GAME {climbGames.length} REVIEW</div><h3>{latestSessionGame.result} · {latestSessionGame.champion} · {latestSessionGame.kills}/{latestSessionGame.deaths}/{latestSessionGame.assists}</h3><b>{latestEvidence?.available?(latestEvidence.clearedBar?'MISSION BAR CLEARED ✓':'KEEP WORKING'):'EVIDENCE BUILDING'}</b><p className="muted">{latestEvidence?.reason}</p><Link className="text-link" href={`/analyse/${encodeURIComponent(latestSessionGame.id)}`}>OPEN FULL REVIEW →</Link></div>}<div className="hero-actions"><Link className="btn secondary" href="/session">OPEN SESSION REVIEW →</Link></div></section>}
+<section className={`glass card op-live-status ${recording?'is-recording':online?'is-ready':''}`}><div className="op-live-status-copy"><div><div className="eyebrow">OP CLIMB COMPANION · {detail.tier}</div><h2>{status}</h2><p className="muted">{recording?'Your match is being recorded silently. No live tactical advice is shown.':online?(session?`Ready for Climb Session game ${nextGame}. Your focus is already locked.`:'Companion is ready. Leave it quietly in your Windows tray and play normally.'):linked?'Your PC is registered, but the Companion is offline. Open the installed Companion and reconnect below.':'Connect the Windows Companion once, then OP CLIMB can record your League matches.'}</p></div><span className="op-live-status-pill">{recording?'● LIVE':online?'● ONLINE':linked?'○ OFFLINE':'SETUP'}</span></div>{recording&&snapshot&&<div className="grid three op-live-recording"><Mini label="CHAMPION" value={snapshot.active.championName||'Detecting'}/>{detail.depth>=2&&<Mini label="GAME TIME" value={clock(snapshot.gameTime)}/>} {detail.depth>=5&&<Mini label="CAPTURE POINTS" value={String(review?.snapshotCount??0)}/>}</div>}</section>
+{ready&&snapshot&&me&&<section className="op-latest-match"><div className="glass card op-match-card"><div className="op-match-head"><div><div className="eyebrow">LATEST MATCH · {detail.tier} DETAIL</div><h2>{me.championName}{detail.depth>=2&&<span> · {role(snapshot.active.position)}</span>}</h2></div>{detail.depth>=3&&<b>{clock(snapshot.gameTime)}</b>}</div><div className="grid three op-match-metrics"><Mini label="K / D / A" value={`${me.scores.kills} / ${me.scores.deaths} / ${me.scores.assists}`}/>{detail.depth>=2&&<Mini label="CS / MIN" value={csMin}/>} {detail.depth>=3&&<Mini label="LEVEL" value={String(me.level)}/>}</div><div className="op-next-read"><div className="eyebrow">WHAT MATTERS NEXT</div><b>{session?'Return to the same session focus — do not add another lesson.':'OP Grade → Active Five → Match Review → Evidence'}</b></div></div></section>}
+<details className="glass card op-quiet-details op-tracker-setup" open={!online||Boolean(pairCode)}><summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'CONNECT THIS WINDOWS PC'}</summary><div style={{marginTop:16}}><p className="muted">Already installed? Connect it directly below. Only download the installer if this PC does not have OP CLIMB Companion yet.</p><div style={{display:'flex',gap:10,flexWrap:'wrap',alignItems:'end'}}><label style={{display:'grid',gap:6,minWidth:220}}><span className="muted">Device name</span><input value={deviceName} onChange={e=>setDeviceName(e.target.value)} maxLength={80} style={{padding:'12px 14px',borderRadius:12}}/></label><button className="btn primary" type="button" disabled={busy||!isOwnAccount} onClick={()=>void pair()}>{busy?'CREATING SECURE PAIRING…':online?'PAIR ANOTHER PC':'CONNECT INSTALLED COMPANION'}</button><a className="btn" href="/download/windows" target="_blank" rel="noopener">DOWNLOAD COMPANION</a></div>{message&&<p style={{marginTop:12}}>{message}</p>}{pairCode&&<WindowsTrackerInstaller code={pairCode}/>}</div></details></div>}
+function Mini({label,value}:{label:string;value:string}){return <div className="glass op-live-metric"><div className="eyebrow">{label}</div><strong>{value}</strong></div>}function findMe(s:Snapshot){return s.players.find(p=>Boolean(s.active.riotId&&p.riotId===s.active.riotId))||s.players.find(p=>p.summonerName===s.active.summonerName)||s.players.find(p=>p.championName===s.active.championName)||null}function role(v:string|null){const x=(v||'').toUpperCase();return x==='BOTTOM'?'ADC':x||'ROLE UNKNOWN'}function clock(sec:number){const n=Math.max(0,Math.round(sec));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`}function recent(value:string|null,ms:number){if(!value)return false;return Date.now()-new Date(value).getTime()<=ms}
