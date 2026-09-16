@@ -30,10 +30,11 @@ export interface ILPMissionAttempt{
   outcome:ILPMissionOutcome;
   banksPass:boolean;
 }
-export interface ILPHistoryEntry{at:string;type:'PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';note:string}
+export type ILPHistoryEvent='PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';
+export interface ILPHistoryEntry{at:string;type:ILPHistoryEvent;note:string}
 export interface ILPTask{
   id:string;accountId:string;title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;progress:number;status:ILPStatus;source:'SYSTEM'|'COACH'|'USER';evidence:string[];
-  priority?:number;successfulGames?:number;gamesObserved?:number;masteryRequired?:number;lastUpdatedReason?:string;history?:ILPHistoryEntry[];
+  priority?:number;successfulGames?:number;gamesObserved?:number;masteryRequired?:number;lastUpdatedReason?:string;history?:Array<{at:string;type:ILPHistoryEvent|string;note:string}>;
   missionHistory?:ILPMissionAttempt[];metricProgress?:number;missionProgress?:number;
 }
 export interface ChampionPlan{ champion:string; role:Role; rankBand:string; identity:string; lanePlan:string[]; farmPlan:string[]; teamfightPlan:string[]; sideLanePlan:string[]; powerSpikes:string[]; commonLeaks:string[]; rankFocus:string[]; build:{label:string;items:string[];boots:string;note:string;sourceLabel:string;sourceUrl?:string}; runes:{primary:string;secondary:string;note:string}; }
