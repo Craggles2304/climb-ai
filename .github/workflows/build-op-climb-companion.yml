@@ -2,6 +2,10 @@ name: Build OP CLIMB Companion
 
 on:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - 'climb-ai-v6/companion/**'
+      - '.github/workflows/build-op-climb-companion.yml'
   push:
     branches:
       - main
@@ -46,6 +50,66 @@ jobs:
             if (-not (Test-Path $file)) { throw "Missing updater asset: $file" }
           }
 
+      - name: Torture-test packaged Windows install
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $installer = (Resolve-Path 'dist/OP-Climb-Companion-Setup.exe').Path
+          $installedExe = $null
+          $appProcess = $null
+
+          try {
+            $install = Start-Process -FilePath $installer -ArgumentList '/S' -Wait -PassThru
+            if ($install.ExitCode -ne 0) { throw "NSIS installer exited with code $($install.ExitCode)." }
+
+            $programRoots = @(
+              (Join-Path $env:LOCALAPPDATA 'Programs'),
+              $env:LOCALAPPDATA
+            ) | Where-Object { $_ -and (Test-Path $_) }
+
+            foreach ($root in $programRoots) {
+              $installedExe = Get-ChildItem -Path $root -Filter 'OP CLIMB Companion.exe' -File -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($installedExe) { break }
+            }
+            if (-not $installedExe) { throw 'Installed OP CLIMB Companion.exe was not found after NSIS installation.' }
+
+            $installDir = $installedExe.Directory.FullName
+            $requiredPackagedFiles = @(
+              (Join-Path $installDir 'resources\app.asar'),
+              (Join-Path $installDir 'resources\tracker\main.mjs')
+            )
+            foreach ($file in $requiredPackagedFiles) {
+              if (-not (Test-Path $file)) { throw "Packaged runtime is missing: $file" }
+            }
+
+            $appProcess = Start-Process -FilePath $installedExe.FullName -ArgumentList '--hidden' -PassThru
+            Start-Sleep -Seconds 10
+            if ($appProcess.HasExited) { throw "Installed Companion exited during startup with code $($appProcess.ExitCode)." }
+
+            $protocolKey = 'Registry::HKEY_CURRENT_USER\Software\Classes\opclimb'
+            if (-not (Test-Path $protocolKey)) { throw 'opclimb:// protocol registration is missing after packaged startup.' }
+
+            Write-Host "Packaged Companion stayed alive from $($installedExe.FullName)."
+            Write-Host 'Packaged tracker resource and opclimb:// protocol registration verified.'
+          }
+          finally {
+            if ($appProcess -and -not $appProcess.HasExited) {
+              Stop-Process -Id $appProcess.Id -Force -ErrorAction SilentlyContinue
+            }
+            if ($installedExe) {
+              Get-CimInstance Win32_Process | Where-Object {
+                $_.ExecutablePath -and $_.ExecutablePath.StartsWith($installedExe.Directory.FullName, [System.StringComparison]::OrdinalIgnoreCase)
+              } | ForEach-Object {
+                Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+              }
+              $uninstaller = Get-ChildItem -Path $installedExe.Directory.FullName -Filter 'Uninstall*.exe' -File -ErrorAction SilentlyContinue | Select-Object -First 1
+              if ($uninstaller) {
+                $uninstall = Start-Process -FilePath $uninstaller.FullName -ArgumentList '/S' -Wait -PassThru
+                if ($uninstall.ExitCode -ne 0) { throw "NSIS uninstaller exited with code $($uninstall.ExitCode)." }
+              }
+            }
+          }
+
       - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
@@ -57,6 +121,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish beta installer and update feed
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
