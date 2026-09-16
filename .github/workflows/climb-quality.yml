@@ -33,7 +33,7 @@ jobs:
       - name: Companion desktop syntax
         run: node --check companion/electron/main.cjs && node --check companion/electron/renderer.js && node --check companion/electron/preload.cjs && node --check companion/src/main.mjs
       - name: Adaptive ILP evidence regressions
-        run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/ilpCloudMerge.test.ts
+        run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/ilpCloudMerge.test.ts tests/ilpExplainability.test.ts
       - name: Ability damage type regressions
         run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Conditional spell variant regressions
