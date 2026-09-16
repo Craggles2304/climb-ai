@@ -41,7 +41,7 @@ jobs:
       - name: Execute spell regressions
         run: node --import tsx --test tests/executeSpells.test.ts
       - name: Attack interaction regressions
-        run: node --import tsx --test tests/combatDecimal.test.ts tests/attackInteractions.test.ts
+        run: node --import tsx --test tests/combatDecimal.test.ts tests/attackTimingPrecision.test.ts tests/attackInteractions.test.ts
       - name: Basic attack timing regressions
         run: node --import tsx --test tests/attackTiming.test.ts
       - name: Galio passive timeline regressions
