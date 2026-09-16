@@ -11,6 +11,7 @@ import {LeakPriceInline} from '@/components/LeakPrice';
 import {priceLeak} from '@/lib/costOfLeak';
 import {TrackView} from '@/components/TrackView';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {IlpExplainability} from '@/components/IlpExplainability';
 
 const clean=(s:string)=>s.replaceAll('_',' ');
 
@@ -35,6 +36,7 @@ function TrackCard({task,index,mounted,matches,pauseTask,depth}:{task:ILPTask;in
       <div className="vf-track-open">+</div>
     </summary>
     <div className="vf-track-detail">
+      <IlpExplainability task={task}/>
       <div className="vf-coach-rule"><span>DO THIS NEXT GAME</span><b>{task.gameRule}</b></div>
       <div className="vf-detail-grid">
         <div><span>PASS WHEN</span><p>{task.target}</p></div>
@@ -79,6 +81,7 @@ export default function PlayerDevelopmentCentre(){
         <h2>{directive?.title||'Play a tracked game to build your Active Five'}</h2>
         {directive&&<>
           <div className="vf-command"><span>NEXT GAME</span><b>{directive.gameRule}</b></div>
+          <IlpExplainability task={directive} compact/>
           {detail.depth>=3&&<p className="muted" style={{margin:'10px 0 0'}}>{detail.summary}</p>}
           <div className="vf-focus-actions"><Link className="btn primary" href="/live">PLAY + TRACK</Link><Link className="btn secondary" href="/coach">ASK {detail.tier} COACH</Link></div>
         </>}
@@ -112,7 +115,7 @@ export default function PlayerDevelopmentCentre(){
     </details>}
 
     {(mastered.length>0||paused.length>0)&&detail.depth>=4&&<section className="vf-archive-grid">
-      {mastered.length>0&&<details className="glass card"><summary>MASTERED · {mastered.length}</summary><div className="vf-mini-list">{mastered.map(t=><div key={t.id}><b>{t.title}</b><span>{t.lastUpdatedReason||'Mastered from repeated evidence.'}</span></div>)}</div></details>}
+      {mastered.length>0&&<details className="glass card"><summary>MASTERED · {mastered.length}</summary><div className="vf-mini-list">{mastered.map(t=><div key={t.id}><b>{t.title}</b><span>{t.lastUpdatedReason||'Mastered from repeated evidence.'}</span><IlpExplainability task={t} compact/></div>)}</div></details>}
       {paused.length>0&&<details className="glass card"><summary>PAUSED · {paused.length}</summary><div className="vf-mini-list">{paused.map(t=><div key={t.id}><b>{t.title}</b><span>{t.lastUpdatedReason||'Paused.'}</span></div>)}</div></details>}
     </section>}
   </AppShell>;
