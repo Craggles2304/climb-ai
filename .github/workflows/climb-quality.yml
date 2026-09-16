@@ -48,6 +48,8 @@ jobs:
         run: node --import tsx --test tests/botlane.test.ts
       - name: Live tracker regressions
         run: node --import tsx --test tests/liveGame.test.ts tests/liveStrength.test.ts
+      - name: Adaptive ILP evidence regressions
+        run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts
       - name: Core and auth regressions
         continue-on-error: true
         run: node --import tsx --test tests/analytics.test.ts tests/auth.test.ts tests/build.test.ts
