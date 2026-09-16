@@ -1,0 +1,10 @@
+import type {ILPTask,Match} from '@/lib/types';
+import {missionEvidence} from '@/lib/missionLoop';
+
+export const CLIMB_SESSION_KEY='op_climb_session_v1';
+export type ClimbSessionState={id:string;accountId:string;taskId:string;taskTitle:string;metric:string;gameRule:string;target:string;startedAt:string;baselineMatchIds:string[];targetGames:number};
+
+export function readClimbSession(accountId?:string){if(typeof window==='undefined')return null;try{const value=JSON.parse(localStorage.getItem(CLIMB_SESSION_KEY)||'null') as ClimbSessionState|null;return value&&(!accountId||value.accountId===accountId)?value:null}catch{return null}}
+export function writeClimbSession(value:ClimbSessionState|null){if(typeof window==='undefined')return;try{if(value)localStorage.setItem(CLIMB_SESSION_KEY,JSON.stringify(value));else localStorage.removeItem(CLIMB_SESSION_KEY)}catch{}}
+export function sessionGames(session:ClimbSessionState,matches:Match[]){const baseline=new Set(session.baselineMatchIds);return matches.filter(match=>!baseline.has(match.id)&&Date.parse(match.createdAt)>=Date.parse(session.startedAt)).slice().reverse().slice(0,session.targetGames)}
+export function sessionVerdict(task:ILPTask,games:Match[]){const evidence=games.map(game=>missionEvidence(task,game));const measured=evidence.filter(item=>item.available);const passed=measured.filter(item=>item.clearedBar).length;if(!games.length)return'Your focus is locked. Play your first tracked Ranked game and come back here.';if(!measured.length)return'We have the games, but not enough reliable evidence for this behaviour yet. OP CLIMB will not invent progress.';if(passed===measured.length&&measured.length>=2)return`You are repeating the behaviour: ${passed}/${measured.length} measured games cleared the mission bar. Keep proving it until the development plan marks it mastered.`;if(passed>0)return`There is improvement, but it is not stable yet: ${passed}/${measured.length} measured games cleared the bar. Keep the same focus for the next game.`;return'You are not clearing the behaviour bar yet. Do not add another concept — simplify the same rule and give it another deliberate game.'}
