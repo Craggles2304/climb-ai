@@ -1,4 +1,5 @@
 import type {AutoAttackModel} from './combos';
+import {roundCombat} from './decimal';
 
 export interface BasicAttackHitTiming {
   attackStartedAt:number;
@@ -18,11 +19,15 @@ export function basicAttackHitTiming(
   if(!timing||speed<=0){
     return {attackStartedAt,windupSeconds:0,hitsAt:attackStartedAt,modelled:false};
   }
-  const windupSeconds=Math.max(0,timing.windupPercent)/speed;
+  // Normalise the computed fraction at high precision before it enters the
+  // shared combat timeline. This preserves meaningful timing precision while
+  // preventing values such as Galio's exact 0.165s empowered windup from
+  // becoming 0.164999999... and displaying as 0.16s downstream.
+  const windupSeconds=roundCombat(Math.max(0,timing.windupPercent)/speed,12);
   return {
     attackStartedAt,
     windupSeconds,
-    hitsAt:attackStartedAt+windupSeconds,
+    hitsAt:roundCombat(attackStartedAt+windupSeconds,12),
     modelled:true,
   };
 }
