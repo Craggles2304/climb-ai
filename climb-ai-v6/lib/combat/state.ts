@@ -187,43 +187,62 @@ export function applyAbilityStackAfterCast(
   clock:number,
 ):number{
   if(!rule)return 0;
-  const current=currentAbilityStacks(runtime,rule,clock);
-  const next=clampInt(current+rule.gainOnCast,0,rule.maxStacks);
-  if(next<=0){runtime.stacks.delete(rule.id);return 0}
-  runtime.stacks.set(rule.id,{stacks:next,expiresAt:clock+Math.max(0,rule.durationSeconds)});
-  return next;
+  const before=currentAbilityStacks(runtime,rule,clock);
+  const after=clampInt(before+rule.gainOnCast,0,rule.maxStacks);
+  if(after>0){
+    runtime.stacks.set(rule.id,{
+      stacks:after,
+      expiresAt:clock+Math.max(0,rule.durationSeconds),
+    });
+  }else runtime.stacks.delete(rule.id);
+  return after;
+}
+
+export function consumeMark(
+  runtime:CombatRuntimeState,
+  consumer:MarkConsumer,
+  clock:number,
+):boolean{
+  const state=runtime.marks.get(consumer.markId);
+  if(!state)return false;
+  if(state.expiresAt<=clock+1e-9){
+    runtime.marks.delete(consumer.markId);
+    return false;
+  }
+  const consume=Math.max(1,Math.round(consumer.consumeStacks));
+  if(state.stacks<consume)return false;
+  state.stacks-=consume;
+  if(state.stacks<=0)runtime.marks.delete(consumer.markId);
+  else runtime.marks.set(consumer.markId,state);
+  return true;
 }
 
 export function activeMarks(runtime:CombatRuntimeState,clock:number):string[]{
   const out:string[]=[];
-  for(const [id,mark] of runtime.marks){
-    if(mark.expiresAt<=clock+1e-9){runtime.marks.delete(id);continue}
-    out.push(`${mark.label} x${mark.stacks}`);
+  for(const [id,state] of runtime.marks){
+    if(state.expiresAt<=clock+1e-9){runtime.marks.delete(id);continue}
+    out.push(`${state.label} x${state.stacks}`);
   }
   return out;
 }
 
-export function consumeMark(runtime:CombatRuntimeState,consumer:MarkConsumer,clock:number):boolean{
-  const mark=runtime.marks.get(consumer.markId);
-  if(!mark)return false;
-  if(mark.expiresAt<=clock+1e-9){runtime.marks.delete(consumer.markId);return false}
-  if(mark.stacks<consumer.consumeStacks)return false;
-  mark.stacks-=consumer.consumeStacks;
-  if(mark.stacks<=0)runtime.marks.delete(consumer.markId);
-  else runtime.marks.set(consumer.markId,mark);
-  return true;
-}
-
-export function grantSelfShield(runtime:CombatRuntimeState,grant:ShieldGrant|undefined,clock:number):number{
-  if(!grant)return currentSelfShield(runtime,clock);
-  const amount=Math.max(0,finite(grant.amount,0));
-  if(amount>0)runtime.selfShields.push({amount,expiresAt:clock+Math.max(0,grant.durationSeconds),label:grant.label});
+export function grantSelfShield(
+  runtime:CombatRuntimeState,
+  shield:ShieldGrant|undefined,
+  clock:number,
+):number{
+  if(!shield||shield.amount<=0)return currentSelfShield(runtime,clock);
+  runtime.selfShields.push({
+    amount:Math.max(0,shield.amount),
+    expiresAt:clock+Math.max(0,shield.durationSeconds),
+    label:shield.label,
+  });
   return currentSelfShield(runtime,clock);
 }
 
 export function currentSelfShield(runtime:CombatRuntimeState,clock:number):number{
-  runtime.selfShields=runtime.selfShields.filter(shield=>shield.expiresAt>clock+1e-9);
-  return runtime.selfShields.reduce((sum,shield)=>sum+shield.amount,0);
+  runtime.selfShields=runtime.selfShields.filter(s=>s.expiresAt>clock+1e-9&&s.amount>0);
+  return round(runtime.selfShields.reduce((n,s)=>n+s.amount,0));
 }
 
 export function recordAttackTimerReset(runtime:CombatRuntimeState,enabled:boolean|undefined):boolean{
@@ -232,17 +251,46 @@ export function recordAttackTimerReset(runtime:CombatRuntimeState,enabled:boolea
   return true;
 }
 
-export function timedAutoSnapshot(states:TimedAutoState[]|undefined,clock:number){
-  const active=activeTimedAutoStates(states,clock);
+export function replacementApplies(
+  replacement:BasicAttackReplacement|undefined,
+  attackNumber:number,
+):boolean{
+  if(!replacement)return false;
+  if(replacement.firstNAttacks===undefined)return true;
+  const limit=Math.max(0,Math.round(replacement.firstNAttacks));
+  return attackNumber>=1&&attackNumber<=limit;
+}
+
+export interface TimedAutoSnapshot{
+  attackSpeedMultiplier:number;
+  attackSpeedFlat:number;
+  basicAttackDamageMultiplier:number;
+  resourceCostOverride:number|null;
+  onHits:OnHitEffect[];
+  labels:string[];
+}
+
+export function timedAutoSnapshot(states:TimedAutoState[]|undefined,clock:number):TimedAutoSnapshot{
+  const live=activeTimedAutoStates(states,clock);
+  let attackSpeedMultiplier=1;
+  let attackSpeedFlat=0;
+  let basicAttackDamageMultiplier=1;
+  let resourceCostOverride:number|null=null;
+  const onHits:OnHitEffect[]=[];
+  for(const state of live){
+    attackSpeedMultiplier*=Math.max(0,finite(state.attackSpeedMultiplier,1));
+    attackSpeedFlat+=finite(state.attackSpeedFlat,0);
+    basicAttackDamageMultiplier*=Math.max(0,finite(state.basicAttackDamageMultiplier,1));
+    if(state.resourceCostOverride!==undefined)
+      resourceCostOverride=Math.max(0,finite(state.resourceCostOverride,0));
+    onHits.push(...(state.onHits??[]));
+  }
   return {
-    labels:active.map(state=>state.label),
-    attackSpeedMultiplier:active.reduce((mult,state)=>mult*Math.max(0,finite(state.attackSpeedMultiplier,1)),1),
-    attackSpeedFlat:active.reduce((sum,state)=>sum+finite(state.attackSpeedFlat,0),0),
-    basicAttackDamageMultiplier:active.reduce((mult,state)=>mult*Math.max(0,finite(state.basicAttackDamageMultiplier,1)),1),
-    resourceCostOverride:active.find(state=>state.resourceCostOverride!==undefined)?.resourceCostOverride,
-    onHits:active.flatMap(state=>state.onHits??[]),
+    attackSpeedMultiplier,attackSpeedFlat,basicAttackDamageMultiplier,
+    resourceCostOverride,onHits,labels:live.map(s=>s.label),
   };
 }
 
-function clampInt(value:number,min:number,max:number){return Math.max(min,Math.min(max,Math.round(finite(value,min))))}
-function finite(value:number|undefined,fallback:number){return Number.isFinite(value)?Number(value):fallback}
+const finite=(value:number|undefined,fallback:number)=>Number.isFinite(value)?value as number:fallback;
+const clampInt=(value:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,Math.round(value)));
+const round=(n:number)=>Math.round(n*100)/100;
