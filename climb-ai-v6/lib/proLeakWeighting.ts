@@ -16,7 +16,7 @@ export function leakMetricBoosts(leaks:ProLeakSignal[]){
     const base=severityBoost[leak.severity]+Math.min(12,Math.max(0,leak.count-1)*4);
     const metrics=LEAK_METRICS[leak.key]??[leak.key];
     metrics.forEach((metric,index)=>{
-      const relationship=index===0?1:index===1?.72:.5;
+      const relationship=index===0 ? 1 : index===1 ? 0.72 : 0.5;
       boosts.set(metric,(boosts.get(metric)??0)+base*relationship);
     });
   }
