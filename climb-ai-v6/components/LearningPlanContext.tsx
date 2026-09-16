@@ -11,7 +11,7 @@ import {getBrowserClient} from '@/lib/supabase/client';
 import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpCloudMerge';
 
 type CoachTaskInput={title:string;category:ILPTask['category'];why:string;gameRule:string;metric:string;target:string;source?:'COACH';priority?:number};
-type C={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Record<string,ILPTask[]>;addTask:(task:CoachTaskInput)=>void;replaceTask:(oldId:string,task:CoachTaskInput)=>void;pauseTask:(id:string)=>void;completeTask:(id:string)=>void;recordMissionResult:(taskId:string,attempt:ILPMissionAttempt)=>void;refreshFromMatches:()=>string[]};
+type Ctx={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Record<string,ILPTask[]>;addTask:(task:CoachTaskInput)=>void;replaceTask:(oldId:string,task:CoachTaskInput)=>void;pauseTask:(id:string)=>void;completeTask:(id:string)=>void;recordMissionResult:(taskId:string,attempt:ILPMissionAttempt)=>void;refreshFromMatches:()=>string[]};
 const C=createContext<Ctx|null>(null);const KEY='climb_ilp_v6';const isLive=(task:ILPTask)=>task.status!=='MASTERED'&&task.status!=='PAUSED';
 function taskKey(task:ILPTask){return`${task.title.trim().toLowerCase()}::${task.metric.trim().toLowerCase()}::${task.category}`}
 function dedupeTasks(tasks:ILPTask[]){const map=new Map<string,ILPTask>();for(const task of tasks){const key=taskKey(task),existing=map.get(key);if(!existing||taskFreshness(task)>=taskFreshness(existing))map.set(key,task)}return[...map.values()]}
