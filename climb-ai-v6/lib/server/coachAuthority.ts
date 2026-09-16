@@ -5,18 +5,29 @@ export type CoachAuthority={accountId:string|null;tasks:CoachAuthorityTask[];pri
 
 const ACTIVE=new Set(['ACTIVE','EVIDENCE_BUILDING']);
 
-export async function loadCoachAuthority(db:any,userId:string,clientMission?:string):Promise<CoachAuthority>{
+export async function resolveOwnedCoachAccount(db:any,userId:string,requestedAccountId?:string,clientMission?:string):Promise<string|null>{
+  if(requestedAccountId){
+    const {data:owned,error}=await db.from('riot_accounts').select('id').eq('user_id',userId).eq('id',requestedAccountId).maybeSingle();
+    if(error)throw new Error(error.message);
+    if(!owned?.id)throw new Error('The selected Riot account is not available for this user.');
+    return String(owned.id);
+  }
   const {data:rows,error}=await db.from('ilp_tasks').select('riot_account_id,payload,updated_at').eq('user_id',userId).order('updated_at',{ascending:false});
   if(error)throw new Error(error.message);
   const all=(rows??[]).map((row:any)=>({accountId:String(row.riot_account_id||''),payload:row.payload??{}}));
   const mission=String(clientMission||'').toLowerCase();
   const missionRow=mission?all.find((row:any)=>String(row.payload?.title||'').toLowerCase()===mission):null;
-  let accountId=missionRow?.accountId||null;
-  if(!accountId){
-    const {data:primary,error:accountError}=await db.from('riot_accounts').select('id').eq('user_id',userId).eq('is_primary',true).maybeSingle();
-    if(accountError)throw new Error(accountError.message);
-    accountId=primary?.id?String(primary.id):all[0]?.accountId||null;
-  }
+  if(missionRow?.accountId)return missionRow.accountId;
+  const {data:primary,error:accountError}=await db.from('riot_accounts').select('id').eq('user_id',userId).eq('is_primary',true).maybeSingle();
+  if(accountError)throw new Error(accountError.message);
+  return primary?.id?String(primary.id):all[0]?.accountId||null;
+}
+
+export async function loadCoachAuthority(db:any,userId:string,requestedAccountId?:string,clientMission?:string):Promise<CoachAuthority>{
+  const accountId=await resolveOwnedCoachAccount(db,userId,requestedAccountId,clientMission);
+  const {data:rows,error}=await db.from('ilp_tasks').select('riot_account_id,payload,updated_at').eq('user_id',userId).order('updated_at',{ascending:false});
+  if(error)throw new Error(error.message);
+  const all=(rows??[]).map((row:any)=>({accountId:String(row.riot_account_id||''),payload:row.payload??{}}));
   const tasks=all.filter((row:any)=>row.accountId===accountId&&ACTIVE.has(String(row.payload?.status||'ACTIVE')))
     .map((row:any)=>toTask(row.payload)).filter(Boolean).sort((a:any,b:any)=>b.priority-a.priority).slice(0,5) as CoachAuthorityTask[];
   let latestPro:any=null;
@@ -40,20 +51,26 @@ function weakestActionable(analysis:any){
 }
 
 export function authoritativeContext(client:any,authority:CoachAuthority){
-  return{...(client??{}),activeTasks:authority.tasks.length?authority.tasks:client?.activeTasks??[],mission:authority.primary?.title??client?.mission,proAuthority:authority.latestPro?{primaryMission:authority.primary,primaryMetric:authority.proMetric,fingerprint:authority.latestPro?.fingerprint??null,leakSignals:authority.latestPro?.leakSignals??[]}:null};
+  return{...(client??{}),accountId:authority.accountId,activeTasks:authority.tasks.length?authority.tasks:[],mission:authority.primary?.title??undefined,proAuthority:authority.latestPro?{primaryMission:authority.primary,primaryMetric:authority.proMetric,fingerprint:authority.latestPro?.fingerprint??null,leakSignals:authority.latestPro?.leakSignals??[]}:null};
 }
 
 function matchingActiveTask(input:any,authority:CoachAuthority){
   if(!input)return null;
-  return authority.tasks.find(task=>input.metric===task.metric)
-    ??authority.tasks.find(task=>input.category===task.category)
-    ??null;
+  const metricMatch=authority.tasks.find(task=>input.metric===task.metric);
+  if(metricMatch)return metricMatch;
+  const categoryMatches=authority.tasks.filter(task=>input.category===task.category);
+  return categoryMatches.length===1?categoryMatches[0]:null;
 }
 
 export function enforceCoachSuggestion(input:any,authority:CoachAuthority){
   if(!input)return undefined;
-  if(!authority.primary)return input;
+  if(!authority.primary)return undefined;
   const task=matchingActiveTask(input,authority);
   if(!task)return undefined;
   return{...input,metric:task.metric,category:task.category,title:task.title,gameRule:task.gameRule,target:task.target,priority:Math.max(task.priority,input.priority||0),source:'COACH'};
+}
+
+export function primaryAuthorityInstruction(authority:CoachAuthority){
+  if(!authority.primary)return 'No persisted primary mission is available. Do not invent one.';
+  return `The only current primary limiter is “${authority.primary.title}” (${authority.primary.metric}). Never call another issue the main, primary, biggest, #1 or highest-priority problem. Secondary Active Five issues may be discussed only as secondary.`;
 }
