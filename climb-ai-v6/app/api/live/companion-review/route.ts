@@ -8,193 +8,42 @@ import {riotEnabled} from '@/lib/riot/client';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-type ReviewPoint={title:string;detail:string;atSeconds?:number};
-type FightReview={
-  atSeconds:number;
-  category:'STRENGTH'|'WEAKNESS';
-  outcome:'KILL'|'DEATH'|'ASSIST';
-  opponentChampion?:string|null;
-  score:number;
-  verdict:'YOU_STRONGER'|'EVEN'|'THEM_STRONGER';
-  headline:string;
-  summary:string;
-  why?:string[];
-  betterDecision?:string[];
-  evidence?:{currentGold?:number;itemGoldDelta?:number|null;levelDelta?:number|null};
-};
-
-type RankChange={
-  previous:string;
-  current:string;
-  previousTier:string;
-  currentTier:string;
-  previousDivision:string;
-  currentDivision:string;
-  movedUp:boolean;
-  coachingLayerChanged:boolean;
-};
+type ReviewPoint={title:string;detail:string;atSeconds?:number;source?:string;confidence?:string;linkedTo?:'MISSION'|'VS_TEAM'|'WIN_CONDITION'|'MATCH'};
+type FightReview={atSeconds:number;category:'STRENGTH'|'WEAKNESS';outcome:'KILL'|'DEATH'|'ASSIST';opponentChampion?:string|null;score:number;verdict:'YOU_STRONGER'|'EVEN'|'THEM_STRONGER';headline:string;summary:string;why?:string[];betterDecision?:string[];evidence?:{currentGold?:number;itemGoldDelta?:number|null;levelDelta?:number|null}};
+type RankChange={previous:string;current:string;previousTier:string;currentTier:string;previousDivision:string;currentDivision:string;movedUp:boolean;coachingLayerChanged:boolean};
 
 export async function GET(req:NextRequest){
-  const auth=req.headers.get('authorization')??'';
-  const token=/^Bearer\s+(.+)$/i.exec(auth.trim())?.[1]?.trim();
-  if(!token)return NextResponse.json({ok:false,error:'Tracker token required.'},{status:401});
-  const device=await authenticateTrackerToken(token);
-  if(!device)return NextResponse.json({ok:false,error:'Tracker token is invalid or revoked.'},{status:401});
-
-  const latest=await latestLiveReview(device.userId,device.accountKey);
-  if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
-
-  const rankChange=await refreshPlayerRank(device.userId,device.riotAccountId).catch(()=>null);
-  const rank=rankChange?.current||await resolvePlayerRank(device.userId,device.riotAccountId);
-  const coach=coachingLevelFor(rank);
-  const snapshot=latest.latestSnapshot as any;
-  const summary=latest.summary as any;
-  const fights=(Array.isArray(summary?.fightReviews)?summary.fightReviews:[]) as FightReview[];
-  const strengths=fights.filter(f=>f.category==='STRENGTH');
-  const weaknesses=fights.filter(f=>f.category==='WEAKNESS');
-  const detailLimit=coach.depth<=2?105:coach.depth<=4?145:coach.depth<=6?185:230;
-  const good=buildGood(strengths,detailLimit).slice(0,coach.reviewPoints);
-  const critical=buildCritical(weaknesses,detailLimit).slice(0,coach.reviewPoints);
-
-  if(!good.length)good.push({title:'No fake praise',detail:'There was not a positive decision signal strong enough to verify from this match.'});
-  if(!critical.length)critical.push({title:'No critical leak confirmed',detail:'No single critical mistake was clear enough to replace your current focus yet.'});
-
-  const topWeakness=rankWeaknesses(weaknesses)[0];
-  const nextFocus=topWeakness
-    ?{title:nextTitle(topWeakness),rule:short(topWeakness.betterDecision?.[0]||topWeakness.summary,detailLimit)}
-    :{title:'REPEAT THE CLEAN DECISIONS',rule:'Keep the same Active Five cue next game and build more evidence before changing focus.'};
-
-  const me=snapshot?findMe(snapshot):null;
-  const minutes=snapshot?.gameTime?Math.max(Number(snapshot.gameTime)/60,1/60):0;
-  return NextResponse.json({
-    ok:true,ready:true,
-    review:{
-      sessionId:latest.sessionId,
-      partial:latest.status==='ABORTED',
-      coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
-      rankChange,
-      match:me?{
-        champion:me.championName||snapshot?.active?.championName||'Unknown',
-        role:roleLabel(snapshot?.active?.position||me.position),
-        durationSeconds:Number(snapshot?.gameTime||0),
-        kda:`${Number(me.scores?.kills||0)} / ${Number(me.scores?.deaths||0)} / ${Number(me.scores?.assists||0)}`,
-        csPerMin:minutes?Math.round((Number(me.scores?.creepScore||0)/minutes)*10)/10:null,
-      }:null,
-      good,critical,nextFocus,
-      evidenceCount:fights.length,
-    },
-  });
+ const token=/^Bearer\s+(.+)$/i.exec((req.headers.get('authorization')??'').trim())?.[1]?.trim();
+ if(!token)return NextResponse.json({ok:false,error:'Tracker token required.'},{status:401});
+ const device=await authenticateTrackerToken(token);if(!device)return NextResponse.json({ok:false,error:'Tracker token is invalid or revoked.'},{status:401});
+ const latest=await latestLiveReview(device.userId,device.accountKey);if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
+ const rankChange=await refreshPlayerRank(device.userId,device.riotAccountId).catch(()=>null);const rank=rankChange?.current||await resolvePlayerRank(device.userId,device.riotAccountId);const coach=coachingLevelFor(rank);
+ const snapshot=latest.latestSnapshot as any,summary=latest.summary as any,fights=(Array.isArray(summary?.fightReviews)?summary.fightReviews:[]) as FightReview[];
+ const strengths=fights.filter(f=>f.category==='STRENGTH'),weaknesses=fights.filter(f=>f.category==='WEAKNESS');const detailLimit=185;
+ const mission=await currentMission(device.userId,device.riotAccountId);
+ const gamePlan=await lockedGamePlan(device.userId,device.riotAccountId,latest.startedAt).catch(()=>null);
+ const good=fillEvidenceSlots(buildGood(strengths,detailLimit),3,'GOOD');
+ const improve=fillEvidenceSlots(buildCritical(weaknesses,detailLimit),3,'IMPROVE');
+ const neutral=buildNeutral(snapshot,summary,fights,detailLimit).slice(0,2);
+ while(neutral.length<2)neutral.push(insufficient('NEUTRAL'));
+ const topWeakness=rankWeaknesses(weaknesses)[0];
+ const nextFocus=topWeakness?{title:nextTitle(topWeakness),rule:short(topWeakness.betterDecision?.[0]||topWeakness.summary,detailLimit)}:{title:'KEEP THE CURRENT MISSION',rule:'There is not enough reliable evidence to replace your current development focus.'};
+ const me=snapshot?findMe(snapshot):null,minutes=snapshot?.gameTime?Math.max(Number(snapshot.gameTime)/60,1/60):0;
+ const missionResult=assessMission(mission,latest.proAnalysis,weaknesses,strengths);
+ return NextResponse.json({ok:true,ready:true,review:{sessionId:latest.sessionId,partial:latest.status==='ABORTED',coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:3},rankChange,match:me?{champion:me.championName||snapshot?.active?.championName||'Unknown',role:roleLabel(snapshot?.active?.position||me.position),durationSeconds:Number(snapshot?.gameTime||0),kda:`${Number(me.scores?.kills||0)} / ${Number(me.scores?.deaths||0)} / ${Number(me.scores?.assists||0)}`,csPerMin:minutes?Math.round((Number(me.scores?.creepScore||0)/minutes)*10)/10:null}:null,gamePlan,mission,missionResult,good,critical:improve,improve,neutral,nextFocus,evidenceCount:fights.length,contract:'3_GOOD_3_IMPROVE_2_NEUTRAL'}});
 }
 
-async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promise<RankChange|null>{
-  const db=getSupabaseAdmin();
-  if(!db||!riotAccountId||!riotEnabled())return null;
-  const {data:account,error}=await db.from('riot_accounts')
-    .select('id,game_name,tagline,region,puuid,rank_tier,rank_division,league_points')
-    .eq('id',riotAccountId)
-    .eq('user_id',userId)
-    .maybeSingle();
-  if(error||!account)return null;
+async function currentMission(userId:string,accountId:string|null){const db=getSupabaseAdmin();if(!db||!accountId)return null;const {data}=await db.from('ilp_tasks').select('id,title,metric,category,status,progress,target,evidence,game_rule,priority').eq('user_id',userId).eq('riot_account_id',accountId).eq('status','ACTIVE').order('priority',{ascending:false}).limit(1).maybeSingle();return data||null}
+async function lockedGamePlan(userId:string,accountId:string|null,startedAt:string){const db=getSupabaseAdmin();if(!db||!accountId)return null;const {data}=await db.from('op_climb_sessions').select('id,mission_title_snapshot,mission_rule_snapshot,metadata').eq('user_id',userId).eq('riot_account_id',accountId).lte('started_at',startedAt).order('started_at',{ascending:false}).limit(1).maybeSingle();const meta=(data as any)?.metadata||{};return data?{vsTeam:meta.vsTeam||meta.theirWinCondition||null,yourWinCondition:meta.yourWinCondition||meta.yourJob||null,mission:data.mission_title_snapshot||null,missionRule:data.mission_rule_snapshot||null}:null}
+function assessMission(mission:any,pro:any,weaknesses:FightReview[],strengths:FightReview[]){if(!mission)return{status:'INSUFFICIENT_EVIDENCE',detail:'No active mission was available to score against this game.'};const metric=String(mission.metric||'');const measured=pro?.metrics?.find?.((m:any)=>m.key===metric);if(measured&&Number.isFinite(Number(measured.score)))return{status:Number(measured.score)>=Number(mission.target||101)?'IMPROVED':'CONTINUES',metric,score:Number(measured.score),target:Number(mission.target||0),detail:`Measured against ${metric} from this match.`};if(!weaknesses.length&&!strengths.length)return{status:'INSUFFICIENT_EVIDENCE',detail:'The Companion did not record enough reliable decision evidence to judge the mission.'};return{status:strengths.length>weaknesses.length?'IMPROVED':'CONTINUES',detail:'Directional verdict only; no fake numeric score was created.'}}
+function fillEvidenceSlots(items:ReviewPoint[],count:number,type:string){const out=dedupe(items).slice(0,count);while(out.length<count)out.push(insufficient(type));return out}
+function insufficient(type:string):ReviewPoint{return{title:'Not enough reliable evidence',detail:`OP CLIMB will not invent a ${type.toLowerCase()} observation just to fill this slot.`,source:'EVIDENCE_GUARD',confidence:'LOW',linkedTo:'MATCH'}}
+function buildGood(fights:FightReview[],max:number):ReviewPoint[]{return [...fights].sort((a,b)=>strengthScore(b)-strengthScore(a)).map(f=>({title:f.verdict==='YOU_STRONGER'?`Converted your advantage at ${clock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Won from a harder state at ${clock(f.atSeconds)}`:`Clean conversion at ${clock(f.atSeconds)}`,detail:short(f.summary,max),atSeconds:f.atSeconds,source:'COMPANION_TELEMETRY',confidence:'MEASURED',linkedTo:'WIN_CONDITION'}))}
+function buildCritical(fights:FightReview[],max:number):ReviewPoint[]{return rankWeaknesses(fights).map(f=>({title:f.verdict==='YOU_STRONGER'?`Threw a favourable state at ${clock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Took an enemy-favoured fight at ${clock(f.atSeconds)}`:`Death from an even state at ${clock(f.atSeconds)}`,detail:short(f.betterDecision?.[0]||f.summary,max),atSeconds:f.atSeconds,source:'COMPANION_TELEMETRY',confidence:'MEASURED',linkedTo:'MISSION'}))}
+function buildNeutral(snapshot:any,summary:any,fights:FightReview[],max:number):ReviewPoint[]{const out:ReviewPoint[]=[];if(snapshot?.gameTime)out.push({title:`Match length ${clock(snapshot.gameTime)}`,detail:'Context only. Match duration is not scored as good or bad.',source:'COMPANION_TELEMETRY',confidence:'MEASURED',linkedTo:'MATCH'});if(fights.length)out.push({title:`${fights.length} reviewable decision moments`,detail:short('These are evidence windows the Companion could verify. The count itself is neutral.',max),source:'COMPANION_TELEMETRY',confidence:'MEASURED',linkedTo:'MATCH'});if(summary?.proAnalysis?.decisionFingerprint?.primary)out.push({title:'Decision pattern observed',detail:short(String(summary.proAnalysis.decisionFingerprint.explanation||summary.proAnalysis.decisionFingerprint.primary),max),source:'PRO_ANALYSIS',confidence:String(summary.proAnalysis.decisionFingerprint.confidence||'DERIVED'),linkedTo:'MATCH'});return out}
 
-  let puuid=String(account.puuid||'').trim();
-  if(!puuid){
-    const resolved=await riotService.getAccountByRiotId(String(account.game_name||''),String(account.tagline||''),String(account.region||''));
-    puuid=resolved.puuid;
-  }
-  if(!puuid)return null;
-
-  const fresh=await riotService.getSummonerRank(puuid,String(account.region||''));
-  if(!fresh?.tier)return null;
-
-  const previousTier=cleanTier(account.rank_tier);
-  const previousDivision=cleanDivision(account.rank_division);
-  const currentTier=cleanTier(fresh.tier);
-  const currentDivision=cleanDivision(fresh.division);
-  const now=new Date().toISOString();
-
-  await db.from('riot_accounts').update({
-    puuid,
-    rank_tier:fresh.tier,
-    rank_division:fresh.division||null,
-    league_points:fresh.leaguePoints,
-    last_synced_at:now,
-    updated_at:now,
-  }).eq('id',riotAccountId).eq('user_id',userId);
-  await db.from('profiles').update({rank:fresh.label,updated_at:now}).eq('id',userId);
-
-  if(!previousTier)return null;
-  const previous=rankLabel(previousTier,previousDivision,account.league_points);
-  const current=rankLabel(currentTier,currentDivision,fresh.leaguePoints);
-  const movedUp=rankStrength(currentTier,currentDivision)>rankStrength(previousTier,previousDivision);
-  const changed=previousTier!==currentTier||previousDivision!==currentDivision;
-  if(!changed)return null;
-
-  return{
-    previous,
-    current,
-    previousTier,
-    currentTier,
-    previousDivision,
-    currentDivision,
-    movedUp,
-    coachingLayerChanged:previousTier!==currentTier,
-  };
-}
-
-async function resolvePlayerRank(userId:string,riotAccountId:string|null){
-  const db=getSupabaseAdmin();
-  if(!db)return'Silver';
-  const profilePromise=db.from('profiles').select('rank').eq('id',userId).maybeSingle();
-  const riotPromise=riotAccountId?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',riotAccountId).maybeSingle():Promise.resolve({data:null,error:null});
-  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
-  const tier=String(riotResult?.data?.rank_tier??'').trim();
-  const division=String(riotResult?.data?.rank_division??'').trim();
-  if(tier)return`${tier}${division?` ${division}`:''}`;
-  return String(profileResult?.data?.rank||'Silver');
-}
-
-const TIER_ORDER=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'];
-const DIVISION_ORDER:Record<string,number>={IV:0,III:1,II:2,I:3};
-function cleanTier(value:unknown){return String(value||'').trim().toUpperCase()}
-function cleanDivision(value:unknown){return String(value||'').trim().toUpperCase()}
-function rankStrength(tier:string,division:string){
-  const tierIndex=Math.max(0,TIER_ORDER.indexOf(cleanTier(tier)));
-  return tierIndex*10+(DIVISION_ORDER[cleanDivision(division)]??0);
-}
-function rankLabel(tier:string,division:string,lp:unknown){
-  const pretty=tier?`${tier[0]}${tier.slice(1).toLowerCase()}`:'Unranked';
-  const points=Number(lp);
-  return`${pretty}${division?` ${division}`:''}${Number.isFinite(points)?` · ${points} LP`:''}`;
-}
-
-function buildGood(fights:FightReview[],detailLimit:number):ReviewPoint[]{
-  return dedupe([...fights]
-    .sort((a,b)=>strengthScore(b)-strengthScore(a))
-    .map(f=>({
-      title:f.verdict==='YOU_STRONGER'?`Converted your advantage at ${clock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Won from a harder state at ${clock(f.atSeconds)}`:`Clean conversion at ${clock(f.atSeconds)}`,
-      detail:short(f.summary,detailLimit),
-      atSeconds:f.atSeconds,
-    })));
-}
-
-function buildCritical(fights:FightReview[],detailLimit:number):ReviewPoint[]{
-  return dedupe(rankWeaknesses(fights).map(f=>({
-    title:f.verdict==='YOU_STRONGER'?`Threw a favourable state at ${clock(f.atSeconds)}`:f.verdict==='THEM_STRONGER'?`Took an enemy-favoured fight at ${clock(f.atSeconds)}`:`Death from an even state at ${clock(f.atSeconds)}`,
-    detail:short(f.betterDecision?.[0]||f.summary,detailLimit),
-    atSeconds:f.atSeconds,
-  })));
-}
-
-function rankWeaknesses(fights:FightReview[]){return [...fights].sort((a,b)=>weaknessScore(b)-weaknessScore(a))}
-function weaknessScore(f:FightReview){
-  const state=f.verdict==='YOU_STRONGER'?40:f.verdict==='EVEN'?30:24;
-  const pocket=Math.min(15,Math.round(Number(f.evidence?.currentGold||0)/150));
-  return state+pocket+Math.min(20,Math.abs(Number(f.score||0)));
-}
-function strengthScore(f:FightReview){const state=f.verdict==='THEM_STRONGER'?34:f.verdict==='YOU_STRONGER'?30:24;return state+Math.min(20,Math.abs(Number(f.score||0)))}
-function nextTitle(f:FightReview){if(f.verdict==='YOU_STRONGER')return'PROTECT THE ADVANTAGE';if(f.verdict==='THEM_STRONGER')return'STOP TAKING THE BAD FIGHT';return'CREATE AN EDGE BEFORE COMMITTING'}
-function dedupe(items:ReviewPoint[]){const seen=new Set<string>();return items.filter(item=>{const key=item.title.replace(/\d+:\d+/g,'TIME').toLowerCase();if(seen.has(key))return false;seen.add(key);return true})}
-function short(value:string,max=210){const clean=String(value||'').replace(/\s+/g,' ').trim();return clean.length>max?`${clean.slice(0,max-1).replace(/\s+\S*$/,'')}…`:clean}
-function clock(seconds:number){const s=Math.max(0,Math.floor(Number(seconds)||0));return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
-function roleLabel(value:unknown){const v=String(value||'').toUpperCase();if(v==='BOTTOM')return'ADC';if(v==='UTILITY')return'SUPPORT';if(v==='MIDDLE')return'MID';return v||'UNKNOWN'}
-function findMe(snapshot:any){const players=Array.isArray(snapshot?.players)?snapshot.players:[];return players.find((p:any)=>snapshot.active?.riotId&&p.riotId===snapshot.active.riotId)||players.find((p:any)=>snapshot.active?.summonerName&&p.summonerName===snapshot.active.summonerName)||players.find((p:any)=>p.championName===snapshot.active?.championName)||null}
+async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promise<RankChange|null>{const db=getSupabaseAdmin();if(!db||!riotAccountId||!riotEnabled())return null;const {data:a,error}=await db.from('riot_accounts').select('id,game_name,tagline,region,puuid,rank_tier,rank_division,league_points').eq('id',riotAccountId).eq('user_id',userId).maybeSingle();if(error||!a)return null;let puuid=String(a.puuid||'').trim();if(!puuid){puuid=(await riotService.getAccountByRiotId(String(a.game_name||''),String(a.tagline||''),String(a.region||''))).puuid}if(!puuid)return null;const fresh=await riotService.getSummonerRank(puuid,String(a.region||''));if(!fresh?.tier)return null;const pt=cleanTier(a.rank_tier),pd=cleanDivision(a.rank_division),ct=cleanTier(fresh.tier),cd=cleanDivision(fresh.division),now=new Date().toISOString();await db.from('riot_accounts').update({puuid,rank_tier:fresh.tier,rank_division:fresh.division||null,league_points:fresh.leaguePoints,last_synced_at:now,updated_at:now}).eq('id',riotAccountId).eq('user_id',userId);await db.from('profiles').update({rank:fresh.label,updated_at:now}).eq('id',userId);if(!pt)return null;const previous=rankLabel(pt,pd,a.league_points),current=rankLabel(ct,cd,fresh.leaguePoints),changed=pt!==ct||pd!==cd;if(!changed)return null;return{previous,current,previousTier:pt,currentTier:ct,previousDivision:pd,currentDivision:cd,movedUp:rankStrength(ct,cd)>rankStrength(pt,pd),coachingLayerChanged:pt!==ct}}
+async function resolvePlayerRank(userId:string,riotAccountId:string|null){const db=getSupabaseAdmin();if(!db)return'Silver';const [p,r]=await Promise.all([db.from('profiles').select('rank').eq('id',userId).maybeSingle(),riotAccountId?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',riotAccountId).maybeSingle():Promise.resolve({data:null,error:null})]);const tier=String(r?.data?.rank_tier??'').trim(),div=String(r?.data?.rank_division??'').trim();return tier?`${tier}${div?` ${div}`:''}`:String(p?.data?.rank||'Silver')}
+const TIER_ORDER=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'];const DIVISION_ORDER:Record<string,number>={IV:0,III:1,II:2,I:3};
+function cleanTier(v:unknown){return String(v||'').trim().toUpperCase()}function cleanDivision(v:unknown){return String(v||'').trim().toUpperCase()}function rankStrength(t:string,d:string){return Math.max(0,TIER_ORDER.indexOf(cleanTier(t)))*10+(DIVISION_ORDER[cleanDivision(d)]??0)}function rankLabel(t:string,d:string,lp:unknown){const pretty=t?`${t[0]}${t.slice(1).toLowerCase()}`:'Unranked',n=Number(lp);return`${pretty}${d?` ${d}`:''}${Number.isFinite(n)?` · ${n} LP`:''}`}
+function rankWeaknesses(f:FightReview[]){return [...f].sort((a,b)=>weaknessScore(b)-weaknessScore(a))}function weaknessScore(f:FightReview){return(f.verdict==='YOU_STRONGER'?40:f.verdict==='EVEN'?30:24)+Math.min(15,Math.round(Number(f.evidence?.currentGold||0)/150))+Math.min(20,Math.abs(Number(f.score||0)))}function strengthScore(f:FightReview){return(f.verdict==='THEM_STRONGER'?34:f.verdict==='YOU_STRONGER'?30:24)+Math.min(20,Math.abs(Number(f.score||0)))}function nextTitle(f:FightReview){return f.verdict==='YOU_STRONGER'?'PROTECT THE ADVANTAGE':f.verdict==='THEM_STRONGER'?'STOP TAKING THE BAD FIGHT':'CREATE AN EDGE BEFORE COMMITTING'}function dedupe(items:ReviewPoint[]){const seen=new Set<string>();return items.filter(i=>{const k=i.title.replace(/\d+:\d+/g,'TIME').toLowerCase();if(seen.has(k))return false;seen.add(k);return true})}function short(v:string,max=210){const c=String(v||'').replace(/\s+/g,' ').trim();return c.length>max?`${c.slice(0,max-1).replace(/\s+\S*$/,'')}…`:c}function clock(seconds:number){const s=Math.max(0,Math.floor(Number(seconds)||0));return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}function roleLabel(v:unknown){const x=String(v||'').toUpperCase();if(x==='BOTTOM')return'ADC';if(x==='UTILITY')return'SUPPORT';if(x==='MIDDLE')return'MID';return x||'UNKNOWN'}function findMe(snapshot:any){const p=Array.isArray(snapshot?.players)?snapshot.players:[];return p.find((x:any)=>snapshot.active?.riotId&&x.riotId===snapshot.active.riotId)||p.find((x:any)=>snapshot.active?.summonerName&&x.summonerName===snapshot.active.summonerName)||p.find((x:any)=>x.championName===snapshot.active?.championName)||null}
