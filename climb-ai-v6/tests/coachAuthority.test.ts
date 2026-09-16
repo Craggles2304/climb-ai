@@ -1,0 +1,9 @@
+import {describe,expect,it} from 'vitest';
+import {enforceCoachSuggestion,type CoachAuthority} from '@/lib/server/coachAuthority';
+
+const authority:CoachAuthority={accountId:'acct',latestPro:{},proMetric:{key:'reset_quality',score:42},primary:{title:'Improve Reset Quality',category:'RECALL_TIMING',metric:'reset_quality',progress:42,target:'52+ PRO evidence score across 3 games',gameRule:'Spend before the next contested fight.',priority:95},tasks:[{title:'Improve Reset Quality',category:'RECALL_TIMING',metric:'reset_quality',progress:42,target:'52+ PRO evidence score across 3 games',gameRule:'Spend before the next contested fight.',priority:95},{title:'Improve Fight Selection',category:'TEAMFIGHTING',metric:'fight_selection',progress:55,target:'65+ PRO evidence score across 3 games',gameRule:'Only commit with a clear numbers or cooldown edge.',priority:90}]};
+
+describe('Coach authority',()=>{
+  it('suppresses a recommendation outside the active five',()=>{expect(enforceCoachSuggestion({title:'Farm more',category:'FARMING',metric:'csPerMin',gameRule:'Catch every wave',target:'7 CS/min',priority:99},authority)).toBeUndefined()});
+  it('pins an overlapping recommendation to the persisted mission contract',()=>{expect(enforceCoachSuggestion({title:'Reset differently',category:'RECALL_TIMING',metric:'reset_quality',gameRule:'Different cue',target:'80',priority:50},authority)).toMatchObject({title:'Improve Reset Quality',metric:'reset_quality',category:'RECALL_TIMING',gameRule:'Spend before the next contested fight.',target:'52+ PRO evidence score across 3 games',priority:95})});
+});
