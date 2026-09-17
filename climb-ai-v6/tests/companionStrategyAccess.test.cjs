@@ -22,8 +22,17 @@ test('team comp model exposes one first-class actionable win condition',()=>{
 
 test('server removes win and loss conditions for FREE users',()=>{
   assert.match(route,/strategyAccess\.paidStrategy/);
-  assert.match(route,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null/);
+  assert.match(route,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null/);
   assert.match(route,/hasTier\(tier,'PLUS'\)/);
+});
+
+test('PRO alone receives the deep composition interaction graph',()=>{
+  assert.ok(route.includes("const deepStrategy=hasTier(tier,'PRO')"));
+  assert.ok(route.includes('strategyAccess.deepStrategy'));
+  assert.ok(route.includes('compositionRead:null'));
+  assert.ok(preload.includes('PRO · WHY THIS PLAN WORKS'));
+  assert.ok(preload.includes("Boolean(access?.deepStrategy)&&renderDeepRead(team,set)"));
+  assert.match(preload,/toggle\('opDeepRead',!hasDeep\)/);
 });
 
 test('active trial entitlement receives paid match strategy',()=>{
