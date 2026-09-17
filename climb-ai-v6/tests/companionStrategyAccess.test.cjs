@@ -21,11 +21,12 @@ test('team comp model exposes one first-class actionable win condition',()=>{
   assert.ok(team.includes("step('CONVERT','CONVERT'"));
 });
 
-test('server removes win and loss conditions for FREE users',()=>{
+test('server removes paid win and loss conditions for FREE users while allowing the simple recording HUD',()=>{
   assert.match(route,/strategyAccess\.paidStrategy/);
   assert.match(route,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null/);
   assert.match(route,/hasTier\(tier,'PLUS'\)/);
-  assert.ok(wrapper.includes('rememberPlan:paid?remember:null'));
+  assert.ok(wrapper.includes('rememberPlan:remember'));
+  assert.ok(wrapper.includes("rememberPlanAccess:paid?'FULL':'SIMPLE'"));
 });
 
 test('PRO alone receives the deep composition interaction graph',()=>{

@@ -21,6 +21,10 @@ export async function GET(req:NextRequest){
     // The remember screen can still be built without the optional damage mix.
   }
 
+  const paid=Boolean(data?.strategyAccess?.paidStrategy??data?.teamPlan?.strategyAccess?.paidStrategy);
+  // Core route already redacts paid win/loss fields for FREE. Build the memory HUD
+  // from that already-redacted payload so every player gets the in-game screen
+  // without leaking PLUS/PRO strategy.
   const remember=buildRememberPlan({
     champion:String(data?.champion??data?.plan?.you?.name??'YOU'),
     role:data?.role??data?.plan?.role??null,
@@ -28,11 +32,11 @@ export async function GET(req:NextRequest){
     teamPlan:data.teamPlan,
     roster,
   });
-  const paid=Boolean(data?.strategyAccess?.paidStrategy??data?.teamPlan?.strategyAccess?.paidStrategy);
   const teamPlan={
     ...data.teamPlan,
     resourceTarget:remember.resourceTarget,
-    rememberPlan:paid?remember:null,
+    rememberPlan:remember,
+    rememberPlanAccess:paid?'FULL':'SIMPLE',
   };
 
   return NextResponse.json({...data,teamPlan},{status:response.status});
