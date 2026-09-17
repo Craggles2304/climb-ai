@@ -17,33 +17,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Cancel wedged publisher runs
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          for run_id in 35260024250 35261355301; do
-            status="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status' 2>/dev/null || true)"
-            if [ "$status" = "in_progress" ] || [ "$status" = "queued" ]; then
-              gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/cancel" >/dev/null || true
-            fi
-          done
-          sleep 5
-
-      - name: Download tested 0.7.3 installer artifact
+      - name: Download tested 0.7.4 installer artifact
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p dist
-          gh run download 35260024250 \
+          gh run download 35270825261 \
             --repo "$GITHUB_REPOSITORY" \
             --name op-climb-companion-windows \
             --dir dist
           test -f dist/OP-Climb-Companion-Setup.exe
           test -f dist/OP-Climb-Companion-Setup.exe.blockmap
           test -f dist/latest.yml
-          grep -q '^version: 0.7.3$' dist/latest.yml
+          grep -q '^version: 0.7.4$' dist/latest.yml
           expected_sha512="$(openssl dgst -sha512 -binary dist/OP-Climb-Companion-Setup.exe | base64 -w0)"
           feed_sha512="$(awk '/^sha512:/{print $2; exit}' dist/latest.yml)"
           test "$expected_sha512" = "$feed_sha512"
@@ -137,4 +124,4 @@ jobs:
             test "$(jq -r '.size' <<<"$asset")" = "$size"
             test "$(jq -r '.digest' <<<"$asset")" = "$digest"
           done
-          echo 'OP CLIMB Companion 0.7.3 release set is complete and hash-verified.'
+          echo 'OP CLIMB Companion 0.7.4 release set is complete and hash-verified.'
