@@ -344,26 +344,37 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
 
     let parsed=await callCoachModel(system,user);
     if(!parsed)return null;
-    parsed=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
-    const firstQuality=evaluateWinConditionPlan({plan:parsed,ours,enemies,kits,rank,role:userRole});
-    if(firstQuality.pass)return parsed;
+    let best=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
+    let bestQuality=evaluateWinConditionPlan({plan:best,ours,enemies,kits,rank,role:userRole});
+    if(bestQuality.pass)return best;
 
-    const rewriteUser=[
-      user,
-      '',
-      'YOUR FIRST PLAN:',
-      JSON.stringify(parsed),
-      '',
-      'QUALITY AUDIT FAILED: '+(firstQuality.issues.join('; ')||'insufficient specificity')+'.',
-      'Named champions found: '+(firstQuality.metrics.championMentions.join(', ')||'none')+'.',
-      'Named abilities found: '+(firstQuality.metrics.abilityMentions.join(', ')||'none')+'.',
-      '',
-      'Rewrite the whole JSON plan. Increase specificity without increasing verbosity. Replace generic advice with named champion interactions, supplied ability names/cooldowns, and explicit IF/WHEN/AFTER decision rules. Do not invent facts.',
-    ].join('\n');
-    const rewritten=await callCoachModel(system,rewriteUser);
-    if(!rewritten)return parsed;
-    const safe=completeCoach(sanitizeCoach(rewritten,enemies,fallback),userRole,enemies);
-    return evaluateWinConditionPlan({plan:safe,ours,enemies,kits,rank,role:userRole}).score>=firstQuality.score?safe:parsed;
+    for(let attempt=1;attempt<=2;attempt++){
+      const rewriteUser=[
+        user,
+        '',
+        'CURRENT PLAN:',
+        JSON.stringify(best),
+        '',
+        'RANK-SPECIFIC QUALITY AUDIT FAILED FOR '+bestQuality.tier+': '+(bestQuality.issues.join('; ')||'insufficient specificity')+'.',
+        'Score: '+bestQuality.score+'/'+bestQuality.rubric.passScore+'.',
+        'Named champions found: '+(bestQuality.metrics.championMentions.join(', ')||'none')+'.',
+        'Named abilities found: '+(bestQuality.metrics.abilityMentions.join(', ')||'none')+'.',
+        'Conditional decision rules: '+bestQuality.metrics.conditionalRules+'.',
+        '',
+        'Rewrite the whole JSON plan. Fix EVERY failed rubric item while preserving the correct strategic read. Increase specificity without unnecessary verbosity. Use named champion interactions, supplied ability names/cooldowns, explicit IF/WHEN/AFTER decisions, a concrete fight trigger and objective geometry. Do not invent facts.',
+      ].join('\n');
+      const rewritten=await callCoachModel(system,rewriteUser);
+      if(!rewritten)break;
+      const candidate=completeCoach(sanitizeCoach(rewritten,enemies,fallback),userRole,enemies);
+      const candidateQuality=evaluateWinConditionPlan({plan:candidate,ours,enemies,kits,rank,role:userRole});
+      if(candidateQuality.score>bestQuality.score){
+        best=candidate;
+        bestQuality=candidateQuality;
+      }
+      if(candidateQuality.pass)return candidate;
+    }
+    console.warn('[draft-coach] paid coach failed rank quality gate',{rank,tier:bestQuality.tier,score:bestQuality.score,required:bestQuality.rubric.passScore,issues:bestQuality.issues});
+    return null;
   }catch(error){
     console.warn('[draft-coach] AI fallback',error);
     return null;
@@ -397,7 +408,16 @@ export async function POST(req:NextRequest){
       playerContext(db,device),
       kitFacts([...ours,...enemies]),
     ]);
-    const ai=ours.length>=4&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    const fullDraft=ours.length>=4&&enemies.length===5;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
+      const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
+      return NextResponse.json({
+        ok:false,
+        error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
+        coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
+      },{status:503});
+    }
     const coach=completeCoach(ai??fallback,userRole,enemies);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     return NextResponse.json({
