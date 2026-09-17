@@ -126,12 +126,42 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          $ErrorActionPreference = 'Stop'
           gh release view companion-beta --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
             gh release create companion-beta --repo $env:GITHUB_REPOSITORY --prerelease --title 'OP CLIMB Companion Beta' --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
+            if ($LASTEXITCODE -ne 0) { throw 'Could not create companion-beta release.' }
           }
-          gh release upload companion-beta `
-            'dist/OP-Climb-Companion-Setup.exe' `
-            'dist/OP-Climb-Companion-Setup.exe.blockmap' `
-            'dist/latest.yml' `
-            --clobber --repo $env:GITHUB_REPOSITORY
+
+          $assets = @(
+            'OP-Climb-Companion-Setup.exe',
+            'OP-Climb-Companion-Setup.exe.blockmap',
+            'latest.yml'
+          )
+
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            Write-Host "Release upload attempt $attempt of 3"
+            foreach ($asset in $assets) {
+              gh release delete-asset companion-beta $asset --yes --repo $env:GITHUB_REPOSITORY 2>$null
+            }
+
+            gh release upload companion-beta `
+              'dist/OP-Climb-Companion-Setup.exe' `
+              'dist/OP-Climb-Companion-Setup.exe.blockmap' `
+              'dist/latest.yml' `
+              --repo $env:GITHUB_REPOSITORY
+
+            if ($LASTEXITCODE -eq 0) {
+              $names = gh release view companion-beta --repo $env:GITHUB_REPOSITORY --json assets --jq '.assets[].name'
+              $missing = $assets | Where-Object { $_ -notin $names }
+              if (-not $missing) {
+                Write-Host 'Companion beta updater assets published successfully.'
+                exit 0
+              }
+              Write-Warning "Upload returned success but release is missing: $($missing -join ', ')"
+            }
+
+            if ($attempt -lt 3) { Start-Sleep -Seconds (5 * $attempt) }
+          }
+
+          throw 'Companion beta release upload failed after 3 attempts.'
