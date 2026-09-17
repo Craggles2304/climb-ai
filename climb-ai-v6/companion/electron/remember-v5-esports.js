@@ -223,11 +223,12 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
   function renderTeam(rootId,players,threatName){
     const root=$(rootId);if(!root)return;
     root.replaceChildren();
+    const dangerNames=(Array.isArray(threatName)?threatName:[threatName]).map(name=>clean(name).toLowerCase()).filter(Boolean);
     const list=sorted(players).slice(0,5);
     for(let i=0;i<5;i++){
       const p=list[i];
       const card=document.createElement('article');
-      card.className=`rem4-pick${p&&clean(p.champion)===clean(threatName)?' threat':''}`;
+      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}`;
       if(p){
         const img=document.createElement('img');img.src=tile(p.champion);img.alt='';img.loading='eager';
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
