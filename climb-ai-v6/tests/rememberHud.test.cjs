@@ -41,7 +41,7 @@ test('live board fills the app and receives the actual in-game roster',()=>{
   assert.ok(esports.includes("window.addEventListener('op-climb-live-roster'"));
   assert.ok(esports.includes("renderTeam('opRemTheirTeam'"));
   assert.ok(esports.includes('scoreThreat'));
-  assert.ok(esports.includes("call:'SURVIVE → SCALE'"));
+  assert.ok(esports.includes('SCALE WITHOUT GIVING ACCESS'));
   assert.ok(liveRoster.includes("PATH='/liveclientdata/allgamedata'"));
   assert.ok(liveRoster.includes("new CustomEvent('op-climb-live-roster'"));
   assert.ok(bootstrap.includes("require('./live-roster.cjs')"));
