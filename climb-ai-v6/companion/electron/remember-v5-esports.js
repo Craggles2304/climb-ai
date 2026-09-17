@@ -2,7 +2,8 @@
   const $=id=>document.getElementById(id);
   const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
   const upper=value=>clean(value).toUpperCase();
-  const normRole=value=>{const role=upper(value);if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';if(role==='MIDDLE')return'MID';return role};
+  const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'];
+  const normRole=value=>{const raw=upper(value);if(!raw||['NONE','UNKNOWN','UNSELECTED','INVALID'].includes(raw))return'';const role=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;return VALID_ROLES.includes(role)?role:''};
   const ROLE_ORDER={TOP:0,JUNGLE:1,MID:2,ADC:3,SUPPORT:4};
   const ASSET_IDS={
     Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -21,6 +22,8 @@
   let lastRosterSignature='';
   let lastCoachSignature='';
   let lastCoach=null;
+  let lastCoachAttemptSignature='';
+  let lastCoachAttemptAt=0;
   let coachInFlight=false;
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
