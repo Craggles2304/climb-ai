@@ -7,7 +7,6 @@ const PATH='/liveclientdata/allgamedata';
 const POLL_MS=3000;
 let timer=null;
 let inFlight=false;
-let lastSignature='';
 
 function requestJson(){
   return new Promise((resolve,reject)=>{
@@ -59,19 +58,13 @@ async function poll(){
     const data=await requestJson();
     const players=Array.isArray(data?.allPlayers)?data.allPlayers.map(cleanPlayer).filter(Boolean):[];
     if(players.length<2)return;
-    const payload={
+    broadcast({
       players,
       activePlayer:String(data?.activePlayer?.summonerName||'').trim(),
       gameTime:Number(data?.gameData?.gameTime)||0,
-    };
-    const signature=players.map(p=>`${p.team}:${p.position}:${p.champion}`).join('|');
-    if(signature!==lastSignature){
-      lastSignature=signature;
-      broadcast(payload);
-    }
+    });
   }catch{
     // League's local Live Client endpoint only exists in an active match.
-    lastSignature='';
   }finally{
     inFlight=false;
   }
