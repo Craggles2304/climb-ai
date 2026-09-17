@@ -141,7 +141,7 @@ async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:strin
     .sort((a:any,b:any)=>{
       const priority=(Number(b?.priority)||50)-(Number(a?.priority)||50);
       if(priority!==0)return priority;
-      return (Number(a?.progress)||0)-(Number(b?.progress)||0;
+      return (Number(a?.progress)||0)-(Number(b?.progress)||0);
     })
     .slice(0,3);
 }
@@ -228,5 +228,5 @@ function pendingBotLanePlan(input:{localChampion:string;localRole?:string|null;a
     note:`Bot-lane desk is live now; ${known}/4 roles resolved. It will upgrade automatically as champ select reveals enough information.`,
   };
 }
-function normalizeRole(value?:string|null){const role=String(value??'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
+function normalizeRole(value?:string|null){const role=String(value??'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
 function key(value:string){return value.trim().toLowerCase().replace(/[^a-z0-9]/g,'')}
