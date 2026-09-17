@@ -83,11 +83,12 @@ export async function GET(req:NextRequest){
     const rawPlan=buildChampionPowerPlan({you,roster,patch,role});
     const plan=adaptPlanForRank(rawPlan,coach.depth,coach.visiblePoints);
     const fullTeamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
-    // Win/loss conditions are paid match-reading features. Keep the gate on the
-    // server so a FREE client cannot reveal them by inspecting Companion state.
+    // Win/loss conditions and the five-part role read are paid match-reading
+    // features. Keep this gate on the server so FREE clients never receive the
+    // hidden strategic payload merely by inspecting Companion state.
     const teamBase=strategyAccess.paidStrategy
       ?fullTeamBase
-      :{...fullTeamBase,ourWinCondition:null,theirWinCondition:null,biggestThrow:null};
+      :{...fullTeamBase,ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null};
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
@@ -227,5 +228,5 @@ function pendingBotLanePlan(input:{localChampion:string;localRole?:string|null;a
     note:`Bot-lane desk is live now; ${known}/4 roles resolved. It will upgrade automatically as champ select reveals enough information.`,
   };
 }
-function normalizeRole(value?:string|null){const role=String(value??'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
+function normalizeRole(value?:string|null){const role=String(value??'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
 function key(value:string){return value.trim().toLowerCase().replace(/[^a-z0-9]/g,'')}
