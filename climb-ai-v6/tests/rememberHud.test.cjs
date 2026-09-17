@@ -5,6 +5,7 @@ const path=require('node:path');
 
 const root=path.join(__dirname,'..');
 const hud=fs.readFileSync(path.join(root,'companion','electron','remember-v3.js'),'utf8');
+const matchup=fs.readFileSync(path.join(root,'companion','electron','remember-v3-matchup.js'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
@@ -12,6 +13,7 @@ const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),
 
 test('recording UI switches to a concise esports remember screen',()=>{
   assert.doesNotThrow(()=>new Function(hud));
+  assert.doesNotThrow(()=>new Function(matchup));
   for(const label of ['REMEMBER YOUR PLAN','HOW WE WIN · DO THIS','YOUR MATCHUP','DO THIS','TRADE WHEN','NEVER','PLAY WITH','PRIMARY FIGHT TARGET','IF BEHIND','CLIMB MISSION']){
     assert.ok(hud.includes(label),`missing ${label}`);
   }
@@ -21,6 +23,7 @@ test('recording UI switches to a concise esports remember screen',()=>{
   assert.ok(hud.includes('LIVE · RECORDING'));
   assert.ok(hud.includes('PLAN LOCKED'));
   assert.ok(loader.includes("load('remember-v3.js')"));
+  assert.ok(loader.includes("load('remember-v3-matchup.js')"));
 });
 
 test('remember HUD resolves actual allies, threats and a named fight target from the locked draft',()=>{
@@ -47,14 +50,15 @@ test('win condition is an executable named sequence rather than generic fight la
   assert.ok(!hud.includes('WIN FIGHT → DRAGON / BARON / TOWER'));
 });
 
-test('matchup gives three direct lane instructions instead of one vague sentence',()=>{
+test('matchup gives three direct lane instructions instead of one vague trigger sentence',()=>{
   assert.ok(hud.includes('opRemLaneDo'));
   assert.ok(hud.includes('opRemTradeWhen'));
   assert.ok(hud.includes('opRemNever'));
-  assert.ok(hud.includes('laneDuel'));
-  assert.ok(hud.includes('AFTER ${opponent} MISSES A KEY SPELL'));
-  assert.ok(hud.includes('DO NOT START A FULL-HP EXTENDED FIGHT'));
-  assert.ok(hud.includes('draftOpponent(state,role)'));
+  assert.ok(matchup.includes('PUNISH ${opponent} WHEN THEY LAST-HIT'));
+  assert.ok(matchup.includes('KEEP THE WAVE CLOSER TO YOU'));
+  assert.ok(matchup.includes('FARM FIRST → KEEP THE WAVE PLAYABLE'));
+  assert.ok(matchup.includes('AFTER ${opponent} MISSES A KEY SPELL OR USES IT ON THE WAVE'));
+  assert.ok(matchup.includes("String(state?.phase||'')!=='RECORDING'"));
 });
 
 test('FREE remains server-redacted while the simple HUD may name champions already visible in the draft',()=>{
