@@ -333,9 +333,14 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
   }
 
   function onState(state){
+    const previousChampion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
     lastState=state;
     installVisualLayer();
     const champion=clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.teamPlan?.rememberPlan?.champion);
+    if(String(state?.phase||'')!=='RECORDING'||(previousChampion&&champion&&previousChampion!==champion)){
+      lastCoachSignature='';
+      lastCoach=null;
+    }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
   }
