@@ -3,4 +3,5 @@
   load('review-v2-core.js');
   load('review-esports.js');
   load('remember-v3.js');
+  load('remember-v3-matchup.js');
 })();
