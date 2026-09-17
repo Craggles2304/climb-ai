@@ -40,7 +40,22 @@ test('FREE receives only a free-safe remember HUD while paid win/loss fields rem
   assert.ok(model.includes("if(role==='SUPPORT')return{kind:'MAP'"));
 });
 
-test('game-state adaptation is a prebuilt self-check, not live reactive shotcalling',()=>{
+test('draft, board-state self-check and recovery are one integrated win-condition model',()=>{
+  assert.ok(model.includes('macroPlanFor(teamShape,powerCurve)'));
+  assert.ok(model.includes('carryPlanFor(team,role,rich)'));
+  assert.ok(model.includes('threatPlanFor(team,watch,rich)'));
+  assert.ok(model.includes('objectiveRouteFor(teamShape,powerCurve)'));
+  assert.ok(model.includes('WHO HAS THE FIRST GOLD / ITEM ADVANTAGE?'));
+  assert.ok(model.includes('WHO IS OUR STRONGEST USABLE CARRY NOW?'));
+  assert.ok(model.includes('WHAT IS THE NEXT OBJECTIVE / WHICH SIDE MATTERS?'));
+  assert.ok(model.includes('WHO IS THEIR MAIN THREAT NOW?'));
+  assert.ok(model.includes('WHO SHOULD RECEIVE SAFE WAVES / SOLO XP?'));
+  assert.ok(model.includes('GROUP / SIDE / PICK / STALL — WHICH STATE FAVOURS US?'));
+  assert.ok(model.includes('ORIGINAL PLAN OR RECOVERY PLAN?'));
+  assert.ok(model.includes('STOP NEUTRAL 5V5S'));
+});
+
+test('game-state adaptation is a player-led self-check, not live reactive shotcalling',()=>{
   assert.ok(model.includes('frozenFromChampSelect:true'));
   assert.ok(model.includes('usesLiveTelemetry:false'));
   assert.ok(model.includes("minute:5"));

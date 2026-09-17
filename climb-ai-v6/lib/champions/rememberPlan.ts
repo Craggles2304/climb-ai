@@ -12,18 +12,24 @@ export interface RememberResourceTarget{
   checkpoints:Array<{minute:number;target:number}>;
 }
 
+export interface RememberDraftRead{
+  powerCurve:RememberPowerCurve;
+  teamShape:string;
+  damageProfile:RememberDamageProfile;
+  macroPlan:string;
+  carryPlan:string;
+  threatPlan:string;
+  objectiveRoute:string;
+}
+
 export interface RememberPlan{
-  version:1;
+  version:2;
   frozenFromChampSelect:true;
   usesLiveTelemetry:false;
   title:'REMEMBER YOUR PLAN';
   champion:string;
   role:string|null;
-  draft:{
-    powerCurve:RememberPowerCurve;
-    teamShape:string;
-    damageProfile:RememberDamageProfile;
-  };
+  draft:RememberDraftRead;
   winPath:string;
   resourceTarget:RememberResourceTarget;
   playWith:string;
@@ -42,6 +48,14 @@ type TeamPlanLike={
   ourTeam?:Array<{name?:string|null;role?:string|null}>;
   theirTeam?:Array<{name?:string|null;role?:string|null}>;
   theirWinCondition?:string|null;
+  strategyAccess?:{paidStrategy?:boolean|null}|null;
+  compositionRead?:{
+    damageCore?:string[]|null;
+    enemyThreats?:string[]|null;
+    enemyDamageCore?:string[]|null;
+    firstContact?:string[]|null;
+    protectors?:string[]|null;
+  }|null;
 };
 
 const SCALERS=new Set([
@@ -67,6 +81,10 @@ export function buildRememberPlan(input:{
 }):RememberPlan{
   const role=normalizeRole(input.role);
   const team=input.teamPlan||{};
+  // The API redacts premium strategy fields before this model runs for FREE.
+  // Treat the presence of already-unredacted strategy as the source of truth so
+  // direct rich-plan callers/tests do not need a separate entitlement flag.
+  const rich=Boolean(team.roleWinCondition||team.compositionRead||team.strategyAccess?.paidStrategy);
   const ourNames=(team.ourTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const powerCurve=powerCurveFor(ourNames,input.roster||null);
   const damageProfile=damageProfileFor(ourNames,input.roster||null);
@@ -75,20 +93,26 @@ export function buildRememberPlan(input:{
   const allies=(team.ourTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const enemies=(team.theirTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const playWith=mentioned(stepValue(steps,['STAY_WITH','PLAY_WITH','ENABLE','SET_UP']),allies,2)||fallbackPlayWith(role);
-  const watch=mentioned(stepValue(steps,['SURVIVE','STOP','ANSWER']),enemies,2)||mentioned(String(team.roleWinCondition?.lossCondition||team.theirWinCondition||''),enemies,2)||'THEIR FIRST CLEAN ENGAGE';
+  const watch=rich
+    ?mentioned(stepValue(steps,['SURVIVE','STOP','ANSWER']),enemies,2)||mentioned(String(team.roleWinCondition?.lossCondition||team.theirWinCondition||''),enemies,2)||firstNames(team.compositionRead?.enemyThreats,2)||'THEIR FIRST CLEAN ENGAGE'
+    :'THEIR FIRST CLEAN ENGAGE';
+  const carryPlan=carryPlanFor(team,role,rich);
+  const threatPlan=threatPlanFor(team,watch,rich);
+  const macroPlan=macroPlanFor(teamShape,powerCurve);
+  const objectiveRoute=objectiveRouteFor(teamShape,powerCurve);
   const fightRule=fightRuleFor(role,teamShape,watch,playWith);
-  const objectiveRule=short(stepValue(steps,['CONVERT','CONTROL']),82)||'WIN FIGHT / PICK → TAKE OBJECTIVE → RESET';
-  const statePlans=statePlansFor(teamShape,powerCurve,role);
-  const winPath=winPathFor(role,powerCurve,teamShape,watch);
+  const objectiveRule=short(stepValue(steps,['CONVERT','CONTROL']),82)||objectiveRoute;
+  const statePlans=statePlansFor(teamShape,powerCurve,role,carryPlan);
+  const winPath=winPathFor(role,powerCurve,teamShape,watch,objectiveRoute);
 
   return{
-    version:1,
+    version:2,
     frozenFromChampSelect:true,
     usesLiveTelemetry:false,
     title:'REMEMBER YOUR PLAN',
     champion:String(input.champion||'YOU').trim(),
     role,
-    draft:{powerCurve,teamShape,damageProfile},
+    draft:{powerCurve,teamShape,damageProfile,macroPlan,carryPlan,threatPlan,objectiveRoute},
     winPath,
     resourceTarget:resourceTargetFor(role,input.rank),
     playWith,
@@ -98,9 +122,21 @@ export function buildRememberPlan(input:{
     behindPlan:statePlans.behind,
     statePlans,
     checks:[
-      {minute:5,title:'FIRST READ',questions:['WHO HAS THE FIRST USABLE LEAD?','IS OUR ORIGINAL POWER-CURVE PLAN ON TRACK?']},
-      {minute:10,title:'MAP READ',questions:['WHO IS STRONGEST NOW?','WHICH SIDE / OBJECTIVE MATTERS NEXT?']},
-      {minute:15,title:'RECHECK THE WIN CONDITION',questions:['WHO IS THEIR BIGGEST THREAT NOW?','ORIGINAL PLAN OR BEHIND PLAN?']},
+      {minute:5,title:'FIRST BOARD READ',questions:[
+        'WHO HAS THE FIRST GOLD / ITEM ADVANTAGE?',
+        'WHICH LANE HAS USABLE PRIORITY?',
+        `IS OUR ${powerCurve} PLAN ON TRACK?`,
+      ]},
+      {minute:10,title:'WIN-CONDITION CHECK',questions:[
+        'WHO IS OUR STRONGEST USABLE CARRY NOW?',
+        'WHAT IS THE NEXT OBJECTIVE / WHICH SIDE MATTERS?',
+        'WHO IS THEIR MAIN THREAT NOW?',
+      ]},
+      {minute:15,title:'ADAPT THE PLAN',questions:[
+        'WHO SHOULD RECEIVE SAFE WAVES / SOLO XP?',
+        'GROUP / SIDE / PICK / STALL — WHICH STATE FAVOURS US?',
+        'ORIGINAL PLAN OR RECOVERY PLAN?',
+      ]},
     ],
   };
 }
@@ -149,6 +185,47 @@ function shapeLabel(team:TeamPlanLike){
   return'CONNECTED 5V5';
 }
 
+function macroPlanFor(shape:string,power:RememberPowerCurve){
+  if(shape==='SIDE PRESSURE')return'SIDE LANE FIRST → FORCE A RESPONSE → MOVE OR TRADE CROSS-MAP';
+  if(shape==='POKE')return'ARRIVE FIRST → TAKE SPACE → LOWER HP → FORCE A BAD ENGAGE';
+  if(shape==='PICK')return'DENY VISION → CATCH ONE → PLAY THE 5V4';
+  if(shape==='DIVE')return'CREATE PRIORITY → BUILD AN ANGLE → ENTER TOGETHER';
+  if(shape==='FRONT TO BACK')return'CONTROL WAVES → ARRIVE GROUPED → PROTECT DAMAGE THROUGH FIRST CONTACT';
+  if(power==='SCALING')return'SURVIVE EARLY → FARM CLEAN → FIGHT ON ITEM WINDOWS';
+  if(power==='EARLY')return'CREATE EARLY PRIORITY → FORCE NUMBERS → CONVERT BEFORE THEY SCALE';
+  return'CREATE FIRST MOVE → STAY CONNECTED → CONVERT CLEAN FIGHTS';
+}
+
+function carryPlanFor(team:TeamPlanLike,role:string|null,rich:boolean){
+  if(!rich)return role==='SUPPORT'?'ENABLE YOUR MAIN DAMAGE LINE':role==='JUNGLE'?'PLAY TOWARD THE LANE WITH FIRST MOVE':'KEEP YOUR MAIN DAMAGE LINE FUNDED AND CONNECTED';
+  const fromGraph=firstNames(team.compositionRead?.damageCore,2);
+  if(fromGraph)return`PRIMARY DAMAGE · ${fromGraph}`;
+  const picks=team.ourTeam||[];
+  const byRole=(wanted:string)=>picks.find(p=>normalizeRole(p?.role)===wanted&&String(p?.name||'').trim())?.name||'';
+  const adc=byRole('ADC'),mid=byRole('MID'),top=byRole('TOP');
+  const names=[adc,mid,top].filter(Boolean).slice(0,2);
+  return names.length?`PRIMARY DAMAGE · ${names.join(' / ')}`:'KEEP THE STRONGEST DAMAGE DEALER FUNDED AND CONNECTED';
+}
+
+function threatPlanFor(team:TeamPlanLike,watch:string,rich:boolean){
+  if(!rich)return'SCAN THEIR ENGAGE / DIVE BEFORE YOU COMMIT';
+  const threat=firstNames(team.compositionRead?.enemyThreats,2)||watch;
+  const carry=firstNames(team.compositionRead?.enemyDamageCore,2);
+  if(threat&&carry&&threat!==carry)return`ACCESS · ${threat} / DAMAGE · ${carry}`;
+  return threat?`MAIN THREAT · ${threat}`:'FIND WHO CAN BREAK YOUR FORMATION FIRST';
+}
+
+function objectiveRouteFor(shape:string,power:RememberPowerCurve){
+  if(shape==='SIDE PRESSURE')return'SIDE PRESSURE → FORCE RESPONSE → TOWER / BARON CROSS-MAP';
+  if(shape==='PICK')return'VISION DENIAL → PICK → DRAGON / BARON';
+  if(shape==='POKE')return'ARRIVE FIRST → POKE → FORCE THEM OFF DRAGON / BARON';
+  if(shape==='DIVE')return'PRIORITY → ANGLE → ONE COLLAPSE → DRAGON / BARON';
+  if(shape==='FRONT TO BACK')return'RESET FIRST → OWN CHOKE → FRONT-TO-BACK → DRAGON / BARON';
+  if(power==='EARLY')return'FIRST MOVE → GRUBS / DRAGON → TOWER → DENY SCALE';
+  if(power==='SCALING')return'SAFE WAVES → ITEM WINDOW → GROUPED DRAGON / BARON';
+  return'FIRST MOVE → CLEAN FIGHT → DRAGON / BARON / TOWER';
+}
+
 function resourceTargetFor(role:string|null,rank?:string|null):RememberResourceTarget{
   if(role==='SUPPORT')return{kind:'MAP',label:'MAP TARGET',headline:'SET UP FIRST',summary:'MOVE WITH JUNGLE → VISION → OBJECTIVE',checkpoints:[]};
   const tier=rankTier(rank);
@@ -165,7 +242,8 @@ function resourceTargetFor(role:string|null,rank?:string|null):RememberResourceT
   };
 }
 
-function statePlansFor(shape:string,power:RememberPowerCurve,role:string|null){
+function statePlansFor(shape:string,power:RememberPowerCurve,role:string|null,carryPlan:string){
+  const carryCue=short(carryPlan.replace(/^PRIMARY DAMAGE ·\s*/i,''),34)||'YOUR BEST SCALER';
   const ahead=shape==='SIDE PRESSURE'
     ?'PRESS SIDE → FORCE RESPONSE → TAKE CROSS-MAP OBJECTIVE'
     :shape==='POKE'
@@ -178,24 +256,27 @@ function statePlansFor(shape:string,power:RememberPowerCurve,role:string|null){
     :power==='EARLY'
       ?'CREATE FIRST MOVE → FIGHT WITH NUMBERS → CONVERT QUICKLY'
       :'PLAY THE LOCKED PLAN → FIRST MOVE → CLEAN OBJECTIVE FIGHT';
-  let behind='SAFE WAVES → DEFEND VISION → GROUP EARLY → BUY TIME';
-  if(shape==='SIDE PRESSURE')behind='TRADE SIDES → PRESSURE TOWER → AVOID A NEUTRAL 5V5';
+  let behind=power==='SCALING'
+    ?`FUNNEL SAFE WAVES / XP INTO ${carryCue} → DEFEND VISION → BUY ITEM WINDOWS`
+    :'STOP NEUTRAL 5V5S → CLEAR WAVES → FIND PICK / CROSS-MAP TRADE → BUY TIME';
+  if(shape==='SIDE PRESSURE')behind='TRADE SIDES → PRESSURE TOWER → FORCE A RESPONSE → AVOID A NEUTRAL 5V5';
   else if(shape==='PICK')behind='CLEAR WAVES → DENY ONE VISION CORRIDOR → FIND ONE PICK → TAKE THE 5V4';
   else if(shape==='POKE')behind='CLEAR WAVES → HOLD RANGE → POKE BEFORE CONTESTING → DO NOT FACE-CHECK';
   else if(shape==='DIVE')behind='STOP FORCING 5V5 → FIND NUMBERS / FLANK → COLLAPSE ON ONE TARGET';
-  else if(shape==='FRONT TO BACK')behind='SAFE WAVES → DEFEND CHOKES → PEEL YOUR DAMAGE → WAIT FOR ITEM WINDOWS';
+  else if(shape==='FRONT TO BACK'&&power!=='EARLY')behind=`SAFE WAVES INTO ${carryCue} → DEFEND CHOKES → PEEL DAMAGE → WAIT FOR ITEM WINDOWS`;
   if(role==='ADC'&&shape!=='SIDE PRESSURE')behind='SAFE FARM → STAY WITH PEEL → SURVIVE FIRST CONTACT → SCALE INTO THE NEXT FIGHT';
   return{ahead,even,behind};
 }
 
-function winPathFor(role:string|null,power:RememberPowerCurve,shape:string,watch:string){
+function winPathFor(role:string|null,power:RememberPowerCurve,shape:string,watch:string,objectiveRoute:string){
   const powerCue=power==='SCALING'?'SCALE':power==='EARLY'?'CREATE EARLY LEAD':'HIT POWER WINDOW';
-  if(role==='ADC')return`${powerCue} → SURVIVE ${upperShort(watch,28)} → DPS → OBJECTIVE`;
-  if(role==='JUNGLE')return'CLEAR ON TEMPO → FIRST MOVE → OBJECTIVE SETUP → CONVERT';
-  if(role==='SUPPORT')return`SET VISION → ${shapeAction(shape)} → ENABLE CARRY → OBJECTIVE`;
-  if(role==='TOP'&&shape==='SIDE PRESSURE')return'SIDE PRESSURE → FORCE RESPONSE → MOVE FIRST → OBJECTIVE';
-  if(role==='MID')return`${powerCue} → MID PRIORITY → ${shapeAction(shape)} → OBJECTIVE`;
-  return`${powerCue} → ${shapeAction(shape)} → WIN FIGHT → OBJECTIVE`;
+  const conversion=objectiveRoute.includes('→')?objectiveRoute.split('→').slice(-1)[0]?.trim()||'OBJECTIVE':'OBJECTIVE';
+  if(role==='ADC')return`${powerCue} → SURVIVE ${upperShort(watch,28)} → DPS → ${conversion}`;
+  if(role==='JUNGLE')return power==='EARLY'?'CLEAR ON TEMPO → CREATE FIRST MOVE → OBJECTIVE SETUP → CONVERT':'FARM TEMPO → PLAY WITH PRIORITY → OBJECTIVE SETUP → CONVERT';
+  if(role==='SUPPORT')return`SET VISION → ${shapeAction(shape)} → ENABLE CARRY → ${conversion}`;
+  if(role==='TOP'&&shape==='SIDE PRESSURE')return'SIDE PRESSURE → FORCE RESPONSE → MOVE FIRST / TRADE CROSS-MAP';
+  if(role==='MID')return`${powerCue} → MID PRIORITY → ${shapeAction(shape)} → ${conversion}`;
+  return`${powerCue} → ${shapeAction(shape)} → WIN FIGHT → ${conversion}`;
 }
 
 function fightRuleFor(role:string|null,shape:string,watch:string,playWith:string){
@@ -216,6 +297,10 @@ function shapeAction(shape:string){
   return'FIGHT CONNECTED';
 }
 
+function firstNames(value:string[]|null|undefined,max:number){
+  const names=(Array.isArray(value)?value:[]).map(name=>String(name||'').trim()).filter(Boolean).slice(0,max);
+  return names.join(' / ');
+}
 function mentioned(text:string,names:string[],max:number){
   const hits=names.filter(name=>name&&text.toLowerCase().includes(name.toLowerCase())).slice(0,max);
   return hits.join(' / ');
