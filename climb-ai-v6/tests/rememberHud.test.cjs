@@ -166,7 +166,7 @@ test('paid draft coach is grounded in rank, ILP and Riot kit facts with a specif
   assert.ok(draftCoach.includes('rankCoachingInstruction'));
   assert.ok(draftCoach.includes('kitFacts'));
   assert.ok(draftCoach.includes('enemyTips'));
-  assert.ok(draftCoach.includes('qualityReport'));
+  assert.ok(draftCoach.includes('evaluateWinConditionPlan'));
   assert.ok(draftCoach.includes('QUALITY AUDIT FAILED'));
   assert.ok(draftCoach.includes('lanePlan'));
   assert.ok(draftCoach.includes('fightTrigger'));
