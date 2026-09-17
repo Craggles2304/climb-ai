@@ -245,11 +245,61 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     }
   }
 
-  function updatePath(threat,target,withName){
-    const steps=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
-    if(steps[1]&&withName)steps[1].textContent=upper(`WITH ${withName}`);
-    if(steps[2]&&threat)steps[2].textContent=upper(`DENY ${threat}`);
-    if(steps[3]&&target)steps[3].textContent=upper(`HIT ${target} IF SAFE`);
+  function renderCoachPath(steps){
+    const cards=[...document.querySelectorAll('#opRememberHud .rem4-step')];
+    const list=Array.isArray(steps)?steps.slice(0,5):[];
+    for(let i=0;i<Math.min(cards.length,list.length);i++){
+      const label=cards[i].querySelector('i');
+      const value=cards[i].querySelector('strong');
+      if(label&&clean(list[i]?.label))label.textContent=upper(list[i].label);
+      if(value&&clean(list[i]?.value))value.textContent=upper(list[i].value);
+    }
+  }
+
+  function applyCoach(coach,champion,userRole,ours,enemies){
+    if(!coach)return;
+    const threats=Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[];
+    const threatText=threats.join(' + ')||'THEIR ACCESS';
+    set('opRememberTitle',`${champion||'YOU'} · ${userRole||'ROLE'} // WIN CONDITION`);
+    set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
+    set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
+    const threatLabel=document.querySelector('#opRememberHud .rem4-threat .rem4-label');
+    if(threatLabel&&clean(coach?.threatLabel))threatLabel.textContent=upper(coach.threatLabel);
+    set('opRemThreat',threatText);
+    set('opRemThreatAnswer',coach?.threatAnswer||'TRACK THEIR ENTRY BEFORE COMMITTING');
+    if(threats[0])document.body.style.setProperty('--op-threat-art',`url("${splash(threats[0])}")`);
+    renderTeam('opRemOurTeam',ours,'');
+    renderTeam('opRemTheirTeam',enemies,threats);
+    renderCoachPath(coach?.steps);
+    const lane=clean(coach?.laneOpponent)||byRole(enemies,userRole);
+    if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
+    else set('opRemMatchTitle',userRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
+    if(clean(coach?.never))set('opRemNever',coach.never);
+    if(clean(coach?.ifBehind))set('opRemBehind',coach.ifBehind);
+  }
+
+  async function requestCoach(signature,champion,userRole,ours,enemies){
+    const fallback=localCoach(champion,userRole,ours,enemies);
+    applyCoach(fallback,champion,userRole,ours,enemies);
+    if(lastCoachSignature===signature&&lastCoach){
+      applyCoach(lastCoach,champion,userRole,ours,enemies);
+      return;
+    }
+    if(coachInFlight||typeof window.opCompanion?.draftCoach!=='function'||ours.length<3||enemies.length<3)return;
+    coachInFlight=true;
+    try{
+      const response=await window.opCompanion.draftCoach({
+        champion,
+        role:userRole,
+        ours:ours.map(p=>({champion:p.champion,role:playerRole(p)||null})),
+        enemies:enemies.map(p=>({champion:p.champion,role:playerRole(p)||null})),
+      });
+      if(response?.ok&&response?.ready&&response?.coach){
+        lastCoachSignature=signature;
+        lastCoach=response.coach;
+        applyCoach(lastCoach,champion,userRole,ours,enemies);
+      }
+    }catch{}finally{coachInFlight=false}
   }
 
   function applyRoster(payload){
@@ -260,27 +310,26 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const champion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
     const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
     if(!me?.team)return;
-    const ours=players.filter(p=>p.team===me.team);
-    const enemies=players.filter(p=>p.team&&p.team!==me.team);
+    const stateRole=normRole(lastState?.matchup?.role||lastState?.matchup?.plan?.role||lastState?.teamPlan?.rememberPlan?.role);
+    const userRole=playerRole(me)||stateRole;
+    const oursRaw=players.filter(p=>p.team===me.team);
+    const enemiesRaw=players.filter(p=>p.team&&p.team!==me.team);
+    const ours=repairTeam(oursRaw,'ourTeam',champion,userRole);
+    const enemies=repairTeam(enemiesRaw,'theirTeam',champion,userRole);
     if(!enemies.length)return;
-    const rosterSignature=players.map(p=>`${p.team}:${p.position}:${p.champion}`).join('|');
-    const role=playerRole(me)||normRole(lastState?.matchup?.role||lastState?.teamPlan?.rememberPlan?.role);
-    const threat=[...enemies].sort((a,b)=>scoreThreat(b,role)-scoreThreat(a,role))[0];
-    const target=fightTarget(enemies);
-    const laneOpponent=enemies.find(p=>playerRole(p)===role)||(role==='ADC'?enemies.find(p=>playerRole(p)==='ADC'):null);
-    const withNames=ours.filter(p=>clean(p.champion)!==champion).filter(p=>role==='ADC'?['SUPPORT','JUNGLE'].includes(playerRole(p)):true).slice(0,2).map(p=>p.champion);
-    const call=gameCall(champion,ours,enemies);
+    const rosterSignature=[
+      champion,userRole,
+      ...sorted(ours).map(p=>`O:${playerRole(p)}:${p.champion}`),
+      ...sorted(enemies).map(p=>`E:${playerRole(p)}:${p.champion}`),
+    ].join('|').toLowerCase();
 
     if(rosterSignature!==lastRosterSignature){
       lastRosterSignature=rosterSignature;
       renderTeam('opRemOurTeam',ours,'');
-      renderTeam('opRemTheirTeam',enemies,threat?.champion);
+      renderTeam('opRemTheirTeam',enemies,'');
     }
-    set('opRemGameCall',call.call);set('opRemGameCallWhy',call.why);
-    if(threat){set('opRemThreat',threat.champion);set('opRemThreatAnswer',threatAnswer(threat.champion,role));document.body.style.setProperty('--op-threat-art',`url("${splash(threat.champion)}")`)}
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
-    if(laneOpponent)set('opRemMatchTitle',`${champion||'YOU'} VS ${laneOpponent.champion}`);
-    updatePath(threat?.champion,target?.champion,withNames.join(' / '));
+    void requestCoach(rosterSignature,champion,userRole,ours,enemies);
   }
 
   function onState(state){
