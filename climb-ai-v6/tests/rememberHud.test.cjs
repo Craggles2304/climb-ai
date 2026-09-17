@@ -160,3 +160,17 @@ test('desktop bridges the exact live roster into the server draft coach once per
   assert.ok(esports.includes('lastCoachSignature'));
   assert.ok(esports.includes('lastRosterSignature'));
 });
+
+
+test('paid draft coach is grounded in rank, ILP and Riot kit facts with a specificity audit',()=>{
+  assert.ok(draftCoach.includes('rankCoachingInstruction'));
+  assert.ok(draftCoach.includes('kitFacts'));
+  assert.ok(draftCoach.includes('enemyTips'));
+  assert.ok(draftCoach.includes('qualityReport'));
+  assert.ok(draftCoach.includes('QUALITY AUDIT FAILED'));
+  assert.ok(draftCoach.includes('lanePlan'));
+  assert.ok(draftCoach.includes('fightTrigger'));
+  assert.ok(draftCoach.includes('objectiveSetup'));
+  assert.ok(esports.includes("set('opRemLaneDo',lanePlan.wave)"));
+  assert.ok(esports.includes("set('opRemTradeWhen',lanePlan.trade)"));
+});
