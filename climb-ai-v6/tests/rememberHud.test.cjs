@@ -11,10 +11,10 @@ const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','r
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
 const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),'utf8');
 
-test('recording UI switches to a concise esports remember screen',()=>{
+test('recording UI is a concise esports coach board instead of a text wall',()=>{
   assert.doesNotThrow(()=>new Function(hud));
   assert.doesNotThrow(()=>new Function(matchup));
-  for(const label of ['REMEMBER YOUR PLAN','HOW WE WIN · DO THIS','YOUR MATCHUP','DO THIS','TRADE WHEN','NEVER','PLAY WITH','PRIMARY FIGHT TARGET','IF BEHIND','CLIMB MISSION']){
+  for(const label of ['YOUR TEAM','THEIR TEAM','MATCH CALL','MAIN THREAT','YOUR WIN CONDITION PATH','DO THESE IN ORDER','LANE','WAVE','TRADE','NEVER','IF BEHIND','CLIMB MISSION']){
     assert.ok(hud.includes(label),`missing ${label}`);
   }
   assert.ok(hud.includes('5 / 10 / 15 MIN SELF-CHECK'));
@@ -26,38 +26,62 @@ test('recording UI switches to a concise esports remember screen',()=>{
   assert.ok(loader.includes("load('remember-v3-matchup.js')"));
 });
 
-test('remember HUD resolves actual allies, threats and a named fight target from the locked draft',()=>{
-  assert.ok(hud.includes('pickSpecificPlayWith'));
-  assert.ok(hud.includes("rolePick(allies,'SUPPORT')"));
-  assert.ok(hud.includes('pickFightTarget'));
-  assert.ok(hud.includes("rolePick(enemies,'ADC')"));
-  assert.ok(hud.includes('pickDanger'));
-  assert.ok(hud.includes('enemyDamageCore'));
-  assert.ok(hud.includes('enemyThreats'));
-  assert.ok(hud.includes('PRIMARY FIGHT TARGET'));
-  assert.ok(hud.includes('IF THEY ARE IN SAFE RANGE'));
-  assert.ok(hud.includes('DO NOT WALK THROUGH'));
-  assert.ok(!hud.includes('YOUR FIRST-CONTACT CHAMPION'));
+test('their full draft survives champ select and renders on the live board',()=>{
+  assert.ok(route.includes('draftTeams:{'));
+  assert.ok(route.includes('ours:Array.isArray(data?.teamPlan?.ourTeam)'));
+  assert.ok(route.includes('theirs:Array.isArray(data?.teamPlan?.theirTeam)'));
+  assert.ok(hud.includes("renderTeam('opRemOurTeam'"));
+  assert.ok(hud.includes("renderTeam('opRemTheirTeam'"));
+  assert.ok(hud.includes("side==='ourTeam'?safe(planSnapshot(state)?.draftTeams?.ours):safe(planSnapshot(state)?.draftTeams?.theirs)"));
+  assert.ok(hud.includes('championTile'));
 });
 
-test('win condition is an executable named sequence rather than generic fight language',()=>{
-  assert.ok(hud.includes('specificWin'));
-  assert.ok(hud.includes('STAY WITH ${withName}'));
-  assert.ok(hud.includes('SURVIVE ${danger}'));
+test('placeholder OPPONENT TBD can never beat the actual draft opponent',()=>{
+  assert.ok(hud.includes('validOpponent'));
+  assert.ok(matchup.includes('validOpponent'));
+  assert.ok(hud.includes("u.includes('TBD')"));
+  assert.ok(matchup.includes("u.includes('TBD')"));
+  assert.ok(hud.includes('||draftOpponent(state,role)'));
+  assert.ok(matchup.includes('||opponentFromDraft(state,role)'));
+});
+
+test('coach makes an explicit fight-versus-farm match call from both drafts',()=>{
+  assert.ok(hud.includes('function matchCall'));
+  assert.ok(hud.includes("call:'FARM + SCALE'"));
+  assert.ok(hud.includes("call:'FIGHT EARLY'"));
+  assert.ok(hud.includes("call:'FARM TO SPIKE'"));
+  assert.ok(hud.includes("call:'PRESS TEMPO'"));
+  assert.ok(hud.includes("call:'FARM FIRST'"));
+  assert.ok(hud.includes('powerFor(roster(state,\'theirTeam\'))'));
+});
+
+test('win condition is a five-step named route through the enemy draft',()=>{
+  assert.ok(hud.includes('function winSteps'));
+  assert.ok(hud.includes("value:step1"));
+  assert.ok(hud.includes('WITH ${withName}'));
+  assert.ok(hud.includes('DENY ${threat}'));
   assert.ok(hud.includes('HIT ${focus} IF SAFE'));
+  assert.ok(hud.includes("label:'5 · CASH OUT'"));
   assert.ok(hud.includes('DRAGON / BARON'));
-  assert.ok(hud.includes('finalFarmCue'));
-  assert.ok(!hud.includes('WIN FIGHT → DRAGON / BARON / TOWER'));
 });
 
-test('matchup gives three direct lane instructions instead of one vague trigger sentence',()=>{
+test('paid draft intelligence freezes named threats and damage targets without leaking to FREE',()=>{
+  assert.ok(route.includes('draftThreats:paid&&Array.isArray'));
+  assert.ok(route.includes('draftDamageCore:paid&&Array.isArray'));
+  assert.ok(route.includes('draftTheirWinCondition:paid?'));
+  assert.ok(route.includes('draftBiggestThrow:paid?'));
+  assert.match(core,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null/);
+  assert.ok(hud.includes('frozenThreats'));
+  assert.ok(hud.includes('frozenDamage'));
+});
+
+test('matchup uses three short lane commands instead of a paragraph',()=>{
   assert.ok(hud.includes('opRemLaneDo'));
   assert.ok(hud.includes('opRemTradeWhen'));
   assert.ok(hud.includes('opRemNever'));
-  assert.ok(matchup.includes('PUNISH ${opponent} WHEN THEY LAST-HIT'));
-  assert.ok(matchup.includes('KEEP THE WAVE CLOSER TO YOU'));
-  assert.ok(matchup.includes('FARM FIRST → KEEP THE WAVE PLAYABLE'));
-  assert.ok(matchup.includes('AFTER ${opponent} MISSES A KEY SPELL OR USES IT ON THE WAVE'));
+  assert.ok(matchup.includes('WAVE NEAR YOU · PRESERVE HP'));
+  assert.ok(matchup.includes('FARM FIRST · MAKE ${opponent} STEP UP'));
+  assert.ok(matchup.includes('${opponent} MISSES KEY SPELL'));
   assert.ok(matchup.includes("String(state?.phase||'')!=='RECORDING'"));
 });
 
