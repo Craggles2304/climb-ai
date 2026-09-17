@@ -91,32 +91,133 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
 
   function playerRole(player){return normRole(player?.position||player?.role)}
   function sorted(players){return [...players].sort((a,b)=>(ROLE_ORDER[playerRole(a)]??9)-(ROLE_ORDER[playerRole(b)]??9))}
+  function stateRoster(side){
+    const direct=Array.isArray(lastState?.teamPlan?.[side])?lastState.teamPlan[side]:[];
+    const frozen=side==='ourTeam'
+      ?(Array.isArray(lastState?.teamPlan?.rememberPlan?.draftTeams?.ours)?lastState.teamPlan.rememberPlan.draftTeams.ours:[])
+      :(Array.isArray(lastState?.teamPlan?.rememberPlan?.draftTeams?.theirs)?lastState.teamPlan.rememberPlan.draftTeams.theirs:[]);
+    const source=direct.length?direct:frozen;
+    return source.map(p=>({champion:clean(p?.champion||p?.name),role:normRole(p?.position||p?.role)})).filter(p=>p.champion);
+  }
+  function repairTeam(raw,side,champion,forcedRole){
+    const frozen=stateRoster(side);
+    const frozenRole=name=>playerRole(frozen.find(p=>clean(p.champion).toLowerCase()===clean(name).toLowerCase()));
+    const map=new Map();
+    for(const p of raw){
+      const name=clean(p?.champion);if(!name)continue;
+      const key=name.toLowerCase();
+      const next={...p,champion:name,position:playerRole(p)||frozenRole(name)||''};
+      const current=map.get(key);
+      if(!current||(!playerRole(current)&&playerRole(next)))map.set(key,next);
+    }
+    for(const p of frozen){
+      const key=clean(p.champion).toLowerCase();
+      if(!map.has(key)&&map.size<5)map.set(key,{champion:p.champion,team:'',position:playerRole(p)});
+    }
+    const list=[...map.values()];
+    if(side==='ourTeam'&&champion){
+      const me=list.find(p=>clean(p.champion).toLowerCase()===clean(champion).toLowerCase());
+      if(me&&forcedRole)me.position=forcedRole;
+    }
+    return list.slice(0,5);
+  }
   function scoreThreat(player,userRole){
     const name=clean(player?.champion);const role=playerRole(player);let score=0;
     if(ASSASSINS.has(name))score+=8;
     if(HARD_ENGAGE.has(name))score+=7;
-    if(DIVERS.has(name))score+=5;
-    if(userRole==='ADC'&&(role==='JUNGLE'||role==='SUPPORT'))score+=2;
-    if(role==='MID')score+=1;
+    if(DIVERS.has(name))score+=6;
+    if(ZONE_CONTROL.has(name))score+=2;
+    if(userRole==='ADC'&&role&&role!=='ADC')score+=1;
     return score;
   }
-  function threatAnswer(name,userRole){
-    if(ASSASSINS.has(name))return userRole==='ADC'?'TRACK FLANK · HOLD FLASH / PEEL · NEVER ISOLATE':'TRACK FLANK · HOLD ESCAPE FOR THEIR ENTRY';
-    if(HARD_ENGAGE.has(name))return userRole==='ADC'?'STAY OUTSIDE THEIR START RANGE · HIT AFTER FIRST ENGAGE':'BAIT FIRST ENGAGE · COUNTER AFTER COOLDOWN';
-    if(DIVERS.has(name))return userRole==='ADC'?'PLAY BESIDE PEEL · KITE BACK FIRST · DPS SECOND':'DENY THEIR DIVE ANGLE BEFORE COMMITTING';
-    return 'TRACK THEIR POSITION BEFORE THE FIGHT STARTS';
-  }
-  function fightTarget(enemies){return enemies.find(p=>playerRole(p)==='ADC')||enemies.find(p=>playerRole(p)==='MID')||enemies[0]||null}
-  function gameCall(champion,ours,enemies){
-    const ownEarly=ours.filter(p=>EARLY.has(clean(p.champion))).length;
-    const enemyEarly=enemies.filter(p=>EARLY.has(clean(p.champion))).length;
-    if(SCALERS.has(champion)){
-      if(enemyEarly>=2)return{call:'SURVIVE → SCALE',why:'NO EARLY FLIPS · PROTECT CS / XP · FIGHT ON 2 ITEMS'};
-      return{call:'FARM TO 2 ITEMS',why:'KEEP TEMPO CLEAN · GROUP ON YOUR SPIKE · FRONT-TO-BACK'};
+  function byRole(players,role){return players.find(p=>playerRole(p)===role)?.champion||''}
+  function localCoach(champion,userRole,ours,enemies){
+    const ordered=[...enemies].sort((a,b)=>scoreThreat(b,userRole)-scoreThreat(a,userRole));
+    const access=ordered.filter(p=>scoreThreat(p,userRole)>=6).slice(0,3);
+    const threats=(access.length?access:ordered.slice(0,1)).map(p=>p.champion);
+    const zones=enemies.filter(p=>ZONE_CONTROL.has(clean(p.champion)));
+    const aoe=enemies.filter(p=>AOE_CARRY.has(clean(p.champion)));
+    const enemyAdc=byRole(enemies,'ADC');
+    const laneOpponent=byRole(enemies,userRole)||((userRole==='ADC'||userRole==='SUPPORT')?enemyAdc:'');
+    const protectors=ours.filter(p=>clean(p.champion)!==champion&&(PEEL.has(clean(p.champion))||playerRole(p)==='SUPPORT')).slice(0,2).map(p=>p.champion);
+    const pickTools=ours.filter(p=>PICK.has(clean(p.champion))).map(p=>p.champion);
+    const stayWith=protectors.length?protectors.join(' / '):'YOUR PEEL / FRONT LINE';
+    if(userRole==='ADC'&&access.length>=2){
+      const accessText=threats.join(' / ');
+      const setup=[...new Set([...zones,...aoe].map(p=>p.champion).filter(name=>!threats.includes(name)))].slice(0,2);
+      return{
+        headline:SCALERS.has(champion)?'SCALE WITHOUT GIVING ACCESS':'SURVIVE ENTRY → DPS',
+        why:`IF ${accessText} CANNOT REACH ${champion}, YOU GET TO PLAY THE LONG FIGHT`,
+        threatLabel:'DIVE PACKAGE',
+        threats,
+        threatAnswer:`KITE BACK FIRST · STAY WITH ${stayWith} · HOLD FLASH / PEEL UNTIL THEY COMMIT`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT WALK THROUGH THEIR THREAT LINE JUST TO REACH ${enemyAdc}`:'DO NOT WALK PAST YOUR FRONT LINE FOR A BACK-LINE TARGET',
+        ifBehind:'CLEAR THE SAFEST WAVE → GROUP EARLY → MAKE THEM ENTER YOUR RANGE',
+        steps:[
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → FIRST 2 ITEMS':'FARM CLEAN → NEXT DAMAGE ITEM'},
+          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith}`},
+          {label:'3 · SURVIVE',value:`TRACK ${accessText}`},
+          {label:'4 · FIGHT',value:'KITE BACK → DPS CLOSEST SAFE TARGET'},
+          {label:'5 · CONVERT',value:setup.length?`ARRIVE FIRST → DENY ${setup.join(' / ')} SETUP → OBJECTIVE`:'WIN FRONT-TO-BACK → DRAGON / BARON'},
+        ],
+      };
     }
-    if(EARLY.has(champion))return{call:'FIGHT EARLY',why:'CREATE THE FIRST LEAD · CONVERT IT INTO DRAGON / TOWER'};
-    if(ownEarly>=enemyEarly+2)return{call:'PRESS TEMPO',why:'MOVE FIRST · FORCE NUMBERS · CASH OUT BEFORE THEY SCALE'};
-    return{call:'PLAY FOR 2-ITEM FIGHT',why:'FARM CLEAN · ARRIVE FIRST · FIGHT WITH YOUR STRONGEST GROUP'};
+    if(userRole==='ADC'&&pickTools.length>=2){
+      return{
+        headline:'PICK FIRST → DPS THE 5V4',
+        why:`${pickTools.slice(0,2).join(' / ')} CREATE THE NUMBERS EDGE; YOU DO NOT NEED A FAIR 5V5`,
+        threatLabel:'MAIN ACCESS THREAT',
+        threats,
+        threatAnswer:`STAY CONNECTED TO ${stayWith} · LET THE PICK HAPPEN BEFORE YOU WALK FORWARD`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT STEP PAST THE SAFE DAMAGE LINE TO REACH ${enemyAdc}`:'DO NOT OPEN THE FIGHT BY WALKING INTO THEIR FRONT LINE',
+        ifBehind:'SAFE WAVES → PLAY FOG WITH YOUR TEAM → TAKE THE FIRST CLEAN PICK',
+        steps:[
+          {label:'1 · ECONOMY',value:'FARM YOUR ITEM WINDOW'},
+          {label:'2 · LINK',value:`PLAY WITH ${pickTools.slice(0,2).join(' / ')}`},
+          {label:'3 · CREATE',value:'CONTROL VISION → CATCH ONE PLAYER'},
+          {label:'4 · FIGHT',value:'DPS CLOSEST SAFE TARGET IN THE 5V4'},
+          {label:'5 · CONVERT',value:'PICK → DRAGON / BARON / TOWER'},
+        ],
+      };
+    }
+    if(userRole==='ADC'){
+      return{
+        headline:SCALERS.has(champion)?'FARM SPIKE → FRONT-TO-BACK':'PLAY CONNECTED FRONT-TO-BACK',
+        why:'YOUR DAMAGE WINS WHEN YOU SURVIVE FIRST CONTACT AND KEEP HITTING WHAT IS REACHABLE',
+        threatLabel:'MAIN ACCESS THREAT',
+        threats,
+        threatAnswer:`STAY WITH ${stayWith} · PRESERVE RANGE · DPS AFTER FIRST CONTACT`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT WALK PAST THE ENEMY FRONT LINE JUST TO REACH ${enemyAdc}`:'DO NOT TRADE POSITION FOR A BACK-LINE TARGET',
+        ifBehind:'SAFE WAVES → GROUP ON YOUR NEXT ITEM → LET THEM WALK INTO YOUR RANGE',
+        steps:[
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → FIRST 2 ITEMS':'FARM CLEAN → NEXT ITEM'},
+          {label:'2 · POSITION',value:`STAY WITH ${stayWith}`},
+          {label:'3 · SURVIVE',value:`TRACK ${threats.join(' / ')}`},
+          {label:'4 · FIGHT',value:'DPS CLOSEST SAFE TARGET'},
+          {label:'5 · CONVERT',value:'WON FIGHT → DRAGON / BARON / TOWER'},
+        ],
+      };
+    }
+    return{
+      headline:pickTools.length>=2?'PICK FIRST → CONVERT':access.length>=2?'DENY THEIR DIVE → COUNTER':'WIN SETUP → TAKE THE FIGHT',
+      why:access.length>=2?`THEIR CLEANEST WIN IS ${threats.join(' / ')} REACHING YOUR CARRIES BEFORE YOUR TEAM IS SET`:'WIN THE SPACE BEFORE THE FIGHT, THEN MAKE ONE CONNECTED CALL',
+      threatLabel:access.length>=2?'ACCESS PACKAGE':'MAIN THREAT',
+      threats,
+      threatAnswer:access.length>=2?`MARK ${threats.join(' / ')} · HOLD CONTROL UNTIL THEY COMMIT`:'TRACK THEIR FIRST CLEAN ENGAGE BEFORE COMMITTING',
+      laneOpponent,
+      never:'DO NOT START A DISCONNECTED FIGHT YOUR TEAM CANNOT FOLLOW',
+      ifBehind:'CLEAR SAFE RESOURCES → GROUP EARLY → FIGHT FROM NUMBERS / VISION / FIRST DAMAGE',
+      steps:[
+        {label:'1 · SETUP',value:'FARM / RESET CLEANLY BEFORE OBJECTIVE'},
+        {label:'2 · LINK',value:'PLAY WITH YOUR STRONGEST ENGAGE / CARRY PAIR'},
+        {label:'3 · DENY',value:`STOP ${threats.join(' / ')} GETTING THEIR FIGHT`},
+        {label:'4 · EXECUTE',value:pickTools.length>=2?'CATCH ONE → COLLAPSE TOGETHER':'ONE FIRST-CONTACT CALL → FOCUS SAME FIGHT'},
+        {label:'5 · CONVERT',value:'WON FIGHT / PICK → OBJECTIVE → RESET'},
+      ],
+    };
   }
 
   function renderTeam(rootId,players,threatName){
