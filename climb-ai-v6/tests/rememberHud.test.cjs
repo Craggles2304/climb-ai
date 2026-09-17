@@ -26,7 +26,7 @@ test('matchup is visible in champ select when known and remains in the recording
   assert.ok(hud.includes('opPregameMatchup'));
   assert.ok(hud.includes('opRemMatchTitle'));
   assert.ok(hud.includes('state?.matchup?.opponent'));
-  assert.ok(hud.includes('state?.matchup?.plan?.laneDuel?.yourPattern'));
+  assert.ok(hud.includes('plan?.laneDuel?.yourPattern'));
   assert.ok(hud.includes('draftOpponent(state,role)'));
 });
 
