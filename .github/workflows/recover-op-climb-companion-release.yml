@@ -35,79 +35,39 @@ jobs:
           feed_sha512="$(awk '/^sha512:/{print $2; exit}' dist/latest.yml)"
           test "$expected_sha512" = "$feed_sha512"
 
-      - name: Publish one verified release set
+      - name: Recreate beta release and publish verified set
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          if ! gh release view companion-beta --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create companion-beta \
-              --repo "$GITHUB_REPOSITORY" \
-              --prerelease \
-              --title 'OP CLIMB Companion Beta' \
-              --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
-          fi
+          gh release delete companion-beta --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes >/dev/null 2>&1 || true
+          sleep 5
+          gh release create companion-beta \
+            --repo "$GITHUB_REPOSITORY" \
+            --target main \
+            --prerelease \
+            --title 'OP CLIMB Companion Beta' \
+            --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
 
-          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/companion-beta" --jq '.id')"
-
-          delete_asset() {
-            local name="$1"
-            gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" \
-              --jq ".[] | select(.name == \"$name\") | .id" | while read -r asset_id; do
-                [ -z "$asset_id" ] || gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" >/dev/null
-              done
-          }
-
-          publish_asset() {
-            local name="$1"
-            local path="$2"
-            local type="$3"
-            local size sha digest
-            size="$(stat -c%s "$path")"
-            sha="$(sha256sum "$path" | awk '{print $1}')"
-            digest="sha256:$sha"
-
-            for attempt in 1 2 3; do
-              echo "Publishing $name, attempt $attempt of 3"
-              delete_asset "$name"
-
-              set +e
-              curl --silent --show-error --fail-with-body \
-                --connect-timeout 20 \
-                --max-time 240 \
-                -X POST \
-                -H "Authorization: Bearer $GH_TOKEN" \
-                -H 'Accept: application/vnd.github+json' \
-                -H 'X-GitHub-Api-Version: 2022-11-28' \
-                -H "Content-Type: $type" \
-                --data-binary "@$path" \
-                "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$name" \
-                >/tmp/upload.json
-              code=$?
-              set -e
-
-              if [ "$code" -eq 0 ]; then
-                asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" | jq -c --arg name "$name" '.[] | select(.name == $name)' | head -n1)"
-                state="$(jq -r '.state // empty' <<<"$asset")"
-                remote_size="$(jq -r '.size // -1' <<<"$asset")"
-                remote_digest="$(jq -r '.digest // empty' <<<"$asset")"
-                if [ "$state" = 'uploaded' ] && [ "$remote_size" = "$size" ] && [ "$remote_digest" = "$digest" ]; then
-                  echo "Verified $name $digest"
-                  return 0
-                fi
+          upload_file() {
+            local path="$1"
+            local name
+            name="$(basename "$path")"
+            for attempt in 1 2 3 4; do
+              echo "Uploading $name, attempt $attempt of 4"
+              if timeout 300 gh release upload companion-beta "$path" --repo "$GITHUB_REPOSITORY" --clobber; then
+                return 0
               fi
-
-              [ "$attempt" -eq 3 ] || sleep $((attempt * 5))
+              [ "$attempt" -eq 4 ] || sleep $((attempt * 8))
             done
-
-            echo "Failed to publish verified $name" >&2
+            echo "Failed to upload $name" >&2
             return 1
           }
 
-          publish_asset 'OP-Climb-Companion-Setup.exe' 'dist/OP-Climb-Companion-Setup.exe' 'application/x-msdownload'
-          publish_asset 'OP-Climb-Companion-Setup.exe.blockmap' 'dist/OP-Climb-Companion-Setup.exe.blockmap' 'application/octet-stream'
-          publish_asset 'latest.yml' 'dist/latest.yml' 'application/octet-stream'
+          upload_file dist/OP-Climb-Companion-Setup.exe
+          upload_file dist/OP-Climb-Companion-Setup.exe.blockmap
+          upload_file dist/latest.yml
 
       - name: Final release verification
         env:
@@ -120,6 +80,7 @@ jobs:
             size="$(stat -c%s "$path")"
             digest="sha256:$(sha256sum "$path" | awk '{print $1}')"
             asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" | jq -c --arg name "$name" '.[] | select(.name == $name)' | head -n1)"
+            test -n "$asset"
             test "$(jq -r '.state' <<<"$asset")" = 'uploaded'
             test "$(jq -r '.size' <<<"$asset")" = "$size"
             test "$(jq -r '.digest' <<<"$asset")" = "$digest"
