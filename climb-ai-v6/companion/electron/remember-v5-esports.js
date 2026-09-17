@@ -102,6 +102,13 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const source=direct.length?direct:frozen;
     return source.map(p=>({champion:clean(p?.champion||p?.name),role:normRole(p?.position||p?.role)})).filter(p=>p.champion);
   }
+  function inferMissingTeamRole(players){
+    const used=new Set(players.map(playerRole).filter(Boolean));
+    const unresolved=players.filter(p=>!playerRole(p));
+    const remaining=VALID_ROLES.filter(role=>!used.has(role));
+    if(unresolved.length===1&&remaining.length===1)unresolved[0].position=remaining[0];
+    return players;
+  }
   function repairTeam(raw,side,champion,forcedRole){
     const frozen=stateRoster(side);
     const frozenRole=name=>playerRole(frozen.find(p=>clean(p.champion).toLowerCase()===clean(name).toLowerCase()));
@@ -122,7 +129,7 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       const me=list.find(p=>clean(p.champion).toLowerCase()===clean(champion).toLowerCase());
       if(me&&forcedRole)me.position=forcedRole;
     }
-    return list.slice(0,5);
+    return inferMissingTeamRole(list.slice(0,5));
   }
   function scoreThreat(player,userRole){
     const name=clean(player?.champion);const role=playerRole(player);let score=0;
@@ -297,7 +304,11 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       applyCoach(lastCoach,champion,userRole,ours,enemies);
       return;
     }
+    const now=Date.now();
+    if(lastCoachAttemptSignature===signature&&now-lastCoachAttemptAt<30000)return;
     if(coachInFlight||typeof window.opCompanion?.draftCoach!=='function'||ours.length<3||enemies.length<3)return;
+    lastCoachAttemptSignature=signature;
+    lastCoachAttemptAt=now;
     coachInFlight=true;
     try{
       const response=await window.opCompanion.draftCoach({
@@ -323,12 +334,13 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
     if(!me?.team)return;
     const stateRole=normRole(lastState?.matchup?.role||lastState?.matchup?.plan?.role||lastState?.teamPlan?.rememberPlan?.role);
-    const userRole=playerRole(me)||stateRole;
     const oursRaw=players.filter(p=>p.team===me.team);
     const enemiesRaw=players.filter(p=>p.team&&p.team!==me.team);
-    const ours=repairTeam(oursRaw,'ourTeam',champion,userRole);
-    const enemies=repairTeam(enemiesRaw,'theirTeam',champion,userRole);
+    const ours=repairTeam(oursRaw,'ourTeam',champion,playerRole(me)||stateRole);
+    const enemies=repairTeam(enemiesRaw,'theirTeam',champion,'');
     if(!enemies.length)return;
+    const repairedMe=ours.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||ours.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
+    const userRole=playerRole(repairedMe)||stateRole;
     const rosterSignature=[
       champion,userRole,
       ...sorted(ours).map(p=>`O:${playerRole(p)}:${p.champion}`),
@@ -352,6 +364,8 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     if(String(state?.phase||'')!=='RECORDING'||(previousChampion&&champion&&previousChampion!==champion)){
       lastCoachSignature='';
       lastCoach=null;
+      lastCoachAttemptSignature='';
+      lastCoachAttemptAt=0;
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
