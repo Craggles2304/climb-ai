@@ -174,3 +174,19 @@ test('paid draft coach is grounded in rank, ILP and Riot kit facts with a specif
   assert.ok(esports.includes("set('opRemLaneDo',lanePlan.wave)"));
   assert.ok(esports.includes("set('opRemTradeWhen',lanePlan.trade)"));
 });
+
+
+test('live roster repairs Riot NONE role before requesting the deep coach',()=>{
+  assert.ok(esports.includes("['NONE','UNKNOWN','UNSELECTED','INVALID'].includes(raw)"));
+  assert.ok(esports.includes('function inferMissingTeamRole'));
+  assert.ok(esports.includes("const repairedMe=ours.find"));
+  assert.ok(draftCoach.includes("raw==='NONE'||raw==='UNKNOWN'||raw==='UNSELECTED'||raw==='INVALID'"));
+  assert.ok(draftCoach.includes('inferMissingRoles(dedupe(input.ours))'));
+  assert.ok(draftCoach.includes('inferMissingRoles(dedupe(input.enemies))'));
+});
+
+test('failed draft-coach requests are throttled per roster instead of flooding the paid endpoint',()=>{
+  assert.ok(esports.includes('lastCoachAttemptSignature'));
+  assert.ok(esports.includes('now-lastCoachAttemptAt<30000'));
+  assert.ok(esports.includes('lastCoachAttemptSignature=signature'));
+});
