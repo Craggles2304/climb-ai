@@ -188,6 +188,26 @@ async function loadMatchupPlan(raw){
   }finally{clearTimeout(timeout)}
 }
 
+async function requestDraftCoach(context){
+  const cfg=currentConfig();
+  if(!cfg.token)return{ok:false,error:'Pair this PC to OP CLIMB first.'};
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),18_000);
+  try{
+    const response=await fetch(`${cfg.webUrl}/api/live/draft-coach`,{
+      method:'POST',
+      headers:{'content-type':'application/json',authorization:`Bearer ${cfg.token}`},
+      body:JSON.stringify(context||{}),
+      signal:controller.signal,
+    });
+    const body=await response.json().catch(()=>({}));
+    if(response.status===401)return{ok:false,error:'This PC pairing is no longer valid.'};
+    if(!response.ok)return{ok:false,error:body?.error||`Draft coach returned HTTP ${response.status}.`};
+    return body;
+  }catch(err){
+    return{ok:false,error:err?.name==='AbortError'?'Draft coach timed out.':(err?.message||'Could not reach Draft Coach.')};
+  }finally{clearTimeout(timeout)}
+}
+
 function trackerPath(){return app.isPackaged?path.join(process.resourcesPath,'tracker','main.mjs'):path.join(__dirname,'..','src','main.mjs')}
 function stopTracker(){
   stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
@@ -256,6 +276,7 @@ ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
+ipcMain.handle('companion:draft-coach',(_event,context)=>requestDraftCoach(context));
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});

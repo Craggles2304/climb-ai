@@ -11,10 +11,17 @@
   const EARLY=new Set(['Darius','Draven','Elise','Jarvan IV','Jayce','Kalista','Kled','Lee Sin','LeBlanc','Lucian','Nidalee','Olaf','Pantheon','Pyke',"Rek'Sai",'Renekton','Rumble','Talon','Xin Zhao','Zed']);
   const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
   const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Rakan','Rell','Sejuani','Skarner','Vi','Wukong','Zac']);
-  const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Vi','Wukong','Xin Zhao','Yone']);
+  const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Vi','Volibear','Wukong','Xin Zhao','Yone']);
+  const ZONE_CONTROL=new Set(['Anivia','Azir','Brand','Fiddlesticks','Gangplank','Heimerdinger','Hwei','Kennen','Orianna','Rumble','Taliyah','Veigar','Viktor','Ziggs','Zyra']);
+  const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
+  const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Morgana','Nautilus','Neeko','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
+  const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
   let lastState=null;
   let lastRoster=null;
   let lastRosterSignature='';
+  let lastCoachSignature='';
+  let lastCoach=null;
+  let coachInFlight=false;
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -84,42 +91,144 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
 
   function playerRole(player){return normRole(player?.position||player?.role)}
   function sorted(players){return [...players].sort((a,b)=>(ROLE_ORDER[playerRole(a)]??9)-(ROLE_ORDER[playerRole(b)]??9))}
+  function stateRoster(side){
+    const direct=Array.isArray(lastState?.teamPlan?.[side])?lastState.teamPlan[side]:[];
+    const frozen=side==='ourTeam'
+      ?(Array.isArray(lastState?.teamPlan?.rememberPlan?.draftTeams?.ours)?lastState.teamPlan.rememberPlan.draftTeams.ours:[])
+      :(Array.isArray(lastState?.teamPlan?.rememberPlan?.draftTeams?.theirs)?lastState.teamPlan.rememberPlan.draftTeams.theirs:[]);
+    const source=direct.length?direct:frozen;
+    return source.map(p=>({champion:clean(p?.champion||p?.name),role:normRole(p?.position||p?.role)})).filter(p=>p.champion);
+  }
+  function repairTeam(raw,side,champion,forcedRole){
+    const frozen=stateRoster(side);
+    const frozenRole=name=>playerRole(frozen.find(p=>clean(p.champion).toLowerCase()===clean(name).toLowerCase()));
+    const map=new Map();
+    for(const p of raw){
+      const name=clean(p?.champion);if(!name)continue;
+      const key=name.toLowerCase();
+      const next={...p,champion:name,position:playerRole(p)||frozenRole(name)||''};
+      const current=map.get(key);
+      if(!current||(!playerRole(current)&&playerRole(next)))map.set(key,next);
+    }
+    for(const p of frozen){
+      const key=clean(p.champion).toLowerCase();
+      if(!map.has(key)&&map.size<5)map.set(key,{champion:p.champion,team:'',position:playerRole(p)});
+    }
+    const list=[...map.values()];
+    if(side==='ourTeam'&&champion){
+      const me=list.find(p=>clean(p.champion).toLowerCase()===clean(champion).toLowerCase());
+      if(me&&forcedRole)me.position=forcedRole;
+    }
+    return list.slice(0,5);
+  }
   function scoreThreat(player,userRole){
     const name=clean(player?.champion);const role=playerRole(player);let score=0;
     if(ASSASSINS.has(name))score+=8;
     if(HARD_ENGAGE.has(name))score+=7;
-    if(DIVERS.has(name))score+=5;
-    if(userRole==='ADC'&&(role==='JUNGLE'||role==='SUPPORT'))score+=2;
-    if(role==='MID')score+=1;
+    if(DIVERS.has(name))score+=6;
+    if(ZONE_CONTROL.has(name))score+=2;
+    if(userRole==='ADC'&&role&&role!=='ADC')score+=1;
     return score;
   }
-  function threatAnswer(name,userRole){
-    if(ASSASSINS.has(name))return userRole==='ADC'?'TRACK FLANK · HOLD FLASH / PEEL · NEVER ISOLATE':'TRACK FLANK · HOLD ESCAPE FOR THEIR ENTRY';
-    if(HARD_ENGAGE.has(name))return userRole==='ADC'?'STAY OUTSIDE THEIR START RANGE · HIT AFTER FIRST ENGAGE':'BAIT FIRST ENGAGE · COUNTER AFTER COOLDOWN';
-    if(DIVERS.has(name))return userRole==='ADC'?'PLAY BESIDE PEEL · KITE BACK FIRST · DPS SECOND':'DENY THEIR DIVE ANGLE BEFORE COMMITTING';
-    return 'TRACK THEIR POSITION BEFORE THE FIGHT STARTS';
-  }
-  function fightTarget(enemies){return enemies.find(p=>playerRole(p)==='ADC')||enemies.find(p=>playerRole(p)==='MID')||enemies[0]||null}
-  function gameCall(champion,ours,enemies){
-    const ownEarly=ours.filter(p=>EARLY.has(clean(p.champion))).length;
-    const enemyEarly=enemies.filter(p=>EARLY.has(clean(p.champion))).length;
-    if(SCALERS.has(champion)){
-      if(enemyEarly>=2)return{call:'SURVIVE → SCALE',why:'NO EARLY FLIPS · PROTECT CS / XP · FIGHT ON 2 ITEMS'};
-      return{call:'FARM TO 2 ITEMS',why:'KEEP TEMPO CLEAN · GROUP ON YOUR SPIKE · FRONT-TO-BACK'};
+  function byRole(players,role){return players.find(p=>playerRole(p)===role)?.champion||''}
+  function localCoach(champion,userRole,ours,enemies){
+    const ordered=[...enemies].sort((a,b)=>scoreThreat(b,userRole)-scoreThreat(a,userRole));
+    const access=ordered.filter(p=>scoreThreat(p,userRole)>=6).slice(0,3);
+    const threats=(access.length?access:ordered.slice(0,1)).map(p=>p.champion);
+    const zones=enemies.filter(p=>ZONE_CONTROL.has(clean(p.champion)));
+    const aoe=enemies.filter(p=>AOE_CARRY.has(clean(p.champion)));
+    const enemyAdc=byRole(enemies,'ADC');
+    const laneOpponent=byRole(enemies,userRole)||((userRole==='ADC'||userRole==='SUPPORT')?enemyAdc:'');
+    const protectors=ours.filter(p=>clean(p.champion)!==champion&&(PEEL.has(clean(p.champion))||playerRole(p)==='SUPPORT')).slice(0,2).map(p=>p.champion);
+    const pickTools=ours.filter(p=>PICK.has(clean(p.champion))).map(p=>p.champion);
+    const stayWith=protectors.length?protectors.join(' / '):'YOUR PEEL / FRONT LINE';
+    if(userRole==='ADC'&&access.length>=2){
+      const accessText=threats.join(' / ');
+      const setup=[...new Set([...zones,...aoe].map(p=>p.champion).filter(name=>!threats.includes(name)))].slice(0,2);
+      return{
+        headline:SCALERS.has(champion)?'SCALE WITHOUT GIVING ACCESS':'SURVIVE ENTRY → DPS',
+        why:`IF ${accessText} CANNOT REACH ${champion}, YOU GET TO PLAY THE LONG FIGHT`,
+        threatLabel:'DIVE PACKAGE',
+        threats,
+        threatAnswer:`KITE BACK FIRST · STAY WITH ${stayWith} · HOLD FLASH / PEEL UNTIL THEY COMMIT`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT WALK THROUGH THEIR THREAT LINE JUST TO REACH ${enemyAdc}`:'DO NOT WALK PAST YOUR FRONT LINE FOR A BACK-LINE TARGET',
+        ifBehind:'CLEAR THE SAFEST WAVE → GROUP EARLY → MAKE THEM ENTER YOUR RANGE',
+        steps:[
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → FIRST 2 ITEMS':'FARM CLEAN → NEXT DAMAGE ITEM'},
+          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith}`},
+          {label:'3 · SURVIVE',value:`TRACK ${accessText}`},
+          {label:'4 · FIGHT',value:'KITE BACK → DPS CLOSEST SAFE TARGET'},
+          {label:'5 · CONVERT',value:setup.length?`ARRIVE FIRST → DENY ${setup.join(' / ')} SETUP → OBJECTIVE`:'WIN FRONT-TO-BACK → DRAGON / BARON'},
+        ],
+      };
     }
-    if(EARLY.has(champion))return{call:'FIGHT EARLY',why:'CREATE THE FIRST LEAD · CONVERT IT INTO DRAGON / TOWER'};
-    if(ownEarly>=enemyEarly+2)return{call:'PRESS TEMPO',why:'MOVE FIRST · FORCE NUMBERS · CASH OUT BEFORE THEY SCALE'};
-    return{call:'PLAY FOR 2-ITEM FIGHT',why:'FARM CLEAN · ARRIVE FIRST · FIGHT WITH YOUR STRONGEST GROUP'};
+    if(userRole==='ADC'&&pickTools.length>=2){
+      return{
+        headline:'PICK FIRST → DPS THE 5V4',
+        why:`${pickTools.slice(0,2).join(' / ')} CREATE THE NUMBERS EDGE; YOU DO NOT NEED A FAIR 5V5`,
+        threatLabel:'MAIN ACCESS THREAT',
+        threats,
+        threatAnswer:`STAY CONNECTED TO ${stayWith} · LET THE PICK HAPPEN BEFORE YOU WALK FORWARD`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT STEP PAST THE SAFE DAMAGE LINE TO REACH ${enemyAdc}`:'DO NOT OPEN THE FIGHT BY WALKING INTO THEIR FRONT LINE',
+        ifBehind:'SAFE WAVES → PLAY FOG WITH YOUR TEAM → TAKE THE FIRST CLEAN PICK',
+        steps:[
+          {label:'1 · ECONOMY',value:'FARM YOUR ITEM WINDOW'},
+          {label:'2 · LINK',value:`PLAY WITH ${pickTools.slice(0,2).join(' / ')}`},
+          {label:'3 · CREATE',value:'CONTROL VISION → CATCH ONE PLAYER'},
+          {label:'4 · FIGHT',value:'DPS CLOSEST SAFE TARGET IN THE 5V4'},
+          {label:'5 · CONVERT',value:'PICK → DRAGON / BARON / TOWER'},
+        ],
+      };
+    }
+    if(userRole==='ADC'){
+      return{
+        headline:SCALERS.has(champion)?'FARM SPIKE → FRONT-TO-BACK':'PLAY CONNECTED FRONT-TO-BACK',
+        why:'YOUR DAMAGE WINS WHEN YOU SURVIVE FIRST CONTACT AND KEEP HITTING WHAT IS REACHABLE',
+        threatLabel:'MAIN ACCESS THREAT',
+        threats,
+        threatAnswer:`STAY WITH ${stayWith} · PRESERVE RANGE · DPS AFTER FIRST CONTACT`,
+        laneOpponent,
+        never:enemyAdc?`DO NOT WALK PAST THE ENEMY FRONT LINE JUST TO REACH ${enemyAdc}`:'DO NOT TRADE POSITION FOR A BACK-LINE TARGET',
+        ifBehind:'SAFE WAVES → GROUP ON YOUR NEXT ITEM → LET THEM WALK INTO YOUR RANGE',
+        steps:[
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → FIRST 2 ITEMS':'FARM CLEAN → NEXT ITEM'},
+          {label:'2 · POSITION',value:`STAY WITH ${stayWith}`},
+          {label:'3 · SURVIVE',value:`TRACK ${threats.join(' / ')}`},
+          {label:'4 · FIGHT',value:'DPS CLOSEST SAFE TARGET'},
+          {label:'5 · CONVERT',value:'WON FIGHT → DRAGON / BARON / TOWER'},
+        ],
+      };
+    }
+    return{
+      headline:pickTools.length>=2?'PICK FIRST → CONVERT':access.length>=2?'DENY THEIR DIVE → COUNTER':'WIN SETUP → TAKE THE FIGHT',
+      why:access.length>=2?`THEIR CLEANEST WIN IS ${threats.join(' / ')} REACHING YOUR CARRIES BEFORE YOUR TEAM IS SET`:'WIN THE SPACE BEFORE THE FIGHT, THEN MAKE ONE CONNECTED CALL',
+      threatLabel:access.length>=2?'ACCESS PACKAGE':'MAIN THREAT',
+      threats,
+      threatAnswer:access.length>=2?`MARK ${threats.join(' / ')} · HOLD CONTROL UNTIL THEY COMMIT`:'TRACK THEIR FIRST CLEAN ENGAGE BEFORE COMMITTING',
+      laneOpponent,
+      never:'DO NOT START A DISCONNECTED FIGHT YOUR TEAM CANNOT FOLLOW',
+      ifBehind:'CLEAR SAFE RESOURCES → GROUP EARLY → FIGHT FROM NUMBERS / VISION / FIRST DAMAGE',
+      steps:[
+        {label:'1 · SETUP',value:'FARM / RESET CLEANLY BEFORE OBJECTIVE'},
+        {label:'2 · LINK',value:'PLAY WITH YOUR STRONGEST ENGAGE / CARRY PAIR'},
+        {label:'3 · DENY',value:`STOP ${threats.join(' / ')} GETTING THEIR FIGHT`},
+        {label:'4 · EXECUTE',value:pickTools.length>=2?'CATCH ONE → COLLAPSE TOGETHER':'ONE FIRST-CONTACT CALL → FOCUS SAME FIGHT'},
+        {label:'5 · CONVERT',value:'WON FIGHT / PICK → OBJECTIVE → RESET'},
+      ],
+    };
   }
 
   function renderTeam(rootId,players,threatName){
     const root=$(rootId);if(!root)return;
     root.replaceChildren();
+    const dangerNames=(Array.isArray(threatName)?threatName:[threatName]).map(name=>clean(name).toLowerCase()).filter(Boolean);
     const list=sorted(players).slice(0,5);
     for(let i=0;i<5;i++){
       const p=list[i];
       const card=document.createElement('article');
-      card.className=`rem4-pick${p&&clean(p.champion)===clean(threatName)?' threat':''}`;
+      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}`;
       if(p){
         const img=document.createElement('img');img.src=tile(p.champion);img.alt='';img.loading='eager';
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
@@ -136,11 +245,61 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     }
   }
 
-  function updatePath(threat,target,withName){
-    const steps=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
-    if(steps[1]&&withName)steps[1].textContent=upper(`WITH ${withName}`);
-    if(steps[2]&&threat)steps[2].textContent=upper(`DENY ${threat}`);
-    if(steps[3]&&target)steps[3].textContent=upper(`HIT ${target} IF SAFE`);
+  function renderCoachPath(steps){
+    const cards=[...document.querySelectorAll('#opRememberHud .rem4-step')];
+    const list=Array.isArray(steps)?steps.slice(0,5):[];
+    for(let i=0;i<Math.min(cards.length,list.length);i++){
+      const label=cards[i].querySelector('i');
+      const value=cards[i].querySelector('strong');
+      if(label&&clean(list[i]?.label))label.textContent=upper(list[i].label);
+      if(value&&clean(list[i]?.value))value.textContent=upper(list[i].value);
+    }
+  }
+
+  function applyCoach(coach,champion,userRole,ours,enemies){
+    if(!coach)return;
+    const threats=Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[];
+    const threatText=threats.join(' + ')||'THEIR ACCESS';
+    set('opRememberTitle',`${champion||'YOU'} · ${userRole||'ROLE'} // WIN CONDITION`);
+    set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
+    set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
+    const threatLabel=document.querySelector('#opRememberHud .rem4-threat .rem4-label');
+    if(threatLabel&&clean(coach?.threatLabel))threatLabel.textContent=upper(coach.threatLabel);
+    set('opRemThreat',threatText);
+    set('opRemThreatAnswer',coach?.threatAnswer||'TRACK THEIR ENTRY BEFORE COMMITTING');
+    if(threats[0])document.body.style.setProperty('--op-threat-art',`url("${splash(threats[0])}")`);
+    renderTeam('opRemOurTeam',ours,'');
+    renderTeam('opRemTheirTeam',enemies,threats);
+    renderCoachPath(coach?.steps);
+    const lane=clean(coach?.laneOpponent)||byRole(enemies,userRole);
+    if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
+    else set('opRemMatchTitle',userRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
+    if(clean(coach?.never))set('opRemNever',coach.never);
+    if(clean(coach?.ifBehind))set('opRemBehind',coach.ifBehind);
+  }
+
+  async function requestCoach(signature,champion,userRole,ours,enemies){
+    const fallback=localCoach(champion,userRole,ours,enemies);
+    applyCoach(fallback,champion,userRole,ours,enemies);
+    if(lastCoachSignature===signature&&lastCoach){
+      applyCoach(lastCoach,champion,userRole,ours,enemies);
+      return;
+    }
+    if(coachInFlight||typeof window.opCompanion?.draftCoach!=='function'||ours.length<3||enemies.length<3)return;
+    coachInFlight=true;
+    try{
+      const response=await window.opCompanion.draftCoach({
+        champion,
+        role:userRole,
+        ours:ours.map(p=>({champion:p.champion,role:playerRole(p)||null})),
+        enemies:enemies.map(p=>({champion:p.champion,role:playerRole(p)||null})),
+      });
+      if(response?.ok&&response?.ready&&response?.coach){
+        lastCoachSignature=signature;
+        lastCoach=response.coach;
+        applyCoach(lastCoach,champion,userRole,ours,enemies);
+      }
+    }catch{}finally{coachInFlight=false}
   }
 
   function applyRoster(payload){
@@ -151,33 +310,37 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const champion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
     const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
     if(!me?.team)return;
-    const ours=players.filter(p=>p.team===me.team);
-    const enemies=players.filter(p=>p.team&&p.team!==me.team);
+    const stateRole=normRole(lastState?.matchup?.role||lastState?.matchup?.plan?.role||lastState?.teamPlan?.rememberPlan?.role);
+    const userRole=playerRole(me)||stateRole;
+    const oursRaw=players.filter(p=>p.team===me.team);
+    const enemiesRaw=players.filter(p=>p.team&&p.team!==me.team);
+    const ours=repairTeam(oursRaw,'ourTeam',champion,userRole);
+    const enemies=repairTeam(enemiesRaw,'theirTeam',champion,userRole);
     if(!enemies.length)return;
-    const rosterSignature=players.map(p=>`${p.team}:${p.position}:${p.champion}`).join('|');
-    const role=playerRole(me)||normRole(lastState?.matchup?.role||lastState?.teamPlan?.rememberPlan?.role);
-    const threat=[...enemies].sort((a,b)=>scoreThreat(b,role)-scoreThreat(a,role))[0];
-    const target=fightTarget(enemies);
-    const laneOpponent=enemies.find(p=>playerRole(p)===role)||(role==='ADC'?enemies.find(p=>playerRole(p)==='ADC'):null);
-    const withNames=ours.filter(p=>clean(p.champion)!==champion).filter(p=>role==='ADC'?['SUPPORT','JUNGLE'].includes(playerRole(p)):true).slice(0,2).map(p=>p.champion);
-    const call=gameCall(champion,ours,enemies);
+    const rosterSignature=[
+      champion,userRole,
+      ...sorted(ours).map(p=>`O:${playerRole(p)}:${p.champion}`),
+      ...sorted(enemies).map(p=>`E:${playerRole(p)}:${p.champion}`),
+    ].join('|').toLowerCase();
 
     if(rosterSignature!==lastRosterSignature){
       lastRosterSignature=rosterSignature;
       renderTeam('opRemOurTeam',ours,'');
-      renderTeam('opRemTheirTeam',enemies,threat?.champion);
+      renderTeam('opRemTheirTeam',enemies,'');
     }
-    set('opRemGameCall',call.call);set('opRemGameCallWhy',call.why);
-    if(threat){set('opRemThreat',threat.champion);set('opRemThreatAnswer',threatAnswer(threat.champion,role));document.body.style.setProperty('--op-threat-art',`url("${splash(threat.champion)}")`)}
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
-    if(laneOpponent)set('opRemMatchTitle',`${champion||'YOU'} VS ${laneOpponent.champion}`);
-    updatePath(threat?.champion,target?.champion,withNames.join(' / '));
+    void requestCoach(rosterSignature,champion,userRole,ours,enemies);
   }
 
   function onState(state){
+    const previousChampion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
     lastState=state;
     installVisualLayer();
     const champion=clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.teamPlan?.rememberPlan?.champion);
+    if(String(state?.phase||'')!=='RECORDING'||(previousChampion&&champion&&previousChampion!==champion)){
+      lastCoachSignature='';
+      lastCoach=null;
+    }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
   }

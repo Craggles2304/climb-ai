@@ -12,6 +12,9 @@ const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
+const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
+const main=fs.readFileSync(path.join(root,'companion','electron','main.cjs'),'utf8');
+const preload=fs.readFileSync(path.join(root,'companion','electron','preload.cjs'),'utf8');
 const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),'utf8');
 
 test('recording UI is a concise esports coach board instead of a text wall',()=>{
@@ -38,7 +41,7 @@ test('live board fills the app and receives the actual in-game roster',()=>{
   assert.ok(esports.includes("window.addEventListener('op-climb-live-roster'"));
   assert.ok(esports.includes("renderTeam('opRemTheirTeam'"));
   assert.ok(esports.includes('scoreThreat'));
-  assert.ok(esports.includes("call:'SURVIVE → SCALE'"));
+  assert.ok(esports.includes('SCALE WITHOUT GIVING ACCESS'));
   assert.ok(liveRoster.includes("PATH='/liveclientdata/allgamedata'"));
   assert.ok(liveRoster.includes("new CustomEvent('op-climb-live-roster'"));
   assert.ok(bootstrap.includes("require('./live-roster.cjs')"));
@@ -135,4 +138,25 @@ test('game-state adaptation stays player-led rather than reactive live shotcalli
   assert.ok(model.includes("minute:15"));
   assert.ok(hud.includes('YOU READ THE LIVE GAME STATE'));
   assert.ok(hud.includes('NO REACTIVE SHOTCALLING'));
+});
+
+
+test('paid live draft coach reasons about composition interactions instead of champion buckets',()=>{
+  assert.ok(esports.includes('SCALE WITHOUT GIVING ACCESS'));
+  assert.ok(esports.includes('DIVE PACKAGE'));
+  assert.ok(esports.includes('DPS CLOSEST SAFE TARGET'));
+  assert.ok(esports.includes('repairTeam'));
+  assert.ok(esports.includes('window.opCompanion.draftCoach'));
+  assert.ok(draftCoach.includes('target accessibility'));
+  assert.ok(draftCoach.includes('multi-champion threat PACKAGE'));
+  assert.ok(draftCoach.includes('closest safe target'));
+  assert.ok(draftCoach.includes("PLUS or PRO is required for the full draft coach."));
+});
+
+test('desktop bridges the exact live roster into the server draft coach once per draft',()=>{
+  assert.ok(main.includes('/api/live/draft-coach'));
+  assert.ok(main.includes("ipcMain.handle('companion:draft-coach'"));
+  assert.ok(preload.includes("draftCoach:(context)=>ipcRenderer.invoke('companion:draft-coach',context)"));
+  assert.ok(esports.includes('lastCoachSignature'));
+  assert.ok(esports.includes('lastRosterSignature'));
 });
