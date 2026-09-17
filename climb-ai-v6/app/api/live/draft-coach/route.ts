@@ -51,9 +51,23 @@ const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Mor
 const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
 const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
 
+const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'] as const;
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
-function role(value:unknown){const r=clean(value).toUpperCase();if(r==='BOTTOM')return'ADC';if(r==='UTILITY')return'SUPPORT';if(r==='MIDDLE')return'MID';return r}
+function role(value:unknown){
+  const raw=clean(value).toUpperCase();
+  if(!raw||raw==='NONE'||raw==='UNKNOWN'||raw==='UNSELECTED'||raw==='INVALID')return'';
+  const r=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;
+  return VALID_ROLES.includes(r as any)?r:'';
+}
 function dedupe(players:Player[]){const seen=new Set<string>();return players.filter(player=>{const key=clean(player.champion).toLowerCase();if(!key||seen.has(key))return false;seen.add(key);return true}).map(player=>({champion:clean(player.champion),role:role(player.role)||null}))}
+function inferMissingRoles(players:Player[]){
+  const used=new Set(players.map(player=>role(player.role)).filter(Boolean));
+  const unresolved=players.filter(player=>!role(player.role));
+  const remaining=VALID_ROLES.filter(candidate=>!used.has(candidate));
+  if(unresolved.length!==1||remaining.length!==1)return players;
+  const target=unresolved[0];
+  return players.map(player=>player===target?{...player,role:remaining[0]}:player);
+}
 function byRole(players:Player[],wanted:string){return players.find(player=>role(player.role)===wanted)?.champion??null}
 function names(players:Player[]){return players.map(player=>player.champion)}
 function clip(value:unknown,max=180){const text=clean(value);return text.length<=max?text:text.slice(0,max-1).replace(/\s+\S*$/,'')+'…'}
@@ -393,8 +407,8 @@ export async function POST(req:NextRequest){
 
   try{
     const input=requestSchema.parse(await req.json());
-    const ours=dedupe(input.ours);
-    const enemies=dedupe(input.enemies);
+    const ours=inferMissingRoles(dedupe(input.ours));
+    const enemies=inferMissingRoles(dedupe(input.enemies));
     const champion=clean(input.champion);
     const userRole=role(input.role)||role(ours.find(player=>player.champion.toLowerCase()===champion.toLowerCase())?.role);
     if(ours.length<3||enemies.length<3)return NextResponse.json({ok:false,error:'Not enough of the draft is resolved yet.'},{status:202});
