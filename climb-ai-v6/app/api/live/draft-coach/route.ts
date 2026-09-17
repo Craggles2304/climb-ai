@@ -285,13 +285,37 @@ function qualityReport(coach:DraftCoach,ours:Player[],enemies:Player[],kits:KitF
   return{score,issues,championMentions,abilityMentions};
 }
 
+
 async function callCoachModel(system:string,user:string){
   if(!process.env.OPENAI_API_KEY)return null;
+  const primaryModel=process.env.OPENAI_DRAFT_COACH_MODEL||'gpt-5.6-terra';
+  try{
+    const response=await fetch('https://api.openai.com/v1/responses',{
+      method:'POST',
+      headers:{'content-type':'application/json',authorization:'Bearer '+process.env.OPENAI_API_KEY},
+      body:JSON.stringify({
+        model:primaryModel,
+        instructions:system,
+        input:user,
+        reasoning:{effort:'medium'},
+        max_output_tokens:2200,
+      }),
+    });
+    if(response.ok){
+      const body=await response.json();
+      const text=clean(body?.output_text)||clean((Array.isArray(body?.output)?body.output:[]).flatMap((item:any)=>Array.isArray(item?.content)?item.content:[]).find((part:any)=>part?.type==='output_text')?.text);
+      if(text)return outputSchema.parse(JSON.parse(text));
+    }
+  }catch(error){
+    console.warn('[draft-coach] responses model fallback',error);
+  }
+
+  const fallbackModel=process.env.OPENAI_COACH_MODEL||'gpt-4o-mini';
   const response=await fetch('https://api.openai.com/v1/chat/completions',{
     method:'POST',
     headers:{'content-type':'application/json',authorization:'Bearer '+process.env.OPENAI_API_KEY},
     body:JSON.stringify({
-      model:process.env.OPENAI_DRAFT_COACH_MODEL||process.env.OPENAI_COACH_MODEL||'gpt-4o-mini',
+      model:fallbackModel,
       temperature:.12,
       response_format:{type:'json_object'},
       messages:[{role:'system',content:system},{role:'user',content:user}],
