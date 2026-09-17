@@ -31,7 +31,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Companion desktop syntax
-        run: node --check companion/electron/main.cjs && node --check companion/electron/renderer.js && node --check companion/electron/preload.cjs && node --check companion/electron/remember-v2.js && node --check companion/electron/review-v2.js && node --check companion/electron/review-v2-core.js && node --check companion/src/main.mjs && node --test tests/companionPhaseOrder.test.cjs tests/companionRoleInference.test.cjs tests/companionStrategy.test.cjs tests/companionStrategyAccess.test.cjs tests/universalRoleStrategy.test.cjs tests/rememberHud.test.cjs
+        run: node --check companion/electron/main.cjs && node --check companion/electron/renderer.js && node --check companion/electron/preload.cjs && node --check companion/electron/remember-v2.js && node --check companion/electron/review-v2.js && node --check companion/electron/review-v2-core.js && node --check companion/electron/review-esports.js && node --check companion/src/main.mjs && node --test tests/companionPhaseOrder.test.cjs tests/companionRoleInference.test.cjs tests/companionStrategy.test.cjs tests/companionStrategyAccess.test.cjs tests/universalRoleStrategy.test.cjs tests/rememberHud.test.cjs tests/reviewEsportsUi.test.cjs
       - name: Adaptive ILP evidence regressions
         run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/ilpCloudMerge.test.ts tests/ilpExplainability.test.ts
       - name: Ability damage type regressions
