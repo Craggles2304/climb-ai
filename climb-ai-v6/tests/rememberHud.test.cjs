@@ -6,6 +6,9 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const hud=fs.readFileSync(path.join(root,'companion','electron','remember-v3.js'),'utf8');
 const matchup=fs.readFileSync(path.join(root,'companion','electron','remember-v3-matchup.js'),'utf8');
+const esports=fs.readFileSync(path.join(root,'companion','electron','remember-v5-esports.js'),'utf8');
+const liveRoster=fs.readFileSync(path.join(root,'companion','electron','live-roster.cjs'),'utf8');
+const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap.cjs'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
@@ -14,6 +17,8 @@ const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),
 test('recording UI is a concise esports coach board instead of a text wall',()=>{
   assert.doesNotThrow(()=>new Function(hud));
   assert.doesNotThrow(()=>new Function(matchup));
+  assert.doesNotThrow(()=>new Function(esports));
+  assert.doesNotThrow(()=>new Function(liveRoster));
   for(const label of ['YOUR TEAM','THEIR TEAM','MATCH CALL','MAIN THREAT','YOUR WIN CONDITION PATH','DO THESE IN ORDER','LANE','WAVE','TRADE','NEVER','IF BEHIND','CLIMB MISSION']){
     assert.ok(hud.includes(label),`missing ${label}`);
   }
@@ -24,6 +29,19 @@ test('recording UI is a concise esports coach board instead of a text wall',()=>
   assert.ok(hud.includes('PLAN LOCKED'));
   assert.ok(loader.includes("load('remember-v3.js')"));
   assert.ok(loader.includes("load('remember-v3-matchup.js')"));
+  assert.ok(loader.includes("load('remember-v5-esports.js')"));
+});
+
+test('live board fills the app and receives the actual in-game roster',()=>{
+  assert.ok(esports.includes('min-height:calc(100vh - 94px)'));
+  assert.ok(esports.includes('grid-template-rows:minmax(108px'));
+  assert.ok(esports.includes("window.addEventListener('op-climb-live-roster'"));
+  assert.ok(esports.includes("renderTeam('opRemTheirTeam'"));
+  assert.ok(esports.includes('scoreThreat'));
+  assert.ok(esports.includes("call:'SURVIVE → SCALE'"));
+  assert.ok(liveRoster.includes("PATH='/liveclientdata/allgamedata'"));
+  assert.ok(liveRoster.includes("new CustomEvent('op-climb-live-roster'"));
+  assert.ok(bootstrap.includes("require('./live-roster.cjs')"));
 });
 
 test('their full draft survives champ select and renders on the live board',()=>{

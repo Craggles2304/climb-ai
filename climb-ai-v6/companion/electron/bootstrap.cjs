@@ -156,4 +156,5 @@ app.whenReady().then(()=>{
 });
 app.on('before-quit',()=>{if(checkTimer){clearInterval(checkTimer);checkTimer=null}});
 
+require('./live-roster.cjs');
 require('./main.cjs');
