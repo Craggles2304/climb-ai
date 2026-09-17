@@ -15,6 +15,7 @@ export interface PregameTeamPlan{
   startFight:string;
   yourJob:string;
   playAround:string;
+  ourWinCondition:string;
   theirWinCondition:string;
   biggestThrow:string;
   note:string;
@@ -40,6 +41,11 @@ export function buildPregameTeamPlan(input:{
   const sidelane=sidelanePlan(me,ours);
   const initiators=allies.filter(p=>isFrontline(p)||p.role==='JUNGLE'||p.role==='SUPPORT').slice(0,2).map(p=>p.name);
   const carries=allies.filter(p=>isCarry(p)).slice(0,2).map(p=>p.name);
+  const playAround=carries.length&&initiators.length
+    ?`Let ${initiators[0]} create space, then keep ${carries.join(' / ')} able to deal damage. The formation matters more than reaching the enemy back line instantly.`
+    :carries.length
+      ?`Keep ${carries.join(' / ')} alive and connected to the fight. Your comp gets more value from sustained damage than from five separate engages.`
+      :`Stay connected to the strongest part of your formation. Do not split the team into isolated mini-fights.`;
 
   return{
     version:1,
@@ -54,11 +60,8 @@ export function buildPregameTeamPlan(input:{
       ?`${initiators.join(' / ')} should usually create first contact. Your damage dealers should not have to walk in first.`
       :`Your comp has no obvious front line from static champion roles. Prefer enemy mistakes, range pressure or a clean pick over a blind 5v5 engage.`,
     yourJob:jobFor(me,ours,theirs),
-    playAround:carries.length&&initiators.length
-      ?`Let ${initiators[0]} create space, then keep ${carries.join(' / ')} able to deal damage. The formation matters more than reaching the enemy back line instantly.`
-      :carries.length
-        ?`Keep ${carries.join(' / ')} alive and connected to the fight. Your comp gets more value from sustained damage than from five separate engages.`
-        :`Stay connected to the strongest part of your formation. Do not split the team into isolated mini-fights.`,
+    playAround,
+    ourWinCondition:ourWinCondition({ours,me,initiators,carries,enemyCount:enemies.length}),
     theirWinCondition:enemyWinCondition(theirs,enemies.length),
     biggestThrow:throwCondition(me,ours,theirs,enemies.length),
     note:enemies.length<5
@@ -108,6 +111,21 @@ function teamfightPlan(ours:ReturnType<typeof shape>,enemyCount:number){
   if(ours.poke>=3)return{label:'POKE THEN COMMIT',summary:'Use range to lower HP or force space before committing. A neutral full-health engage wastes the part of the composition that is strongest.'};
   if(ours.assassins>=2)return{label:'PICK & RESET',summary:'Create a numbers advantage before the full fight where possible. Avoid standing front-to-back into a more durable five-player formation.'};
   return{label:enemyCount<3?'FORMATION TBD':'CONTROLLED 5V5',summary:'Stay connected, let the first clean engage or enemy overstep define the fight, and avoid splitting damage across unrelated targets.'};
+}
+function ourWinCondition(input:{ours:ReturnType<typeof shape>;me:Read;initiators:string[];carries:string[];enemyCount:number}){
+  const {ours,me,initiators,carries,enemyCount}=input;
+  if(enemyCount<5)return'LOCK THE FINAL DRAFT READ → KEEP THE MAP PLAYABLE → COMMIT TO THE FULL PLAN ONCE ALL FIVE ENEMIES ARE KNOWN.';
+  const initiator=initiators[0]||'front line';
+  const carry=carries[0]||'your strongest damage dealer';
+  const objectiveLead=me.role==='JUNGLE'
+    ?'PATH TOWARD PRIORITY → ARRIVE FIRST WITH SMITE → TURN THE FIRST CLEAN ADVANTAGE INTO THE NEXT OBJECTIVE'
+    :'CREATE PRIORITY → RESET ON TIME → ARRIVE FIRST TO THE NEXT OBJECTIVE';
+  if(ours.frontline>=1&&ours.carry>=2&&ours.dive>=2)return`${objectiveLead} → LET ${initiator.toUpperCase()} CREATE FIRST CONTACT → BACK LINE HITS FRONT-TO-BACK WHILE DIVERS ENTER SECOND → TAKE THE OBJECTIVE AFTER THE FIGHT.`;
+  if(ours.frontline>=2&&ours.carry>=2)return`${objectiveLead} → KEEP ${carry.toUpperCase()} BEHIND THE FRONT LINE → HIT THE NEAREST SAFE TARGET → TAKE THE OBJECTIVE WHEN THEIR FRONT LINE BREAKS.`;
+  if(ours.dive>=3)return`${objectiveLead} → CONTROL FLANK VISION → ONE ENGAGE CALL → DIVERS ENTER TOGETHER ON ONE TARGET → CONVERT THE KILL INTO THE OBJECTIVE.`;
+  if(ours.poke>=3)return`${objectiveLead} → TAKE SPACE FIRST → LOWER THEIR HP BEFORE COMMITTING → FORCE THEM OFF THE OBJECTIVE OR FINISH THE FIGHT WITH THE HP EDGE.`;
+  if(ours.assassins>=2)return`${objectiveLead} → DENY VISION → CATCH ONE PLAYER BEFORE THE 5V5 → USE THE 5V4 TO TAKE THE OBJECTIVE INSTEAD OF CHASING.`;
+  return`${objectiveLead} → STAY CONNECTED → FIGHT ON ONE CALL → CONVERT THE WON SPACE INTO THE OBJECTIVE INSTEAD OF CHASING KILLS.`;
 }
 function sidelanePlan(me:Read,ours:ReturnType<typeof shape>){
   if(me.role==='SUPPORT'||me.role==='JUNGLE')return{label:'GROUP / SET UP',summary:'You are not the primary side-laner. Stay connected to vision, objectives and the players your kit enables.'};

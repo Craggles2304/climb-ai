@@ -14,7 +14,7 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=15_000;
-const RUNTIME_VERSION='2026.09.14.1';
+const RUNTIME_VERSION='2026.09.16.2';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
@@ -165,7 +165,7 @@ async function normalizePregame(data){
   const locked=cellId=>actions.some(action=>text(action?.type).toLowerCase()==='pick'&&int(action?.actorCellId,-1)===cellId&&Boolean(action?.completed));
   const mapPick=raw=>{
     const cellId=int(raw?.cellId,-1),championId=int(raw?.championId,0);
-    return{cellId,championId,championName:championNames.get(championId)||null,role:text(raw?.assignedPosition)||text(raw?.position)||null,lockedIn:locked(cellId)};
+    return{cellId,championId,championName:championNames.get(championId)||null,role:champSelectRole(raw)||null,lockedIn:locked(cellId)};
   };
   const localCell=int(data?.localPlayerCellId,-1);
   const localRaw=myTeam.find(p=>int(p?.cellId,-1)===localCell)||null;
@@ -177,7 +177,7 @@ async function normalizePregame(data){
     localPlayerCellId:localCell,
     localChampionId,
     localChampionName:championNames.get(localChampionId)||null,
-    localRole:text(localRaw?.assignedPosition)||text(localRaw?.position)||null,
+    localRole:champSelectRole(localRaw)||null,
     localLockedIn:localCell>=0?locked(localCell):false,
     allies:myTeam.map(mapPick).slice(0,5),
     enemies:theirTeam.map(mapPick).slice(0,5),
@@ -195,6 +195,14 @@ function canonicalRole(value){
   if(role==='MIDDLE'||role==='MID')return'MID';
   if(role==='TOP')return'TOP';
   if(role==='JUNGLE')return'JUNGLE';
+  return'';
+}
+
+function champSelectRole(raw){
+  const explicit=canonicalRole(text(raw?.assignedPosition)||text(raw?.position));
+  if(explicit)return explicit;
+  const spell1=int(raw?.spell1Id,0),spell2=int(raw?.spell2Id,0);
+  if(spell1===11||spell2===11)return'JUNGLE';
   return'';
 }
 
@@ -308,7 +316,8 @@ async function pollPregame(){
       else if(result.retryable)console.warn(`OVERPOWERED Companion: champ-select upload deferred — ${result.detail}. Detection continues locally.`);
     }
     const pick=context.localChampionName||'your champion';
-    logState('CHAMP_SELECT',`OVERPOWERED Companion: champ select detected — ${pick}${context.localLockedIn?' locked in':''}. Draft context will be saved for post-game learning.`);
+    const role=context.localRole?` · ${context.localRole}`:'';
+    logState('CHAMP_SELECT',`OVERPOWERED Companion: champ select detected — ${pick}${role}${context.localLockedIn?' locked in':''}. Draft context will be saved for post-game learning.`);
   }catch(err){
     if(err?.status===404){lastLcuDetected=true;lastChampSelectDetected=false;lastLcuDetail='League Client connected; waiting for champ select.'}
     else{lastLcuDetected=false;lastChampSelectDetected=false;lastLcuDetail=err?.message||'League Client local connection unavailable.'}
