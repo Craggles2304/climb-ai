@@ -175,6 +175,140 @@ async function paidStrategy(db:any,userId:string){
   return hasTier(tier,'PLUS');
 }
 
+
+async function playerContext(db:any,device:{userId:string;riotAccountId:string|null}){
+  const profilePromise=db.from('profiles').select('rank').eq('id',device.userId).maybeSingle();
+  const riotPromise=device.riotAccountId
+    ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
+    :Promise.resolve({data:null,error:null});
+  const taskPromise=device.riotAccountId
+    ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(12)
+    :Promise.resolve({data:[],error:null});
+  const [profileResult,riotResult,taskResult]=await Promise.all([profilePromise,riotPromise,taskPromise]);
+  const tier=clean(riotResult?.data?.rank_tier);
+  const division=clean(riotResult?.data?.rank_division);
+  const rank=tier?(tier+(division?' '+division:'')):(clean(profileResult?.data?.rank)||'Silver');
+  const tasks=(taskResult?.data??[]).map((row:any)=>row?.payload??{}).filter((task:any)=>{
+    const status=clean(task?.status||'ACTIVE').toUpperCase();
+    return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
+  }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
+  const task=tasks[0]??null;
+  return{rank,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
+}
+
+async function kitFacts(players:Player[]):Promise<KitFact[]>{
+  try{
+    const patch=await latestPatch();
+    const unique=[...new Set(players.map(player=>player.champion).filter(Boolean))];
+    const ids=await Promise.all(unique.map(async champion=>({champion,id:await resolveChampionId(champion,patch)})));
+    const details=await Promise.all(ids.filter((item):item is {champion:string;id:string}=>Boolean(item.id)).map(async item=>({champion:item.champion,detail:await championDetail(item.id,patch)})));
+    return details.map(({champion,detail})=>({
+      champion:detail.name||champion,
+      tags:Array.isArray(detail.tags)?detail.tags.slice(0,3):[],
+      attackRange:Number.isFinite(detail.stats?.attackrange)?detail.stats.attackrange:null,
+      passive:detail.passive?clip(detail.passive.name+': '+String((detail.passive as any).description||''),180):null,
+      spells:(Array.isArray(detail.spells)?detail.spells:[]).slice(0,4).map((spell:any,index:number)=>({
+        slot:['Q','W','E','R'][index]||String(index+1),
+        name:clean(spell?.name),
+        cooldown:Array.isArray(spell?.cooldown)&&Number.isFinite(Number(spell.cooldown[0]))?Number(spell.cooldown[0]):null,
+        range:Array.isArray(spell?.range)&&Number.isFinite(Number(spell.range[0]))?Number(spell.range[0]):null,
+        description:clip(spell?.description||spell?.tooltip||'',160)||null,
+      })),
+      allyTips:(Array.isArray(detail.allytips)?detail.allytips:[]).slice(0,2).map((tip:string)=>clip(tip,180)),
+      enemyTips:(Array.isArray(detail.enemytips)?detail.enemytips:[]).slice(0,2).map((tip:string)=>clip(tip,180)),
+    }));
+  }catch(error){
+    console.warn('[draft-coach] kit facts unavailable',error);
+    return[];
+  }
+}
+
+function fallbackLane(userRole:string,laneOpponent:string|null){
+  if(!laneOpponent)return{
+    wave:'KEEP THE WAVE PLAYABLE UNTIL THE LANE ROLE IS FULLY RESOLVED',
+    trade:'ONLY TRADE WHEN YOUR LANE PARTNER CAN CONNECT OR A KEY SPELL IS DOWN',
+    respect:'DO NOT FORCE A FULL-HP ALL-IN FROM AN EVEN WAVE',
+  };
+  if(userRole==='ADC')return{
+    wave:'KEEP FARM STABLE VS '+laneOpponent+' · DO NOT SACRIFICE HP FOR ONE CS',
+    trade:'TRADE AFTER '+laneOpponent+' SPENDS A KEY SPELL OR STEPS UP WITHOUT SUPPORT COVER',
+    respect:'DO NOT EXTEND PAST THE WAVE JUST TO HIT '+laneOpponent,
+  };
+  return{
+    wave:'CONTROL THE WAVE SO '+laneOpponent+' HAS TO SHOW BEFORE YOU COMMIT',
+    trade:'PUNISH '+laneOpponent+' AFTER A KEY COOLDOWN OR MISPOSITION',
+    respect:'DO NOT FORCE THE MATCHUP WHEN '+laneOpponent+' HAS THE BETTER WAVE / FIRST MOVE',
+  };
+}
+
+function completeCoach(coach:DraftCoach,userRole:string,enemies:Player[]):DraftCoach{
+  const laneOpponent=coach.laneOpponent||byRole(enemies,userRole)||((userRole==='ADC'||userRole==='SUPPORT')?byRole(enemies,'ADC'):null);
+  return{
+    ...coach,
+    laneOpponent,
+    theirPlan:coach.theirPlan||'THEY WANT TO BREAK YOUR FORMATION BEFORE YOUR DAMAGE OR ENGAGE CAN SET.',
+    lanePlan:coach.lanePlan||fallbackLane(userRole,laneOpponent),
+    fightTrigger:coach.fightTrigger||'COMMIT ONLY AFTER THEIR FIRST ACCESS TOOL IS SHOWN OR YOUR TEAM CREATES FIRST CONTACT.',
+    objectiveSetup:coach.objectiveSetup||'ARRIVE FIRST → CONTROL THE ENTRY → MAKE THEM WALK INTO YOUR FORMATION.',
+  };
+}
+
+function allCoachText(coach:DraftCoach){
+  const lane=coach.lanePlan||{wave:'',trade:'',respect:''};
+  return clean([
+    coach.headline,coach.why,coach.theirPlan,coach.threatAnswer,coach.fightTrigger,coach.objectiveSetup,coach.never,coach.ifBehind,
+    lane.wave,lane.trade,lane.respect,...coach.steps.map(step=>step.label+' '+step.value),
+  ].join(' ')).toLowerCase();
+}
+
+function qualityReport(coach:DraftCoach,ours:Player[],enemies:Player[],kits:KitFact[]){
+  const text=allCoachText(coach);
+  const allNames=[...ours,...enemies].map(player=>player.champion);
+  const championMentions=[...new Set(allNames.filter(name=>text.includes(name.toLowerCase())))];
+  const abilityNames=[...new Set(kits.flatMap(kit=>[
+    kit.passive?.split(':')[0]||'',
+    ...kit.spells.map(spell=>spell.name),
+  ]).map(clean).filter(name=>name.length>=4))];
+  const abilityMentions=[...new Set(abilityNames.filter(name=>text.includes(name.toLowerCase())))];
+  const conditional=(text.match(/\b(if|when|after|before|until|once|only when|as soon as|hold|bait|track|wait)\b/g)||[]).length;
+  const genericHits=GENERIC_PHRASES.filter(phrase=>text.includes(phrase));
+  const distinctSteps=new Set(coach.steps.map(step=>clean(step.value).toLowerCase())).size;
+  const issues:string[]=[];
+  let score=0;
+  if(championMentions.length>=4)score+=3;else if(championMentions.length>=2)score+=1;else issues.push('not enough named champion interactions');
+  if(abilityMentions.length>=2)score+=2;else if(kits.length>=8)issues.push('not enough ability/cooldown-specific detail');
+  if(conditional>=4)score+=2;else issues.push('not enough if/when/after decision rules');
+  if(distinctSteps===5)score+=1;else issues.push('five steps are repetitive');
+  if(coach.laneOpponent&&coach.lanePlan?.trade.toLowerCase().includes(coach.laneOpponent.toLowerCase()))score+=1;else if(coach.laneOpponent)issues.push('lane advice is not tied to the actual opponent');
+  if(coach.threats.some(name=>coach.threatAnswer.toLowerCase().includes(name.toLowerCase())))score+=1;else issues.push('counter-plan does not name the threat it answers');
+  if(genericHits.length>=4){score-=2;issues.push('too many generic coaching phrases')}
+  return{score,issues,championMentions,abilityMentions};
+}
+
+async function callCoachModel(system:string,user:string){
+  if(!process.env.OPENAI_API_KEY)return null;
+  const response=await fetch('https://api.openai.com/v1/chat/completions',{
+    method:'POST',
+    headers:{'content-type':'application/json',authorization:'Bearer '+process.env.OPENAI_API_KEY},
+    body:JSON.stringify({
+      model:process.env.OPENAI_DRAFT_COACH_MODEL||process.env.OPENAI_COACH_MODEL||'gpt-4o-mini',
+      temperature:.12,
+      response_format:{type:'json_object'},
+      messages:[{role:'system',content:system},{role:'user',content:user}],
+    }),
+  });
+  if(!response.ok)return null;
+  const body=await response.json();
+  return outputSchema.parse(JSON.parse(body?.choices?.[0]?.message?.content||'{}'));
+}
+
+function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
+  const enemyMap=new Map(enemies.map(player=>[player.champion.toLowerCase(),player.champion]));
+  const threats=parsed.threats.map(name=>enemyMap.get(name.toLowerCase())).filter((name):name is string=>Boolean(name));
+  const laneOpponent=parsed.laneOpponent?enemyMap.get(parsed.laneOpponent.toLowerCase())??fallback.laneOpponent:fallback.laneOpponent;
+  return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
+}
+
 async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
