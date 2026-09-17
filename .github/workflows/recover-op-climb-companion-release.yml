@@ -1,0 +1,140 @@
+name: Recover OP CLIMB Companion Release
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - '.github/workflows/recover-op-climb-companion-release.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  recover-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Cancel wedged publisher runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          for run_id in 35260024250 35261355301; do
+            status="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$run_id" --jq '.status' 2>/dev/null || true)"
+            if [ "$status" = "in_progress" ] || [ "$status" = "queued" ]; then
+              gh api --method POST "repos/$GITHUB_REPOSITORY/actions/runs/$run_id/cancel" >/dev/null || true
+            fi
+          done
+          sleep 5
+
+      - name: Download tested 0.7.3 installer artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          gh run download 35260024250 \
+            --repo "$GITHUB_REPOSITORY" \
+            --name op-climb-companion-windows \
+            --dir dist
+          test -f dist/OP-Climb-Companion-Setup.exe
+          test -f dist/OP-Climb-Companion-Setup.exe.blockmap
+          test -f dist/latest.yml
+          grep -q '^version: 0.7.3$' dist/latest.yml
+          expected_sha512="$(openssl dgst -sha512 -binary dist/OP-Climb-Companion-Setup.exe | base64 -w0)"
+          feed_sha512="$(awk '/^sha512:/{print $2; exit}' dist/latest.yml)"
+          test "$expected_sha512" = "$feed_sha512"
+
+      - name: Publish one verified release set
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+
+          if ! gh release view companion-beta --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create companion-beta \
+              --repo "$GITHUB_REPOSITORY" \
+              --prerelease \
+              --title 'OP CLIMB Companion Beta' \
+              --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
+          fi
+
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/companion-beta" --jq '.id')"
+
+          delete_asset() {
+            local name="$1"
+            gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" \
+              --jq ".[] | select(.name == \"$name\") | .id" | while read -r asset_id; do
+                [ -z "$asset_id" ] || gh api --method DELETE "repos/$GITHUB_REPOSITORY/releases/assets/$asset_id" >/dev/null
+              done
+          }
+
+          publish_asset() {
+            local name="$1"
+            local path="$2"
+            local type="$3"
+            local size sha digest
+            size="$(stat -c%s "$path")"
+            sha="$(sha256sum "$path" | awk '{print $1}')"
+            digest="sha256:$sha"
+
+            for attempt in 1 2 3; do
+              echo "Publishing $name, attempt $attempt of 3"
+              delete_asset "$name"
+
+              set +e
+              curl --silent --show-error --fail-with-body \
+                --connect-timeout 20 \
+                --max-time 240 \
+                -X POST \
+                -H "Authorization: Bearer $GH_TOKEN" \
+                -H 'Accept: application/vnd.github+json' \
+                -H 'X-GitHub-Api-Version: 2022-11-28' \
+                -H "Content-Type: $type" \
+                --data-binary "@$path" \
+                "https://uploads.github.com/repos/$GITHUB_REPOSITORY/releases/$release_id/assets?name=$name" \
+                >/tmp/upload.json
+              code=$?
+              set -e
+
+              if [ "$code" -eq 0 ]; then
+                asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" | jq -c --arg name "$name" '.[] | select(.name == $name)' | head -n1)"
+                state="$(jq -r '.state // empty' <<<"$asset")"
+                remote_size="$(jq -r '.size // -1' <<<"$asset")"
+                remote_digest="$(jq -r '.digest // empty' <<<"$asset")"
+                if [ "$state" = 'uploaded' ] && [ "$remote_size" = "$size" ] && [ "$remote_digest" = "$digest" ]; then
+                  echo "Verified $name $digest"
+                  return 0
+                fi
+              fi
+
+              [ "$attempt" -eq 3 ] || sleep $((attempt * 5))
+            done
+
+            echo "Failed to publish verified $name" >&2
+            return 1
+          }
+
+          publish_asset 'OP-Climb-Companion-Setup.exe' 'dist/OP-Climb-Companion-Setup.exe' 'application/x-msdownload'
+          publish_asset 'OP-Climb-Companion-Setup.exe.blockmap' 'dist/OP-Climb-Companion-Setup.exe.blockmap' 'application/octet-stream'
+          publish_asset 'latest.yml' 'dist/latest.yml' 'application/octet-stream'
+
+      - name: Final release verification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/companion-beta" --jq '.id')"
+          for name in OP-Climb-Companion-Setup.exe OP-Climb-Companion-Setup.exe.blockmap latest.yml; do
+            path="dist/$name"
+            size="$(stat -c%s "$path")"
+            digest="sha256:$(sha256sum "$path" | awk '{print $1}')"
+            asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" | jq -c --arg name "$name" '.[] | select(.name == $name)' | head -n1)"
+            test "$(jq -r '.state' <<<"$asset")" = 'uploaded'
+            test "$(jq -r '.size' <<<"$asset")" = "$size"
+            test "$(jq -r '.digest' <<<"$asset")" = "$digest"
+          done
+          echo 'OP CLIMB Companion 0.7.3 release set is complete and hash-verified.'
