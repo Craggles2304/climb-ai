@@ -42,8 +42,8 @@ test('FREE receives only a free-safe remember HUD while paid win/loss fields rem
 
 test('draft, board-state self-check and recovery are one integrated win-condition model',()=>{
   assert.ok(model.includes('macroPlanFor(teamShape,powerCurve)'));
-  assert.ok(model.includes('carryPlanFor(team,role,paid)'));
-  assert.ok(model.includes('threatPlanFor(team,watch,paid)'));
+  assert.ok(model.includes('carryPlanFor(team,role,rich)'));
+  assert.ok(model.includes('threatPlanFor(team,watch,rich)'));
   assert.ok(model.includes('objectiveRouteFor(teamShape,powerCurve)'));
   assert.ok(model.includes('WHO HAS THE FIRST GOLD / ITEM ADVANTAGE?'));
   assert.ok(model.includes('WHO IS OUR STRONGEST USABLE CARRY NOW?'));
