@@ -5,7 +5,7 @@ const path=require('node:path');
 
 const teamSource=fs.readFileSync(path.join(__dirname,'..','lib','champions','teamCompPlan.ts'),'utf8');
 const preloadSource=fs.readFileSync(path.join(__dirname,'..','companion','electron','preload.cjs'),'utf8');
-const routeSource=fs.readFileSync(path.join(__dirname,'..','app','api','live','champion-plan','route.ts'),'utf8');
+const routeSource=fs.readFileSync(path.join(__dirname,'..','app','api','live','champion-plan','route-core.ts'),'utf8');
 
 test('every League role has a five-part role-specific win condition',()=>{
   for(const title of [
