@@ -10,6 +10,7 @@ import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {buildLiveMissionTips,nextRankTier,type LiveMissionTask} from '@/lib/liveMissionCoach';
+import {hasTier,normalizeTier,type SubscriptionTier} from '@/lib/subscription';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -48,10 +49,11 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     if(!Boolean(context?.localLockedIn)||!champion)return NextResponse.json({ok:true,ready:false},{status:202});
 
-    const [patch,playerRank,missionTasks]=await Promise.all([
+    const [patch,playerRank,missionTasks,strategyAccess]=await Promise.all([
       latestPatch(),
       resolvePlayerRank(db,device),
       loadMissionTasks(db,device),
+      resolveStrategyAccess(db,device.userId),
     ]);
     const coach=coachingLevelFor(playerRank);
     // Mission guidance is intentionally frozen to pre-game player context. The
@@ -80,16 +82,44 @@ export async function GET(req:NextRequest){
 
     const rawPlan=buildChampionPowerPlan({you,roster,patch,role});
     const plan=adaptPlanForRank(rawPlan,coach.depth,coach.visiblePoints);
-    const teamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
+    const fullTeamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
+    // Win/loss conditions are paid match-reading features. Keep the gate on the
+    // server so a FREE client cannot reveal them by inspecting Companion state.
+    const teamBase=strategyAccess.paidStrategy
+      ?fullTeamBase
+      :{...fullTeamBase,ourWinCondition:null,theirWinCondition:null,biggestThrow:null};
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
-    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips,strategyAccess};
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,strategyAccess,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
   }
+}
+
+async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:SubscriptionTier;paidStrategy:boolean;trialing:boolean;trialAvailable:boolean}>{
+  const [profileResult,entitlementResult,userResult]=await Promise.all([
+    db.from('profiles').select('is_founder').eq('id',userId).maybeSingle(),
+    db.from('product_entitlements').select('tier,status,current_period_end').eq('user_id',userId).eq('product','LOL').maybeSingle(),
+    db.auth.admin.getUserById(userId),
+  ]);
+  if(profileResult?.data?.is_founder===true)return{tier:'PRO',paidStrategy:true,trialing:false,trialAvailable:false};
+
+  const entitlement=entitlementResult?.data as any;
+  const status=String(entitlement?.status??'').toLowerCase();
+  const periodEnd=entitlement?.current_period_end?new Date(entitlement.current_period_end).getTime():Number.POSITIVE_INFINITY;
+  const entitlementLive=['active','trialing'].includes(status)&&(!Number.isFinite(periodEnd)||periodEnd>Date.now());
+  const legacyTier=normalizeTier(userResult?.data?.user?.app_metadata?.subscription_tier);
+  const tier=entitlementLive?normalizeTier(entitlement?.tier):legacyTier;
+  const paidStrategy=hasTier(tier,'PLUS');
+  return{
+    tier,
+    paidStrategy,
+    trialing:paidStrategy&&status==='trialing',
+    trialAvailable:!paidStrategy&&!entitlement,
+  };
 }
 
 async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:string|null}):Promise<LiveMissionTask[]>{
