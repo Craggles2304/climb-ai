@@ -309,30 +309,68 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
   return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
 }
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach){
+
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
-    const system=`You are OP CLIMB Draft Coach, an expert League of Legends coach. Analyse ONLY the static draft and the player's role; this is a pre-game plan, never reactive live shotcalling. If one allied champion is unresolved, reason from the known four and never invent the missing pick. Think like a paid human coach, not a champion-tag lookup. Reason about how the two compositions interact: engage and counter-engage, dive access, peel, pick tools, zone control, objective setup, scaling, target accessibility and conversion after a won fight. For ADCs, never tell them to tunnel the enemy ADC: default to the closest safe target unless the draft creates a genuinely safe back-line access condition. Name a multi-champion threat PACKAGE when several champions combine to create the real danger. Headline must be a clear strategic call such as "SCALE WITHOUT GIVING ACCESS", "PICK FIRST → BURST → OBJECTIVE", or "WIN SETUP → FRONT-TO-BACK", never vague language like "PLAY MID GAME". Make the five steps teach the player exactly how this draft wins. Keep every field concise enough for an esports HUD. Return JSON only matching the requested shape.`;
-    const response=await fetch('https://api.openai.com/v1/chat/completions',{
-      method:'POST',
-      headers:{'content-type':'application/json',authorization:`Bearer ${process.env.OPENAI_API_KEY}`},
-      body:JSON.stringify({
-        model:process.env.OPENAI_COACH_MODEL||'gpt-4o-mini',
-        temperature:.15,
-        response_format:{type:'json_object'},
-        messages:[
-          {role:'system',content:system},
-          {role:'user',content:`PLAYER: ${champion} · ${userRole||'ROLE UNKNOWN'}\nOUR TEAM: ${JSON.stringify(ours)}\nENEMY TEAM: ${JSON.stringify(enemies)}\n\nProduce: headline, why, threatLabel, threats (1-3 champion names), threatAnswer, laneOpponent, never, ifBehind, and exactly five steps [{label,value}].\n\nDeterministic fallback for orientation only; improve it when the composition interaction supports a better read:\n${JSON.stringify(fallback)}`},
-        ],
-      }),
-    });
-    if(!response.ok)return null;
-    const body=await response.json();
-    const parsed=outputSchema.parse(JSON.parse(body?.choices?.[0]?.message?.content||'{}'));
-    const enemyMap=new Map(enemies.map(player=>[player.champion.toLowerCase(),player.champion]));
-    const threats=parsed.threats.map(name=>enemyMap.get(name.toLowerCase())).filter((name):name is string=>Boolean(name));
-    const laneOpponent=parsed.laneOpponent?enemyMap.get(parsed.laneOpponent.toLowerCase())??fallback.laneOpponent:fallback.laneOpponent;
-    return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
+    const system=[
+      'You are OP CLIMB Draft Coach. Your standard is a paid one-to-one League of Legends coach preparing a player before queue, not a generic assistant and not a champion-tag lookup.',
+      'Analyse ONLY the static draft and supplied Riot/Data Dragon kit facts. Never provide reactive live shotcalling.',
+      rankCoachingInstruction(rank),
+      '',
+      'COACHING STANDARD:',
+      '- Explain the interaction BETWEEN the ten champions, not isolated champion labels.',
+      '- Identify their actual win condition first, then the player answer to it.',
+      '- Separate threat ACCESS from damage. A diver, engage champion, zone controller and follow-up carry can form one threat package.',
+      '- Every important instruction must answer WHO, WHAT, WHEN and WHY.',
+      '- Use named abilities/cooldowns from the supplied kit facts when they materially change the decision. Never invent an ability name or mechanic.',
+      '- Lane advice must name the actual lane opponent and give a concrete wave/trade/respect rule. "Farm clean", "play safe" or "trade when a key spell misses" is insufficient by itself.',
+      '- Fight advice must specify the trigger for entering or committing, the safe target rule, and what enemy cooldown/access condition changes that rule.',
+      '- Objective advice must explain whether to arrive first, force them to face-check, avoid a prepared zone, or hold a flank/entry. Name the champions creating that geometry.',
+      '- For ADCs, target ACCESSIBILITY beats target prestige: never tell the player to walk through a threat line just to hit the enemy ADC.',
+      '- If several enemies combine to reach the player, name the package.',
+      '- The five steps must form one causal win path, not five unrelated tips.',
+      '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
+      '- The output must be useful enough that the player could repeat the plan back in champion select.',
+      '',
+      'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
+    ].join('\n');
+
+    const user=[
+      'PLAYER: '+champion+' · '+(userRole||'ROLE UNKNOWN')+' · RANK '+rank,
+      'OUR TEAM: '+JSON.stringify(ours),
+      'ENEMY TEAM: '+JSON.stringify(enemies),
+      'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
+      'RIOT / DATA DRAGON KIT FACTS: '+JSON.stringify(kits),
+      '',
+      'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
+      '',
+      'Build the pre-game coaching plan. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
+      JSON.stringify(fallback),
+    ].join('\n');
+
+    let parsed=await callCoachModel(system,user);
+    if(!parsed)return null;
+    parsed=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
+    const firstQuality=qualityReport(parsed,ours,enemies,kits);
+    if(firstQuality.score>=7)return parsed;
+
+    const rewriteUser=[
+      user,
+      '',
+      'YOUR FIRST PLAN:',
+      JSON.stringify(parsed),
+      '',
+      'QUALITY AUDIT FAILED: '+(firstQuality.issues.join('; ')||'insufficient specificity')+'.',
+      'Named champions found: '+(firstQuality.championMentions.join(', ')||'none')+'.',
+      'Named abilities found: '+(firstQuality.abilityMentions.join(', ')||'none')+'.',
+      '',
+      'Rewrite the whole JSON plan. Increase specificity without increasing verbosity. Replace generic advice with named champion interactions, supplied ability names/cooldowns, and explicit IF/WHEN/AFTER decision rules. Do not invent facts.',
+    ].join('\n');
+    const rewritten=await callCoachModel(system,rewriteUser);
+    if(!rewritten)return parsed;
+    const safe=completeCoach(sanitizeCoach(rewritten,enemies,fallback),userRole,enemies);
+    return qualityReport(safe,ours,enemies,kits).score>=firstQuality.score?safe:parsed;
   }catch(error){
     console.warn('[draft-coach] AI fallback',error);
     return null;
