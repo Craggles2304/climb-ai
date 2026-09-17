@@ -81,7 +81,10 @@ export function buildRememberPlan(input:{
 }):RememberPlan{
   const role=normalizeRole(input.role);
   const team=input.teamPlan||{};
-  const paid=Boolean(team.strategyAccess?.paidStrategy);
+  // The API redacts premium strategy fields before this model runs for FREE.
+  // Treat the presence of already-unredacted strategy as the source of truth so
+  // direct rich-plan callers/tests do not need a separate entitlement flag.
+  const rich=Boolean(team.roleWinCondition||team.compositionRead||team.strategyAccess?.paidStrategy);
   const ourNames=(team.ourTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const powerCurve=powerCurveFor(ourNames,input.roster||null);
   const damageProfile=damageProfileFor(ourNames,input.roster||null);
@@ -90,11 +93,11 @@ export function buildRememberPlan(input:{
   const allies=(team.ourTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const enemies=(team.theirTeam||[]).map(p=>String(p?.name||'').trim()).filter(Boolean);
   const playWith=mentioned(stepValue(steps,['STAY_WITH','PLAY_WITH','ENABLE','SET_UP']),allies,2)||fallbackPlayWith(role);
-  const watch=paid
+  const watch=rich
     ?mentioned(stepValue(steps,['SURVIVE','STOP','ANSWER']),enemies,2)||mentioned(String(team.roleWinCondition?.lossCondition||team.theirWinCondition||''),enemies,2)||firstNames(team.compositionRead?.enemyThreats,2)||'THEIR FIRST CLEAN ENGAGE'
     :'THEIR FIRST CLEAN ENGAGE';
-  const carryPlan=carryPlanFor(team,role,paid);
-  const threatPlan=threatPlanFor(team,watch,paid);
+  const carryPlan=carryPlanFor(team,role,rich);
+  const threatPlan=threatPlanFor(team,watch,rich);
   const macroPlan=macroPlanFor(teamShape,powerCurve);
   const objectiveRoute=objectiveRouteFor(teamShape,powerCurve);
   const fightRule=fightRuleFor(role,teamShape,watch,playWith);
@@ -193,8 +196,8 @@ function macroPlanFor(shape:string,power:RememberPowerCurve){
   return'CREATE FIRST MOVE → STAY CONNECTED → CONVERT CLEAN FIGHTS';
 }
 
-function carryPlanFor(team:TeamPlanLike,role:string|null,paid:boolean){
-  if(!paid)return role==='SUPPORT'?'ENABLE YOUR MAIN DAMAGE LINE':role==='JUNGLE'?'PLAY TOWARD THE LANE WITH FIRST MOVE':'KEEP YOUR MAIN DAMAGE LINE FUNDED AND CONNECTED';
+function carryPlanFor(team:TeamPlanLike,role:string|null,rich:boolean){
+  if(!rich)return role==='SUPPORT'?'ENABLE YOUR MAIN DAMAGE LINE':role==='JUNGLE'?'PLAY TOWARD THE LANE WITH FIRST MOVE':'KEEP YOUR MAIN DAMAGE LINE FUNDED AND CONNECTED';
   const fromGraph=firstNames(team.compositionRead?.damageCore,2);
   if(fromGraph)return`PRIMARY DAMAGE · ${fromGraph}`;
   const picks=team.ourTeam||[];
@@ -204,8 +207,8 @@ function carryPlanFor(team:TeamPlanLike,role:string|null,paid:boolean){
   return names.length?`PRIMARY DAMAGE · ${names.join(' / ')}`:'KEEP THE STRONGEST DAMAGE DEALER FUNDED AND CONNECTED';
 }
 
-function threatPlanFor(team:TeamPlanLike,watch:string,paid:boolean){
-  if(!paid)return'SCAN THEIR ENGAGE / DIVE BEFORE YOU COMMIT';
+function threatPlanFor(team:TeamPlanLike,watch:string,rich:boolean){
+  if(!rich)return'SCAN THEIR ENGAGE / DIVE BEFORE YOU COMMIT';
   const threat=firstNames(team.compositionRead?.enemyThreats,2)||watch;
   const carry=firstNames(team.compositionRead?.enemyDamageCore,2);
   if(threat&&carry&&threat!==carry)return`ACCESS · ${threat} / DAMAGE · ${carry}`;
