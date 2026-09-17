@@ -5,6 +5,7 @@ const path=require('node:path');
 
 const root=path.join(__dirname,'..');
 const esports=fs.readFileSync(path.join(root,'companion','electron','review-esports.js'),'utf8');
+const core=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'companion','package.json'),'utf8'));
 
@@ -33,9 +34,16 @@ test('next-game coaching call is visually promoted without inventing a performan
   assert.ok(!esports.includes('RATING / 100'));
 });
 
-test('review layer loads after the evidence renderer and ships as Companion 0.7.4',()=>{
+test('completed review has an explicit route back to ready for the next game',()=>{
+  assert.ok(core.includes('id="op332Ready"'));
+  assert.ok(core.includes('NEW GAME · BACK TO READY'));
+  assert.ok(core.includes('localStorage.removeItem(STORAGE_KEY)'));
+  assert.ok(core.includes('window.opCompanion?.restart?.()'));
+});
+
+test('review layer loads after the evidence renderer and ships as Companion 0.7.5',()=>{
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.4');
+  assert.equal(pkg.version,'0.7.5');
 });
