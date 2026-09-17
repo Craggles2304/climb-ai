@@ -1,0 +1,189 @@
+(()=>{
+  const $=id=>document.getElementById(id);
+  const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
+  const upper=value=>clean(value).toUpperCase();
+  const normRole=value=>{const role=upper(value);if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';if(role==='MIDDLE')return'MID';return role};
+  const ROLE_ORDER={TOP:0,JUNGLE:1,MID:2,ADC:3,SUPPORT:4};
+  const ASSET_IDS={
+    Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
+  };
+  const SCALERS=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
+  const EARLY=new Set(['Darius','Draven','Elise','Jarvan IV','Jayce','Kalista','Kled','Lee Sin','LeBlanc','Lucian','Nidalee','Olaf','Pantheon','Pyke',"Rek'Sai",'Renekton','Rumble','Talon','Xin Zhao','Zed']);
+  const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
+  const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Rakan','Rell','Sejuani','Skarner','Vi','Wukong','Zac']);
+  const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Vi','Wukong','Xin Zhao','Yone']);
+  let lastState=null;
+  let lastRoster=null;
+  let lastRosterSignature='';
+
+  const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
+  const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
+  const tile=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${assetId(name)}_0.jpg`;
+  const set=(id,value)=>{const node=$(id);if(node&&clean(value))node.textContent=upper(value)};
+
+  function installVisualLayer(){
+    if($('op-v5-esports-style'))return;
+    const style=document.createElement('style');
+    style.id='op-v5-esports-style';
+    style.textContent=`
+body.op-remember-live{min-height:100vh!important;background:#04070a!important;overflow:auto!important}
+body.op-remember-live:before{content:'';position:fixed;inset:0;z-index:-3;background-image:linear-gradient(90deg,rgba(3,6,9,.98) 0%,rgba(3,6,9,.92) 35%,rgba(3,6,9,.72) 69%,rgba(3,6,9,.96) 100%),var(--op-live-splash,none);background-size:cover;background-position:center 18%;filter:saturate(.82) contrast(1.08)}
+body.op-remember-live:after{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.012) 0,rgba(255,255,255,.012) 1px,transparent 1px,transparent 4px),radial-gradient(circle at 76% 10%,rgba(214,255,47,.09),transparent 31%)}
+body.op-remember-live .shell{width:100%!important;max-width:none!important;min-height:100vh!important;margin:0!important;padding:0 20px 18px!important;display:flex!important;flex-direction:column!important}
+body.op-remember-live .brand{min-height:70px!important;margin:0 -20px!important;padding:12px 20px!important;background:rgba(3,6,9,.88)!important;backdrop-filter:blur(18px);border-bottom:1px solid rgba(214,255,47,.17)!important}
+body.op-remember-live footer{display:none!important}
+body.op-remember-live #opRememberHud{flex:1!important;min-height:calc(100vh - 94px)!important;margin:14px 0 0!important;border:1px solid rgba(214,255,47,.20)!important;border-radius:0!important;box-shadow:0 30px 90px rgba(0,0,0,.58),inset 0 1px rgba(255,255,255,.035)!important;background:linear-gradient(120deg,rgba(5,10,14,.94),rgba(4,8,11,.83))!important}
+body.op-remember-live #opRememberHud:before{width:5px!important;box-shadow:0 0 28px rgba(214,255,47,.55)}
+body.op-remember-live .rem4-top{min-height:88px!important;padding:20px 27px 17px!important;background:linear-gradient(90deg,rgba(214,255,47,.045),transparent 48%);border-bottom-color:rgba(255,255,255,.10)!important}
+body.op-remember-live .rem4-kicker{font-size:8px!important;color:#d6ff2f!important}
+body.op-remember-live .rem4-title{font-size:clamp(30px,3vw,48px)!important;letter-spacing:-.05em!important;text-shadow:0 8px 32px rgba(0,0,0,.55)}
+body.op-remember-live .rem4-live{font-size:8px!important;padding:9px 13px!important;background:rgba(214,255,47,.035)!important}
+body.op-remember-live .rem4-body{flex:1!important;min-height:0!important;padding:18px 25px 24px!important;display:grid!important;grid-template-rows:minmax(108px,.78fr) minmax(170px,1.28fr) minmax(145px,1fr) minmax(116px,.82fr) auto auto!important;gap:13px!important;align-content:stretch!important}
+body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:0!important}
+body.op-remember-live .rem4-draft{align-self:stretch!important;gap:14px!important}
+body.op-remember-live .rem4-side{display:flex;flex-direction:column;min-width:0}
+body.op-remember-live .rem4-side-label{font-size:8px!important;margin-bottom:8px!important;color:#9aa7af!important}
+body.op-remember-live .rem4-side.enemy .rem4-side-label{color:#ff7d7d!important}
+body.op-remember-live .rem4-team{flex:1!important;gap:8px!important}
+body.op-remember-live .rem4-pick{height:auto!important;min-height:82px!important;border-color:rgba(255,255,255,.13)!important;background:#071018!important;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)!important;transition:transform .2s ease,border-color .2s ease}
+body.op-remember-live .rem4-pick:hover{transform:translateY(-2px)}
+body.op-remember-live .rem4-pick img{opacity:.82!important;filter:saturate(1.05) contrast(1.08)!important;object-position:center 22%!important}
+body.op-remember-live .rem4-pick:after{background:linear-gradient(180deg,rgba(4,7,10,.02) 0%,rgba(4,7,10,.06) 33%,rgba(4,7,10,.96) 100%)!important}
+body.op-remember-live .rem4-pick-copy{left:9px!important;right:7px!important;bottom:7px!important}
+body.op-remember-live .rem4-pick-role{font-size:7px!important}body.op-remember-live .rem4-pick-name{font-size:11px!important}
+body.op-remember-live .rem4-pick.threat{border-color:rgba(255,79,79,.75)!important;box-shadow:0 0 0 1px rgba(255,70,70,.15),inset 0 -30px 55px rgba(255,38,38,.18)!important}
+body.op-remember-live .rem4-vs{font-size:11px!important;color:#d6ff2f!important;padding-bottom:34px!important}
+body.op-remember-live .rem4-call-row{gap:13px!important}
+body.op-remember-live .rem4-call,body.op-remember-live .rem4-threat{position:relative;overflow:hidden;padding:24px 25px!important;display:flex;flex-direction:column;justify-content:center;box-shadow:inset 0 1px rgba(255,255,255,.035)}
+body.op-remember-live .rem4-call{border-color:rgba(214,255,47,.48)!important;background:linear-gradient(102deg,rgba(214,255,47,.15),rgba(12,21,18,.38) 58%,rgba(4,8,11,.72))!important}
+body.op-remember-live .rem4-call:after{content:'GAME PLAN';position:absolute;right:20px;top:16px;font-size:7px;letter-spacing:.28em;color:rgba(214,255,47,.30);font-weight:950}
+body.op-remember-live .rem4-call strong{font-size:clamp(38px,4.4vw,70px)!important;line-height:.94!important;max-width:90%;text-shadow:0 12px 40px rgba(0,0,0,.54)}
+body.op-remember-live .rem4-call small{font-size:11px!important;letter-spacing:.04em!important;color:#d3dbdf!important;margin-top:12px!important}
+body.op-remember-live .rem4-threat{border-color:rgba(255,75,75,.42)!important;background:linear-gradient(118deg,rgba(115,23,31,.34),rgba(9,9,13,.78))!important}
+body.op-remember-live .rem4-threat:after{content:'';position:absolute;inset:0 0 0 45%;background:var(--op-threat-art,none) center 22%/cover no-repeat;opacity:.20;mask-image:linear-gradient(90deg,transparent,#000 45%);pointer-events:none}
+body.op-remember-live .rem4-threat>*{position:relative;z-index:1}
+body.op-remember-live .rem4-threat strong{font-size:clamp(25px,2.4vw,40px)!important;max-width:74%!important}body.op-remember-live .rem4-threat small{font-size:10px!important;max-width:72%!important}
+body.op-remember-live .rem4-path-wrap{padding:17px 18px!important;border-color:rgba(214,255,47,.17)!important;background:linear-gradient(180deg,rgba(8,14,18,.86),rgba(5,9,13,.72))!important}
+body.op-remember-live .rem4-path-head b{font-size:9px!important}body.op-remember-live .rem4-path-head span{font-size:7px!important}
+body.op-remember-live .rem4-path{height:calc(100% - 27px)!important;gap:22px!important;align-items:stretch!important;margin-top:11px!important}
+body.op-remember-live .rem4-step{display:flex!important;flex-direction:column;justify-content:center;padding:14px 13px!important;border-color:rgba(255,255,255,.12)!important;background:linear-gradient(135deg,rgba(15,24,31,.93),rgba(7,12,17,.96))!important;clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%)}
+body.op-remember-live .rem4-step:first-child{border-color:rgba(214,255,47,.38)!important;background:linear-gradient(135deg,rgba(214,255,47,.10),rgba(7,12,17,.96))!important}
+body.op-remember-live .rem4-step i{font-size:7px!important;color:#7d8b94!important}body.op-remember-live .rem4-step strong{font-size:clamp(12px,1.05vw,16px)!important;margin-top:8px!important}
+body.op-remember-live .rem4-step:not(:last-child):after{font-size:30px!important;right:-18px!important;text-shadow:0 0 18px rgba(214,255,47,.42)}
+body.op-remember-live .rem4-lane{height:100%!important;gap:10px!important;grid-template-columns:.72fr 1fr 1fr 1fr!important}
+body.op-remember-live .rem4-lane-title,body.op-remember-live .rem4-lane-card{padding:16px!important;display:flex;flex-direction:column;justify-content:center;border-color:rgba(73,137,255,.25)!important;background:linear-gradient(135deg,rgba(35,78,151,.14),rgba(5,10,15,.73))!important}
+body.op-remember-live .rem4-lane-title{border-color:rgba(77,147,255,.48)!important}body.op-remember-live .rem4-lane-title strong{font-size:17px!important}body.op-remember-live .rem4-lane-card strong{font-size:12px!important;line-height:1.35!important}body.op-remember-live .rem4-lane-card span{font-size:7px!important}
+body.op-remember-live .rem4-lane-card.danger{border-color:rgba(255,75,75,.33)!important;background:linear-gradient(135deg,rgba(116,28,35,.16),rgba(5,10,15,.75))!important}
+body.op-remember-live .rem4-footer{gap:10px!important}body.op-remember-live .rem4-footer article{padding:13px 15px!important;background:rgba(6,10,14,.70)!important}body.op-remember-live .rem4-footer strong{font-size:10px!important}
+body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live .rem4-note{align-self:end!important}
+@media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
+@media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
+`;
+    document.head.appendChild(style);
+  }
+
+  function playerRole(player){return normRole(player?.position||player?.role)}
+  function sorted(players){return [...players].sort((a,b)=>(ROLE_ORDER[playerRole(a)]??9)-(ROLE_ORDER[playerRole(b)]??9))}
+  function scoreThreat(player,userRole){
+    const name=clean(player?.champion);const role=playerRole(player);let score=0;
+    if(ASSASSINS.has(name))score+=8;
+    if(HARD_ENGAGE.has(name))score+=7;
+    if(DIVERS.has(name))score+=5;
+    if(userRole==='ADC'&&(role==='JUNGLE'||role==='SUPPORT'))score+=2;
+    if(role==='MID')score+=1;
+    return score;
+  }
+  function threatAnswer(name,userRole){
+    if(ASSASSINS.has(name))return userRole==='ADC'?'TRACK FLANK · HOLD FLASH / PEEL · NEVER ISOLATE':'TRACK FLANK · HOLD ESCAPE FOR THEIR ENTRY';
+    if(HARD_ENGAGE.has(name))return userRole==='ADC'?'STAY OUTSIDE THEIR START RANGE · HIT AFTER FIRST ENGAGE':'BAIT FIRST ENGAGE · COUNTER AFTER COOLDOWN';
+    if(DIVERS.has(name))return userRole==='ADC'?'PLAY BESIDE PEEL · KITE BACK FIRST · DPS SECOND':'DENY THEIR DIVE ANGLE BEFORE COMMITTING';
+    return 'TRACK THEIR POSITION BEFORE THE FIGHT STARTS';
+  }
+  function fightTarget(enemies){return enemies.find(p=>playerRole(p)==='ADC')||enemies.find(p=>playerRole(p)==='MID')||enemies[0]||null}
+  function gameCall(champion,ours,enemies){
+    const ownEarly=ours.filter(p=>EARLY.has(clean(p.champion))).length;
+    const enemyEarly=enemies.filter(p=>EARLY.has(clean(p.champion))).length;
+    if(SCALERS.has(champion)){
+      if(enemyEarly>=2)return{call:'SURVIVE → SCALE',why:'NO EARLY FLIPS · PROTECT CS / XP · FIGHT ON 2 ITEMS'};
+      return{call:'FARM TO 2 ITEMS',why:'KEEP TEMPO CLEAN · GROUP ON YOUR SPIKE · FRONT-TO-BACK'};
+    }
+    if(EARLY.has(champion))return{call:'FIGHT EARLY',why:'CREATE THE FIRST LEAD · CONVERT IT INTO DRAGON / TOWER'};
+    if(ownEarly>=enemyEarly+2)return{call:'PRESS TEMPO',why:'MOVE FIRST · FORCE NUMBERS · CASH OUT BEFORE THEY SCALE'};
+    return{call:'PLAY FOR 2-ITEM FIGHT',why:'FARM CLEAN · ARRIVE FIRST · FIGHT WITH YOUR STRONGEST GROUP'};
+  }
+
+  function renderTeam(rootId,players,threatName){
+    const root=$(rootId);if(!root)return;
+    root.replaceChildren();
+    const list=sorted(players).slice(0,5);
+    for(let i=0;i<5;i++){
+      const p=list[i];
+      const card=document.createElement('article');
+      card.className=`rem4-pick${p&&clean(p.champion)===clean(threatName)?' threat':''}`;
+      if(p){
+        const img=document.createElement('img');img.src=tile(p.champion);img.alt='';img.loading='eager';
+        const copy=document.createElement('div');copy.className='rem4-pick-copy';
+        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent=playerRole(p)||'ROLE';
+        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent=upper(p.champion);
+        copy.append(role,name);card.append(img,copy);
+      }else{
+        const copy=document.createElement('div');copy.className='rem4-pick-copy';
+        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent='';
+        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent='DETECTING…';
+        copy.append(role,name);card.append(copy);
+      }
+      root.appendChild(card);
+    }
+  }
+
+  function updatePath(threat,target,withName){
+    const steps=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
+    if(steps[1]&&withName)steps[1].textContent=upper(`WITH ${withName}`);
+    if(steps[2]&&threat)steps[2].textContent=upper(`DENY ${threat}`);
+    if(steps[3]&&target)steps[3].textContent=upper(`HIT ${target} IF SAFE`);
+  }
+
+  function applyRoster(payload){
+    lastRoster=payload;
+    if(!lastState||String(lastState?.phase||'')!=='RECORDING')return;
+    const players=Array.isArray(payload?.players)?payload.players:[];
+    if(players.length<2)return;
+    const champion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
+    const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
+    if(!me?.team)return;
+    const ours=players.filter(p=>p.team===me.team);
+    const enemies=players.filter(p=>p.team&&p.team!==me.team);
+    if(!enemies.length)return;
+    const rosterSignature=players.map(p=>`${p.team}:${p.position}:${p.champion}`).join('|');
+    const role=playerRole(me)||normRole(lastState?.matchup?.role||lastState?.teamPlan?.rememberPlan?.role);
+    const threat=[...enemies].sort((a,b)=>scoreThreat(b,role)-scoreThreat(a,role))[0];
+    const target=fightTarget(enemies);
+    const laneOpponent=enemies.find(p=>playerRole(p)===role)||(role==='ADC'?enemies.find(p=>playerRole(p)==='ADC'):null);
+    const withNames=ours.filter(p=>clean(p.champion)!==champion).filter(p=>role==='ADC'?['SUPPORT','JUNGLE'].includes(playerRole(p)):true).slice(0,2).map(p=>p.champion);
+    const call=gameCall(champion,ours,enemies);
+
+    if(rosterSignature!==lastRosterSignature){
+      lastRosterSignature=rosterSignature;
+      renderTeam('opRemOurTeam',ours,'');
+      renderTeam('opRemTheirTeam',enemies,threat?.champion);
+    }
+    set('opRemGameCall',call.call);set('opRemGameCallWhy',call.why);
+    if(threat){set('opRemThreat',threat.champion);set('opRemThreatAnswer',threatAnswer(threat.champion,role));document.body.style.setProperty('--op-threat-art',`url("${splash(threat.champion)}")`)}
+    if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
+    if(laneOpponent)set('opRemMatchTitle',`${champion||'YOU'} VS ${laneOpponent.champion}`);
+    updatePath(threat?.champion,target?.champion,withNames.join(' / '));
+  }
+
+  function onState(state){
+    lastState=state;
+    installVisualLayer();
+    const champion=clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.teamPlan?.rememberPlan?.champion);
+    if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
+    if(lastRoster)applyRoster(lastRoster);
+  }
+
+  installVisualLayer();
+  window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
+  window.opCompanion?.getState?.().then(onState).catch(()=>{});
+  window.opCompanion?.onState?.(onState);
+})();
