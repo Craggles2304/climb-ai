@@ -4,6 +4,8 @@ import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {hasTier,normalizeTier} from '@/lib/subscription';
+import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/source';
+import {rankCoachingInstruction} from '@/lib/coachingLevel';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -18,20 +20,26 @@ const requestSchema=z.object({
   ours:z.array(playerSchema).min(1).max(5),
   enemies:z.array(playerSchema).min(1).max(5),
 });
-const stepSchema=z.object({label:z.string().min(1).max(28),value:z.string().min(1).max(96)});
+const stepSchema=z.object({label:z.string().min(1).max(28),value:z.string().min(1).max(110)});
+const lanePlanSchema=z.object({wave:z.string().min(1).max(150),trade:z.string().min(1).max(150),respect:z.string().min(1).max(150)});
 const outputSchema=z.object({
   headline:z.string().min(1).max(56),
-  why:z.string().min(1).max(180),
+  why:z.string().min(1).max(220),
+  theirPlan:z.string().min(1).max(190),
   threatLabel:z.string().min(1).max(32),
   threats:z.array(z.string().min(1).max(48)).min(1).max(3),
   threatAnswer:z.string().min(1).max(150),
   laneOpponent:z.string().max(48).nullable().optional(),
-  never:z.string().min(1).max(150),
-  ifBehind:z.string().min(1).max(150),
+  lanePlan:lanePlanSchema,
+  fightTrigger:z.string().min(1).max(180),
+  objectiveSetup:z.string().min(1).max(180),
+  never:z.string().min(1).max(170),
+  ifBehind:z.string().min(1).max(170),
   steps:z.array(stepSchema).length(5),
 });
 type Player=z.infer<typeof playerSchema>;
 type DraftCoach=z.infer<typeof outputSchema>;
+type KitFact={champion:string;tags:string[];attackRange:number|null;passive:string|null;spells:Array<{slot:string;name:string;cooldown:number|null;range:number|null;description:string|null}>;allyTips:string[];enemyTips:string[]};
 
 const SCALERS=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
 const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
@@ -41,12 +49,14 @@ const ZONE_CONTROL=new Set(['Anivia','Azir','Brand','Fiddlesticks','Gangplank','
 const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Morgana','Nautilus','Neeko','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
 const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
 const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
+const GENERIC_PHRASES=['play clean','stay connected','farm clean','play safe','fight with setup','play the fight','strongest group','take a good fight'];
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function role(value:unknown){const r=clean(value).toUpperCase();if(r==='BOTTOM')return'ADC';if(r==='UTILITY')return'SUPPORT';if(r==='MIDDLE')return'MID';return r}
 function dedupe(players:Player[]){const seen=new Set<string>();return players.filter(player=>{const key=clean(player.champion).toLowerCase();if(!key||seen.has(key))return false;seen.add(key);return true}).map(player=>({champion:clean(player.champion),role:role(player.role)||null}))}
 function byRole(players:Player[],wanted:string){return players.find(player=>role(player.role)===wanted)?.champion??null}
 function names(players:Player[]){return players.map(player=>player.champion)}
+function clip(value:unknown,max=180){const text=clean(value);return text.length<=max?text:text.slice(0,max-1).replace(/\s+\S*$/,'')+'…'}
 
 function threatScore(player:Player,userRole:string){
   const name=player.champion;let score=0;
