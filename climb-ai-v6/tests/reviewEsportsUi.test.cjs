@@ -41,9 +41,9 @@ test('completed review has an explicit route back to ready for the next game',()
   assert.ok(core.includes('window.opCompanion?.restart?.()'));
 });
 
-test('review layer loads after the evidence renderer and ships as Companion 0.7.5',()=>{
+test('review layer loads after the evidence renderer and Companion version matches this release',()=>{
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.5');
+  assert.equal(pkg.version,'0.7.7');
 });
