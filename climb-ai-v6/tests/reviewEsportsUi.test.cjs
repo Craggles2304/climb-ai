@@ -33,9 +33,9 @@ test('next-game coaching call is visually promoted without inventing a performan
   assert.ok(!esports.includes('RATING / 100'));
 });
 
-test('review layer loads after the evidence renderer and ships as Companion 0.7.3',()=>{
+test('review layer loads after the evidence renderer and ships as Companion 0.7.4',()=>{
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.3');
+  assert.equal(pkg.version,'0.7.4');
 });
