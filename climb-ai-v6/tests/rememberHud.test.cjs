@@ -6,21 +6,35 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 const hud=fs.readFileSync(path.join(root,'companion','electron','remember-v2.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
+const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
 const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),'utf8');
 
-test('recording UI is a short esports remember screen rather than the full analysis desk',()=>{
-  for(const label of ['REMEMBER YOUR PLAN','HOW WE WIN','PLAY WITH','WATCH','FIGHT RULE','IF BEHIND','CONVERT','CLIMB MISSION']){
+test('recording UI always switches to a short esports remember screen',()=>{
+  for(const label of ['REMEMBER YOUR PLAN','HOW WE WIN','MATCHUP','PLAY WITH','WATCH','FIGHT RULE','IF BEHIND','CONVERT','CLIMB MISSION']){
     assert.ok(hud.includes(label),`missing ${label}`);
   }
   assert.ok(hud.includes('5 / 10 / 15 MIN SELF-CHECK'));
-  assert.ok(hud.includes("phase==='RECORDING'"));
+  assert.ok(hud.includes("const visible=phase==='RECORDING'"));
+  assert.ok(!hud.includes("phase==='RECORDING'&&Boolean(plan)"),'recording must not depend on paid rememberPlan');
   assert.ok(hud.includes('op-remember-live'));
+  assert.ok(hud.includes('LIVE · RECORDING'));
   assert.ok(hud.includes('PLAN LOCKED'));
 });
 
-test('CS/resource target exists without leaking paid win-condition strategy to FREE',()=>{
+test('matchup is visible in champ select when known and remains in the recording HUD',()=>{
+  assert.ok(hud.includes('LANE MATCHUP'));
+  assert.ok(hud.includes('opPregameMatchup'));
+  assert.ok(hud.includes('opRemMatchTitle'));
+  assert.ok(hud.includes('state?.matchup?.opponent'));
+  assert.ok(hud.includes('state?.matchup?.plan?.laneDuel?.yourPattern'));
+  assert.ok(hud.includes('draftOpponent(state,role)'));
+});
+
+test('FREE receives only a free-safe remember HUD while paid win/loss fields remain server-redacted',()=>{
   assert.ok(route.includes('resourceTarget:remember.resourceTarget'));
-  assert.ok(route.includes('rememberPlan:paid?remember:null'));
+  assert.ok(route.includes('rememberPlan:remember'));
+  assert.ok(route.includes("rememberPlanAccess:paid?'FULL':'SIMPLE'"));
+  assert.match(core,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null/);
   assert.ok(model.includes("kind:'CS'|'FARM'|'MAP'"));
   assert.ok(model.includes("label:role==='JUNGLE'?'FARM TARGET':'CS TARGET'"));
   assert.ok(model.includes("if(role==='SUPPORT')return{kind:'MAP'"));
