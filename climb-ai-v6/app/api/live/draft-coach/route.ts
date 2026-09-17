@@ -399,9 +399,22 @@ export async function POST(req:NextRequest){
     const paid=await paidStrategy(db,device.userId);
     if(!paid)return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
 
-    const fallback=ruleFallback(champion,userRole,ours,enemies);
-    const ai=ours.length>=4&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback):null;
-    return NextResponse.json({ok:true,ready:true,source:ai?'ai':'rules',coach:ai??fallback,draft:{ours:names(ours),enemies:names(enemies)}});
+    const fallback=completeCoach(ruleFallback(champion,userRole,ours,enemies),userRole,enemies);
+    const [context,kits]=await Promise.all([
+      playerContext(db,device),
+      kitFacts([...ours,...enemies]),
+    ]);
+    const ai=ours.length>=4&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    const coach=completeCoach(ai??fallback,userRole,enemies);
+    const quality=qualityReport(coach,ours,enemies,kits);
+    return NextResponse.json({
+      ok:true,
+      ready:true,
+      source:ai?'ai':'rules',
+      coach,
+      coachQuality:{score:quality.score,groundedKits:kits.length,rank:context.rank},
+      draft:{ours:names(ours),enemies:names(enemies)},
+    });
   }catch(error){
     console.error('[draft-coach] request failed',error);
     return NextResponse.json({ok:false,error:'The draft coach could not build this plan.'},{status:400});
