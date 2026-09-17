@@ -231,6 +231,13 @@ function fallbackPlayWith(role:string|null){
   if(role==='JUNGLE')return'THE LANE WITH FIRST MOVE';
   return'YOUR FIRST-CONTACT CHAMPION';
 }
+function normalizeRole(value?:string|null){
+  const role=String(value??'').trim().toUpperCase();
+  if(role==='BOTTOM'||role==='ADC')return'ADC';
+  if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';
+  if(role==='MIDDLE')return'MID';
+  return role||null;
+}
 function rankTier(rank?:string|null){
   const raw=String(rank||'GOLD').trim().toUpperCase();
   return Object.keys(RANK_CS).find(tier=>raw.startsWith(tier))||'GOLD';
