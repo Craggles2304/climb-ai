@@ -346,7 +346,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
     if(!parsed)return null;
     parsed=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
     const firstQuality=evaluateWinConditionPlan({plan:parsed,ours,enemies,kits,rank,role:userRole});
-    if(firstQuality.score>=7)return parsed;
+    if(firstQuality.pass)return parsed;
 
     const rewriteUser=[
       user,
@@ -355,8 +355,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       JSON.stringify(parsed),
       '',
       'QUALITY AUDIT FAILED: '+(firstQuality.issues.join('; ')||'insufficient specificity')+'.',
-      'Named champions found: '+(firstQuality.championMentions.join(', ')||'none')+'.',
-      'Named abilities found: '+(firstQuality.abilityMentions.join(', ')||'none')+'.',
+      'Named champions found: '+(firstQuality.metrics.championMentions.join(', ')||'none')+'.',
+      'Named abilities found: '+(firstQuality.metrics.abilityMentions.join(', ')||'none')+'.',
       '',
       'Rewrite the whole JSON plan. Increase specificity without increasing verbosity. Replace generic advice with named champion interactions, supplied ability names/cooldowns, and explicit IF/WHEN/AFTER decision rules. Do not invent facts.',
     ].join('\n');
