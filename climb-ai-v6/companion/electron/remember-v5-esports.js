@@ -274,8 +274,17 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const lane=clean(coach?.laneOpponent)||byRole(enemies,userRole);
     if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
     else set('opRemMatchTitle',userRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
-    if(clean(coach?.never))set('opRemNever',coach.never);
+    const lanePlan=coach?.lanePlan||{};
+    if(clean(lanePlan?.wave))set('opRemLaneDo',lanePlan.wave);
+    if(clean(lanePlan?.trade))set('opRemTradeWhen',lanePlan.trade);
+    if(clean(lanePlan?.respect))set('opRemNever',lanePlan.respect);
+    else if(clean(coach?.never))set('opRemNever',coach.never);
     if(clean(coach?.ifBehind))set('opRemBehind',coach.ifBehind);
+    const threatCard=document.querySelector('#opRememberHud .rem4-threat');
+    if(threatCard&&clean(coach?.theirPlan))threatCard.setAttribute('title','THEIR PLAN: '+upper(coach.theirPlan));
+    const pathCards=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
+    if(pathCards[3]&&clean(coach?.fightTrigger))pathCards[3].setAttribute('title',upper(coach.fightTrigger));
+    if(pathCards[4]&&clean(coach?.objectiveSetup))pathCards[4].setAttribute('title',upper(coach.objectiveSetup));
   }
 
   async function requestCoach(signature,champion,userRole,ours,enemies){
