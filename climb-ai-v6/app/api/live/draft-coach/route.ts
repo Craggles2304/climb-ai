@@ -6,6 +6,7 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {hasTier,normalizeTier} from '@/lib/subscription';
 import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {rankCoachingInstruction} from '@/lib/coachingLevel';
+import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -49,7 +50,6 @@ const ZONE_CONTROL=new Set(['Anivia','Azir','Brand','Fiddlesticks','Gangplank','
 const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Morgana','Nautilus','Neeko','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
 const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
 const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
-const GENERIC_PHRASES=['play clean','stay connected','farm clean','play safe','fight with setup','play the fight','strongest group','take a good fight'];
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function role(value:unknown){const r=clean(value).toUpperCase();if(r==='BOTTOM')return'ADC';if(r==='UTILITY')return'SUPPORT';if(r==='MIDDLE')return'MID';return r}
@@ -253,37 +253,6 @@ function completeCoach(coach:DraftCoach,userRole:string,enemies:Player[]):DraftC
   };
 }
 
-function allCoachText(coach:DraftCoach){
-  const lane=coach.lanePlan||{wave:'',trade:'',respect:''};
-  return clean([
-    coach.headline,coach.why,coach.theirPlan,coach.threatAnswer,coach.fightTrigger,coach.objectiveSetup,coach.never,coach.ifBehind,
-    lane.wave,lane.trade,lane.respect,...coach.steps.map(step=>step.label+' '+step.value),
-  ].join(' ')).toLowerCase();
-}
-
-function qualityReport(coach:DraftCoach,ours:Player[],enemies:Player[],kits:KitFact[]){
-  const text=allCoachText(coach);
-  const allNames=[...ours,...enemies].map(player=>player.champion);
-  const championMentions=[...new Set(allNames.filter(name=>text.includes(name.toLowerCase())))];
-  const abilityNames=[...new Set(kits.flatMap(kit=>[
-    kit.passive?.split(':')[0]||'',
-    ...kit.spells.map(spell=>spell.name),
-  ]).map(clean).filter(name=>name.length>=4))];
-  const abilityMentions=[...new Set(abilityNames.filter(name=>text.includes(name.toLowerCase())))];
-  const conditional=(text.match(/\b(if|when|after|before|until|once|only when|as soon as|hold|bait|track|wait)\b/g)||[]).length;
-  const genericHits=GENERIC_PHRASES.filter(phrase=>text.includes(phrase));
-  const distinctSteps=new Set(coach.steps.map(step=>clean(step.value).toLowerCase())).size;
-  const issues:string[]=[];
-  let score=0;
-  if(championMentions.length>=4)score+=3;else if(championMentions.length>=2)score+=1;else issues.push('not enough named champion interactions');
-  if(abilityMentions.length>=2)score+=2;else if(kits.length>=8)issues.push('not enough ability/cooldown-specific detail');
-  if(conditional>=4)score+=2;else issues.push('not enough if/when/after decision rules');
-  if(distinctSteps===5)score+=1;else issues.push('five steps are repetitive');
-  if(coach.laneOpponent&&coach.lanePlan?.trade.toLowerCase().includes(coach.laneOpponent.toLowerCase()))score+=1;else if(coach.laneOpponent)issues.push('lane advice is not tied to the actual opponent');
-  if(coach.threats.some(name=>coach.threatAnswer.toLowerCase().includes(name.toLowerCase())))score+=1;else issues.push('counter-plan does not name the threat it answers');
-  if(genericHits.length>=4){score-=2;issues.push('too many generic coaching phrases')}
-  return{score,issues,championMentions,abilityMentions};
-}
 
 
 async function callCoachModel(system:string,user:string){
@@ -375,26 +344,37 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
 
     let parsed=await callCoachModel(system,user);
     if(!parsed)return null;
-    parsed=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
-    const firstQuality=qualityReport(parsed,ours,enemies,kits);
-    if(firstQuality.score>=7)return parsed;
+    let best=completeCoach(sanitizeCoach(parsed,enemies,fallback),userRole,enemies);
+    let bestQuality=evaluateWinConditionPlan({plan:best,ours,enemies,kits,rank,role:userRole});
+    if(bestQuality.pass)return best;
 
-    const rewriteUser=[
-      user,
-      '',
-      'YOUR FIRST PLAN:',
-      JSON.stringify(parsed),
-      '',
-      'QUALITY AUDIT FAILED: '+(firstQuality.issues.join('; ')||'insufficient specificity')+'.',
-      'Named champions found: '+(firstQuality.championMentions.join(', ')||'none')+'.',
-      'Named abilities found: '+(firstQuality.abilityMentions.join(', ')||'none')+'.',
-      '',
-      'Rewrite the whole JSON plan. Increase specificity without increasing verbosity. Replace generic advice with named champion interactions, supplied ability names/cooldowns, and explicit IF/WHEN/AFTER decision rules. Do not invent facts.',
-    ].join('\n');
-    const rewritten=await callCoachModel(system,rewriteUser);
-    if(!rewritten)return parsed;
-    const safe=completeCoach(sanitizeCoach(rewritten,enemies,fallback),userRole,enemies);
-    return qualityReport(safe,ours,enemies,kits).score>=firstQuality.score?safe:parsed;
+    for(let attempt=1;attempt<=2;attempt++){
+      const rewriteUser=[
+        user,
+        '',
+        'CURRENT PLAN:',
+        JSON.stringify(best),
+        '',
+        'RANK-SPECIFIC QUALITY AUDIT FAILED FOR '+bestQuality.tier+': '+(bestQuality.issues.join('; ')||'insufficient specificity')+'.',
+        'Score: '+bestQuality.score+'/'+bestQuality.rubric.passScore+'.',
+        'Named champions found: '+(bestQuality.metrics.championMentions.join(', ')||'none')+'.',
+        'Named abilities found: '+(bestQuality.metrics.abilityMentions.join(', ')||'none')+'.',
+        'Conditional decision rules: '+bestQuality.metrics.conditionalRules+'.',
+        '',
+        'Rewrite the whole JSON plan. Fix EVERY failed rubric item while preserving the correct strategic read. Increase specificity without unnecessary verbosity. Use named champion interactions, supplied ability names/cooldowns, explicit IF/WHEN/AFTER decisions, a concrete fight trigger and objective geometry. Do not invent facts.',
+      ].join('\n');
+      const rewritten=await callCoachModel(system,rewriteUser);
+      if(!rewritten)break;
+      const candidate=completeCoach(sanitizeCoach(rewritten,enemies,fallback),userRole,enemies);
+      const candidateQuality=evaluateWinConditionPlan({plan:candidate,ours,enemies,kits,rank,role:userRole});
+      if(candidateQuality.score>bestQuality.score){
+        best=candidate;
+        bestQuality=candidateQuality;
+      }
+      if(candidateQuality.pass)return candidate;
+    }
+    console.warn('[draft-coach] paid coach failed rank quality gate',{rank,tier:bestQuality.tier,score:bestQuality.score,required:bestQuality.rubric.passScore,issues:bestQuality.issues});
+    return null;
   }catch(error){
     console.warn('[draft-coach] AI fallback',error);
     return null;
@@ -428,15 +408,24 @@ export async function POST(req:NextRequest){
       playerContext(db,device),
       kitFacts([...ours,...enemies]),
     ]);
-    const ai=ours.length>=4&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    const fullDraft=ours.length>=4&&enemies.length===5;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
+      const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
+      return NextResponse.json({
+        ok:false,
+        error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
+        coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
+      },{status:503});
+    }
     const coach=completeCoach(ai??fallback,userRole,enemies);
-    const quality=qualityReport(coach,ours,enemies,kits);
+    const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     return NextResponse.json({
       ok:true,
       ready:true,
       source:ai?'ai':'rules',
       coach,
-      coachQuality:{score:quality.score,groundedKits:kits.length,rank:context.rank},
+      coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
     });
   }catch(error){
