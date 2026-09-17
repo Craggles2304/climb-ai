@@ -168,7 +168,7 @@ async function paidStrategy(db:any,userId:string){
 async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
-    const system=`You are OP CLIMB Draft Coach, an expert League of Legends coach. Analyse ONLY the static 5v5 draft and the player's role; this is a pre-game plan, never reactive live shotcalling. Think like a paid human coach, not a champion-tag lookup. Reason about how the two compositions interact: engage and counter-engage, dive access, peel, pick tools, zone control, objective setup, scaling, target accessibility and conversion after a won fight. For ADCs, never tell them to tunnel the enemy ADC: default to the closest safe target unless the draft creates a genuinely safe back-line access condition. Name a multi-champion threat PACKAGE when several champions combine to create the real danger. Headline must be a clear strategic call such as "SCALE WITHOUT GIVING ACCESS", "PICK FIRST → BURST → OBJECTIVE", or "WIN SETUP → FRONT-TO-BACK", never vague language like "PLAY MID GAME". Make the five steps teach the player exactly how this draft wins. Keep every field concise enough for an esports HUD. Return JSON only matching the requested shape.`;
+    const system=`You are OP CLIMB Draft Coach, an expert League of Legends coach. Analyse ONLY the static draft and the player's role; this is a pre-game plan, never reactive live shotcalling. If one allied champion is unresolved, reason from the known four and never invent the missing pick. Think like a paid human coach, not a champion-tag lookup. Reason about how the two compositions interact: engage and counter-engage, dive access, peel, pick tools, zone control, objective setup, scaling, target accessibility and conversion after a won fight. For ADCs, never tell them to tunnel the enemy ADC: default to the closest safe target unless the draft creates a genuinely safe back-line access condition. Name a multi-champion threat PACKAGE when several champions combine to create the real danger. Headline must be a clear strategic call such as "SCALE WITHOUT GIVING ACCESS", "PICK FIRST → BURST → OBJECTIVE", or "WIN SETUP → FRONT-TO-BACK", never vague language like "PLAY MID GAME". Make the five steps teach the player exactly how this draft wins. Keep every field concise enough for an esports HUD. Return JSON only matching the requested shape.`;
     const response=await fetch('https://api.openai.com/v1/chat/completions',{
       method:'POST',
       headers:{'content-type':'application/json',authorization:`Bearer ${process.env.OPENAI_API_KEY}`},
@@ -184,8 +184,11 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
     });
     if(!response.ok)return null;
     const body=await response.json();
-    const parsed=JSON.parse(body?.choices?.[0]?.message?.content||'{}');
-    return outputSchema.parse(parsed);
+    const parsed=outputSchema.parse(JSON.parse(body?.choices?.[0]?.message?.content||'{}'));
+    const enemyMap=new Map(enemies.map(player=>[player.champion.toLowerCase(),player.champion]));
+    const threats=parsed.threats.map(name=>enemyMap.get(name.toLowerCase())).filter((name):name is string=>Boolean(name));
+    const laneOpponent=parsed.laneOpponent?enemyMap.get(parsed.laneOpponent.toLowerCase())??fallback.laneOpponent:fallback.laneOpponent;
+    return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
   }catch(error){
     console.warn('[draft-coach] AI fallback',error);
     return null;
@@ -215,7 +218,7 @@ export async function POST(req:NextRequest){
     if(!paid)return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
 
     const fallback=ruleFallback(champion,userRole,ours,enemies);
-    const ai=ours.length===5&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback):null;
+    const ai=ours.length>=4&&enemies.length===5?await aiCoach(champion,userRole,ours,enemies,fallback):null;
     return NextResponse.json({ok:true,ready:true,source:ai?'ai':'rules',coach:ai??fallback,draft:{ours:names(ours),enemies:names(enemies)}});
   }catch(error){
     console.error('[draft-coach] request failed',error);
