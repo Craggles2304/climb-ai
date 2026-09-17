@@ -45,5 +45,5 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.9');
+  assert.equal(pkg.version,'0.7.10');
 });
