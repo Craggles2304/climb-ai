@@ -6,6 +6,7 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
+import {buildCompositionStrategy} from '@/lib/champions/compositionIntelligence';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
@@ -83,12 +84,22 @@ export async function GET(req:NextRequest){
     const rawPlan=buildChampionPowerPlan({you,roster,patch,role});
     const plan=adaptPlanForRank(rawPlan,coach.depth,coach.visiblePoints);
     const fullTeamBase=buildPregameTeamPlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster});
-    // Win/loss conditions and the five-part role read are paid match-reading
-    // features. Keep this gate on the server so FREE clients never receive the
-    // hidden strategic payload merely by inspecting Companion state.
-    const teamBase=strategyAccess.paidStrategy
-      ?fullTeamBase
-      :{...fullTeamBase,ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null};
+    const compositionUpgrade=buildCompositionStrategy({
+      localChampion:you.name,
+      localRole:role,
+      allies:allyPicks,
+      enemies:enemyPicks,
+      details,
+      baseRoleWinCondition:fullTeamBase.roleWinCondition,
+    });
+    const intelligentTeamBase={...fullTeamBase,...compositionUpgrade};
+    // PLUS gets the actionable five-part role strategy. PRO gets the deeper
+    // interaction graph as well. FREE receives neither strategic payload.
+    const teamBase=!strategyAccess.paidStrategy
+      ?{...intelligentTeamBase,ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null}
+      :strategyAccess.deepStrategy
+        ?intelligentTeamBase
+        :{...intelligentTeamBase,compositionRead:null};
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
@@ -100,13 +111,13 @@ export async function GET(req:NextRequest){
   }
 }
 
-async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:SubscriptionTier;paidStrategy:boolean;trialing:boolean;trialAvailable:boolean}>{
+async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:SubscriptionTier;paidStrategy:boolean;deepStrategy:boolean;trialing:boolean;trialAvailable:boolean}>{
   const [profileResult,entitlementResult,userResult]=await Promise.all([
     db.from('profiles').select('is_founder').eq('id',userId).maybeSingle(),
     db.from('product_entitlements').select('tier,status,current_period_end').eq('user_id',userId).eq('product','LOL').maybeSingle(),
     db.auth.admin.getUserById(userId),
   ]);
-  if(profileResult?.data?.is_founder===true)return{tier:'PRO',paidStrategy:true,trialing:false,trialAvailable:false};
+  if(profileResult?.data?.is_founder===true)return{tier:'PRO',paidStrategy:true,deepStrategy:true,trialing:false,trialAvailable:false};
 
   const entitlement=entitlementResult?.data as any;
   const status=String(entitlement?.status??'').toLowerCase();
@@ -115,9 +126,11 @@ async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:Subscri
   const legacyTier=normalizeTier(userResult?.data?.user?.app_metadata?.subscription_tier);
   const tier=entitlementLive?normalizeTier(entitlement?.tier):legacyTier;
   const paidStrategy=hasTier(tier,'PLUS');
+  const deepStrategy=hasTier(tier,'PRO');
   return{
     tier,
     paidStrategy,
+    deepStrategy,
     trialing:paidStrategy&&status==='trialing',
     trialAvailable:!paidStrategy&&!entitlement,
   };
