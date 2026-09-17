@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 const root=path.join(__dirname,'..');
-const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
+const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
+const wrapper=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const team=fs.readFileSync(path.join(root,'lib','champions','teamCompPlan.ts'),'utf8');
 const preload=fs.readFileSync(path.join(root,'companion','electron','preload.cjs'),'utf8');
 
@@ -24,6 +25,7 @@ test('server removes win and loss conditions for FREE users',()=>{
   assert.match(route,/strategyAccess\.paidStrategy/);
   assert.match(route,/ourWinCondition:null,roleWinCondition:null,theirWinCondition:null,biggestThrow:null,compositionRead:null/);
   assert.match(route,/hasTier\(tier,'PLUS'\)/);
+  assert.ok(wrapper.includes('rememberPlan:paid?remember:null'));
 });
 
 test('PRO alone receives the deep composition interaction graph',()=>{
