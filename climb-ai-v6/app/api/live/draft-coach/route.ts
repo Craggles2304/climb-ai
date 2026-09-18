@@ -8,6 +8,7 @@ import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/sour
 import {rankCoachingInstruction} from '@/lib/coachingLevel';
 import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
+import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -486,7 +487,13 @@ export async function POST(req:NextRequest){
     const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
 
     const kits=await kitFacts([...ours,...enemies]);
-    const fallback=completeCoach(ruleFallback(champion,userRole,ours,enemies),userRole,enemies);
+    const fallback=completeCoach(buildRankAwareDraftPlan({
+      champion,
+      role:roleResolution.role,
+      ours,
+      enemies,
+      rank:context.rank,
+    }) as DraftCoach,userRole,enemies);
     fallback.laneOpponents=laneOpponents;
     fallback.lanePartner=lanePartner;
     if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
