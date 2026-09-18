@@ -129,6 +129,7 @@ function roleHeadline(role:DraftRole|null,archetype:string,enemyAccess:string[],
     return HYPERCARRY.has(champion)?'POSITION FIRST → FREE-HIT':'POSITION FIRST → DPS FRONT-TO-BACK';
   }
   if(role==='SUPPORT'){
+    if(SELFISH_SUPPORT_STYLE.has(champion))return'CREATE PRESSURE → RECONNECT WITH CARRY';
     if(enemyAccess.length>=2)return'CREATE FIRST CONTACT → PROTECT THE EXIT';
     if(archetype==='POKE')return'CONTROL ENTRY → PROTECT THE POKE';
     if(archetype==='PICK')return'CREATE THE PICK → PEEL THE FOLLOW-UP';
@@ -330,7 +331,7 @@ export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{
     const adc=byRole(ours,'ADC')||'YOUR ADC';
     const selfish=SELFISH_SUPPORT_STYLE.has(champion);
     if(selfish){
-      why=`${champion} IS NOT RELIABLEABLE BACK-LINE PEEL HERE; CREATE PRESSURE ON A REACHABLE TARGET, THEN EXIT TOWARD ${adc} BEFORE ${threatText} CAN COUNTER-ENTER.`;
+      why=`${champion} IS NOT RELIABLE BACK-LINE PEEL HERE; CREATE PRESSURE ON A REACHABLE TARGET, THEN EXIT TOWARD ${adc} BEFORE ${threatText} CAN COUNTER-ENTER.`;
       theirPlan=`${threatText} WANT YOUR FIRST COMMIT TO SEPARATE ${champion} FROM ${adc}; ${enemyAdc} THEN HITS THE DISCONNECTED FIGHT.`;
       threatAnswer=condition(depth,
         `PRESSURE ONE TARGET, THEN RESET TOWARD ${adc} AS ${threatText} ENTER.`,
