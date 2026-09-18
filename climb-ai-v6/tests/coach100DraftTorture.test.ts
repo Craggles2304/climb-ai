@@ -153,6 +153,8 @@ test('100-case torture bench rejects generic coaching and covers Iron through Ma
   let caseIndex=0;
   const rankCounts=new Map(RANKS.map(rank=>[rank,0]));
   const scores:number[]=[];
+  let qualityPasses=0;
+  const perRank=new Map(RANKS.map(rank=>[rank,{cases:0,passes:0,total:0,min:100}]));
   for(const draft of drafts){
     for(const role of ROLES){
       const rank=RANKS[caseIndex%RANKS.length];
@@ -177,12 +179,17 @@ test('100-case torture bench rejects generic coaching and covers Iron through Ma
       if(role==='TOP')assert.match(all,/side|front|flank|wave/,draft.name+' top responsibility');
       const quality=evaluateWinConditionPlan({plan,ours:[...draft.ours],enemies:[...draft.enemies],rank,role});
       scores.push(quality.score);
+      if(quality.pass)qualityPasses++;
+      const bucket=perRank.get(rank)!;
+      bucket.cases++;bucket.total+=quality.score;bucket.min=Math.min(bucket.min,quality.score);if(quality.pass)bucket.passes++;
       caseIndex++;
     }
   }
   assert.equal(caseIndex,100);
   for(const rank of RANKS)assert.ok((rankCounts.get(rank)||0)>=12,rank+' coverage');
   const average=scores.reduce((sum,score)=>sum+score,0)/scores.length;
+  console.log('COACH100 average='+average.toFixed(1)+' qualityPasses='+qualityPasses+'/100');
+  for(const rank of RANKS){const b=perRank.get(rank)!;console.log('COACH100 '+rank+' avg='+(b.total/b.cases).toFixed(1)+' pass='+b.passes+'/'+b.cases+' min='+b.min);}
   assert.ok(average>=70,'100-case average rank quality below 70: '+average.toFixed(1));
 });
 
