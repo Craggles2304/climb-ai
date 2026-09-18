@@ -27,7 +27,7 @@ export interface CoachEngineInput{
   rank?:string|null;
 }
 
-const ENGAGE=new Set(['Alistar','Amumu','Annie','Ashe','Blitzcrank','Fiddlesticks','Galio','Gragas','Hecarim','Jarvan IV','Leona','Lissandra','Malphite','Maokai','Nautilus','Neeko','Nocturne','Ornn','Pantheon','Rakan','Rell','Sejuani','Sett','Skarner','Vi','Volibear','Wukong','Zac']);
+const ENGAGE=new Set(['Alistar','Amumu','Annie','Ashe','Blitzcrank','Fiddlesticks','Galio','Gnar','Gragas','Hecarim','Jarvan IV','Leona','Lissandra','Malphite','Maokai','Nautilus','Neeko','Nocturne','Ornn','Pantheon','Rakan','Rell','Sejuani','Sett','Skarner','Vi','Volibear','Wukong','Zac']);
 const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lissandra','Lux','Morgana','Nautilus','Neeko','Nocturne','Pantheon','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
 const DIVE=new Set(['Akali','Camille','Diana','Ekko','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Sett','Vi','Volibear','Wukong','Xin Zhao','Yone']);
 const ASSASSIN=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Kassadin','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
@@ -84,7 +84,6 @@ function accessThreats(enemies:DraftRolePlayer[],role:DraftRole|null){
     if(ENGAGE.has(name))score+=6;
     if(PICK.has(name))score+=3;
     if(role==='ADC'&&roleOf(player)!=='ADC')score+=2;
-    if(role==='MID'&&['JUNGLE','SUPPORT'].includes(roleOf(player)||''))score+=1;
     return{player,score};
   }).sort((a,b)=>b.score-a.score);
   const strong=scored.filter(item=>item.score>=7).slice(0,3).map(item=>clean(item.player.champion));
