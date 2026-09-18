@@ -5,6 +5,7 @@
   const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'];
   const normRole=value=>{const raw=upper(value);if(!raw||['NONE','UNKNOWN','UNSELECTED','INVALID'].includes(raw))return'';const role=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;return VALID_ROLES.includes(role)?role:''};
   const ROLE_ORDER={TOP:0,JUNGLE:1,MID:2,ADC:3,SUPPORT:4};
+  const DEEP_PLAN_STORAGE_KEY='opclimb.deep-locked-plan.v1';
   const STRONG_ADC_PRIOR=new Set(['Aphelios','Caitlyn','Draven','Ezreal','Jhin','Jinx',"Kai\'Sa",'Kalista',"Kog\'Maw",'Nilah','Samira','Sivir','Smolder','Tristana','Twitch','Vayne','Xayah','Zeri','Yunara']);
   const ASSET_IDS={
     Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -112,6 +113,53 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     document.head.appendChild(style);
   }
 
+  function loadDeepLockedPlan(){
+    try{return JSON.parse(localStorage.getItem(DEEP_PLAN_STORAGE_KEY)||'null')}catch{return null}
+  }
+
+  function persistDeepLockedPlan(coach,champion,role){
+    if(!coach?._playbook||coach._playbook.version!=='FROZEN_V1')return;
+    const previous=loadDeepLockedPlan();
+    const same=previous?.draftFingerprint&&previous.draftFingerprint===coach._playbook.draftFingerprint;
+    const next={
+      version:1,
+      champion:clean(champion),
+      role:normRole(role)||clean(role),
+      source:clean(coach?._coachSource)||'rules',
+      quality:coach?._coachQuality||null,
+      headline:clean(coach?.headline),
+      why:clean(coach?.why),
+      theirPlan:clean(coach?.theirPlan),
+      threatLabel:clean(coach?.threatLabel),
+      threats:Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[],
+      threatAnswer:clean(coach?.threatAnswer),
+      fightTrigger:clean(coach?.fightTrigger),
+      objectiveSetup:clean(coach?.objectiveSetup),
+      never:clean(coach?.never),
+      laneOpponent:clean(coach?.laneOpponent),
+      laneOpponents:Array.isArray(coach?.laneOpponents)?coach.laneOpponents.map(clean).filter(Boolean).slice(0,2):[],
+      lanePartner:clean(coach?.lanePartner),
+      draftFingerprint:clean(coach._playbook.draftFingerprint),
+      playbook:coach._playbook,
+      selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
+      branchSelections:same&&Array.isArray(previous?.branchSelections)?previous.branchSelections.slice(-20):[],
+      capturedAt:same&&previous?.capturedAt?previous.capturedAt:new Date().toISOString(),
+      updatedAt:new Date().toISOString(),
+    };
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next))}catch{}
+  }
+
+  function persistBranchSelection(branch){
+    const stored=loadDeepLockedPlan();
+    if(!stored?.playbook?.branches?.[branch])return;
+    const history=Array.isArray(stored.branchSelections)?stored.branchSelections.slice(-19):[];
+    history.push({branch,at:new Date().toISOString(),source:'PLAYER_CLICK'});
+    stored.selectedBranch=branch;
+    stored.branchSelections=history;
+    stored.updatedAt=new Date().toISOString();
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+  }
+
   function ensurePlaybookPanel(){
     const hud=$('opRememberHud');if(!hud)return null;
     let panel=$('opRemFrozenPlaybook');
@@ -142,6 +190,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       const key=upper(button.getAttribute('data-op-branch'));
       if(!['AHEAD','EVEN','BEHIND'].includes(key)||!lastPlaybook?.branches?.[key])return;
       selectedBranch=key;
+      persistBranchSelection(key);
       renderSelectedBranch();
     }));
     return panel;
@@ -457,6 +506,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         if(Array.isArray(response?.resolvedDraft?.enemies))enrichedCoach._resolvedEnemyRoles=response.resolvedDraft.enemies;
         lastCoachSignature=signature;
         lastCoach=enrichedCoach;
+        persistDeepLockedPlan(lastCoach,champion,resolvedRole);
         applyCoach(lastCoach,champion,resolvedRole,ours,enemies);
       }
     }catch{}finally{coachInFlight=false}

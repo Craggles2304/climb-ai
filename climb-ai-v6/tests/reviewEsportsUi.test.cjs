@@ -45,5 +45,19 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.12');
+  assert.equal(pkg.version,'0.7.13');
+});
+
+
+test('post-game review prefers the exact deep draft-coach plan and preserves player branch history',()=>{
+  assert.ok(core.includes("DEEP_PLAN_STORAGE_KEY='opclimb.deep-locked-plan.v1'"));
+  assert.ok(core.includes('function loadDeepLockedPlan'));
+  assert.ok(core.includes('function deepBaseline'));
+  assert.ok(core.includes('deepPlan:true'));
+  assert.ok(core.includes("FIGHT: '+clean(stored.fightTrigger)"));
+  assert.ok(core.includes("OBJECTIVE: '+clean(stored.objectiveSetup)"));
+  assert.ok(core.includes('DEEP VERIFIED PRE-GAME PLAN'));
+  assert.ok(core.includes('PLAYER BRANCHES: '));
+  assert.ok(core.includes('NO RESULT-BASED REWRITING'));
+  assert.ok(core.includes('localStorage.removeItem(DEEP_PLAN_STORAGE_KEY)'));
 });

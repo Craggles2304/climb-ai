@@ -235,3 +235,16 @@ test('Companion exposes frozen player-selected AHEAD EVEN BEHIND branches with c
   assert.ok(esports.includes('SAFE LOCAL PLAN'));
   assert.ok(esports.includes('renderSelfChecks(playbook)'));
 });
+
+
+test('verified deep coach plan is persisted for the post-game debrief without using live telemetry',()=>{
+  assert.ok(esports.includes("DEEP_PLAN_STORAGE_KEY='opclimb.deep-locked-plan.v1'"));
+  assert.ok(esports.includes('function persistDeepLockedPlan'));
+  assert.ok(esports.includes('function persistBranchSelection'));
+  assert.ok(esports.includes("source:'PLAYER_CLICK'"));
+  assert.ok(esports.includes('persistDeepLockedPlan(lastCoach,champion,resolvedRole)'));
+  assert.ok(esports.includes('draftFingerprint:clean(coach._playbook.draftFingerprint)'));
+  assert.ok(esports.includes('branchSelections:'));
+  assert.ok(!esports.includes('goldDiff'));
+  assert.ok(!esports.includes('killDiff'));
+});
