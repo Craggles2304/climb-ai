@@ -191,7 +191,7 @@ async function paidStrategy(db:any,userId:string){
 
 
 async function playerContext(db:any,device:{userId:string;riotAccountId:string|null}){
-  const profilePromise=db.from('profiles').select('rank').eq('id',device.userId).maybeSingle();
+  const profilePromise=db.from('profiles').select('rank,role').eq('id',device.userId).maybeSingle();
   const riotPromise=device.riotAccountId
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
@@ -207,7 +207,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
   }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
   const task=tasks[0]??null;
-  return{rank,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -407,21 +407,35 @@ export async function POST(req:NextRequest){
 
   try{
     const input=requestSchema.parse(await req.json());
-    const ours=inferMissingRoles(dedupe(input.ours));
-    const enemies=inferMissingRoles(dedupe(input.enemies));
     const champion=clean(input.champion);
-    const userRole=role(input.role)||role(ours.find(player=>player.champion.toLowerCase()===champion.toLowerCase())?.role);
-    if(ours.length<3||enemies.length<3)return NextResponse.json({ok:false,error:'Not enough of the draft is resolved yet.'},{status:202});
+    const oursRaw=dedupe(input.ours);
+    const enemiesRaw=dedupe(input.enemies);
+    if(oursRaw.length<3||enemiesRaw.length<3)return NextResponse.json({ok:false,error:'Not enough of the draft is resolved yet.'},{status:202});
+
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({ok:false,error:'Draft coach is unavailable.'},{status:503});
-    const paid=await paidStrategy(db,device.userId);
+    const [paid,context]=await Promise.all([paidStrategy(db,device.userId),playerContext(db,device)]);
     if(!paid)return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
 
+    const roleResolution=resolvePlayerRole({
+      champion,
+      requestRole:input.role,
+      ours:oursRaw,
+      profileRole:context.profileRole,
+      gameMode:input.gameMode,
+    });
+    const ours=normalizeTeamAroundPlayer(oursRaw,champion,roleResolution) as Player[];
+    const enemies=resolveEnemyRoles(enemiesRaw) as Player[];
+    const userRole=roleResolution.role??'';
+    const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
+    const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
+
+    const kits=await kitFacts([...ours,...enemies]);
     const fallback=completeCoach(ruleFallback(champion,userRole,ours,enemies),userRole,enemies);
-    const [context,kits]=await Promise.all([
-      playerContext(db,device),
-      kitFacts([...ours,...enemies]),
-    ]);
+    fallback.laneOpponents=laneOpponents;
+    fallback.lanePartner=lanePartner;
+    if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
+
     const fullDraft=ours.length>=4&&enemies.length===5;
     const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
@@ -429,15 +443,20 @@ export async function POST(req:NextRequest){
       return NextResponse.json({
         ok:false,
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
+        player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
         coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
     const coach=completeCoach(ai??fallback,userRole,enemies);
+    coach.laneOpponents=laneOpponents;
+    coach.lanePartner=lanePartner;
+    if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     return NextResponse.json({
       ok:true,
       ready:true,
       source:ai?'ai':'rules',
+      player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
       coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
@@ -447,3 +466,4 @@ export async function POST(req:NextRequest){
     return NextResponse.json({ok:false,error:'The draft coach could not build this plan.'},{status:400});
   }
 }
+
