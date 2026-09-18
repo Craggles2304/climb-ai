@@ -29,7 +29,7 @@
   let coachInFlight=false;
   let lastPlaybook=null;
   let selectedBranch='EVEN';
-  let lastCoachMeta={source:'local',quality:null};
+  let lastCoachMeta={source:'local',quality:null,failure:null};
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -201,10 +201,28 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const node=$('opRemCoachStatus');if(!node)return;
     const source=clean(meta?.source||lastCoachMeta?.source||'local').toLowerCase();
     const quality=meta?.quality||lastCoachMeta?.quality||null;
+    const failure=meta?.failure||lastCoachMeta?.failure||null;
     const tier=upper(quality?.tier||quality?.rank||'');
-    const verified=source==='ai'&&quality?.pass===true;
+    const verified=source==='ai'&&quality?.pass===true&&!failure;
     node.classList.toggle('verified',verified);
-    node.textContent=verified?('DEEP VERIFIED'+(tier?' · '+tier:'')):source==='rules'?('RULE PLAN'+(tier?' · '+tier:'')):'SAFE LOCAL PLAN';
+    if(failure){
+      const code=upper(failure?.code);
+      const label=code==='QUALITY_GATE'?'QUALITY GATE · SAFE PLAN'
+        :code==='RATE_LIMIT'?'COACH BUSY · SAFE PLAN'
+        :code==='ENTITLEMENT'?'PLUS / PRO REQUIRED'
+        :code==='AUTH'||code==='PAIR_REQUIRED'?'RE-PAIR REQUIRED'
+        :code==='DRAFT_WAITING'?'WAITING FOR FULL DRAFT'
+        :code==='TIMEOUT'||code==='NETWORK'?'OFFLINE · SAFE PLAN'
+        :'DEEP COACH UNAVAILABLE · SAFE PLAN';
+      node.textContent=label;
+      node.title=clean(failure?.error)||label;
+      return;
+    }
+    node.title='';
+    node.textContent=source==='loading'?'DEEP COACH CHECKING…'
+      :verified?('DEEP VERIFIED'+(tier?' · '+tier:''))
+      :source==='rules'?('RULE PLAN'+(tier?' · '+tier:''))
+      :'SAFE LOCAL PLAN';
   }
 
   function renderSelfChecks(playbook){
@@ -238,7 +256,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
   }
 
   function renderPlaybook(playbook,meta){
-    lastCoachMeta={source:clean(meta?.source)||'local',quality:meta?.quality||null};
+    lastCoachMeta={source:clean(meta?.source)||'local',quality:meta?.quality||null,failure:meta?.failure||null};
     renderCoachStatus(lastCoachMeta);
     if(playbook?.version==='FROZEN_V1'&&playbook?.branches){
       lastPlaybook=playbook;
@@ -485,6 +503,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     lastCoachAttemptSignature=signature;
     lastCoachAttemptAt=now;
     coachInFlight=true;
+    renderCoachStatus({source:'loading',quality:null,failure:null});
     try{
       const response=await window.opCompanion.draftCoach({
         champion,
@@ -508,8 +527,17 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         lastCoach=enrichedCoach;
         persistDeepLockedPlan(lastCoach,champion,resolvedRole);
         applyCoach(lastCoach,champion,resolvedRole,ours,enemies);
+        return;
       }
-    }catch{}finally{coachInFlight=false}
+      renderPlaybook(null,{source:'local',quality:response?.coachQuality||null,failure:{
+        code:clean(response?.code)||'REQUEST',
+        status:Number(response?.status)||0,
+        error:clean(response?.error)||'Deep coach unavailable. Using the safe local plan.',
+        retryable:response?.retryable!==false,
+      }});
+    }catch(error){
+      renderPlaybook(null,{source:'local',quality:null,failure:{code:'CLIENT',status:0,error:clean(error?.message)||'Deep coach unavailable. Using the safe local plan.',retryable:true}});
+    }finally{coachInFlight=false}
   }
 
   function applyRoster(payload){
@@ -556,7 +584,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachAttemptAt=0;
       lastPlaybook=null;
       selectedBranch='EVEN';
-      lastCoachMeta={source:'local',quality:null};
+      lastCoachMeta={source:'local',quality:null,failure:null};
       renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
