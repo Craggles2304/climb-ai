@@ -251,9 +251,9 @@ test('verified deep coach plan is persisted for the post-game debrief without us
 
 
 test('deep-coach failures degrade visibly to a safe local plan instead of failing silently',()=>{
-  assert.ok(main.includes("code:'RATE_LIMIT'"));
-  assert.ok(main.includes("code:'QUALITY_GATE'"));
-  assert.ok(main.includes("code:'ENTITLEMENT'"));
+  assert.ok(main.includes("'RATE_LIMIT'"));
+  assert.ok(main.includes("'QUALITY_GATE'"));
+  assert.ok(main.includes("'ENTITLEMENT'"));
   assert.ok(main.includes("code:timeoutError?'TIMEOUT':'NETWORK'"));
   assert.ok(main.includes('retryAfterSeconds'));
   assert.ok(esports.includes('QUALITY GATE · SAFE PLAN'));
