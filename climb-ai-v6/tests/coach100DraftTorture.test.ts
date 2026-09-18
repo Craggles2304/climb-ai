@@ -97,9 +97,39 @@ const drafts=[
     enemies:[P('Sion','TOP'),P('Karthus','JUNGLE'),P('Viktor','MID'),P('Jinx','ADC'),P('Soraka','SUPPORT')],
     threats:['Sion'],
   },
+  {
+    name:'Shen Ivern Lulu protect KogMaw',
+    ours:[P('Shen','TOP'),P('Ivern','JUNGLE'),P('Lulu','MID'),P("Kog'Maw",'ADC'),P('Braum','SUPPORT')],
+    enemies:[P('Camille','TOP'),P('Nocturne','JUNGLE'),P('Akali','MID'),P('Jhin','ADC'),P('Leona','SUPPORT')],
+    threats:['Camille','Nocturne','Akali','Leona'],
+  },
+  {
+    name:'Nocturne Diana Rakan collapse',
+    ours:[P('Renekton','TOP'),P('Nocturne','JUNGLE'),P('Diana','MID'),P("Kai'Sa",'ADC'),P('Rakan','SUPPORT')],
+    enemies:[P('Gnar','TOP'),P('Kindred','JUNGLE'),P('Orianna','MID'),P('Jinx','ADC'),P('Milio','SUPPORT')],
+    threats:['Gnar'],
+  },
+  {
+    name:'Rumble Fiddlesticks Anivia zone',
+    ours:[P('Rumble','TOP'),P('Fiddlesticks','JUNGLE'),P('Anivia','MID'),P('Sivir','ADC'),P('Alistar','SUPPORT')],
+    enemies:[P('Fiora','TOP'),P('Lee Sin','JUNGLE'),P('LeBlanc','MID'),P('Ezreal','ADC'),P('Janna','SUPPORT')],
+    threats:['Fiora','Lee Sin','LeBlanc'],
+  },
+  {
+    name:'low-engage scaling front line',
+    ours:[P('Dr. Mundo','TOP'),P('Graves','JUNGLE'),P('Viktor','MID'),P('Xayah','ADC'),P('Milio','SUPPORT')],
+    enemies:[P('Renekton','TOP'),P('Jarvan IV','JUNGLE'),P('Syndra','MID'),P('Lucian','ADC'),P('Nami','SUPPORT')],
+    threats:['Renekton','Jarvan IV'],
+  },
+  {
+    name:'Aphelios Rakan into Sett Pantheon Irelia',
+    ours:[P('Ashe','TOP'),P('Nasus','JUNGLE'),P('Kassadin','MID'),P('Aphelios','ADC'),P('Rakan','SUPPORT')],
+    enemies:[P('Sett','TOP'),P('Pantheon','JUNGLE'),P('Irelia','MID'),P('Lucian','ADC'),P('Taric','SUPPORT')],
+    threats:['Sett','Pantheon','Irelia'],
+  },
 ] as const;
 
-test('first 75 torture cases resolve role, lane and threats',()=>{
+test('100 torture cases resolve role, lane and threats',()=>{
   let cases=0;
   for(const draft of drafts){
     for(const role of ROLES){
@@ -113,5 +143,5 @@ test('first 75 torture cases resolve role, lane and threats',()=>{
       assert.equal(plan.steps.length,5);
     }
   }
-  assert.equal(cases,75);
+  assert.equal(cases,100);
 });
