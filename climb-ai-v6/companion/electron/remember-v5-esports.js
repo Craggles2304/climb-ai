@@ -26,6 +26,9 @@
   let lastCoachAttemptSignature='';
   let lastCoachAttemptAt=0;
   let coachInFlight=false;
+  let lastPlaybook=null;
+  let selectedBranch='EVEN';
+  let lastCoachMeta={source:'local',quality:null};
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -87,10 +90,115 @@ body.op-remember-live .rem4-lane-title{border-color:rgba(77,147,255,.48)!importa
 body.op-remember-live .rem4-lane-card.danger{border-color:rgba(255,75,75,.33)!important;background:linear-gradient(135deg,rgba(116,28,35,.16),rgba(5,10,15,.75))!important}
 body.op-remember-live .rem4-footer{gap:10px!important}body.op-remember-live .rem4-footer article{padding:13px 15px!important;background:rgba(6,10,14,.70)!important}body.op-remember-live .rem4-footer strong{font-size:10px!important}
 body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live .rem4-note{align-self:end!important}
+body.op-remember-live .rem5-playbook{border:1px solid rgba(214,255,47,.18);background:linear-gradient(135deg,rgba(214,255,47,.045),rgba(5,10,14,.78));padding:13px 14px;display:grid;gap:10px}
+body.op-remember-live .rem5-playbook-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+body.op-remember-live .rem5-playbook-title{font-size:8px;letter-spacing:.18em;color:#d6ff2f;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem5-coach-status{font-size:7px;letter-spacing:.12em;padding:6px 8px;border:1px solid rgba(255,255,255,.12);color:#a9b5bd;text-transform:uppercase}
+body.op-remember-live .rem5-coach-status.verified{border-color:rgba(214,255,47,.35);color:#d6ff2f;background:rgba(214,255,47,.05)}
+body.op-remember-live .rem5-branch-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255,255,255,.11);background:#081017;color:#8898a3;padding:9px 10px;font:950 8px/1 system-ui;letter-spacing:.14em;cursor:pointer;text-transform:uppercase}
+body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
+body.op-remember-live .rem5-branch-btn.active{border-color:rgba(214,255,47,.55);color:#071009;background:#d6ff2f}
+body.op-remember-live .rem5-branch-card{display:grid;grid-template-columns:.8fr 1.25fr 1.25fr;gap:8px}
+body.op-remember-live .rem5-branch-cell{padding:10px 11px;border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.62);min-width:0}
+body.op-remember-live .rem5-branch-cell span{display:block;color:#6e7e89;font-size:6px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem5-branch-cell strong{display:block;margin-top:5px;font-size:9px;line-height:1.35;text-transform:uppercase}
+body.op-remember-live .rem5-branch-cell.main strong{color:#d6ff2f;font-size:10px}
+body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
+@media(max-width:980px){body.op-remember-live .rem5-branch-card{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
     document.head.appendChild(style);
+  }
+
+  function ensurePlaybookPanel(){
+    const hud=$('opRememberHud');if(!hud)return null;
+    let panel=$('opRemFrozenPlaybook');
+    if(panel)return panel;
+    panel=document.createElement('section');
+    panel.id='opRemFrozenPlaybook';
+    panel.className='rem5-playbook';
+    panel.innerHTML=`
+      <div class="rem5-playbook-head">
+        <div class="rem5-playbook-title">FROZEN GAME PLAN · YOU PICK THE GAME STATE</div>
+        <div id="opRemCoachStatus" class="rem5-coach-status">SAFE LOCAL PLAN</div>
+      </div>
+      <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
+        <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
+        <button type="button" class="rem5-branch-btn active" data-op-branch="EVEN">EVEN</button>
+        <button type="button" class="rem5-branch-btn" data-op-branch="BEHIND">BEHIND</button>
+      </div>
+      <div class="rem5-branch-card">
+        <div class="rem5-branch-cell main"><span>YOUR CALL</span><strong id="opRemBranchHeadline">WAITING FOR DEEP PLAN</strong></div>
+        <div class="rem5-branch-cell"><span>FIGHT RULE</span><strong id="opRemBranchFight">USE THE BASE PLAN</strong></div>
+        <div class="rem5-branch-cell"><span>OBJECTIVE RULE</span><strong id="opRemBranchObjective">USE THE BASE PLAN</strong></div>
+      </div>
+      <div id="opRemBranchRule" class="rem5-policy">PLAYER-SELECTED BRANCH · NEVER AUTO-CHANGED BY LIVE TELEMETRY</div>`;
+    const check=hud.querySelector('.rem4-check');
+    if(check)check.insertAdjacentElement('beforebegin',panel);
+    else hud.querySelector('.rem4-body')?.appendChild(panel);
+    panel.querySelectorAll('[data-op-branch]').forEach(button=>button.addEventListener('click',()=>{
+      const key=upper(button.getAttribute('data-op-branch'));
+      if(!['AHEAD','EVEN','BEHIND'].includes(key)||!lastPlaybook?.branches?.[key])return;
+      selectedBranch=key;
+      renderSelectedBranch();
+    }));
+    return panel;
+  }
+
+  function renderCoachStatus(meta){
+    ensurePlaybookPanel();
+    const node=$('opRemCoachStatus');if(!node)return;
+    const source=clean(meta?.source||lastCoachMeta?.source||'local').toLowerCase();
+    const quality=meta?.quality||lastCoachMeta?.quality||null;
+    const tier=upper(quality?.tier||quality?.rank||'');
+    const verified=source==='ai'&&quality?.pass===true;
+    node.classList.toggle('verified',verified);
+    node.textContent=verified?('DEEP VERIFIED'+(tier?' · '+tier:'')):source==='rules'?('RULE PLAN'+(tier?' · '+tier:'')):'SAFE LOCAL PLAN';
+  }
+
+  function renderSelfChecks(playbook){
+    const root=$('opRemChecks');if(!root||!Array.isArray(playbook?.checkpoints))return;
+    root.replaceChildren();
+    playbook.checkpoints.slice(0,3).forEach(check=>{
+      const card=document.createElement('article');card.className='rem4-check-card';
+      const title=document.createElement('b');title.textContent=(Number(check?.minute)||'')+' MIN · READ IT YOURSELF';
+      const copy=document.createElement('p');
+      copy.textContent=(Array.isArray(check?.questions)?check.questions:[]).map(clean).filter(Boolean).join(' · ');
+      card.append(title,copy);root.appendChild(card);
+    });
+  }
+
+  function renderSelectedBranch(){
+    ensurePlaybookPanel();
+    const branch=lastPlaybook?.branches?.[selectedBranch]||null;
+    document.querySelectorAll('[data-op-branch]').forEach(button=>button.classList.toggle('active',upper(button.getAttribute('data-op-branch'))===selectedBranch));
+    if(!branch){
+      set('opRemBranchHeadline','WAITING FOR DEEP PLAN');
+      set('opRemBranchFight','USE THE BASE PLAN');
+      set('opRemBranchObjective','USE THE BASE PLAN');
+      const rule=$('opRemBranchRule');if(rule)rule.textContent='PLAYER-SELECTED BRANCH · NEVER AUTO-CHANGED BY LIVE TELEMETRY';
+      return;
+    }
+    set('opRemBranchHeadline',branch.headline||selectedBranch);
+    set('opRemBranchFight',branch.fight||branch.rule||'USE THE BASE PLAN');
+    set('opRemBranchObjective',branch.objective||'USE THE BASE OBJECTIVE PLAN');
+    const rule=$('opRemBranchRule');
+    if(rule)rule.textContent=upper(branch.rule||'PLAYER CHOOSES THIS PREWRITTEN BRANCH')+' · NEVER AUTO-CHANGED';
+  }
+
+  function renderPlaybook(playbook,meta){
+    lastCoachMeta={source:clean(meta?.source)||'local',quality:meta?.quality||null};
+    renderCoachStatus(lastCoachMeta);
+    if(playbook?.version==='FROZEN_V1'&&playbook?.branches){
+      lastPlaybook=playbook;
+      if(!lastPlaybook.branches[selectedBranch])selectedBranch='EVEN';
+      renderSelectedBranch();
+      renderSelfChecks(playbook);
+      return;
+    }
+    if(!lastPlaybook)renderSelectedBranch();
   }
 
   function playerRole(player){return normRole(player?.position||player?.role)}
@@ -312,6 +420,7 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const pathCards=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
     if(pathCards[3]&&clean(coach?.fightTrigger))pathCards[3].setAttribute('title',upper(coach.fightTrigger));
     if(pathCards[4]&&clean(coach?.objectiveSetup))pathCards[4].setAttribute('title',upper(coach.objectiveSetup));
+    renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
 
   async function requestCoach(signature,champion,userRole,ours,enemies){
@@ -338,6 +447,10 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       if(response?.ok&&response?.ready&&response?.coach){
         const resolvedRole=normRole(response?.player?.role)||userRole;
         const enrichedCoach={...response.coach,_resolvedRole:resolvedRole};
+        enrichedCoach._playbook=response?.playbook||null;
+        enrichedCoach._playbookPolicy=response?.playbookPolicy||null;
+        enrichedCoach._coachSource=clean(response?.source)||'rules';
+        enrichedCoach._coachQuality=response?.coachQuality||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
@@ -391,12 +504,18 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       lastCoach=null;
       lastCoachAttemptSignature='';
       lastCoachAttemptAt=0;
+      lastPlaybook=null;
+      selectedBranch='EVEN';
+      lastCoachMeta={source:'local',quality:null};
+      renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
   }
 
   installVisualLayer();
+  ensurePlaybookPanel();
+  renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
   window.opCompanion?.getState?.().then(onState).catch(()=>{});
   window.opCompanion?.onState?.(onState);
