@@ -205,3 +205,16 @@ test('bot-lane coach renders both lane opponents and resolved server role',()=>{
   assert.ok(draftCoach.includes("SURVIVE FIRST DIVE → FREE-HIT"));
   assert.ok(draftCoach.includes("TARGET ACCESSIBILITY BEATS TARGET PRESTIGE"));
 });
+
+
+test('draft coach model returns an immutable frozen branch playbook',()=>{
+  assert.ok(draftCoach.includes("buildFrozenGamePlaybook"));
+  assert.ok(draftCoach.includes("const playbook=buildFrozenGamePlaybook"));
+  assert.ok(draftCoach.includes("playbookPolicy:{"));
+  assert.ok(draftCoach.includes("frozenFromPregame:true"));
+  assert.ok(draftCoach.includes("usesLiveTelemetry:false"));
+  assert.ok(draftCoach.includes("playerSelectsBranch:true"));
+  assert.ok(draftCoach.includes("branches:['AHEAD','EVEN','BEHIND']"));
+  assert.ok(draftCoach.includes("checkpoints:[5,10,15]"));
+  assert.ok(draftCoach.includes("The PLAYER will choose the matching prewritten branch"));
+});
