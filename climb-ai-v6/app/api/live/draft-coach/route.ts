@@ -9,6 +9,7 @@ import {rankCoachingInstruction} from '@/lib/coachingLevel';
 import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
+import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -394,6 +395,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- The five steps must form one causal win path, not five unrelated tips.',
       '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
       '- The output must be useful enough that the player could repeat the plan back in champion select.',
+      '- This root plan will be frozen before the game and expanded into prewritten AHEAD / EVEN / BEHIND branches. Make the strategy stable enough to remain correct across those states without using live gold, kills, items, cooldown tracking or objective timers.',
+      '- Do not assume the app will detect whether the player is ahead, even or behind. The PLAYER will choose the matching prewritten branch during the game.',
       '',
       'For ADC/SUPPORT, treat the lane as a DUO matchup: both enemy ADC and enemy support matter. Never reduce bot lane to the top-lane opponent.',
       'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, laneOpponents, lanePartner, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
@@ -408,7 +411,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '',
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
       '',
-      'Build the pre-game coaching plan. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
+      'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
     ].join('\n');
 
@@ -517,12 +520,28 @@ export async function POST(req:NextRequest){
     if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
     if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
+    const playbook=buildFrozenGamePlaybook({
+      champion,
+      role:roleResolution.role,
+      rank:context.rank,
+      ours,
+      enemies,
+      plan:coach as any,
+    });
     return NextResponse.json({
       ok:true,
       ready:true,
       source:ai?'ai':'rules',
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
+      playbook,
+      playbookPolicy:{
+        frozenFromPregame:true,
+        usesLiveTelemetry:false,
+        playerSelectsBranch:true,
+        branches:['AHEAD','EVEN','BEHIND'],
+        checkpoints:[5,10,15],
+      },
       coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
       resolvedDraft:{
