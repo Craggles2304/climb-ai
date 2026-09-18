@@ -38,7 +38,7 @@ const FRONTLINE=new Set(['Alistar','Amumu','Braum',"Cho'Gath",'Dr. Mundo','Galio
 const SCALE=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
 const HYPERCARRY=new Set(['Aphelios','Jinx',"Kog'Maw",'Smolder','Twitch','Vayne','Zeri']);
 const SPLIT=new Set(['Camille','Fiora','Gwen','Irelia','Jax','Nasus','Tryndamere','Yorick']);
-const EARLY=new Set(['Draven','Elise','Jarvan IV','Kalista','Lee Sin','Lucian','Nidalee','Pantheon','Rek'Sai','Renekton','Xin Zhao']);
+const EARLY=new Set(['Draven','Elise','Jarvan IV','Kalista','Lee Sin','Lucian','Nidalee','Pantheon',"Rek'Sai",'Renekton','Xin Zhao']);
 const RESET=new Set(['Taric','Kayle','Kindred','Zilean','Renata Glasc']);
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
