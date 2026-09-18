@@ -141,7 +141,7 @@ test('100 torture cases resolve role, lane and threats',()=>{
       const enemyRole=role==='ADC'||role==='SUPPORT'?'ADC':role;
       const expected=draft.enemies.find(p=>p.role===enemyRole)!.champion;
       assert.equal(plan.laneOpponent,expected,draft.name+' '+role+' lane');
-      assert.ok(plan.threats.some(name=>draft.threats.includes(name as any)),draft.name+' '+role+' threat');
+      assert.ok(plan.threats.some(name=>(draft.threats as readonly string[]).includes(name)),draft.name+' '+role+' threat');
       assert.equal(plan.steps.length,5);
     }
   }
