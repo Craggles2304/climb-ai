@@ -248,3 +248,20 @@ test('verified deep coach plan is persisted for the post-game debrief without us
   assert.ok(!esports.includes('goldDiff'));
   assert.ok(!esports.includes('killDiff'));
 });
+
+
+test('deep-coach failures degrade visibly to a safe local plan instead of failing silently',()=>{
+  assert.ok(main.includes("'RATE_LIMIT'"));
+  assert.ok(main.includes("'QUALITY_GATE'"));
+  assert.ok(main.includes("'ENTITLEMENT'"));
+  assert.ok(main.includes("code:timeoutError?'TIMEOUT':'NETWORK'"));
+  assert.ok(main.includes('retryAfterSeconds'));
+  assert.ok(esports.includes('QUALITY GATE · SAFE PLAN'));
+  assert.ok(esports.includes('COACH BUSY · SAFE PLAN'));
+  assert.ok(esports.includes('PLUS / PRO REQUIRED'));
+  assert.ok(esports.includes('RE-PAIR REQUIRED'));
+  assert.ok(esports.includes('OFFLINE · SAFE PLAN'));
+  assert.ok(esports.includes('DEEP COACH CHECKING…'));
+  assert.ok(esports.includes("failure:{"));
+  assert.ok(esports.includes("Deep coach unavailable. Using the safe local plan."));
+});
