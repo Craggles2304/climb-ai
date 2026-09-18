@@ -518,6 +518,10 @@ export async function POST(req:NextRequest){
       coach,
       coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
+      resolvedDraft:{
+        ours:ours.map(player=>({champion:player.champion,role:role(player.role)||null})),
+        enemies:enemies.map(player=>({champion:player.champion,role:role(player.role)||null})),
+      },
     });
   }catch(error){
     console.error('[draft-coach] request failed',error);
