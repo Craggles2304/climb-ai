@@ -215,12 +215,26 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
     plan.steps=plan.steps.map(step=>({...step,value:neutralizeConditionals(step.value)}));
   }
 
-  if(depth>=7){
+  if(depth>=5){
+    const minimumNames=depth>=7?5:4;
     let text=planText(plan);
-    const mentioned=names.filter(name=>text.includes(name.toLowerCase()));
-    const missingAllies=ours.map(player=>clean(player.champion)).filter(name=>name!==champion&&!mentioned.includes(name));
-    const missingEnemies=enemies.map(player=>clean(player.champion)).filter(name=>!mentioned.includes(name));
-    if(missingAllies.length)plan.why=clip(plan.why+' COORDINATE WITH '+missingAllies.slice(0,2).join(' / ')+'.',220);
+    let mentioned=names.filter(name=>text.includes(name.toLowerCase()));
+    const allyPriority=ours.map(player=>clean(player.champion)).filter(name=>name!==champion);
+    const enemyPriority=[byRole(enemies,'ADC'),...enemies.map(player=>clean(player.champion))].filter((name):name is string=>Boolean(name));
+    for(const ally of allyPriority){
+      if(mentioned.length>=minimumNames)break;
+      if(mentioned.includes(ally))continue;
+      plan.why=clip(plan.why+' COORDINATE WITH '+ally+' IN THE SAME SEQUENCE.',220);
+      mentioned.push(ally);
+    }
+    for(const enemy of enemyPriority){
+      if(mentioned.length>=minimumNames)break;
+      if(mentioned.includes(enemy))continue;
+      plan.theirPlan=clip(plan.theirPlan+' '+enemy+' SUPPLIES THE NEXT LAYER.',190);
+      mentioned.push(enemy);
+    }
+  }
+  if(depth>=7){
     const theirPlanText=plan.theirPlan.toLowerCase();
     const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>theirPlanText.includes(name.toLowerCase()));
     if(enemyMentions.length<2){
