@@ -5,6 +5,7 @@
   const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'];
   const normRole=value=>{const raw=upper(value);if(!raw||['NONE','UNKNOWN','UNSELECTED','INVALID'].includes(raw))return'';const role=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;return VALID_ROLES.includes(role)?role:''};
   const ROLE_ORDER={TOP:0,JUNGLE:1,MID:2,ADC:3,SUPPORT:4};
+  const STRONG_ADC_PRIOR=new Set(['Aphelios','Caitlyn','Draven','Ezreal','Jhin','Jinx',"Kai\'Sa",'Kalista',"Kog\'Maw",'Nilah','Samira','Sivir','Smolder','Tristana','Twitch','Vayne','Xayah','Zeri','Yunara']);
   const ASSET_IDS={
     Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
   };
@@ -270,7 +271,9 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     if(!coach)return;
     const threats=Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[];
     const threatText=threats.join(' + ')||'THEIR ACCESS';
-    set('opRememberTitle',`${champion||'YOU'} · ${userRole||'ROLE'} // WIN CONDITION`);
+    const resolvedRole=normRole(userRole);
+    const resolvedOurs=ours.map(p=>clean(p?.champion).toLowerCase()===clean(champion).toLowerCase()&&resolvedRole?{...p,position:resolvedRole}:p);
+    set('opRememberTitle',`${champion||'YOU'} · ${resolvedRole||'ROLE'} // WIN CONDITION`);
     set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
     set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
     const threatLabel=document.querySelector('#opRememberHud .rem4-threat .rem4-label');
@@ -278,12 +281,16 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     set('opRemThreat',threatText);
     set('opRemThreatAnswer',coach?.threatAnswer||'TRACK THEIR ENTRY BEFORE COMMITTING');
     if(threats[0])document.body.style.setProperty('--op-threat-art',`url("${splash(threats[0])}")`);
-    renderTeam('opRemOurTeam',ours,'');
+    renderTeam('opRemOurTeam',resolvedOurs,'');
     renderTeam('opRemTheirTeam',enemies,threats);
     renderCoachPath(coach?.steps);
-    const lane=clean(coach?.laneOpponent)||byRole(enemies,userRole);
-    if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
-    else set('opRemMatchTitle',userRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
+    const laneOpponents=(Array.isArray(coach?.laneOpponents)?coach.laneOpponents:[]).map(clean).filter(Boolean).slice(0,2);
+    const lane=clean(coach?.laneOpponent)||laneOpponents[0]||byRole(enemies,resolvedRole);
+    const lanePartner=clean(coach?.lanePartner);
+    if((resolvedRole==='ADC'||resolvedRole==='SUPPORT')&&laneOpponents.length){
+      set('opRemMatchTitle',`${champion||'YOU'}${lanePartner?' + '+lanePartner:''} VS ${laneOpponents.join(' + ')}`);
+    }else if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
+    else set('opRemMatchTitle',resolvedRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
     const lanePlan=coach?.lanePlan||{};
     if(clean(lanePlan?.wave))set('opRemLaneDo',lanePlan.wave);
     if(clean(lanePlan?.trade))set('opRemTradeWhen',lanePlan.trade);
@@ -314,13 +321,18 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       const response=await window.opCompanion.draftCoach({
         champion,
         role:userRole,
-        ours:ours.map(p=>({champion:p.champion,role:playerRole(p)||null})),
-        enemies:enemies.map(p=>({champion:p.champion,role:playerRole(p)||null})),
+        gameMode:clean(lastRoster?.gameMode)||null,
+        ours:ours.map(p=>({champion:p.champion,role:playerRole(p)||null,items:Array.isArray(p?.items)?p.items:[],summonerSpells:Array.isArray(p?.summonerSpells)?p.summonerSpells:[]})),
+        enemies:enemies.map(p=>({champion:p.champion,role:playerRole(p)||null,items:Array.isArray(p?.items)?p.items:[],summonerSpells:Array.isArray(p?.summonerSpells)?p.summonerSpells:[]})),
       });
       if(response?.ok&&response?.ready&&response?.coach){
+        const resolvedRole=normRole(response?.player?.role)||userRole;
+        const enrichedCoach={...response.coach};
+        if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
+        if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         lastCoachSignature=signature;
-        lastCoach=response.coach;
-        applyCoach(lastCoach,champion,userRole,ours,enemies);
+        lastCoach=enrichedCoach;
+        applyCoach(lastCoach,champion,resolvedRole,ours,enemies);
       }
     }catch{}finally{coachInFlight=false}
   }
@@ -334,13 +346,14 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
     if(!me?.team)return;
     const stateRole=normRole(lastState?.matchup?.role||lastState?.matchup?.plan?.role||lastState?.teamPlan?.rememberPlan?.role);
+    const championPrior=STRONG_ADC_PRIOR.has(champion)?'ADC':'';
     const oursRaw=players.filter(p=>p.team===me.team);
     const enemiesRaw=players.filter(p=>p.team&&p.team!==me.team);
-    const ours=repairTeam(oursRaw,'ourTeam',champion,playerRole(me)||stateRole);
+    const ours=repairTeam(oursRaw,'ourTeam',champion,playerRole(me)||stateRole||championPrior);
     const enemies=repairTeam(enemiesRaw,'theirTeam',champion,'');
     if(!enemies.length)return;
     const repairedMe=ours.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||ours.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
-    const userRole=playerRole(repairedMe)||stateRole;
+    const userRole=playerRole(repairedMe)||stateRole||championPrior;
     const rosterSignature=[
       champion,userRole,
       ...sorted(ours).map(p=>`O:${playerRole(p)}:${p.champion}`),
