@@ -7,6 +7,7 @@ import {hasTier,normalizeTier} from '@/lib/subscription';
 import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {rankCoachingInstruction} from '@/lib/coachingLevel';
 import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
+import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -14,10 +15,13 @@ export const dynamic='force-dynamic';
 const playerSchema=z.object({
   champion:z.string().min(1).max(48),
   role:z.string().max(24).optional().nullable(),
+  items:z.array(z.object({itemId:z.number().optional().nullable(),displayName:z.string().max(80).optional().nullable()})).max(8).optional().nullable(),
+  summonerSpells:z.array(z.string().max(80)).max(2).optional().nullable(),
 });
 const requestSchema=z.object({
   champion:z.string().min(1).max(48),
   role:z.string().max(24).optional().nullable(),
+  gameMode:z.string().max(40).optional().nullable(),
   ours:z.array(playerSchema).min(1).max(5),
   enemies:z.array(playerSchema).min(1).max(5),
 });
@@ -31,6 +35,8 @@ const outputSchema=z.object({
   threats:z.array(z.string().min(1).max(48)).min(1).max(3),
   threatAnswer:z.string().min(1).max(150),
   laneOpponent:z.string().max(48).nullable().optional(),
+  laneOpponents:z.array(z.string().min(1).max(48)).max(2).optional(),
+  lanePartner:z.string().max(48).nullable().optional(),
   lanePlan:lanePlanSchema.optional(),
   fightTrigger:z.string().min(1).max(180).optional(),
   objectiveSetup:z.string().min(1).max(180).optional(),
@@ -44,29 +50,23 @@ type KitFact={champion:string;tags:string[];attackRange:number|null;passive:stri
 
 const SCALERS=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
 const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
-const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Vi','Volibear','Wukong','Xin Zhao','Yone']);
-const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Fiddlesticks','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Rakan','Rell','Sejuani','Skarner','Vi','Volibear','Wukong','Zac']);
+const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Sett','Vi','Volibear','Wukong','Xin Zhao','Yone']);
+const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Fiddlesticks','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Pantheon','Rakan','Rell','Sejuani','Sett','Skarner','Vi','Volibear','Wukong','Zac']);
 const ZONE_CONTROL=new Set(['Anivia','Azir','Brand','Fiddlesticks','Gangplank','Heimerdinger','Hwei','Kennen','Orianna','Rumble','Taliyah','Veigar','Viktor','Ziggs','Zyra']);
 const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Morgana','Nautilus','Neeko','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
-const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
+const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Taric','Thresh','Zilean']);
+const FRONTLINE=new Set(['Alistar','Amumu','Braum','Cho\'Gath','Dr. Mundo','Galio','Gragas','K\'Sante','Leona','Maokai','Malphite','Nasus','Nautilus','Ornn','Poppy','Rakan','Rell','Renekton','Sejuani','Sett','Shen','Sion','Skarner','Tahm Kench','Taric','Volibear','Zac']);
 const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
 
-const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'] as const;
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
-function role(value:unknown){
-  const raw=clean(value).toUpperCase();
-  if(!raw||raw==='NONE'||raw==='UNKNOWN'||raw==='UNSELECTED'||raw==='INVALID')return'';
-  const r=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;
-  return VALID_ROLES.includes(r as any)?r:'';
-}
-function dedupe(players:Player[]){const seen=new Set<string>();return players.filter(player=>{const key=clean(player.champion).toLowerCase();if(!key||seen.has(key))return false;seen.add(key);return true}).map(player=>({champion:clean(player.champion),role:role(player.role)||null}))}
-function inferMissingRoles(players:Player[]){
-  const used=new Set(players.map(player=>role(player.role)).filter(Boolean));
-  const unresolved=players.filter(player=>!role(player.role));
-  const remaining=VALID_ROLES.filter(candidate=>!used.has(candidate));
-  if(unresolved.length!==1||remaining.length!==1)return players;
-  const target=unresolved[0];
-  return players.map(player=>player===target?{...player,role:remaining[0]}:player);
+function role(value:unknown){return canonicalRole(value)??''}
+function dedupe(players:Player[]){
+  const seen=new Set<string>();
+  return players.filter(player=>{
+    const key=clean(player.champion).toLowerCase();
+    if(!key||seen.has(key))return false;
+    seen.add(key);return true;
+  }).map(player=>({...player,champion:clean(player.champion),role:role(player.role)||null}));
 }
 function byRole(players:Player[],wanted:string){return players.find(player=>role(player.role)===wanted)?.champion??null}
 function names(players:Player[]){return players.map(player=>player.champion)}
