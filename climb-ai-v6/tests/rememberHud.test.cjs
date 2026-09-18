@@ -142,9 +142,9 @@ test('game-state adaptation stays player-led rather than reactive live shotcalli
 
 
 test('paid live draft coach reasons about composition interactions instead of champion buckets',()=>{
-  assert.ok(esports.includes('SCALE WITHOUT GIVING ACCESS'));
-  assert.ok(esports.includes('DIVE PACKAGE'));
-  assert.ok(esports.includes('DPS CLOSEST SAFE TARGET'));
+  assert.ok(esports.includes('SURVIVE FIRST DIVE → FREE-HIT'));
+  assert.ok(esports.includes('ACCESS PACKAGE'));
+  assert.ok(esports.includes('HIT CLOSEST SAFE TARGET'));
   assert.ok(esports.includes('repairTeam'));
   assert.ok(esports.includes('window.opCompanion.draftCoach'));
   assert.ok(draftCoach.includes('target accessibility'));
@@ -176,17 +176,32 @@ test('paid draft coach is grounded in rank, ILP and Riot kit facts with a specif
 });
 
 
-test('live roster repairs Riot NONE role before requesting the deep coach',()=>{
+test('live roster repairs Riot NONE role and server resolves the real player lane',()=>{
   assert.ok(esports.includes("['NONE','UNKNOWN','UNSELECTED','INVALID'].includes(raw)"));
-  assert.ok(esports.includes('function inferMissingTeamRole'));
+  assert.ok(esports.includes('STRONG_ADC_PRIOR'));
   assert.ok(esports.includes("const repairedMe=ours.find"));
-  assert.ok(draftCoach.includes("raw==='NONE'||raw==='UNKNOWN'||raw==='UNSELECTED'||raw==='INVALID'"));
-  assert.ok(draftCoach.includes('inferMissingRoles(dedupe(input.ours))'));
-  assert.ok(draftCoach.includes('inferMissingRoles(dedupe(input.enemies))'));
+  assert.ok(draftCoach.includes('resolvePlayerRole'));
+  assert.ok(draftCoach.includes('normalizeTeamAroundPlayer'));
+  assert.ok(draftCoach.includes('laneOpponentsFor'));
+  assert.ok(draftCoach.includes('profileRole:context.profileRole'));
+  assert.ok(draftCoach.includes('gameMode:input.gameMode'));
+  assert.ok(liveRoster.includes('gameMode:String(data?.gameData?.gameMode'));
+  assert.ok(liveRoster.includes('summonerSpells:spellNames(player)'));
 });
 
 test('failed draft-coach requests are throttled per roster instead of flooding the paid endpoint',()=>{
   assert.ok(esports.includes('lastCoachAttemptSignature'));
   assert.ok(esports.includes('now-lastCoachAttemptAt<30000'));
   assert.ok(esports.includes('lastCoachAttemptSignature=signature'));
+});
+
+
+test('bot-lane coach renders both lane opponents and resolved server role',()=>{
+  assert.ok(esports.includes("laneOpponents.join(' + ')"));
+  assert.ok(esports.includes("const resolvedRole=normRole(response?.player?.role)||userRole"));
+  assert.ok(esports.includes("enrichedCoach.laneOpponents=response.player.laneOpponents"));
+  assert.ok(draftCoach.includes('resolvedLanePlan'));
+  assert.ok(draftCoach.includes("For ADC/SUPPORT, treat the lane as a DUO matchup"));
+  assert.ok(draftCoach.includes("SURVIVE FIRST DIVE → FREE-HIT"));
+  assert.ok(draftCoach.includes("TARGET ACCESSIBILITY BEATS TARGET PRESTIGE"));
 });
