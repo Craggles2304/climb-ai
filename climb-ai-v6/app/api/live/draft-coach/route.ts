@@ -241,6 +241,42 @@ async function kitFacts(players:Player[]):Promise<KitFact[]>{
   }
 }
 
+function spellFor(kits:KitFact[],champion:string|undefined|null,terms:string[]){
+  if(!champion)return null;
+  const kit=kits.find(item=>clean(item.champion).toLowerCase()===clean(champion).toLowerCase());
+  if(!kit)return null;
+  return kit.spells.find(spell=>{
+    const text=(clean(spell.name)+' '+clean(spell.description)).toLowerCase();
+    return terms.some(term=>text.includes(term.toLowerCase()));
+  })?.name??null;
+}
+
+function resolvedLanePlan(userRole:string,laneOpponents:string[],lanePartner:string|null,kits:KitFact[]){
+  const adc=laneOpponents[0]??null;
+  const support=(userRole==='ADC'||userRole==='SUPPORT')?(laneOpponents[1]??null):null;
+  if((userRole==='ADC'||userRole==='SUPPORT')&&adc){
+    const adcMobility=spellFor(kits,adc,['dash','dashes','blink','leap']);
+    const supportCc=spellFor(kits,support,['stun','root','knock','charm','taunt','fear','suppress','pull']);
+    const supportReset=spellFor(kits,support,['invulnerable','invulnerability','immune']);
+    const partner=lanePartner||'YOUR LANE PARTNER';
+    return{
+      wave:'KEEP THE WAVE ON YOUR SIDE VS '+adc+(support?' + '+support:'')+'; DO NOT BLEED HP FOR ONE CS BEFORE '+partner+' CAN CONNECT.',
+      trade:'TRADE AFTER '+adc+(adcMobility?' SPENDS '+adcMobility:' SPENDS A MOBILITY / DAMAGE TOOL')+(support?(supportCc?' OR '+support+' MISSES '+supportCc:' OR '+support+' CANNOT FOLLOW'):'')+'.',
+      respect:(support&&supportCc?'DO NOT EXTEND THROUGH '+support+' '+supportCc+'. ':'DO NOT EXTEND THROUGH THEIR SUPPORT CC. ')+(supportReset?'KITE '+supportReset+' INSTEAD OF DUMPING YOUR FULL DAMAGE.':'PRESERVE HP FOR THE NEXT WAVE.'),
+    };
+  }
+  const opponent=laneOpponents[0]??null;
+  if(opponent){
+    const key=spellFor(kits,opponent,['dash','stun','root','shield','heal','parry','counter','untargetable']);
+    return{
+      wave:'CONTROL THE WAVE SO '+opponent+' HAS TO SHOW BEFORE YOU COMMIT; DO NOT GIVE THEM A FREE LONG LANE.',
+      trade:'PUNISH '+opponent+(key?' AFTER '+key+' IS USED':' AFTER THEIR KEY TRADE TOOL IS USED')+'; EXIT BEFORE THEIR SECOND ROTATION.',
+      respect:'DO NOT FORCE INTO '+opponent+' WHEN THEY HAVE THE BETTER WAVE OR FIRST MOVE.',
+    };
+  }
+  return fallbackLane(userRole,null);
+}
+
 function fallbackLane(userRole:string,laneOpponent:string|null){
   if(!laneOpponent)return{
     wave:'KEEP THE WAVE PLAYABLE UNTIL THE LANE ROLE IS FULLY RESOLVED',
@@ -317,7 +353,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
   const enemyMap=new Map(enemies.map(player=>[player.champion.toLowerCase(),player.champion]));
   const threats=parsed.threats.map(name=>enemyMap.get(name.toLowerCase())).filter((name):name is string=>Boolean(name));
   const laneOpponent=parsed.laneOpponent?enemyMap.get(parsed.laneOpponent.toLowerCase())??fallback.laneOpponent:fallback.laneOpponent;
-  return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
+  return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent,laneOpponents:fallback.laneOpponents,lanePartner:fallback.lanePartner};
 }
 
 
@@ -344,7 +380,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
       '- The output must be useful enough that the player could repeat the plan back in champion select.',
       '',
-      'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
+      'For ADC/SUPPORT, treat the lane as a DUO matchup: both enemy ADC and enemy support matter. Never reduce bot lane to the top-lane opponent.',
+      'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, laneOpponents, lanePartner, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
     ].join('\n');
 
     const user=[
@@ -439,6 +476,7 @@ export async function POST(req:NextRequest){
     fallback.laneOpponents=laneOpponents;
     fallback.lanePartner=lanePartner;
     if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
+    fallback.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
 
     const fullDraft=ours.length>=4&&enemies.length===5;
     const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
@@ -455,6 +493,7 @@ export async function POST(req:NextRequest){
     coach.laneOpponents=laneOpponents;
     coach.lanePartner=lanePartner;
     if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
+    if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     return NextResponse.json({
       ok:true,
