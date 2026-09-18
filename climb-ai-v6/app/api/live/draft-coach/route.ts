@@ -277,6 +277,20 @@ function resolvedLanePlan(userRole:string,laneOpponents:string[],lanePartner:str
   return fallbackLane(userRole,null);
 }
 
+function enrichRulePlan(coach:DraftCoach,userRole:string,enemies:Player[],kits:KitFact[]){
+  if(userRole!=='ADC')return coach;
+  const entrySpells=(coach.threats||[]).map(name=>spellFor(kits,name,['stun','dash','dashes','leap','blink','charge','knock','pull','suppress','fear','taunt'])).filter((name):name is string=>Boolean(name));
+  const resetChampion=enemies.find(player=>['Taric','Kayle','Kindred','Zilean','Renata Glasc'].includes(player.champion));
+  const resetSpell=resetChampion?spellFor(kits,resetChampion.champion,['invulnerable','invulnerability','immune','revive','resurrect']):null;
+  if(entrySpells.length){
+    coach.threatAnswer=clip(coach.threatAnswer+' · KEY ENTRY: '+[...new Set(entrySpells)].slice(0,3).join(' / '),150);
+  }
+  if(resetChampion&&resetSpell){
+    coach.fightTrigger=clip((coach.fightTrigger||'')+' · IF '+resetChampion.champion+' '+resetSpell+' IS ACTIVE, KITE IT BEFORE RE-COMMITTING',180);
+  }
+  return coach;
+}
+
 function fallbackLane(userRole:string,laneOpponent:string|null){
   if(!laneOpponent)return{
     wave:'KEEP THE WAVE PLAYABLE UNTIL THE LANE ROLE IS FULLY RESOLVED',
@@ -477,6 +491,7 @@ export async function POST(req:NextRequest){
     fallback.lanePartner=lanePartner;
     if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
     fallback.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
+    enrichRulePlan(fallback,userRole,enemies,kits);
 
     const fullDraft=ours.length>=4&&enemies.length===5;
     const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
