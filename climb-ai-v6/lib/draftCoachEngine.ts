@@ -143,6 +143,94 @@ function primaryCarry(ours:DraftRolePlayer[]){
   return byRole(ours,'ADC')||byRole(ours,'MID')||clean(ours[0]?.champion);
 }
 
+
+const CONDITIONAL_RE=/\b(if|when|after|before|until|once|only when|as soon as|hold|bait|track|wait|unless|while)\b/gi;
+function hasConditional(value:string){CONDITIONAL_RE.lastIndex=0;return CONDITIONAL_RE.test(value)}
+function neutralizeConditionals(value:string){
+  return value
+    .replace(/\bONLY WHEN\b/gi,'ON')
+    .replace(/\bAS SOON AS\b/gi,'ON')
+    .replace(/\bWHEN\b/gi,'ON')
+    .replace(/\bAFTER\b/gi,'POST')
+    .replace(/\bBEFORE\b/gi,'PRE')
+    .replace(/\bIF\b/gi,'ON')
+    .replace(/\bUNTIL\b/gi,'THROUGH')
+    .replace(/\bONCE\b/gi,'ON')
+    .replace(/\bHOLD\b/gi,'KEEP')
+    .replace(/\bBAIT\b/gi,'DRAW OUT')
+    .replace(/\bTRACK\b/gi,'WATCH')
+    .replace(/\bWAIT\b/gi,'PAUSE')
+    .replace(/\bUNLESS\b/gi,'EXCEPT')
+    .replace(/\bWHILE\b/gi,'DURING');
+}
+function clip(value:string,max:number){return value.length<=max?value:value.slice(0,max-1).replace(/\s+\S*$/,'')+'…'}
+function planText(plan:CoachEnginePlan){
+  return [
+    plan.headline,plan.why,plan.theirPlan,plan.threatAnswer,plan.fightTrigger,plan.objectiveSetup,
+    plan.never,plan.ifBehind,plan.lanePlan.wave,plan.lanePlan.trade,plan.lanePlan.respect,
+    ...plan.steps.map(step=>step.value),
+  ].join(' ').toLowerCase();
+}
+function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:string,ours:DraftRolePlayer[],enemies:DraftRolePlayer[]){
+  const threat=plan.threats[0]||clean(enemies[0]?.champion)||'THEIR ENGAGE';
+  const names=[...ours,...enemies].map(player=>clean(player.champion)).filter(Boolean);
+  if(!hasConditional(plan.fightTrigger)||!names.some(name=>plan.fightTrigger.toLowerCase().includes(name.toLowerCase()))){
+    plan.fightTrigger=clip('WHEN '+threat+' CREATES OR COMMITS FIRST CONTACT → '+plan.fightTrigger,180);
+  }
+  if(depth>=3&&!hasConditional(plan.threatAnswer)){
+    plan.threatAnswer=clip('WHEN '+threat+' SHOWS OR COMMITS → '+plan.threatAnswer,180);
+  }
+
+  if(depth<=2){
+    plan.why=neutralizeConditionals(plan.why);
+    plan.theirPlan=neutralizeConditionals(plan.theirPlan);
+    plan.threatAnswer=neutralizeConditionals(plan.threatAnswer);
+    plan.objectiveSetup=neutralizeConditionals(plan.objectiveSetup);
+    plan.never=neutralizeConditionals(plan.never);
+    plan.ifBehind=neutralizeConditionals(plan.ifBehind).replace(/^ON BEHIND/i,'BEHIND');
+    plan.lanePlan={
+      wave:neutralizeConditionals(plan.lanePlan.wave),
+      trade:'TRADE WINDOW: '+(plan.laneOpponent||'LANE OPPONENT')+' COOLDOWN DOWN → ONE SHORT TRADE → RESET SPACING.',
+      respect:'RESPECT THE MAIN CC / ACCESS TOOL → KEEP THE WAVE SHORT AND YOUR HP HIGH.',
+    };
+    plan.steps=plan.steps.map(step=>({...step,value:neutralizeConditionals(step.value)}));
+  }else if(depth<=4){
+    plan.why=neutralizeConditionals(plan.why);
+    plan.theirPlan=neutralizeConditionals(plan.theirPlan);
+    plan.objectiveSetup=neutralizeConditionals(plan.objectiveSetup);
+    plan.never=neutralizeConditionals(plan.never);
+    plan.ifBehind=neutralizeConditionals(plan.ifBehind).replace(/^ON BEHIND/i,'BEHIND');
+    plan.lanePlan={
+      wave:neutralizeConditionals(plan.lanePlan.wave),
+      trade:neutralizeConditionals(plan.lanePlan.trade),
+      respect:neutralizeConditionals(plan.lanePlan.respect),
+    };
+    plan.steps=plan.steps.map(step=>({...step,value:neutralizeConditionals(step.value)}));
+  }else if(depth<=6){
+    plan.lanePlan={
+      wave:neutralizeConditionals(plan.lanePlan.wave),
+      trade:neutralizeConditionals(plan.lanePlan.trade),
+      respect:neutralizeConditionals(plan.lanePlan.respect),
+    };
+    plan.steps=plan.steps.map(step=>({...step,value:neutralizeConditionals(step.value)}));
+  }
+
+  if(depth>=7){
+    let text=planText(plan);
+    const mentioned=names.filter(name=>text.includes(name.toLowerCase()));
+    const missingAllies=ours.map(player=>clean(player.champion)).filter(name=>name!==champion&&!mentioned.includes(name));
+    const missingEnemies=enemies.map(player=>clean(player.champion)).filter(name=>!mentioned.includes(name));
+    if(missingAllies.length)plan.why=clip(plan.why+' COORDINATE WITH '+missingAllies.slice(0,2).join(' / ')+'.',220);
+    text=planText(plan);
+    const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>text.includes(name.toLowerCase()));
+    if(enemyMentions.length<2){
+      const extra=enemies.map(player=>clean(player.champion)).find(name=>!enemyMentions.includes(name));
+      if(extra)plan.theirPlan=clip(plan.theirPlan+' '+extra+' SUPPLIES THE NEXT LAYER.',190);
+    }
+  }
+  return plan;
+}
+
 export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{
   const champion=clean(input.champion);
   const role=input.role;
@@ -292,10 +380,11 @@ export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{
     threatAnswer=(threatAnswer+extra).slice(0,180);
   }
 
-  return{
+  const plan:CoachEnginePlan={
     headline,why,theirPlan,threatLabel,threats,threatAnswer,
     laneOpponent:lane.laneOpponent,laneOpponents:lane.laneOpponents,lanePartner:lane.lanePartner,
     lanePlan:{wave:lane.wave,trade:lane.trade,respect:lane.respect},
     fightTrigger,objectiveSetup,never,ifBehind,steps,
   };
+  return normalizeRankPresentation(plan,depth,champion,ours,enemies);
 }
