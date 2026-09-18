@@ -179,6 +179,7 @@ test('100-case torture bench rejects generic coaching and covers Iron through Ma
       if(role==='TOP')assert.match(all,/side|front|flank|wave/,draft.name+' top responsibility');
       const quality=evaluateWinConditionPlan({plan,ours:[...draft.ours],enemies:[...draft.enemies],rank,role});
       scores.push(quality.score);
+      if(!quality.pass)console.log('COACH100_FAIL '+draft.name+' '+role+' '+rank+' score='+quality.score+' issues='+quality.issues.join('; '));
       if(quality.pass)qualityPasses++;
       const bucket=perRank.get(rank)!;
       bucket.cases++;bucket.total+=quality.score;bucket.min=Math.min(bucket.min,quality.score);if(quality.pass)bucket.passes++;for(const issue of quality.issues)bucket.issues.set(issue,(bucket.issues.get(issue)||0)+1);
