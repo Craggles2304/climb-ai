@@ -111,3 +111,19 @@ export function resolveEnemyRoles(enemies:DraftRolePlayer[]){
   if(unresolved.length===1&&remaining.length===1)unresolved[0].role=remaining[0];
   return normalized;
 }
+
+
+export function normalizeTeamAroundPlayer(players:DraftRolePlayer[],champion:string,resolution:RoleResolution){
+  const resolved=resolution.role;
+  let next=forcePlayerRole(players,champion,resolved);
+  if(!resolved)return next;
+  next=next.map(player=>{
+    if(sameChampion(player.champion,champion))return player;
+    return canonicalRole(player.role)===resolved?{...player,role:null}:player;
+  });
+  const used=new Set(next.map(player=>canonicalRole(player.role)).filter(Boolean) as DraftRole[]);
+  const unresolved=next.filter(player=>!canonicalRole(player.role));
+  const remaining=ROLES.filter(candidate=>!used.has(candidate));
+  if(unresolved.length===1&&remaining.length===1)unresolved[0].role=remaining[0];
+  return next;
+}
