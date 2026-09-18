@@ -1,6 +1,7 @@
 (()=>{
   const $=id=>document.getElementById(id);
   const STORAGE_KEY='opclimb.locked-game-plan.v1';
+  const DEEP_PLAN_STORAGE_KEY='opclimb.deep-locked-plan.v1';
 
   function clean(value){return String(value||'').replace(/\s+/g,' ').trim()}
   function first(value){return Array.isArray(value)?clean(value.find(Boolean)):clean(value)}
@@ -37,6 +38,43 @@
     try{return JSON.parse(localStorage.getItem(STORAGE_KEY)||'null')}catch{return null}
   }
 
+  function loadDeepLockedPlan(){
+    try{return JSON.parse(localStorage.getItem(DEEP_PLAN_STORAGE_KEY)||'null')}catch{return null}
+  }
+
+  function deepBaseline(review){
+    const stored=loadDeepLockedPlan();
+    if(!stored?.champion||!stored?.headline)return null;
+    const champion=clean(review?.match?.champion);
+    if(champion&&!sameChampion(stored.champion,champion))return null;
+    const source=clean(stored.source)||'rules';
+    const quality=stored.quality||null;
+    const threatText=clean(stored.theirPlan)||[
+      clean(stored.threatLabel),
+      safeArray(stored.threats).map(clean).filter(Boolean).join(' + '),
+    ].filter(Boolean).join(' · ');
+    const branchHistory=safeArray(stored.branchSelections).map(item=>clean(item?.branch)).filter(Boolean);
+    return{
+      version:2,
+      champion:clean(stored.champion),
+      role:clean(stored.role),
+      vsTheirTeam:threatText,
+      vsTheirTeamWhy:clean(stored.threatAnswer),
+      yourWinCondition:clean(stored.headline),
+      yourWinConditionWhy:[
+        clean(stored.why),
+        clean(stored.fightTrigger)?'FIGHT: '+clean(stored.fightTrigger):'',
+        clean(stored.objectiveSetup)?'OBJECTIVE: '+clean(stored.objectiveSetup):'',
+      ].filter(Boolean).join(' · '),
+      deepPlan:true,
+      deepSource:source,
+      deepQuality:quality,
+      selectedBranch:clean(stored.selectedBranch),
+      branchHistory,
+      capturedAt:clean(stored.capturedAt),
+    };
+  }
+
   function rememberLockedPlan(state){
     const phase=String(state?.phase||'');
     const next=currentBaseline(state);
@@ -57,10 +95,19 @@
   function reviewBaseline(state,review){
     const live=currentBaseline(state);
     const stored=loadStoredBaseline();
+    const deep=deepBaseline(review);
     const champion=clean(review?.match?.champion);
-    if(usefulBaseline(stored)&&(!champion||!stored.champion||sameChampion(stored.champion,champion)))return stored;
-    if(usefulBaseline(live)&&(!champion||!live.champion||sameChampion(live.champion,champion)))return live;
-    return null;
+    const fallback=usefulBaseline(stored)&&(!champion||!stored.champion||sameChampion(stored.champion,champion))
+      ?stored
+      :(usefulBaseline(live)&&(!champion||!live.champion||sameChampion(live.champion,champion))?live:null);
+    if(!deep)return fallback;
+    return{
+      ...(fallback||{}),
+      ...deep,
+      missionTitle:clean(fallback?.missionTitle),
+      missionCue:clean(fallback?.missionCue),
+      missionWhy:clean(fallback?.missionWhy),
+    };
   }
 
   function install(){
@@ -74,7 +121,7 @@
     section.id='opPostGame332';section.className='card hidden';section.setAttribute('aria-live','polite');
     section.innerHTML=`
       <div class="op332-head"><div><div id="op332Tag" class="op332-kicker">POST-GAME · 3 / 3 / 2</div><h2>GAME DEBRIEF</h2><p id="op332Match" class="op332-sub"></p></div><span class="op332-pill">REVIEW READY</span></div>
-      <div class="op332-baseline"><div class="op332-section-label">THE PLAN YOU ACTUALLY TOOK INTO THE GAME</div><div class="op332-baseline-grid"><article class="op332-plan"><span>01 · VS THEIR TEAM</span><strong id="op332Vs"></strong><p id="op332VsWhy"></p></article><article class="op332-plan"><span>02 · YOUR WIN CONDITION</span><strong id="op332Win"></strong><p id="op332WinWhy"></p></article><article class="op332-plan mission"><span>CLIMB MISSION · PERSISTENT</span><strong id="op332Mission"></strong><p id="op332MissionWhy"></p></article></div><p class="op332-lock-note">REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING</p></div>
+      <div class="op332-baseline"><div class="op332-section-label">THE PLAN YOU ACTUALLY TOOK INTO THE GAME</div><div class="op332-baseline-grid"><article class="op332-plan"><span>01 · VS THEIR TEAM</span><strong id="op332Vs"></strong><p id="op332VsWhy"></p></article><article class="op332-plan"><span>02 · YOUR WIN CONDITION</span><strong id="op332Win"></strong><p id="op332WinWhy"></p></article><article class="op332-plan mission"><span>CLIMB MISSION · PERSISTENT</span><strong id="op332Mission"></strong><p id="op332MissionWhy"></p></article></div><p id="op332LockNote" class="op332-lock-note">REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING</p></div>
       <div class="op332-main"><section class="op332-column good"><h3>3 THINGS DONE WELL</h3><div id="op332Good" class="op332-list"></div></section><section class="op332-column fix"><h3>3 THINGS TO IMPROVE</h3><div id="op332Improve" class="op332-list"></div></section></div>
       <section class="op332-neutral"><h3>2 NEUTRAL OBSERVATIONS</h3><div id="op332Neutral" class="op332-neutral-grid"></div></section>
       <section class="op332-next"><span>NEXT GAME · ONE FOCUS</span><h3 id="op332NextTitle"></h3><p id="op332NextRule"></p></section>
@@ -84,7 +131,7 @@
     $('op332Ready')?.addEventListener('click',async()=>{
       const button=$('op332Ready');
       if(button){button.disabled=true;button.textContent='RETURNING TO READY…'}
-      try{localStorage.removeItem(STORAGE_KEY)}catch{}
+      try{localStorage.removeItem(STORAGE_KEY);localStorage.removeItem(DEEP_PLAN_STORAGE_KEY)}catch{}
       try{await window.opCompanion?.restart?.()}
       finally{if(button){button.disabled=false;button.textContent='NEW GAME · BACK TO READY'}}
     });
@@ -147,6 +194,16 @@
     setText('op332WinWhy',baseline?.yourWinConditionWhy,'');
     setText('op332Mission',baseline?.missionCue||baseline?.missionTitle,'Keep your current CLIMB MISSION until enough evidence justifies changing it.');
     setText('op332MissionWhy',baseline?.missionTitle?(baseline.missionWhy?`${baseline.missionTitle} · ${baseline.missionWhy}`:baseline.missionTitle):'The mission remains separate from one-match tactical advice.');
+    if(baseline?.deepPlan){
+      const tier=clean(baseline?.deepQuality?.tier||baseline?.deepQuality?.rank);
+      const source=clean(baseline?.deepSource).toUpperCase();
+      const verified=source==='AI'&&baseline?.deepQuality?.pass===true;
+      const branchTrail=safeArray(baseline?.branchHistory).slice(-6);
+      const branchText=branchTrail.length?' · PLAYER BRANCHES: '+branchTrail.join(' → '):(baseline?.selectedBranch?' · LAST SHOWN: '+baseline.selectedBranch:'');
+      setText('op332LockNote',(verified?'DEEP VERIFIED PRE-GAME PLAN':'FROZEN PRE-GAME PLAN')+(tier?' · '+tier:'')+branchText+' · NO RESULT-BASED REWRITING');
+    }else{
+      setText('op332LockNote','REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING');
+    }
 
     renderPoints('op332Good',review.doneWell||review.good,'good');
     renderPoints('op332Improve',review.improve||review.critical,'improve');
