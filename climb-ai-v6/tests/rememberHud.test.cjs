@@ -218,3 +218,20 @@ test('draft coach model returns an immutable frozen branch playbook',()=>{
   assert.ok(draftCoach.includes("checkpoints:[5,10,15]"));
   assert.ok(draftCoach.includes("The PLAYER will choose the matching prewritten branch"));
 });
+
+
+test('Companion exposes frozen player-selected AHEAD EVEN BEHIND branches with coach trust status',()=>{
+  assert.ok(esports.includes('FROZEN GAME PLAN · YOU PICK THE GAME STATE'));
+  assert.ok(esports.includes('data-op-branch="AHEAD"'));
+  assert.ok(esports.includes('data-op-branch="EVEN"'));
+  assert.ok(esports.includes('data-op-branch="BEHIND"'));
+  assert.ok(esports.includes("selectedBranch='EVEN'"));
+  assert.ok(esports.includes('renderSelectedBranch'));
+  assert.ok(esports.includes('PLAYER-SELECTED BRANCH · NEVER AUTO-CHANGED BY LIVE TELEMETRY'));
+  assert.ok(esports.includes("enrichedCoach._playbook=response?.playbook||null"));
+  assert.ok(esports.includes("enrichedCoach._coachSource=clean(response?.source)||'rules'"));
+  assert.ok(esports.includes("enrichedCoach._coachQuality=response?.coachQuality||null"));
+  assert.ok(esports.includes('DEEP VERIFIED'));
+  assert.ok(esports.includes('SAFE LOCAL PLAN'));
+  assert.ok(esports.includes('renderSelfChecks(playbook)'));
+});
