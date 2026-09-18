@@ -67,9 +67,39 @@ const drafts=[
     enemies:[P('Camille','TOP'),P('Hecarim','JUNGLE'),P('Zed','MID'),P('Jhin','ADC'),P('Nautilus','SUPPORT')],
     threats:['Camille','Hecarim','Zed','Nautilus'],
   },
+  {
+    name:'anti-dive Poppy Taliyah Janna',
+    ours:[P('Poppy','TOP'),P('Maokai','JUNGLE'),P('Taliyah','MID'),P('Xayah','ADC'),P('Janna','SUPPORT')],
+    enemies:[P('Jax','TOP'),P('Hecarim','JUNGLE'),P('Yone','MID'),P('Samira','ADC'),P('Rakan','SUPPORT')],
+    threats:['Jax','Hecarim','Yone','Rakan'],
+  },
+  {
+    name:'Fiora side lane with Nocturne TF',
+    ours:[P('Fiora','TOP'),P('Nocturne','JUNGLE'),P('Twisted Fate','MID'),P('Ezreal','ADC'),P('Bard','SUPPORT')],
+    enemies:[P('Ornn','TOP'),P('Sejuani','JUNGLE'),P('Azir','MID'),P('Jinx','ADC'),P('Lulu','SUPPORT')],
+    threats:['Ornn','Sejuani'],
+  },
+  {
+    name:'Jayce Ziggs Caitlyn siege',
+    ours:[P('Jayce','TOP'),P('Gragas','JUNGLE'),P('Ziggs','MID'),P('Caitlyn','ADC'),P('Lux','SUPPORT')],
+    enemies:[P('Dr. Mundo','TOP'),P('Graves','JUNGLE'),P('Vladimir','MID'),P('Sivir','ADC'),P('Soraka','SUPPORT')],
+    threats:['Dr. Mundo','Vladimir'],
+  },
+  {
+    name:'Kennen Wukong Orianna choke',
+    ours:[P('Kennen','TOP'),P('Wukong','JUNGLE'),P('Orianna','MID'),P('Miss Fortune','ADC'),P('Rakan','SUPPORT')],
+    enemies:[P('Gwen','TOP'),P('Lee Sin','JUNGLE'),P('Ahri','MID'),P('Ezreal','ADC'),P('Janna','SUPPORT')],
+    threats:['Gwen','Lee Sin','Ahri'],
+  },
+  {
+    name:'Ashe Blitz pick',
+    ours:[P('Kled','TOP'),P('Elise','JUNGLE'),P('Syndra','MID'),P('Ashe','ADC'),P('Blitzcrank','SUPPORT')],
+    enemies:[P('Sion','TOP'),P('Karthus','JUNGLE'),P('Viktor','MID'),P('Jinx','ADC'),P('Soraka','SUPPORT')],
+    threats:['Sion'],
+  },
 ] as const;
 
-test('first 50 torture cases resolve role, lane and threats',()=>{
+test('first 75 torture cases resolve role, lane and threats',()=>{
   let cases=0;
   for(const draft of drafts){
     for(const role of ROLES){
@@ -83,5 +113,5 @@ test('first 50 torture cases resolve role, lane and threats',()=>{
       assert.equal(plan.steps.length,5);
     }
   }
-  assert.equal(cases,50);
+  assert.equal(cases,75);
 });
