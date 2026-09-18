@@ -120,11 +120,34 @@ function teamArchetype(ours:ReturnType<typeof compIdentity>,enemies:ReturnType<t
 }
 
 function roleHeadline(role:DraftRole|null,archetype:string,enemyAccess:string[],champion:string){
-  if(role==='ADC'&&enemyAccess.length>=2)return HYPERCARRY.has(champion)?'SURVIVE FIRST DIVE → FREE-HIT':'ABSORB ENTRY → DPS';
-  if(role==='SUPPORT'&&enemyAccess.length>=2)return'CREATE FIRST CONTACT → PROTECT THE EXIT';
-  if(role==='JUNGLE'&&archetype==='PICK')return'CREATE NUMBERS → TAKE THE MAP';
-  if(role==='TOP'&&archetype==='SIDE_CATCH')return'SIDE PRESSURE → PUNISH THE ROTATION';
-  if(role==='MID'&&archetype==='POKE')return'PUSH FIRST → POKE THE ENTRY';
+  if(role==='ADC'){
+    if(enemyAccess.length>=2)return HYPERCARRY.has(champion)?'SURVIVE FIRST DIVE → FREE-HIT':'ABSORB ENTRY → DPS';
+    if(archetype==='PICK')return'LET THE PICK LAND → DPS THE 5V4';
+    if(archetype==='POKE')return'POKE WITH TEAM → DPS THE COLLAPSE';
+    return HYPERCARRY.has(champion)?'POSITION FIRST → FREE-HIT':'POSITION FIRST → DPS FRONT-TO-BACK';
+  }
+  if(role==='SUPPORT'){
+    if(enemyAccess.length>=2)return'CREATE FIRST CONTACT → PROTECT THE EXIT';
+    if(archetype==='POKE')return'CONTROL ENTRY → PROTECT THE POKE';
+    if(archetype==='PICK')return'CREATE THE PICK → PEEL THE FOLLOW-UP';
+    return'MARK FIRST ACCESS → PROTECT CARRY';
+  }
+  if(role==='JUNGLE'){
+    if(archetype==='PICK')return'CREATE NUMBERS → TAKE THE MAP';
+    if(archetype==='POKE'||archetype==='ZONE')return'SECURE FIRST MOVE → OWN OBJECTIVE ENTRY';
+    return'SYNC FIRST CONTACT → TAKE NEXT OBJECTIVE';
+  }
+  if(role==='TOP'){
+    if(archetype==='SIDE_CATCH'||SPLIT.has(champion))return'SIDE PRESSURE → PUNISH THE ROTATION';
+    if(archetype==='DIVE')return'CREATE FLANK → LAYER THE DIVE';
+    return'HOLD FRONT EDGE → ENABLE CARRY';
+  }
+  if(role==='MID'){
+    if(archetype==='POKE')return'PUSH FIRST → POKE THE ENTRY';
+    if(archetype==='PICK')return'PUSH MID → MOVE WITH THE CATCH';
+    if(archetype==='DIVE')return'PUSH FIRST → LAYER THE DIVE';
+    return'PUSH MID → JOIN FIRST CONTACT';
+  }
   const map:Record<string,string>={
     SIDE_CATCH:'SIDE PRESSURE → CATCH ROTATION',
     POKE:'POKE FIRST → OWN THE OBJECTIVE',
@@ -234,7 +257,7 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
       mentioned.push(enemy);
     }
   }
-  if(depth>=7){
+  if(depth>=6){
     const theirPlanText=plan.theirPlan.toLowerCase();
     const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>theirPlanText.includes(name.toLowerCase()));
     if(enemyMentions.length<2){
