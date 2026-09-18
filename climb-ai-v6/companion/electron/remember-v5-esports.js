@@ -157,19 +157,19 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       const accessText=threats.join(' / ');
       const setup=[...new Set([...zones,...aoe].map(p=>p.champion).filter(name=>!threats.includes(name)))].slice(0,2);
       return{
-        headline:SCALERS.has(champion)?'SCALE WITHOUT GIVING ACCESS':'SURVIVE ENTRY → DPS',
-        why:`IF ${accessText} CANNOT REACH ${champion}, YOU GET TO PLAY THE LONG FIGHT`,
-        threatLabel:'DIVE PACKAGE',
+        headline:SCALERS.has(champion)?'SURVIVE FIRST DIVE → FREE-HIT':'ABSORB ENTRY → DPS',
+        why:`${accessText} MUST CROSS ${stayWith} TO REACH ${champion}; IF YOU KEEP RANGE THROUGH FIRST CONTACT, THEIR ACCESS WINDOW EXPIRES BEFORE YOUR DPS DOES`,
+        threatLabel:'ACCESS PACKAGE',
         threats,
-        threatAnswer:`KITE BACK FIRST · STAY WITH ${stayWith} · HOLD FLASH / PEEL UNTIL THEY COMMIT`,
+        threatAnswer:`HOLD POSITION BEHIND ${stayWith} · DO NOT SPEND FLASH / PEEL BEFORE ${accessText} COMMIT`,
         laneOpponent,
         never:enemyAdc?`DO NOT WALK THROUGH THEIR THREAT LINE JUST TO REACH ${enemyAdc}`:'DO NOT WALK PAST YOUR FRONT LINE FOR A BACK-LINE TARGET',
         ifBehind:'CLEAR THE SAFEST WAVE → GROUP EARLY → MAKE THEM ENTER YOUR RANGE',
         steps:[
-          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → FIRST 2 ITEMS':'FARM CLEAN → NEXT DAMAGE ITEM'},
-          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith}`},
-          {label:'3 · SURVIVE',value:`TRACK ${accessText}`},
-          {label:'4 · FIGHT',value:'KITE BACK → DPS CLOSEST SAFE TARGET'},
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'REACH 2 ITEMS WITHOUT DONATING ACCESS KILLS':'COMPLETE YOUR NEXT DAMAGE ITEM'},
+          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith} · KEEP FLASH FOR SECOND ACCESS`},
+          {label:'3 · ABSORB',value:`${accessText} COMMIT → KITE BACK / LET FRONT EDGE TAKE FIRST CONTACT`},
+          {label:'4 · DPS',value:'HIT CLOSEST SAFE TARGET → ADVANCE ONLY AS THEIR ACCESS DISAPPEARS'},
           {label:'5 · CONVERT',value:setup.length?`ARRIVE FIRST → DENY ${setup.join(' / ')} SETUP → OBJECTIVE`:'WIN FRONT-TO-BACK → DRAGON / BARON'},
         ],
       };
