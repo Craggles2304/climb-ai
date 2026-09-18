@@ -40,6 +40,8 @@ const HYPERCARRY=new Set(['Aphelios','Jinx',"Kog'Maw",'Smolder','Twitch','Vayne'
 const SPLIT=new Set(['Camille','Fiora','Gwen','Irelia','Jax','Nasus','Tryndamere','Yorick']);
 const EARLY=new Set(['Draven','Elise','Jarvan IV','Kalista','Lee Sin','Lucian','Nidalee','Pantheon',"Rek'Sai",'Renekton','Xin Zhao']);
 const RESET=new Set(['Taric','Kayle','Kindred','Zilean','Renata Glasc']);
+const RANGED_TOP_STYLE=new Set(['Vayne','Smolder','Karma','Lulu','Soraka','Zilean','Ashe','Lucian','Tristana','Ryze','Cassiopeia','Teemo','Jayce','Kayle']);
+const SELFISH_SUPPORT_STYLE=new Set(['Fiora','Jax','Olaf','Master Yi',"Kha'Zix",'Rengar','Tryndamere']);
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function roleOf(player:DraftRolePlayer){return canonicalRole(player.role)}
@@ -138,6 +140,7 @@ function roleHeadline(role:DraftRole|null,archetype:string,enemyAccess:string[],
     return'SYNC FIRST CONTACT → TAKE NEXT OBJECTIVE';
   }
   if(role==='TOP'){
+    if(RANGED_TOP_STYLE.has(champion))return SCALE.has(champion)?'SAFE SIDE XP → JOIN ON SPIKE':'SIDE WAVE → JOIN FROM RANGE';
     if(archetype==='SIDE_CATCH'||SPLIT.has(champion))return'SIDE PRESSURE → PUNISH THE ROTATION';
     if(archetype==='DIVE')return'CREATE FLANK → LAYER THE DIVE';
     return'HOLD FRONT EDGE → ENABLE CARRY';
@@ -325,22 +328,42 @@ export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{
     ];
   }else if(role==='SUPPORT'){
     const adc=byRole(ours,'ADC')||'YOUR ADC';
-    why=`${champion} MUST CREATE OR DENY FIRST CONTACT WITHOUT ABANDONING ${adc}. YOUR VALUE IS THE ENGAGE AND THE EXIT.`;
-    theirPlan=`${threatText} WANT TO TURN YOUR FIRST MOVE INTO ACCESS ON ${adc}; ${enemyAdc} THEN HITS THE DISRUPTED FIGHT.`;
-    threatAnswer=condition(depth,
-      `KEEP ONE TOOL FOR ${threatText} AFTER YOUR FIRST MOVE.`,
-      `WHEN YOU START WITH ${champion}, DO NOT SPEND EVERY CONTROL TOOL FORWARD; HOLD ONE ANSWER FOR ${threatText} IF THEY cross onto ${adc}.`);
-    fightTrigger=`${champion} STARTS ONLY ON A TARGET ${adc} CAN REACH → AFTER CONTACT, TURN BACK TO DENY ${threatText}.`;
-    objectiveSetup=`ARRIVE FIRST → CONTROL ONE ENTRANCE WITH ${champion} → KEEP ${adc} BEHIND THE VISION LINE.`;
-    never=`DO NOT ENGAGE SO DEEP THAT ${adc} CANNOT FOLLOW OR YOUR EXIT HAS NO PEEL.`;
-    ifBehind=`PLAY VISION WITH ${adc} → TAKE ONE CLEAN CATCH → DO NOT FORCE A SECOND-MOVE 5V5.`;
-    steps=[
-      {label:'1 · WAVE',value:`GET ${adc} OUT OF LANE WITH A CLEAN RESET`},
-      {label:'2 · VISION',value:'OWN ONE OBJECTIVE ENTRANCE'},
-      {label:'3 · CONTACT',value:`START ON A TARGET ${adc} CAN REACH`},
-      {label:'4 · TURN',value:`DENY ${threatText} ACCESS ON ${adc}`},
-      {label:'5 · CONVERT',value:'PICK / WON FIGHT → OBJECTIVE'},
-    ];
+    const selfish=SELFISH_SUPPORT_STYLE.has(champion);
+    if(selfish){
+      why=`${champion} IS NOT RELIABLEABLE BACK-LINE PEEL HERE; CREATE PRESSURE ON A REACHABLE TARGET, THEN EXIT TOWARD ${adc} BEFORE ${threatText} CAN COUNTER-ENTER.`;
+      theirPlan=`${threatText} WANT YOUR FIRST COMMIT TO SEPARATE ${champion} FROM ${adc}; ${enemyAdc} THEN HITS THE DISCONNECTED FIGHT.`;
+      threatAnswer=condition(depth,
+        `PRESSURE ONE TARGET, THEN RESET TOWARD ${adc} AS ${threatText} ENTER.`,
+        `WHEN ${champion} FORCES A COOLDOWN, DO NOT EXTEND THE SECOND DASH / CHASE; RECONNECT WITH ${adc} BEFORE ${threatText} GETS FREE ACCESS.`);
+      fightTrigger=`${champion} TAKES A SHORT SIDE ANGLE ON A TARGET ${adc} CAN REACH → FORCE A COOLDOWN → REJOIN THE SAME FIGHT.`;
+      objectiveSetup=`ARRIVE FIRST WITH ${adc} → CONTROL A SIDE ENTRY → THREATEN A SHORT ANGLE WITHOUT LEAVING ${adc} ISOLATED.`;
+      never=`DO NOT PLAY ${champion} LIKE A TANK OR DIVE TWO SCREENS PAST ${adc}; YOUR VALUE IS PRESSURE, NOT FAKE PEEL.`;
+      ifBehind=`STAY WITH ${adc} FOR VISION → TAKE SHORT ANGLES ONLY → EXIT BEFORE ${threatText} CAN TURN ON THE BACK LINE.`;
+      steps=[
+        {label:'1 · RESET',value:`SYNC YOUR RESET WITH ${adc}`},
+        {label:'2 · VISION',value:'OWN ONE SIDE OF THE OBJECTIVE, NOT THE WHOLE MAP'},
+        {label:'3 · PRESSURE',value:`THREATEN A REACHABLE TARGET WITHOUT ABANDONING ${adc}`},
+        {label:'4 · EXIT',value:`FORCE COOLDOWN → RECONNECT BEFORE ${threatText} ENTER`},
+        {label:'5 · CONVERT',value:'NUMBERS / COOLDOWN EDGE → OBJECTIVE'},
+      ];
+    }else{
+      why=`${champion} MUST CREATE OR DENY FIRST CONTACT WITHOUT ABANDONING ${adc}. YOUR VALUE IS THE ENGAGE AND THE EXIT.`;
+      theirPlan=`${threatText} WANT TO TURN YOUR FIRST MOVE INTO ACCESS ON ${adc}; ${enemyAdc} THEN HITS THE DISRUPTED FIGHT.`;
+      threatAnswer=condition(depth,
+        `KEEP ONE TOOL FOR ${threatText} AFTER YOUR FIRST MOVE.`,
+        `WHEN YOU START WITH ${champion}, DO NOT SPEND EVERY CONTROL TOOL FORWARD; HOLD ONE ANSWER FOR ${threatText} IF THEY cross onto ${adc}.`);
+      fightTrigger=`${champion} STARTS ONLY ON A TARGET ${adc} CAN REACH → AFTER CONTACT, TURN BACK TO DENY ${threatText}.`;
+      objectiveSetup=`ARRIVE FIRST → CONTROL ONE ENTRANCE WITH ${champion} → KEEP ${adc} BEHIND THE VISION LINE.`;
+      never=`DO NOT ENGAGE SO DEEP THAT ${adc} CANNOT FOLLOW OR YOUR EXIT HAS NO PEEL.`;
+      ifBehind=`PLAY VISION WITH ${adc} → TAKE ONE CLEAN CATCH → DO NOT FORCE A SECOND-MOVE 5V5.`;
+      steps=[
+        {label:'1 · WAVE',value:`GET ${adc} OUT OF LANE WITH A CLEAN RESET`},
+        {label:'2 · VISION',value:'OWN ONE OBJECTIVE ENTRANCE'},
+        {label:'3 · CONTACT',value:`START ON A TARGET ${adc} CAN REACH`},
+        {label:'4 · TURN',value:`DENY ${threatText} ACCESS ON ${adc}`},
+        {label:'5 · CONVERT',value:'PICK / WON FIGHT → OBJECTIVE'},
+      ];
+    }
   }else if(role==='JUNGLE'){
     const setup=unique([...us.pick,...us.engage]).filter(name=>name!==champion).slice(0,2);
     why=`${champion} SHOULD PLAY TOWARD ${join(setup,'LANES WITH SETUP')} SO FIRST CONTACT BECOMES NUMBERS, NOT A 50/50 SCRAP.`;
@@ -382,35 +405,55 @@ export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{
     ];
   }else{
     const laneOpponent=byRole(enemies,'TOP')||'THEIR TOP';
+    const rangedTop=RANGED_TOP_STYLE.has(champion);
     const sidePlan=us.split.includes(champion)||archetype==='SIDE_CATCH';
-    why=sidePlan
-      ?`${champion} CREATES SIDE PRESSURE SO ${join(picks,'YOUR TEAM')} CAN PUNISH THE ROTATION; YOU DO NOT NEED TO FORCE THE 5V5 FIRST.`
-      :`${champion} MUST CONTROL ${threatText} OR HOLD THE FRONT EDGE SO ${carry} CAN PLAY THE FIGHT.`;
-    theirPlan=`${laneOpponent} HOLDS OR CREATES SIDE PRESSURE WHILE ${threatText} LOOK FOR FIRST ACCESS ON ${carry}.`;
-    threatAnswer=condition(depth,
-      `DO NOT LEAVE ${carry} EXPOSED TO ${threatText} FOR A LOW-VALUE CHASE.`,
-      `WHEN ${threatText} show their entry, choose whether your value is marking that access or threatening the flank; do not do both halfway.`);
-    fightTrigger=sidePlan
-      ?`${champion} FORCES A SIDE RESPONSE → ${join(picks,'YOUR TEAM')} CATCH THE ROTATION → JOIN ONLY WHEN THE NUMBERS ARE WINNING.`
-      :`${threatText} ENTER YOUR FRONT EDGE → STOP OR DISPLACE THEM → ${carry} GETS THE DPS WINDOW.`;
-    objectiveSetup=sidePlan
-      ?`PUSH SIDE BEFORE SPAWN → MOVE THROUGH YOUR CONTROLLED ROUTE → ARRIVE AFTER SOMEONE ANSWERS ${champion}.`
-      :`ARRIVE FIRST → HOLD THE FRONT EDGE → KEEP ${threatText} OFF ${carry}.`;
-    never=sidePlan?'DO NOT GROUP EARLY AND GIVE UP SIDE PRESSURE FOR A NO-INFO 5V5.':`DO NOT CHASE PAST ${threatText} WHILE ${carry} IS STILL EXPOSED.`;
-    ifBehind='CATCH THE SAFEST SIDE WAVE → ARRIVE EARLY → PLAY ONE JOB: FRONT EDGE OR FLANK, NOT BOTH.';
-    steps=sidePlan?[
-      {label:'1 · SIDE',value:`${champion} PUSHES THE SAFE SIDE WAVE`},
-      {label:'2 · PRESSURE',value:`FORCE ${laneOpponent} OR ANOTHER ENEMY TO ANSWER`},
-      {label:'3 · ROTATION',value:`${join(picks,'YOUR TEAM')} PUNISH THE MOVE`},
-      {label:'4 · JOIN',value:'ENTER AFTER NUMBERS / COOLDOWNS ARE WON'},
-      {label:'5 · CONVERT',value:'SIDE ADVANTAGE → TOWER / OBJECTIVE'},
-    ]:[
-      {label:'1 · WAVE',value:'FIX SIDE WAVE BEFORE THE OBJECTIVE'},
-      {label:'2 · FRONT',value:`STAND BETWEEN ${threatText} AND ${carry}`},
-      {label:'3 · ABSORB',value:`${threatText} ENTER → STOP FIRST ACCESS`},
-      {label:'4 · TURN',value:`${carry} GETS SPACE → FOCUS THE REACHABLE TARGET`},
-      {label:'5 · CONVERT',value:'WON FRONT-TO-BACK → OBJECTIVE'},
-    ];
+    if(rangedTop){
+      why=`${champion} SHOULD CREATE VALUE FROM SAFE SIDE XP / RANGE, NOT PRETEND TO BE THE FRONT LINE. FORCE ${laneOpponent} TO SHOW, THEN JOIN BEHIND ${join(us.frontline.filter(name=>name!==champion).slice(0,2),'YOUR REAL FRONT EDGE')}.`;
+      theirPlan=`${laneOpponent} WANTS TO PIN ${champion} IN SIDE WHILE ${threatText} FORCE FIRST ACCESS ON ${carry}.`;
+      threatAnswer=condition(depth,
+        `KEEP RANGE FROM ${threatText}; JOIN AFTER YOUR FRONT EDGE IS SET.`,
+        `WHEN ${threatText} SHOW FIRST ACCESS, ENTER FROM SECOND LINE / SIDE RANGE; DO NOT GIVE THEM ${champion} AS THE FIRST TARGET.`);
+      fightTrigger=`${join(picks,'YOUR TEAM')} OR YOUR FRONT EDGE CREATES FIRST CONTACT → ${champion} JOINS FROM RANGE ON THE REACHABLE TARGET.`;
+      objectiveSetup=`PUSH THE SAFE SIDE WAVE → ARRIVE BEFORE SPAWN → TAKE A SECOND-LINE / SIDE ANGLE BEHIND YOUR REAL FRONT EDGE.`;
+      never=`DO NOT STAND FRONT EDGE OR BODY-BLOCK FOR ${carry}; ${champion} MUST PRESERVE RANGE AND DAMAGE / UTILITY UPTIME.`;
+      ifBehind='TAKE SAFE SIDE XP → GROUP EARLIER → PLAY SECOND LINE AND GIVE UP THE GREEDY WAVE IF THE OBJECTIVE IS ALREADY LIVE.';
+      steps=[
+        {label:'1 · SIDE XP',value:`${champion} TAKES THE SAFE SIDE WAVE`},
+        {label:'2 · TIMING',value:'LEAVE EARLY ENOUGH TO ARRIVE BEFORE FIRST CONTACT'},
+        {label:'3 · RANGE',value:`PLAY BEHIND ${join(us.frontline.filter(name=>name!==champion).slice(0,2),'YOUR REAL FRONT EDGE')}`},
+        {label:'4 · HIT',value:`${threatText} COMMIT → DAMAGE / CONTROL THE REACHABLE TARGET FROM SECOND LINE`},
+        {label:'5 · CONVERT',value:'WON SPACE → OBJECTIVE / TOWER'},
+      ];
+    }else{
+      why=sidePlan
+        ?`${champion} CREATES SIDE PRESSURE SO ${join(picks,'YOUR TEAM')} CAN PUNISH THE ROTATION; YOU DO NOT NEED TO FORCE THE 5V5 FIRST.`
+        :`${champion} MUST CONTROL ${threatText} OR HOLD THE FRONT EDGE SO ${carry} CAN PLAY THE FIGHT.`;
+      theirPlan=`${laneOpponent} HOLDS OR CREATES SIDE PRESSURE WHILE ${threatText} LOOK FOR FIRST ACCESS ON ${carry}.`;
+      threatAnswer=condition(depth,
+        `DO NOT LEAVE ${carry} EXPOSED TO ${threatText} FOR A LOW-VALUE CHASE.`,
+        `WHEN ${threatText} show their entry, choose whether your value is marking that access or threatening the flank; do not do both halfway.`);
+      fightTrigger=sidePlan
+        ?`${champion} FORCES A SIDE RESPONSE → ${join(picks,'YOUR TEAM')} CATCH THE ROTATION → JOIN ONLY WHEN THE NUMBERS ARE WINNING.`
+        :`${threatText} ENTER YOUR FRONT EDGE → STOP OR DISPLACE THEM → ${carry} GETS THE DPS WINDOW.`;
+      objectiveSetup=sidePlan
+        ?`PUSH SIDE BEFORE SPAWN → MOVE THROUGH YOUR CONTROLLED ROUTE → ARRIVE AFTER SOMEONE ANSWERS ${champion}.`
+        :`ARRIVE FIRST → HOLD THE FRONT EDGE → KEEP ${threatText} OFF ${carry}.`;
+      never=sidePlan?'DO NOT GROUP EARLY AND GIVE UP SIDE PRESSURE FOR A NO-INFO 5V5.':`DO NOT CHASE PAST ${threatText} WHILE ${carry} IS STILL EXPOSED.`;
+      ifBehind='CATCH THE SAFEST SIDE WAVE → ARRIVE EARLY → PLAY ONE JOB: FRONT EDGE OR FLANK, NOT BOTH.';
+      steps=sidePlan?[
+        {label:'1 · SIDE',value:`${champion} PUSHES THE SAFE SIDE WAVE`},
+        {label:'2 · PRESSURE',value:`FORCE ${laneOpponent} OR ANOTHER ENEMY TO ANSWER`},
+        {label:'3 · ROTATION',value:`${join(picks,'YOUR TEAM')} PUNISH THE MOVE`},
+        {label:'4 · JOIN',value:'ENTER AFTER NUMBERS / COOLDOWNS ARE WON'},
+        {label:'5 · CONVERT',value:'SIDE ADVANTAGE → TOWER / OBJECTIVE'},
+      ]:[
+        {label:'1 · WAVE',value:'FIX SIDE WAVE BEFORE THE OBJECTIVE'},
+        {label:'2 · FRONT',value:`STAND BETWEEN ${threatText} AND ${carry}`},
+        {label:'3 · ABSORB',value:`${threatText} ENTER → STOP FIRST ACCESS`},
+        {label:'4 · TURN',value:`${carry} GETS SPACE → FOCUS THE REACHABLE TARGET`},
+        {label:'5 · CONVERT',value:'WON FRONT-TO-BACK → OBJECTIVE'},
+      ];
+    }
   }
 
   if(depth>=7){
