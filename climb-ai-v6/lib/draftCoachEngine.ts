@@ -221,10 +221,11 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
     const missingAllies=ours.map(player=>clean(player.champion)).filter(name=>name!==champion&&!mentioned.includes(name));
     const missingEnemies=enemies.map(player=>clean(player.champion)).filter(name=>!mentioned.includes(name));
     if(missingAllies.length)plan.why=clip(plan.why+' COORDINATE WITH '+missingAllies.slice(0,2).join(' / ')+'.',220);
-    text=planText(plan);
-    const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>text.includes(name.toLowerCase()));
+    const theirPlanText=plan.theirPlan.toLowerCase();
+    const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>theirPlanText.includes(name.toLowerCase()));
     if(enemyMentions.length<2){
-      const extra=enemies.map(player=>clean(player.champion)).find(name=>!enemyMentions.includes(name));
+      const priority=[byRole(enemies,'ADC'),...enemies.map(player=>clean(player.champion))].filter((name):name is string=>Boolean(name));
+      const extra=priority.find(name=>!enemyMentions.includes(name));
       if(extra)plan.theirPlan=clip(plan.theirPlan+' '+extra+' SUPPLIES THE NEXT LAYER.',190);
     }
   }
