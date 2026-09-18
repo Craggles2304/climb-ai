@@ -31,6 +31,11 @@ function requestJson(){
   });
 }
 
+function spellNames(player){
+  const spells=player?.summonerSpells||{};
+  return [spells?.summonerSpellOne?.displayName,spells?.summonerSpellTwo?.displayName]
+    .map(value=>String(value||'').trim()).filter(Boolean).slice(0,2);
+}
 function cleanPlayer(player){
   const name=String(player?.championName||'').trim();
   if(!name)return null;
@@ -40,6 +45,11 @@ function cleanPlayer(player){
     position:String(player?.position||'').trim().toUpperCase(),
     summonerName:String(player?.summonerName||player?.riotId||'').trim(),
     level:Number(player?.level)||0,
+    items:(Array.isArray(player?.items)?player.items:[]).slice(0,8).map(item=>({
+      itemId:Number(item?.itemID||item?.itemId)||null,
+      displayName:String(item?.displayName||'').trim()||null,
+    })),
+    summonerSpells:spellNames(player),
   };
 }
 
@@ -62,6 +72,7 @@ async function poll(){
       players,
       activePlayer:String(data?.activePlayer?.summonerName||'').trim(),
       gameTime:Number(data?.gameData?.gameTime)||0,
+      gameMode:String(data?.gameData?.gameMode||'').trim().toUpperCase(),
     });
   }catch{
     // League's local Live Client endpoint only exists in an active match.

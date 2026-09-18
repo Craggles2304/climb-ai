@@ -7,6 +7,7 @@ import {hasTier,normalizeTier} from '@/lib/subscription';
 import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {rankCoachingInstruction} from '@/lib/coachingLevel';
 import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
+import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -14,10 +15,13 @@ export const dynamic='force-dynamic';
 const playerSchema=z.object({
   champion:z.string().min(1).max(48),
   role:z.string().max(24).optional().nullable(),
+  items:z.array(z.object({itemId:z.number().optional().nullable(),displayName:z.string().max(80).optional().nullable()})).max(8).optional().nullable(),
+  summonerSpells:z.array(z.string().max(80)).max(2).optional().nullable(),
 });
 const requestSchema=z.object({
   champion:z.string().min(1).max(48),
   role:z.string().max(24).optional().nullable(),
+  gameMode:z.string().max(40).optional().nullable(),
   ours:z.array(playerSchema).min(1).max(5),
   enemies:z.array(playerSchema).min(1).max(5),
 });
@@ -31,6 +35,8 @@ const outputSchema=z.object({
   threats:z.array(z.string().min(1).max(48)).min(1).max(3),
   threatAnswer:z.string().min(1).max(150),
   laneOpponent:z.string().max(48).nullable().optional(),
+  laneOpponents:z.array(z.string().min(1).max(48)).max(2).optional(),
+  lanePartner:z.string().max(48).nullable().optional(),
   lanePlan:lanePlanSchema.optional(),
   fightTrigger:z.string().min(1).max(180).optional(),
   objectiveSetup:z.string().min(1).max(180).optional(),
@@ -44,29 +50,23 @@ type KitFact={champion:string;tags:string[];attackRange:number|null;passive:stri
 
 const SCALERS=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
 const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
-const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Vi','Volibear','Wukong','Xin Zhao','Yone']);
-const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Fiddlesticks','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Rakan','Rell','Sejuani','Skarner','Vi','Volibear','Wukong','Zac']);
+const DIVERS=new Set(['Camille','Diana','Hecarim','Irelia','Jax','Jarvan IV','Kled','Nocturne','Olaf','Pantheon','Renekton','Sett','Vi','Volibear','Wukong','Xin Zhao','Yone']);
+const HARD_ENGAGE=new Set(['Alistar','Amumu','Blitzcrank','Fiddlesticks','Galio','Hecarim','Jarvan IV','Leona','Malphite','Maokai','Nautilus','Nocturne','Ornn','Pantheon','Rakan','Rell','Sejuani','Sett','Skarner','Vi','Volibear','Wukong','Zac']);
 const ZONE_CONTROL=new Set(['Anivia','Azir','Brand','Fiddlesticks','Gangplank','Heimerdinger','Hwei','Kennen','Orianna','Rumble','Taliyah','Veigar','Viktor','Ziggs','Zyra']);
 const PICK=new Set(['Ahri','Ashe','Blitzcrank','Elise','Jhin','Leona','Lux','Morgana','Nautilus','Neeko','Pyke','Rakan','Thresh','Twisted Fate','Vi']);
-const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Thresh','Zilean']);
+const PEEL=new Set(['Alistar','Annie','Braum','Janna','Karma','Lulu','Maokai','Milio','Nami','Nautilus','Poppy','Rakan','Renata Glasc','Shen','Tahm Kench','Taric','Thresh','Zilean']);
+const FRONTLINE=new Set(['Alistar','Amumu','Braum','Cho\'Gath','Dr. Mundo','Galio','Gragas','K\'Sante','Leona','Maokai','Malphite','Nasus','Nautilus','Ornn','Poppy','Rakan','Rell','Renekton','Sejuani','Sett','Shen','Sion','Skarner','Tahm Kench','Taric','Volibear','Zac']);
 const AOE_CARRY=new Set(['Brand','Fiddlesticks','Karthus','Katarina','Kennen','Miss Fortune','Orianna','Rumble','Samira','Swain','Viktor']);
 
-const VALID_ROLES=['TOP','JUNGLE','MID','ADC','SUPPORT'] as const;
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
-function role(value:unknown){
-  const raw=clean(value).toUpperCase();
-  if(!raw||raw==='NONE'||raw==='UNKNOWN'||raw==='UNSELECTED'||raw==='INVALID')return'';
-  const r=raw==='BOTTOM'?'ADC':raw==='UTILITY'?'SUPPORT':raw==='MIDDLE'?'MID':raw;
-  return VALID_ROLES.includes(r as any)?r:'';
-}
-function dedupe(players:Player[]){const seen=new Set<string>();return players.filter(player=>{const key=clean(player.champion).toLowerCase();if(!key||seen.has(key))return false;seen.add(key);return true}).map(player=>({champion:clean(player.champion),role:role(player.role)||null}))}
-function inferMissingRoles(players:Player[]){
-  const used=new Set(players.map(player=>role(player.role)).filter(Boolean));
-  const unresolved=players.filter(player=>!role(player.role));
-  const remaining=VALID_ROLES.filter(candidate=>!used.has(candidate));
-  if(unresolved.length!==1||remaining.length!==1)return players;
-  const target=unresolved[0];
-  return players.map(player=>player===target?{...player,role:remaining[0]}:player);
+function role(value:unknown){return canonicalRole(value)??''}
+function dedupe(players:Player[]){
+  const seen=new Set<string>();
+  return players.filter(player=>{
+    const key=clean(player.champion).toLowerCase();
+    if(!key||seen.has(key))return false;
+    seen.add(key);return true;
+  }).map(player=>({...player,champion:clean(player.champion),role:role(player.role)||null}));
 }
 function byRole(players:Player[],wanted:string){return players.find(player=>role(player.role)===wanted)?.champion??null}
 function names(players:Player[]){return players.map(player=>player.champion)}
@@ -90,8 +90,9 @@ function ruleFallback(champion:string,userRole:string,ours:Player[],enemies:Play
   const aoe=enemies.filter(player=>AOE_CARRY.has(player.champion));
   const enemyAdc=byRole(enemies,'ADC');
   const laneOpponent=byRole(enemies,userRole)||((userRole==='ADC'||userRole==='SUPPORT')?enemyAdc:null);
-  const protectors=ours.filter(player=>player.champion!==champion&&(PEEL.has(player.champion)||['SUPPORT','TOP'].includes(role(player.role)))).slice(0,2).map(player=>player.champion);
+  const protectors=ours.filter(player=>player.champion!==champion&&(PEEL.has(player.champion)||FRONTLINE.has(player.champion))).slice(0,2).map(player=>player.champion);
   const pickTools=ours.filter(player=>PICK.has(player.champion)).map(player=>player.champion);
+  const resetters=enemies.filter(player=>['Taric','Kayle','Kindred','Zilean','Renata Glasc'].includes(player.champion)).map(player=>player.champion);
   const stayWith=protectors.length?protectors.join(' / '):'YOUR PEEL / FRONT LINE';
 
   if(userRole==='ADC'){
@@ -99,20 +100,23 @@ function ruleFallback(champion:string,userRole:string,ours:Player[],enemies:Play
       const accessText=threatNames.join(' / ');
       const zoneText=[...new Set([...zones,...aoe].map(player=>player.champion).filter(name=>!threatNames.includes(name)))].slice(0,2);
       return{
-        headline:SCALERS.has(champion)?'SCALE WITHOUT GIVING ACCESS':'SURVIVE ENTRY → DPS',
-        why:`IF ${accessText} CANNOT REACH ${champion}, YOU GET TO PLAY THE LONG FIGHT.`,
-        threatLabel:'DIVE PACKAGE',
+        headline:SCALERS.has(champion)?'SURVIVE FIRST DIVE → FREE-HIT':'ABSORB ENTRY → DPS',
+        why:`${accessText} MUST CROSS ${stayWith} TO REACH ${champion}. IF YOU KEEP RANGE THROUGH FIRST CONTACT, THEIR ACCESS WINDOW EXPIRES BEFORE YOUR DPS DOES.`,
+        theirPlan:`${accessText} FORCE YOUR FLASH / POSITION FIRST; ${enemyAdc||'THEIR CARRY'} DAMAGES THE BROKEN FIGHT AFTERWARD${resetters.length?' WHILE '+resetters.join(' / ')+' BUY TIME':''}.`,
+        threatLabel:'ACCESS PACKAGE',
         threats:threatNames,
-        threatAnswer:`KITE BACK FIRST · STAY WITH ${stayWith} · HOLD FLASH / PEEL UNTIL THEIR ENTRY IS COMMITTED`,
+        threatAnswer:`HOLD POSITION BEHIND ${stayWith} · DO NOT SPEND FLASH / PEEL BEFORE ${accessText} COMMIT THEIR FIRST ENTRY`,
         laneOpponent,
-        never:enemyAdc?`WALK THROUGH THEIR THREAT LINE JUST TO REACH ${enemyAdc}`:'WALK PAST YOUR FRONT LINE TO REACH A BACK-LINE TARGET',
-        ifBehind:'CLEAR THE SAFEST WAVE → GROUP EARLY → MAKE THEM ENTER YOUR RANGE INSTEAD OF CHASING',
+        fightTrigger:`${pickTools.length?pickTools.slice(0,2).join(' / ')+' START CLEANLY OR ':''}${accessText} COMMIT → HIT THE CLOSEST SAFE TARGET; MOVE FORWARD ONLY AS THEIR ACCESS DISAPPEARS${resetters.length?' · KITE THE '+resetters.join(' / ')+' PROTECTION WINDOW':''}.`,
+        objectiveSetup:`ARRIVE FIRST → ${pickTools.length?pickTools.slice(0,2).join(' / ')+' CONTROL THE ENTRANCE':'HOLD A FRONT EDGE'} → KEEP ${champion} ONE LAYER BACK SO ${accessText} MUST ENTER YOUR TEAM TO REACH YOU.`,
+        never:enemyAdc?`WALK THROUGH ${accessText} JUST TO REACH ${enemyAdc}; TARGET ACCESSIBILITY BEATS TARGET PRESTIGE`:'WALK PAST YOUR FRONT LINE TO REACH A BACK-LINE TARGET',
+        ifBehind:`TAKE THE SAFEST WAVE → GROUP ON YOUR NEXT ITEM → MAKE ${accessText} ENTER ${stayWith} INSTEAD OF CHASING THROUGH FOG`,
         steps:[
-          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → REACH YOUR FIRST 2 ITEMS CLEANLY':'FARM CLEAN → COMPLETE YOUR NEXT DAMAGE ITEM'},
-          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith}`},
-          {label:'3 · SURVIVE',value:`TRACK ${accessText}`},
-          {label:'4 · FIGHT',value:'KITE BACK → DPS THE CLOSEST SAFE TARGET'},
-          {label:'5 · CONVERT',value:zoneText.length?`ARRIVE FIRST → DO NOT WALK INTO ${zoneText.join(' / ')} SETUP → DRAGON / BARON`:'WIN FRONT-TO-BACK → DRAGON / BARON'},
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'REACH 2 ITEMS WITHOUT DONATING ACCESS KILLS':'COMPLETE YOUR NEXT DAMAGE ITEM WITHOUT FORCING ENTRY'},
+          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith} · KEEP FLASH FOR THE SECOND ACCESS TOOL`},
+          {label:'3 · ABSORB',value:`${accessText} COMMIT → KITE BACK / LET YOUR FRONT EDGE TAKE FIRST CONTACT`},
+          {label:'4 · DPS',value:'HIT CLOSEST SAFE TARGET → ADVANCE ONLY AS THEIR ACCESS DISAPPEARS'},
+          {label:'5 · CONVERT',value:zoneText.length?`WIN FRONT-TO-BACK → DENY ${zoneText.join(' / ')} RESETUP → DRAGON / BARON`:'WON FRONT-TO-BACK FIGHT → DRAGON / BARON / TOWER'},
         ],
       };
     }
@@ -191,7 +195,7 @@ async function paidStrategy(db:any,userId:string){
 
 
 async function playerContext(db:any,device:{userId:string;riotAccountId:string|null}){
-  const profilePromise=db.from('profiles').select('rank').eq('id',device.userId).maybeSingle();
+  const profilePromise=db.from('profiles').select('rank,role').eq('id',device.userId).maybeSingle();
   const riotPromise=device.riotAccountId
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
@@ -207,7 +211,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
   }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
   const task=tasks[0]??null;
-  return{rank,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -235,6 +239,56 @@ async function kitFacts(players:Player[]):Promise<KitFact[]>{
     console.warn('[draft-coach] kit facts unavailable',error);
     return[];
   }
+}
+
+function spellFor(kits:KitFact[],champion:string|undefined|null,terms:string[]){
+  if(!champion)return null;
+  const kit=kits.find(item=>clean(item.champion).toLowerCase()===clean(champion).toLowerCase());
+  if(!kit)return null;
+  return kit.spells.find(spell=>{
+    const text=(clean(spell.name)+' '+clean(spell.description)).toLowerCase();
+    return terms.some(term=>text.includes(term.toLowerCase()));
+  })?.name??null;
+}
+
+function resolvedLanePlan(userRole:string,laneOpponents:string[],lanePartner:string|null,kits:KitFact[]){
+  const adc=laneOpponents[0]??null;
+  const support=(userRole==='ADC'||userRole==='SUPPORT')?(laneOpponents[1]??null):null;
+  if((userRole==='ADC'||userRole==='SUPPORT')&&adc){
+    const adcMobility=spellFor(kits,adc,['dash','dashes','blink','leap']);
+    const supportCc=spellFor(kits,support,['stun','root','knock','charm','taunt','fear','suppress','pull']);
+    const supportReset=spellFor(kits,support,['invulnerable','invulnerability','immune']);
+    const partner=lanePartner||'YOUR LANE PARTNER';
+    return{
+      wave:'KEEP THE WAVE ON YOUR SIDE VS '+adc+(support?' + '+support:'')+'; DO NOT BLEED HP FOR ONE CS BEFORE '+partner+' CAN CONNECT.',
+      trade:'TRADE AFTER '+adc+(adcMobility?' SPENDS '+adcMobility:' SPENDS A MOBILITY / DAMAGE TOOL')+(support?(supportCc?' OR '+support+' MISSES '+supportCc:' OR '+support+' CANNOT FOLLOW'):'')+'.',
+      respect:(support&&supportCc?'DO NOT EXTEND THROUGH '+support+' '+supportCc+'. ':'DO NOT EXTEND THROUGH THEIR SUPPORT CC. ')+(supportReset?'KITE '+supportReset+' INSTEAD OF DUMPING YOUR FULL DAMAGE.':'PRESERVE HP FOR THE NEXT WAVE.'),
+    };
+  }
+  const opponent=laneOpponents[0]??null;
+  if(opponent){
+    const key=spellFor(kits,opponent,['dash','stun','root','shield','heal','parry','counter','untargetable']);
+    return{
+      wave:'CONTROL THE WAVE SO '+opponent+' HAS TO SHOW BEFORE YOU COMMIT; DO NOT GIVE THEM A FREE LONG LANE.',
+      trade:'PUNISH '+opponent+(key?' AFTER '+key+' IS USED':' AFTER THEIR KEY TRADE TOOL IS USED')+'; EXIT BEFORE THEIR SECOND ROTATION.',
+      respect:'DO NOT FORCE INTO '+opponent+' WHEN THEY HAVE THE BETTER WAVE OR FIRST MOVE.',
+    };
+  }
+  return fallbackLane(userRole,null);
+}
+
+function enrichRulePlan(coach:DraftCoach,userRole:string,enemies:Player[],kits:KitFact[]){
+  if(userRole!=='ADC')return coach;
+  const entrySpells=(coach.threats||[]).map(name=>spellFor(kits,name,['stun','dash','dashes','leap','blink','charge','knock','pull','suppress','fear','taunt'])).filter((name):name is string=>Boolean(name));
+  const resetChampion=enemies.find(player=>['Taric','Kayle','Kindred','Zilean','Renata Glasc'].includes(player.champion));
+  const resetSpell=resetChampion?spellFor(kits,resetChampion.champion,['invulnerable','invulnerability','immune','revive','resurrect']):null;
+  if(entrySpells.length){
+    coach.threatAnswer=clip(coach.threatAnswer+' · KEY ENTRY: '+[...new Set(entrySpells)].slice(0,3).join(' / '),150);
+  }
+  if(resetChampion&&resetSpell){
+    coach.fightTrigger=clip((coach.fightTrigger||'')+' · IF '+resetChampion.champion+' '+resetSpell+' IS ACTIVE, KITE IT BEFORE RE-COMMITTING',180);
+  }
+  return coach;
 }
 
 function fallbackLane(userRole:string,laneOpponent:string|null){
@@ -313,7 +367,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
   const enemyMap=new Map(enemies.map(player=>[player.champion.toLowerCase(),player.champion]));
   const threats=parsed.threats.map(name=>enemyMap.get(name.toLowerCase())).filter((name):name is string=>Boolean(name));
   const laneOpponent=parsed.laneOpponent?enemyMap.get(parsed.laneOpponent.toLowerCase())??fallback.laneOpponent:fallback.laneOpponent;
-  return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent};
+  return{...parsed,threats:threats.length?threats:fallback.threats,laneOpponent,laneOpponents:fallback.laneOpponents,lanePartner:fallback.lanePartner};
 }
 
 
@@ -340,7 +394,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
       '- The output must be useful enough that the player could repeat the plan back in champion select.',
       '',
-      'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
+      'For ADC/SUPPORT, treat the lane as a DUO matchup: both enemy ADC and enemy support matter. Never reduce bot lane to the top-lane opponent.',
+      'Return JSON only with exactly: headline, why, theirPlan, threatLabel, threats, threatAnswer, laneOpponent, laneOpponents, lanePartner, lanePlan{wave,trade,respect}, fightTrigger, objectiveSetup, never, ifBehind, steps[{label,value}] (exactly five).',
     ].join('\n');
 
     const user=[
@@ -407,21 +462,37 @@ export async function POST(req:NextRequest){
 
   try{
     const input=requestSchema.parse(await req.json());
-    const ours=inferMissingRoles(dedupe(input.ours));
-    const enemies=inferMissingRoles(dedupe(input.enemies));
     const champion=clean(input.champion);
-    const userRole=role(input.role)||role(ours.find(player=>player.champion.toLowerCase()===champion.toLowerCase())?.role);
-    if(ours.length<3||enemies.length<3)return NextResponse.json({ok:false,error:'Not enough of the draft is resolved yet.'},{status:202});
+    const oursRaw=dedupe(input.ours);
+    const enemiesRaw=dedupe(input.enemies);
+    if(oursRaw.length<3||enemiesRaw.length<3)return NextResponse.json({ok:false,error:'Not enough of the draft is resolved yet.'},{status:202});
+
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({ok:false,error:'Draft coach is unavailable.'},{status:503});
-    const paid=await paidStrategy(db,device.userId);
+    const [paid,context]=await Promise.all([paidStrategy(db,device.userId),playerContext(db,device)]);
     if(!paid)return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
 
+    const roleResolution=resolvePlayerRole({
+      champion,
+      requestRole:input.role,
+      ours:oursRaw,
+      profileRole:context.profileRole,
+      gameMode:input.gameMode,
+    });
+    const ours=normalizeTeamAroundPlayer(oursRaw,champion,roleResolution) as Player[];
+    const enemies=resolveEnemyRoles(enemiesRaw) as Player[];
+    const userRole=roleResolution.role??'';
+    const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
+    const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
+
+    const kits=await kitFacts([...ours,...enemies]);
     const fallback=completeCoach(ruleFallback(champion,userRole,ours,enemies),userRole,enemies);
-    const [context,kits]=await Promise.all([
-      playerContext(db,device),
-      kitFacts([...ours,...enemies]),
-    ]);
+    fallback.laneOpponents=laneOpponents;
+    fallback.lanePartner=lanePartner;
+    if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
+    fallback.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
+    enrichRulePlan(fallback,userRole,enemies,kits);
+
     const fullDraft=ours.length>=4&&enemies.length===5;
     const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
@@ -429,21 +500,32 @@ export async function POST(req:NextRequest){
       return NextResponse.json({
         ok:false,
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
+        player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
         coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
     const coach=completeCoach(ai??fallback,userRole,enemies);
+    coach.laneOpponents=laneOpponents;
+    coach.lanePartner=lanePartner;
+    if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
+    if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     return NextResponse.json({
       ok:true,
       ready:true,
       source:ai?'ai':'rules',
+      player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
       coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
+      resolvedDraft:{
+        ours:ours.map(player=>({champion:player.champion,role:role(player.role)||null})),
+        enemies:enemies.map(player=>({champion:player.champion,role:role(player.role)||null})),
+      },
     });
   }catch(error){
     console.error('[draft-coach] request failed',error);
     return NextResponse.json({ok:false,error:'The draft coach could not build this plan.'},{status:400});
   }
 }
+
