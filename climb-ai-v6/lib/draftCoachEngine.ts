@@ -257,7 +257,7 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
       mentioned.push(enemy);
     }
   }
-  if(depth>=7){
+  if(depth>=6){
     const theirPlanText=plan.theirPlan.toLowerCase();
     const enemyMentions=enemies.map(player=>clean(player.champion)).filter(name=>theirPlanText.includes(name.toLowerCase()));
     if(enemyMentions.length<2){
