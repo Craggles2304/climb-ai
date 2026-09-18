@@ -90,8 +90,9 @@ function ruleFallback(champion:string,userRole:string,ours:Player[],enemies:Play
   const aoe=enemies.filter(player=>AOE_CARRY.has(player.champion));
   const enemyAdc=byRole(enemies,'ADC');
   const laneOpponent=byRole(enemies,userRole)||((userRole==='ADC'||userRole==='SUPPORT')?enemyAdc:null);
-  const protectors=ours.filter(player=>player.champion!==champion&&(PEEL.has(player.champion)||['SUPPORT','TOP'].includes(role(player.role)))).slice(0,2).map(player=>player.champion);
+  const protectors=ours.filter(player=>player.champion!==champion&&(PEEL.has(player.champion)||FRONTLINE.has(player.champion))).slice(0,2).map(player=>player.champion);
   const pickTools=ours.filter(player=>PICK.has(player.champion)).map(player=>player.champion);
+  const resetters=enemies.filter(player=>['Taric','Kayle','Kindred','Zilean','Renata Glasc'].includes(player.champion)).map(player=>player.champion);
   const stayWith=protectors.length?protectors.join(' / '):'YOUR PEEL / FRONT LINE';
 
   if(userRole==='ADC'){
@@ -99,20 +100,23 @@ function ruleFallback(champion:string,userRole:string,ours:Player[],enemies:Play
       const accessText=threatNames.join(' / ');
       const zoneText=[...new Set([...zones,...aoe].map(player=>player.champion).filter(name=>!threatNames.includes(name)))].slice(0,2);
       return{
-        headline:SCALERS.has(champion)?'SCALE WITHOUT GIVING ACCESS':'SURVIVE ENTRY → DPS',
-        why:`IF ${accessText} CANNOT REACH ${champion}, YOU GET TO PLAY THE LONG FIGHT.`,
-        threatLabel:'DIVE PACKAGE',
+        headline:SCALERS.has(champion)?'SURVIVE FIRST DIVE → FREE-HIT':'ABSORB ENTRY → DPS',
+        why:`${accessText} MUST CROSS ${stayWith} TO REACH ${champion}. IF YOU KEEP RANGE THROUGH FIRST CONTACT, THEIR ACCESS WINDOW EXPIRES BEFORE YOUR DPS DOES.`,
+        theirPlan:`${accessText} FORCE YOUR FLASH / POSITION FIRST; ${enemyAdc||'THEIR CARRY'} DAMAGES THE BROKEN FIGHT AFTERWARD${resetters.length?' WHILE '+resetters.join(' / ')+' BUY TIME':''}.`,
+        threatLabel:'ACCESS PACKAGE',
         threats:threatNames,
-        threatAnswer:`KITE BACK FIRST · STAY WITH ${stayWith} · HOLD FLASH / PEEL UNTIL THEIR ENTRY IS COMMITTED`,
+        threatAnswer:`HOLD POSITION BEHIND ${stayWith} · DO NOT SPEND FLASH / PEEL BEFORE ${accessText} COMMIT THEIR FIRST ENTRY`,
         laneOpponent,
-        never:enemyAdc?`WALK THROUGH THEIR THREAT LINE JUST TO REACH ${enemyAdc}`:'WALK PAST YOUR FRONT LINE TO REACH A BACK-LINE TARGET',
-        ifBehind:'CLEAR THE SAFEST WAVE → GROUP EARLY → MAKE THEM ENTER YOUR RANGE INSTEAD OF CHASING',
+        fightTrigger:`${pickTools.length?pickTools.slice(0,2).join(' / ')+' START CLEANLY OR ':''}${accessText} COMMIT → HIT THE CLOSEST SAFE TARGET; MOVE FORWARD ONLY AS THEIR ACCESS DISAPPEARS${resetters.length?' · KITE THE '+resetters.join(' / ')+' PROTECTION WINDOW':''}.`,
+        objectiveSetup:`ARRIVE FIRST → ${pickTools.length?pickTools.slice(0,2).join(' / ')+' CONTROL THE ENTRANCE':'HOLD A FRONT EDGE'} → KEEP ${champion} ONE LAYER BACK SO ${accessText} MUST ENTER YOUR TEAM TO REACH YOU.`,
+        never:enemyAdc?`WALK THROUGH ${accessText} JUST TO REACH ${enemyAdc}; TARGET ACCESSIBILITY BEATS TARGET PRESTIGE`:'WALK PAST YOUR FRONT LINE TO REACH A BACK-LINE TARGET',
+        ifBehind:`TAKE THE SAFEST WAVE → GROUP ON YOUR NEXT ITEM → MAKE ${accessText} ENTER ${stayWith} INSTEAD OF CHASING THROUGH FOG`,
         steps:[
-          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'7+ CS/MIN → REACH YOUR FIRST 2 ITEMS CLEANLY':'FARM CLEAN → COMPLETE YOUR NEXT DAMAGE ITEM'},
-          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith}`},
-          {label:'3 · SURVIVE',value:`TRACK ${accessText}`},
-          {label:'4 · FIGHT',value:'KITE BACK → DPS THE CLOSEST SAFE TARGET'},
-          {label:'5 · CONVERT',value:zoneText.length?`ARRIVE FIRST → DO NOT WALK INTO ${zoneText.join(' / ')} SETUP → DRAGON / BARON`:'WIN FRONT-TO-BACK → DRAGON / BARON'},
+          {label:'1 · ECONOMY',value:SCALERS.has(champion)?'REACH 2 ITEMS WITHOUT DONATING ACCESS KILLS':'COMPLETE YOUR NEXT DAMAGE ITEM WITHOUT FORCING ENTRY'},
+          {label:'2 · POSITION',value:`PLAY BEHIND ${stayWith} · KEEP FLASH FOR THE SECOND ACCESS TOOL`},
+          {label:'3 · ABSORB',value:`${accessText} COMMIT → KITE BACK / LET YOUR FRONT EDGE TAKE FIRST CONTACT`},
+          {label:'4 · DPS',value:'HIT CLOSEST SAFE TARGET → ADVANCE ONLY AS THEIR ACCESS DISAPPEARS'},
+          {label:'5 · CONVERT',value:zoneText.length?`WIN FRONT-TO-BACK → DENY ${zoneText.join(' / ')} RESETUP → DRAGON / BARON`:'WON FRONT-TO-BACK FIGHT → DRAGON / BARON / TOWER'},
         ],
       };
     }
