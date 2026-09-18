@@ -271,8 +271,18 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     if(!coach)return;
     const threats=Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[];
     const threatText=threats.join(' + ')||'THEIR ACCESS';
-    const resolvedRole=normRole(userRole);
-    const resolvedOurs=ours.map(p=>clean(p?.champion).toLowerCase()===clean(champion).toLowerCase()&&resolvedRole?{...p,position:resolvedRole}:p);
+    const resolvedRole=normRole(coach?._resolvedRole)||normRole(userRole);
+    const ourRoleMap=new Map((Array.isArray(coach?._resolvedOurRoles)?coach._resolvedOurRoles:[]).map(item=>[clean(item?.champion).toLowerCase(),normRole(item?.role)]));
+    const enemyRoleMap=new Map((Array.isArray(coach?._resolvedEnemyRoles)?coach._resolvedEnemyRoles:[]).map(item=>[clean(item?.champion).toLowerCase(),normRole(item?.role)]));
+    const resolvedOurs=ours.map(p=>{
+      const serverRole=ourRoleMap.get(clean(p?.champion).toLowerCase());
+      if(serverRole)return{...p,position:serverRole};
+      return clean(p?.champion).toLowerCase()===clean(champion).toLowerCase()&&resolvedRole?{...p,position:resolvedRole}:p;
+    });
+    const resolvedEnemies=enemies.map(p=>{
+      const serverRole=enemyRoleMap.get(clean(p?.champion).toLowerCase());
+      return serverRole?{...p,position:serverRole}:p;
+    });
     set('opRememberTitle',`${champion||'YOU'} · ${resolvedRole||'ROLE'} // WIN CONDITION`);
     set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
     set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
@@ -282,10 +292,10 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
     set('opRemThreatAnswer',coach?.threatAnswer||'TRACK THEIR ENTRY BEFORE COMMITTING');
     if(threats[0])document.body.style.setProperty('--op-threat-art',`url("${splash(threats[0])}")`);
     renderTeam('opRemOurTeam',resolvedOurs,'');
-    renderTeam('opRemTheirTeam',enemies,threats);
+    renderTeam('opRemTheirTeam',resolvedEnemies,threats);
     renderCoachPath(coach?.steps);
     const laneOpponents=(Array.isArray(coach?.laneOpponents)?coach.laneOpponents:[]).map(clean).filter(Boolean).slice(0,2);
-    const lane=clean(coach?.laneOpponent)||laneOpponents[0]||byRole(enemies,resolvedRole);
+    const lane=clean(coach?.laneOpponent)||laneOpponents[0]||byRole(resolvedEnemies,resolvedRole);
     const lanePartner=clean(coach?.lanePartner);
     if((resolvedRole==='ADC'||resolvedRole==='SUPPORT')&&laneOpponents.length){
       set('opRemMatchTitle',`${champion||'YOU'}${lanePartner?' + '+lanePartner:''} VS ${laneOpponents.join(' + ')}`);
@@ -327,9 +337,11 @@ body.op-remember-live .rem4-check{align-self:end!important}body.op-remember-live
       });
       if(response?.ok&&response?.ready&&response?.coach){
         const resolvedRole=normRole(response?.player?.role)||userRole;
-        const enrichedCoach={...response.coach};
+        const enrichedCoach={...response.coach,_resolvedRole:resolvedRole};
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
+        if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
+        if(Array.isArray(response?.resolvedDraft?.enemies))enrichedCoach._resolvedEnemyRoles=response.resolvedDraft.enemies;
         lastCoachSignature=signature;
         lastCoach=enrichedCoach;
         applyCoach(lastCoach,champion,resolvedRole,ours,enemies);
