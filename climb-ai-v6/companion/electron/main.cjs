@@ -190,7 +190,7 @@ async function loadMatchupPlan(raw){
 
 async function requestDraftCoach(context){
   const cfg=currentConfig();
-  if(!cfg.token)return{ok:false,error:'Pair this PC to OP CLIMB first.'};
+  if(!cfg.token)return{ok:false,status:401,code:'PAIR_REQUIRED',retryable:false,error:'Pair this PC to OP CLIMB first.'};
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),18_000);
   try{
     const response=await fetch(`${cfg.webUrl}/api/live/draft-coach`,{
@@ -200,11 +200,21 @@ async function requestDraftCoach(context){
       signal:controller.signal,
     });
     const body=await response.json().catch(()=>({}));
-    if(response.status===401)return{ok:false,error:'This PC pairing is no longer valid.'};
-    if(!response.ok)return{ok:false,error:body?.error||`Draft coach returned HTTP ${response.status}.`};
-    return body;
+    const retryAfterSeconds=Math.max(0,Number(response.headers.get('retry-after'))||0);
+    if(response.status===401)return{...body,ok:false,status:401,code:'AUTH',retryable:false,error:'This PC pairing is no longer valid.'};
+    if(!response.ok){
+      const code=response.status===202?'DRAFT_WAITING'
+        :response.status===403?'ENTITLEMENT'
+        :response.status===429?'RATE_LIMIT'
+        :response.status===503&&Array.isArray(body?.coachQuality?.issues)?'QUALITY_GATE'
+        :response.status>=500?'SERVER'
+        :'REQUEST';
+      return{...body,ok:false,status:response.status,code,retryable:response.status===202||response.status===429||response.status>=500,retryAfterSeconds,error:body?.error||`Draft coach returned HTTP ${response.status}.`};
+    }
+    return{...body,status:response.status};
   }catch(err){
-    return{ok:false,error:err?.name==='AbortError'?'Draft coach timed out.':(err?.message||'Could not reach Draft Coach.')};
+    const timeoutError=err?.name==='AbortError';
+    return{ok:false,status:0,code:timeoutError?'TIMEOUT':'NETWORK',retryable:true,error:timeoutError?'Draft coach timed out.':(err?.message||'Could not reach Draft Coach.')};
   }finally{clearTimeout(timeout)}
 }
 
