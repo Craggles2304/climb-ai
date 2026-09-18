@@ -207,3 +207,68 @@ test('same draft produces role-specific coaching instead of one generic team sen
   assert.match(support.headline,/CREATE|PROTECT/);
   assert.notEqual(adc.fightTrigger,support.fightTrigger);
 });
+
+
+const GENERATED_POOLS={
+  TOP:{
+    ours:['Ornn','Shen','Camille','Fiora','Malphite','Renekton','Poppy','Kennen','Gwen','Dr. Mundo'],
+    enemies:['Sett','Jax','Sion','Aatrox','Kled','Yorick','Rumble','Gnar','Volibear','Kayle'],
+  },
+  JUNGLE:{
+    ours:['Sejuani','Nocturne','Vi','Jarvan IV','Amumu','Kindred','Fiddlesticks','Lee Sin','Graves','Maokai'],
+    enemies:['Hecarim','Xin Zhao','Elise','Pantheon','Wukong','Lillia','Karthus','Nidalee',"Rek'Sai",'Skarner'],
+  },
+  MID:{
+    ours:['Orianna','Ahri','Viktor','Kassadin','Zoe','Taliyah','Lissandra','Anivia','Diana','Syndra'],
+    enemies:['Akali','Zed','Azir','Hwei','Vladimir','Yone','LeBlanc','Twisted Fate','Veigar','Aurelion Sol'],
+  },
+  ADC:{
+    ours:['Jinx','Jhin','Varus','Aphelios','Xayah','Ezreal','Sivir',"Kog'Maw","Kai'Sa",'Caitlyn'],
+    enemies:['Lucian','Draven','Samira','Miss Fortune','Ashe','Zeri','Twitch','Smolder','Kalista','Tristana'],
+  },
+  SUPPORT:{
+    ours:['Lulu','Nautilus','Rakan','Braum','Janna','Thresh','Rell','Karma','Milio','Alistar'],
+    enemies:['Leona','Taric','Sona','Soraka','Blitzcrank','Renata Glasc','Nami','Pyke','Tahm Kench','Morgana'],
+  },
+} as const;
+
+function generatedDraft(index:number){
+  const u=index%10;
+  const t=Math.floor(index/10);
+  const oi=[u+t,u+2*t+1,2*u+t+2,3*u+t+3,u+3*t+4].map(value=>value%10);
+  const ei=[3*u+t+4,u+4*t+2,2*u+3*t+1,u+2*t+5,4*u+t+3].map(value=>value%10);
+  const ours=ROLES.map((role,ri)=>P(GENERATED_POOLS[role].ours[oi[ri]],role));
+  const enemies=ROLES.map((role,ri)=>P(GENERATED_POOLS[role].enemies[ei[ri]],role));
+  return{ours,enemies};
+}
+
+test('100 unique generated drafts survive the full Iron-to-Master coaching contract',()=>{
+  const signatures=new Set<string>();
+  let passes=0;
+  for(let index=0;index<100;index++){
+    const draft=generatedDraft(index);
+    const signature=[...draft.ours,...draft.enemies].map(player=>player.champion).join('|');
+    signatures.add(signature);
+    const role=ROLES[index%ROLES.length];
+    const rank=RANKS[index%RANKS.length];
+    const player=draft.ours.find(item=>item.role===role)!;
+    const plan=buildRankAwareDraftPlan({champion:player.champion,role,ours:draft.ours,enemies:draft.enemies,rank});
+    const expectedLane=role==='ADC'||role==='SUPPORT'
+      ?[draft.enemies.find(item=>item.role==='ADC')!.champion,draft.enemies.find(item=>item.role==='SUPPORT')!.champion]
+      :[draft.enemies.find(item=>item.role===role)!.champion];
+    assert.deepEqual(plan.laneOpponents,expectedLane,'generated '+index+' '+role+' lane');
+    assert.ok(plan.threats.every(name=>draft.enemies.some(enemy=>enemy.champion===name)),'generated '+index+' threat hallucination');
+    assert.equal(plan.steps.length,5,'generated '+index+' steps');
+    assert.equal(new Set(plan.steps.map(step=>step.value)).size,5,'generated '+index+' repeated steps');
+    assert.ok(plan.threats.some(name=>plan.threatAnswer.toLowerCase().includes(name.toLowerCase())),'generated '+index+' threat response');
+    const all=[plan.headline,plan.why,plan.theirPlan,plan.threatAnswer,plan.fightTrigger,plan.objectiveSetup,plan.never,plan.ifBehind,plan.lanePlan.wave,plan.lanePlan.trade,plan.lanePlan.respect,...plan.steps.map(step=>step.value)].join(' ').toLowerCase();
+    assert.doesNotMatch(all,/play clean|play safe|stay connected|strongest engage|key spell misses|focus objectives/,'generated '+index+' generic');
+    if(role==='ADC')assert.match(all,/closest safe target|target accessibility|do not walk through/,'generated '+index+' ADC target access');
+    const quality=evaluateWinConditionPlan({plan,ours:draft.ours,enemies:draft.enemies,rank,role});
+    if(quality.pass)passes++;
+    else assert.fail('generated '+index+' '+role+' '+rank+' failed quality '+quality.score+': '+quality.issues.join('; '));
+  }
+  assert.equal(signatures.size,100,'generated benchmark must contain 100 unique 10-champion drafts');
+  assert.equal(passes,100,'all 100 unique drafts must clear the rank-specific quality gate');
+  console.log('COACH100_UNIQUE uniqueDrafts='+signatures.size+' qualityPasses='+passes+'/100');
+});
