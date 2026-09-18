@@ -37,9 +37,39 @@ const drafts=[
     enemies:[P('Renekton','TOP'),P('Elise','JUNGLE'),P('Pantheon','MID'),P('Draven','ADC'),P('Leona','SUPPORT')],
     threats:['Renekton','Elise','Pantheon','Leona'],
   },
+  {
+    name:'Renekton Jarvan Diana dive',
+    ours:[P('Renekton','TOP'),P('Jarvan IV','JUNGLE'),P('Diana','MID'),P('Samira','ADC'),P('Rell','SUPPORT')],
+    enemies:[P('Gnar','TOP'),P('Lillia','JUNGLE'),P('Hwei','MID'),P('Jinx','ADC'),P('Milio','SUPPORT')],
+    threats:['Gnar'],
+  },
+  {
+    name:'balanced front to back',
+    ours:[P('Sion','TOP'),P('Xin Zhao','JUNGLE'),P('Viktor','MID'),P('Sivir','ADC'),P('Braum','SUPPORT')],
+    enemies:[P('Aatrox','TOP'),P('Graves','JUNGLE'),P('Syndra','MID'),P('Xayah','ADC'),P('Milio','SUPPORT')],
+    threats:['Aatrox'],
+  },
+  {
+    name:'Xerath Ezreal poke',
+    ours:[P('Gragas','TOP'),P('Lee Sin','JUNGLE'),P('Xerath','MID'),P('Ezreal','ADC'),P('Janna','SUPPORT')],
+    enemies:[P('Mordekaiser','TOP'),P('Karthus','JUNGLE'),P('Aurelion Sol','MID'),P('Sivir','ADC'),P('Soraka','SUPPORT')],
+    threats:['Mordekaiser','Aurelion Sol'],
+  },
+  {
+    name:'Malphite Amumu wombo',
+    ours:[P('Malphite','TOP'),P('Amumu','JUNGLE'),P('Orianna','MID'),P("Kai'Sa",'ADC'),P('Alistar','SUPPORT')],
+    enemies:[P('Fiora','TOP'),P('Kindred','JUNGLE'),P('Viktor','MID'),P('Ezreal','ADC'),P('Janna','SUPPORT')],
+    threats:['Fiora'],
+  },
+  {
+    name:'KogMaw protect into assassins',
+    ours:[P('Ornn','TOP'),P('Kindred','JUNGLE'),P('Zilean','MID'),P("Kog'Maw",'ADC'),P('Braum','SUPPORT')],
+    enemies:[P('Camille','TOP'),P('Hecarim','JUNGLE'),P('Zed','MID'),P('Jhin','ADC'),P('Nautilus','SUPPORT')],
+    threats:['Camille','Hecarim','Zed','Nautilus'],
+  },
 ] as const;
 
-test('first 25 torture cases resolve role, lane and threats',()=>{
+test('first 50 torture cases resolve role, lane and threats',()=>{
   let cases=0;
   for(const draft of drafts){
     for(const role of ROLES){
@@ -53,5 +83,5 @@ test('first 25 torture cases resolve role, lane and threats',()=>{
       assert.equal(plan.steps.length,5);
     }
   }
-  assert.equal(cases,25);
+  assert.equal(cases,50);
 });
