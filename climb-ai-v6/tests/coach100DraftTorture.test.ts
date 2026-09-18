@@ -1,9 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {buildRankAwareDraftPlan} from '../lib/draftCoachEngine';
+import {evaluateWinConditionPlan} from '../lib/coachWinConditionEval';
 import type {DraftRole,DraftRolePlayer} from '../lib/draftRoleResolver';
 
 const ROLES:DraftRole[]=['TOP','JUNGLE','MID','ADC','SUPPORT'];
+const RANKS=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER'] as const;
 const P=(champion:string,role:DraftRole):DraftRolePlayer=>({champion,role});
 
 const drafts=[
@@ -144,4 +146,56 @@ test('100 torture cases resolve role, lane and threats',()=>{
     }
   }
   assert.equal(cases,100);
+});
+
+
+test('100-case torture bench rejects generic coaching and covers Iron through Master',()=>{
+  let caseIndex=0;
+  const rankCounts=new Map(RANKS.map(rank=>[rank,0]));
+  const scores:number[]=[];
+  for(const draft of drafts){
+    for(const role of ROLES){
+      const rank=RANKS[caseIndex%RANKS.length];
+      rankCounts.set(rank,(rankCounts.get(rank)||0)+1);
+      const player=draft.ours.find(p=>p.role===role)!;
+      const plan=buildRankAwareDraftPlan({champion:player.champion,role,ours:[...draft.ours],enemies:[...draft.enemies],rank});
+      const all=[plan.headline,plan.why,plan.theirPlan,plan.threatAnswer,plan.fightTrigger,plan.objectiveSetup,plan.never,plan.ifBehind,plan.lanePlan.wave,plan.lanePlan.trade,plan.lanePlan.respect,...plan.steps.map(step=>step.value)].join(' ').toLowerCase();
+      assert.doesNotMatch(all,/play clean|play safe|stay connected|strongest engage|key spell misses|focus objectives/,draft.name+' '+role+' generic');
+      assert.ok(/arrive|entry|objective|river|vision|front edge|choke/.test(plan.objectiveSetup.toLowerCase()),draft.name+' '+role+' objective geometry');
+      assert.ok(plan.threats.some(name=>plan.threatAnswer.toLowerCase().includes(name.toLowerCase())),draft.name+' '+role+' threat answer');
+      if(role==='ADC'){
+        assert.match(all,/closest safe target|target accessibility|do not walk through/,draft.name+' ADC target rule');
+        assert.equal(plan.lanePartner,draft.ours.find(p=>p.role==='SUPPORT')!.champion,draft.name+' ADC partner');
+        assert.deepEqual(plan.laneOpponents,[draft.enemies.find(p=>p.role==='ADC')!.champion,draft.enemies.find(p=>p.role==='SUPPORT')!.champion],draft.name+' bot duo');
+      }
+      if(role==='SUPPORT'){
+        assert.equal(plan.lanePartner,draft.ours.find(p=>p.role==='ADC')!.champion,draft.name+' support partner');
+        assert.ok(all.includes(draft.ours.find(p=>p.role==='ADC')!.champion.toLowerCase()),draft.name+' support ignores ADC');
+      }
+      if(role==='JUNGLE')assert.match(all,/path|objective|river|quadrant|camps|tempo/,draft.name+' jungle responsibility');
+      if(role==='MID')assert.match(all,/mid|wave|push|move/,draft.name+' mid responsibility');
+      if(role==='TOP')assert.match(all,/side|front|flank|wave/,draft.name+' top responsibility');
+      const quality=evaluateWinConditionPlan({plan,ours:[...draft.ours],enemies:[...draft.enemies],rank,role});
+      scores.push(quality.score);
+      caseIndex++;
+    }
+  }
+  assert.equal(caseIndex,100);
+  for(const rank of RANKS)assert.ok((rankCounts.get(rank)||0)>=12,rank+' coverage');
+  const average=scores.reduce((sum,score)=>sum+score,0)/scores.length;
+  assert.ok(average>=70,'100-case average rank quality below 70: '+average.toFixed(1));
+});
+
+test('same draft produces role-specific coaching instead of one generic team sentence',()=>{
+  const draft=drafts[0];
+  const plans=ROLES.map(role=>{
+    const player=draft.ours.find(p=>p.role===role)!;
+    return buildRankAwareDraftPlan({champion:player.champion,role,ours:[...draft.ours],enemies:[...draft.enemies],rank:'PLATINUM'});
+  });
+  assert.ok(new Set(plans.map(plan=>plan.headline)).size>=3,'headlines are not role-specific');
+  const adc=plans[3];
+  const support=plans[4];
+  assert.match(adc.headline,/SURVIVE|ABSORB/);
+  assert.match(support.headline,/CREATE|PROTECT/);
+  assert.notEqual(adc.fightTrigger,support.fightTrigger);
 });
