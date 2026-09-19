@@ -52,6 +52,7 @@ export async function GET(req:NextRequest){
     partial:latest.status==='ABORTED',
     detailLimit,
   });
+  const developmentPlan=developmentPlanFromSync((latest.summary as any)?.learningPlanSync,latest.status);
 
   return NextResponse.json({
     ok:true,ready:true,
@@ -70,9 +71,32 @@ export async function GET(req:NextRequest){
       critical:sections.improve,
       nextFocus:sections.nextFocus,
       evidenceCount:sections.evidenceCount,
+      developmentPlan,
       reviewFormat:'3-3-2',
     },
   });
+}
+
+function developmentPlanFromSync(sync:any,status:unknown){
+  const policy='ONE_MATCH_CAN_PROGRESS EVIDENCE, BUT REPEATED EVIDENCE IS REQUIRED TO REPLACE OR REOPEN A DEVELOPMENT MISSION.';
+  if(String(status)==='ABORTED')return{synced:false,status:'SKIPPED_PARTIAL',changed:false,changes:[],activeFive:[],primary:null,activeCount:0,gamesAnalyzed:0,policy};
+  if(sync?.status==='COMPLETE'){
+    const activeFive=Array.isArray(sync.activeFive)?sync.activeFive.slice(0,5):[];
+    return{
+      synced:true,
+      status:'COMPLETE',
+      changed:Boolean(sync.changed),
+      changes:Array.isArray(sync.changes)?sync.changes.slice(0,8):[],
+      activeFive,
+      primary:sync.primary??activeFive[0]??null,
+      activeCount:Number(sync.activeCount||activeFive.length),
+      gamesAnalyzed:Number(sync.gamesAnalyzed||0),
+      processedAnalysisAt:sync.processedAnalysisAt??null,
+      reused:Boolean(sync.reused),
+      policy,
+    };
+  }
+  return{synced:false,status:String(sync?.status||'UNAVAILABLE'),changed:false,changes:[],activeFive:[],primary:null,activeCount:0,gamesAnalyzed:0,policy};
 }
 
 async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promise<RankChange|null>{
