@@ -6,7 +6,7 @@ import {buildLiveProAnalysis,mergeProAnalyses,type ProMatchAnalysis} from '@/lib
 import type {LiveTelemetryPlayer,LiveTelemetrySnapshot} from '@/lib/riot/liveTelemetry';
 import {riotService} from '@/lib/services/riotService';
 import {riotEnabled} from '@/lib/riot/client';
-import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningProfile,getProLearningProfile} from './proLearningRepository';
+import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningProfile,rebuildProLearningProfileWithIlp,getProLearningProfile,type PostGameIlpSyncResult} from './proLearningRepository';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
@@ -52,8 +52,8 @@ export async function latestLiveReview(userId:string,accountKey:string){
     proAnalysis=buildLiveProAnalysis(normalized,strength);
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
-      await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>console.warn('[pro-backfill] match analysis failed',err));
-      await rebuildProLearningProfile(userId,session.riot_account_id??null).catch(err=>console.warn('[pro-backfill] history failed',err));
+      const persisted=await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>{console.warn('[pro-backfill] match analysis failed',err);return null});
+      if(persisted)await syncLearningPlanForSession(session.id,userId,session.riot_account_id??null,'BACKFILL',proAnalysis);
     }
   }
 
@@ -64,8 +64,15 @@ export async function latestLiveReview(userId:string,accountKey:string){
       if(enriched)proAnalysis=enriched;
     }catch(err){console.warn('[riot-enrich] lazy enrichment failed',err)}
   }
+  let learningPlanSync=(session.summary as any)?.learningPlanSync??null;
+  if(session.status==='COMPLETE'&&proAnalysis&&session.riot_account_id&&learningPlanSync?.status!=='COMPLETE'){
+    await syncLearningPlanForSession(session.id,userId,session.riot_account_id,'REVIEW_ENSURE',proAnalysis);
+    learningPlanSync=await sessionLearningPlanStatus(session.id);
+  }else if(!learningPlanSync){
+    learningPlanSync=await sessionLearningPlanStatus(session.id);
+  }
   const historyProfile=await getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null);
-  const finalSummary=strength?{...strength,proAnalysis,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment}:session.summary;
+  const finalSummary=strength?{...strength,proAnalysis,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment,learningPlanSync}:session.summary;
   return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile};
 }
 
@@ -86,8 +93,8 @@ async function finalizeSession(sessionId:string){
   const matchResult=reviewResult[1];
   const matchId=matchResult.status==='fulfilled'?matchResult.value:null;
   if(proAnalysis){
-    await persistProMatchAnalysis({userId:session.user_id,riotAccountId:session.riot_account_id,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>console.warn('[live-finalize] PRO analysis failed',err));
-    await rebuildProLearningProfile(session.user_id,session.riot_account_id).catch(err=>console.warn('[live-finalize] PRO history failed',err));
+    const persisted=await persistProMatchAnalysis({userId:session.user_id,riotAccountId:session.riot_account_id,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>{console.warn('[live-finalize] PRO analysis failed',err);return null});
+    if(persisted)await syncLearningPlanForSession(session.id,session.user_id,session.riot_account_id,'FINALIZE',proAnalysis);
   }
 }
 
@@ -132,13 +139,33 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
     match_id:liveMatchId,user_id:session.user_id,cs:mm.cs,cs_per_min:mm.csPerMin,gold_per_min:mm.goldPerMin??null,damage_per_min:mm.damagePerMin??null,kill_participation:mm.killParticipation??null,vision_score:mm.visionScore??null,farm_after_15:mm.post15CsPerMin??null,objective_participation:mm.objectiveParticipation??null,lane_cs_per_min:mm.laneCsPerMin??null,post15_cs_per_min:mm.post15CsPerMin??null,cs_at_10:mm.csAt10??null,cs_at_15:mm.csAt15??null,gold_diff_at_15:mm.goldDiffAt15??null,xp_diff_at_15:mm.xpDiffAt15??null,deaths_pre_10:mm.deathsPre10??null,deaths_10_to_20:mm.deaths10to20??null,deaths_post_20:mm.deathsPost20??null,solo_deaths:mm.soloDeaths??null,teamfight_deaths:mm.teamfightDeaths??null,first_item_minute:mm.firstItemMinute??null,second_item_minute:mm.secondItemMinute??null,third_item_minute:mm.thirdItemMinute??null,damage_share:mm.damageShare??null,unavailable_metrics:mapped.unavailable??[],raw:{source:'RIOT_ENRICHED',metrics:mm,proAnalysis:merged,moments:mapped.moments??[],unavailableMetrics:mapped.unavailable??[],liveSummary:strength}
   },{onConflict:'match_id'});if(metricError)throw new Error(metricError.message);
   await persistProMatchAnalysis({userId:session.user_id,riotAccountId:session.riot_account_id,sessionId:session.id,matchId:liveMatchId,externalMatchId:m.id,champion:m.champion,role:m.role,analysis:merged});
-  await rebuildProLearningProfile(session.user_id,session.riot_account_id);
+  await syncLearningPlanForSession(session.id,session.user_id,session.riot_account_id,'RIOT_ENRICHED',merged);
   await db.from('riot_accounts').update({puuid,last_synced_at:new Date().toISOString(),sync_status:'live_enriched',updated_at:new Date().toISOString()}).eq('id',account.id);
   await markEnrichment(session.id,{status:'COMPLETE',externalMatchId:m.id,score:bestScore,enrichedAt:new Date().toISOString()});
   return merged;
 }
 
 function matchCandidateScore(match:any,session:any,snapshots:LiveTelemetrySnapshot[]){const final=snapshots[snapshots.length-1],me=findMe(final);if(!me)return 0;let score=0;if(String(match.champion).toLowerCase()===String(me.championName).toLowerCase())score+=5;if(match.kills===me.scores.kills&&match.deaths===me.scores.deaths&&match.assists===me.scores.assists)score+=4;const durationDelta=Math.abs(Number(match.durationSeconds)-Number(final.gameTime));if(durationDelta<=120)score+=3;else if(durationDelta<=300)score+=1;const ended=session.ended_at?new Date(session.ended_at).getTime():Date.now(),occurred=match.createdAt?new Date(match.createdAt).getTime():0,delta=Math.abs(ended-occurred);if(delta<=5*60_000)score+=4;else if(delta<=15*60_000)score+=2;return score}
+async function syncLearningPlanForSession(sessionId:string,userId:string,riotAccountId:string|null,trigger:string,analysis:ProMatchAnalysis|null):Promise<PostGameIlpSyncResult|null>{
+  const signature=analysis?analysisSignature(analysis):'';
+  const existing=await sessionLearningPlanStatus(sessionId);
+  if(existing?.status==='COMPLETE'&&signature&&existing.analysisSignature===signature)return{...existing,reused:true} as PostGameIlpSyncResult;
+  if(!riotAccountId){await markLearningPlanSync(sessionId,{status:'SKIPPED',reason:'NO_RIOT_ACCOUNT',trigger,analysisSignature:signature,syncedAt:new Date().toISOString()});return null}
+  try{
+    const rebuilt=await rebuildProLearningProfileWithIlp(userId,riotAccountId);
+    if(!rebuilt){await markLearningPlanSync(sessionId,{status:'SKIPPED',reason:'NO_PROFILE',trigger,analysisSignature:signature,syncedAt:new Date().toISOString()});return null}
+    const result={...rebuilt.ilp,trigger,analysisSignature:signature};
+    await markLearningPlanSync(sessionId,result);
+    return rebuilt.ilp;
+  }catch(err){
+    console.warn('[post-game-ilp] closed-loop sync failed',err);
+    await markLearningPlanSync(sessionId,{status:'FAILED',trigger,analysisSignature:signature,syncedAt:new Date().toISOString(),error:err instanceof Error?err.message:'Unknown post-game ILP sync failure.'}).catch(()=>{});
+    return null;
+  }
+}
+function analysisSignature(analysis:ProMatchAnalysis){return createHash('sha256').update(JSON.stringify(analysis)).digest('hex').slice(0,24)}
+async function markLearningPlanSync(sessionId:string,learningPlanSync:any){const db=getSupabaseAdmin();if(!db)return;const {data,error}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();if(error)throw new Error(error.message);const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:{...((data?.summary as any)||{}),learningPlanSync}}).eq('id',sessionId);if(updateError)throw new Error(updateError.message)}
+async function sessionLearningPlanStatus(sessionId:string){const db=getSupabaseAdmin();if(!db)return null;const {data}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();return(data?.summary as any)?.learningPlanSync??null}
 async function markEnrichment(sessionId:string,enrichment:any){const db=getSupabaseAdmin();if(!db)return;const {data}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();await db.from('live_telemetry_sessions').update({summary:{...((data?.summary as any)||{}),riotEnrichment:enrichment}}).eq('id',sessionId)}
 async function sessionEnrichmentStatus(sessionId:string){const db=getSupabaseAdmin();if(!db)return null;const {data}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();return(data?.summary as any)?.riotEnrichment??null}
 async function findMatchIdForSession(sessionId:string){const db=getSupabaseAdmin();if(!db)return null;const {data}=await db.from('matches').select('id').eq('live_session_id',sessionId).maybeSingle();return(data?.id as string|undefined)??null}

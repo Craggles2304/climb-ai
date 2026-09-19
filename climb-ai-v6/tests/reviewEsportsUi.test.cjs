@@ -8,6 +8,10 @@ const esports=fs.readFileSync(path.join(root,'companion','electron','review-espo
 const core=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'companion','package.json'),'utf8'));
+const reviewRoute=fs.readFileSync(path.join(root,'app','api','live','companion-review','route.ts'),'utf8');
+const liveRepo=fs.readFileSync(path.join(root,'lib','server','liveTrackerRepository.ts'),'utf8');
+const learningRepo=fs.readFileSync(path.join(root,'lib','server','proLearningRepository.ts'),'utf8');
+const learningContext=fs.readFileSync(path.join(root,'components','LearningPlanContext.tsx'),'utf8');
 
 test('post-game review has a champion-led esports hero instead of a report-only header',()=>{
   for(const label of ['POST MATCH // PERFORMANCE REVIEW','MATCH INTELLIGENCE // VERIFIED REVIEW','GAME DEBRIEF','KDA','CS / MIN','MATCH TIME','DECISIONS']){
@@ -45,7 +49,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.14');
+  assert.equal(pkg.version,'0.7.15');
 });
 
 
@@ -60,4 +64,33 @@ test('post-game review prefers the exact deep draft-coach plan and preserves pla
   assert.ok(core.includes('PLAYER BRANCHES: '));
   assert.ok(core.includes('NO RESULT-BASED REWRITING'));
   assert.ok(core.includes('localStorage.removeItem(DEEP_PLAN_STORAGE_KEY)'));
+});
+
+
+test('post-game review closes the loop into the server-authoritative Active Five',()=>{
+  assert.ok(learningRepo.includes('rebuildProLearningProfileWithIlp'));
+  assert.ok(learningRepo.includes('PostGameIlpSyncResult'));
+  assert.ok(learningRepo.includes("source:'POST_GAME_EVIDENCE'"));
+  assert.ok(learningRepo.includes('active.slice(0,5)'));
+  assert.ok(liveRepo.includes('syncLearningPlanForSession'));
+  assert.ok(liveRepo.includes('analysisSignature'));
+  assert.ok(liveRepo.includes('learningPlanSync'));
+  assert.ok(liveRepo.includes("trigger,'FINALIZE'")||liveRepo.includes("'FINALIZE',proAnalysis"));
+  assert.ok(reviewRoute.includes('developmentPlan'));
+  assert.ok(reviewRoute.includes('ONE_MATCH_CAN_PROGRESS EVIDENCE'));
+});
+
+test('Companion shows whether repeated evidence actually changed the development plan',()=>{
+  assert.ok(core.includes('DEVELOPMENT PLAN · ACTIVE FIVE'));
+  assert.ok(core.includes('ACTIVE FIVE UPDATED FROM REPEATED EVIDENCE'));
+  assert.ok(core.includes('ACTIVE FIVE CHECKED · NO MISSION REPLACED'));
+  assert.ok(core.includes('One unusual game cannot replace or reopen a persistent development mission.'));
+  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,5)'));
+  assert.ok(core.includes('renderDevelopmentPlan(review)'));
+});
+
+test('open web plan refreshes the server-owned Active Five after returning to the app',()=>{
+  assert.ok(learningContext.includes("window.addEventListener('focus',onFocus)"));
+  assert.ok(learningContext.includes("document.addEventListener('visibilitychange',pull)"));
+  assert.ok(learningContext.includes('refreshCloudNow()'));
 });
