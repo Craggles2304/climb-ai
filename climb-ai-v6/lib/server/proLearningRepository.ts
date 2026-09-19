@@ -76,13 +76,8 @@ export async function getProLearningProfile(userId:string,riotAccountId:string|n
 
 export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:string,profile:ProLearningProfile,history:HistoryAnalysisRow[]):Promise<PostGameIlpSyncResult>{
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for post-game ILP sync.');
-  const {data:stored,error}=await db.from('ilp_tasks').select('id,payload,updated_at').eq('user_id',userId).eq('riot_account_id',riotAccountId);if(error)throw new Error(error.message);
-  const storedRows=(stored??[]) as any[];
-  const tasks:ILPTask[]=storedRows.map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
-  const latestEvidenceAt=profile.latestAnalysisAt?Date.parse(profile.latestAnalysisAt):0;
-  const latestTaskWrite=storedRows.reduce((max,row)=>Math.max(max,Date.parse(String(row.updated_at||''))||0),0);
-  const alreadyProcessed=Boolean(tasks.length&&latestEvidenceAt&&latestTaskWrite>=latestEvidenceAt);
-  if(alreadyProcessed)return ilpSyncSnapshot(tasks,profile,[],true);
+  const {data:stored,error}=await db.from('ilp_tasks').select('id,payload').eq('user_id',userId).eq('riot_account_id',riotAccountId);if(error)throw new Error(error.message);
+  const tasks:ILPTask[]=(stored??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
 
   const role=[...history].reverse().find(row=>row.role)?.role??null;
   const adapted=adaptActiveFiveFromPostGameEvidence({tasks,profile,history,accountId:riotAccountId,role});
