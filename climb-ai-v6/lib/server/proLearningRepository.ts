@@ -7,6 +7,31 @@ import type {ILPTask} from '@/lib/types';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
+export interface PostGameIlpMission{
+  id:string;
+  title:string;
+  status:string;
+  progress:number;
+  category:string;
+  gameRule:string;
+  priority:number;
+  source:string;
+  adaptiveAction:string|null;
+}
+export interface PostGameIlpSyncResult{
+  status:'COMPLETE';
+  source:'POST_GAME_EVIDENCE';
+  syncedAt:string;
+  processedAnalysisAt:string|null;
+  changed:boolean;
+  changes:string[];
+  activeCount:number;
+  activeFive:PostGameIlpMission[];
+  primary:PostGameIlpMission|null;
+  gamesAnalyzed:number;
+  reused:boolean;
+}
+
 export async function persistProMatchAnalysis(input:PersistProAnalysisInput){
   const db=getSupabaseAdmin();if(!db)return null;
   const row={user_id:input.userId,riot_account_id:input.riotAccountId,session_id:input.sessionId,match_id:input.matchId,external_match_id:input.externalMatchId??null,champion:input.champion,role:input.role,evidence_sources:input.analysis.evidenceSources,analysis:input.analysis,updated_at:new Date().toISOString()};
@@ -19,14 +44,27 @@ export async function persistProMatchAnalysis(input:PersistProAnalysisInput){
 
 export async function getProMatchAnalysisBySession(sessionId:string):Promise<ProMatchAnalysis|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('op_match_analysis').select('analysis').eq('session_id',sessionId).maybeSingle();if(error)throw new Error(error.message);return(data?.analysis as ProMatchAnalysis|undefined)??null}
 
-export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
-  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string){
+  const db=getSupabaseAdmin();if(!db)return null;
   const {data,error}=await db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50);if(error)throw new Error(error.message);
   const rows:HistoryAnalysisRow[]=(data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
   const profile=buildProLearningProfile(rows),now=new Date().toISOString();
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({user_id:userId,riot_account_id:riotAccountId,games_analyzed:profile.gamesAnalyzed,fingerprint:profile.fingerprint,metric_rollups:profile.metricRollups,fix_ladder:profile.fixLadder,champion_profiles:profile.championProfiles,latest_analysis_at:profile.latestAnalysisAt,updated_at:now},{onConflict:'user_id,riot_account_id'});if(saveError)throw new Error(saveError.message);
-  await syncRepeatedEvidenceToIlp(userId,riotAccountId,profile,rows).catch(err=>console.warn('[pro-ilp] repeated-evidence Active Five sync failed',err));
-  return profile;
+  return{profile,rows};
+}
+
+export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
+  if(!riotAccountId)return null;
+  const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
+  await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] repeated-evidence Active Five sync failed',err));
+  return built.profile;
+}
+
+export async function rebuildProLearningProfileWithIlp(userId:string,riotAccountId:string|null):Promise<{profile:ProLearningProfile;ilp:PostGameIlpSyncResult}|null>{
+  if(!riotAccountId)return null;
+  const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
+  const ilp=await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows);
+  return{profile:built.profile,ilp};
 }
 
 export async function getProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
@@ -36,17 +74,47 @@ export async function getProLearningProfile(userId:string,riotAccountId:string|n
   return{version:1,gamesAnalyzed:Number(data.games_analyzed||0),fingerprint:data.fingerprint as any,metricRollups:data.metric_rollups as any,fixLadder:data.fix_ladder as any,championProfiles:data.champion_profiles as any,opLeakRate:{occurrencesPerGame:extractLeakRate(leak?.recentValue),cleanScore:Number(leak?.averageScore??0),trend:leak?.trend??'BUILDING'},recovery:{score:typeof recovery?.averageScore==='number'?recovery.averageScore:null,trend:recovery?.trend??'BUILDING',availableGames:Number(recovery?.availableGames||0)},latestAnalysisAt:data.latest_analysis_at??null};
 }
 
-async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:string,profile:ProLearningProfile,history:HistoryAnalysisRow[]){
-  const db=getSupabaseAdmin();if(!db)return;
-  const {data:stored,error}=await db.from('ilp_tasks').select('id,payload').eq('user_id',userId).eq('riot_account_id',riotAccountId);if(error)throw new Error(error.message);
-  const tasks:ILPTask[]=(stored??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
+export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:string,profile:ProLearningProfile,history:HistoryAnalysisRow[]):Promise<PostGameIlpSyncResult>{
+  const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for post-game ILP sync.');
+  const {data:stored,error}=await db.from('ilp_tasks').select('id,payload,updated_at').eq('user_id',userId).eq('riot_account_id',riotAccountId);if(error)throw new Error(error.message);
+  const storedRows=(stored??[]) as any[];
+  const tasks:ILPTask[]=storedRows.map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
+  const latestEvidenceAt=profile.latestAnalysisAt?Date.parse(profile.latestAnalysisAt):0;
+  const latestTaskWrite=storedRows.reduce((max,row)=>Math.max(max,Date.parse(String(row.updated_at||''))||0),0);
+  const alreadyProcessed=Boolean(tasks.length&&latestEvidenceAt&&latestTaskWrite>=latestEvidenceAt);
+  if(alreadyProcessed)return ilpSyncSnapshot(tasks,profile,[],true);
+
   const role=[...history].reverse().find(row=>row.role)?.role??null;
   const adapted=adaptActiveFiveFromPostGameEvidence({tasks,profile,history,accountId:riotAccountId,role});
-  if(!adapted.tasks.length)return;
-  const now=new Date().toISOString();
-  const rows=adapted.tasks.map(task=>({user_id:userId,riot_account_id:riotAccountId,id:task.id,payload:{...task,accountId:riotAccountId},updated_at:now}));
-  const {error:upsertError}=await db.from('ilp_tasks').upsert(rows,{onConflict:'user_id,riot_account_id,id'});if(upsertError)throw new Error(upsertError.message);
+  if(adapted.tasks.length){
+    const now=new Date().toISOString();
+    const rows=adapted.tasks.map(task=>({user_id:userId,riot_account_id:riotAccountId,id:task.id,payload:{...task,accountId:riotAccountId},updated_at:now}));
+    const {error:upsertError}=await db.from('ilp_tasks').upsert(rows,{onConflict:'user_id,riot_account_id,id'});if(upsertError)throw new Error(upsertError.message);
+  }
   if(adapted.changes.length)console.info('[pro-ilp] Active Five adapted',adapted.changes);
+  return ilpSyncSnapshot(adapted.tasks,profile,adapted.changes,false);
+}
+
+function ilpSyncSnapshot(tasks:ILPTask[],profile:ProLearningProfile,changes:string[],reused:boolean):PostGameIlpSyncResult{
+  const active=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').sort((a,b)=>Number(b.priority??50)-Number(a.priority??50));
+  const activeFive=active.slice(0,5).map(toPostGameMission);
+  return{
+    status:'COMPLETE',
+    source:'POST_GAME_EVIDENCE',
+    syncedAt:new Date().toISOString(),
+    processedAnalysisAt:profile.latestAnalysisAt??null,
+    changed:changes.length>0,
+    changes:[...changes],
+    activeCount:active.length,
+    activeFive,
+    primary:activeFive[0]??null,
+    gamesAnalyzed:Number(profile.gamesAnalyzed||0),
+    reused,
+  };
+}
+function toPostGameMission(task:ILPTask):PostGameIlpMission{
+  const adaptive=(task as ILPTask&{adaptive?:{lastAction?:string}}).adaptive;
+  return{id:task.id,title:task.title,status:String(task.status||'ACTIVE'),progress:Number(task.progress||0),category:String(task.category||'CONSISTENCY'),gameRule:task.gameRule,priority:Number(task.priority??50),source:String(task.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null};
 }
 
 function extractLeakRate(value:unknown){const match=String(value||'').match(/([\d.]+)/);return match?Number(match[1]):0}
