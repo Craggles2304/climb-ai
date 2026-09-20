@@ -196,7 +196,8 @@ test('Decision Twin learns a recurring multi-access situation pattern from Decis
   assert.equal(trap.failures,6);
   assert.equal(trap.failureRate,75);
   assert.match(trap.historicalSummary,/6 of 8 comparable/i);
-  assert.match(trap.proof,/6\/8 comparable decisions/i);
+  assert.match(trap.proof,/6\/8 all-time/i);
+  assert.match(trap.proof,/recent/i);
   assert.match(trap.cue,/FIRST ENGAGE/i);
 });
 
@@ -233,4 +234,110 @@ test('recurring-situation Personal Trap requires at least four comparable decisi
   const twin=buildDecisionTwin(rows,'2026-09-20T20:00:00.000Z');
   const trap=selectPersonalTrap(twin,{champion:'Aphelios',role:'ADC',ours:[{champion:'Aphelios',role:'ADC'}],enemies:multiAccess});
   assert.equal(trap.status,'NONE');
+});
+
+
+test('a historically bad situation is MASTERED after six recent decisions are nearly clean',()=>{
+  const verdicts=[
+    'IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','GOOD','GOOD',
+    'GOOD','GOOD','GOOD','GOOD','GOOD','IMPROVE',
+  ] as const;
+  const rows=verdicts.map((verdict,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:48}),
+    index,
+    verdict,
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T21:00:00.000Z');
+  const pattern=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.ok(pattern);
+  assert.equal(pattern?.priorDecisions,8);
+  assert.equal(pattern?.priorFailureRate,75);
+  assert.equal(pattern?.recentDecisions,6);
+  assert.equal(pattern?.recentFailures,1);
+  assert.equal(pattern?.recentFailureRate,17);
+  assert.equal(pattern?.state,'MASTERED');
+  assert.ok(twin.masteredSituations.some(item=>item.id===pattern?.id));
+
+  const trap=selectPersonalTrap(twin,{
+    champion:'Aphelios',
+    role:'ADC',
+    ours:[{champion:'Aphelios',role:'ADC'},{champion:'Rakan',role:'SUPPORT'}],
+    enemies:multiAccess,
+  });
+  assert.equal(trap.status,'MASTERED');
+  assert.equal(trap.title,'THIS USED TO CATCH YOU');
+  assert.equal(trap.patternState,'MASTERED');
+  assert.equal(trap.priorFailureRate,75);
+  assert.equal(trap.recentFailureRate,17);
+  assert.match(trap.proof,/5\/6 recent clean decisions/i);
+  assert.match(trap.cue,/WILL NOT RE-TEACH/i);
+});
+
+test('a recurring situation stays coachable while recent evidence is improving but not yet mastered',()=>{
+  const verdicts=[
+    'IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','GOOD','GOOD',
+    'GOOD','GOOD','GOOD','GOOD','IMPROVE','IMPROVE',
+  ] as const;
+  const rows=verdicts.map((verdict,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:82}),
+    index,
+    verdict,
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T21:00:00.000Z');
+  const pattern=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.equal(pattern?.priorFailureRate,75);
+  assert.equal(pattern?.recentFailureRate,33);
+  assert.equal(pattern?.state,'IMPROVING');
+  assert.ok(twin.improvingSituations.some(item=>item.id===pattern?.id));
+
+  const trap=selectPersonalTrap(twin,{champion:'Aphelios',role:'ADC',ours:[{champion:'Aphelios',role:'ADC'}],enemies:multiAccess});
+  assert.equal(trap.status,'READY');
+  assert.equal(trap.title,"YOU'RE BREAKING THIS PATTERN");
+  assert.equal(trap.patternState,'IMPROVING');
+  assert.match(trap.historicalSummary,/75%/);
+  assert.match(trap.historicalSummary,/2\/6 recently/);
+});
+
+test('Decision Twin detects regression even when the all-time average still looks acceptable',()=>{
+  const verdicts=[
+    'GOOD','GOOD','GOOD','GOOD','GOOD','IMPROVE',
+    'IMPROVE','IMPROVE','IMPROVE','IMPROVE','GOOD','GOOD',
+  ] as const;
+  const rows=verdicts.map((verdict,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:88}),
+    index,
+    verdict,
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T21:00:00.000Z');
+  const pattern=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.equal(pattern?.failureRate,42);
+  assert.equal(pattern?.priorFailureRate,17);
+  assert.equal(pattern?.recentFailureRate,67);
+  assert.equal(pattern?.state,'REGRESSING');
+
+  const trap=selectPersonalTrap(twin,{champion:'Aphelios',role:'ADC',ours:[{champion:'Aphelios',role:'ADC'}],enemies:multiAccess});
+  assert.equal(trap.status,'READY');
+  assert.equal(trap.title,'THIS PATTERN IS COMING BACK');
+  assert.equal(trap.patternState,'REGRESSING');
+  assert.match(trap.historicalSummary,/regressed/i);
+});
+
+test('mastering one contextual pattern moves coaching past it instead of recycling the old weakness',()=>{
+  const masteredRows=[
+    'IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','IMPROVE','GOOD','GOOD',
+    'GOOD','GOOD','GOOD','GOOD','GOOD','IMPROVE',
+  ].map((verdict,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:45,fight_selection:88}),
+    index,
+    verdict as 'GOOD'|'IMPROVE',
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(masteredRows,'2026-09-20T21:00:00.000Z');
+  const trap=selectPersonalTrap(twin,{champion:'Aphelios',role:'ADC',ours:[{champion:'Aphelios',role:'ADC'}],enemies:multiAccess});
+  assert.equal(trap.status,'MASTERED');
+  assert.notEqual(trap.title,'YOUR PERSONAL TRAP');
+  assert.match(trap.historicalSummary,/previously struggled/i);
 });
