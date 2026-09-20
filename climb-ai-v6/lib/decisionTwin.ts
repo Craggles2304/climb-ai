@@ -250,11 +250,13 @@ function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPatt
         };
         current.games.add(gameKey);
         const response=clean((node as any)?.coachingResponse?.status).toUpperCase();
+        const responseTag=clean((node as any)?.coachingResponse?.situationTag).toUpperCase();
+        const appliesToTag=!responseTag||responseTag===tag;
         current.events.push({
           gameKey,
           createdAt:row.createdAt,
           verdict:node.verdict as 'GOOD'|'IMPROVE',
-          coachingResponse:response==='EXECUTED'||response==='MISSED'?response as 'EXECUTED'|'MISSED':null,
+          coachingResponse:appliesToTag&&(response==='EXECUTED'||response==='MISSED')?response as 'EXECUTED'|'MISSED':null,
         });
         for(const enemy of (((node as any).contextEnemies??[]) as string[]).map(clean).filter(Boolean))current.enemyExamples.add(enemy);
         if(clean(row.champion))current.championExamples.add(clean(row.champion));
