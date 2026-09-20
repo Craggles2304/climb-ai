@@ -287,3 +287,12 @@ test('Decision Twin Personal Trap is shown only from server-verified repeated ev
   assert.ok(esports.includes('NO VERIFIED PERSONAL TRAP'));
   assert.ok(esports.includes('BUILDING YOUR DECISION TWIN'));
 });
+
+
+test('Personal Trap can promote a verified recurring situation instead of only an aggregate weakness',()=>{
+  assert.ok(esports.includes("SITUATION_PATTERN"));
+  assert.ok(esports.includes("YOU'VE SEEN THIS DECISION BEFORE"));
+  assert.ok(esports.includes("clean(trap?.proof)"));
+  assert.ok(draftCoach.includes('buildDraftSituationContext'));
+  assert.ok(draftCoach.includes('situationContext,'));
+});
