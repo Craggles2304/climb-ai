@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {buildLearningJourney} from '../lib/learningJourney';
 import type {HistoryAnalysisRow} from '../lib/riot/proHistory';
 
@@ -137,4 +138,22 @@ test('Learning Journey coaching totals dedupe one Decision Graph node even when 
   const journey=buildLearningJourney([base],'2026-09-20T22:00:00.000Z');
   assert.equal(journey.summary.coachedDecisions,1);
   assert.equal(journey.summary.coachedExecuted,1);
+});
+
+
+test('Progress page exposes the evidence-bounded Learning Journey and the server persists it',()=>{
+  const component=fs.readFileSync('components/LearningJourneyTimeline.tsx','utf8');
+  const progress=fs.readFileSync('app/progress/page.tsx','utf8');
+  const route=fs.readFileSync('app/api/learning-journey/route.ts','utf8');
+  const repo=fs.readFileSync('lib/server/proLearningRepository.ts','utf8');
+
+  assert.ok(component.includes('DECISION TWIN · LEARNING JOURNEY'));
+  assert.ok(component.includes('DISCOVER → COACH → EXECUTE → IMPROVE → MASTER → MOVE ON'));
+  assert.ok(component.includes('AFTER-CUE EXECUTION'));
+  assert.ok(component.includes('OP CLIMB will not create a “journey” from noise.'));
+  assert.ok(progress.includes('<LearningJourneyTimeline accountId={active.id}/>'));
+  assert.ok(route.includes('buildLearningJourney(rows)'));
+  assert.ok(route.includes("grounding:'decision-twin-history'"));
+  assert.ok(repo.includes('learningJourney=buildLearningJourney(rows,now)'));
+  assert.ok(repo.includes('learningJourney,generatedAt:now'));
 });
