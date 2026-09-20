@@ -10,6 +10,9 @@ import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
+import {buildDecisionTwin,selectPersonalTrap,type PersonalTrap} from '@/lib/decisionTwin';
+import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
+import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -204,7 +207,13 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const taskPromise=device.riotAccountId
     ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(12)
     :Promise.resolve({data:[],error:null});
-  const [profileResult,riotResult,taskResult]=await Promise.all([profilePromise,riotPromise,taskPromise]);
+  const learningPromise=device.riotAccountId
+    ?db.from('op_player_learning_profiles').select('learning_identity').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
+    :Promise.resolve({data:null,error:null});
+  const historyPromise=device.riotAccountId
+    ?db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('created_at',{ascending:true}).limit(50)
+    :Promise.resolve({data:[],error:null});
+  const [profileResult,riotResult,taskResult,learningResult,historyResult]=await Promise.all([profilePromise,riotPromise,taskPromise,learningPromise,historyPromise]);
   const tier=clean(riotResult?.data?.rank_tier);
   const division=clean(riotResult?.data?.rank_division);
   const rank=tier?(tier+(division?' '+division:'')):(clean(profileResult?.data?.rank)||'Silver');
@@ -213,7 +222,15 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
   }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
   const task=tasks[0]??null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null};
+  const storedTwin=learningResult?.data?.learning_identity;
+  const rows:HistoryAnalysisRow[]=(historyResult?.data??[]).map((row:any)=>({
+    champion:clean(row?.champion)||'Unknown',
+    role:clean(row?.role)||null,
+    createdAt:clean(row?.created_at),
+    analysis:row?.analysis as ProMatchAnalysis,
+  })).filter((row:any)=>row.analysis?.version===1);
+  const decisionTwin=storedTwin?.version===1&&Array.isArray(storedTwin?.behaviours)?storedTwin:buildDecisionTwin(rows);
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null,decisionTwin};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -373,7 +390,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -395,6 +412,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- The five steps must form one causal win path, not five unrelated tips.',
       '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
       '- The output must be useful enough that the player could repeat the plan back in champion select.',
+      '- If PERSONAL TRAP EVIDENCE has status READY, weave exactly one short personal cue into the strategically correct plan. It is historical evidence, not permission to distort the draft read.',
+      '- If PERSONAL TRAP EVIDENCE is BUILDING or NONE, do not invent a personal weakness or claim a repeated tendency.',
       '- This root plan will be frozen before the game and expanded into prewritten AHEAD / EVEN / BEHIND branches. Make the strategy stable enough to remain correct across those states without using live gold, kills, items, cooldown tracking or objective timers.',
       '- Do not assume the app will detect whether the player is ahead, even or behind. The PLAYER will choose the matching prewritten branch during the game.',
       '',
@@ -407,9 +426,11 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'OUR TEAM: '+JSON.stringify(ours),
       'ENEMY TEAM: '+JSON.stringify(enemies),
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
+      'PERSONAL TRAP EVIDENCE: '+JSON.stringify(personalTrap),
       'RIOT / DATA DRAGON KIT FACTS: '+JSON.stringify(kits),
       '',
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
+      'The personal trap may shape ONE cue only when status is READY. Never turn BUILDING/NONE evidence into a claim about the player.',
       '',
       'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
@@ -488,6 +509,12 @@ export async function POST(req:NextRequest){
     const userRole=roleResolution.role??'';
     const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
     const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
+    const personalTrap=selectPersonalTrap(context.decisionTwin,{
+      champion,
+      role:roleResolution.role,
+      ours,
+      enemies,
+    });
 
     const kits=await kitFacts([...ours,...enemies]);
     const fallback=completeCoach(buildRankAwareDraftPlan({
@@ -504,13 +531,14 @@ export async function POST(req:NextRequest){
     enrichRulePlan(fallback,userRole,enemies,kits);
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
         ok:false,
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
         player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
+        personalTrap,
         coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
@@ -534,6 +562,7 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
+      personalTrap,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,
