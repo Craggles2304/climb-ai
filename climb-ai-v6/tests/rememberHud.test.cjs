@@ -309,3 +309,10 @@ test('Personal Trap UI distinguishes learned, improving and regressing recurring
   assert.ok(proLearning.includes('situationMastered'));
   assert.ok(proLearning.includes('situationRegressing'));
 });
+
+
+test('future Personal Traps can include verified after-cue execution history',()=>{
+  assert.ok(proLearning.includes('strongestCoachingResponse'));
+  assert.ok(draftCoach.includes('personalTrap'));
+  assert.ok(esports.includes('clean(trap?.proof)'));
+});

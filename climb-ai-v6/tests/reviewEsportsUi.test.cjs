@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.20');
+  assert.equal(pkg.version,'0.7.21');
 });
 
 
@@ -146,4 +146,20 @@ test('post-game review renders the highest-value counterfactual decisions withou
   assert.ok(core.includes('TRADE-OFF'));
   assert.ok(core.includes('EVIDENCE-BOUNDED · NO GUARANTEED OUTCOME'));
   assert.ok(core.includes('renderCounterfactuals(review)'));
+});
+
+
+test('post-game review closes the loop by measuring whether the pre-game Personal Trap transferred',()=>{
+  assert.ok(decisionGraph.includes('DecisionCoachingResponse'));
+  assert.ok(decisionGraph.includes('coachingResponseFor'));
+  assert.ok(decisionGraph.includes('does not claim the cue caused the result'));
+  assert.ok(decisionGraph.includes("status:'NO_CUE'|'NO_MATCH'|'EXECUTING'|'MIXED'|'MISSING'"));
+  assert.ok(core.includes('COACHING RESPONSE · DID THE CUE TRANSFER?'));
+  assert.ok(core.includes('function renderCoachingResponse'));
+  assert.ok(core.includes('TRANSFERRED THIS GAME'));
+  assert.ok(core.includes('PARTIAL TRANSFER'));
+  assert.ok(core.includes('CUE NOT STABLE YET'));
+  assert.ok(core.includes('NOT TESTED THIS GAME'));
+  assert.ok(core.includes('ASSOCIATION ONLY'));
+  assert.ok(core.includes('renderCoachingResponse(review)'));
 });

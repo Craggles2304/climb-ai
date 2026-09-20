@@ -80,6 +80,11 @@ export interface DecisionSituationPattern{
   priorFailures:number;
   priorFailureRate:number|null;
   deltaFailureRate:number|null;
+  coachedGames:number;
+  coachedDecisions:number;
+  coachedExecuted:number;
+  coachedMissed:number;
+  coachedExecutionRate:number|null;
   state:DecisionPatternState;
   confidence:DecisionTwinConfidence;
   enemyExamples:string[];
@@ -218,7 +223,7 @@ function patternState(input:{decisions:number;applicableGames:number;failureRate
   return'BUILDING';
 }
 function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPattern[]{
-  type Event={gameKey:string;createdAt:string;verdict:'GOOD'|'IMPROVE'};
+  type Event={gameKey:string;createdAt:string;verdict:'GOOD'|'IMPROVE';coachingResponse:'EXECUTED'|'MISSED'|null};
   type Acc={tag:DecisionSituationTag;behaviourKey:DecisionBehaviourKey;behaviourLabel:string;role:string|null;games:Set<string>;events:Event[];enemyExamples:Set<string>;championExamples:Set<string>;lastSeenAt:string|null};
   const map=new Map<string,Acc>();
   rows.forEach((row,rowIndex)=>{
@@ -244,7 +249,13 @@ function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPatt
           lastSeenAt:null,
         };
         current.games.add(gameKey);
-        current.events.push({gameKey,createdAt:row.createdAt,verdict:node.verdict as 'GOOD'|'IMPROVE'});
+        const response=clean((node as any)?.coachingResponse?.status).toUpperCase();
+        current.events.push({
+          gameKey,
+          createdAt:row.createdAt,
+          verdict:node.verdict as 'GOOD'|'IMPROVE',
+          coachingResponse:response==='EXECUTED'||response==='MISSED'?response as 'EXECUTED'|'MISSED':null,
+        });
         for(const enemy of (((node as any).contextEnemies??[]) as string[]).map(clean).filter(Boolean))current.enemyExamples.add(enemy);
         if(clean(row.champion))current.championExamples.add(clean(row.champion));
         if(!current.lastSeenAt||Date.parse(row.createdAt)>Date.parse(current.lastSeenAt))current.lastSeenAt=row.createdAt;
@@ -262,6 +273,11 @@ function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPatt
     const failureRate=patternRate(failures,decisions)??0;
     const recentFailureRate=patternRate(recentFailures,recent.length);
     const priorFailureRate=patternRate(priorFailures,prior.length);
+    const coached=events.filter(event=>event.coachingResponse);
+    const coachedGames=new Set(coached.map(event=>event.gameKey)).size;
+    const coachedExecuted=coached.filter(event=>event.coachingResponse==='EXECUTED').length;
+    const coachedMissed=coached.filter(event=>event.coachingResponse==='MISSED').length;
+    const coachedExecutionRate=patternRate(coachedExecuted,coached.length);
     const currentState=patternState({
       decisions,
       applicableGames:item.games.size,
@@ -290,6 +306,11 @@ function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPatt
       priorFailures,
       priorFailureRate,
       deltaFailureRate:recentFailureRate!==null&&priorFailureRate!==null?recentFailureRate-priorFailureRate:null,
+      coachedGames,
+      coachedDecisions:coached.length,
+      coachedExecuted,
+      coachedMissed,
+      coachedExecutionRate,
       state:currentState,
       confidence:situationConfidence(decisions,item.games.size),
       enemyExamples:[...item.enemyExamples].slice(0,6),
@@ -497,7 +518,7 @@ export function selectPersonalTrap(twin:DecisionTwinProfile|null|undefined,input
             :`In ${pattern.failures} of ${pattern.decisions} comparable ${pattern.behaviourLabel.toLowerCase()} decision points, the recorded choice was graded for improvement (${pattern.failureRate}%); ${recentText}.`,
         draftReason:copy.draftReason,
         cue:copy.cue,
-        proof:`${pattern.confidence} confidence · ${pattern.failures}/${pattern.decisions} all-time · ${pattern.recentFailures}/${pattern.recentDecisions} recent · ${pattern.applicableGames} games.`,
+        proof:`${pattern.confidence} confidence · ${pattern.failures}/${pattern.decisions} all-time · ${pattern.recentFailures}/${pattern.recentDecisions} recent · ${pattern.applicableGames} games${pattern.coachedDecisions? ` · AFTER CUE: ${pattern.coachedExecuted}/${pattern.coachedDecisions} clean (${pattern.coachedExecutionRate??0}%)`:''}.`,
         relevantEnemies,
       };
     }
@@ -535,7 +556,7 @@ export function selectPersonalTrap(twin:DecisionTwinProfile|null|undefined,input
       historicalSummary:`You previously struggled with ${masteredPattern.behaviourLabel.toLowerCase()} in this situation, but the recent window is ${masteredPattern.recentFailures}/${masteredPattern.recentDecisions} failures (${masteredPattern.recentFailureRate??0}%) after a prior ${masteredPattern.priorFailureRate??'—'}% failure rate.`,
       draftReason:'This draft recreates a situation OP CLIMB has already seen you improve against.',
       cue:'KEEP THE BEHAVIOUR. OP CLIMB WILL NOT RE-TEACH A PATTERN YOUR RECENT EVIDENCE SAYS YOU HAVE LEARNED.',
-      proof:`MASTERED · ${masteredPattern.recentSuccesses}/${masteredPattern.recentDecisions} recent clean decisions · ${masteredPattern.applicableGames} games.`,
+      proof:`MASTERED · ${masteredPattern.recentSuccesses}/${masteredPattern.recentDecisions} recent clean decisions · ${masteredPattern.applicableGames} games${masteredPattern.coachedDecisions? ` · AFTER CUE: ${masteredPattern.coachedExecuted}/${masteredPattern.coachedDecisions} clean (${masteredPattern.coachedExecutionRate??0}%)`:''}.`,
       relevantEnemies,
     };
   }

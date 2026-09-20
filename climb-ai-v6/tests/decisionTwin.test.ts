@@ -44,7 +44,7 @@ const multiAccess=[
 ];
 
 
-function withSituationGraph(base:HistoryAnalysisRow,index:number,verdict:'GOOD'|'IMPROVE',tag:'MULTI_ACCESS'|'ZONE_OBJECTIVE'){
+function withSituationGraph(base:HistoryAnalysisRow,index:number,verdict:'GOOD'|'IMPROVE',tag:'MULTI_ACCESS'|'ZONE_OBJECTIVE',coachingResponse:'EXECUTED'|'MISSED'|null=null){
   base.analysis.decisionGraph={
     version:1,
     generatedAt:base.createdAt,
@@ -71,6 +71,16 @@ function withSituationGraph(base:HistoryAnalysisRow,index:number,verdict:'GOOD'|
       situationTags:[tag],
       contextEnemies:tag==='MULTI_ACCESS'?['Sett','Pantheon','Irelia']:['Rumble','Fiddlesticks'],
       evidence:['verified'],
+      coachingResponse:coachingResponse?{
+        version:1,
+        status:coachingResponse,
+        cue:'FIRST ENGAGE ≠ WALK FORWARD.',
+        behaviourKey:tag==='ZONE_OBJECTIVE'?'OBJECTIVE_READINESS':'CARRY_PRESERVATION',
+        situationTag:tag,
+        confidence:'HIGH',
+        proof:'test response',
+        boundary:'association only',
+      }:null,
       limitation:'test',
     }],
     summary:{cleanDecisions:verdict==='GOOD'?1:0,improveDecisions:verdict==='IMPROVE'?1:0,neutralDecisions:0,mostRepeatedBehaviour:tag==='ZONE_OBJECTIVE'?'OBJECTIVE_READINESS':'CARRY_PRESERVATION',mostRepeatedLabel:tag==='ZONE_OBJECTIVE'?'Objective Arrival':'Carry Preservation'},
@@ -340,4 +350,34 @@ test('mastering one contextual pattern moves coaching past it instead of recycli
   assert.equal(trap.status,'MASTERED');
   assert.notEqual(trap.title,'YOUR PERSONAL TRAP');
   assert.match(trap.historicalSummary,/previously struggled/i);
+});
+
+
+test('Decision Twin measures execution after a Personal Trap cue without claiming causation',()=>{
+  const verdicts=['IMPROVE','IMPROVE','IMPROVE','IMPROVE','GOOD','GOOD','GOOD','GOOD'] as const;
+  const responses=[null,null,null,null,'EXECUTED','EXECUTED','MISSED','EXECUTED'] as const;
+  const rows=verdicts.map((verdict,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:62}),
+    index,
+    verdict,
+    'MULTI_ACCESS',
+    responses[index],
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T22:00:00.000Z');
+  const pattern=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.ok(pattern);
+  assert.equal(pattern?.coachedGames,4);
+  assert.equal(pattern?.coachedDecisions,4);
+  assert.equal(pattern?.coachedExecuted,3);
+  assert.equal(pattern?.coachedMissed,1);
+  assert.equal(pattern?.coachedExecutionRate,75);
+
+  const trap=selectPersonalTrap(twin,{
+    champion:'Aphelios',
+    role:'ADC',
+    ours:[{champion:'Aphelios',role:'ADC'}],
+    enemies:multiAccess,
+  });
+  assert.equal(trap.status,'READY');
+  assert.match(trap.proof,/AFTER CUE: 3\/4 clean \(75%\)/i);
 });
