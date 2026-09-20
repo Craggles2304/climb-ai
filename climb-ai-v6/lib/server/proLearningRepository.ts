@@ -4,6 +4,7 @@ import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import {adaptActiveFiveFromPostGameEvidence} from '@/lib/adaptiveIlpEvidence';
 import type {ILPTask} from '@/lib/types';
+import {buildDecisionTwin} from '@/lib/decisionTwin';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -49,8 +50,26 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const {data,error}=await db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50);if(error)throw new Error(error.message);
   const rows:HistoryAnalysisRow[]=(data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
   const profile=buildProLearningProfile(rows),now=new Date().toISOString();
-  const {error:saveError}=await db.from('op_player_learning_profiles').upsert({user_id:userId,riot_account_id:riotAccountId,games_analyzed:profile.gamesAnalyzed,fingerprint:profile.fingerprint,metric_rollups:profile.metricRollups,fix_ladder:profile.fixLadder,champion_profiles:profile.championProfiles,latest_analysis_at:profile.latestAnalysisAt,updated_at:now},{onConflict:'user_id,riot_account_id'});if(saveError)throw new Error(saveError.message);
-  return{profile,rows};
+  const decisionTwin=buildDecisionTwin(rows,now);
+  const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
+  const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
+  const recentChange={improving,worsening,generatedAt:now};
+  const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
+    user_id:userId,
+    riot_account_id:riotAccountId,
+    games_analyzed:profile.gamesAnalyzed,
+    fingerprint:profile.fingerprint,
+    metric_rollups:profile.metricRollups,
+    fix_ladder:profile.fixLadder,
+    champion_profiles:profile.championProfiles,
+    learning_identity:decisionTwin,
+    mastered_behaviours:decisionTwin.mastered,
+    current_focus:decisionTwin.currentLimiter??{},
+    recent_change:recentChange,
+    latest_analysis_at:profile.latestAnalysisAt,
+    updated_at:now,
+  },{onConflict:'user_id,riot_account_id'});if(saveError)throw new Error(saveError.message);
+  return{profile,rows,decisionTwin};
 }
 
 export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
