@@ -53,7 +53,10 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const decisionTwin=buildDecisionTwin(rows,now);
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
-  const recentChange={improving,worsening,generatedAt:now};
+  const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
+  const situationMastered=decisionTwin.situationPatterns.find(item=>item.state==='MASTERED')??null;
+  const situationRegressing=decisionTwin.situationPatterns.find(item=>item.state==='REGRESSING')??null;
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,generatedAt:now};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
