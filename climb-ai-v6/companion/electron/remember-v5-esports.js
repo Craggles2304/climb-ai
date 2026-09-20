@@ -216,7 +216,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const status=upper(trap?.status||'BUILDING');
     const ready=status==='READY';
     root.classList.toggle('building',!ready);
-    set('opRemTrapTitle',ready?(clean(trap?.behaviourLabel)||'VERIFIED PERSONAL PATTERN'):(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
+    const recurring=ready&&upper(trap?.source)==='SITUATION_PATTERN';
+    const title=recurring
+      ?[clean(trap?.title)||"YOU'VE SEEN THIS DECISION BEFORE",clean(trap?.behaviourLabel)].filter(Boolean).join(' · ')
+      :(clean(trap?.behaviourLabel)||'VERIFIED PERSONAL PATTERN');
+    set('opRemTrapTitle',ready?title:(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
     set('opRemTrapCue',ready?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
     set('opRemTrapProof',ready?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
     root.title=ready?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
