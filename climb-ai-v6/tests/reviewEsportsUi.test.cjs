@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.21');
+  assert.equal(pkg.version,'0.7.22');
 });
 
 
@@ -162,4 +162,15 @@ test('post-game review closes the loop by measuring whether the pre-game Persona
   assert.ok(core.includes('NOT TESTED THIS GAME'));
   assert.ok(core.includes('ASSOCIATION ONLY'));
   assert.ok(core.includes('renderCoachingResponse(review)'));
+});
+
+
+test('post-game review links directly into the player Learning Journey',()=>{
+  const main=fs.readFileSync(path.join(root,'companion','electron','main.cjs'),'utf8');
+  const preload=fs.readFileSync(path.join(root,'companion','electron','preload.cjs'),'utf8');
+  assert.ok(core.includes('VIEW LEARNING JOURNEY'));
+  assert.ok(core.includes("openClimbPath?.('/progress')"));
+  assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
+  assert.ok(main.includes("ipcMain.handle('companion:open-climb-path'"));
+  assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
 });
