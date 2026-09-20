@@ -71,6 +71,7 @@ export async function GET(req:NextRequest){
       critical:sections.improve,
       nextFocus:sections.nextFocus,
       evidenceCount:sections.evidenceCount,
+      decisionGraph:summary?.decisionGraph??latest.proAnalysis?.decisionGraph??null,
       developmentPlan,
       reviewFormat:'3-3-2',
     },
