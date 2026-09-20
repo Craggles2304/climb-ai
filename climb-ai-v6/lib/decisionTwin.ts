@@ -198,6 +198,7 @@ function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPatt
     const gameKey=row.createdAt||String(rowIndex);
     const role=roleName(row.role)||null;
     for(const node of graph.nodes){
+      if(node.verdict==='NEUTRAL'||node.confidence==='LOW')continue;
       const tags=(Array.isArray((node as any).situationTags)?(node as any).situationTags:[]) as DecisionSituationTag[];
       if(!tags.length)continue;
       for(const tag of tags){
@@ -386,7 +387,7 @@ export function selectPersonalTrap(twin:DecisionTwinProfile|null|undefined,input
   const situation=buildDraftSituationContext({champion:input.champion,role:input.role,enemies:input.enemies});
   const role=roleName(input.role);
   const matchedPatterns=(twin.situationPatterns??[])
-    .filter(pattern=>situation.tags.includes(pattern.tag))
+    .filter(pattern=>pattern.tag!=='GENERAL'&&situation.tags.includes(pattern.tag))
     .filter(pattern=>!pattern.role||!role||pattern.role===role)
     .filter(pattern=>pattern.decisions>=4&&pattern.applicableGames>=3&&pattern.failures>=2&&pattern.failureRate>=50)
     .sort((a,b)=>{
