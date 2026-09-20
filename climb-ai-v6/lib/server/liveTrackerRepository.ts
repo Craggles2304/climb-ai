@@ -7,6 +7,7 @@ import type {LiveTelemetryPlayer,LiveTelemetrySnapshot} from '@/lib/riot/liveTel
 import {riotService} from '@/lib/services/riotService';
 import {riotEnabled} from '@/lib/riot/client';
 import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningProfile,rebuildProLearningProfileWithIlp,getProLearningProfile,type PostGameIlpSyncResult} from './proLearningRepository';
+import {buildDecisionGraph,lockedPlanFromPregameContext,type LockedDecisionPlan} from '@/lib/decisionGraph';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
@@ -47,13 +48,21 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const {data:snapshots,error:snapshotError}=await db.from('live_telemetry_snapshots').select('game_time,payload').eq('session_id',session.id).order('game_time',{ascending:true});if(snapshotError)throw new Error(snapshotError.message);
   const normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
+  const lockedPlan=await linkedDecisionPlan(session.id);
   let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
   if(normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
-    proAnalysis=buildLiveProAnalysis(normalized,strength);
+    const base=buildLiveProAnalysis(normalized,strength);
+    proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan})};
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
       const persisted=await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>{console.warn('[pro-backfill] match analysis failed',err);return null});
       if(persisted)await syncLearningPlanForSession(session.id,userId,session.riot_account_id??null,'BACKFILL',proAnalysis);
+    }
+  }else if(proAnalysis&&strength&&!proAnalysis.decisionGraph){
+    proAnalysis={...proAnalysis,decisionGraph:buildDecisionGraph({analysis:proAnalysis,summary:strength,lockedPlan})};
+    if(session.status==='COMPLETE'){
+      const matchId=await findMatchIdForSession(session.id);
+      await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>console.warn('[decision-graph] backfill persist failed',err));
     }
   }
 
@@ -72,7 +81,8 @@ export async function latestLiveReview(userId:string,accountKey:string){
     learningPlanSync=await sessionLearningPlanStatus(session.id);
   }
   const historyProfile=await getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null);
-  const finalSummary=strength?{...strength,proAnalysis,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment,learningPlanSync}:session.summary;
+  const decisionGraph=proAnalysis?.decisionGraph??(session.summary as any)?.decisionGraph??null;
+  const finalSummary=strength?{...strength,proAnalysis,decisionGraph,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment,learningPlanSync}:session.summary;
   return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile};
 }
 
@@ -84,8 +94,10 @@ async function finalizeSession(sessionId:string){
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
   const snapshots=(data??[]).map(row=>row.payload as LiveTelemetrySnapshot),summary=buildStrengthTimeline(snapshots);
-  const proAnalysis=snapshots.length?buildLiveProAnalysis(snapshots,summary):null;
-  const storedSummary={...summary,proAnalysis,riotEnrichment:{status:riotEnabled()?'PENDING':'DISABLED'}};
+  const lockedPlan=await linkedDecisionPlan(sessionId);
+  const baseAnalysis=snapshots.length?buildLiveProAnalysis(snapshots,summary):null;
+  const proAnalysis=baseAnalysis?{...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan})}:null;
+  const storedSummary={...summary,proAnalysis,decisionGraph:proAnalysis?.decisionGraph??null,lockedPlanAvailable:Boolean(lockedPlan),riotEnrichment:{status:riotEnabled()?'PENDING':'DISABLED'}};
   const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);if(!snapshots.length)return;
 
   const reviewResult=await Promise.allSettled([persistReviewEvents(session,summary),persistLiveMatch(session,snapshots,summary,proAnalysis),verifyObservedRiotIdentity(session.riot_account_id,snapshots[snapshots.length-1])]);
@@ -129,7 +141,8 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
     }catch(err){console.warn('[riot-enrich] candidate fetch failed',id,err)}
   }
   if(!best||bestScore<7){await markEnrichment(session.id,{status:'NO_MATCH',checkedAt:new Date().toISOString()});return null}
-  const mapped=best.detail,merged=mergeProAnalyses(livePro,mapped.proAnalysis);
+  const mapped=best.detail,mergedBase=mergeProAnalyses(livePro,mapped.proAnalysis);
+  const merged:ProMatchAnalysis={...mergedBase,decisionGraph:livePro.decisionGraph??mergedBase.decisionGraph};
   const liveMatchId=await findMatchIdForSession(session.id);
   if(!liveMatchId)return null;
   const m=mapped.match;
@@ -143,6 +156,13 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
   await db.from('riot_accounts').update({puuid,last_synced_at:new Date().toISOString(),sync_status:'live_enriched',updated_at:new Date().toISOString()}).eq('id',account.id);
   await markEnrichment(session.id,{status:'COMPLETE',externalMatchId:m.id,score:bestScore,enrichedAt:new Date().toISOString()});
   return merged;
+}
+
+async function linkedDecisionPlan(sessionId:string):Promise<LockedDecisionPlan|null>{
+  const db=getSupabaseAdmin();if(!db)return null;
+  const {data,error}=await db.from('live_pregame_contexts').select('context').eq('linked_session_id',sessionId).order('started_at',{ascending:false}).limit(1).maybeSingle();
+  if(error){console.warn('[decision-graph] linked pregame lookup failed',error.message);return null}
+  return lockedPlanFromPregameContext(data?.context??null);
 }
 
 function matchCandidateScore(match:any,session:any,snapshots:LiveTelemetrySnapshot[]){const final=snapshots[snapshots.length-1],me=findMe(final);if(!me)return 0;let score=0;if(String(match.champion).toLowerCase()===String(me.championName).toLowerCase())score+=5;if(match.kills===me.scores.kills&&match.deaths===me.scores.deaths&&match.assists===me.scores.assists)score+=4;const durationDelta=Math.abs(Number(match.durationSeconds)-Number(final.gameTime));if(durationDelta<=120)score+=3;else if(durationDelta<=300)score+=1;const ended=session.ended_at?new Date(session.ended_at).getTime():Date.now(),occurred=match.createdAt?new Date(match.createdAt).getTime():0,delta=Math.abs(ended-occurred);if(delta<=5*60_000)score+=4;else if(delta<=15*60_000)score+=2;return score}
