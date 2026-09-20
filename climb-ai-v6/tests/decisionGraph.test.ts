@@ -112,6 +112,16 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
       objectiveSetup:'Arrive first and hold Aphelios one layer behind Rakan.',
       never:'Do not walk through Sett + Pantheon + Irelia to reach Lucian.',
       ifBehind:'Clear safe wave then group early.',
+      personalTrap:{
+        status:'READY',
+        behaviourKey:'FIGHT_SELECTION',
+        behaviourLabel:'Fight Selection',
+        cue:'WAIT FOR PANTHEON TO COMMIT BEFORE CROSSING THE FRONT EDGE.',
+        proof:'Repeated multi-access evidence.',
+        source:'SITUATION_PATTERN',
+        situationTag:'MULTI_ACCESS',
+        relevantEnemies:['Pantheon','Sett','Irelia'],
+      },
       situationContext:{
         tags:['MULTI_ACCESS','SCALING_WINDOW'],
         champion:'Aphelios',
@@ -140,6 +150,10 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
   assert.ok(fightNode?.counterfactual?.basis.includes('LOCKED_PLAN'));
   assert.match(fightNode?.counterfactual?.whyBetter||'',/frozen pre-game principle/i);
   assert.match(fightNode?.counterfactual?.outcomeBoundary||'',/does not claim/i);
+  assert.ok(fightNode?.coachingResponse);
+  assert.equal(fightNode?.coachingResponse?.status,'MISSED');
+  assert.match(fightNode?.coachingResponse?.cue||'',/PANTHEON/i);
+  assert.match(fightNode?.coachingResponse?.boundary||'',/does not claim the cue caused/i);
   const objective=graph.nodes.find(node=>node.behaviourKey==='OBJECTIVE_READINESS');
   assert.ok(objective);
   assert.equal(objective?.planAlignment,'CONFLICTED');
@@ -155,6 +169,11 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
   assert.ok(graph.summary.counterfactualCount>=2);
   assert.ok(graph.summary.topCounterfactualNodeIds.length>=1);
   assert.ok(graph.summary.topCounterfactualNodeIds.length<=3);
+  assert.equal(graph.summary.coachingResponse.activeCue,true);
+  assert.equal(graph.summary.coachingResponse.behaviourKey,'FIGHT_SELECTION');
+  assert.ok(graph.summary.coachingResponse.matchedMoments>=1);
+  assert.ok(graph.summary.coachingResponse.missed>=1);
+  assert.equal(graph.summary.coachingResponse.status,'MISSING');
 });
 
 test('Decision Graph never claims plan alignment when no locked plan survived',()=>{
@@ -215,4 +234,72 @@ test('counterfactual coaching proposes a realistic alternative without pretendin
     assert.match(item?.outcomeBoundary||'',/does not claim/i);
     assert.doesNotMatch(item?.outcomeBoundary||'',/would have won|would have survived|guaranteed kill/i);
   }
+});
+
+
+test('Decision Graph only scores coaching response when the pre-game cue matches the behaviour and situation',()=>{
+  const graph=buildDecisionGraph({
+    analysis:analysis(),
+    summary:summary(),
+    lockedPlan:{
+      headline:'SURVIVE FIRST DIVE → FREE-HIT',
+      fightTrigger:'Wait for Pantheon.',
+      personalTrap:{
+        status:'READY',
+        behaviourKey:'OBJECTIVE_READINESS',
+        behaviourLabel:'Objective Arrival',
+        cue:'ARRIVE FIRST.',
+        situationTag:'ZONE_OBJECTIVE',
+      },
+      situationContext:{
+        tags:['MULTI_ACCESS'],
+        champion:'Aphelios',
+        role:'ADC',
+        enemyAccess:['Pantheon','Sett','Irelia'],
+        enemyPicks:[],
+        enemyZones:[],
+      },
+    },
+  });
+  assert.equal(graph.summary.coachingResponse.activeCue,true);
+  assert.equal(graph.summary.coachingResponse.matchedMoments,0);
+  assert.equal(graph.summary.coachingResponse.status,'NO_MATCH');
+  assert.ok(graph.nodes.every(node=>node.coachingResponse===null));
+});
+
+test('a clean comparable decision is measured as executed, not as proof that the cue caused the result',()=>{
+  const cleanSummary=summary();
+  cleanSummary.fightReviews=[
+    fight({atSeconds:600,category:'STRENGTH',outcome:'KILL',verdict:'YOU_STRONGER',headline:'Clean fight',summary:'You converted a stronger visible state.'}),
+  ];
+  const graph=buildDecisionGraph({
+    analysis:analysis(),
+    summary:cleanSummary,
+    lockedPlan:{
+      headline:'SURVIVE FIRST DIVE → FREE-HIT',
+      fightTrigger:'Wait for Pantheon.',
+      personalTrap:{
+        status:'READY',
+        behaviourKey:'LEAD_PROTECTION',
+        behaviourLabel:'Lead Protection',
+        cue:'MAKE THEM ENTER YOUR SETUP.',
+        situationTag:'MULTI_ACCESS',
+      },
+      situationContext:{
+        tags:['MULTI_ACCESS'],
+        champion:'Aphelios',
+        role:'ADC',
+        enemyAccess:['Pantheon','Sett'],
+        enemyPicks:[],
+        enemyZones:[],
+      },
+    },
+  });
+  const node=graph.nodes.find(item=>item.behaviourKey==='LEAD_PROTECTION'&&item.verdict==='GOOD');
+  assert.ok(node?.coachingResponse);
+  assert.equal(node?.coachingResponse?.status,'EXECUTED');
+  assert.match(node?.coachingResponse?.boundary||'',/does not claim the cue caused/i);
+  assert.equal(graph.summary.coachingResponse.executed,1);
+  assert.equal(graph.summary.coachingResponse.responseRate,100);
+  assert.equal(graph.summary.coachingResponse.status,'EXECUTING');
 });
