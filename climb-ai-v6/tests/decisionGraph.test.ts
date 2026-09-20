@@ -112,6 +112,14 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
       objectiveSetup:'Arrive first and hold Aphelios one layer behind Rakan.',
       never:'Do not walk through Sett + Pantheon + Irelia to reach Lucian.',
       ifBehind:'Clear safe wave then group early.',
+      situationContext:{
+        tags:['MULTI_ACCESS','SCALING_WINDOW'],
+        champion:'Aphelios',
+        role:'ADC',
+        enemyAccess:['Sett','Pantheon','Irelia'],
+        enemyPicks:[],
+        enemyZones:[],
+      },
     },
   });
   assert.equal(graph.version,1);
@@ -124,6 +132,8 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
   assert.equal(fightNode?.planAlignment,'CONFLICTED');
   assert.match(fightNode?.lockedPrinciple||'',/Pantheon commits/i);
   assert.match(fightNode?.decisionRead||'',/stronger visible combat state/i);
+  assert.ok(fightNode?.situationTags.includes('MULTI_ACCESS'));
+  assert.deepEqual(fightNode?.contextEnemies,['Sett','Pantheon','Irelia']);
   const objective=graph.nodes.find(node=>node.behaviourKey==='OBJECTIVE_READINESS');
   assert.ok(objective);
   assert.equal(objective?.planAlignment,'CONFLICTED');
@@ -158,10 +168,12 @@ test('linked pre-game context extracts only the immutable coaching fields needed
       objectiveSetup:'Arrive first.',
       never:'Do not cross threat line.',
       personalTrap:{status:'READY',behaviourKey:'CARRY_PRESERVATION',cue:'FIRST ENGAGE ≠ WALK FORWARD.'},
+      situationContext:{tags:['MULTI_ACCESS'],champion:'Aphelios',role:'ADC',enemyAccess:['Pantheon','Sett'],enemyPicks:[],enemyZones:[]},
     },
   });
   assert.equal(plan?.source,'ai');
   assert.equal(plan?.headline,'SURVIVE FIRST DIVE → FREE-HIT');
   assert.equal(plan?.personalTrap?.behaviourKey,'CARRY_PRESERVATION');
+  assert.deepEqual(plan?.situationContext?.tags,['MULTI_ACCESS']);
   assert.equal(lockedPlanFromPregameContext({localChampionName:'Aphelios'}),null);
 });
