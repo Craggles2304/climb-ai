@@ -12,6 +12,8 @@ const reviewRoute=fs.readFileSync(path.join(root,'app','api','live','companion-r
 const liveRepo=fs.readFileSync(path.join(root,'lib','server','liveTrackerRepository.ts'),'utf8');
 const learningRepo=fs.readFileSync(path.join(root,'lib','server','proLearningRepository.ts'),'utf8');
 const learningContext=fs.readFileSync(path.join(root,'components','LearningPlanContext.tsx'),'utf8');
+const decisionGraph=fs.readFileSync(path.join(root,'lib','decisionGraph.ts'),'utf8');
+const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
 
 test('post-game review has a champion-led esports hero instead of a report-only header',()=>{
   for(const label of ['POST MATCH // PERFORMANCE REVIEW','MATCH INTELLIGENCE // VERIFIED REVIEW','GAME DEBRIEF','KDA','CS / MIN','MATCH TIME','DECISIONS']){
@@ -49,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.16');
+  assert.equal(pkg.version,'0.7.17');
 });
 
 
@@ -93,4 +95,28 @@ test('open web plan refreshes the server-owned Active Five after returning to th
   assert.ok(learningContext.includes("window.addEventListener('focus',onFocus)"));
   assert.ok(learningContext.includes("document.addEventListener('visibilitychange',pull)"));
   assert.ok(learningContext.includes('refreshCloudNow()'));
+});
+
+
+test('Decision Graph links post-game moments to the exact frozen pre-game coach',()=>{
+  assert.ok(decisionGraph.includes('buildDecisionGraph'));
+  assert.ok(decisionGraph.includes('planAlignment'));
+  assert.ok(decisionGraph.includes('lockedPrinciple'));
+  assert.ok(decisionGraph.includes('NOT_VERIFIABLE'));
+  assert.ok(draftCoach.includes('persistLockedCoachForPregame'));
+  assert.ok(draftCoach.includes('deepCoach'));
+  assert.ok(liveRepo.includes('linkedDecisionPlan'));
+  assert.ok(liveRepo.includes('decisionGraph:buildDecisionGraph'));
+  assert.ok(reviewRoute.includes('decisionGraph:summary?.decisionGraph'));
+});
+
+test('Companion post-game debrief renders a chronological Decision Graph without inventing hidden intent',()=>{
+  assert.ok(core.includes('DECISION GRAPH · WHAT ACTUALLY HAPPENED'));
+  assert.ok(core.includes('function renderDecisionGraph'));
+  assert.ok(core.includes('DECISION READ · '));
+  assert.ok(core.includes('CONSEQUENCE · '));
+  assert.ok(core.includes('LOCKED PLAN · '));
+  assert.ok(core.includes('PLAN LINK UNAVAILABLE'));
+  assert.ok(core.includes('OP CLIMB will not invent decisions it cannot support from recorded match evidence.'));
+  assert.ok(core.includes('renderDecisionGraph(review)'));
 });
