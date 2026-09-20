@@ -98,13 +98,16 @@ body.op-remember-live .rem5-coach-status{font-size:7px;letter-spacing:.12em;padd
 body.op-remember-live .rem5-coach-status.verified{border-color:rgba(214,255,47,.35);color:#d6ff2f;background:rgba(214,255,47,.05)}
 body.op-remember-live .rem5-trap{display:grid;grid-template-columns:minmax(150px,.7fr) 1.4fr;gap:10px;border:1px solid rgba(255,103,103,.2);background:linear-gradient(135deg,rgba(126,27,36,.12),rgba(5,10,14,.72));padding:11px 12px}
 body.op-remember-live .rem5-trap.building{border-color:rgba(255,255,255,.08);background:rgba(4,8,12,.48)}
+body.op-remember-live .rem5-trap.mastered{border-color:rgba(214,255,47,.30);background:linear-gradient(135deg,rgba(214,255,47,.08),rgba(5,10,14,.72))}
 body.op-remember-live .rem5-trap-kicker{font-size:6px;letter-spacing:.16em;color:#ff8c7f;font-weight:950;text-transform:uppercase}
 body.op-remember-live .rem5-trap.building .rem5-trap-kicker{color:#7b8992}
+body.op-remember-live .rem5-trap.mastered .rem5-trap-kicker{color:#d6ff2f}
 body.op-remember-live .rem5-trap-title{display:block;margin-top:5px;color:#fff;font-size:11px;line-height:1.2;text-transform:uppercase}
 body.op-remember-live .rem5-trap-proof{display:block;margin-top:5px;color:#6f7d86;font-size:6px;letter-spacing:.08em;text-transform:uppercase}
 body.op-remember-live .rem5-trap-copy span{display:block;color:#6f7d86;font-size:6px;letter-spacing:.13em;font-weight:950;text-transform:uppercase}
 body.op-remember-live .rem5-trap-copy strong{display:block;margin-top:5px;color:#ffd9d4;font-size:9px;line-height:1.4;text-transform:uppercase}
 body.op-remember-live .rem5-trap.building .rem5-trap-copy strong{color:#8f9ba3}
+body.op-remember-live .rem5-trap.mastered .rem5-trap-copy strong{color:#eaff89}
 body.op-remember-live .rem5-branch-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255,255,255,.11);background:#081017;color:#8898a3;padding:9px 10px;font:950 8px/1 system-ui;letter-spacing:.14em;cursor:pointer;text-transform:uppercase}
 body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
@@ -215,15 +218,17 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const root=$('opRemPersonalTrap');if(!root)return;
     const status=upper(trap?.status||'BUILDING');
     const ready=status==='READY';
-    root.classList.toggle('building',!ready);
-    const recurring=ready&&upper(trap?.source)==='SITUATION_PATTERN';
+    const mastered=status==='MASTERED';
+    root.classList.toggle('building',!ready&&!mastered);
+    root.classList.toggle('mastered',mastered);
+    const recurring=(ready||mastered)&&upper(trap?.source)==='SITUATION_PATTERN';
     const title=recurring
-      ?[clean(trap?.title)||"YOU'VE SEEN THIS DECISION BEFORE",clean(trap?.behaviourLabel)].filter(Boolean).join(' · ')
+      ?[clean(trap?.title)||(mastered?'THIS USED TO CATCH YOU':"YOU'VE SEEN THIS DECISION BEFORE"),clean(trap?.behaviourLabel)].filter(Boolean).join(' · ')
       :(clean(trap?.behaviourLabel)||'VERIFIED PERSONAL PATTERN');
-    set('opRemTrapTitle',ready?title:(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
-    set('opRemTrapCue',ready?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
-    set('opRemTrapProof',ready?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
-    root.title=ready?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
+    set('opRemTrapTitle',ready||mastered?title:(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
+    set('opRemTrapCue',ready||mastered?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
+    set('opRemTrapProof',ready||mastered?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
+    root.title=ready||mastered?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
   }
 
   function renderCoachStatus(meta){
