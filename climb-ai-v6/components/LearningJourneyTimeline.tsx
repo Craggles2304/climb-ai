@@ -19,7 +19,7 @@ function dateLabel(value:string){
   const date=new Date(value);
   return Number.isNaN(date.getTime())?'':date.toLocaleDateString('en-GB',{day:'2-digit',month:'short'});
 }
-function titleCase(value:string){return value.replaceAll('_',' ').toLowerCase().replace(/(^|\\s)\\S/g,s=>s.toUpperCase())}
+function titleCase(value:string){return value.replaceAll('_',' ').toLowerCase().replace(/(^|\s)\S/g,s=>s.toUpperCase())}
 
 function EventCard({event}:{event:LearningTimelineEvent}){
   const meta=EVENT_META[event.type];
@@ -72,7 +72,7 @@ export function LearningJourneyTimeline({accountId}:{accountId:string}){
     <div className="vf-section-head vf-journey-head">
       <div>
         <div className="eyebrow">DECISION TWIN · LEARNING JOURNEY</div>
-        <h2>What OP CLIMB discovered, taught and proved.</h2>
+        <h2>What OP CLIMB discovered, taught and measured.</h2>
         <p className="muted">This timeline only promotes events backed by repeated Decision Graph evidence. It separates pattern discovery, coaching, execution and mastery instead of treating every game as a new opinion.</p>
       </div>
       {journey&&<div className={`vf-journey-stage ${journey.stage.toLowerCase()}`}><span>STAGE</span><b>{journey.stage}</b></div>}
