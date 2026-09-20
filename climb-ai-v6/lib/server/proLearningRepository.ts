@@ -5,6 +5,7 @@ import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow}
 import {adaptActiveFiveFromPostGameEvidence} from '@/lib/adaptiveIlpEvidence';
 import type {ILPTask} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
+import {buildLearningJourney} from '@/lib/learningJourney';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -59,7 +60,8 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const strongestCoachingResponse=decisionTwin.situationPatterns
     .filter(item=>item.coachedDecisions>0)
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,generatedAt:now};
+  const learningJourney=buildLearningJourney(rows,now);
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,generatedAt:now};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
