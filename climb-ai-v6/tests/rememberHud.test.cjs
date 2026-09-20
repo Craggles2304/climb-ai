@@ -316,3 +316,10 @@ test('future Personal Traps can include verified after-cue execution history',()
   assert.ok(draftCoach.includes('personalTrap'));
   assert.ok(esports.includes('clean(trap?.proof)'));
 });
+
+
+test('Companion path navigation is allowlisted before opening the web Learning Journey',()=>{
+  assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
+  assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
+  assert.ok(main.includes("safePaths.has(String(path||''))?String(path):'/live'"));
+});

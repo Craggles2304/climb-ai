@@ -129,8 +129,9 @@
       <section class="op332-counter"><div class="op332-counter-head"><div><span>COUNTERFACTUAL COACHING · BETTER DECISION</span><small id="op332CounterMeta">EVIDENCE-BOUNDED · NO GUARANTEED OUTCOME</small></div></div><div id="op332CounterList" class="op332-counter-list"></div></section>
       <section class="op332-next"><span>NEXT GAME · ONE FOCUS</span><h3 id="op332NextTitle"></h3><p id="op332NextRule"></p></section>
       <section class="op332-development"><div class="op332-development-head"><div><span>DEVELOPMENT PLAN · ACTIVE FIVE</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy"></p><div id="op332DevList" class="op332-dev-list"></div></section>
-      <div class="op332-actions"><button id="op332Ready" type="button" style="border-color:rgba(214,255,47,.34);background:rgba(214,255,47,.07);color:#eaff89">NEW GAME · BACK TO READY</button><button id="op332Open" type="button">OPEN FULL REVIEW</button></div>`;
+      <div class="op332-actions"><button id="op332Ready" type="button" style="border-color:rgba(214,255,47,.34);background:rgba(214,255,47,.07);color:#eaff89">NEW GAME · BACK TO READY</button><button id="op332Journey" type="button" style="border-color:rgba(67,140,255,.30);color:#8fbaff">VIEW LEARNING JOURNEY</button><button id="op332Open" type="button">OPEN FULL REVIEW</button></div>`;
     const status=$('status');if(status)status.insertAdjacentElement('afterend',section);else document.querySelector('main')?.appendChild(section);
+    $('op332Journey')?.addEventListener('click',()=>window.opCompanion?.openClimbPath?.('/progress'));
     $('op332Open')?.addEventListener('click',()=>window.opCompanion?.openClimb?.());
     $('op332Ready')?.addEventListener('click',async()=>{
       const button=$('op332Ready');

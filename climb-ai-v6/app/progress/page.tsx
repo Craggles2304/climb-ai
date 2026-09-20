@@ -5,6 +5,7 @@ import {useAccount,matchesFor} from '@/components/AccountContext';
 import {LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip,ResponsiveContainer} from 'recharts';
 import {climbScore} from '@/lib/engine';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {LearningJourneyTimeline} from '@/components/LearningJourneyTimeline';
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const delta=(a:number,b:number)=>a-b;
 const signed=(n:number,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
@@ -50,5 +51,7 @@ export default function Progress(){
       <div><div className="eyebrow">{detail.tier} COACH VERDICT</div><h2>{active.role==='ADC'?(postDelta>=0?'Your mid-game economy is moving the right way.':'Your farm is still leaking after lane.'):'Your trend needs role-specific weighting.'}</h2>{detail.depth>=4&&<p className="muted">Compared across your latest usable five-game blocks. The full data stays stored even when your rank view hides it.</p>}</div>
       <div className="vf-verdict-action"><span>NEXT ACTION</span><b>{active.role==='ADC'?'Protect the last wave before objective setup.':'Track objective timing and deaths around setup.'}</b></div>
     </section>
+
+    <LearningJourneyTimeline accountId={active.id}/>
   </AppShell>;
 }

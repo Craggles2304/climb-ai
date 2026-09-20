@@ -381,3 +381,30 @@ test('Decision Twin measures execution after a Personal Trap cue without claimin
   assert.equal(trap.status,'READY');
   assert.match(trap.proof,/AFTER CUE: 3\/4 clean \(75%\)/i);
 });
+
+
+test('after-cue execution is attributed only to the situation that was actually coached',()=>{
+  const base=withSituationGraph(
+    row(0,'Aphelios','ADC',{carry_preservation:55}),
+    0,
+    'GOOD',
+    'MULTI_ACCESS',
+    'EXECUTED',
+  );
+  const node=(base.analysis as any).decisionGraph.nodes[0];
+  node.situationTags=['MULTI_ACCESS','PICK_PRESSURE'];
+  node.coachingResponse.situationTag='MULTI_ACCESS';
+
+  const rows=[
+    base,
+    withSituationGraph(row(1,'Aphelios','ADC',{carry_preservation:55}),1,'GOOD','MULTI_ACCESS','EXECUTED'),
+    withSituationGraph(row(2,'Aphelios','ADC',{carry_preservation:55}),2,'GOOD','MULTI_ACCESS','EXECUTED'),
+    withSituationGraph(row(3,'Aphelios','ADC',{carry_preservation:55}),3,'GOOD','MULTI_ACCESS','EXECUTED'),
+  ];
+  const twin=buildDecisionTwin(rows,'2026-09-20T22:30:00.000Z');
+  const multi=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  const pick=twin.situationPatterns.find(item=>item.tag==='PICK_PRESSURE'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.equal(multi?.coachedDecisions,4);
+  assert.equal(multi?.coachedExecuted,4);
+  assert.equal(pick?.coachedDecisions,0);
+});
