@@ -43,6 +43,41 @@ const multiAccess=[
   {champion:'Taric',role:'SUPPORT'},
 ];
 
+
+function withSituationGraph(base:HistoryAnalysisRow,index:number,verdict:'GOOD'|'IMPROVE',tag:'MULTI_ACCESS'|'ZONE_OBJECTIVE'){
+  base.analysis.decisionGraph={
+    version:1,
+    generatedAt:base.createdAt,
+    champion:base.champion,
+    role:base.role,
+    nodeCount:1,
+    highConfidenceCount:1,
+    planAvailable:true,
+    nodes:[{
+      id:'node-'+index,
+      atSeconds:700+index*10,
+      minuteLabel:'12:'+String(index).padStart(2,'0'),
+      type:tag==='ZONE_OBJECTIVE'?'OBJECTIVE':'SURVIVAL',
+      behaviourKey:tag==='ZONE_OBJECTIVE'?'OBJECTIVE_READINESS':'CARRY_PRESERVATION',
+      behaviourLabel:tag==='ZONE_OBJECTIVE'?'Objective Arrival':'Carry Preservation',
+      verdict,
+      confidence:'HIGH',
+      title:tag==='ZONE_OBJECTIVE'?'Dragon setup':'High-value fight',
+      situation:'Comparable recorded situation.',
+      decisionRead:verdict==='IMPROVE'?'The recorded choice was graded for improvement.':'The recorded choice matched the plan.',
+      consequence:verdict==='IMPROVE'?'The position lost value.':'The position preserved value.',
+      lockedPrinciple:'Follow the locked pre-game principle.',
+      planAlignment:verdict==='IMPROVE'?'CONFLICTED':'MATCHED',
+      situationTags:[tag],
+      contextEnemies:tag==='MULTI_ACCESS'?['Sett','Pantheon','Irelia']:['Rumble','Fiddlesticks'],
+      evidence:['verified'],
+      limitation:'test',
+    }],
+    summary:{cleanDecisions:verdict==='GOOD'?1:0,improveDecisions:verdict==='IMPROVE'?1:0,neutralDecisions:0,mostRepeatedBehaviour:tag==='ZONE_OBJECTIVE'?'OBJECTIVE_READINESS':'CARRY_PRESERVATION',mostRepeatedLabel:tag==='ZONE_OBJECTIVE'?'Objective Arrival':'Carry Preservation'},
+  } as any;
+  return base;
+}
+
 test('Decision Twin refuses to label a personal weakness from fewer than three measurable games',()=>{
   const twin=buildDecisionTwin([
     row(0,'Aphelios','ADC',{carry_preservation:42},[{key:'CARRY_DEATH',count:1}]),
@@ -128,4 +163,74 @@ test('strong history does not manufacture a Personal Trap just for the sake of p
   });
   assert.equal(trap.status,'NONE');
   assert.match(trap.historicalSummary,/No established weak behaviour/i);
+});
+
+
+test('Decision Twin learns a recurring multi-access situation pattern from Decision Graph history',()=>{
+  const rows=Array.from({length:8},(_,index)=>withSituationGraph(
+    row(index,'Aphelios','ADC',{carry_preservation:88}),
+    index,
+    index<6?'IMPROVE':'GOOD',
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T20:00:00.000Z');
+  const pattern=twin.situationPatterns.find(item=>item.tag==='MULTI_ACCESS'&&item.behaviourKey==='CARRY_PRESERVATION');
+  assert.ok(pattern);
+  assert.equal(pattern?.decisions,8);
+  assert.equal(pattern?.failures,6);
+  assert.equal(pattern?.failureRate,75);
+  assert.equal(pattern?.confidence,'HIGH');
+  assert.equal(pattern?.applicableGames,8);
+
+  const trap=selectPersonalTrap(twin,{
+    champion:'Aphelios',
+    role:'ADC',
+    ours:[{champion:'Aphelios',role:'ADC'},{champion:'Rakan',role:'SUPPORT'}],
+    enemies:multiAccess,
+  });
+  assert.equal(trap.status,'READY');
+  assert.equal(trap.source,'SITUATION_PATTERN');
+  assert.equal(trap.title,"YOU'VE SEEN THIS DECISION BEFORE");
+  assert.equal(trap.situationTag,'MULTI_ACCESS');
+  assert.equal(trap.comparableDecisions,8);
+  assert.equal(trap.failures,6);
+  assert.equal(trap.failureRate,75);
+  assert.match(trap.historicalSummary,/6 of 8 comparable/i);
+  assert.match(trap.proof,/6\/8 comparable decisions/i);
+  assert.match(trap.cue,/FIRST ENGAGE/i);
+});
+
+test('a recurring situation is not projected onto a draft that does not contain that situation',()=>{
+  const rows=Array.from({length:8},(_,index)=>withSituationGraph(
+    row(index,'Caitlyn','ADC',{carry_preservation:90}),
+    index,
+    index<6?'IMPROVE':'GOOD',
+    'MULTI_ACCESS',
+  ));
+  const twin=buildDecisionTwin(rows,'2026-09-20T20:00:00.000Z');
+  const trap=selectPersonalTrap(twin,{
+    champion:'Caitlyn',
+    role:'ADC',
+    ours:[{champion:'Caitlyn',role:'ADC'},{champion:'Lulu',role:'SUPPORT'}],
+    enemies:[
+      {champion:'Garen',role:'TOP'},
+      {champion:'Kindred',role:'JUNGLE'},
+      {champion:'Velkoz',role:'MID'},
+      {champion:'Jinx',role:'ADC'},
+      {champion:'Soraka',role:'SUPPORT'},
+    ],
+  });
+  assert.equal(trap.status,'NONE');
+  assert.notEqual(trap.source,'SITUATION_PATTERN');
+});
+
+test('recurring-situation Personal Trap requires at least four comparable decisions across three games',()=>{
+  const rows=[
+    withSituationGraph(row(0,'Aphelios','ADC',{carry_preservation:90}),0,'IMPROVE','MULTI_ACCESS'),
+    withSituationGraph(row(1,'Aphelios','ADC',{carry_preservation:90}),1,'IMPROVE','MULTI_ACCESS'),
+    row(2,'Aphelios','ADC',{carry_preservation:90}),
+  ];
+  const twin=buildDecisionTwin(rows,'2026-09-20T20:00:00.000Z');
+  const trap=selectPersonalTrap(twin,{champion:'Aphelios',role:'ADC',ours:[{champion:'Aphelios',role:'ADC'}],enemies:multiAccess});
+  assert.equal(trap.status,'NONE');
 });

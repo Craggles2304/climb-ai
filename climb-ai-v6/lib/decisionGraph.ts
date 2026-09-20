@@ -1,6 +1,6 @@
 import type {ProMatchAnalysis,ProMetric,ProEvidence} from './riot/proAnalysis';
 import type {StrengthTimeline,FightReview} from './riot/liveStrength';
-import type {DecisionBehaviourKey} from './decisionTwin';
+import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} from './decisionTwin';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -23,7 +23,9 @@ export interface LockedDecisionPlan{
     behaviourLabel?:string|null;
     cue?:string|null;
     proof?:string|null;
+    relevantEnemies?:string[];
   }|null;
+  situationContext?:DraftSituationContext|null;
 }
 
 export interface DecisionGraphNode{
@@ -41,6 +43,8 @@ export interface DecisionGraphNode{
   consequence:string;
   lockedPrinciple:string|null;
   planAlignment:DecisionPlanAlignment;
+  situationTags:DecisionSituationTag[];
+  contextEnemies:string[];
   evidence:string[];
   limitation:string;
 }
@@ -130,6 +134,25 @@ function alignment(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBeha
   if(!planText(plan,behaviour))return'NOT_VERIFIABLE';
   return verdict==='GOOD'?'MATCHED':verdict==='IMPROVE'?'CONFLICTED':'NOT_VERIFIABLE';
 }
+
+function situationTagsFor(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBehaviourKey){
+  const context=plan?.situationContext;
+  const tags:DecisionSituationTag[]=[];
+  const enemies:string[]=[];
+  const add=(tag:DecisionSituationTag,names:string[]=[]):void=>{
+    if(!context?.tags?.includes(tag))return;
+    if(!tags.includes(tag))tags.push(tag);
+    for(const name of names.map(clean).filter(Boolean))if(!enemies.includes(name))enemies.push(name);
+  };
+  if(['CARRY_PRESERVATION','SURVIVAL_VALUE','THREAT_ADAPTATION','FIGHT_SELECTION','LEAD_PROTECTION'].includes(behaviour)){
+    add('MULTI_ACCESS',context?.enemyAccess??[]);
+    add('PICK_PRESSURE',context?.enemyPicks??[]);
+  }
+  if(['OBJECTIVE_READINESS','FARM_VS_SETUP'].includes(behaviour))add('ZONE_OBJECTIVE',context?.enemyZones??[]);
+  if(behaviour==='POWER_SPIKE_CONVERSION')add('SCALING_WINDOW',[]);
+  if(!tags.length&&context?.tags?.includes('GENERAL'))tags.push('GENERAL');
+  return{tags,enemies};
+}
 function fightBehaviour(fight:FightReview,analysis:ProMatchAnalysis):DecisionBehaviourKey{
   if(fight.outcome==='DEATH'&&fight.evidence.currentGold>=1200)return'RESET_DISCIPLINE';
   if(fight.outcome==='DEATH'&&fight.verdict==='THEM_STRONGER')return'FIGHT_SELECTION';
@@ -179,6 +202,8 @@ function metricNodes(metric:ProMetric|undefined,behaviour:DecisionBehaviourKey,t
       consequence,
       lockedPrinciple:locked,
       planAlignment:alignment(plan,behaviour,verdict),
+      situationTags:situationTagsFor(plan,behaviour).tags,
+      contextEnemies:situationTagsFor(plan,behaviour).enemies,
       evidence:[clean(item.label),clean(item.detail),clean(metric.value)].filter(Boolean),
       limitation:LIMITATION,
     } satisfies DecisionGraphNode;
@@ -210,6 +235,8 @@ function leakNodes(analysis:ProMatchAnalysis,fights:FightReview[],plan:LockedDec
         consequence:fight?fight.summary:clean(leak.detail)||'This occurrence contributed to the repeated behaviour pattern.',
         lockedPrinciple:locked,
         planAlignment:alignment(plan,behaviour,'IMPROVE'),
+        situationTags:situationTagsFor(plan,behaviour).tags,
+        contextEnemies:situationTagsFor(plan,behaviour).enemies,
         evidence:[clean(leak.detail),fight?.headline||''].filter(Boolean),
         limitation:LIMITATION,
       });
@@ -238,6 +265,8 @@ function fightNodes(analysis:ProMatchAnalysis,summary:StrengthTimeline,plan:Lock
       consequence:fight.summary,
       lockedPrinciple:locked,
       planAlignment:alignment(plan,behaviour,verdict),
+      situationTags:situationTagsFor(plan,behaviour).tags,
+      contextEnemies:situationTagsFor(plan,behaviour).enemies,
       evidence:[
         `Visible power: ${fight.verdict}`,
         typeof fight.evidence.levelDelta==='number'?(`Level delta: ${fight.evidence.levelDelta>=0?'+':''}${fight.evidence.levelDelta}`):'',
@@ -321,5 +350,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     never:clean(raw.never)||null,
     ifBehind:clean(raw.ifBehind)||null,
     personalTrap:raw.personalTrap??null,
+    situationContext:raw.situationContext??null,
   };
 }
