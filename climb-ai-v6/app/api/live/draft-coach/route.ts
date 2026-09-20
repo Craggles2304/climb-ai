@@ -475,6 +475,49 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;quality:any;playbook:any}){
+  try{
+    const {data,error}=await db.from('live_pregame_contexts')
+      .select('id,context,last_seen_at,started_at')
+      .eq('device_id',device.id)
+      .eq('user_id',device.userId)
+      .order('started_at',{ascending:false})
+      .limit(1)
+      .maybeSingle();
+    if(error||!data?.id)return;
+    const seenAt=Date.parse(String(data.last_seen_at||data.started_at||''));
+    if(!Number.isFinite(seenAt)||Date.now()-seenAt>35*60_000)return;
+    const deepCoach={
+      version:1,
+      capturedAt:new Date().toISOString(),
+      champion:input.champion,
+      role:input.role,
+      source:input.source,
+      headline:input.coach.headline,
+      why:input.coach.why,
+      theirPlan:input.coach.theirPlan??null,
+      threatAnswer:input.coach.threatAnswer,
+      fightTrigger:input.coach.fightTrigger??null,
+      objectiveSetup:input.coach.objectiveSetup??null,
+      never:input.coach.never,
+      ifBehind:input.coach.ifBehind,
+      personalTrap:input.personalTrap,
+      quality:input.quality,
+      draftFingerprint:input.playbook?.draftFingerprint??null,
+      playbook:input.playbook??null,
+    };
+    const context={...((data.context&&typeof data.context==='object')?data.context:{}),deepCoach};
+    const {error:updateError}=await db.from('live_pregame_contexts').update({context}).eq('id',data.id);
+    if(updateError)throw new Error(updateError.message);
+    const {data:deviceRow}=await db.from('live_tracker_devices').select('pregame_context').eq('id',device.id).maybeSingle();
+    if(deviceRow?.pregame_context&&typeof deviceRow.pregame_context==='object'){
+      await db.from('live_tracker_devices').update({pregame_context:{...deviceRow.pregame_context,deepCoach},pregame_updated_at:new Date().toISOString()}).eq('id',device.id);
+    }
+  }catch(error){
+    console.warn('[draft-coach] could not persist locked coach for Decision Graph',error);
+  }
+}
+
 export async function POST(req:NextRequest){
   const limit=rateLimit(clientKey(req,'live-draft-coach'),12,60_000);
   if(!limit.ok)return NextResponse.json({ok:false,error:'Too many draft-coach requests. Wait a moment.'},{status:429,headers:{'Retry-After':String(limit.retryAfterSeconds)}});
@@ -555,6 +598,15 @@ export async function POST(req:NextRequest){
       ours,
       enemies,
       plan:coach as any,
+    });
+    await persistLockedCoachForPregame(db,device,{
+      champion,
+      role:roleResolution.role,
+      source:ai?'ai':'rules',
+      coach,
+      personalTrap,
+      quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
+      playbook,
     });
     return NextResponse.json({
       ok:true,
