@@ -6,6 +6,19 @@ export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
 export type DecisionPlanAlignment='MATCHED'|'CONFLICTED'|'NOT_VERIFIABLE';
 export type DecisionNodeType='FIGHT'|'RESET'|'RECOVERY'|'OBJECTIVE'|'FARM'|'ADAPTATION'|'POWER_WINDOW'|'SURVIVAL';
+export type CounterfactualBasis='RECORDED_ALTERNATIVE'|'LOCKED_PLAN'|'COACHING_RULE';
+
+export interface DecisionCounterfactual{
+  version:1;
+  actual:string;
+  alternative:string;
+  whyBetter:string;
+  tradeoff:string;
+  confidence:DecisionNodeConfidence;
+  basis:CounterfactualBasis[];
+  priority:number;
+  outcomeBoundary:string;
+}
 
 export interface LockedDecisionPlan{
   source?:string|null;
@@ -46,6 +59,7 @@ export interface DecisionGraphNode{
   situationTags:DecisionSituationTag[];
   contextEnemies:string[];
   evidence:string[];
+  counterfactual:DecisionCounterfactual|null;
   limitation:string;
 }
 
@@ -62,6 +76,8 @@ export interface DecisionGraph{
     cleanDecisions:number;
     improveDecisions:number;
     neutralDecisions:number;
+    counterfactualCount:number;
+    topCounterfactualNodeIds:string[];
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -100,6 +116,7 @@ const LEAK_TO_BEHAVIOUR:Record<string,DecisionBehaviourKey>={
 };
 
 const LIMITATION='Decision Graph v1 uses recorded Riot-visible state and OP CLIMB match evidence. It does not claim to know player intent, exact mouse inputs, hidden cooldowns, fog information or unseen team communication.';
+const COUNTERFACTUAL_BOUNDARY='This is a coaching alternative supported by the recorded state. It does not claim the alternative would guarantee survival, a kill, an objective, or a win.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function minute(seconds:number){const safe=Math.max(0,Math.round(seconds));return Math.floor(safe/60)+':'+String(safe%60).padStart(2,'0')}
@@ -133,6 +150,74 @@ function planText(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBehav
 function alignment(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBehaviourKey,verdict:DecisionNodeVerdict):DecisionPlanAlignment{
   if(!planText(plan,behaviour))return'NOT_VERIFIABLE';
   return verdict==='GOOD'?'MATCHED':verdict==='IMPROVE'?'CONFLICTED':'NOT_VERIFIABLE';
+}
+function counterfactualTradeoff(behaviour:DecisionBehaviourKey){
+  if(behaviour==='FIGHT_SELECTION')return'You may give up immediate damage, tempo or a tempting low-percentage fight in exchange for a cleaner trigger.';
+  if(behaviour==='RESET_DISCIPLINE')return'You temporarily give up map presence to turn banked gold into real combat power.';
+  if(behaviour==='DEATH_RECOVERY')return'You may concede one low-value wave or camp while rebuilding a playable state.';
+  if(behaviour==='LEAD_PROTECTION')return'You give up the fastest possible snowball attempt to protect the stronger state you already earned.';
+  if(behaviour==='OBJECTIVE_READINESS')return'You may leave a low-value wave or camp earlier to buy first setup and safer objective geometry.';
+  if(behaviour==='FARM_VS_SETUP')return'You sacrifice some immediate farm so the next team action starts with you connected.';
+  if(behaviour==='THREAT_ADAPTATION')return'You may deal less immediate damage while repositioning away from the repeated access angle.';
+  if(behaviour==='CARRY_PRESERVATION'||behaviour==='SURVIVAL_VALUE')return'You may hit a lower-priority target or delay damage briefly to preserve safe uptime.';
+  if(behaviour==='POWER_SPIKE_CONVERSION')return'You stop one extra farm cycle and spend the spike window on coordinated pressure instead.';
+  return'You trade a little immediate value for a decision that better preserves the game plan.';
+}
+function counterfactualRule(behaviour:DecisionBehaviourKey,contextEnemies:string[]){
+  const enemies=contextEnemies.slice(0,3).join(' + ');
+  if(behaviour==='FIGHT_SELECTION')return enemies?'Delay or decline the commit until '+enemies+' have spent enough access for your planned fight trigger to be safe.':'Delay or decline the commit until the visible fight state matches your planned trigger.';
+  if(behaviour==='RESET_DISCIPLINE')return'Reset before the next voluntary fight when the bank can become a meaningful purchase, then re-enter with the gold converted.';
+  if(behaviour==='DEATH_RECOVERY')return'Break the chain: take the safest available resource/reset cycle before entering another contested action.';
+  if(behaviour==='LEAD_PROTECTION')return'Protect the stronger state: make the enemy enter your setup instead of buying a harder fight.';
+  if(behaviour==='OBJECTIVE_READINESS')return'Leave the last low-value resource early enough to arrive before the enemy owns the river entrance or choke.';
+  if(behaviour==='FARM_VS_SETUP')return'Give up the extra wave when taking it would make you second to the next meaningful team action.';
+  if(behaviour==='THREAT_ADAPTATION')return enemies?'After '+enemies+' show the first access pattern, reposition before re-entering the same space.':'After the threat shows its first access pattern, reposition before re-entering the same space.';
+  if(behaviour==='CARRY_PRESERVATION'||behaviour==='SURVIVAL_VALUE')return enemies?'Stay behind the front edge, account for '+enemies+', and hit the closest safe target until the remaining access is gone.':'Stay behind the front edge and hit the closest safe target until the remaining access is gone.';
+  if(behaviour==='POWER_SPIKE_CONVERSION')return'When the real item/power spike completes, connect to the next team pressure window instead of drifting into another farm cycle.';
+  return'Use the safer branch of the locked plan before committing.';
+}
+function counterfactualPriority(input:{behaviour:DecisionBehaviourKey;confidence:DecisionNodeConfidence;planAlignment:DecisionPlanAlignment;hasRecordedAlternative:boolean}){
+  const behaviourWeight:Record<DecisionBehaviourKey,number>={
+    FIGHT_SELECTION:24,DEATH_RECOVERY:20,LEAD_PROTECTION:22,RESET_DISCIPLINE:19,OBJECTIVE_READINESS:23,
+    FARM_VS_SETUP:17,THREAT_ADAPTATION:22,CARRY_PRESERVATION:25,POWER_SPIKE_CONVERSION:18,SURVIVAL_VALUE:24,
+  };
+  return (input.confidence==='HIGH'?50:input.confidence==='MEDIUM'?30:0)
+    +(input.planAlignment==='CONFLICTED'?25:0)
+    +(input.hasRecordedAlternative?12:0)
+    +(behaviourWeight[input.behaviour]||0);
+}
+function buildCounterfactual(input:{
+  behaviour:DecisionBehaviourKey;
+  verdict:DecisionNodeVerdict;
+  confidence:DecisionNodeConfidence;
+  decisionRead:string;
+  lockedPrinciple:string|null;
+  planAlignment:DecisionPlanAlignment;
+  contextEnemies:string[];
+  recordedAlternative?:string|null;
+}):DecisionCounterfactual|null{
+  if(input.verdict!=='IMPROVE'||input.confidence==='LOW')return null;
+  const recorded=clean(input.recordedAlternative);
+  const alternative=recorded||counterfactualRule(input.behaviour,input.contextEnemies);
+  if(!alternative)return null;
+  const basis:CounterfactualBasis[]=[];
+  if(recorded)basis.push('RECORDED_ALTERNATIVE');
+  if(clean(input.lockedPrinciple))basis.push('LOCKED_PLAN');
+  if(!recorded||!basis.length)basis.push('COACHING_RULE');
+  const whyBetter=clean(input.lockedPrinciple)
+    ?'It better matches the frozen pre-game principle: '+clean(input.lockedPrinciple)
+    :'It reduces the specific '+LABELS[input.behaviour].toLowerCase()+' risk supported by the recorded evidence at this moment.';
+  return{
+    version:1,
+    actual:clean(input.decisionRead)||'The recorded decision was graded for improvement.',
+    alternative,
+    whyBetter,
+    tradeoff:counterfactualTradeoff(input.behaviour),
+    confidence:input.confidence,
+    basis:[...new Set(basis)],
+    priority:counterfactualPriority({behaviour:input.behaviour,confidence:input.confidence,planAlignment:input.planAlignment,hasRecordedAlternative:Boolean(recorded)}),
+    outcomeBoundary:COUNTERFACTUAL_BOUNDARY,
+  };
 }
 
 function situationTagsFor(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBehaviourKey){
@@ -187,6 +272,10 @@ function metricNodes(metric:ProMetric|undefined,behaviour:DecisionBehaviourKey,t
     const fight=nearestFight(fights,item.atSeconds);
     const consequence=fight?fight.summary:clean(item.detail)||clean(metric.summary)||'Recorded evidence changed this behaviour score.';
     const locked=planText(plan,behaviour);
+    const confidence=scoreConfidence(metric.score,evidence.length);
+    const planAlignment=alignment(plan,behaviour,verdict);
+    const context=situationTagsFor(plan,behaviour);
+    const decisionRead=clean(item.detail)||'Recorded state created a measurable coaching decision point.';
     return{
       id:nodeId(type,behaviour,item.atSeconds,startIndex+index),
       atSeconds:Math.round(item.atSeconds),
@@ -195,16 +284,17 @@ function metricNodes(metric:ProMetric|undefined,behaviour:DecisionBehaviourKey,t
       behaviourKey:behaviour,
       behaviourLabel:LABELS[behaviour],
       verdict,
-      confidence:scoreConfidence(metric.score,evidence.length),
+      confidence,
       title:clean(item.label)||LABELS[behaviour],
       situation:clean(metric.summary)||`${LABELS[behaviour]} evidence was measurable at this point.`,
-      decisionRead:clean(item.detail)||'Recorded state created a measurable coaching decision point.',
+      decisionRead,
       consequence,
       lockedPrinciple:locked,
-      planAlignment:alignment(plan,behaviour,verdict),
-      situationTags:situationTagsFor(plan,behaviour).tags,
-      contextEnemies:situationTagsFor(plan,behaviour).enemies,
+      planAlignment,
+      situationTags:context.tags,
+      contextEnemies:context.enemies,
       evidence:[clean(item.label),clean(item.detail),clean(metric.value)].filter(Boolean),
+      counterfactual:buildCounterfactual({behaviour,verdict,confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight?.betterDecision?.[0]??null}),
       limitation:LIMITATION,
     } satisfies DecisionGraphNode;
   });
@@ -220,6 +310,10 @@ function leakNodes(analysis:ProMatchAnalysis,fights:FightReview[],plan:LockedDec
       if(!Number.isFinite(at))continue;
       const fight=nearestFight(fights,at);
       const locked=planText(plan,behaviour);
+      const confidence:DecisionNodeConfidence=(leak.count>=2||leak.severity==='CRITICAL'||leak.severity==='MAJOR')?'HIGH':'MEDIUM';
+      const planAlignment=alignment(plan,behaviour,'IMPROVE');
+      const context=situationTagsFor(plan,behaviour);
+      const decisionRead=fight?fightDecisionRead(fight):clean(leak.detail)||'The recorded state matched a known development leak.';
       nodes.push({
         id:nodeId('LEAK',behaviour,at,index++),
         atSeconds:Math.round(at),
@@ -228,16 +322,17 @@ function leakNodes(analysis:ProMatchAnalysis,fights:FightReview[],plan:LockedDec
         behaviourKey:behaviour,
         behaviourLabel:LABELS[behaviour],
         verdict:'IMPROVE',
-        confidence:(leak.count>=2||leak.severity==='CRITICAL'||leak.severity==='MAJOR')?'HIGH':'MEDIUM',
+        confidence,
         title:clean(leak.label)||LABELS[behaviour],
         situation:fight?fightSituation(fight):clean(leak.detail)||'Repeated match evidence marked this as a coaching leak.',
-        decisionRead:fight?fightDecisionRead(fight):clean(leak.detail)||'The recorded state matched a known development leak.',
+        decisionRead,
         consequence:fight?fight.summary:clean(leak.detail)||'This occurrence contributed to the repeated behaviour pattern.',
         lockedPrinciple:locked,
-        planAlignment:alignment(plan,behaviour,'IMPROVE'),
-        situationTags:situationTagsFor(plan,behaviour).tags,
-        contextEnemies:situationTagsFor(plan,behaviour).enemies,
+        planAlignment,
+        situationTags:context.tags,
+        contextEnemies:context.enemies,
         evidence:[clean(leak.detail),fight?.headline||''].filter(Boolean),
+        counterfactual:buildCounterfactual({behaviour,verdict:'IMPROVE',confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight?.betterDecision?.[0]??null}),
         limitation:LIMITATION,
       });
     }
@@ -250,6 +345,10 @@ function fightNodes(analysis:ProMatchAnalysis,summary:StrengthTimeline,plan:Lock
     const behaviour=fightBehaviour(fight,analysis);
     const verdict=fightVerdict(fight);
     const locked=planText(plan,behaviour);
+    const confidence:DecisionNodeConfidence=fight.verdict==='EVEN'?'MEDIUM':'HIGH';
+    const planAlignment=alignment(plan,behaviour,verdict);
+    const context=situationTagsFor(plan,behaviour);
+    const decisionRead=fightDecisionRead(fight);
     return{
       id:nodeId('FIGHT',behaviour,fight.atSeconds,startIndex+index),
       atSeconds:Math.round(fight.atSeconds),
@@ -258,21 +357,22 @@ function fightNodes(analysis:ProMatchAnalysis,summary:StrengthTimeline,plan:Lock
       behaviourKey:behaviour,
       behaviourLabel:LABELS[behaviour],
       verdict,
-      confidence:fight.verdict==='EVEN'?'MEDIUM':'HIGH',
+      confidence,
       title:fight.headline,
       situation:fightSituation(fight),
-      decisionRead:fightDecisionRead(fight),
+      decisionRead,
       consequence:fight.summary,
       lockedPrinciple:locked,
-      planAlignment:alignment(plan,behaviour,verdict),
-      situationTags:situationTagsFor(plan,behaviour).tags,
-      contextEnemies:situationTagsFor(plan,behaviour).enemies,
+      planAlignment,
+      situationTags:context.tags,
+      contextEnemies:context.enemies,
       evidence:[
         `Visible power: ${fight.verdict}`,
         typeof fight.evidence.levelDelta==='number'?(`Level delta: ${fight.evidence.levelDelta>=0?'+':''}${fight.evidence.levelDelta}`):'',
         typeof fight.evidence.itemGoldDelta==='number'?(`Visible item-gold delta: ${fight.evidence.itemGoldDelta>=0?'+':''}${Math.round(fight.evidence.itemGoldDelta)}g`):'',
         fight.evidence.currentGold>=900?`${Math.round(fight.evidence.currentGold)}g unspent`:'',
       ].filter(Boolean),
+      counterfactual:buildCounterfactual({behaviour,verdict,confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight.betterDecision?.[0]??null}),
       limitation:fight.limitation||LIMITATION,
     } satisfies DecisionGraphNode;
   });
@@ -316,6 +416,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const counts=new Map<DecisionBehaviourKey,number>();
   for(const node of finalNodes)counts.set(node.behaviourKey,(counts.get(node.behaviourKey)||0)+1);
   const repeated=[...counts.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]??null;
+  const counterfactualNodes=finalNodes.filter(node=>node.counterfactual).sort((a,b)=>(b.counterfactual?.priority??0)-(a.counterfactual?.priority??0));
 
   return{
     version:1,
@@ -330,6 +431,8 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       cleanDecisions:finalNodes.filter(node=>node.verdict==='GOOD').length,
       improveDecisions:finalNodes.filter(node=>node.verdict==='IMPROVE').length,
       neutralDecisions:finalNodes.filter(node=>node.verdict==='NEUTRAL').length,
+      counterfactualCount:counterfactualNodes.length,
+      topCounterfactualNodeIds:counterfactualNodes.slice(0,3).map(node=>node.id),
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
