@@ -38,10 +38,50 @@ export interface DecisionTwinBehaviour{
   lastSeenAt:string|null;
 }
 
+export type DecisionSituationTag=
+  |'MULTI_ACCESS'
+  |'PICK_PRESSURE'
+  |'ZONE_OBJECTIVE'
+  |'SCALING_WINDOW'
+  |'HIGH_BANK_FIGHT'
+  |'ENEMY_STRONG_FIGHT'
+  |'LEAD_CONVERSION'
+  |'RECOVERY_WINDOW'
+  |'FARM_SETUP_TRADEOFF'
+  |'HIGH_VALUE_CARRY'
+  |'GENERAL';
+
+export interface DraftSituationContext{
+  tags:DecisionSituationTag[];
+  champion:string;
+  role:string;
+  enemyAccess:string[];
+  enemyPicks:string[];
+  enemyZones:string[];
+}
+
+export interface DecisionSituationPattern{
+  id:string;
+  tag:DecisionSituationTag;
+  behaviourKey:DecisionBehaviourKey;
+  behaviourLabel:string;
+  role:string|null;
+  applicableGames:number;
+  decisions:number;
+  failures:number;
+  successes:number;
+  failureRate:number;
+  confidence:DecisionTwinConfidence;
+  enemyExamples:string[];
+  championExamples:string[];
+  lastSeenAt:string|null;
+}
+
 export interface DecisionTwinProfile{
   version:1;
   gamesAnalyzed:number;
   behaviours:DecisionTwinBehaviour[];
+  situationPatterns:DecisionSituationPattern[];
   strongest:DecisionTwinBehaviour|null;
   currentLimiter:DecisionTwinBehaviour|null;
   mastered:DecisionTwinBehaviour[];
@@ -54,6 +94,8 @@ export interface PersonalTrap{
   version:1;
   status:'READY'|'BUILDING'|'NONE';
   title:string;
+  source?:'SITUATION_PATTERN'|'BEHAVIOUR';
+  situationTag?:DecisionSituationTag|null;
   behaviourKey:DecisionBehaviourKey|null;
   behaviourLabel:string|null;
   confidence:DecisionTwinConfidence|null;
@@ -61,6 +103,9 @@ export interface PersonalTrap{
   applicableGames:number;
   evidenceCount:number;
   recentScore:number|null;
+  comparableDecisions?:number;
+  failures?:number;
+  failureRate?:number|null;
   historicalSummary:string;
   draftReason:string;
   cue:string;
@@ -127,6 +172,78 @@ function evidenceFor(row:HistoryAnalysisRow,definition:BehaviourDefinition){
 }
 function contextKey(row:HistoryAnalysisRow){return clean(row.champion).toLowerCase()+'|'+clean(row.role).toUpperCase()}
 
+
+export function buildDraftSituationContext(input:{champion:string;role:string|null|undefined;enemies:DraftPlayerLike[]}):DraftSituationContext{
+  const enemyAccess=countNames(input.enemies,ACCESS);
+  const enemyPicks=countNames(input.enemies,PICK);
+  const enemyZones=countNames(input.enemies,ZONE);
+  const tags:DecisionSituationTag[]=[];
+  if(enemyAccess.length>=2)tags.push('MULTI_ACCESS');
+  if(enemyPicks.length>=2)tags.push('PICK_PRESSURE');
+  if(enemyZones.length>=1)tags.push('ZONE_OBJECTIVE');
+  if(SCALERS.has(clean(input.champion)))tags.push('SCALING_WINDOW');
+  if(!tags.length)tags.push('GENERAL');
+  return{tags,champion:clean(input.champion),role:roleName(input.role),enemyAccess,enemyPicks,enemyZones};
+}
+
+function situationConfidence(decisions:number,applicableGames:number):DecisionTwinConfidence{
+  return decisions>=8&&applicableGames>=5?'HIGH':decisions>=4&&applicableGames>=3?'MEDIUM':'LOW';
+}
+function buildSituationPatterns(rows:HistoryAnalysisRow[]):DecisionSituationPattern[]{
+  type Acc={tag:DecisionSituationTag;behaviourKey:DecisionBehaviourKey;behaviourLabel:string;role:string|null;games:Set<string>;decisions:number;failures:number;successes:number;enemyExamples:Set<string>;championExamples:Set<string>;lastSeenAt:string|null};
+  const map=new Map<string,Acc>();
+  rows.forEach((row,rowIndex)=>{
+    const graph=row.analysis?.decisionGraph;
+    if(!graph||graph.version!==1||!Array.isArray(graph.nodes))return;
+    const gameKey=row.createdAt||String(rowIndex);
+    const role=roleName(row.role)||null;
+    for(const node of graph.nodes){
+      const tags=(Array.isArray((node as any).situationTags)?(node as any).situationTags:[]) as DecisionSituationTag[];
+      if(!tags.length)continue;
+      for(const tag of tags){
+        const key=[tag,node.behaviourKey,role||'ANY'].join('|');
+        const current=map.get(key)??{
+          tag,
+          behaviourKey:node.behaviourKey,
+          behaviourLabel:node.behaviourLabel,
+          role,
+          games:new Set<string>(),
+          decisions:0,
+          failures:0,
+          successes:0,
+          enemyExamples:new Set<string>(),
+          championExamples:new Set<string>(),
+          lastSeenAt:null,
+        };
+        current.games.add(gameKey);
+        current.decisions++;
+        if(node.verdict==='IMPROVE')current.failures++;
+        if(node.verdict==='GOOD')current.successes++;
+        for(const enemy of (((node as any).contextEnemies??[]) as string[]).map(clean).filter(Boolean))current.enemyExamples.add(enemy);
+        if(clean(row.champion))current.championExamples.add(clean(row.champion));
+        if(!current.lastSeenAt||Date.parse(row.createdAt)>Date.parse(current.lastSeenAt))current.lastSeenAt=row.createdAt;
+        map.set(key,current);
+      }
+    }
+  });
+  return[...map.values()].map(item=>({
+    id:[item.tag,item.behaviourKey,item.role||'ANY'].join(':').toLowerCase(),
+    tag:item.tag,
+    behaviourKey:item.behaviourKey,
+    behaviourLabel:item.behaviourLabel,
+    role:item.role,
+    applicableGames:item.games.size,
+    decisions:item.decisions,
+    failures:item.failures,
+    successes:item.successes,
+    failureRate:item.decisions?Math.round(item.failures/item.decisions*100):0,
+    confidence:situationConfidence(item.decisions,item.games.size),
+    enemyExamples:[...item.enemyExamples].slice(0,6),
+    championExamples:[...item.championExamples].slice(0,5),
+    lastSeenAt:item.lastSeenAt,
+  })).sort((a,b)=>b.failureRate-a.failureRate||b.decisions-a.decisions);
+}
+
 export function buildDecisionTwin(rows:HistoryAnalysisRow[],now=new Date().toISOString()):DecisionTwinProfile{
   const ordered=[...rows].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
   const behaviours=DEFINITIONS.map(definition=>{
@@ -169,7 +286,8 @@ export function buildDecisionTwin(rows:HistoryAnalysisRow[],now=new Date().toISO
     .sort((a,b)=>(b.recentScore??0)-(a.recentScore??0)||b.applicableGames-a.applicableGames)[0]??null;
   const mastered=behaviours.filter(item=>item.state==='MASTERED').sort((a,b)=>(b.recentScore??0)-(a.recentScore??0));
 
-  return{version:1,gamesAnalyzed:ordered.length,behaviours,strongest,currentLimiter:limiter,mastered,generatedAt:now};
+  const situationPatterns=buildSituationPatterns(ordered);
+  return{version:1,gamesAnalyzed:ordered.length,behaviours,situationPatterns,strongest,currentLimiter:limiter,mastered,generatedAt:now};
 }
 
 function countNames(players:DraftPlayerLike[],set:Set<string>){return players.map(p=>clean(p.champion)).filter(name=>set.has(name))}
@@ -262,18 +380,65 @@ function trapCopy(item:DecisionTwinBehaviour,input:{champion:string;role:string;
 
 export function selectPersonalTrap(twin:DecisionTwinProfile|null|undefined,input:{champion:string;role:string|null|undefined;ours:DraftPlayerLike[];enemies:DraftPlayerLike[]}):PersonalTrap{
   if(!twin||twin.gamesAnalyzed<3){
-    return{version:1,status:'BUILDING',title:'BUILDING YOUR DECISION TWIN',behaviourKey:null,behaviourLabel:null,confidence:null,state:null,applicableGames:0,evidenceCount:0,recentScore:null,historicalSummary:'Complete more tracked games before OP CLIMB labels a recurring personal trap.',draftReason:'The draft can still be coached normally, but there is not enough personal evidence to make a reliable behavioural claim.',cue:'FOLLOW THE DRAFT PLAN; DO NOT INVENT A PERSONAL WEAKNESS FROM TOO LITTLE DATA.',proof:'Requires at least 3 measurable games for the same behaviour.',relevantEnemies:[]};
+    return{version:1,status:'BUILDING',title:'BUILDING YOUR DECISION TWIN',source:'BEHAVIOUR',situationTag:null,behaviourKey:null,behaviourLabel:null,confidence:null,state:null,applicableGames:0,evidenceCount:0,recentScore:null,comparableDecisions:0,failures:0,failureRate:null,historicalSummary:'Complete more tracked games before OP CLIMB labels a recurring personal trap.',draftReason:'The draft can still be coached normally, but there is not enough personal evidence to make a reliable behavioural claim.',cue:'FOLLOW THE DRAFT PLAN; DO NOT INVENT A PERSONAL WEAKNESS FROM TOO LITTLE DATA.',proof:'Requires at least 3 measurable games for the same behaviour.',relevantEnemies:[]};
   }
-  const candidates=twin.behaviours.map(item=>({item,score:scoreBehaviour(item,{champion:input.champion,role:clean(input.role),ours:input.ours,enemies:input.enemies})})).filter(row=>row.score>=0).sort((a,b)=>b.score-a.score);
+
+  const situation=buildDraftSituationContext({champion:input.champion,role:input.role,enemies:input.enemies});
+  const role=roleName(input.role);
+  const matchedPatterns=(twin.situationPatterns??[])
+    .filter(pattern=>situation.tags.includes(pattern.tag))
+    .filter(pattern=>!pattern.role||!role||pattern.role===role)
+    .filter(pattern=>pattern.decisions>=4&&pattern.applicableGames>=3&&pattern.failures>=2&&pattern.failureRate>=50)
+    .sort((a,b)=>{
+      const confidenceDelta=(b.confidence==='HIGH'?2:b.confidence==='MEDIUM'?1:0)-(a.confidence==='HIGH'?2:a.confidence==='MEDIUM'?1:0);
+      return confidenceDelta||b.failureRate-a.failureRate||b.decisions-a.decisions;
+    });
+  const pattern=matchedPatterns[0]??null;
+  if(pattern){
+    const behaviour=twin.behaviours.find(item=>item.key===pattern.behaviourKey)??null;
+    if(behaviour){
+      const copy=trapCopy(behaviour,{champion:input.champion,role,ours:input.ours,enemies:input.enemies});
+      const relevantEnemies=copy.relevantEnemies.length?copy.relevantEnemies:
+        pattern.tag==='MULTI_ACCESS'?situation.enemyAccess.slice(0,3):
+        pattern.tag==='PICK_PRESSURE'?situation.enemyPicks.slice(0,3):
+        pattern.tag==='ZONE_OBJECTIVE'?situation.enemyZones.slice(0,3):[];
+      return{
+        version:1,
+        status:'READY',
+        title:"YOU'VE SEEN THIS DECISION BEFORE",
+        source:'SITUATION_PATTERN',
+        situationTag:pattern.tag,
+        behaviourKey:pattern.behaviourKey,
+        behaviourLabel:pattern.behaviourLabel,
+        confidence:pattern.confidence,
+        state:pattern.failureRate>=70?'LIMITER':'AT_RISK',
+        applicableGames:pattern.applicableGames,
+        evidenceCount:pattern.decisions,
+        recentScore:behaviour.recentScore,
+        comparableDecisions:pattern.decisions,
+        failures:pattern.failures,
+        failureRate:pattern.failureRate,
+        historicalSummary:`In ${pattern.failures} of ${pattern.decisions} comparable ${pattern.behaviourLabel.toLowerCase()} decision points, the recorded choice was graded for improvement (${pattern.failureRate}%).`,
+        draftReason:copy.draftReason,
+        cue:copy.cue,
+        proof:`${pattern.confidence} confidence · ${pattern.failures}/${pattern.decisions} comparable decisions · ${pattern.applicableGames} games.`,
+        relevantEnemies,
+      };
+    }
+  }
+
+  const candidates=twin.behaviours.map(item=>({item,score:scoreBehaviour(item,{champion:input.champion,role,ours:input.ours,enemies:input.enemies})})).filter(row=>row.score>=0).sort((a,b)=>b.score-a.score);
   const selected=candidates[0]?.item??null;
   if(!selected){
-    return{version:1,status:'NONE',title:'NO VERIFIED PERSONAL TRAP',behaviourKey:null,behaviourLabel:null,confidence:null,state:null,applicableGames:0,evidenceCount:0,recentScore:null,historicalSummary:'No established weak behaviour is relevant enough to this draft to justify a personal warning.',draftReason:'OP CLIMB will keep the advice draft-specific instead of manufacturing personalisation.',cue:'EXECUTE THE NORMAL DRAFT PLAN.',proof:'No medium/high-evidence limiter matched this draft strongly enough.',relevantEnemies:[]};
+    return{version:1,status:'NONE',title:'NO VERIFIED PERSONAL TRAP',source:'BEHAVIOUR',situationTag:null,behaviourKey:null,behaviourLabel:null,confidence:null,state:null,applicableGames:0,evidenceCount:0,recentScore:null,comparableDecisions:0,failures:0,failureRate:null,historicalSummary:'No established weak behaviour or recurring situation is relevant enough to this draft to justify a personal warning.',draftReason:'OP CLIMB will keep the advice draft-specific instead of manufacturing personalisation.',cue:'EXECUTE THE NORMAL DRAFT PLAN.',proof:'No medium/high-evidence limiter matched this draft strongly enough.',relevantEnemies:[]};
   }
-  const copy=trapCopy(selected,{champion:input.champion,role:clean(input.role),ours:input.ours,enemies:input.enemies});
+  const copy=trapCopy(selected,{champion:input.champion,role,ours:input.ours,enemies:input.enemies});
   return{
     version:1,
     status:'READY',
     title:'YOUR PERSONAL TRAP',
+    source:'BEHAVIOUR',
+    situationTag:null,
     behaviourKey:selected.key,
     behaviourLabel:selected.label,
     confidence:selected.confidence,
@@ -281,6 +446,9 @@ export function selectPersonalTrap(twin:DecisionTwinProfile|null|undefined,input
     applicableGames:selected.applicableGames,
     evidenceCount:selected.evidenceCount,
     recentScore:selected.recentScore,
+    comparableDecisions:0,
+    failures:0,
+    failureRate:null,
     historicalSummary:`${selected.label} is ${selected.state.toLowerCase()} across ${selected.applicableGames} measurable games (recent ${selected.recentScore??'—'}/100, ${selected.trend.toLowerCase()}).`,
     draftReason:copy.draftReason,
     cue:copy.cue,
