@@ -16,6 +16,7 @@ const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach'
 const main=fs.readFileSync(path.join(root,'companion','electron','main.cjs'),'utf8');
 const preload=fs.readFileSync(path.join(root,'companion','electron','preload.cjs'),'utf8');
 const model=fs.readFileSync(path.join(root,'lib','champions','rememberPlan.ts'),'utf8');
+const proLearning=fs.readFileSync(path.join(root,'lib','server','proLearningRepository.ts'),'utf8');
 
 test('recording UI is a concise esports coach board instead of a text wall',()=>{
   assert.doesNotThrow(()=>new Function(hud));
@@ -264,4 +265,25 @@ test('deep-coach failures degrade visibly to a safe local plan instead of failin
   assert.ok(esports.includes('DEEP COACH CHECKING…'));
   assert.ok(esports.includes("failure:{"));
   assert.ok(esports.includes("Deep coach unavailable. Using the safe local plan."));
+});
+
+
+test('Decision Twin Personal Trap is shown only from server-verified repeated evidence',()=>{
+  assert.ok(draftCoach.includes('selectPersonalTrap'));
+  assert.ok(draftCoach.includes('PERSONAL TRAP EVIDENCE'));
+  assert.ok(draftCoach.includes("status READY"));
+  assert.ok(draftCoach.includes('personalTrap,'));
+  assert.ok(proLearning.includes('buildDecisionTwin'));
+  assert.ok(proLearning.includes('learning_identity:decisionTwin'));
+  assert.ok(proLearning.includes('mastered_behaviours:decisionTwin.mastered'));
+  assert.ok(proLearning.includes('current_focus:decisionTwin.currentLimiter'));
+  assert.ok(esports.includes('DECISION TWIN'));
+  assert.ok(esports.includes('YOUR PERSONAL TRAP'));
+  assert.ok(esports.includes('NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
+  assert.ok(esports.includes('function renderPersonalTrap'));
+  assert.ok(esports.includes("status==='READY'"));
+  assert.ok(esports.includes("enrichedCoach._personalTrap=response?.personalTrap||null"));
+  assert.ok(esports.includes("personalTrap:coach?._personalTrap||null"));
+  assert.ok(esports.includes('NO VERIFIED PERSONAL TRAP'));
+  assert.ok(esports.includes('BUILDING YOUR DECISION TWIN'));
 });
