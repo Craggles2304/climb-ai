@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.7.16",
+  "version": "0.7.17",
   "private": true,
   "description": "OP CLIMB Windows companion with rank-aware coaching that levels up automatically with the player.",
   "main": "electron/bootstrap.cjs",
