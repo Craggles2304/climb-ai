@@ -96,6 +96,15 @@ body.op-remember-live .rem5-playbook-head{display:flex;align-items:center;justif
 body.op-remember-live .rem5-playbook-title{font-size:8px;letter-spacing:.18em;color:#d6ff2f;font-weight:950;text-transform:uppercase}
 body.op-remember-live .rem5-coach-status{font-size:7px;letter-spacing:.12em;padding:6px 8px;border:1px solid rgba(255,255,255,.12);color:#a9b5bd;text-transform:uppercase}
 body.op-remember-live .rem5-coach-status.verified{border-color:rgba(214,255,47,.35);color:#d6ff2f;background:rgba(214,255,47,.05)}
+body.op-remember-live .rem5-trap{display:grid;grid-template-columns:minmax(150px,.7fr) 1.4fr;gap:10px;border:1px solid rgba(255,103,103,.2);background:linear-gradient(135deg,rgba(126,27,36,.12),rgba(5,10,14,.72));padding:11px 12px}
+body.op-remember-live .rem5-trap.building{border-color:rgba(255,255,255,.08);background:rgba(4,8,12,.48)}
+body.op-remember-live .rem5-trap-kicker{font-size:6px;letter-spacing:.16em;color:#ff8c7f;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem5-trap.building .rem5-trap-kicker{color:#7b8992}
+body.op-remember-live .rem5-trap-title{display:block;margin-top:5px;color:#fff;font-size:11px;line-height:1.2;text-transform:uppercase}
+body.op-remember-live .rem5-trap-proof{display:block;margin-top:5px;color:#6f7d86;font-size:6px;letter-spacing:.08em;text-transform:uppercase}
+body.op-remember-live .rem5-trap-copy span{display:block;color:#6f7d86;font-size:6px;letter-spacing:.13em;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem5-trap-copy strong{display:block;margin-top:5px;color:#ffd9d4;font-size:9px;line-height:1.4;text-transform:uppercase}
+body.op-remember-live .rem5-trap.building .rem5-trap-copy strong{color:#8f9ba3}
 body.op-remember-live .rem5-branch-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255,255,255,.11);background:#081017;color:#8898a3;padding:9px 10px;font:950 8px/1 system-ui;letter-spacing:.14em;cursor:pointer;text-transform:uppercase}
 body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
@@ -106,7 +115,7 @@ body.op-remember-live .rem5-branch-cell span{display:block;color:#6e7e89;font-si
 body.op-remember-live .rem5-branch-cell strong{display:block;margin-top:5px;font-size:9px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-branch-cell.main strong{color:#d6ff2f;font-size:10px}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
-@media(max-width:980px){body.op-remember-live .rem5-branch-card{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -139,6 +148,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       laneOpponent:clean(coach?.laneOpponent),
       laneOpponents:Array.isArray(coach?.laneOpponents)?coach.laneOpponents.map(clean).filter(Boolean).slice(0,2):[],
       lanePartner:clean(coach?.lanePartner),
+      personalTrap:coach?._personalTrap||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -172,6 +182,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div class="rem5-playbook-title">FROZEN GAME PLAN · YOU PICK THE GAME STATE</div>
         <div id="opRemCoachStatus" class="rem5-coach-status">SAFE LOCAL PLAN</div>
       </div>
+      <div id="opRemPersonalTrap" class="rem5-trap building">
+        <div><span class="rem5-trap-kicker">DECISION TWIN</span><strong id="opRemTrapTitle" class="rem5-trap-title">BUILDING YOUR PERSONAL MODEL</strong><small id="opRemTrapProof" class="rem5-trap-proof">NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE</small></div>
+        <div class="rem5-trap-copy"><span>YOUR PERSONAL TRAP</span><strong id="opRemTrapCue">FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.</strong></div>
+      </div>
       <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
         <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
         <button type="button" class="rem5-branch-btn active" data-op-branch="EVEN">EVEN</button>
@@ -194,6 +208,18 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       renderSelectedBranch();
     }));
     return panel;
+  }
+
+  function renderPersonalTrap(trap){
+    ensurePlaybookPanel();
+    const root=$('opRemPersonalTrap');if(!root)return;
+    const status=upper(trap?.status||'BUILDING');
+    const ready=status==='READY';
+    root.classList.toggle('building',!ready);
+    set('opRemTrapTitle',ready?(clean(trap?.behaviourLabel)||'VERIFIED PERSONAL PATTERN'):(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
+    set('opRemTrapCue',ready?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
+    set('opRemTrapProof',ready?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
+    root.title=ready?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
   }
 
   function renderCoachStatus(meta){
@@ -487,6 +513,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const pathCards=[...document.querySelectorAll('#opRememberHud .rem4-step strong')];
     if(pathCards[3]&&clean(coach?.fightTrigger))pathCards[3].setAttribute('title',upper(coach.fightTrigger));
     if(pathCards[4]&&clean(coach?.objectiveSetup))pathCards[4].setAttribute('title',upper(coach.objectiveSetup));
+    renderPersonalTrap(coach?._personalTrap||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
 
@@ -519,6 +546,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._playbookPolicy=response?.playbookPolicy||null;
         enrichedCoach._coachSource=clean(response?.source)||'rules';
         enrichedCoach._coachQuality=response?.coachQuality||null;
+        enrichedCoach._personalTrap=response?.personalTrap||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
@@ -529,6 +557,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         applyCoach(lastCoach,champion,resolvedRole,ours,enemies);
         return;
       }
+      renderPersonalTrap(response?.personalTrap||null);
       renderPlaybook(null,{source:'local',quality:response?.coachQuality||null,failure:{
         code:clean(response?.code)||'REQUEST',
         status:Number(response?.status)||0,
@@ -585,6 +614,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastPlaybook=null;
       selectedBranch='EVEN';
       lastCoachMeta={source:'local',quality:null,failure:null};
+      renderPersonalTrap(null);
       renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
@@ -593,6 +623,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
 
   installVisualLayer();
   ensurePlaybookPanel();
+  renderPersonalTrap(null);
   renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
   window.opCompanion?.getState?.().then(onState).catch(()=>{});
