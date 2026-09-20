@@ -286,6 +286,12 @@ ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
+ipcMain.handle('companion:open-climb-path',(_event,path)=>{
+  const safePaths=new Set(['/live','/progress','/ilp']);
+  const target=safePaths.has(String(path||''))?String(path):'/live';
+  shell.openExternal(`${currentConfig().webUrl}${target}`);
+  return{ok:true,path:target};
+});
 ipcMain.handle('companion:draft-coach',(_event,context)=>requestDraftCoach(context));
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
