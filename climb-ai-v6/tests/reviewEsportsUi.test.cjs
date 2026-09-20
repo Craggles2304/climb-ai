@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.17');
+  assert.equal(pkg.version,'0.7.18');
 });
 
 
@@ -119,4 +119,13 @@ test('Companion post-game debrief renders a chronological Decision Graph without
   assert.ok(core.includes('PLAN LINK UNAVAILABLE'));
   assert.ok(core.includes('OP CLIMB will not invent decisions it cannot support from recorded match evidence.'));
   assert.ok(core.includes('renderDecisionGraph(review)'));
+});
+
+
+test('Decision Graph carries immutable draft-situation tags into long-term pattern learning',()=>{
+  assert.ok(decisionGraph.includes('situationTags'));
+  assert.ok(decisionGraph.includes('contextEnemies'));
+  assert.ok(decisionGraph.includes('situationContext'));
+  assert.ok(draftCoach.includes('buildDraftSituationContext'));
+  assert.ok(draftCoach.includes('situationContext:input.situationContext'));
 });
