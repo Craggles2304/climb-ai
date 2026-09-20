@@ -99,7 +99,7 @@ export function LearningJourneyTimeline({accountId}:{accountId:string}){
         <span>Keep playing fully tracked games. OP CLIMB will not create a “journey” from noise.</span>
       </div>}
 
-      <div className="vf-journey-policy">DISCOVER → COACH → EXECUTE → IMPROVE → MASTER → MOVE ON. Regression remains monitored after mastery.</div>
+      <div className="vf-journey-policy">DISCOVER → COACH → EXECUTE → IMPROVE → MASTER → MOVE ON. Regression remains monitored after mastery · LAST 50 ANALYSED GAMES MAX.</div>
     </>}
   </section>;
 }
