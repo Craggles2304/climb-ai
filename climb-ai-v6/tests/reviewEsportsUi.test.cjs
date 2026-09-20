@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.19');
+  assert.equal(pkg.version,'0.7.20');
 });
 
 
@@ -128,4 +128,22 @@ test('Decision Graph carries immutable draft-situation tags into long-term patte
   assert.ok(decisionGraph.includes('situationContext'));
   assert.ok(draftCoach.includes('buildDraftSituationContext'));
   assert.ok(draftCoach.includes('situationContext:input.situationContext'));
+});
+
+
+test('post-game review renders the highest-value counterfactual decisions without outcome guarantees',()=>{
+  assert.ok(decisionGraph.includes('DecisionCounterfactual'));
+  assert.ok(decisionGraph.includes('RECORDED_ALTERNATIVE'));
+  assert.ok(decisionGraph.includes('LOCKED_PLAN'));
+  assert.ok(decisionGraph.includes('COACHING_RULE'));
+  assert.ok(decisionGraph.includes('topCounterfactualNodeIds'));
+  assert.ok(decisionGraph.includes('does not claim the alternative would guarantee'));
+  assert.ok(core.includes('COUNTERFACTUAL COACHING · BETTER DECISION'));
+  assert.ok(core.includes('function renderCounterfactuals'));
+  assert.ok(core.includes('WHAT YOU DID'));
+  assert.ok(core.includes('BETTER OPTION'));
+  assert.ok(core.includes('WHY IT FITS'));
+  assert.ok(core.includes('TRADE-OFF'));
+  assert.ok(core.includes('EVIDENCE-BOUNDED · NO GUARANTEED OUTCOME'));
+  assert.ok(core.includes('renderCounterfactuals(review)'));
 });

@@ -134,14 +134,27 @@ test('Decision Graph reconstructs evidence nodes and compares them with the lock
   assert.match(fightNode?.decisionRead||'',/stronger visible combat state/i);
   assert.ok(fightNode?.situationTags.includes('MULTI_ACCESS'));
   assert.deepEqual(fightNode?.contextEnemies,['Sett','Pantheon','Irelia']);
+  assert.ok(fightNode?.counterfactual);
+  assert.equal(fightNode?.counterfactual?.alternative,'Decline the fight.');
+  assert.ok(fightNode?.counterfactual?.basis.includes('RECORDED_ALTERNATIVE'));
+  assert.ok(fightNode?.counterfactual?.basis.includes('LOCKED_PLAN'));
+  assert.match(fightNode?.counterfactual?.whyBetter||'',/frozen pre-game principle/i);
+  assert.match(fightNode?.counterfactual?.outcomeBoundary||'',/does not claim/i);
   const objective=graph.nodes.find(node=>node.behaviourKey==='OBJECTIVE_READINESS');
   assert.ok(objective);
   assert.equal(objective?.planAlignment,'CONFLICTED');
   assert.match(objective?.lockedPrinciple||'',/Arrive first/i);
+  assert.ok(objective?.counterfactual);
+  assert.match(objective?.counterfactual?.alternative||'',/arrive before/i);
+  assert.match(objective?.counterfactual?.tradeoff||'',/wave|camp/i);
   const spike=graph.nodes.find(node=>node.behaviourKey==='POWER_SPIKE_CONVERSION');
   assert.ok(spike);
   assert.equal(spike?.verdict,'GOOD');
   assert.equal(spike?.planAlignment,'MATCHED');
+  assert.equal(spike?.counterfactual,null);
+  assert.ok(graph.summary.counterfactualCount>=2);
+  assert.ok(graph.summary.topCounterfactualNodeIds.length>=1);
+  assert.ok(graph.summary.topCounterfactualNodeIds.length<=3);
 });
 
 test('Decision Graph never claims plan alignment when no locked plan survived',()=>{
@@ -176,4 +189,30 @@ test('linked pre-game context extracts only the immutable coaching fields needed
   assert.equal(plan?.personalTrap?.behaviourKey,'CARRY_PRESERVATION');
   assert.deepEqual(plan?.situationContext?.tags,['MULTI_ACCESS']);
   assert.equal(lockedPlanFromPregameContext({localChampionName:'Aphelios'}),null);
+});
+
+
+test('counterfactual coaching proposes a realistic alternative without pretending to know the outcome',()=>{
+  const graph=buildDecisionGraph({
+    analysis:analysis(),
+    summary:summary(),
+    lockedPlan:{
+      headline:'SURVIVE FIRST DIVE → FREE-HIT',
+      fightTrigger:'Wait until Pantheon commits, then hit the closest safe target.',
+      objectiveSetup:'Arrive first.',
+      never:'Do not cross the threat line.',
+      situationContext:{tags:['MULTI_ACCESS'],champion:'Aphelios',role:'ADC',enemyAccess:['Pantheon','Sett','Irelia'],enemyPicks:[],enemyZones:[]},
+    },
+  });
+  const counterfactuals=graph.nodes.map(node=>node.counterfactual).filter(Boolean);
+  assert.ok(counterfactuals.length>=2);
+  for(const item of counterfactuals){
+    assert.ok(item?.actual);
+    assert.ok(item?.alternative);
+    assert.ok(item?.whyBetter);
+    assert.ok(item?.tradeoff);
+    assert.ok(['HIGH','MEDIUM'].includes(String(item?.confidence)));
+    assert.match(item?.outcomeBoundary||'',/does not claim/i);
+    assert.doesNotMatch(item?.outcomeBoundary||'',/would have won|would have survived|guaranteed kill/i);
+  }
 });
