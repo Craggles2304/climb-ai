@@ -7,6 +7,18 @@ export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
 export type DecisionPlanAlignment='MATCHED'|'CONFLICTED'|'NOT_VERIFIABLE';
 export type DecisionNodeType='FIGHT'|'RESET'|'RECOVERY'|'OBJECTIVE'|'FARM'|'ADAPTATION'|'POWER_WINDOW'|'SURVIVAL';
 export type CounterfactualBasis='RECORDED_ALTERNATIVE'|'LOCKED_PLAN'|'COACHING_RULE';
+export type CoachingResponseStatus='EXECUTED'|'MISSED'|'NOT_VERIFIABLE';
+
+export interface DecisionCoachingResponse{
+  version:1;
+  status:CoachingResponseStatus;
+  cue:string;
+  behaviourKey:DecisionBehaviourKey;
+  situationTag:DecisionSituationTag|null;
+  confidence:DecisionNodeConfidence;
+  proof:string;
+  boundary:string;
+}
 
 export interface DecisionCounterfactual{
   version:1;
@@ -37,6 +49,8 @@ export interface LockedDecisionPlan{
     cue?:string|null;
     proof?:string|null;
     relevantEnemies?:string[];
+    source?:string|null;
+    situationTag?:DecisionSituationTag|null;
   }|null;
   situationContext?:DraftSituationContext|null;
 }
@@ -60,6 +74,7 @@ export interface DecisionGraphNode{
   contextEnemies:string[];
   evidence:string[];
   counterfactual:DecisionCounterfactual|null;
+  coachingResponse:DecisionCoachingResponse|null;
   limitation:string;
 }
 
@@ -78,6 +93,18 @@ export interface DecisionGraph{
     neutralDecisions:number;
     counterfactualCount:number;
     topCounterfactualNodeIds:string[];
+    coachingResponse:{
+      activeCue:boolean;
+      cue:string|null;
+      behaviourKey:DecisionBehaviourKey|null;
+      situationTag:DecisionSituationTag|null;
+      matchedMoments:number;
+      executed:number;
+      missed:number;
+      responseRate:number|null;
+      status:'NO_CUE'|'NO_MATCH'|'EXECUTING'|'MIXED'|'MISSING';
+      note:string;
+    };
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -117,6 +144,7 @@ const LEAK_TO_BEHAVIOUR:Record<string,DecisionBehaviourKey>={
 
 const LIMITATION='Decision Graph v1 uses recorded Riot-visible state and OP CLIMB match evidence. It does not claim to know player intent, exact mouse inputs, hidden cooldowns, fog information or unseen team communication.';
 const COUNTERFACTUAL_BOUNDARY='This is a coaching alternative supported by the recorded state. It does not claim the alternative would guarantee survival, a kill, an objective, or a win.';
+const RESPONSE_BOUNDARY='OP CLIMB measures whether a verified decision after the pre-game cue matched the trained behaviour. It does not claim the cue caused the result.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function minute(seconds:number){const safe=Math.max(0,Math.round(seconds));return Math.floor(safe/60)+':'+String(safe%60).padStart(2,'0')}
@@ -220,6 +248,32 @@ function buildCounterfactual(input:{
   };
 }
 
+function coachingResponseFor(plan:LockedDecisionPlan|undefined|null,input:{behaviour:DecisionBehaviourKey;verdict:DecisionNodeVerdict;confidence:DecisionNodeConfidence;situationTags:DecisionSituationTag[]}):DecisionCoachingResponse|null{
+  const trap=plan?.personalTrap;
+  if(!trap||clean(trap.status).toUpperCase()!=='READY')return null;
+  const behaviour=clean(trap.behaviourKey).toUpperCase();
+  if(!behaviour||behaviour!==input.behaviour)return null;
+  const requestedTag=clean(trap.situationTag).toUpperCase() as DecisionSituationTag;
+  if(requestedTag&&requestedTag!=='GENERAL'&&!input.situationTags.includes(requestedTag))return null;
+  if(input.confidence==='LOW')return null;
+  const status:CoachingResponseStatus=input.verdict==='GOOD'?'EXECUTED':input.verdict==='IMPROVE'?'MISSED':'NOT_VERIFIABLE';
+  const cue=clean(trap.cue)||'Execute the pre-game personal cue.';
+  return{
+    version:1,
+    status,
+    cue,
+    behaviourKey:input.behaviour,
+    situationTag:requestedTag||null,
+    confidence:input.confidence,
+    proof:status==='EXECUTED'
+      ?'A verified comparable decision matched the behaviour OP CLIMB asked you to train before the game.'
+      :status==='MISSED'
+        ?'A verified comparable decision still reproduced the behaviour OP CLIMB asked you to correct before the game.'
+        :'The situation appeared, but the recorded evidence was not decisive enough to grade execution.',
+    boundary:RESPONSE_BOUNDARY,
+  };
+}
+
 function situationTagsFor(plan:LockedDecisionPlan|undefined|null,behaviour:DecisionBehaviourKey){
   const context=plan?.situationContext;
   const tags:DecisionSituationTag[]=[];
@@ -295,6 +349,7 @@ function metricNodes(metric:ProMetric|undefined,behaviour:DecisionBehaviourKey,t
       contextEnemies:context.enemies,
       evidence:[clean(item.label),clean(item.detail),clean(metric.value)].filter(Boolean),
       counterfactual:buildCounterfactual({behaviour,verdict,confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight?.betterDecision?.[0]??null}),
+      coachingResponse:coachingResponseFor(plan,{behaviour,verdict,confidence,situationTags:context.tags}),
       limitation:LIMITATION,
     } satisfies DecisionGraphNode;
   });
@@ -333,6 +388,7 @@ function leakNodes(analysis:ProMatchAnalysis,fights:FightReview[],plan:LockedDec
         contextEnemies:context.enemies,
         evidence:[clean(leak.detail),fight?.headline||''].filter(Boolean),
         counterfactual:buildCounterfactual({behaviour,verdict:'IMPROVE',confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight?.betterDecision?.[0]??null}),
+        coachingResponse:coachingResponseFor(plan,{behaviour,verdict:'IMPROVE',confidence,situationTags:context.tags}),
         limitation:LIMITATION,
       });
     }
@@ -373,6 +429,7 @@ function fightNodes(analysis:ProMatchAnalysis,summary:StrengthTimeline,plan:Lock
         fight.evidence.currentGold>=900?`${Math.round(fight.evidence.currentGold)}g unspent`:'',
       ].filter(Boolean),
       counterfactual:buildCounterfactual({behaviour,verdict,confidence,decisionRead,lockedPrinciple:locked,planAlignment,contextEnemies:context.enemies,recordedAlternative:fight.betterDecision?.[0]??null}),
+      coachingResponse:coachingResponseFor(plan,{behaviour,verdict,confidence,situationTags:context.tags}),
       limitation:fight.limitation||LIMITATION,
     } satisfies DecisionGraphNode;
   });
@@ -417,6 +474,13 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   for(const node of finalNodes)counts.set(node.behaviourKey,(counts.get(node.behaviourKey)||0)+1);
   const repeated=[...counts.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0]??null;
   const counterfactualNodes=finalNodes.filter(node=>node.counterfactual).sort((a,b)=>(b.counterfactual?.priority??0)-(a.counterfactual?.priority??0));
+  const activeTrap=plan?.personalTrap&&clean(plan.personalTrap.status).toUpperCase()==='READY'?plan.personalTrap:null;
+  const responseNodes=finalNodes.filter(node=>node.coachingResponse&&node.coachingResponse.status!=='NOT_VERIFIABLE');
+  const executed=responseNodes.filter(node=>node.coachingResponse?.status==='EXECUTED').length;
+  const missed=responseNodes.filter(node=>node.coachingResponse?.status==='MISSED').length;
+  const matchedMoments=executed+missed;
+  const responseRate=matchedMoments?Math.round(executed/matchedMoments*100):null;
+  const responseStatus=!activeTrap?'NO_CUE':matchedMoments===0?'NO_MATCH':executed===matchedMoments?'EXECUTING':missed===matchedMoments?'MISSING':'MIXED';
 
   return{
     version:1,
@@ -433,6 +497,26 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       neutralDecisions:finalNodes.filter(node=>node.verdict==='NEUTRAL').length,
       counterfactualCount:counterfactualNodes.length,
       topCounterfactualNodeIds:counterfactualNodes.slice(0,3).map(node=>node.id),
+      coachingResponse:{
+        activeCue:Boolean(activeTrap),
+        cue:activeTrap?clean(activeTrap.cue)||null:null,
+        behaviourKey:activeTrap&&clean(activeTrap.behaviourKey)?clean(activeTrap.behaviourKey).toUpperCase() as DecisionBehaviourKey:null,
+        situationTag:activeTrap&&clean(activeTrap.situationTag)?clean(activeTrap.situationTag).toUpperCase() as DecisionSituationTag:null,
+        matchedMoments,
+        executed,
+        missed,
+        responseRate,
+        status:responseStatus,
+        note:!activeTrap
+          ?'No verified Personal Trap was active before this game.'
+          :matchedMoments===0
+            ?'The game did not produce a verified comparable decision, so OP CLIMB will not score cue execution.'
+            :responseStatus==='EXECUTING'
+              ?'Every verified comparable decision this game matched the trained behaviour.'
+              :responseStatus==='MISSING'
+                ?'Every verified comparable decision this game still reproduced the trained behaviour.'
+                :'The trained behaviour was executed in some comparable moments and missed in others.',
+      },
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
