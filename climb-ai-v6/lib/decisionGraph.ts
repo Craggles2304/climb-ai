@@ -140,7 +140,8 @@ function situationTagsFor(plan:LockedDecisionPlan|undefined|null,behaviour:Decis
   const tags:DecisionSituationTag[]=[];
   const enemies:string[]=[];
   const add=(tag:DecisionSituationTag,names:string[]=[]):void=>{
-    if(context?.tags?.includes(tag)&&!tags.includes(tag))tags.push(tag);
+    if(!context?.tags?.includes(tag))return;
+    if(!tags.includes(tag))tags.push(tag);
     for(const name of names.map(clean).filter(Boolean))if(!enemies.includes(name))enemies.push(name);
   };
   if(['CARRY_PRESERVATION','SURVIVAL_VALUE','THREAT_ADAPTATION','FIGHT_SELECTION','LEAD_PROTECTION'].includes(behaviour)){
