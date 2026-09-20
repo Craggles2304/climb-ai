@@ -10,7 +10,7 @@ import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
-import {buildDecisionTwin,selectPersonalTrap,type PersonalTrap} from '@/lib/decisionTwin';
+import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -475,7 +475,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -502,6 +502,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       never:input.coach.never,
       ifBehind:input.coach.ifBehind,
       personalTrap:input.personalTrap,
+      situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
       playbook:input.playbook??null,
@@ -552,6 +553,7 @@ export async function POST(req:NextRequest){
     const userRole=roleResolution.role??'';
     const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
     const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
+    const situationContext=buildDraftSituationContext({champion,role:roleResolution.role,enemies});
     const personalTrap=selectPersonalTrap(context.decisionTwin,{
       champion,
       role:roleResolution.role,
@@ -605,6 +607,7 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       coach,
       personalTrap,
+      situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       playbook,
     });
