@@ -49,6 +49,7 @@ export interface ProMatchAnalysis{
   metrics:Partial<Record<CoachingMetricKey,ProMetric>>;
   leakSignals:ProLeakSignal[];
   fingerprint:ProFingerprint;
+  decisionGraph?:import('../decisionGraph').DecisionGraph;
 }
 
 export interface RiotProOptions{
