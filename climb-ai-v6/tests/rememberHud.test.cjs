@@ -296,3 +296,16 @@ test('Personal Trap can promote a verified recurring situation instead of only a
   assert.ok(draftCoach.includes('buildDraftSituationContext'));
   assert.ok(draftCoach.includes('situationContext,'));
 });
+
+
+test('Personal Trap UI distinguishes learned, improving and regressing recurring patterns',()=>{
+  assert.ok(esports.includes("status==='MASTERED'"));
+  assert.ok(esports.includes("THIS USED TO CATCH YOU"));
+  assert.ok(esports.includes("SITUATION_PATTERN"));
+  assert.ok(esports.includes("root.classList.toggle('mastered',mastered)"));
+  assert.ok(draftCoach.includes('MASTERED is proof of learning'));
+  assert.ok(draftCoach.includes('do not re-teach it'));
+  assert.ok(proLearning.includes('situationImproving'));
+  assert.ok(proLearning.includes('situationMastered'));
+  assert.ok(proLearning.includes('situationRegressing'));
+});
