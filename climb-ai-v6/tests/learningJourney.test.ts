@@ -108,7 +108,10 @@ test('Learning Journey reconstructs discover → coach → execute → improve �
 
   const mastered=journey.events.find(event=>event.type==='MASTERED');
   assert.match(mastered?.detail||'',/recent comparable decisions were clean/i);
-  assert.equal(mastered?.evidence.recentFailureRate,0);
+  // The mastery milestone is emitted at the first qualifying game, where 5/6
+  // recent comparable decisions are clean (17% failure), not retroactively
+  // rewritten to the later final-window rate.
+  assert.equal(mastered?.evidence.recentFailureRate,17);
 
   const started=journey.events.find(event=>event.type==='COACHING_STARTED');
   const executed=journey.events.find(event=>event.type==='FIRST_EXECUTION');
