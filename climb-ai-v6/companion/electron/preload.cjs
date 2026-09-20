@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('opCompanion',{
   restart:()=>ipcRenderer.invoke('companion:restart'),
   setAutoStart:(enabled)=>ipcRenderer.invoke('companion:auto-start',enabled),
   openClimb:()=>ipcRenderer.invoke('companion:open-climb'),
+  openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path),
   getUpdateState:()=>ipcRenderer.invoke('companion:update-state'),
   checkUpdate:()=>ipcRenderer.invoke('companion:check-update'),
   downloadUpdate:()=>ipcRenderer.invoke('companion:download-update'),
