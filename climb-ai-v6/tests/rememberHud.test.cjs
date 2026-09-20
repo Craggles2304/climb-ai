@@ -265,3 +265,16 @@ test('deep-coach failures degrade visibly to a safe local plan instead of failin
   assert.ok(esports.includes("failure:{"));
   assert.ok(esports.includes("Deep coach unavailable. Using the safe local plan."));
 });
+
+
+test('Decision Twin Personal Trap is shown only from server-verified repeated evidence',()=>{
+  assert.ok(esports.includes('DECISION TWIN'));
+  assert.ok(esports.includes('YOUR PERSONAL TRAP'));
+  assert.ok(esports.includes('NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
+  assert.ok(esports.includes('function renderPersonalTrap'));
+  assert.ok(esports.includes("status==='READY'"));
+  assert.ok(esports.includes("enrichedCoach._personalTrap=response?.personalTrap||null"));
+  assert.ok(esports.includes("personalTrap:coach?._personalTrap||null"));
+  assert.ok(esports.includes('NO VERIFIED PERSONAL TRAP'));
+  assert.ok(esports.includes('BUILDING YOUR DECISION TWIN'));
+});
