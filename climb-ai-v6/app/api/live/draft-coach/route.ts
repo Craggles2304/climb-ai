@@ -418,7 +418,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- If PERSONAL TRAP EVIDENCE is BUILDING or NONE, do not invent a personal weakness or claim a repeated tendency.',
       '- DECISION PRE-MORTEM is an evidence-bounded map of the player\'s highest-risk decision windows for THIS static draft. Use it to sharpen triggers and prevention rules, not to claim certainty or probability.',
       '- If DECISION PRE-MORTEM is READY, the root win-condition plan should naturally protect against its highest-priority risks without turning the response into a list of warnings.',
-      '- If DECISION PRE-MORTEM is BUILDING or NONE, do not invent predicted mistakes.'
+      '- If DECISION PRE-MORTEM is BUILDING or NONE, do not invent predicted mistakes.',
       '- This root plan will be frozen before the game and expanded into prewritten AHEAD / EVEN / BEHIND branches. Make the strategy stable enough to remain correct across those states without using live gold, kills, items, cooldown tracking or objective timers.',
       '- Do not assume the app will detect whether the player is ahead, even or behind. The PLAYER will choose the matching prewritten branch during the game.',
       '',
@@ -437,7 +437,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '',
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
       'The personal trap may shape ONE cue only when status is READY. MASTERED is proof of learning, not an active weakness; do not re-teach it. Never turn BUILDING/NONE evidence into a claim about the player.',
-      'The Decision Pre-Mortem may shape trigger/prevention wording only when status is READY. It ranks evidence-backed risk windows; it does not predict that a mistake will occur.'
+      'The Decision Pre-Mortem may shape trigger/prevention wording only when status is READY. It ranks evidence-backed risk windows; it does not predict that a mistake will occur.',
       '',
       'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
