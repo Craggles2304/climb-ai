@@ -150,7 +150,7 @@ body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
-@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -187,6 +187,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
       decisionSimulation:coach?._decisionSimulation||null,
       scenarioPrime:coach?._scenarioPrime||null,
+      decisionTransferPrime:coach?._decisionTransferPrime||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -232,6 +233,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div><span class="rem7-memory-kicker">DECISION TWIN V4 · SCENARIO MEMORY</span><strong id="opRemMemoryTitle" class="rem7-memory-title">NO SPACED REP DUE</strong><small id="opRemMemoryMeta" class="rem7-memory-meta">WAITING FOR A MATCHING MEMORY</small></div>
         <div class="rem7-memory-copy"><span>ONE REP THIS GAME</span><strong id="opRemMemoryRule">PLAY THE FROZEN DRAFT PLAN.</strong></div>
         <div class="rem7-memory-proof"><span>WHY NOW</span><strong id="opRemMemoryWhy">NO MATCHING REPEATED MEMORY IS DUE.</strong></div>
+      </div>
+      <div id="opRemDecisionTransfer" class="rem8-transfer">
+        <div><span class="rem8-transfer-kicker">DECISION TWIN V5 · TRANSFER LEARNING</span><strong id="opRemTransferTitle" class="rem8-transfer-title">NO TRANSFER TEST DUE</strong><small id="opRemTransferMeta" class="rem8-transfer-meta">LOCAL LEARNING COMES FIRST</small></div>
+        <div class="rem8-transfer-copy"><span>APPLY THE PRINCIPLE</span><strong id="opRemTransferRule">USE THE FROZEN DRAFT PLAN.</strong></div>
+        <div class="rem8-transfer-proof"><span>WHAT MAKES THIS DIFFERENT</span><strong id="opRemTransferWhy">NO NOVEL CONDITION IS READY TO TEST.</strong></div>
       </div>
       <div id="opRemDecisionSimulation" class="rem6-simulation">
         <div class="rem6-simulation-head"><span>DECISION TWIN V3 · SIMULATION</span><strong id="opRemSimulationTitle">REHEARSE THIS DRAFT</strong><small id="opRemSimulationMeta">FROZEN BEFORE GAME</small></div>
@@ -318,6 +324,18 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemMemoryRule',active?(prime?.targetBranch||'USE THE CLEANER BRANCH.'):'PLAY THE FROZEN DRAFT PLAN.');
     set('opRemMemoryWhy',active?(prime?.dueReason||prime?.exactDraftRead||'THIS MEMORY MATCHES THE CURRENT DRAFT.'):'NO MATCHING REPEATED MEMORY IS DUE.');
     root.title=active?[clean(prime?.trigger),clean(prime?.oldBranch),clean(prime?.evidence),clean(prime?.boundary)].filter(Boolean).join(' · '):'';
+  }
+
+  function renderDecisionTransfer(prime){
+    ensurePlaybookPanel();
+    const root=$('opRemDecisionTransfer');if(!root)return;
+    const active=prime&&clean(prime?.transferId);
+    root.style.opacity=active?'1':'.58';
+    set('opRemTransferTitle',active?(prime?.title||'TRANSFER TEST'):'NO TRANSFER TEST DUE');
+    set('opRemTransferMeta',active?((prime?.dimension||'CONTEXT')+' · '+String(prime?.transferStrength??0)+'/100 TRANSFER · '+(prime?.state||'TESTING')):'LOCAL LEARNING COMES FIRST');
+    set('opRemTransferRule',active?(prime?.targetMove||prime?.principle||'APPLY THE LEARNED PRINCIPLE.'):'USE THE FROZEN DRAFT PLAN.');
+    set('opRemTransferWhy',active?(prime?.exactDraftRead||prime?.whyNow||'THIS DRAFT TESTS THE PRINCIPLE UNDER A DIFFERENT CONDITION.'):'NO NOVEL CONDITION IS READY TO TEST.');
+    root.title=active?[clean(prime?.trigger),clean(prime?.whyNow),clean(prime?.evidence),clean(prime?.boundary)].filter(Boolean).join(' · '):'';
   }
 
   function renderDecisionSimulation(simulation){
@@ -642,6 +660,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderPersonalTrap(coach?._personalTrap||null);
     renderDecisionPremortem(coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null);
     renderScenarioPrime(coach?._scenarioPrime||null);
+    renderDecisionTransfer(coach?._decisionTransferPrime||null);
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
@@ -679,6 +698,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
         enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
         enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
+        enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
