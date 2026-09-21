@@ -450,3 +450,13 @@ test('frozen contingency map stays player-selected and hidden behind coach detai
   assert.ok(!esports.includes('goldDiff'));
   assert.ok(!esports.includes('killDiff'));
 });
+
+
+test('manual plan selections capture game seconds only for post-game recognition',()=>{
+  assert.ok(esports.includes("gameSeconds:Number(lastRoster?.gameTime)||null"));
+  assert.ok(esports.includes("source:'PLAYER_CLICK'"));
+  assert.ok(!esports.includes('reviewPlanRecognition'));
+  assert.ok(!esports.includes('nearestPoint('));
+  assert.ok(!esports.includes('goldDiff'));
+  assert.ok(!esports.includes('killDiff'));
+});

@@ -214,7 +214,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const stored=loadDeepLockedPlan();
     if(!stored?.playbook?.branches?.[branch])return;
     const history=Array.isArray(stored.branchSelections)?stored.branchSelections.slice(-19):[];
-    history.push({branch,at:new Date().toISOString(),source:'PLAYER_CLICK'});
+    history.push({branch,at:new Date().toISOString(),gameSeconds:Number(lastRoster?.gameTime)||null,source:'PLAYER_CLICK'});
     stored.selectedBranch=branch;
     stored.branchSelections=history;
     stored.updatedAt=new Date().toISOString();
@@ -226,7 +226,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const item=stored?.playbook?.contingencyMap?.contingencies?.[key];
     if(!item?.available)return;
     const history=Array.isArray(stored.contingencySelections)?stored.contingencySelections.slice(-19):[];
-    history.push({contingency:key,at:new Date().toISOString(),source:'PLAYER_CLICK'});
+    history.push({contingency:key,at:new Date().toISOString(),gameSeconds:Number(lastRoster?.gameTime)||null,source:'PLAYER_CLICK'});
     stored.selectedContingency=key;
     stored.contingencySelections=history;
     stored.updatedAt=new Date().toISOString();

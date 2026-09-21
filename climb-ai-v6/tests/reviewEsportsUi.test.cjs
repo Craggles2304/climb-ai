@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.29');
+  assert.equal(pkg.version,'0.7.30');
 });
 
 
@@ -244,4 +244,23 @@ test('post-game review preserves player contingency choices without pretending t
   assert.ok(core.includes('selectedContingency'));
   assert.ok(core.includes('PLAYER CONTINGENCIES:'));
   assert.ok(core.includes('PLAYER-SELECTED · NO RESULT-BASED REWRITING'));
+});
+
+
+test('post-game Game Read reviews player selections without live auto-switching',()=>{
+  const recognition=fs.readFileSync(path.join(root,'companion','electron','plan-recognition-review.cjs'),'utf8');
+  assert.ok(loader.includes("load('plan-recognition-review.cjs')"));
+  assert.ok(loader.indexOf("load('plan-recognition-review.cjs')")<loader.indexOf("load('review-v2-core.js')"));
+  assert.ok(core.includes('GAME READ'));
+  assert.ok(core.includes('function renderPlanRecognition(review)'));
+  assert.ok(core.includes('opPlanRecognitionReview'));
+  assert.ok(core.includes('SUPPORTED · ' )||core.includes("' SUPPORTED · '"));
+  assert.ok(reviewRoute.includes('recognitionEvidence:{'));
+  assert.ok(reviewRoute.includes('strengthPoints:'));
+  assert.ok(reviewRoute.includes('fightReviews:'));
+  assert.ok(reviewRoute.includes('NEVER USED TO AUTO-SELECT A LIVE PLAN'));
+  assert.ok(recognition.includes('POST-GAME ONLY'));
+  assert.ok(recognition.includes('NEVER AUTO-SELECTS OR CHANGES'));
+  assert.ok(recognition.includes("choice==='PLAN_B'"));
+  assert.ok(recognition.includes("status:'NOT_VERIFIABLE'"));
 });
