@@ -79,6 +79,23 @@ export interface DecisionTwinActiveFocus{
   evidence:string;
 }
 
+export interface DecisionTwinChallenge{
+  id:string;
+  matchAt:string;
+  minuteLabel:string;
+  behaviourKey:DecisionBehaviourKey;
+  behaviourLabel:string;
+  situation:string;
+  actual:string;
+  alternative:string;
+  whyBetter:string;
+  tradeoff:string;
+  confidence:'HIGH'|'MEDIUM'|'LOW';
+  twinTendency:'ACTUAL'|'ALTERNATIVE'|'UNKNOWN';
+  twinEvidence:string;
+  outcomeBoundary:string;
+}
+
 export interface DecisionTwinRiskLedger{
   frozenRiskMaps:number;
   forecastRisks:number;
@@ -111,6 +128,7 @@ export interface DecisionTwinV2Profile{
   activeFive:DecisionTwinActiveFocus[];
   targetTwin:DecisionTwinTarget;
   riskLedger:DecisionTwinRiskLedger;
+  challenge:DecisionTwinChallenge|null;
 }
 
 const ARCHETYPE:Record<DecisionBehaviourKey,{risk:string;strength:string;explanation:string;rule:string}>={
@@ -389,6 +407,61 @@ function buildTargetTwin(activeFive:DecisionTwinActiveFocus[],twin:DecisionTwinP
   };
 }
 
+function buildChallenge(rows:HistoryAnalysisRow[],twin:DecisionTwinProfile):DecisionTwinChallenge|null{
+  for(const row of [...rows].reverse()){
+    const nodes=(((row.analysis as any)?.decisionGraph?.nodes??[]) as any[])
+      .filter(node=>node?.counterfactual&&node?.verdict==='IMPROVE'&&node?.confidence!=='LOW')
+      .sort((a,b)=>Number(b?.counterfactual?.priority||0)-Number(a?.counterfactual?.priority||0));
+    const node=nodes[0];
+    if(!node)continue;
+    const cf=node.counterfactual;
+    const tags=(Array.isArray(node.situationTags)?node.situationTags:[]) as DecisionSituationTag[];
+    const patterns=twin.situationPatterns
+      .filter(pattern=>pattern.behaviourKey===node.behaviourKey)
+      .filter(pattern=>tags.includes(pattern.tag))
+      .sort((a,b)=>b.decisions-a.decisions||(b.recentFailureRate??-1)-(a.recentFailureRate??-1));
+    const pattern=patterns[0]??null;
+    const behaviour=twin.behaviours.find(item=>item.key===node.behaviourKey)??null;
+    let twinTendency:DecisionTwinChallenge['twinTendency']='UNKNOWN';
+    let twinEvidence='Not enough repeated comparable evidence to claim what your Twin usually chooses here.';
+    if(pattern&&pattern.decisions>=4){
+      const recent=pattern.recentFailureRate??pattern.failureRate;
+      if(pattern.state==='MASTERED'||recent<=30){
+        twinTendency='ALTERNATIVE';
+        twinEvidence=`Your current Twin has beaten this ${pattern.tag.replaceAll('_',' ').toLowerCase()} pattern in enough recent comparable decisions to lean toward the reviewed alternative (${pattern.recentSuccesses}/${pattern.recentDecisions} recent clean).`;
+      }else if(recent>=50){
+        twinTendency='ACTUAL';
+        twinEvidence=`Your Twin has reproduced this ${pattern.tag.replaceAll('_',' ').toLowerCase()} risk in ${pattern.failures}/${pattern.decisions} comparable decisions (${pattern.failureRate}% all-time failure rate).`;
+      }
+    }else if(behaviour&&behaviour.applicableGames>=3&&behaviour.recentScore!==null){
+      if(behaviour.recentScore<60){
+        twinTendency='ACTUAL';
+        twinEvidence=`${behaviour.label} is currently ${behaviour.recentScore}/100 across ${behaviour.applicableGames} measurable games, so the Twin still leans toward repeating the reviewed mistake.`;
+      }else if(behaviour.recentScore>=75){
+        twinTendency='ALTERNATIVE';
+        twinEvidence=`${behaviour.label} is currently ${behaviour.recentScore}/100 across ${behaviour.applicableGames} measurable games, so the current Twin leans toward the cleaner branch.`;
+      }
+    }
+    return{
+      id:String(node.id||[row.createdAt,node.behaviourKey,node.minuteLabel].join(':')),
+      matchAt:row.createdAt,
+      minuteLabel:String(node.minuteLabel||''),
+      behaviourKey:node.behaviourKey as DecisionBehaviourKey,
+      behaviourLabel:String(node.behaviourLabel||node.behaviourKey),
+      situation:String(node.situation||node.title||'A reviewed decision window appeared.'),
+      actual:String(cf.actual||'Recorded decision'),
+      alternative:String(cf.alternative||'Reviewed alternative'),
+      whyBetter:String(cf.whyBetter||'The alternative better matched the recorded state and frozen coaching plan.'),
+      tradeoff:String(cf.tradeoff||'The alternative still carries trade-offs and does not guarantee a better result.'),
+      confidence:String(cf.confidence||node.confidence||'MEDIUM') as 'HIGH'|'MEDIUM'|'LOW',
+      twinTendency,
+      twinEvidence,
+      outcomeBoundary:String(cf.outcomeBoundary||'This is a coaching alternative supported by the recorded state, not a guaranteed outcome.'),
+    };
+  }
+  return null;
+}
+
 function buildRiskLedger(rows:HistoryAnalysisRow[]):DecisionTwinRiskLedger{
   let frozenRiskMaps=0,forecastRisks=0,observedRisks=0,hitRisks=0,beatenRisks=0,mixedRisks=0,unobservedRisks=0;
   for(const row of rows){
@@ -448,5 +521,6 @@ export function buildDecisionTwinV2(rows:HistoryAnalysisRow[],generatedAt=new Da
     activeFive,
     targetTwin:buildTargetTwin(activeFive,twin),
     riskLedger:buildRiskLedger(ordered),
+    challenge:buildChallenge(ordered,twin),
   };
 }
