@@ -125,6 +125,7 @@ test('draft coach, Decision Graph and Companion share the same frozen CLIMB matc
   const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
   const graph=fs.readFileSync('lib/decisionGraph.ts','utf8');
   const companion=fs.readFileSync('companion/electron/remember-v5-esports.js','utf8');
+  const review=fs.readFileSync('companion/electron/review-v2-core.js','utf8');
   assert.ok(draft.includes('buildClimbMatchMission'));
   assert.ok(draft.includes('climbMission:input.climbMission'));
   assert.ok(draft.includes('climbMission,'));
@@ -134,4 +135,9 @@ test('draft coach, Decision Graph and Companion share the same frozen CLIMB matc
   assert.ok(companion.includes('enrichedCoach._climbMission=response?.climbMission||null'));
   assert.ok(companion.includes('climbMission:coach?._climbMission||null'));
   assert.ok(companion.includes("set('opRemMission',climbMission?.status==='READY'"));
+  assert.ok(review.includes('CLIMB MISSION · FROZEN REP REVIEW'));
+  assert.ok(review.includes('function renderClimbMissionReview'));
+  assert.ok(review.includes('MISSION NOT TESTED'));
+  assert.ok(review.includes('ONE CLEAN REP ≠ GRADUATION'));
+  assert.ok(review.includes('renderClimbMissionReview(review)'));
 });
