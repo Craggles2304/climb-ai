@@ -52,14 +52,20 @@ export async function getProMatchAnalysisBySession(sessionId:string):Promise<Pro
 
 async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string){
   const db=getSupabaseAdmin();if(!db)return null;
-  const {data,error}=await db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50);if(error)throw new Error(error.message);
-  const rows:HistoryAnalysisRow[]=(data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
+  const [historyResult,learningResult]=await Promise.all([
+    db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
+    db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle(),
+  ]);
+  if(historyResult.error)throw new Error(historyResult.error.message);
+  if(learningResult.error)throw new Error(learningResult.error.message);
+  const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
+  const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
   const profile=buildProLearningProfile(rows),now=new Date().toISOString();
   const decisionTwin=buildDecisionTwin(rows,now);
   const decisionTwinV2=buildDecisionTwinV2(rows,now);
   const scenarioMemory=buildScenarioMemory(rows,now);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory,now);
-  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now);
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum);
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;

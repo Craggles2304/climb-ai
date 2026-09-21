@@ -5,6 +5,15 @@ import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTrans
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
+export type CurriculumDecisionAction='BUILDING'|'START'|'KEEP'|'ADVANCE'|'REOPEN'|'PREREQUISITE'|'COMPLETE';
+
+export interface CurriculumDecision{
+  action:CurriculumDecisionAction;
+  previousLesson:DecisionBehaviourKey|null;
+  currentLesson:DecisionBehaviourKey|null;
+  changed:boolean;
+  reason:string;
+}
 
 export interface CurriculumLesson{
   behaviourKey:DecisionBehaviourKey;
@@ -35,6 +44,7 @@ export interface ClimbCurriculum{
   nextLesson:CurriculumLesson|null;
   queue:CurriculumLesson[];
   graduated:CurriculumLesson[];
+  decision:CurriculumDecision;
   summary:string;
   boundary:string;
 }
@@ -143,9 +153,7 @@ function makeLesson(
     ?'COMPLETE'
     :prerequisite&&!prerequisiteStable
       ?'LOCKED'
-      :focus||mem||tx
-        ?'ACTIVE'
-        :'READY';
+      :'READY';
   return{
     behaviourKey:key,
     label:LABELS[key],
@@ -183,7 +191,6 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
   for(const locked of lessons.filter(item=>item.readiness==='LOCKED'&&item.prerequisite)){
     const prerequisite=lessons.find(item=>item.behaviourKey===locked.prerequisite);
     if(prerequisite&&prerequisite.readiness==='READY'){
-      prerequisite.readiness='ACTIVE';
       prerequisite.priority=Math.max(prerequisite.priority,locked.priority+1);
       prerequisite.whyNow='This foundation unlocks '+locked.label+'. OP CLIMB will not skip the prerequisite just because the later skill currently scores worse.';
     }
@@ -192,7 +199,7 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
   return lessons.sort((a,b)=>{
     const aUnlock=lessons.some(item=>item.prerequisite===a.behaviourKey&&item.readiness==='LOCKED')?18:0;
     const bUnlock=lessons.some(item=>item.prerequisite===b.behaviourKey&&item.readiness==='LOCKED')?18:0;
-    const readiness=(value:CurriculumReadiness)=>value==='ACTIVE'?30:value==='READY'?15:value==='LOCKED'?-30:-50;
+    const readiness=(value:CurriculumReadiness)=>value==='READY'?20:value==='LOCKED'?-30:-50;
     return readiness(b.readiness)-readiness(a.readiness)
       ||phaseWeight(b.phase)-phaseWeight(a.phase)
       ||bUnlock-aUnlock
@@ -201,17 +208,128 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
   });
 }
 
+function deepestAvailablePrerequisite(lesson:CurriculumLesson,lessons:CurriculumLesson[]){
+  let cursor:CurriculumLesson|null=lesson;
+  const seen=new Set<DecisionBehaviourKey>();
+  while(cursor?.readiness==='LOCKED'&&cursor.prerequisite&&!seen.has(cursor.behaviourKey)){
+    seen.add(cursor.behaviourKey);
+    cursor=lessons.find(item=>item.behaviourKey===cursor?.prerequisite)??null;
+  }
+  return cursor?.readiness==='READY'?cursor:null;
+}
+
+function selectCurriculumLesson(
+  lessons:CurriculumLesson[],
+  previous:ClimbCurriculum|null|undefined,
+  building:boolean,
+):{current:CurriculumLesson|null;decision:CurriculumDecision}{
+  const previousKey=previous?.currentLesson?.behaviourKey??null;
+  if(building){
+    return{
+      current:null,
+      decision:{
+        action:'BUILDING',
+        previousLesson:previousKey,
+        currentLesson:null,
+        changed:Boolean(previousKey),
+        reason:'OP CLIMB is still collecting repeated verified decisions. No lesson owns the player attention yet.',
+      },
+    };
+  }
+
+  const ready=lessons.filter(item=>item.readiness==='READY');
+  const previousLesson=previousKey?lessons.find(item=>item.behaviourKey===previousKey)??null:null;
+  const firstReady=ready[0]??null;
+
+  if(previousLesson?.readiness==='COMPLETE'){
+    return{
+      current:firstReady,
+      decision:{
+        action:firstReady?'ADVANCE':'COMPLETE',
+        previousLesson:previousKey,
+        currentLesson:firstReady?.behaviourKey??null,
+        changed:Boolean(firstReady&&firstReady.behaviourKey!==previousKey),
+        reason:firstReady
+          ?previousLesson.label+' has graduated from repeated evidence. '+firstReady.label+' is now the highest unlocked lesson.'
+          :'The previous lesson graduated and no other evidence-backed lesson is currently waiting.',
+      },
+    };
+  }
+
+  if(previousLesson?.readiness==='LOCKED'){
+    const prerequisite=deepestAvailablePrerequisite(previousLesson,lessons)??firstReady;
+    return{
+      current:prerequisite,
+      decision:{
+        action:'PREREQUISITE',
+        previousLesson:previousKey,
+        currentLesson:prerequisite?.behaviourKey??null,
+        changed:Boolean(prerequisite&&prerequisite.behaviourKey!==previousKey),
+        reason:prerequisite
+          ?previousLesson.label+' is now locked behind '+prerequisite.label+'. The prerequisite takes control until it is stable again.'
+          :'The previous lesson lost a prerequisite, so OP CLIMB is holding progression until a valid foundation is available.',
+      },
+    };
+  }
+
+  if(previousLesson?.readiness==='READY'){
+    const reopened=ready.find(item=>item.phase==='REOPEN'&&item.behaviourKey!==previousLesson.behaviourKey&&item.comparableGames>=3&&item.priority>0&&item.priority>=previousLesson.priority);
+    if(reopened){
+      return{
+        current:reopened,
+        decision:{
+          action:'REOPEN',
+          previousLesson:previousKey,
+          currentLesson:reopened.behaviourKey,
+          changed:true,
+          reason:reopened.label+' has a verified regression and is now at least as urgent as the current lesson, so it temporarily interrupts the sequence.',
+        },
+      };
+    }
+    return{
+      current:previousLesson,
+      decision:{
+        action:previousLesson.phase==='REOPEN'?'REOPEN':'KEEP',
+        previousLesson:previousKey,
+        currentLesson:previousLesson.behaviourKey,
+        changed:false,
+        reason:previousLesson.phase==='REOPEN'
+          ?previousLesson.label+' remains active because verified comparable mistakes reopened a previously stable skill.'
+          :'Keep drilling '+previousLesson.label+'. Its graduation gate is not met yet, so a newly worse score elsewhere does not replace it.',
+      },
+    };
+  }
+
+  return{
+    current:firstReady,
+    decision:{
+      action:firstReady?'START':lessons.length?'COMPLETE':'BUILDING',
+      previousLesson:previousKey,
+      currentLesson:firstReady?.behaviourKey??null,
+      changed:Boolean(firstReady&&firstReady.behaviourKey!==previousKey),
+      reason:firstReady
+        ?firstReady.label+' is the highest evidence-backed unlocked lesson, so it becomes the single active objective.'
+        :lessons.length
+          ?'No unlocked lesson remains. OP CLIMB is maintaining graduated skills and waiting for new verified evidence.'
+          :'OP CLIMB does not yet have an evidence-backed lesson to sequence.',
+    },
+  };
+}
+
 export function buildClimbCurriculum(
   twin:DecisionTwinV2Profile,
   memory:ScenarioMemoryProfile,
   transfer:DecisionTransferProfile,
   generatedAt=new Date().toISOString(),
+  previous:ClimbCurriculum|null=null,
 ):ClimbCurriculum{
   const lessons=curriculumOrder(twin,memory,transfer);
-  const active=lessons.filter(item=>item.readiness==='ACTIVE'||item.readiness==='READY');
   const graduated=lessons.filter(item=>item.readiness==='COMPLETE');
-  const current=active[0]??null;
-  const next=active[1]??null;
+  const building=!lessons.length||twin.gamesAnalyzed<3;
+  const selection=selectCurriculumLesson(lessons,previous,building);
+  const current=selection.current;
+  if(current)current.readiness='ACTIVE';
+  const next=lessons.find(item=>item.readiness==='READY')??null;
   const blocked=lessons.filter(item=>item.readiness==='LOCKED');
 
   if(current){
@@ -223,7 +341,7 @@ export function buildClimbCurriculum(
     next.nextUnlock=unlock?.label??null;
   }
 
-  const status:ClimbCurriculum['status']=!lessons.length||twin.gamesAnalyzed<3?'BUILDING':current?'ACTIVE':'COMPLETE';
+  const status:ClimbCurriculum['status']=building?'BUILDING':current?'ACTIVE':'COMPLETE';
   return{
     version:1,
     generatedAt,
@@ -233,10 +351,11 @@ export function buildClimbCurriculum(
     nextLesson:next,
     queue:lessons.filter(item=>item.readiness!=='COMPLETE').slice(0,5),
     graduated,
+    decision:selection.decision,
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'
       :current
-        ?'Current lesson: '+current.label+'. '+(blocked.length?String(blocked.length)+' later skill'+(blocked.length===1?' is':'s are')+' locked behind prerequisite evidence.':'The next lesson will unlock only when repeated evidence justifies moving on.')
+        ?'Current lesson: '+current.label+'. '+selection.decision.reason+' '+(blocked.length?String(blocked.length)+' later skill'+(blocked.length===1?' is':'s are')+' locked behind prerequisite evidence.':'The next lesson will unlock only when repeated evidence justifies moving on.')
         :'Every evidence-backed lesson currently in the curriculum is graduated. OP CLIMB will maintain them on spaced review and wait for a new verified limiter.',
     boundary:BOUNDARY,
   };

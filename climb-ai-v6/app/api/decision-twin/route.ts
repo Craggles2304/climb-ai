@@ -28,16 +28,26 @@ export async function GET(req:Request){
     if(accountError)throw new Error(accountError.message);
     if(!account)return NextResponse.json({error:'That Riot account is not linked to this user.'},{status:403});
 
-    const {data,error}=await db
-      .from('op_match_analysis')
-      .select('champion,role,created_at,analysis')
-      .eq('user_id',user.id)
-      .eq('riot_account_id',input.accountId)
-      .order('created_at',{ascending:true})
-      .limit(50);
-    if(error)throw new Error(error.message);
+    const [historyResult,learningResult]=await Promise.all([
+      db
+        .from('op_match_analysis')
+        .select('champion,role,created_at,analysis')
+        .eq('user_id',user.id)
+        .eq('riot_account_id',input.accountId)
+        .order('created_at',{ascending:true})
+        .limit(50),
+      db
+        .from('op_player_learning_profiles')
+        .select('recent_change')
+        .eq('user_id',user.id)
+        .eq('riot_account_id',input.accountId)
+        .maybeSingle(),
+    ]);
+    if(historyResult.error)throw new Error(historyResult.error.message);
+    if(learningResult.error)throw new Error(learningResult.error.message);
+    const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
 
-    const rows:HistoryAnalysisRow[]=(data??[]).map((row:any)=>({
+    const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map((row:any)=>({
       champion:String(row.champion||'Unknown'),
       role:row.role?String(row.role):null,
       createdAt:String(row.created_at),
@@ -47,7 +57,7 @@ export async function GET(req:Request){
     const twin=buildDecisionTwinV2(rows);
     const scenarioMemory=buildScenarioMemory(rows);
     const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
-    const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer);
+    const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
     return NextResponse.json({
       twin,
       scenarioMemory,
