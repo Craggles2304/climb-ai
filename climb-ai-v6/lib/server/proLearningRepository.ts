@@ -9,6 +9,7 @@ import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildLearningJourney} from '@/lib/learningJourney';
 import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import {buildDecisionTransfer} from '@/lib/decisionTransfer';
+import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -67,7 +68,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     .filter(item=>item.coachedDecisions>0)
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
   const learningJourney=buildLearningJourney(rows,now);
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,generatedAt:now};
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
