@@ -100,8 +100,9 @@ test('clean decisions on a different champion begin transfer but do not instantl
     row(1,'Aphelios','GOOD'),
     row(2,'Aphelios','GOOD'),
     row(3,'Aphelios','GOOD'),
-    row(4,'Jinx','GOOD'),
+    row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD'),
+    row(6,'Jinx','GOOD'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'TRANSFERRING');
@@ -118,10 +119,11 @@ test('repeated clean decisions across different champion and context can promote
     row(1,'Aphelios','GOOD'),
     row(2,'Aphelios','GOOD'),
     row(3,'Aphelios','GOOD'),
-    row(4,'Jinx','GOOD','MULTI_ACCESS'),
-    row(5,'Aphelios','GOOD','PICK_PRESSURE'),
-    row(6,'Jinx','GOOD','PICK_PRESSURE'),
-    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(4,'Aphelios','GOOD'),
+    row(5,'Jinx','GOOD','MULTI_ACCESS'),
+    row(6,'Aphelios','GOOD','PICK_PRESSURE'),
+    row(7,'Jinx','GOOD','PICK_PRESSURE'),
+    row(8,'Kai\'Sa','GOOD','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'PRINCIPLE_OWNED');
@@ -138,11 +140,12 @@ test('a transferred principle reopens when mistakes return under novel condition
     row(1,'Aphelios','GOOD'),
     row(2,'Aphelios','GOOD'),
     row(3,'Aphelios','GOOD'),
-    row(4,'Jinx','GOOD','PICK_PRESSURE'),
+    row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
-    row(6,'Kai\'Sa','GOOD','PICK_PRESSURE'),
-    row(7,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(8,'Jinx','GOOD','PICK_PRESSURE'),
+    row(6,'Jinx','GOOD','PICK_PRESSURE'),
+    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(8,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(9,'Jinx','GOOD','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'REGRESSED');
@@ -156,6 +159,7 @@ test('exact-draft V5 selector yields one novel transfer test and defers to unsta
     row(1,'Aphelios','GOOD'),
     row(2,'Aphelios','GOOD'),
     row(3,'Aphelios','GOOD'),
+    row(4,'Aphelios','GOOD'),
   ]);
   const situationContext={
     tags:['PICK_PRESSURE'] as DecisionSituationTag[],
@@ -198,6 +202,7 @@ test('post-game transfer review scores only the frozen novel decision when it ac
     row(1,'Aphelios','GOOD'),
     row(2,'Aphelios','GOOD'),
     row(3,'Aphelios','GOOD'),
+    row(4,'Aphelios','GOOD'),
   ]);
   const prime=selectDecisionTransferPrime({
     transfer,memory,scenarioPrime:null,
