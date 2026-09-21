@@ -70,7 +70,7 @@ function ranked(players:DraftRolePlayer[]){
 
 function playerAssignment(local:DraftCarryCandidate,primary:DraftCarryCandidate,secondary:DraftCarryCandidate|null){
   if(local.champion===primary.champion)return'PRIMARY_CARRY' as const;
-  if(secondary&&local.champion===secondary.champion&&local.score>=46)return'SECONDARY_CARRY' as const;
+  if(secondary&&local.champion===secondary.champion&&local.score>=34)return'SECONDARY_CARRY' as const;
   if(DENIAL.has(local.champion)||PEEL.has(local.champion)||FRONTLINE.has(local.champion)||local.role==='SUPPORT')return'THREAT_DENIAL' as const;
   return'ENABLER' as const;
 }
