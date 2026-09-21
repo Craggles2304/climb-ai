@@ -38,7 +38,7 @@ test('recording UI is a concise esports coach board instead of a text wall',()=>
 
 test('live board fills the app and receives the actual in-game roster',()=>{
   assert.ok(esports.includes('min-height:calc(100vh - 94px)'));
-  assert.ok(esports.includes('grid-template-rows:minmax(108px'));
+  assert.ok(esports.includes('display:flex!important;flex-direction:column!important'));
   assert.ok(esports.includes("window.addEventListener('op-climb-live-roster'"));
   assert.ok(esports.includes("renderTeam('opRemTheirTeam'"));
   assert.ok(esports.includes('scoreThreat'));
@@ -277,15 +277,15 @@ test('Decision Twin Personal Trap is shown only from server-verified repeated ev
   assert.ok(proLearning.includes('learning_identity:decisionTwin'));
   assert.ok(proLearning.includes('mastered_behaviours:decisionTwin.mastered'));
   assert.ok(proLearning.includes('current_focus:decisionTwin.currentLimiter'));
-  assert.ok(esports.includes('DECISION TWIN'));
-  assert.ok(esports.includes('YOUR PERSONAL TRAP'));
+  assert.ok(esports.includes('CLIMB PROFILE'));
+  assert.ok(esports.includes('YOUR PATTERN'));
   assert.ok(esports.includes('NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
   assert.ok(esports.includes('function renderPersonalTrap'));
   assert.ok(esports.includes("status==='READY'"));
   assert.ok(esports.includes("enrichedCoach._personalTrap=response?.personalTrap||null"));
   assert.ok(esports.includes("personalTrap:coach?._personalTrap||null"));
   assert.ok(esports.includes('NO VERIFIED PERSONAL TRAP'));
-  assert.ok(esports.includes('BUILDING YOUR DECISION TWIN'));
+  assert.ok(esports.includes('BUILDING YOUR CLIMB PROFILE'));
 });
 
 
@@ -342,7 +342,7 @@ test('Companion path navigation is allowlisted before opening the web Learning J
 test('Decision Twin V3 simulation is frozen, rendered and persisted with the exact draft',()=>{
   assert.ok(draftCoach.includes('buildDecisionSimulation'));
   assert.ok(draftCoach.includes('decisionSimulation,'));
-  assert.ok(esports.includes('DECISION TWIN V3 · SIMULATION'));
+  assert.ok(esports.includes('MATCH REHEARSAL'));
   assert.ok(esports.includes('function renderDecisionSimulation'));
   assert.ok(esports.includes("enrichedCoach._decisionSimulation=response?.decisionSimulation"));
   assert.ok(esports.includes('decisionSimulation:coach?._decisionSimulation'));
@@ -357,7 +357,7 @@ test('Scenario Memory chooses one spaced rep for the exact draft and persists it
   assert.ok(draftCoach.includes('scenarioPrime,'));
   assert.ok(proLearning.includes('buildScenarioMemory'));
   assert.ok(proLearning.includes('scenarioMemory'));
-  assert.ok(esports.includes('DECISION TWIN V4 · SCENARIO MEMORY'));
+  assert.ok(esports.includes('DECISION LAB · SCENARIO MEMORY'));
   assert.ok(esports.includes('function renderScenarioPrime'));
   assert.ok(esports.includes("enrichedCoach._scenarioPrime=response?.scenarioPrime||null"));
   assert.ok(esports.includes('scenarioPrime:coach?._scenarioPrime||null'));
@@ -372,10 +372,23 @@ test('V5 Transfer Learning shows one novel principle test and freezes it with th
   assert.ok(draftCoach.includes('decisionTransferPrime,'));
   assert.ok(proLearning.includes('buildDecisionTransfer'));
   assert.ok(proLearning.includes('decisionTransfer'));
-  assert.ok(esports.includes('DECISION TWIN V5 · TRANSFER LEARNING'));
+  assert.ok(esports.includes('CLIMB PROFILE · SKILL TRANSFER'));
   assert.ok(esports.includes('function renderDecisionTransfer'));
   assert.ok(esports.includes('APPLY THE PRINCIPLE'));
   assert.ok(esports.includes('WHAT MAKES THIS DIFFERENT'));
   assert.ok(esports.includes("enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null"));
   assert.ok(esports.includes('decisionTransferPrime:coach?._decisionTransferPrime||null'));
+});
+
+
+test('live board defaults to a five-second brief while deep coaching stays available on demand',()=>{
+  assert.ok(hud.includes('COACH DETAIL · WIN PATH / LANE / SELF-CHECK'));
+  assert.ok(hud.includes('class="rem4-coach-detail"'));
+  assert.ok(esports.includes('COACH DETAIL · RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL'));
+  assert.ok(esports.includes('class="rem5-coach-detail"'));
+  assert.ok(esports.includes('CLIMB PROFILE'));
+  assert.ok(esports.includes('YOUR PATTERN'));
+  assert.ok(!esports.includes('DECISION TWIN V3'));
+  assert.ok(!esports.includes('DECISION TWIN V4'));
+  assert.ok(!esports.includes('DECISION TWIN V5'));
 });
