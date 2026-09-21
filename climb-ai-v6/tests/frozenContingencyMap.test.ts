@@ -43,6 +43,8 @@ test('contingency map is frozen before game and always player-selected',()=>{
   assert.equal(map.primaryCarry,'Jinx');
   assert.equal(map.contingencies.PLAN_A.available,true);
   assert.equal(map.contingencies.RECOVERY.available,true);
+  assert.equal(map.contingencies.PLAN_A.priority,'ORIGINAL');
+  assert.equal(map.contingencies.RECOVERY.priority,'STABILISE');
   assert.match(map.boundary,/PLAYER SELECTS/i);
   assert.match(map.boundary,/NEVER AUTO-SWITCHES/i);
 });
@@ -54,6 +56,7 @@ test('Plan B promotes the credible secondary carry rather than inventing a new w
   const map=buildFrozenContingencyMap({champion:'Ornn',role:'TOP',carryMap,plan:plan()});
   const b=map.contingencies.PLAN_B;
   assert.equal(b.available,true);
+  assert.equal(b.priority,'SET UP');
   assert.equal(b.resourceOwner,'Orianna');
   assert.match(b.when,/Jinx CANNOT SAFELY FUNCTION/i);
   assert.match(b.when,/Orianna CAN STILL/i);
