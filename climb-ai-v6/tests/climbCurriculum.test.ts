@@ -36,6 +36,16 @@ function tx(key:string,state:string,strength=60):any{
     novelContexts:['PICK_PRESSURE'],dimension:'BOTH',breadthScore:2,transferStrength:strength,lastTransferAt:'x',nextTransferNeeded:true,summary:'',evidence:'3 novel games'};
 }
 
+function previous(key:string):any{
+  return{
+    version:1,generatedAt:'old',gamesAnalyzed:7,status:'ACTIVE',
+    currentLesson:{behaviourKey:key},
+    nextLesson:null,queue:[],graduated:[],
+    decision:{action:'KEEP',previousLesson:key,currentLesson:key,changed:false,reason:'old'},
+    summary:'',boundary:'',
+  };
+}
+
 test('curriculum teaches Reset Discipline before Power-Spike Conversion when prerequisite is unstable',()=>{
   const result=buildClimbCurriculum(
     twin([focus('POWER_SPIKE_CONVERSION',100),focus('RESET_DISCIPLINE',70)]),
@@ -113,6 +123,89 @@ test('foundation prerequisite becomes the current lesson even before it has its 
   assert.equal(power?.readiness,'LOCKED');
 });
 
+test('curriculum keeps one sticky active objective until its graduation gate is met',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('POWER_SPIKE_CONVERSION',100),focus('FIGHT_SELECTION',60)]),
+    memory([
+      card('RESET_DISCIPLINE','MASTERED',{memoryStrength:92,cleanStreak:4}),
+      card('POWER_SPIKE_CONVERSION','DUE'),
+      card('FIGHT_SELECTION','DUE'),
+    ]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    previous('FIGHT_SELECTION'),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(result.decision.action,'KEEP');
+  assert.equal(result.decision.changed,false);
+  assert.equal(result.queue.filter((item:any)=>item.readiness==='ACTIVE').length,1);
+  assert.equal(result.queue.find((item:any)=>item.behaviourKey==='POWER_SPIKE_CONVERSION')?.readiness,'READY');
+});
+
+test('graduation advances the curriculum to the next unlocked lesson',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('CARRY_PRESERVATION',90),focus('FIGHT_SELECTION',80)]),
+    memory([
+      card('THREAT_ADAPTATION','MASTERED',{memoryStrength:95,cleanStreak:5}),
+      card('CARRY_PRESERVATION','MASTERED',{memoryStrength:94,cleanStreak:5}),
+      card('FIGHT_SELECTION','DUE'),
+    ]),
+    transfer([tx('CARRY_PRESERVATION','PRINCIPLE_OWNED',95)]),
+    '2026-09-21T13:00:00.000Z',
+    previous('CARRY_PRESERVATION'),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(result.decision.action,'ADVANCE');
+  assert.equal(result.decision.previousLesson,'CARRY_PRESERVATION');
+  assert.equal(result.decision.changed,true);
+});
+
+test('a broken prerequisite takes control before the downstream lesson can continue',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('POWER_SPIKE_CONVERSION',100),focus('RESET_DISCIPLINE',90)]),
+    memory([
+      card('RESET_DISCIPLINE','REGRESSED',{lastVerdict:'IMPROVE'}),
+      card('POWER_SPIKE_CONVERSION','DUE'),
+    ]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    previous('POWER_SPIKE_CONVERSION'),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'RESET_DISCIPLINE');
+  assert.equal(result.decision.action,'PREREQUISITE');
+  assert.equal(result.queue.find((item:any)=>item.behaviourKey==='POWER_SPIKE_CONVERSION')?.readiness,'LOCKED');
+});
+
+test('a verified higher-priority regression can interrupt the sticky lesson',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('DEATH_RECOVERY',90),focus('FIGHT_SELECTION',70)]),
+    memory([
+      card('DEATH_RECOVERY','REGRESSED',{lastVerdict:'IMPROVE'}),
+      card('FIGHT_SELECTION','DUE'),
+    ]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    previous('FIGHT_SELECTION'),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'DEATH_RECOVERY');
+  assert.equal(result.decision.action,'REOPEN');
+  assert.equal(result.decision.changed,true);
+});
+
+test('building status does not secretly assign an active lesson',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION')],2),
+    memory([card('FIGHT_SELECTION','BUILDING',{comparableGames:1,confidence:'LOW'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    previous('FIGHT_SELECTION'),
+  );
+  assert.equal(result.status,'BUILDING');
+  assert.equal(result.currentLesson,null);
+  assert.equal(result.decision.action,'BUILDING');
+  assert.equal(result.queue.filter((item:any)=>item.readiness==='ACTIVE').length,0);
+});
+
 test('Progress, API and learning snapshot expose one evidence-gated Curriculum',()=>{
   const component=fs.readFileSync('components/DecisionTwinCommandCenter.tsx','utf8');
   const route=fs.readFileSync('app/api/decision-twin/route.ts','utf8');
@@ -122,10 +215,15 @@ test('Progress, API and learning snapshot expose one evidence-gated Curriculum',
   assert.ok(component.includes('CURRENT LESSON'));
   assert.ok(component.includes('GRADUATION TEST'));
   assert.ok(component.includes('NEXT UNLOCK'));
-  assert.ok(route.includes('buildClimbCurriculum(twin,scenarioMemory,decisionTransfer)'));
+  assert.ok(component.includes('CURRICULUM DECISION'));
+  assert.ok(route.includes("select('recent_change')"));
+  assert.ok(route.includes('buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum)'));
   assert.ok(route.includes('curriculum,'));
-  assert.ok(repo.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now)'));
+  assert.ok(repo.includes("select('recent_change')"));
+  assert.ok(repo.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum)'));
   assert.ok(repo.includes('scenarioMemory,decisionTransfer,curriculum,generatedAt:now'));
+  assert.ok(draft.includes("select('learning_identity,recent_change')"));
+  assert.ok(draft.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum)'));
   assert.ok(draft.includes("source:'CLIMB_CURRICULUM'"));
   assert.ok(draft.includes('Do not force the current development focus into an irrelevant draft'));
 });
