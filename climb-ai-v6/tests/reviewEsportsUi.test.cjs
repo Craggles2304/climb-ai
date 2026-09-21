@@ -83,7 +83,7 @@ test('post-game review closes the loop into the server-authoritative Active Five
 });
 
 test('Companion shows whether repeated evidence actually changed the development plan',()=>{
-  assert.ok(core.includes('DEVELOPMENT PLAN · ACTIVE FIVE'));
+  assert.ok(core.includes('YOUR ACTIVE FIVE'));
   assert.ok(core.includes('ACTIVE FIVE UPDATED FROM REPEATED EVIDENCE'));
   assert.ok(core.includes('ACTIVE FIVE CHECKED · NO MISSION REPLACED'));
   assert.ok(core.includes('One unusual game cannot replace or reopen a persistent development mission.'));
@@ -138,7 +138,7 @@ test('post-game review renders the highest-value counterfactual decisions withou
   assert.ok(decisionGraph.includes('COACHING_RULE'));
   assert.ok(decisionGraph.includes('topCounterfactualNodeIds'));
   assert.ok(decisionGraph.includes('does not claim the alternative would guarantee'));
-  assert.ok(core.includes('COUNTERFACTUAL COACHING · BETTER DECISION'));
+  assert.ok(core.includes('BETTER DECISION · ALTERNATIVE LINE'));
   assert.ok(core.includes('function renderCounterfactuals'));
   assert.ok(core.includes('WHAT YOU DID'));
   assert.ok(core.includes('BETTER OPTION'));
@@ -168,7 +168,7 @@ test('post-game review closes the loop by measuring whether the pre-game Persona
 test('post-game review scores the frozen Decision Pre-Mortem without treating unobserved risks as success',()=>{
   assert.ok(decisionGraph.includes('reviewDecisionPremortem'));
   assert.ok(decisionGraph.includes('premortem:premortemReview'));
-  assert.ok(core.includes('DECISION PRE-MORTEM · DID THE RISK MAP HOLD?'));
+  assert.ok(core.includes('RISK MAP · DID THE PATTERN HOLD?'));
   assert.ok(core.includes('function renderPremortem'));
   assert.ok(core.includes('BEAT PATTERN'));
   assert.ok(core.includes('PATTERN HIT'));
