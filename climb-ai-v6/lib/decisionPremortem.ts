@@ -215,7 +215,7 @@ function titleFor(key:DecisionBehaviourKey,tag:DecisionSituationTag|null){
   if(key==='POWER_SPIKE_CONVERSION')return'USE THE SPIKE BEFORE IT EXPIRES';
   if(key==='CARRY_PRESERVATION'||key==='SURVIVAL_VALUE')return'KEEP DAMAGE UPTIME ALIVE';
   if(key==='FIGHT_SELECTION')return'CHOOSE THE FIGHT, DO NOT INHERIT IT';
-  return LABELS[key].toUpperCase();
+  return'DECISION WINDOW';
 }
 
 function evidenceForPattern(pattern:DecisionSituationPattern){
