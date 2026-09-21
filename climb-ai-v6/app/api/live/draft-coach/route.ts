@@ -12,6 +12,8 @@ import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
 import {buildDraftCarryMap,type DraftCarryMap} from '@/lib/carryRoleMap';
 import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
+import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
+import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
@@ -237,7 +239,13 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const decisionTwin=storedTwin?.version===1&&Array.isArray(storedTwin?.behaviours)?storedTwin:buildDecisionTwin(rows);
   const scenarioMemory=buildScenarioMemory(rows);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null,decisionTwin,scenarioMemory,decisionTransfer};
+  const decisionTwinV2=buildDecisionTwinV2(rows);
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer);
+  const curriculumLesson=curriculum.status==='ACTIVE'?curriculum.currentLesson:null;
+  const mission=curriculumLesson
+    ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
+    :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -439,6 +447,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'OUR TEAM: '+JSON.stringify(ours),
       'ENEMY TEAM: '+JSON.stringify(enemies),
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
+      'CURRICULUM USE RULE: Do not force the current development focus into an irrelevant draft. Reinforce it only when this composition can naturally express that decision; the frozen game plan and enemy threat structure remain primary.',
       'PERSONAL TRAP EVIDENCE: '+JSON.stringify(personalTrap),
       'DECISION PRE-MORTEM: '+JSON.stringify(decisionPremortem),
       'DRAFT CARRY MAP: '+JSON.stringify(carryMap),
