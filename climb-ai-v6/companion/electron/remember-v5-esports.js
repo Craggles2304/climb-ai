@@ -423,6 +423,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemBranchFight',branch.fight||branch.rule||'USE THE BASE PLAN');
     set('opRemBranchObjective',branch.objective||'USE THE BASE OBJECTIVE PLAN');
     set('opRemBranchRisk',branch.decisionRisk||'NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.');
+    set('opRemGameCall',branch.job||branch.headline||selectedBranch);
+    set('opRemGameCallWhy',selectedBranch+' BRANCH · FROZEN BEFORE GAME');
+    set('opRemDecisionCall',branch.priority||'SET UP');
+    set('opRemFightWhen',branch.fightWhen||branch.fight||'USE THE BASE FIGHT RULE');
+    set('opRemStopRule',branch.stop||branch.never||'DO NOT FORCE THE WRONG FIGHT');
     const rule=$('opRemBranchRule');
     if(rule)rule.textContent=upper(branch.rule||'PLAYER CHOOSES THIS PREWRITTEN BRANCH')+' · NEVER AUTO-CHANGED';
   }
@@ -614,6 +619,14 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     }
   }
 
+  function coachPriority(coach){
+    const text=upper([coach?.headline,coach?.why,coach?.fightTrigger].map(clean).filter(Boolean).join(' '));
+    if(/FARM|SCALE|SURVIVE|WAIT|PRESERVE|ABSORB/.test(text))return'FARM';
+    if(/PRESS|TEMPO|FIRST MOVE|DENY|CONTROL/.test(text))return'PRESSURE';
+    if(/FIGHT|ENGAGE|DIVE|PICK|ATTACK|PUNISH/.test(text))return'FIGHT';
+    return'SET UP';
+  }
+
   function applyCoach(coach,champion,userRole,ours,enemies){
     if(!coach)return;
     const threats=Array.isArray(coach?.threats)?coach.threats.map(clean).filter(Boolean).slice(0,3):[];
@@ -633,6 +646,9 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRememberTitle',`${champion||'YOU'} · ${resolvedRole||'ROLE'} // WIN CONDITION`);
     set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
     set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
+    set('opRemDecisionCall',coachPriority(coach),'SET UP');
+    set('opRemFightWhen',coach?.fightTrigger||coach?.threatAnswer||'YOUR SETUP IS READY');
+    set('opRemStopRule',coach?.never||coach?.lanePlan?.respect||'DO NOT FORCE THE WRONG FIGHT');
     const threatLabel=document.querySelector('#opRememberHud .rem4-threat .rem4-label');
     if(threatLabel&&clean(coach?.threatLabel))threatLabel.textContent=upper(coach.threatLabel);
     set('opRemThreat',threatText);
