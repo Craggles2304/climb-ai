@@ -71,7 +71,7 @@ body.op-remember-live .rem4-vs{font-size:11px!important;color:#d6ff2f!important;
 body.op-remember-live .rem4-call-row{gap:13px!important}
 body.op-remember-live .rem4-call,body.op-remember-live .rem4-threat{position:relative;overflow:hidden;padding:24px 25px!important;display:flex;flex-direction:column;justify-content:center;box-shadow:inset 0 1px rgba(255,255,255,.035)}
 body.op-remember-live .rem4-call{border-color:rgba(214,255,47,.48)!important;background:linear-gradient(102deg,rgba(214,255,47,.15),rgba(12,21,18,.38) 58%,rgba(4,8,11,.72))!important}
-body.op-remember-live .rem4-call:after{content:'GAME PLAN';position:absolute;right:20px;top:16px;font-size:7px;letter-spacing:.28em;color:rgba(214,255,47,.30);font-weight:950}
+body.op-remember-live .rem4-call:after{content:'ONE JOB';position:absolute;right:20px;top:16px;font-size:7px;letter-spacing:.28em;color:rgba(214,255,47,.30);font-weight:950}
 body.op-remember-live .rem4-call strong{font-size:clamp(38px,4.4vw,70px)!important;line-height:.94!important;max-width:90%;text-shadow:0 12px 40px rgba(0,0,0,.54)}
 body.op-remember-live .rem4-call small{font-size:11px!important;letter-spacing:.04em!important;color:#d3dbdf!important;margin-top:12px!important}
 body.op-remember-live .rem4-threat{border-color:rgba(255,75,75,.42)!important;background:linear-gradient(118deg,rgba(115,23,31,.34),rgba(9,9,13,.78))!important}
