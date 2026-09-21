@@ -144,7 +144,7 @@
       supportRate:rate,
       bestRead:best,
       biggestReview,
-      headline:reads.length?String(supported)+'/'+String(graded||reads.length)+' GRADED READS SUPPORTED':'NO MANUAL GAME READS TO GRADE',
+      headline:graded?String(supported)+'/'+String(graded)+' GRADED READS SUPPORTED':reads.length?String(reads.length)+' READ'+(reads.length===1?'':'S')+' RECORDED · NONE GRADED':'NO MANUAL GAME READS TO GRADE',
       boundary:'POST-GAME ONLY. OP CLIMB REVIEWS PLAYER-SELECTED BRANCHES AGAINST RECORDED VISIBLE STATE; IT NEVER AUTO-SELECTS OR CHANGES THE IN-GAME PLAN.',
     };
   }
