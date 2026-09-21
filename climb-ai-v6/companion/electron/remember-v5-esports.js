@@ -451,8 +451,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemCarryPlay',item.playAround||'FROZEN CONTINGENCY');
     set('opRemGameCall',item.job||'USE THE FROZEN CONTINGENCY');
     set('opRemGameCallWhy',(item.label||selectedContingency)+' · PLAYER SELECTED · FROZEN BEFORE GAME');
+    if(item.priority&&item.priority!=='ORIGINAL')set('opRemDecisionCall',item.priority);
     set('opRemFightWhen',item.fightWhen||'USE THE PREWRITTEN FIGHT RULE');
     set('opRemStopRule',item.never||'DO NOT FORCE THE ORIGINAL PLAN');
+    set('opRemBranchFight',item.fightWhen||'USE THE PREWRITTEN FIGHT RULE');
+    set('opRemBranchObjective',item.objective||'USE THE PREWRITTEN OBJECTIVE RULE');
   }
 
   function renderSelectedContingency(){
