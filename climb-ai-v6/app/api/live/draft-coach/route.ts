@@ -215,7 +215,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(12)
     :Promise.resolve({data:[],error:null});
   const learningPromise=device.riotAccountId
-    ?db.from('op_player_learning_profiles').select('learning_identity').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
+    ?db.from('op_player_learning_profiles').select('learning_identity,recent_change').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
   const historyPromise=device.riotAccountId
     ?db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('created_at',{ascending:true}).limit(50)
@@ -230,6 +230,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
   const task=tasks[0]??null;
   const storedTwin=learningResult?.data?.learning_identity;
+  const previousCurriculum=((learningResult?.data?.recent_change as any)?.curriculum??null);
   const rows:HistoryAnalysisRow[]=(historyResult?.data??[]).map((row:any)=>({
     champion:clean(row?.champion)||'Unknown',
     role:clean(row?.role)||null,
@@ -240,7 +241,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const scenarioMemory=buildScenarioMemory(rows);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
   const decisionTwinV2=buildDecisionTwinV2(rows);
-  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer);
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
   const curriculumLesson=curriculum.status==='ACTIVE'?curriculum.currentLesson:null;
   const mission=curriculumLesson
     ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
