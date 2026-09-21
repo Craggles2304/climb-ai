@@ -198,6 +198,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       decisionSimulation:coach?._decisionSimulation||null,
       scenarioPrime:coach?._scenarioPrime||null,
       decisionTransferPrime:coach?._decisionTransferPrime||null,
+      climbMission:coach?._climbMission||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -833,6 +834,9 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderDecisionPremortem(coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null);
     renderScenarioPrime(coach?._scenarioPrime||null);
     renderDecisionTransfer(coach?._decisionTransferPrime||null);
+    const climbMission=coach?._climbMission||null;
+    set('opRemMission',climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN');
+    const missionNode=$('opRemMission');if(missionNode)missionNode.title=climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
@@ -871,6 +875,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
         enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
         enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null;
+        enrichedCoach._climbMission=response?.climbMission||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
