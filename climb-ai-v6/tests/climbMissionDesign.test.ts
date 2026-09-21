@@ -140,6 +140,6 @@ test('draft coach, Decision Graph and Companion share the same frozen CLIMB matc
   assert.ok(review.includes('CLIMB MISSION · FROZEN REP REVIEW'));
   assert.ok(review.includes('function renderClimbMissionReview'));
   assert.ok(review.includes('MISSION NOT TESTED'));
-  assert.ok(review.includes('ONE CLEAN REP ≠ GRADUATION'));
+  assert.ok(review.includes('ONE CLEAN REP ≠ DIFFICULTY PROMOTION OR GRADUATION'));
   assert.ok(review.includes('renderClimbMissionReview(review)'));
 });
