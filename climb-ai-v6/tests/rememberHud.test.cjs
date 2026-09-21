@@ -337,3 +337,15 @@ test('Companion path navigation is allowlisted before opening the web Learning J
   assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
   assert.ok(main.includes("safePaths.has(String(path||''))?String(path):'/live'"));
 });
+
+
+test('Decision Twin V3 simulation is frozen, rendered and persisted with the exact draft',()=>{
+  assert.ok(draftCoach.includes('buildDecisionSimulation'));
+  assert.ok(draftCoach.includes('decisionSimulation,'));
+  assert.ok(esports.includes('DECISION TWIN V3 · SIMULATION'));
+  assert.ok(esports.includes('function renderDecisionSimulation'));
+  assert.ok(esports.includes("enrichedCoach._decisionSimulation=response?.decisionSimulation"));
+  assert.ok(esports.includes('decisionSimulation:coach?._decisionSimulation'));
+  assert.ok(esports.includes('PERSONAL FORECAST'));
+  assert.ok(esports.includes('DRAFT REHEARSAL'));
+});
