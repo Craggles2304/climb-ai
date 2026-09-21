@@ -318,6 +318,20 @@ test('future Personal Traps can include verified after-cue execution history',()
 });
 
 
+test('Decision Pre-Mortem freezes evidence-backed personal risk windows into the player-selected plan',()=>{
+  assert.ok(draftCoach.includes('buildDecisionPremortem'));
+  assert.ok(draftCoach.includes('DECISION PRE-MORTEM'));
+  assert.ok(draftCoach.includes('decisionPremortem,'));
+  assert.ok(esports.includes('DECISION PRE-MORTEM'));
+  assert.ok(esports.includes('function renderDecisionPremortem'));
+  assert.ok(esports.includes('PRIORITY ≠ PROBABILITY'));
+  assert.ok(esports.includes("enrichedCoach._decisionPremortem=response?.decisionPremortem"));
+  assert.ok(esports.includes('decisionPremortem:coach?._decisionPremortem'));
+  assert.ok(esports.includes("branch.decisionRisk"));
+  assert.ok(esports.includes('PERSONAL RISK RULE'));
+});
+
+
 test('Companion path navigation is allowlisted before opening the web Learning Journey',()=>{
   assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
   assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
