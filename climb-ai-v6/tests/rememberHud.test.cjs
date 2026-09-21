@@ -23,7 +23,7 @@ test('recording UI is a concise esports coach board instead of a text wall',()=>
   assert.doesNotThrow(()=>new Function(matchup));
   assert.doesNotThrow(()=>new Function(esports));
   assert.doesNotThrow(()=>new Function(liveRoster));
-  for(const label of ['YOUR TEAM','THEIR TEAM','MATCH CALL','MAIN THREAT','YOUR WIN CONDITION PATH','DO THESE IN ORDER','LANE','WAVE','TRADE','NEVER','IF BEHIND','CLIMB MISSION']){
+  for(const label of ['YOUR TEAM','THEIR TEAM','YOUR JOB','MAIN THREAT','YOUR WIN CONDITION PATH','DO THESE IN ORDER','LANE','WAVE','TRADE','NEVER','IF BEHIND','CLIMB MISSION']){
     assert.ok(hud.includes(label),`missing ${label}`);
   }
   assert.ok(hud.includes('5 / 10 / 15 MIN SELF-CHECK'));
@@ -391,4 +391,19 @@ test('live board defaults to a five-second brief while deep coaching stays avail
   assert.ok(!esports.includes('DECISION TWIN V3'));
   assert.ok(!esports.includes('DECISION TWIN V4'));
   assert.ok(!esports.includes('DECISION TWIN V5'));
+});
+
+
+test('one-command layer answers fight versus farm before deeper coaching',()=>{
+  for(const label of ['YOUR JOB','FIGHT / FARM','FIGHT WHEN','DON’T'])assert.ok(hud.includes(label),`missing decision command label: ${label}`);
+  assert.ok(hud.includes('id="opRemDecisionCall"'));
+  assert.ok(hud.includes('id="opRemFightWhen"'));
+  assert.ok(hud.includes('id="opRemStopRule"'));
+  assert.ok(hud.includes('function decisionPriority(call)'));
+  assert.ok(hud.includes('function localFightWhen'));
+  assert.ok(esports.includes('function coachPriority(coach)'));
+  assert.ok(esports.includes("set('opRemDecisionCall',branch.priority"));
+  assert.ok(esports.includes("set('opRemFightWhen',branch.fightWhen"));
+  assert.ok(esports.includes("set('opRemStopRule',branch.stop"));
+  assert.ok(esports.includes("set('opRemGameCall',branch.job"));
 });
