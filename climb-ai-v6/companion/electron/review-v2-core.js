@@ -54,6 +54,7 @@
       safeArray(stored.threats).map(clean).filter(Boolean).join(' + '),
     ].filter(Boolean).join(' · ');
     const branchHistory=safeArray(stored.branchSelections).map(item=>clean(item?.branch)).filter(Boolean);
+    const contingencyHistory=safeArray(stored.contingencySelections).map(item=>clean(item?.contingency)).filter(Boolean);
     return{
       version:2,
       champion:clean(stored.champion),
@@ -71,6 +72,8 @@
       deepQuality:quality,
       selectedBranch:clean(stored.selectedBranch),
       branchHistory,
+      selectedContingency:clean(stored.selectedContingency),
+      contingencyHistory,
       capturedAt:clean(stored.capturedAt),
     };
   }
@@ -526,7 +529,9 @@
       const verified=source==='AI'&&baseline?.deepQuality?.pass===true;
       const branchTrail=safeArray(baseline?.branchHistory).slice(-6);
       const branchText=branchTrail.length?' · PLAYER BRANCHES: '+branchTrail.join(' → '):(baseline?.selectedBranch?' · LAST SHOWN: '+baseline.selectedBranch:'');
-      setText('op332LockNote',(verified?'DEEP VERIFIED PRE-GAME PLAN':'FROZEN PRE-GAME PLAN')+(tier?' · '+tier:'')+branchText+' · NO RESULT-BASED REWRITING');
+      const contingencyTrail=safeArray(baseline?.contingencyHistory).slice(-6);
+      const contingencyText=contingencyTrail.length?' · PLAYER CONTINGENCIES: '+contingencyTrail.join(' → '):(baseline?.selectedContingency?' · PLAN: '+baseline.selectedContingency:'');
+      setText('op332LockNote',(verified?'DEEP VERIFIED PRE-GAME PLAN':'FROZEN PRE-GAME PLAN')+(tier?' · '+tier:'')+branchText+contingencyText+' · PLAYER-SELECTED · NO RESULT-BASED REWRITING');
     }else{
       setText('op332LockNote','REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING');
     }

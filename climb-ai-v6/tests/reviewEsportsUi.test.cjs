@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.28');
+  assert.equal(pkg.version,'0.7.29');
 });
 
 
@@ -236,4 +236,12 @@ test('post-game review promotes five key decisions and collapses the evidence wa
   assert.ok(!core.includes('DECISION TWIN V3 · SIMULATION REVIEW'));
   assert.ok(!core.includes('DECISION TWIN V4 · SPACED REP REVIEW'));
   assert.ok(!core.includes('DECISION TWIN V5 · TRANSFER REVIEW'));
+});
+
+
+test('post-game review preserves player contingency choices without pretending to validate live state',()=>{
+  assert.ok(core.includes('contingencySelections'));
+  assert.ok(core.includes('selectedContingency'));
+  assert.ok(core.includes('PLAYER CONTINGENCIES:'));
+  assert.ok(core.includes('PLAYER-SELECTED · NO RESULT-BASED REWRITING'));
 });

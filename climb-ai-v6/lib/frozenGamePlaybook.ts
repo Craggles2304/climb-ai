@@ -2,6 +2,7 @@ import type {CoachEnginePlan} from './draftCoachEngine';
 import type {DraftRole,DraftRolePlayer} from './draftRoleResolver';
 import type {DecisionPremortem} from './decisionPremortem';
 import {buildDraftCarryMap,type DraftCarryMap} from './carryRoleMap';
+import {buildFrozenContingencyMap,type FrozenContingencyMap} from './frozenContingencyMap';
 
 export type FrozenBranchKey='AHEAD'|'EVEN'|'BEHIND';
 
@@ -41,6 +42,7 @@ export interface FrozenGamePlaybook{
   checkpoints:FrozenCheckpoint[];
   decisionPremortem:DecisionPremortem|null;
   carryMap:DraftCarryMap;
+  contingencyMap:FrozenContingencyMap;
 }
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
@@ -93,6 +95,12 @@ export function buildFrozenGamePlaybook(input:{
     ours:input.ours,
     enemies:input.enemies,
     mainThreat:input.plan.threats?.[0]??null,
+  });
+  const contingencyMap=buildFrozenContingencyMap({
+    champion,
+    role:input.role,
+    carryMap,
+    plan:input.plan,
   });
   const topRisk=decisionPremortem?.risks?.[0]??null;
   const branchRisk=(key:FrozenBranchKey)=>compact(topRisk?.branchRules?.[key]||'NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.');
@@ -160,12 +168,14 @@ export function buildFrozenGamePlaybook(input:{
     branches:{AHEAD:ahead,EVEN:even,BEHIND:behind},
     decisionPremortem,
     carryMap,
+    contingencyMap,
     checkpoints:[
       {
         minute:5,
         prompt:'5 MIN · READ THE BOARD YOURSELF',
         questions:[
           'WHICH PREBUILT BRANCH FITS: AHEAD / EVEN / BEHIND?',
+          'IS PLAN A STILL USABLE? IF NOT, YOU CHOOSE PLAN B / RECOVERY — OP CLIMB WILL NOT SWITCH IT FOR YOU.',
           compact('IS THE LANE STILL BEING PLAYED BY THE ORIGINAL RULE? '+input.plan.lanePlan.wave,150),
           compact('ARE YOU RESPECTING THE DRAFT THREAT? '+input.plan.threatAnswer,150),
           ...(topRisk?[compact('PRE-MORTEM #1 · '+topRisk.trigger+' '+topRisk.preventionRule,150)]:[]),
@@ -176,6 +186,7 @@ export function buildFrozenGamePlaybook(input:{
         prompt:'10 MIN · READ THE BOARD YOURSELF',
         questions:[
           'WHICH PREBUILT BRANCH FITS NOW: AHEAD / EVEN / BEHIND?',
+          'IS THE ORIGINAL CARRY CONDITION STILL PLAYABLE? IF NO, SELECT THE FROZEN CONTINGENCY YOURSELF.',
           compact('IS YOUR NEXT FIGHT STILL STARTING ON THE RIGHT CONDITION? '+baseFight,150),
           compact('ARE YOU RESETTING / MOVING EARLY ENOUGH FOR THE ORIGINAL OBJECTIVE PLAN? '+baseObjective,150),
           ...(topRisk?[compact('PERSONAL RISK CHECK · '+topRisk.branchRules.EVEN,150)]:[]),
@@ -186,6 +197,7 @@ export function buildFrozenGamePlaybook(input:{
         prompt:'15 MIN · READ THE BOARD YOURSELF',
         questions:[
           'WHICH PREBUILT BRANCH FITS NOW: AHEAD / EVEN / BEHIND?',
+          'WHICH FROZEN PLAN FITS NOW: PLAN A / PLAN B / RECOVERY?',
           compact('BEFORE THE NEXT MAJOR FIGHT, CAN YOU STILL EXECUTE: '+input.plan.headline,150),
           compact('IF THE GAME IS MESSY, RETURN TO THE NEVER RULE: '+baseNever,150),
           ...(topRisk?[compact('DO NOT LET THE GAME STATE ERASE THE PRE-MORTEM: '+topRisk.preventionRule,150)]:[]),
