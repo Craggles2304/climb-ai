@@ -6,6 +6,7 @@ import {LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip,ResponsiveContainer} fr
 import {climbScore} from '@/lib/engine';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {LearningJourneyTimeline} from '@/components/LearningJourneyTimeline';
+import {DecisionTwinCommandCenter} from '@/components/DecisionTwinCommandCenter';
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const delta=(a:number,b:number)=>a-b;
 const signed=(n:number,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
@@ -52,6 +53,7 @@ export default function Progress(){
       <div className="vf-verdict-action"><span>NEXT ACTION</span><b>{active.role==='ADC'?'Protect the last wave before objective setup.':'Track objective timing and deaths around setup.'}</b></div>
     </section>
 
+    <DecisionTwinCommandCenter accountId={active.id}/>
     <LearningJourneyTimeline accountId={active.id}/>
   </AppShell>;
 }
