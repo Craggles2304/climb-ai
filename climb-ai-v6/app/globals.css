@@ -785,3 +785,26 @@ img.logo-sm{width:132px}
   .dt2-focus-rank{font-size:22px}
   .dt2-ledger-stats{grid-template-columns:repeat(2,1fr)}
 }
+
+.dt2-challenge{margin-top:20px;border-radius:22px;padding:22px;border:1px solid rgba(83,161,255,.18);background:linear-gradient(145deg,rgba(83,161,255,.055),rgba(255,255,255,.018))}
+.dt2-challenge-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
+.dt2-challenge-head span,.dt2-challenge-reveal span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#53a1ff}
+.dt2-challenge-head h3{margin:6px 0 0;font-size:26px;letter-spacing:-.04em}
+.dt2-challenge-head small{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#727d89}
+.dt2-challenge-situation{margin:16px 0 14px;color:#a3adb8;line-height:1.55;max-width:900px}
+.dt2-challenge-options{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.dt2-challenge-options button{appearance:none;border:1px solid rgba(255,255,255,.09);background:rgba(255,255,255,.025);color:inherit;border-radius:16px;padding:16px;text-align:left;display:flex;gap:12px;align-items:flex-start;cursor:pointer;transition:border-color .16s ease,background .16s ease,transform .16s ease}
+.dt2-challenge-options button:hover{border-color:rgba(83,161,255,.35);background:rgba(83,161,255,.045);transform:translateY(-1px)}
+.dt2-challenge-options button.selected{border-color:rgba(214,255,47,.42);background:rgba(214,255,47,.055)}
+.dt2-challenge-options button>span{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:8px;background:rgba(255,255,255,.06);font-size:11px;font-weight:900;color:#d6ff2f}
+.dt2-challenge-options button b{font-size:13px;line-height:1.5}
+.dt2-challenge-reveal{margin-top:14px;border-top:1px solid rgba(255,255,255,.075);padding-top:14px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.dt2-challenge-reveal>div{border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:13px;display:grid;gap:5px;align-content:start}
+.dt2-challenge-reveal b{font-size:13px;line-height:1.45}
+.dt2-challenge-reveal small{color:#7f8994;line-height:1.5}
+.dt2-challenge-reveal>p{grid-column:1/-1;margin:0;color:#68737f;font-size:10px;letter-spacing:.045em;line-height:1.5}
+@media(max-width:720px){
+  .dt2-challenge-head{align-items:flex-start;flex-direction:column}
+  .dt2-challenge-options{grid-template-columns:1fr}
+  .dt2-challenge-reveal{grid-template-columns:1fr}
+}
