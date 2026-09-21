@@ -10,6 +10,10 @@
   const ASSET_IDS={
     Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
   };
+  const HYPER_CARRY=new Set(['Aphelios','Aurelion Sol','Azir','Cassiopeia','Jinx',"Kog\'Maw",'Smolder','Twitch','Vayne','Viktor','Vladimir','Zeri']);
+  const SIDE_CARRY=new Set(['Camille','Fiora','Gangplank','Gwen','Irelia','Jax','Kayle','Nasus','Tryndamere','Vayne','Yorick']);
+  const CARRY_JUNGLE=new Set(["Bel'Veth",'Graves','Karthus','Kindred','Lillia','Master Yi','Nidalee','Nocturne','Shyvana','Viego']);
+  const FRONTLINE=new Set(['Alistar','Amumu','Braum',"Cho'Gath",'Dr. Mundo','Galio','Gragas',"K'Sante",'Leona','Maokai','Malphite','Nautilus','Ornn','Poppy','Rakan','Rell','Sejuani','Sett','Shen','Sion','Skarner','Tahm Kench','Taric','Volibear','Zac']);
   const SCALERS=new Set(['Aphelios','Aurelion Sol','Azir',"Bel'Veth",'Cassiopeia','Gangplank','Jax','Jinx','Kassadin','Kayle','Kindred',"Kog'Maw",'Master Yi','Nasus','Senna','Smolder','Sona','Tristana','Twitch','Vayne','Veigar','Viktor','Vladimir']);
   const EARLY=new Set(['Darius','Draven','Elise','Jarvan IV','Jayce','Kalista','Kled','Lee Sin','LeBlanc','Lucian','Nidalee','Olaf','Pantheon','Pyke',"Rek'Sai",'Renekton','Rumble','Talon','Xin Zhao','Zed']);
   const ASSASSINS=new Set(['Akali','Diana','Ekko','Evelynn','Fizz','Katarina',"Kha'Zix",'Kayn','Naafiri','Nocturne','Qiyana','Rengar','Shaco','Talon','Zed']);
@@ -69,6 +73,10 @@ body.op-remember-live .rem4-pick-role{font-size:7px!important}body.op-remember-l
 body.op-remember-live .rem4-pick.threat{border-color:rgba(255,79,79,.75)!important;box-shadow:0 0 0 1px rgba(255,70,70,.15),inset 0 -30px 55px rgba(255,38,38,.18)!important}
 body.op-remember-live .rem4-vs{font-size:11px!important;color:#d6ff2f!important;padding-bottom:34px!important}
 body.op-remember-live .rem4-call-row{gap:13px!important}
+body.op-remember-live .rem4-carry-strip{display:grid!important;grid-template-columns:1fr .9fr 1.35fr!important;gap:10px!important}
+body.op-remember-live .rem4-carry-cell{padding:12px 14px!important;border-color:rgba(255,255,255,.11)!important;background:linear-gradient(135deg,rgba(12,20,26,.82),rgba(5,9,13,.82))!important}
+body.op-remember-live .rem4-carry-cell.primary{border-color:rgba(214,255,47,.32)!important;background:linear-gradient(135deg,rgba(214,255,47,.08),rgba(5,9,13,.84))!important}
+body.op-remember-live .rem4-carry-cell span{font-size:7px!important}body.op-remember-live .rem4-carry-cell strong{font-size:12px!important;margin-top:6px!important}
 body.op-remember-live .rem4-call,body.op-remember-live .rem4-threat{position:relative;overflow:hidden;padding:24px 25px!important;display:flex;flex-direction:column;justify-content:center;box-shadow:inset 0 1px rgba(255,255,255,.035)}
 body.op-remember-live .rem4-call{border-color:rgba(214,255,47,.48)!important;background:linear-gradient(102deg,rgba(214,255,47,.15),rgba(12,21,18,.38) 58%,rgba(4,8,11,.72))!important}
 body.op-remember-live .rem4-call:after{content:'ONE JOB';position:absolute;right:20px;top:16px;font-size:7px;letter-spacing:.28em;color:rgba(214,255,47,.30);font-weight:950}
@@ -150,7 +158,7 @@ body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}body.op-remember-live .rem5-coach-detail{border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.42)}body.op-remember-live .rem5-coach-detail>summary{cursor:pointer;list-style:none;padding:10px 11px;color:#8997a1;font-size:7px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}body.op-remember-live .rem5-coach-detail>summary::-webkit-details-marker{display:none}body.op-remember-live .rem5-coach-detail>summary:after{content:' +';float:right;color:#d6ff2f}body.op-remember-live .rem5-coach-detail[open]>summary:after{content:' −'}body.op-remember-live .rem5-coach-detail-body{padding:0 9px 9px;display:grid;gap:8px}
-@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem4-carry-strip{grid-template-columns:1fr!important}body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -424,7 +432,9 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemBranchObjective',branch.objective||'USE THE BASE OBJECTIVE PLAN');
     set('opRemBranchRisk',branch.decisionRisk||'NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.');
     set('opRemGameCall',branch.job||branch.headline||selectedBranch);
-    set('opRemGameCallWhy',selectedBranch+' BRANCH · FROZEN BEFORE GAME');
+    const carry=lastPlaybook?.carryMap||null;
+    renderCarryMap(carry);
+    set('opRemGameCallWhy',(clean(carry?.playerLabel)?carry.playerLabel+' · ':'')+selectedBranch+' BRANCH · FROZEN BEFORE GAME');
     set('opRemDecisionCall',branch.priority||'SET UP');
     set('opRemFightWhen',branch.fightWhen||branch.fight||'USE THE BASE FIGHT RULE');
     set('opRemStopRule',branch.stop||branch.never||'DO NOT FORCE THE WRONG FIGHT');
@@ -437,6 +447,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderCoachStatus(lastCoachMeta);
     if(playbook?.version==='FROZEN_V1'&&playbook?.branches){
       lastPlaybook=playbook;
+      renderCarryMap(playbook.carryMap||null);
       if(!lastPlaybook.branches[selectedBranch])selectedBranch='EVEN';
       renderSelectedBranch();
       renderSelfChecks(playbook);
@@ -484,6 +495,54 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     }
     return inferMissingTeamRole(list.slice(0,5));
   }
+  function localCarryScore(player){
+    const role=playerRole(player);const name=clean(player?.champion);let score=role==='ADC'?48:role==='MID'?35:role==='JUNGLE'?29:role==='TOP'?27:role==='SUPPORT'?8:20;
+    if(HYPER_CARRY.has(name))score+=28;
+    if(SCALERS.has(name))score+=17;
+    if(SIDE_CARRY.has(name))score+=17;
+    if(role==='JUNGLE'&&CARRY_JUNGLE.has(name))score+=20;
+    if(PEEL.has(name))score-=14;
+    if(FRONTLINE.has(name))score-=16;
+    if(role==='SUPPORT')score-=8;
+    return Math.max(0,Math.min(100,score));
+  }
+  function localCarryMap(champion,ours,enemies,threat){
+    const ranked=[...ours].sort((a,b)=>localCarryScore(b)-localCarryScore(a));
+    const enemyRanked=[...enemies].sort((a,b)=>localCarryScore(b)-localCarryScore(a));
+    const primary=ranked[0]||{champion};
+    const secondary=ranked.find(p=>clean(p?.champion)!==clean(primary?.champion))||null;
+    const me=ranked.find(p=>clean(p?.champion).toLowerCase()===clean(champion).toLowerCase())||{champion,position:''};
+    let playerLabel='ENABLER';
+    if(clean(me?.champion)===clean(primary?.champion))playerLabel='PRIMARY CARRY';
+    else if(secondary&&clean(me?.champion)===clean(secondary?.champion)&&localCarryScore(me)>=34)playerLabel='SECONDARY CARRY';
+    else if(PEEL.has(clean(me?.champion))||FRONTLINE.has(clean(me?.champion))||playerRole(me)==='SUPPORT')playerLabel='THREAT DENIAL';
+    const primaryName=clean(primary?.champion)||champion||'YOUR CARRY';
+    const mainThreat=clean(threat)||clean(enemyRanked[0]?.champion)||'THEIR MAIN THREAT';
+    const playerJob=playerLabel==='PRIMARY CARRY'
+      ?'TAKE SAFE RESOURCES → HIT YOUR SPIKE → STAY ALIVE'
+      :playerLabel==='SECONDARY CARRY'
+        ?'KEEP YOUR SPIKE → CONNECT TO '+primaryName
+        :playerLabel==='THREAT DENIAL'
+          ?'KEEP '+primaryName+' SAFE → DENY '+mainThreat
+          :'CREATE SPACE FOR '+primaryName+' → CONNECT FIRST';
+    return{
+      primary:{champion:primaryName},
+      secondary:secondary?{champion:clean(secondary.champion)}:null,
+      enemyPrimary:enemyRanked[0]?{champion:clean(enemyRanked[0].champion)}:null,
+      playerLabel,
+      resourceOwner:primaryName,
+      playAround:playerLabel==='THREAT DENIAL'?primaryName+' / DENY '+mainThreat:primaryName,
+      playerJob,
+      reason:playerLabel==='PRIMARY CARRY'?'YOU ARE THE DRAFT RESOURCE PRIORITY':primaryName+' IS THE DRAFT RESOURCE PRIORITY',
+    };
+  }
+  function renderCarryMap(map){
+    if(!map)return;
+    set('opRemCarryPrimary',map?.primary?.champion||map?.resourceOwner||'YOUR CARRY');
+    set('opRemCarryRole',map?.playerLabel||'ENABLER');
+    set('opRemCarryPlay',map?.playAround||map?.resourceOwner||'YOUR TEAM PLAN');
+  }
+
   function scoreThreat(player,userRole){
     const name=clean(player?.champion);const role=playerRole(player);let score=0;
     if(ASSASSINS.has(name))score+=8;
@@ -644,8 +703,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       return serverRole?{...p,position:serverRole}:p;
     });
     set('opRememberTitle',`${champion||'YOU'} · ${resolvedRole||'ROLE'} // WIN CONDITION`);
-    set('opRemGameCall',coach?.headline||'WIN THE DRAFT');
-    set('opRemGameCallWhy',coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
+    const carryMap=coach?._playbook?.carryMap||coach?._carryMap||localCarryMap(champion,resolvedOurs,resolvedEnemies,threats[0]);
+    renderCarryMap(carryMap);
+    set('opRemGameCall',carryMap?.playerJob||coach?.headline||'WIN THE DRAFT');
+    set('opRemGameCallWhy',carryMap?.reason||coach?.why||'PLAY THE FIGHT YOUR COMPOSITION WANTS');
     set('opRemDecisionCall',coachPriority(coach),'SET UP');
     set('opRemFightWhen',coach?.fightTrigger||coach?.threatAnswer||'YOUR SETUP IS READY');
     set('opRemStopRule',coach?.never||coach?.lanePlan?.respect||'DO NOT FORCE THE WRONG FIGHT');

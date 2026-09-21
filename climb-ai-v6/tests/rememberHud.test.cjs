@@ -407,3 +407,25 @@ test('one-command layer answers fight versus farm before deeper coaching',()=>{
   assert.ok(esports.includes("set('opRemStopRule',branch.stop"));
   assert.ok(esports.includes("set('opRemGameCall',branch.job"));
 });
+
+
+test('draft carry map names the real resource condition without assuming the player carries',()=>{
+  for(const label of ['WHO CARRIES?','YOUR ROLE','PLAY AROUND'])assert.ok(hud.includes(label),`missing carry-map label: ${label}`);
+  assert.ok(hud.includes('id="opRemCarryPrimary"'));
+  assert.ok(hud.includes('id="opRemCarryRole"'));
+  assert.ok(hud.includes('id="opRemCarryPlay"'));
+  assert.ok(hud.includes('function localCarryMap'));
+  assert.ok(esports.includes('function renderCarryMap'));
+  assert.ok(esports.includes('lastPlaybook?.carryMap'));
+  assert.ok(esports.includes('carryMap?.playerJob'));
+  assert.ok(esports.includes('carryMap?.reason'));
+  assert.ok(draftCoach.includes('buildFrozenGamePlaybook'));
+});
+
+
+test('draft coach receives the same frozen carry hierarchy used by the HUD',()=>{
+  assert.ok(draftCoach.includes('buildDraftCarryMap'));
+  assert.ok(draftCoach.includes('DRAFT CARRY MAP'));
+  assert.ok(draftCoach.includes("If the player is ENABLER or THREAT DENIAL"));
+  assert.ok(draftCoach.includes("If the player is SECONDARY CARRY"));
+});

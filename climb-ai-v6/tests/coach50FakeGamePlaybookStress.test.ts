@@ -106,6 +106,11 @@ test('50 fake games keep one frozen pregame playbook through 300 changing live s
     assert.equal(playbook.version,'FROZEN_V1');
     assert.equal(playbook.checkpoints.length,3);
     assert.deepEqual(playbook.checkpoints.map(check=>check.minute),[5,10,15]);
+    assert.equal(playbook.carryMap.frozenFromPregame,true);
+    assert.equal(playbook.carryMap.usesLiveTelemetry,false);
+    assert.ok(playbook.carryMap.primary.champion.length>0);
+    assert.ok(['PRIMARY_CARRY','SECONDARY_CARRY','ENABLER','THREAT_DENIAL'].includes(playbook.carryMap.playerRole));
+    assert.ok(playbook.carryMap.playerJob.length>20);
     for(const check of playbook.checkpoints){
       assert.match(check.prompt,/READ THE BOARD YOURSELF/);
       assert.ok(check.questions.some(question=>/AHEAD \/ EVEN \/ BEHIND/.test(question)));
@@ -133,6 +138,8 @@ test('50 fake games keep one frozen pregame playbook through 300 changing live s
       assert.ok(selected.job.length>10);
       assert.ok(selected.fightWhen.length>10);
       assert.ok(selected.stop.length>10);
+      assert.ok(playbook.carryMap.resourceOwner.length>0);
+      assert.ok(playbook.carryMap.playAround.length>0);
 
       // Fake telemetry exists only in the simulation. It must never rewrite the coach.
       const rebuilt=buildFrozenGamePlaybook({champion:player.champion,role,rank,ours:draft.ours,enemies:draft.enemies,plan});

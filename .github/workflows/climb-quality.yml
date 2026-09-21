@@ -55,7 +55,7 @@ jobs:
       - name: Champion and combo regressions
         run: node --import tsx --test tests/championMechanics.test.ts tests/championRegistry.test.ts tests/champions.test.ts tests/combos.test.ts tests/confidence.test.ts tests/compositionIntelligence.test.ts tests/rememberPlan.test.ts
       - name: Coach rank win-condition benchmarks
-        run: node --import tsx --test tests/coachWinConditionEval.test.ts tests/draftRoleResolver.test.ts tests/coach100DraftTorture.test.ts tests/coach300DraftStress.test.ts tests/coach200OffMetaStress.test.ts tests/coach50FakeGamePlaybookStress.test.ts
+        run: node --import tsx --test tests/coachWinConditionEval.test.ts tests/draftRoleResolver.test.ts tests/coach100DraftTorture.test.ts tests/coach300DraftStress.test.ts tests/coach200OffMetaStress.test.ts tests/coach50FakeGamePlaybookStress.test.ts tests/carryRoleMap.test.ts
       - name: Combat engine regressions
         run: node --import tsx --test tests/costOfLeak.test.ts tests/damage.test.ts tests/dps.test.ts tests/duel.test.ts tests/duelInteractions.test.ts tests/effects.test.ts tests/formula.test.ts tests/importSpells.test.ts tests/items.test.ts tests/trades.test.ts
       - name: Product regressions
