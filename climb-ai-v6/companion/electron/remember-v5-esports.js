@@ -514,7 +514,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const me=ranked.find(p=>clean(p?.champion).toLowerCase()===clean(champion).toLowerCase())||{champion,position:''};
     let playerLabel='ENABLER';
     if(clean(me?.champion)===clean(primary?.champion))playerLabel='PRIMARY CARRY';
-    else if(secondary&&clean(me?.champion)===clean(secondary?.champion)&&localCarryScore(me)>=46)playerLabel='SECONDARY CARRY';
+    else if(secondary&&clean(me?.champion)===clean(secondary?.champion)&&localCarryScore(me)>=34)playerLabel='SECONDARY CARRY';
     else if(PEEL.has(clean(me?.champion))||FRONTLINE.has(clean(me?.champion))||playerRole(me)==='SUPPORT')playerLabel='THREAT DENIAL';
     const primaryName=clean(primary?.champion)||champion||'YOUR CARRY';
     const mainThreat=clean(threat)||clean(enemyRanked[0]?.champion)||'THEIR MAIN THREAT';
