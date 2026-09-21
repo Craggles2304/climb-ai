@@ -5,6 +5,7 @@ import {reviewDecisionPremortem,type DecisionPremortem,type DecisionPremortemRev
 import {reviewDecisionSimulation,type DecisionSimulation,type DecisionSimulationReview} from './decisionSimulation';
 import {reviewScenarioPrime,type ScenarioPrime,type ScenarioPrimeReview} from './scenarioMemory';
 import {reviewDecisionTransfer,type DecisionTransferPrime,type DecisionTransferReview} from './decisionTransfer';
+import {reviewClimbMatchMission,type ClimbMatchMission,type ClimbMatchMissionReview} from './climbMissionDesign';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -61,6 +62,7 @@ export interface LockedDecisionPlan{
   decisionSimulation?:DecisionSimulation|null;
   scenarioPrime?:ScenarioPrime|null;
   decisionTransferPrime?:DecisionTransferPrime|null;
+  climbMission?:ClimbMatchMission|null;
 }
 
 export interface DecisionGraphNode{
@@ -117,6 +119,7 @@ export interface DecisionGraph{
     simulation:DecisionSimulationReview;
     scenarioPrime:ScenarioPrimeReview;
     decisionTransfer:DecisionTransferReview;
+    climbMission:ClimbMatchMissionReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -498,6 +501,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const simulationReview=reviewDecisionSimulation(plan?.decisionSimulation,observedDecisions);
   const scenarioPrimeReview=reviewScenarioPrime(plan?.scenarioPrime,observedDecisions);
   const decisionTransferReview=reviewDecisionTransfer(plan?.decisionTransferPrime,observedDecisions);
+  const climbMissionReview=reviewClimbMatchMission(plan?.climbMission,observedDecisions);
 
   return{
     version:1,
@@ -538,6 +542,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       simulation:simulationReview,
       scenarioPrime:scenarioPrimeReview,
       decisionTransfer:decisionTransferReview,
+      climbMission:climbMissionReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -563,5 +568,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     decisionSimulation:raw.decisionSimulation??null,
     scenarioPrime:raw.scenarioPrime??null,
     decisionTransferPrime:raw.decisionTransferPrime??null,
+    climbMission:raw.climbMission??null,
   };
 }
