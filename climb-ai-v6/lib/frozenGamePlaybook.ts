@@ -98,9 +98,9 @@ export function buildFrozenGamePlaybook(input:{
     never:compact(`DO NOT THROW ACCESS / POSITION FOR EXTRA KILLS. ${baseNever}`),
     decisionRisk:branchRisk('AHEAD'),
     priority:'PRESSURE',
-    job:compact('CONTROL THE LEAD → '+input.plan.headline+' → '+baseObjective,135),
-    fightWhen:compact(baseFight,120),
-    stop:compact(baseNever,120),
+    job:compact('CONTROL LEAD → '+input.plan.headline,92),
+    fightWhen:compact(baseFight,104),
+    stop:compact(baseNever,104),
   };
 
   const even:FrozenBranch={
@@ -112,7 +112,7 @@ export function buildFrozenGamePlaybook(input:{
     never:baseNever,
     decisionRisk:branchRisk('EVEN'),
     priority:basePriority(input.plan),
-    job:compact(input.plan.headline||input.plan.why,135),
+    job:compact(input.plan.headline||input.plan.why,92),
     fightWhen:compact(baseFight,120),
     stop:compact(baseNever,120),
   };
@@ -126,9 +126,9 @@ export function buildFrozenGamePlaybook(input:{
     never:compact(`DO NOT PAY HP / SUMMONERS TO DEFEND SPACE YOU CANNOT CONTROL. ${baseNever}`),
     decisionRisk:branchRisk('BEHIND'),
     priority:'STABILISE',
-    job:compact(input.plan.ifBehind||economy,135),
-    fightWhen:compact('SECOND MOVE ONLY · '+input.plan.threatAnswer,120),
-    stop:compact('DO NOT PAY HP / SUMMONERS FOR SPACE YOU CANNOT HOLD. '+baseNever,120),
+    job:compact('STABILISE → '+(input.plan.ifBehind||economy),92),
+    fightWhen:compact('SECOND MOVE ONLY · '+input.plan.threatAnswer,104),
+    stop:compact('DO NOT PAY HP / SUMMONERS FOR SPACE YOU CANNOT HOLD. '+baseNever,104),
   };
 
   return{
