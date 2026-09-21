@@ -1,5 +1,7 @@
 import type {CurriculumLesson} from './climbCurriculum';
 import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} from './decisionTwin';
+import type {DecisionTransferPrime} from './decisionTransfer';
+import type {ClimbRepLevel,ClimbRepStage} from './climbRepLadder';
 
 export type ClimbMatchMissionStatus='READY'|'NOT_RELEVANT';
 export type ClimbMatchMissionReviewStatus='NO_MISSION'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
@@ -11,6 +13,12 @@ export interface ClimbMatchMission{
   behaviourKey:DecisionBehaviourKey;
   behaviourLabel:string;
   curriculumPhase:CurriculumLesson['phase'];
+  repLevel:ClimbRepLevel;
+  repStage:ClimbRepStage;
+  repLabel:string;
+  repObjective:string;
+  repDifficultyRule:string;
+  repPromotionGate:string;
   champion:string;
   role:string|null;
   targetTag:DecisionSituationTag;
@@ -43,6 +51,8 @@ export interface ClimbMatchMissionReview{
   behaviourKey:DecisionBehaviourKey|null;
   behaviourLabel:string|null;
   targetTag:DecisionSituationTag|null;
+  repLevel:ClimbRepLevel|null;
+  repStage:ClimbRepStage|null;
   status:ClimbMatchMissionReviewStatus;
   matchedMoments:number;
   cleanMoments:number;
@@ -145,15 +155,22 @@ export function buildClimbMatchMission(input:{
   coach:DraftCoachLike;
   champion:string;
   role:string|null|undefined;
+  transferPrime?:DecisionTransferPrime|null;
 }):ClimbMatchMission|null{
   const lesson=input.lesson;
   if(!lesson)return null;
-  const targetTag=targetTagFor(lesson.behaviourKey,input.situationContext);
+  const ladder=lesson.repLadder;
+  const matchingTransfer=input.transferPrime?.behaviourKey===lesson.behaviourKey?input.transferPrime:null;
+  const baseTargetTag=targetTagFor(lesson.behaviourKey,input.situationContext);
+  const targetTag=(ladder.level>=4&&matchingTransfer?.targetTag)||baseTargetTag;
   const enemies=enemiesFor(lesson.behaviourKey,input.situationContext);
-  const action=actionFor(lesson.behaviourKey,enemies,input.coach,lesson);
-  const trigger=triggerFor(lesson.behaviourKey,enemies,input.coach);
-  const relevant=isRelevant(lesson.behaviourKey,targetTag,input.situationContext);
-  const cue=`${trigger} ${action}`;
+  const baseAction=actionFor(lesson.behaviourKey,enemies,input.coach,lesson);
+  const baseTrigger=triggerFor(lesson.behaviourKey,enemies,input.coach);
+  const action=ladder.level>=4&&matchingTransfer?.targetMove?clean(matchingTransfer.targetMove):baseAction;
+  const trigger=ladder.level>=4&&matchingTransfer?.trigger?clean(matchingTransfer.trigger):baseTrigger;
+  const baseRelevant=isRelevant(lesson.behaviourKey,targetTag,input.situationContext);
+  const relevant=ladder.level===5?Boolean(matchingTransfer)&&baseRelevant:baseRelevant;
+  const cue=`REP ${ladder.level}/5 · ${trigger} ${action}`;
   return{
     version:1,
     id:['climb-mission',lesson.behaviourKey,targetTag,clean(input.champion)||'unknown'].join(':').toLowerCase(),
@@ -161,17 +178,23 @@ export function buildClimbMatchMission(input:{
     behaviourKey:lesson.behaviourKey,
     behaviourLabel:lesson.label||LABELS[lesson.behaviourKey],
     curriculumPhase:lesson.phase,
+    repLevel:ladder.level,
+    repStage:ladder.stage,
+    repLabel:ladder.label,
+    repObjective:ladder.objective,
+    repDifficultyRule:ladder.difficultyRule,
+    repPromotionGate:ladder.promotionGate,
     champion:clean(input.champion)||'Unknown',
     role:clean(input.role)||null,
     targetTag,
-    title:`${lesson.label} · ${targetTag==='GENERAL'?'MATCH REP':targetTag.replaceAll('_',' ')}`,
-    whyThisGame:whyThisGame(lesson.behaviourKey,targetTag,enemies,lesson),
+    title:`REP ${ladder.level}/5 · ${ladder.stage} · ${lesson.label} · ${targetTag==='GENERAL'?'MATCH REP':targetTag.replaceAll('_',' ')}`,
+    whyThisGame:whyThisGame(lesson.behaviourKey,targetTag,enemies,lesson)+' '+ladder.reason,
     trigger,
     action,
     cue,
     successDefinition:`A verified ${lesson.label} decision${targetTag==='GENERAL'?'':` tagged ${targetTag.replaceAll('_',' ')}`} is graded GOOD.`,
     failureDefinition:`A verified ${lesson.label} decision${targetTag==='GENERAL'?'':` tagged ${targetTag.replaceAll('_',' ')}`} is graded IMPROVE.`,
-    rehearsalQuestion:`When ${trigger.toLowerCase()} what exactly will you do?`,
+    rehearsalQuestion:ladder.level===1?`What is the trigger you must recognise before you act: ${trigger.toLowerCase()}`:`When ${trigger.toLowerCase()} what exactly will you do while preserving the Level ${ladder.level} principle?`,
     relevantEnemies:enemies,
     reviewRule:'Score only medium/high-confidence Decision Graph moments matching this behaviour and mission context. No matching moment = NOT OBSERVED.',
     graduationRule:lesson.graduationRule,
@@ -187,7 +210,7 @@ export function reviewClimbMatchMission(
   if(!mission||mission.status!=='READY'){
     return{
       version:1,active:false,missionId:mission?.id??null,behaviourKey:mission?.behaviourKey??null,behaviourLabel:mission?.behaviourLabel??null,
-      targetTag:mission?.targetTag??null,status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
+      targetTag:mission?.targetTag??null,repLevel:mission?.repLevel??null,repStage:mission?.repStage??null,status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
       note:mission?.status==='NOT_RELEVANT'?'The active Curriculum lesson did not have a strong draft-specific repetition in this game, so OP CLIMB did not force one.':'No frozen CLIMB match mission was available for review.',
       boundary:BOUNDARY,
     };
@@ -208,14 +231,16 @@ export function reviewClimbMatchMission(
     behaviourKey:mission.behaviourKey,
     behaviourLabel:mission.behaviourLabel,
     targetTag:mission.targetTag,
+    repLevel:mission.repLevel??null,
+    repStage:mission.repStage??null,
     status,
     matchedMoments:matched.length,
     cleanMoments,
     improveMoments,
     note:status==='NOT_OBSERVED'
-      ?'The planned decision window did not produce a verified comparable Decision Graph moment. No pass or fail is awarded.'
+      ?'The planned Level '+String(mission.repLevel??1)+'/5 decision window did not produce a verified comparable Decision Graph moment. No pass, fail or difficulty change is awarded.'
       :status==='EXECUTED'
-        ?'Every verified mission moment matched the target branch.'
+        ?'Every verified Level '+String(mission.repLevel??1)+'/5 mission moment matched the target branch. This adds evidence but does not raise difficulty by itself.'
         :status==='MISSED'
           ?'Every verified mission moment reproduced the behaviour OP CLIMB was trying to change.'
           :'The mission was executed in some verified moments and missed in others.',
