@@ -4,7 +4,7 @@ const {
   reviewPlanRecognition,
   reviewBranchSelection,
   reviewContingencySelection,
-}=require('../companion/electron/plan-recognition-review.js');
+}=require('../companion/electron/plan-recognition-review.cjs');
 
 const point=(atSeconds,verdict,score=0)=>({
   atSeconds,verdict,score,opponent:'Test Enemy',
