@@ -215,7 +215,9 @@ test('draft coach model returns an immutable frozen branch playbook',()=>{
   assert.ok(draftCoach.includes("frozenFromPregame:true"));
   assert.ok(draftCoach.includes("usesLiveTelemetry:false"));
   assert.ok(draftCoach.includes("playerSelectsBranch:true"));
+  assert.ok(draftCoach.includes("playerSelectsContingency:true"));
   assert.ok(draftCoach.includes("branches:['AHEAD','EVEN','BEHIND']"));
+  assert.ok(draftCoach.includes("contingencies:['PLAN_A','PLAN_B','RECOVERY']"));
   assert.ok(draftCoach.includes("checkpoints:[5,10,15]"));
   assert.ok(draftCoach.includes("The PLAYER will choose the matching prewritten branch"));
 });
@@ -242,10 +244,12 @@ test('verified deep coach plan is persisted for the post-game debrief without us
   assert.ok(esports.includes("DEEP_PLAN_STORAGE_KEY='opclimb.deep-locked-plan.v1'"));
   assert.ok(esports.includes('function persistDeepLockedPlan'));
   assert.ok(esports.includes('function persistBranchSelection'));
+  assert.ok(esports.includes('function persistContingencySelection'));
   assert.ok(esports.includes("source:'PLAYER_CLICK'"));
   assert.ok(esports.includes('persistDeepLockedPlan(lastCoach,champion,resolvedRole)'));
   assert.ok(esports.includes('draftFingerprint:clean(coach._playbook.draftFingerprint)'));
   assert.ok(esports.includes('branchSelections:'));
+  assert.ok(esports.includes('contingencySelections:'));
   assert.ok(!esports.includes('goldDiff'));
   assert.ok(!esports.includes('killDiff'));
 });
@@ -428,4 +432,21 @@ test('draft coach receives the same frozen carry hierarchy used by the HUD',()=>
   assert.ok(draftCoach.includes('DRAFT CARRY MAP'));
   assert.ok(draftCoach.includes("If the player is ENABLER or THREAT DENIAL"));
   assert.ok(draftCoach.includes("If the player is SECONDARY CARRY"));
+});
+
+
+test('frozen contingency map stays player-selected and hidden behind coach detail',()=>{
+  assert.ok(esports.includes('FROZEN CONTINGENCY MAP'));
+  assert.ok(esports.includes('data-op-contingency="PLAN_A"'));
+  assert.ok(esports.includes('data-op-contingency="PLAN_B"'));
+  assert.ok(esports.includes('data-op-contingency="RECOVERY"'));
+  assert.ok(esports.includes("selectedContingency='PLAN_A'"));
+  assert.ok(esports.includes('function renderSelectedContingency'));
+  assert.ok(esports.includes('function applySelectedContingencyOverlay'));
+  assert.ok(esports.includes('PLAYER SELECTS THIS FROM THE GAME THEY CAN SEE'));
+  assert.ok(esports.includes('OP CLIMB NEVER AUTO-SWITCHES'));
+  assert.ok(esports.includes('persistContingencySelection'));
+  assert.ok(esports.includes('contingencySelections'));
+  assert.ok(!esports.includes('goldDiff'));
+  assert.ok(!esports.includes('killDiff'));
 });
