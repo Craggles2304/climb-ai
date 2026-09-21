@@ -2,6 +2,7 @@
 
 import {useEffect,useMemo,useState} from 'react';
 import type {DecisionTwinV2Profile,DecisionTwinActiveFocus,DecisionContextProfile} from '@/lib/decisionTwinV2';
+import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemory';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -14,6 +15,16 @@ function ContextCard({item}:{item:DecisionContextProfile}){
     <h3>{item.recentFailureRate===null?'BUILDING':`${item.recentFailureRate}% recent fail`}</h3>
     <p>{item.summary}</p>
     <div className="dt2-mini-row"><span>{item.observations} observations</span><span>{item.confidence} confidence</span></div>
+  </article>;
+}
+
+function MemoryCard({item}:{item:ScenarioMemoryCard}){
+  return <article className={`dt4-memory-card ${item.state.toLowerCase()}`}>
+    <div className="dt2-card-top"><span>{pretty(item.situationTag)}</span><b>{item.state}</b></div>
+    <h3>{item.behaviourLabel}</h3>
+    <p>{item.summary}</p>
+    <div className="dt4-memory-meter"><i style={{width:`${item.memoryStrength}%`}}/><span>{item.memoryStrength}/100 memory</span></div>
+    <div className="dt2-mini-row"><span>{item.comparableGames} comparable games</span><span>{item.dueNextGame?'DUE NEXT MATCH':item.gamesUntilReview+' games to review'}</span></div>
   </article>;
 }
 
@@ -39,6 +50,7 @@ function FocusCard({item}:{item:DecisionTwinActiveFocus}){
 
 export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [twin,setTwin]=useState<DecisionTwinV2Profile|null>(null);
+  const [memory,setMemory]=useState<ScenarioMemoryProfile|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -46,7 +58,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -54,7 +66,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load Decision Twin.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load Decision Twin.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -64,6 +76,8 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const primary=twin?.identity.primary??null;
   const strongest=twin?.identity.strongest??null;
   const ledger=twin?.riskLedger??null;
+  const memoryCards=useMemo(()=>memory?.cards?.filter(item=>item.state!=='BUILDING').slice(0,5)??[],[memory]);
+  const activeRep=memory?.activeRep??null;
 
   if(!valid)return null;
 
@@ -129,6 +143,34 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <small>{metric.status.replaceAll('_',' ')}</small>
           </div>)}
         </div>
+      </div>
+
+      <div className="dt4-lab glass">
+        <div className="dt4-lab-head">
+          <div><span>DECISION TWIN V4 · DECISION LAB</span><h3>Scenario Memory · train the decision again only when it is due.</h3><p>{memory?.summary||'Scenario Memory is still building from repeated Decision Graph evidence.'}</p></div>
+          <div className="dt4-lab-stats">
+            <div><b>{memory?.dueNextGame??0}</b><span>DUE NEXT</span></div>
+            <div><b>{memory?.mastered??0}</b><span>MASTERED</span></div>
+            <div><b>{memory?.regressed??0}</b><span>REOPENED</span></div>
+          </div>
+        </div>
+        {activeRep&&<div className="dt4-active-rep">
+          <div>
+            <span>NEXT SPACED REP</span>
+            <h4>{activeRep.behaviourLabel} · {pretty(activeRep.situationTag)}</h4>
+            <p>{activeRep.trigger}</p>
+          </div>
+          <div>
+            <span>OLD BRANCH</span>
+            <strong>{activeRep.oldBranch}</strong>
+          </div>
+          <div className="target">
+            <span>NEW BRANCH</span>
+            <strong>{activeRep.targetBranch}</strong>
+          </div>
+        </div>}
+        {memoryCards.length?<div className="dt4-memory-grid">{memoryCards.map(item=><MemoryCard key={item.id} item={item}/>)}</div>:<div className="dt2-empty">NO REPEATED SCENARIO MEMORY YET · V4 WILL NOT INVENT DRILLS FROM ONE GAME</div>}
+        <div className="dt4-boundary">{memory?.boundary||'One game cannot create mastery.'}</div>
       </div>
 
       <div className="dt2-section-head">
