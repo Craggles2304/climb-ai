@@ -180,6 +180,14 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
   }
 
   const lessons=[...keys].map(key=>makeLesson(key,twin,memory,transfer));
+  for(const locked of lessons.filter(item=>item.readiness==='LOCKED'&&item.prerequisite)){
+    const prerequisite=lessons.find(item=>item.behaviourKey===locked.prerequisite);
+    if(prerequisite&&prerequisite.readiness==='READY'){
+      prerequisite.readiness='ACTIVE';
+      prerequisite.priority=Math.max(prerequisite.priority,locked.priority+1);
+      prerequisite.whyNow='This foundation unlocks '+locked.label+'. OP CLIMB will not skip the prerequisite just because the later skill currently scores worse.';
+    }
+  }
   const phaseWeight=(phase:CurriculumPhase)=>phase==='REOPEN'?80:phase==='PRACTISE'?65:phase==='STABILISE'?55:phase==='TRANSFER'?45:phase==='FOUNDATION'?40:phase==='BUILDING'?20:0;
   return lessons.sort((a,b)=>{
     const aUnlock=lessons.some(item=>item.prerequisite===a.behaviourKey&&item.readiness==='LOCKED')?18:0;
