@@ -14,6 +14,7 @@ import {buildDraftCarryMap,type DraftCarryMap} from '@/lib/carryRoleMap';
 import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildClimbCurriculum} from '@/lib/climbCurriculum';
+import {buildClimbMatchMission,type ClimbMatchMission} from '@/lib/climbMissionDesign';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
@@ -502,7 +503,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -533,6 +534,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       decisionSimulation:input.decisionSimulation,
       scenarioPrime:input.scenarioPrime,
       decisionTransferPrime:input.decisionTransferPrime,
+      climbMission:input.climbMission,
       situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
@@ -654,6 +656,13 @@ export async function POST(req:NextRequest){
       champion,
       role:roleResolution.role,
     });
+    const climbMission=buildClimbMatchMission({
+      lesson:context.curriculum.status==='ACTIVE'?context.curriculum.currentLesson:null,
+      situationContext,
+      coach,
+      champion,
+      role:roleResolution.role,
+    });
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
@@ -673,6 +682,7 @@ export async function POST(req:NextRequest){
       decisionSimulation,
       scenarioPrime,
       decisionTransferPrime,
+      climbMission,
       situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       playbook,
@@ -688,6 +698,7 @@ export async function POST(req:NextRequest){
       decisionSimulation,
       scenarioPrime,
       decisionTransferPrime,
+      climbMission,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,
