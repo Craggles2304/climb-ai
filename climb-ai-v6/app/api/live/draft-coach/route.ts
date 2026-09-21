@@ -10,6 +10,7 @@ import {evaluateWinConditionPlan} from '@/lib/coachWinConditionEval';
 import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRoles,laneOpponentsFor,lanePartnerFor} from '@/lib/draftRoleResolver';
 import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
+import {buildDraftCarryMap,type DraftCarryMap} from '@/lib/carryRoleMap';
 import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
@@ -396,7 +397,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -407,6 +408,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'COACHING STANDARD:',
       '- Explain the interaction BETWEEN the ten champions, not isolated champion labels.',
       '- Identify their actual win condition first, then the player answer to it.',
+      '- DRAFT CARRY MAP is frozen strategic context. Do not assume the player is the carry. If the player is ENABLER or THREAT DENIAL, write the plan around enabling the named primary carry or denying the named threat instead of demanding first resources or hero damage.',
+      '- If the player is SECONDARY CARRY, preserve their own spike but make the primary carry the first resource priority. If PRIMARY CARRY, protect their economy, access and survival without telling them to greed unsafe resources.'
       '- Separate threat ACCESS from damage. A diver, engage champion, zone controller and follow-up carry can form one threat package.',
       '- Every important instruction must answer WHO, WHAT, WHEN and WHY.',
       '- Use named abilities/cooldowns from the supplied kit facts when they materially change the decision. Never invent an ability name or mechanic.',
@@ -438,11 +441,13 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
       'PERSONAL TRAP EVIDENCE: '+JSON.stringify(personalTrap),
       'DECISION PRE-MORTEM: '+JSON.stringify(decisionPremortem),
+      'DRAFT CARRY MAP: '+JSON.stringify(carryMap),
       'RIOT / DATA DRAGON KIT FACTS: '+JSON.stringify(kits),
       '',
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
       'The personal trap may shape ONE cue only when status is READY. MASTERED is proof of learning, not an active weakness; do not re-teach it. Never turn BUILDING/NONE evidence into a claim about the player.',
       'The Decision Pre-Mortem may shape trigger/prevention wording only when status is READY. It ranks evidence-backed risk windows; it does not predict that a mistake will occur.',
+      'The Draft Carry Map sets resource hierarchy and the player\'s strategic responsibility for this composition. Keep the five-step path consistent with it.'
       '',
       'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
@@ -596,9 +601,10 @@ export async function POST(req:NextRequest){
     if(laneOpponents.length)fallback.laneOpponent=laneOpponents[0];
     fallback.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     enrichRulePlan(fallback,userRole,enemies,kits);
+    const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,decisionPremortem,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
