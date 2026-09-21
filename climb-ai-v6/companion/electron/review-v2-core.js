@@ -427,15 +427,18 @@
     setText('op332MissionReviewName',clean(mission?.behaviourLabel)||(status==='NO_MISSION'?'No relevant Curriculum rep':'CLIMB Mission'));
     const tag=clean(mission?.targetTag).replace(/_/g,' ');
     const matched=Number(mission?.matchedMoments)||0;
-    setText('op332MissionReviewContext',tag?(tag+' · '+String(matched)+' verified mission moment'+(matched===1?'':'s')):'No match-specific mission context was available.');
+    const level=Number(mission?.repLevel)||0;
+    const stage=clean(mission?.repStage).replace(/_/g,' ');
+    const repPrefix=level?('LEVEL '+String(level)+'/5'+(stage?' · '+stage:'')):'REP LEVEL UNKNOWN';
+    setText('op332MissionReviewContext',tag?(repPrefix+' · '+tag+' · '+String(matched)+' verified mission moment'+(matched===1?'':'s')):repPrefix+' · No match-specific mission context was available.');
     setText('op332MissionReviewResult',status==='EXECUTED'?'CLEAN REP':status==='MISSED'?'REPEAT REP':status==='MIXED'?'MIXED REP':status==='NOT_OBSERVED'?'NO SCORE':'NO REP');
     setText('op332MissionReviewNote',clean(mission?.note)||'No frozen match mission result was available.');
-    setText('op332MissionReviewNext',status==='EXECUTED'?'ADD EVIDENCE · KEEP THE GRADUATION GATE'
+    setText('op332MissionReviewNext',status==='EXECUTED'?'ADD EVIDENCE · DO NOT AUTO-PROMOTE DIFFICULTY'
       :status==='MISSED'?'KEEP THIS LESSON ACTIVE · REPEAT THE DECISION'
       :status==='MIXED'?'KEEP DRILLING · THE BRANCH IS NOT STABLE'
       :status==='NOT_OBSERVED'?'UNCHANGED · WAIT FOR THE NEXT RELEVANT WINDOW'
       :'CURRICULUM CONTINUES WITHOUT A FORCED MATCH REP');
-    setText('op332MissionReviewBoundary',clean(mission?.boundary)||'NO MATCHING VERIFIED DECISION = NOT OBSERVED · ONE CLEAN REP ≠ GRADUATION.');
+    setText('op332MissionReviewBoundary',clean(mission?.boundary)||'NO MATCHING VERIFIED DECISION = NOT OBSERVED · ONE CLEAN REP ≠ DIFFICULTY PROMOTION OR GRADUATION.');
   }
 
   function renderScenarioPrimeReview(review){
