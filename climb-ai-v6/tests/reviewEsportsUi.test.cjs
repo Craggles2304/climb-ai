@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.25');
+  assert.equal(pkg.version,'0.7.26');
 });
 
 
@@ -83,7 +83,7 @@ test('post-game review closes the loop into the server-authoritative Active Five
 });
 
 test('Companion shows whether repeated evidence actually changed the development plan',()=>{
-  assert.ok(core.includes('DEVELOPMENT PLAN · ACTIVE FIVE'));
+  assert.ok(core.includes('YOUR ACTIVE FIVE'));
   assert.ok(core.includes('ACTIVE FIVE UPDATED FROM REPEATED EVIDENCE'));
   assert.ok(core.includes('ACTIVE FIVE CHECKED · NO MISSION REPLACED'));
   assert.ok(core.includes('One unusual game cannot replace or reopen a persistent development mission.'));
@@ -111,7 +111,7 @@ test('Decision Graph links post-game moments to the exact frozen pre-game coach'
 });
 
 test('Companion post-game debrief renders a chronological Decision Graph without inventing hidden intent',()=>{
-  assert.ok(core.includes('DECISION GRAPH · WHAT ACTUALLY HAPPENED'));
+  assert.ok(core.includes('FULL MATCH TIMELINE'));
   assert.ok(core.includes('function renderDecisionGraph'));
   assert.ok(core.includes('DECISION READ · '));
   assert.ok(core.includes('CONSEQUENCE · '));
@@ -138,7 +138,7 @@ test('post-game review renders the highest-value counterfactual decisions withou
   assert.ok(decisionGraph.includes('COACHING_RULE'));
   assert.ok(decisionGraph.includes('topCounterfactualNodeIds'));
   assert.ok(decisionGraph.includes('does not claim the alternative would guarantee'));
-  assert.ok(core.includes('COUNTERFACTUAL COACHING · BETTER DECISION'));
+  assert.ok(core.includes('BETTER DECISION · ALTERNATIVE LINE'));
   assert.ok(core.includes('function renderCounterfactuals'));
   assert.ok(core.includes('WHAT YOU DID'));
   assert.ok(core.includes('BETTER OPTION'));
@@ -168,7 +168,7 @@ test('post-game review closes the loop by measuring whether the pre-game Persona
 test('post-game review scores the frozen Decision Pre-Mortem without treating unobserved risks as success',()=>{
   assert.ok(decisionGraph.includes('reviewDecisionPremortem'));
   assert.ok(decisionGraph.includes('premortem:premortemReview'));
-  assert.ok(core.includes('DECISION PRE-MORTEM · DID THE RISK MAP HOLD?'));
+  assert.ok(core.includes('RISK MAP · DID THE PATTERN HOLD?'));
   assert.ok(core.includes('function renderPremortem'));
   assert.ok(core.includes('BEAT PATTERN'));
   assert.ok(core.includes('PATTERN HIT'));
@@ -192,10 +192,10 @@ test('post-game review links directly into the player Learning Journey',()=>{
 test('Decision Simulation closes the pre-game to post-game learning loop',()=>{
   assert.ok(decisionGraph.includes('reviewDecisionSimulation'));
   assert.ok(decisionGraph.includes('simulation:simulationReview'));
-  assert.ok(core.includes('DECISION TWIN V3 · SIMULATION REVIEW'));
+  assert.ok(core.includes('MATCH REHEARSAL · REVIEW'));
   assert.ok(core.includes('function renderSimulationReview'));
-  assert.ok(core.includes('TWIN REPEATED'));
-  assert.ok(core.includes('BEAT TWIN'));
+  assert.ok(core.includes('PATTERN REPEATED'));
+  assert.ok(core.includes('PATTERN BROKEN'));
   assert.ok(core.includes('NOT OBSERVED'));
 });
 
@@ -203,12 +203,12 @@ test('Decision Simulation closes the pre-game to post-game learning loop',()=>{
 test('Scenario Memory closes the spaced-repetition loop without one-game mastery claims',()=>{
   assert.ok(decisionGraph.includes('reviewScenarioPrime'));
   assert.ok(decisionGraph.includes('scenarioPrime:scenarioPrimeReview'));
-  assert.ok(core.includes('DECISION TWIN V4 · SPACED REP REVIEW'));
+  assert.ok(core.includes('DECISION LAB · SPACED REP REVIEW'));
   assert.ok(core.includes('function renderScenarioPrimeReview'));
   assert.ok(core.includes('REP EXECUTED'));
   assert.ok(core.includes('OLD BRANCH RETURNED'));
   assert.ok(core.includes('REP NOT TESTED'));
-  assert.ok(core.includes('One clean game reinforces the memory'));
+  assert.ok(core.includes('One clean game reinforces the pattern'));
   assert.ok(core.includes('renderScenarioPrimeReview(review)'));
 });
 
@@ -216,10 +216,24 @@ test('Scenario Memory closes the spaced-repetition loop without one-game mastery
 test('V5 transfer review only credits frozen novel decisions that actually occurred',()=>{
   assert.ok(decisionGraph.includes('reviewDecisionTransfer'));
   assert.ok(decisionGraph.includes('decisionTransfer:decisionTransferReview'));
-  assert.ok(core.includes('DECISION TWIN V5 · TRANSFER REVIEW'));
+  assert.ok(core.includes('CLIMB PROFILE · SKILL TRANSFER'));
   assert.ok(core.includes('function renderDecisionTransferReview'));
   assert.ok(core.includes('PRINCIPLE TRANSFERRED'));
   assert.ok(core.includes('TRANSFER FAILED'));
   assert.ok(core.includes('TRANSFER NOT TESTED'));
   assert.ok(core.includes('renderDecisionTransferReview(review)'));
+});
+
+
+test('post-game review promotes five key decisions and collapses the evidence wall by default',()=>{
+  for(const label of ['BIGGEST WIN','BIGGEST REVIEW','NEXT-GAME RULE','KEY DECISIONS · 5 MAX','MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE','COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER']){
+    assert.ok(core.includes(label),`missing compact review label: ${label}`);
+  }
+  assert.ok(core.includes('function selectKeyDecisions'));
+  assert.ok(core.includes('purchaseCount>=1'));
+  assert.ok(core.includes('if(chosen.length>=5)break'));
+  assert.ok(core.includes('class="op333-details"'));
+  assert.ok(!core.includes('DECISION TWIN V3 · SIMULATION REVIEW'));
+  assert.ok(!core.includes('DECISION TWIN V4 · SPACED REP REVIEW'));
+  assert.ok(!core.includes('DECISION TWIN V5 · TRANSFER REVIEW'));
 });

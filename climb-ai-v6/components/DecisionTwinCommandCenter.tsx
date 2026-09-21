@@ -52,7 +52,7 @@ function FocusCard({item}:{item:DecisionTwinActiveFocus}){
       <div className="dt2-score-line">
         <div><span>CURRENT</span><strong>{item.currentScore}</strong></div>
         <i>→</i>
-        <div><span>NEXT TWIN</span><strong>{item.targetScore}</strong></div>
+        <div><span>NEXT LEVEL</span><strong>{item.targetScore}</strong></div>
         <small>+{gap}</small>
       </div>
       <div className="dt2-rule">{item.rule}</div>
@@ -77,11 +77,11 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
         const body=await response.json().catch(()=>({}));
-        if(!response.ok)throw new Error(body?.error||'Could not load Decision Twin.');
+        if(!response.ok)throw new Error(body?.error||'Could not load CLIMB Profile.');
         return body;
       })
       .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setChallengeChoice(null)}})
-      .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load Decision Twin.')})
+      .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load CLIMB Profile.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
   },[accountId,valid]);
@@ -100,20 +100,20 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   return <section className="dt2-shell">
     <div className="dt2-head">
       <div>
-        <div className="eyebrow">DECISION TWIN V5 · PLAYER OPERATING MODEL</div>
-        <h2>Your game does not have one version of you.</h2>
-        <p className="muted">OP CLIMB models the decisions you repeat, the contexts that change you, the risks it can forecast before draft lock and the next realistic version of your play.</p>
+        <div className="eyebrow">CLIMB PROFILE</div>
+        <h2>How you play. How you're changing.</h2>
+        <p className="muted">Your recurring patterns, strongest habits and next coaching priorities — built from your real games.</p>
       </div>
-      {twin&&<div className="dt2-version"><span>MODEL</span><b>V5</b><small>{twin.gamesAnalyzed} games</small></div>}
+      {twin&&<div className="dt2-version"><span>PROFILE</span><b>LIVE</b><small>{twin.gamesAnalyzed} games</small></div>}
     </div>
 
-    {loading&&<div className="glass card dt2-empty">BUILDING YOUR DECISION MODEL…</div>}
+    {loading&&<div className="glass card dt2-empty">BUILDING YOUR CLIMB PROFILE…</div>}
     {!loading&&error&&<div className="glass card dt2-empty">{error}</div>}
 
     {!loading&&!error&&twin&&<>
       <div className={`dt2-identity glass ${twin.identity.status.toLowerCase()}`}>
         <div className="dt2-identity-main">
-          <span>PRIMARY DECISION IDENTITY</span>
+          <span>YOUR CURRENT PATTERN</span>
           <h3>{twin.identity.headline}</h3>
           <p>{twin.identity.summary}</p>
           <div className="dt2-identity-proof">
@@ -136,16 +136,16 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
       </div>
 
       <div className="dt2-section-head">
-        <div><span>CONTEXTUAL SELVES</span><h3>The player changes when the situation changes.</h3></div>
-        <small>Only repeated Decision Graph evidence is promoted.</small>
+        <div><span>WHEN YOUR PLAY CHANGES</span><h3>See which game situations change your decisions.</h3></div>
+        <small>Only repeated match evidence is promoted.</small>
       </div>
       {contexts.length?<div className="dt2-context-grid">{contexts.map(item=><ContextCard key={item.tag} item={item}/>)}</div>:<div className="glass card dt2-empty">NO VERIFIED CONTEXTUAL SELF YET · KEEP PLAYING FULLY TRACKED GAMES</div>}
 
       <div className="dt2-target glass">
         <div className="dt2-target-copy">
-          <span>TWIN → NEXT TWIN</span>
-          <h3>Train the next version of you, not an imaginary perfect player.</h3>
-          <p>{twin.targetTwin.rule}</p>
+          <span>CURRENT → NEXT LEVEL</span>
+          <h3>Build the next realistic level of your game.</h3>
+          <p>{'Targets move only when new match evidence shows your play has changed.'}</p>
         </div>
         <div className="dt2-target-score">
           <div><span>CURRENT</span><b>{twin.targetTwin.currentAverage??'—'}</b></div>
@@ -163,7 +163,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
       <div className="dt4-lab glass">
         <div className="dt4-lab-head">
-          <div><span>DECISION TWIN V4 · DECISION LAB</span><h3>Scenario Memory · train the decision again only when it is due.</h3><p>{memory?.summary||'Scenario Memory is still building from repeated Decision Graph evidence.'}</p></div>
+          <div><span>DECISION LAB</span><h3>Scenario Memory · train the decision again only when it is due.</h3><p>{memory?.summary||'Scenario Memory is still building from repeated Decision Graph evidence.'}</p></div>
           <div className="dt4-lab-stats">
             <div><b>{memory?.dueNextGame??0}</b><span>DUE NEXT</span></div>
             <div><b>{memory?.mastered??0}</b><span>MASTERED</span></div>
@@ -185,13 +185,13 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <strong>{activeRep.targetBranch}</strong>
           </div>
         </div>}
-        {memoryCards.length?<div className="dt4-memory-grid">{memoryCards.map(item=><MemoryCard key={item.id} item={item}/>)}</div>:<div className="dt2-empty">NO REPEATED SCENARIO MEMORY YET · V4 WILL NOT INVENT DRILLS FROM ONE GAME</div>}
+        {memoryCards.length?<div className="dt4-memory-grid">{memoryCards.map(item=><MemoryCard key={item.id} item={item}/>)}</div>:<div className="dt2-empty">NO REPEATED SCENARIO MEMORY YET · OP CLIMB WILL NOT INVENT DRILLS FROM ONE GAME</div>}
         <div className="dt4-boundary">{memory?.boundary||'One game cannot create mastery.'}</div>
       </div>
 
       <div className="dt5-map glass">
         <div className="dt5-map-head">
-          <div><span>DECISION TWIN V5 · TRANSFER MAP</span><h3>Did you learn the decision — or only memorise the original cue?</h3><p>{transfer?.summary||'Transfer Learning begins after a Scenario Memory is locally mastered.'}</p></div>
+          <div><span>SKILL TRANSFER</span><h3>Did you learn the decision — or only memorise the original cue?</h3><p>{transfer?.summary||'Transfer Learning begins after a Scenario Memory is locally mastered.'}</p></div>
           <div className="dt5-map-stats">
             <div><b>{transfer?.locallyMastered??0}</b><span>LOCAL</span></div>
             <div><b>{transfer?.transferring??0}</b><span>TRANSFERRING</span></div>
@@ -208,7 +208,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
       </div>
 
       <div className="dt2-section-head">
-        <div><span>ACTIVE FIVE · TWIN-RANKED</span><h3>The five behaviours costing the most controllable value now.</h3></div>
+        <div><span>YOUR ACTIVE FIVE</span><h3>The five behaviours costing the most controllable value now.</h3></div>
         <small>The list changes as your evidence changes.</small>
       </div>
       {twin.activeFive.length?<div className="dt2-focus-list">{twin.activeFive.map(item=><FocusCard key={item.key} item={item}/>)}</div>:<div className="glass card dt2-empty">NO EVIDENCE-BACKED ACTIVE FIVE YET · OP CLIMB WILL NOT FILL THE BOARD WITH GUESSES</div>}
@@ -216,7 +216,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
       <div className="dt2-ledger glass">
         <div className="dt2-ledger-copy">
           <span>RISK MAP LEDGER</span>
-          <h3>Did the Decision Twin recognise the decision windows that actually appeared?</h3>
+          <h3>Did your expected patterns actually appear in games?</h3>
           <p>{ledger?.boundary}</p>
         </div>
         <div className="dt2-ledger-stats">
@@ -231,7 +231,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
       {twin.challenge&&<div className="dt2-challenge glass">
         <div className="dt2-challenge-head">
-          <div><span>WHAT WOULD MY TWIN DO?</span><h3>Pause the decision. Choose before you see the model.</h3></div>
+          <div><span>WHAT WOULD YOU DO?</span><h3>Pause the decision. Choose before you see the model.</h3></div>
           <small>{twin.challenge.minuteLabel} · {twin.challenge.behaviourLabel} · {twin.challenge.confidence}</small>
         </div>
         <p className="dt2-challenge-situation">{twin.challenge.situation}</p>
@@ -249,8 +249,8 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <b>{challengeChoice==='ACTUAL'?'A · RECORDED BRANCH':'B · REVIEWED ALTERNATIVE'}</b>
           </div>
           <div>
-            <span>YOUR DECISION TWIN</span>
-            <b>{twin.challenge.twinTendency==='ACTUAL'?'LEANED A':twin.challenge.twinTendency==='ALTERNATIVE'?'LEANED B':'NOT ENOUGH EVIDENCE'}</b>
+            <span>YOUR PATTERN</span>
+            <b>{twin.challenge.twinTendency==='ACTUAL'?'USUALLY A':twin.challenge.twinTendency==='ALTERNATIVE'?'USUALLY B':'NOT ENOUGH EVIDENCE'}</b>
             <small>{twin.challenge.twinEvidence}</small>
           </div>
           <div>

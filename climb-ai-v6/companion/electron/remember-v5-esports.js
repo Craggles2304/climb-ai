@@ -53,7 +53,7 @@ body.op-remember-live .rem4-top{min-height:88px!important;padding:20px 27px 17px
 body.op-remember-live .rem4-kicker{font-size:8px!important;color:#d6ff2f!important}
 body.op-remember-live .rem4-title{font-size:clamp(30px,3vw,48px)!important;letter-spacing:-.05em!important;text-shadow:0 8px 32px rgba(0,0,0,.55)}
 body.op-remember-live .rem4-live{font-size:8px!important;padding:9px 13px!important;background:rgba(214,255,47,.035)!important}
-body.op-remember-live .rem4-body{flex:1!important;min-height:0!important;padding:18px 25px 24px!important;display:grid!important;grid-template-rows:minmax(108px,.78fr) minmax(170px,1.28fr) minmax(145px,1fr) minmax(116px,.82fr) auto auto!important;gap:13px!important;align-content:stretch!important}
+body.op-remember-live .rem4-body{flex:1!important;min-height:0!important;padding:18px 25px 24px!important;display:flex!important;flex-direction:column!important;gap:13px!important}
 body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:0!important}
 body.op-remember-live .rem4-draft{align-self:stretch!important;gap:14px!important}
 body.op-remember-live .rem4-side{display:flex;flex-direction:column;min-width:0}
@@ -149,7 +149,7 @@ body.op-remember-live .rem5-branch-cell.main strong{color:#d6ff2f;font-size:10px
 body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr;gap:8px;align-items:start;padding:8px 10px;border:1px solid rgba(255,184,76,.14);background:rgba(255,184,76,.025)}
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
-body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
+body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}body.op-remember-live .rem5-coach-detail{border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.42)}body.op-remember-live .rem5-coach-detail>summary{cursor:pointer;list-style:none;padding:10px 11px;color:#8997a1;font-size:7px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}body.op-remember-live .rem5-coach-detail>summary::-webkit-details-marker{display:none}body.op-remember-live .rem5-coach-detail>summary:after{content:' +';float:right;color:#d6ff2f}body.op-remember-live .rem5-coach-detail[open]>summary:after{content:' −'}body.op-remember-live .rem5-coach-detail-body{padding:0 9px 9px;display:grid;gap:8px}
 @media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
@@ -222,26 +222,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div id="opRemCoachStatus" class="rem5-coach-status">SAFE LOCAL PLAN</div>
       </div>
       <div id="opRemPersonalTrap" class="rem5-trap building">
-        <div><span class="rem5-trap-kicker">DECISION TWIN</span><strong id="opRemTrapTitle" class="rem5-trap-title">BUILDING YOUR PERSONAL MODEL</strong><small id="opRemTrapProof" class="rem5-trap-proof">NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE</small></div>
-        <div class="rem5-trap-copy"><span>YOUR PERSONAL TRAP</span><strong id="opRemTrapCue">FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.</strong></div>
-      </div>
-      <div id="opRemPremortem" class="rem5-premortem building">
-        <div class="rem5-premortem-head"><span>DECISION PRE-MORTEM</span><strong id="opRemPremortemTitle">BUILDING YOUR RISK MAP</strong><small id="opRemPremortemBoundary">EVIDENCE-BOUNDED · FROZEN BEFORE GAME</small></div>
-        <div id="opRemPremortemList" class="rem5-premortem-list"></div>
-      </div>
-      <div id="opRemScenarioPrime" class="rem7-memory">
-        <div><span class="rem7-memory-kicker">DECISION TWIN V4 · SCENARIO MEMORY</span><strong id="opRemMemoryTitle" class="rem7-memory-title">NO SPACED REP DUE</strong><small id="opRemMemoryMeta" class="rem7-memory-meta">WAITING FOR A MATCHING MEMORY</small></div>
-        <div class="rem7-memory-copy"><span>ONE REP THIS GAME</span><strong id="opRemMemoryRule">PLAY THE FROZEN DRAFT PLAN.</strong></div>
-        <div class="rem7-memory-proof"><span>WHY NOW</span><strong id="opRemMemoryWhy">NO MATCHING REPEATED MEMORY IS DUE.</strong></div>
-      </div>
-      <div id="opRemDecisionTransfer" class="rem8-transfer">
-        <div><span class="rem8-transfer-kicker">DECISION TWIN V5 · TRANSFER LEARNING</span><strong id="opRemTransferTitle" class="rem8-transfer-title">NO TRANSFER TEST DUE</strong><small id="opRemTransferMeta" class="rem8-transfer-meta">LOCAL LEARNING COMES FIRST</small></div>
-        <div class="rem8-transfer-copy"><span>APPLY THE PRINCIPLE</span><strong id="opRemTransferRule">USE THE FROZEN DRAFT PLAN.</strong></div>
-        <div class="rem8-transfer-proof"><span>WHAT MAKES THIS DIFFERENT</span><strong id="opRemTransferWhy">NO NOVEL CONDITION IS READY TO TEST.</strong></div>
-      </div>
-      <div id="opRemDecisionSimulation" class="rem6-simulation">
-        <div class="rem6-simulation-head"><span>DECISION TWIN V3 · SIMULATION</span><strong id="opRemSimulationTitle">REHEARSE THIS DRAFT</strong><small id="opRemSimulationMeta">FROZEN BEFORE GAME</small></div>
-        <div id="opRemSimulationList" class="rem6-simulation-list"></div>
+        <div><span class="rem5-trap-kicker">CLIMB PROFILE</span><strong id="opRemTrapTitle" class="rem5-trap-title">BUILDING YOUR PROFILE</strong><small id="opRemTrapProof" class="rem5-trap-proof">NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE</small></div>
+        <div class="rem5-trap-copy"><span>YOUR PATTERN</span><strong id="opRemTrapCue">FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.</strong></div>
       </div>
       <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
         <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
@@ -253,8 +235,28 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div class="rem5-branch-cell"><span>FIGHT RULE</span><strong id="opRemBranchFight">USE THE BASE PLAN</strong></div>
         <div class="rem5-branch-cell"><span>OBJECTIVE RULE</span><strong id="opRemBranchObjective">USE THE BASE PLAN</strong></div>
       </div>
-      <div class="rem5-riskline"><span>PERSONAL RISK RULE</span><strong id="opRemBranchRisk">NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.</strong></div>
-      <div id="opRemBranchRule" class="rem5-policy">PLAYER-SELECTED BRANCH · NEVER AUTO-CHANGED BY LIVE TELEMETRY</div>`;
+      <details class="rem5-coach-detail"><summary>COACH DETAIL · RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL</summary><div class="rem5-coach-detail-body">
+        <div id="opRemPremortem" class="rem5-premortem building">
+          <div class="rem5-premortem-head"><span>RISK MAP</span><strong id="opRemPremortemTitle">BUILDING YOUR RISK MAP</strong><small id="opRemPremortemBoundary">EVIDENCE-BOUNDED · FROZEN BEFORE GAME</small></div>
+          <div id="opRemPremortemList" class="rem5-premortem-list"></div>
+        </div>
+        <div id="opRemScenarioPrime" class="rem7-memory">
+          <div><span class="rem7-memory-kicker">DECISION LAB · SCENARIO MEMORY</span><strong id="opRemMemoryTitle" class="rem7-memory-title">NO SPACED REP DUE</strong><small id="opRemMemoryMeta" class="rem7-memory-meta">WAITING FOR A MATCHING MEMORY</small></div>
+          <div class="rem7-memory-copy"><span>ONE REP THIS GAME</span><strong id="opRemMemoryRule">PLAY THE FROZEN DRAFT PLAN.</strong></div>
+          <div class="rem7-memory-proof"><span>WHY NOW</span><strong id="opRemMemoryWhy">NO MATCHING REPEATED MEMORY IS DUE.</strong></div>
+        </div>
+        <div id="opRemDecisionTransfer" class="rem8-transfer">
+          <div><span class="rem8-transfer-kicker">CLIMB PROFILE · SKILL TRANSFER</span><strong id="opRemTransferTitle" class="rem8-transfer-title">NO TRANSFER TEST DUE</strong><small id="opRemTransferMeta" class="rem8-transfer-meta">LOCAL LEARNING COMES FIRST</small></div>
+          <div class="rem8-transfer-copy"><span>APPLY THE PRINCIPLE</span><strong id="opRemTransferRule">USE THE FROZEN DRAFT PLAN.</strong></div>
+          <div class="rem8-transfer-proof"><span>WHAT MAKES THIS DIFFERENT</span><strong id="opRemTransferWhy">NO NOVEL CONDITION IS READY TO TEST.</strong></div>
+        </div>
+        <div id="opRemDecisionSimulation" class="rem6-simulation">
+          <div class="rem6-simulation-head"><span>MATCH REHEARSAL</span><strong id="opRemSimulationTitle">REHEARSE THIS DRAFT</strong><small id="opRemSimulationMeta">FROZEN BEFORE GAME</small></div>
+          <div id="opRemSimulationList" class="rem6-simulation-list"></div>
+        </div>
+        <div class="rem5-riskline"><span>PERSONAL RISK RULE</span><strong id="opRemBranchRisk">NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.</strong></div>
+        <div id="opRemBranchRule" class="rem5-policy">PLAYER-SELECTED BRANCH · NEVER AUTO-CHANGED BY LIVE TELEMETRY</div>
+      </div></details>`;
     const check=hud.querySelector('.rem4-check');
     if(check)check.insertAdjacentElement('beforebegin',panel);
     else hud.querySelector('.rem4-body')?.appendChild(panel);
@@ -280,7 +282,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const title=recurring
       ?[clean(trap?.title)||(mastered?'THIS USED TO CATCH YOU':"YOU'VE SEEN THIS DECISION BEFORE"),clean(trap?.behaviourLabel)].filter(Boolean).join(' · ')
       :(clean(trap?.behaviourLabel)||'VERIFIED PERSONAL PATTERN');
-    set('opRemTrapTitle',ready||mastered?title:(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR DECISION TWIN'));
+    set('opRemTrapTitle',ready||mastered?title:(status==='NONE'?'NO VERIFIED PERSONAL TRAP':'BUILDING YOUR CLIMB PROFILE'));
     set('opRemTrapCue',ready||mastered?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
     set('opRemTrapProof',ready||mastered?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
     root.title=ready||mastered?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
@@ -298,7 +300,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     if(boundary)boundary.textContent=ready?'PRIORITY ≠ PROBABILITY · FROZEN BEFORE GAME':(status==='NONE'?'NO FORCED PREDICTION':'MORE REPEATED EVIDENCE REQUIRED');
     if(!ready){
       const card=document.createElement('article');card.className='rem5-risk';
-      const label=document.createElement('span');label.textContent=status==='NONE'?'NORMAL DRAFT PLAN':'DECISION TWIN';
+      const label=document.createElement('span');label.textContent=status==='NONE'?'NORMAL DRAFT PLAN':'CLIMB PROFILE';
       const title=document.createElement('b');title.textContent=status==='NONE'?'NO PERSONAL RISK CLAIM':'PRE-MORTEM NOT READY';
       const copy=document.createElement('p');copy.textContent=clean(premortem?.summary)||(status==='NONE'?'This draft did not match a strong repeated personal pattern.':'OP CLIMB is collecting enough comparable decisions to rank risks safely.');
       card.append(label,title,copy);list.appendChild(card);return;
