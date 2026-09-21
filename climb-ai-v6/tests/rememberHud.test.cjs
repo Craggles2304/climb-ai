@@ -322,7 +322,7 @@ test('Decision Pre-Mortem freezes evidence-backed personal risk windows into the
   assert.ok(draftCoach.includes('buildDecisionPremortem'));
   assert.ok(draftCoach.includes('DECISION PRE-MORTEM'));
   assert.ok(draftCoach.includes('decisionPremortem,'));
-  assert.ok(esports.includes('DECISION PRE-MORTEM'));
+  assert.ok(esports.includes('RISK MAP'));
   assert.ok(esports.includes('function renderDecisionPremortem'));
   assert.ok(esports.includes('PRIORITY ≠ PROBABILITY'));
   assert.ok(esports.includes("enrichedCoach._decisionPremortem=response?.decisionPremortem"));
