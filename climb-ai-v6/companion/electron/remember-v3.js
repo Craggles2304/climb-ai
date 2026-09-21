@@ -188,7 +188,7 @@ body.op-remember-live #status,body.op-remember-live #matchup,body.op-remember-li
     const me=ranked.find(p=>clean(p?.name).toLowerCase()===clean(you).toLowerCase())||{name:you,role:null};
     let playerRole='ENABLER';
     if(clean(me?.name)===clean(primary?.name))playerRole='PRIMARY CARRY';
-    else if(secondary&&clean(me?.name)===clean(secondary?.name)&&localCarryScore(me)>=46)playerRole='SECONDARY CARRY';
+    else if(secondary&&clean(me?.name)===clean(secondary?.name)&&localCarryScore(me)>=34)playerRole='SECONDARY CARRY';
     else if(DENIAL.has(clean(me?.name))||FRONTLINE.has(clean(me?.name))||normalRole(me?.role)==='SUPPORT')playerRole='THREAT DENIAL';
     const mainThreat=clean(threat)||clean(enemyRanked[0]?.name)||'THEIR MAIN THREAT';
     const primaryName=clean(primary?.name)||clean(you)||'YOUR CARRY';
