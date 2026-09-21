@@ -73,6 +73,28 @@ export interface ScenarioPrime{
   boundary:string;
 }
 
+export interface ScenarioPrimeObservedDecision{
+  behaviourKey:DecisionBehaviourKey;
+  verdict:'GOOD'|'IMPROVE'|'NEUTRAL';
+  confidence:'HIGH'|'MEDIUM'|'LOW';
+  situationTags:DecisionSituationTag[];
+}
+
+export interface ScenarioPrimeReview{
+  version:1;
+  active:boolean;
+  memoryId:string|null;
+  behaviourKey:DecisionBehaviourKey|null;
+  behaviourLabel:string|null;
+  situationTag:DecisionSituationTag|null;
+  status:'NO_REP'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
+  matchedMoments:number;
+  cleanMoments:number;
+  improveMoments:number;
+  note:string;
+  boundary:string;
+}
+
 type GameObservation={
   rowIndex:number;
   createdAt:string;
@@ -346,5 +368,63 @@ export function selectScenarioPrime(input:{
     simulationScenarioId:simulation?.id??null,
     evidence:card.evidence+' · memory strength '+String(card.memoryStrength)+'/100',
     boundary:'This is spaced coaching practice from repeated evidence, not a guarantee the scenario will appear or that one clean rep proves mastery.',
+  };
+}
+
+
+export function reviewScenarioPrime(
+  prime:ScenarioPrime|null|undefined,
+  nodes:ScenarioPrimeObservedDecision[],
+):ScenarioPrimeReview{
+  if(!prime){
+    return{
+      version:1,
+      active:false,
+      memoryId:null,
+      behaviourKey:null,
+      behaviourLabel:null,
+      situationTag:null,
+      status:'NO_REP',
+      matchedMoments:0,
+      cleanMoments:0,
+      improveMoments:0,
+      note:'No spaced Scenario Memory rep was frozen before this game.',
+      boundary:'No rep means no score. OP CLIMB does not backfill a training target after seeing the result.',
+    };
+  }
+  const matched=nodes.filter(node=>
+    node.confidence!=='LOW'
+    &&node.behaviourKey===prime.behaviourKey
+    &&(prime.situationTag==='GENERAL'||node.situationTags.includes(prime.situationTag))
+    &&(node.verdict==='GOOD'||node.verdict==='IMPROVE')
+  );
+  const cleanMoments=matched.filter(node=>node.verdict==='GOOD').length;
+  const improveMoments=matched.filter(node=>node.verdict==='IMPROVE').length;
+  const status:ScenarioPrimeReview['status']=!matched.length
+    ?'NOT_OBSERVED'
+    :cleanMoments&&improveMoments
+      ?'MIXED'
+      :improveMoments
+        ?'MISSED'
+        :'EXECUTED';
+  return{
+    version:1,
+    active:true,
+    memoryId:prime.memoryId,
+    behaviourKey:prime.behaviourKey,
+    behaviourLabel:prime.behaviourLabel,
+    situationTag:prime.situationTag,
+    status,
+    matchedMoments:matched.length,
+    cleanMoments,
+    improveMoments,
+    note:status==='NOT_OBSERVED'
+      ?'The scheduled memory rep did not produce a verified comparable decision, so the spacing schedule is not rewarded or punished.'
+      :status==='EXECUTED'
+        ?'The scheduled memory rep appeared and every verified comparable decision used the cleaner branch. This is one reinforcement rep, not instant mastery.'
+        :status==='MISSED'
+          ?'The scheduled memory rep appeared and the old branch returned in every verified comparable decision. Keep the memory active.'
+          :'The scheduled memory rep was mixed: the new branch appeared, but it is not stable yet.',
+    boundary:'A single clean game reinforces a memory but never proves mastery by itself. Mastery still requires repeated comparable evidence across games.',
   };
 }
