@@ -12,6 +12,7 @@ import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
 import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
+import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -482,7 +483,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -510,6 +511,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       ifBehind:input.coach.ifBehind,
       personalTrap:input.personalTrap,
       decisionPremortem:input.decisionPremortem,
+      decisionSimulation:input.decisionSimulation,
       situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
@@ -608,6 +610,14 @@ export async function POST(req:NextRequest){
     if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
     if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
+    const decisionSimulation=buildDecisionSimulation({
+      twin:context.decisionTwin,
+      premortem:decisionPremortem,
+      situationContext,
+      champion,
+      role:roleResolution.role,
+      coach,
+    });
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
@@ -624,6 +634,7 @@ export async function POST(req:NextRequest){
       coach,
       personalTrap,
       decisionPremortem,
+      decisionSimulation,
       situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       playbook,
@@ -636,6 +647,7 @@ export async function POST(req:NextRequest){
       coach,
       personalTrap,
       decisionPremortem,
+      decisionSimulation,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,
