@@ -4,6 +4,7 @@ import {useEffect,useMemo,useState} from 'react';
 import type {DecisionTwinV2Profile,DecisionTwinActiveFocus,DecisionContextProfile} from '@/lib/decisionTwinV2';
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionTransfer';
+import type {ClimbCurriculum,CurriculumLesson} from '@/lib/climbCurriculum';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -41,6 +42,17 @@ function TransferCard({item}:{item:DecisionTransferCard}){
   </article>;
 }
 
+function CurriculumQueueItem({item,index}:{item:CurriculumLesson;index:number}){
+  return <article className={`dt6-queue-item ${item.readiness.toLowerCase()}`}>
+    <div className="dt6-queue-index">{String(index+1).padStart(2,'0')}</div>
+    <div>
+      <div className="dt2-card-top"><span>{item.phase}</span><b>{item.readiness}</b></div>
+      <h4>{item.label}</h4>
+      <small>{item.readiness==='LOCKED'&&item.prerequisiteLabel?`Unlock: ${item.prerequisiteLabel}`:item.graduationRule}</small>
+    </div>
+  </article>;
+}
+
 function FocusCard({item}:{item:DecisionTwinActiveFocus}){
   const gap=Math.max(0,item.targetScore-item.currentScore);
   return <article className="dt2-focus-card">
@@ -65,6 +77,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [twin,setTwin]=useState<DecisionTwinV2Profile|null>(null);
   const [memory,setMemory]=useState<ScenarioMemoryProfile|null>(null);
   const [transfer,setTransfer]=useState<DecisionTransferProfile|null>(null);
+  const [curriculum,setCurriculum]=useState<ClimbCurriculum|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -72,7 +85,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -80,7 +93,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load CLIMB Profile.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load CLIMB Profile.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -94,6 +107,9 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const activeRep=memory?.activeRep??null;
   const transferCards=useMemo(()=>transfer?.cards?.slice(0,5)??[],[transfer]);
   const activeTransfer=transfer?.activeTransfer??null;
+  const currentLesson=curriculum?.currentLesson??null;
+  const nextLesson=curriculum?.nextLesson??null;
+  const curriculumQueue=useMemo(()=>curriculum?.queue?.slice(0,4)??[],[curriculum]);
 
   if(!valid)return null;
 
@@ -159,6 +175,42 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <small>{metric.status.replaceAll('_',' ')}</small>
           </div>)}
         </div>
+      </div>
+
+      <div className="dt6-curriculum glass">
+        <div className="dt6-head">
+          <div>
+            <span>CLIMB CURRICULUM</span>
+            <h3>{currentLesson?currentLesson.label:'Building your learning order'}</h3>
+            <p>{curriculum?.summary||'OP CLIMB is waiting for repeated verified decisions before choosing what you should learn next.'}</p>
+          </div>
+          <div className={`dt6-status ${(curriculum?.status||'BUILDING').toLowerCase()}`}>
+            <b>{curriculum?.status||'BUILDING'}</b>
+            <small>{curriculum?.gamesAnalyzed??0} games</small>
+          </div>
+        </div>
+        {currentLesson?<div className="dt6-current">
+          <div className="dt6-current-main">
+            <span>CURRENT LESSON · {currentLesson.phase}</span>
+            <h4>{currentLesson.label}</h4>
+            <p>{currentLesson.whyNow}</p>
+            <div className="dt6-rule">{currentLesson.gameRule}</div>
+          </div>
+          <div className="dt6-gates">
+            <div>
+              <span>GRADUATION TEST</span>
+              <strong>{currentLesson.graduationRule}</strong>
+            </div>
+            <div>
+              <span>NEXT UNLOCK</span>
+              <strong>{currentLesson.nextUnlock||nextLesson?.label||'WAIT FOR NEW VERIFIED LIMITER'}</strong>
+            </div>
+          </div>
+        </div>:<div className="dt2-empty">NO EVIDENCE-BACKED LESSON YET · OP CLIMB WILL NOT INVENT A CURRICULUM FROM ONE GAME</div>}
+        {curriculumQueue.length>1&&<div className="dt6-queue">
+          {curriculumQueue.map((item,index)=><CurriculumQueueItem key={item.behaviourKey} item={item} index={index}/>)}
+        </div>}
+        <div className="dt6-boundary">{curriculum?.boundary||'One clean game cannot graduate a lesson.'}</div>
       </div>
 
       <div className="dt4-lab glass">
