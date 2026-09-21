@@ -176,14 +176,14 @@ function principleFrom(observations:Observation[],behaviour:DecisionBehaviourKey
   const latest=[...observations].reverse().find(item=>clean(item.node?.counterfactual?.alternative)||clean(item.node?.lockedPrinciple));
   return clean(latest?.node?.counterfactual?.alternative)||clean(latest?.node?.lockedPrinciple)||DEFAULT_RULES[behaviour];
 }
-function masteredIndex(observations:Observation[]){
+function masteredIndex(observations:Observation[]):number|null{
   for(let i=3;i<observations.length;i++){
     const prefix=observations.slice(0,i+1);
     const recent=prefix.slice(-4);
     const recentClean=recent.filter(item=>item.verdict==='GOOD').length;
     if(streak(prefix)>=3&&(pct(recentClean,recent.length)??0)>=80)return observations[i].rowIndex;
   }
-  return observations.at(-1)?.rowIndex??0;
+  return null;
 }
 function breadth(champions:string[],contexts:DecisionSituationTag[]){
   const championPoints=Math.min(2,champions.length);
@@ -270,9 +270,22 @@ export function buildDecisionTransfer(
     const observations=byBehaviour.get(behaviour)??[];
     const sourceObs=observations.filter(item=>item.tags.includes(source.situationTag));
     if(sourceObs.length<4)continue;
-    const sourceChampion=chooseMostCommon(sourceObs.map(item=>item.champion));
-    const sourceRole=chooseRole(sourceObs.filter(item=>item.champion===sourceChampion).map(item=>item.role));
-    const sourceMasteredGame=masteredIndex(sourceObs);
+    const championGroups=new Map<string,Observation[]>();
+    for(const observation of sourceObs){
+      const list=championGroups.get(observation.champion)??[];
+      list.push(observation);
+      championGroups.set(observation.champion,list);
+    }
+    const masteredSources=[...championGroups.entries()]
+      .map(([champion,items])=>({champion,items,masteredAt:masteredIndex(items)}))
+      .filter((item):item is {champion:string;items:Observation[];masteredAt:number}=>item.masteredAt!==null)
+      .sort((a,b)=>b.items.length-a.items.length||a.masteredAt-b.masteredAt||a.champion.localeCompare(b.champion));
+    const masteredSource=masteredSources[0];
+    if(!masteredSource)continue;
+    const sourceChampion=masteredSource.champion;
+    const sourceChampionObs=masteredSource.items;
+    const sourceRole=chooseRole(sourceChampionObs.map(item=>item.role));
+    const sourceMasteredGame=masteredSource.masteredAt;
     const postMastery=observations.filter(item=>item.rowIndex>sourceMasteredGame);
     const novel=postMastery.filter(item=>
       item.champion!==sourceChampion
@@ -287,7 +300,7 @@ export function buildDecisionTransfer(
     const state=transferState({novel,clean:cleanTransferGames,recentRate,novelChampions,novelContexts});
     const dimension=dimensionFor(novelChampions,novelContexts);
     const transferStrength=strength({novel,clean:cleanTransferGames,recentRate,novelChampions,novelContexts,state});
-    const principle=principleFrom(sourceObs,behaviour);
+    const principle=principleFrom(sourceChampionObs,behaviour);
     const card:DecisionTransferCard={
       id:'transfer:'+behaviour.toLowerCase(),
       behaviourKey:behaviour,
