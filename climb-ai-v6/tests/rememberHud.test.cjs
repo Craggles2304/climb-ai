@@ -388,7 +388,7 @@ test('V5 Transfer Learning shows one novel principle test and freezes it with th
 test('live board defaults to a five-second brief while deep coaching stays available on demand',()=>{
   assert.ok(hud.includes('COACH DETAIL · WIN PATH / LANE / SELF-CHECK'));
   assert.ok(hud.includes('class="rem4-coach-detail"'));
-  assert.ok(esports.includes('COACH DETAIL · RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL'));
+  assert.ok(esports.includes('COACH DETAIL · CONTINGENCY / RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL'));
   assert.ok(esports.includes('class="rem5-coach-detail"'));
   assert.ok(esports.includes('CLIMB PROFILE'));
   assert.ok(esports.includes('YOUR PATTERN'));
