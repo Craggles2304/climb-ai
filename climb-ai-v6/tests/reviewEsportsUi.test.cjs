@@ -187,3 +187,14 @@ test('post-game review links directly into the player Learning Journey',()=>{
   assert.ok(main.includes("ipcMain.handle('companion:open-climb-path'"));
   assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
 });
+
+
+test('Decision Simulation closes the pre-game to post-game learning loop',()=>{
+  assert.ok(decisionGraph.includes('reviewDecisionSimulation'));
+  assert.ok(decisionGraph.includes('simulation:simulationReview'));
+  assert.ok(core.includes('DECISION TWIN V3 · SIMULATION REVIEW'));
+  assert.ok(core.includes('function renderSimulationReview'));
+  assert.ok(core.includes('TWIN REPEATED'));
+  assert.ok(core.includes('BEAT TWIN'));
+  assert.ok(core.includes('NOT OBSERVED'));
+});

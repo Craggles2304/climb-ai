@@ -121,6 +121,20 @@ body.op-remember-live .rem5-risk>span{display:block;color:#ffbb57;font-size:6px;
 body.op-remember-live .rem5-risk b{display:block;margin-top:5px;color:#f0f4f6;font-size:9px;line-height:1.25;text-transform:uppercase}
 body.op-remember-live .rem5-risk p{margin:5px 0 0;color:#89969f;font-size:7px;line-height:1.35}
 body.op-remember-live .rem5-risk em{display:block;margin-top:5px;color:#e7d2aa;font:800 7px/1.35 system-ui;text-transform:uppercase}
+body.op-remember-live .rem6-simulation{border:1px solid rgba(83,161,255,.25);background:linear-gradient(135deg,rgba(38,92,170,.10),rgba(4,8,12,.72));padding:10px 11px;display:grid;gap:8px}
+body.op-remember-live .rem6-simulation-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+body.op-remember-live .rem6-simulation-head span{font-size:6px;letter-spacing:.17em;color:#74b5ff;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem6-simulation-head strong{font-size:9px;letter-spacing:.06em;color:#f2f5f7;text-transform:uppercase}
+body.op-remember-live .rem6-simulation-head small{font-size:6px;letter-spacing:.09em;color:#66747e;text-transform:uppercase}
+body.op-remember-live .rem6-simulation-list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+body.op-remember-live .rem6-sim-card{border:1px solid rgba(255,255,255,.08);background:rgba(3,7,10,.58);padding:9px 10px;min-width:0}
+body.op-remember-live .rem6-sim-card.personal{border-color:rgba(255,184,76,.28)}
+body.op-remember-live .rem6-sim-card>span{display:block;color:#74b5ff;font-size:6px;letter-spacing:.13em;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem6-sim-card.personal>span{color:#ffbb57}
+body.op-remember-live .rem6-sim-card b{display:block;margin-top:5px;color:#f0f4f6;font-size:9px;line-height:1.25;text-transform:uppercase}
+body.op-remember-live .rem6-sim-card p{margin:5px 0 0;color:#8fa0aa;font-size:7px;line-height:1.35}
+body.op-remember-live .rem6-sim-card em{display:block;margin-top:5px;color:#cfe4ff;font:800 7px/1.35 system-ui;text-transform:uppercase}
+body.op-remember-live .rem6-sim-card.personal em{color:#ffe1af}
 body.op-remember-live .rem5-branch-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255,255,255,.11);background:#081017;color:#8898a3;padding:9px 10px;font:950 8px/1 system-ui;letter-spacing:.14em;cursor:pointer;text-transform:uppercase}
 body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
@@ -134,7 +148,7 @@ body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
-@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -169,6 +183,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lanePartner:clean(coach?.lanePartner),
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
+      decisionSimulation:coach?._decisionSimulation||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -209,6 +224,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemPremortem" class="rem5-premortem building">
         <div class="rem5-premortem-head"><span>DECISION PRE-MORTEM</span><strong id="opRemPremortemTitle">BUILDING YOUR RISK MAP</strong><small id="opRemPremortemBoundary">EVIDENCE-BOUNDED · FROZEN BEFORE GAME</small></div>
         <div id="opRemPremortemList" class="rem5-premortem-list"></div>
+      </div>
+      <div id="opRemDecisionSimulation" class="rem6-simulation">
+        <div class="rem6-simulation-head"><span>DECISION TWIN V3 · SIMULATION</span><strong id="opRemSimulationTitle">REHEARSE THIS DRAFT</strong><small id="opRemSimulationMeta">FROZEN BEFORE GAME</small></div>
+        <div id="opRemSimulationList" class="rem6-simulation-list"></div>
       </div>
       <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
         <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
@@ -278,6 +297,32 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       const prevent=document.createElement('em');prevent.textContent='PREVENT · '+(clean(risk?.preventionRule)||'Use the frozen draft plan.');
       card.title=clean(risk?.evidence)||'Repeated decision evidence';
       card.append(label,title,trigger,prevent);list.appendChild(card);
+    });
+  }
+
+  function renderDecisionSimulation(simulation){
+    ensurePlaybookPanel();
+    const root=$('opRemDecisionSimulation'),list=$('opRemSimulationList');if(!root||!list)return;
+    const ready=upper(simulation?.status)==='READY'&&Array.isArray(simulation?.scenarios)&&simulation.scenarios.length;
+    list.replaceChildren();
+    set('opRemSimulationTitle',ready?(simulation?.headline||'DECISION SIMULATION · REHEARSE THIS DRAFT'):'DECISION SIMULATION IS BUILDING');
+    set('opRemSimulationMeta',ready?String(simulation?.personalForecastCount||0)+' PERSONAL · '+String(simulation?.draftRehearsalCount||0)+' DRAFT':'NO FORCED PERSONAL PREDICTION');
+    if(!ready){
+      const card=document.createElement('article');card.className='rem6-sim-card';
+      const label=document.createElement('span');label.textContent='DRAFT REHEARSAL';
+      const title=document.createElement('b');title.textContent='MORE EVIDENCE REQUIRED';
+      const copy=document.createElement('p');copy.textContent=clean(simulation?.summary)||'OP CLIMB will rehearse the exact draft without inventing a personal prediction.';
+      card.append(label,title,copy);list.appendChild(card);return;
+    }
+    simulation.scenarios.slice(0,5).forEach((scenario,index)=>{
+      const personal=upper(scenario?.source)==='PERSONAL_RISK';
+      const card=document.createElement('article');card.className='rem6-sim-card'+(personal?' personal':'');
+      const label=document.createElement('span');label.textContent='SIM #'+String(scenario?.rank||index+1)+' · '+(personal?'PERSONAL FORECAST':'DRAFT REHEARSAL');
+      const title=document.createElement('b');title.textContent=clean(scenario?.title)||clean(scenario?.behaviourLabel)||'DECISION TEST';
+      const trigger=document.createElement('p');trigger.textContent='TRIGGER · '+(clean(scenario?.trigger)||'Before the next major commit.');
+      const target=document.createElement('em');target.textContent='WIN BRANCH · '+(clean(scenario?.targetMove)||'Use the frozen plan.');
+      card.title=[clean(scenario?.exactDraftRead),clean(scenario?.twinLikelyMove),clean(scenario?.evidence)].filter(Boolean).join(' · ');
+      card.append(label,title,trigger,target);list.appendChild(card);
     });
   }
 
@@ -576,6 +621,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     if(pathCards[4]&&clean(coach?.objectiveSetup))pathCards[4].setAttribute('title',upper(coach.objectiveSetup));
     renderPersonalTrap(coach?._personalTrap||null);
     renderDecisionPremortem(coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null);
+    renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
 
@@ -610,6 +656,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._coachQuality=response?.coachQuality||null;
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
+        enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
