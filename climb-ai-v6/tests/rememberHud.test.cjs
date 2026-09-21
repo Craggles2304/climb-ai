@@ -421,3 +421,11 @@ test('draft carry map names the real resource condition without assuming the pla
   assert.ok(esports.includes('carryMap?.reason'));
   assert.ok(draftCoach.includes('buildFrozenGamePlaybook'));
 });
+
+
+test('draft coach receives the same frozen carry hierarchy used by the HUD',()=>{
+  assert.ok(draftCoach.includes('buildDraftCarryMap'));
+  assert.ok(draftCoach.includes('DRAFT CARRY MAP'));
+  assert.ok(draftCoach.includes("If the player is ENABLER or THREAT DENIAL"));
+  assert.ok(draftCoach.includes("If the player is SECONDARY CARRY"));
+});
