@@ -194,6 +194,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <span>CURRENT LESSON · {currentLesson.phase}</span>
             <h4>{currentLesson.label}</h4>
             <p>{currentLesson.whyNow}</p>
+            {curriculum?.decision&&<div className="dt6-decision"><b>CURRICULUM DECISION · {curriculum.decision.action}</b><span>{curriculum.decision.reason}</span></div>}
             <div className="dt6-rule">{currentLesson.gameRule}</div>
           </div>
           <div className="dt6-gates">
