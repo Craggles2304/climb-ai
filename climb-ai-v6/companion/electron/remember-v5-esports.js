@@ -135,6 +135,8 @@ body.op-remember-live .rem6-sim-card b{display:block;margin-top:5px;color:#f0f4f
 body.op-remember-live .rem6-sim-card p{margin:5px 0 0;color:#8fa0aa;font-size:7px;line-height:1.35}
 body.op-remember-live .rem6-sim-card em{display:block;margin-top:5px;color:#cfe4ff;font:800 7px/1.35 system-ui;text-transform:uppercase}
 body.op-remember-live .rem6-sim-card.personal em{color:#ffe1af}
+body.op-remember-live .rem7-memory{border:1px solid rgba(214,255,47,.28);background:linear-gradient(105deg,rgba(214,255,47,.08),rgba(4,8,12,.76));padding:11px 12px;display:grid;grid-template-columns:minmax(150px,.7fr) 1.45fr .9fr;gap:10px;align-items:stretch}
+body.op-remember-live .rem7-memory>div{min-width:0}.rem7-memory-kicker{display:block;color:#d6ff2f;font-size:6px;letter-spacing:.16em;font-weight:950;text-transform:uppercase}.rem7-memory-title{display:block;margin-top:5px;color:#f5f8f9;font-size:11px;line-height:1.25;text-transform:uppercase}.rem7-memory-meta{display:block;margin-top:5px;color:#6e7b84;font-size:6px;letter-spacing:.09em;text-transform:uppercase}.rem7-memory-copy span,.rem7-memory-proof span{display:block;color:#6e7b84;font-size:6px;letter-spacing:.13em;font-weight:950;text-transform:uppercase}.rem7-memory-copy strong{display:block;margin-top:5px;color:#eaff89;font-size:9px;line-height:1.4;text-transform:uppercase}.rem7-memory-proof strong{display:block;margin-top:5px;color:#d6dee3;font-size:8px;line-height:1.4;text-transform:uppercase}
 body.op-remember-live .rem5-branch-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
 body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255,255,255,.11);background:#081017;color:#8898a3;padding:9px 10px;font:950 8px/1 system-ui;letter-spacing:.14em;cursor:pointer;text-transform:uppercase}
 body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
@@ -148,7 +150,7 @@ body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}
-@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -184,6 +186,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
       decisionSimulation:coach?._decisionSimulation||null,
+      scenarioPrime:coach?._scenarioPrime||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -224,6 +227,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemPremortem" class="rem5-premortem building">
         <div class="rem5-premortem-head"><span>DECISION PRE-MORTEM</span><strong id="opRemPremortemTitle">BUILDING YOUR RISK MAP</strong><small id="opRemPremortemBoundary">EVIDENCE-BOUNDED · FROZEN BEFORE GAME</small></div>
         <div id="opRemPremortemList" class="rem5-premortem-list"></div>
+      </div>
+      <div id="opRemScenarioPrime" class="rem7-memory">
+        <div><span class="rem7-memory-kicker">DECISION TWIN V4 · SCENARIO MEMORY</span><strong id="opRemMemoryTitle" class="rem7-memory-title">NO SPACED REP DUE</strong><small id="opRemMemoryMeta" class="rem7-memory-meta">WAITING FOR A MATCHING MEMORY</small></div>
+        <div class="rem7-memory-copy"><span>ONE REP THIS GAME</span><strong id="opRemMemoryRule">PLAY THE FROZEN DRAFT PLAN.</strong></div>
+        <div class="rem7-memory-proof"><span>WHY NOW</span><strong id="opRemMemoryWhy">NO MATCHING REPEATED MEMORY IS DUE.</strong></div>
       </div>
       <div id="opRemDecisionSimulation" class="rem6-simulation">
         <div class="rem6-simulation-head"><span>DECISION TWIN V3 · SIMULATION</span><strong id="opRemSimulationTitle">REHEARSE THIS DRAFT</strong><small id="opRemSimulationMeta">FROZEN BEFORE GAME</small></div>
@@ -298,6 +306,18 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       card.title=clean(risk?.evidence)||'Repeated decision evidence';
       card.append(label,title,trigger,prevent);list.appendChild(card);
     });
+  }
+
+  function renderScenarioPrime(prime){
+    ensurePlaybookPanel();
+    const root=$('opRemScenarioPrime');if(!root)return;
+    const active=prime&&clean(prime?.memoryId);
+    root.style.opacity=active?'1':'.66';
+    set('opRemMemoryTitle',active?(prime?.title||'ONE REP THIS GAME'):'NO SPACED REP DUE');
+    set('opRemMemoryMeta',active?((prime?.state||'LEARNING')+' · '+String(prime?.memoryStrength??0)+'/100 MEMORY · '+(prime?.confidence||'LOW')):'WAITING FOR A MATCHING MEMORY');
+    set('opRemMemoryRule',active?(prime?.targetBranch||'USE THE CLEANER BRANCH.'):'PLAY THE FROZEN DRAFT PLAN.');
+    set('opRemMemoryWhy',active?(prime?.dueReason||prime?.exactDraftRead||'THIS MEMORY MATCHES THE CURRENT DRAFT.'):'NO MATCHING REPEATED MEMORY IS DUE.');
+    root.title=active?[clean(prime?.trigger),clean(prime?.oldBranch),clean(prime?.evidence),clean(prime?.boundary)].filter(Boolean).join(' · '):'';
   }
 
   function renderDecisionSimulation(simulation){
@@ -621,6 +641,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     if(pathCards[4]&&clean(coach?.objectiveSetup))pathCards[4].setAttribute('title',upper(coach.objectiveSetup));
     renderPersonalTrap(coach?._personalTrap||null);
     renderDecisionPremortem(coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null);
+    renderScenarioPrime(coach?._scenarioPrime||null);
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
@@ -657,6 +678,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
         enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
+        enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;

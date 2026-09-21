@@ -808,3 +808,35 @@ img.logo-sm{width:132px}
   .dt2-challenge-options{grid-template-columns:1fr}
   .dt2-challenge-reveal{grid-template-columns:1fr}
 }
+
+/* --- Decision Twin V4 Scenario Memory --- */
+.dt4-lab{margin-top:22px;border-radius:22px;padding:22px;border:1px solid rgba(214,255,47,.18);background:linear-gradient(145deg,rgba(214,255,47,.035),rgba(255,255,255,.014))}
+.dt4-lab-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+.dt4-lab-head>div:first-child{max-width:760px}
+.dt4-lab-head>div:first-child>span,.dt4-active-rep span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#d6ff2f}
+.dt4-lab-head h3{margin:6px 0 7px;font-size:27px;letter-spacing:-.04em}
+.dt4-lab-head p{margin:0;color:#87929d;line-height:1.55;font-size:12px}
+.dt4-lab-stats{display:grid;grid-template-columns:repeat(3,minmax(84px,1fr));gap:7px;min-width:300px}
+.dt4-lab-stats>div{border:1px solid rgba(255,255,255,.075);border-radius:14px;padding:12px;text-align:center;display:grid;gap:2px}
+.dt4-lab-stats b{font-size:25px;line-height:1;color:#d6ff2f}
+.dt4-lab-stats span{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#69747f}
+.dt4-active-rep{margin-top:15px;display:grid;grid-template-columns:1.05fr 1fr 1fr;gap:8px}
+.dt4-active-rep>div{border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.52);border-radius:14px;padding:14px}
+.dt4-active-rep>div:first-child{border-color:rgba(214,255,47,.22)}
+.dt4-active-rep>.target{border-color:rgba(214,255,47,.22);background:rgba(214,255,47,.035)}
+.dt4-active-rep h4{margin:5px 0 6px;font-size:15px;letter-spacing:-.02em}
+.dt4-active-rep p{margin:0;color:#89949e;font-size:11px;line-height:1.45}
+.dt4-active-rep strong{display:block;margin-top:6px;font-size:11px;line-height:1.46;text-transform:uppercase}
+.dt4-memory-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:12px}
+.dt4-memory-card{border:1px solid rgba(255,255,255,.08);background:rgba(3,7,10,.52);border-radius:16px;padding:14px;min-height:190px}
+.dt4-memory-card.due,.dt4-memory-card.regressed{border-color:rgba(255,118,95,.22)}
+.dt4-memory-card.stabilising{border-color:rgba(255,184,76,.22)}
+.dt4-memory-card.mastered{border-color:rgba(214,255,47,.22)}
+.dt4-memory-card h3{margin:10px 0 7px;font-size:16px;letter-spacing:-.025em}
+.dt4-memory-card p{margin:0;color:#87929d;line-height:1.45;font-size:11px;min-height:64px}
+.dt4-memory-meter{margin-top:12px;height:18px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);border-radius:999px;position:relative;overflow:hidden}
+.dt4-memory-meter i{display:block;height:100%;background:linear-gradient(90deg,rgba(214,255,47,.18),rgba(214,255,47,.42));border-right:1px solid rgba(214,255,47,.6)}
+.dt4-memory-meter span{position:absolute;inset:0;display:grid;place-items:center;font-size:8px;letter-spacing:.08em;text-transform:uppercase;font-weight:900}
+.dt4-boundary{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055);font-size:8px;letter-spacing:.09em;text-transform:uppercase;color:#5f6a74;text-align:center}
+@media(max-width:1150px){.dt4-memory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dt4-active-rep{grid-template-columns:1fr}.dt4-lab-head{flex-direction:column}.dt4-lab-stats{min-width:0;width:100%}}
+@media(max-width:650px){.dt4-memory-grid{grid-template-columns:1fr}.dt4-lab-stats{grid-template-columns:repeat(3,1fr)}}

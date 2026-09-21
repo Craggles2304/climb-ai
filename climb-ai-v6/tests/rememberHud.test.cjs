@@ -349,3 +349,18 @@ test('Decision Twin V3 simulation is frozen, rendered and persisted with the exa
   assert.ok(esports.includes('PERSONAL FORECAST'));
   assert.ok(esports.includes('DRAFT REHEARSAL'));
 });
+
+
+test('Scenario Memory chooses one spaced rep for the exact draft and persists it with the locked plan',()=>{
+  assert.ok(draftCoach.includes('buildScenarioMemory'));
+  assert.ok(draftCoach.includes('selectScenarioPrime'));
+  assert.ok(draftCoach.includes('scenarioPrime,'));
+  assert.ok(proLearning.includes('buildScenarioMemory'));
+  assert.ok(proLearning.includes('scenarioMemory'));
+  assert.ok(esports.includes('DECISION TWIN V4 · SCENARIO MEMORY'));
+  assert.ok(esports.includes('function renderScenarioPrime'));
+  assert.ok(esports.includes("enrichedCoach._scenarioPrime=response?.scenarioPrime||null"));
+  assert.ok(esports.includes('scenarioPrime:coach?._scenarioPrime||null'));
+  assert.ok(esports.includes('ONE REP THIS GAME'));
+  assert.ok(esports.includes('WHY NOW'));
+});

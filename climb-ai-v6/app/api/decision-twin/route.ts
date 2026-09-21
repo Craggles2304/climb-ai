@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
+import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -42,10 +43,12 @@ export async function GET(req:Request){
     })).filter(row=>row.analysis?.version===1);
 
     const twin=buildDecisionTwinV2(rows);
+    const scenarioMemory=buildScenarioMemory(rows);
     return NextResponse.json({
       twin,
-      grounding:'decision-twin-v2+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','premortem_review','coaching_response'],
+      scenarioMemory,
+      grounding:'decision-twin-v4+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);

@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.23');
+  assert.equal(pkg.version,'0.7.24');
 });
 
 
@@ -197,4 +197,17 @@ test('Decision Simulation closes the pre-game to post-game learning loop',()=>{
   assert.ok(core.includes('TWIN REPEATED'));
   assert.ok(core.includes('BEAT TWIN'));
   assert.ok(core.includes('NOT OBSERVED'));
+});
+
+
+test('Scenario Memory closes the spaced-repetition loop without one-game mastery claims',()=>{
+  assert.ok(decisionGraph.includes('reviewScenarioPrime'));
+  assert.ok(decisionGraph.includes('scenarioPrime:scenarioPrimeReview'));
+  assert.ok(core.includes('DECISION TWIN V4 · SPACED REP REVIEW'));
+  assert.ok(core.includes('function renderScenarioPrimeReview'));
+  assert.ok(core.includes('REP EXECUTED'));
+  assert.ok(core.includes('OLD BRANCH RETURNED'));
+  assert.ok(core.includes('REP NOT TESTED'));
+  assert.ok(core.includes('One clean game reinforces the memory'));
+  assert.ok(core.includes('renderScenarioPrimeReview(review)'));
 });
