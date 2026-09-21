@@ -127,3 +127,35 @@ test('mastered behaviours are not kept in the Twin-ranked Active Five',()=>{
   assert.equal(twin.identity.primary,null);
   assert.ok(twin.identity.strongest);
 });
+
+
+test('What Would My Twin Do challenge compares a reviewed branch with the repeated Twin tendency',()=>{
+  const rows=Array.from({length:5},(_,index)=>row(index,{fight_selection:48},{
+    tag:'PICK_PRESSURE',
+    behaviour:'FIGHT_SELECTION',
+    verdict:'IMPROVE',
+  }));
+  const latest=(rows[4].analysis as any).decisionGraph.nodes[0];
+  latest.minuteLabel='14:22';
+  latest.situation='Enemy pick starts before our formation is ready.';
+  latest.counterfactual={
+    version:1,
+    actual:'Follow the first contact into river.',
+    alternative:'Decline the fight and clear the wave.',
+    whyBetter:'The frozen plan required numbers and formation before committing.',
+    tradeoff:'You concede immediate river presence but preserve economy and tempo.',
+    confidence:'HIGH',
+    basis:['LOCKED_PLAN'],
+    priority:94,
+    outcomeBoundary:'The alternative is a coaching branch, not a guaranteed result.',
+  };
+  const twin=buildDecisionTwinV2(rows,'2026-09-21T10:00:00.000Z');
+  assert.ok(twin.challenge);
+  assert.equal(twin.challenge?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(twin.challenge?.minuteLabel,'14:22');
+  assert.equal(twin.challenge?.actual,'Follow the first contact into river.');
+  assert.equal(twin.challenge?.alternative,'Decline the fight and clear the wave.');
+  assert.equal(twin.challenge?.twinTendency,'ACTUAL');
+  assert.match(twin.challenge?.twinEvidence||'',/reproduced this pick pressure risk/i);
+  assert.match(twin.challenge?.outcomeBoundary||'',/not a guaranteed result/i);
+});
