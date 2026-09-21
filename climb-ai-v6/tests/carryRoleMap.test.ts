@@ -73,7 +73,7 @@ test('scaling side-lane carry can outrank a conventional marksman',()=>{
   const map=buildDraftCarryMap({champion:'Kayle',ours,enemies,mainThreat:'Jarvan IV'});
   assert.equal(map.primary.champion,'Kayle');
   assert.equal(map.playerRole,'PRIMARY_CARRY');
-  assert.match(map.playerJob,/SAFE HIGH-VALUE RESOURCES/i);
+  assert.match(map.playerJob,/SAFEST HIGH-VALUE RESOURCES/i);
 });
 
 test('a second damage source is labelled secondary carry instead of generic enabler',()=>{
