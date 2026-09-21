@@ -409,7 +409,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- Explain the interaction BETWEEN the ten champions, not isolated champion labels.',
       '- Identify their actual win condition first, then the player answer to it.',
       '- DRAFT CARRY MAP is frozen strategic context. Do not assume the player is the carry. If the player is ENABLER or THREAT DENIAL, write the plan around enabling the named primary carry or denying the named threat instead of demanding first resources or hero damage.',
-      '- If the player is SECONDARY CARRY, preserve their own spike but make the primary carry the first resource priority. If PRIMARY CARRY, protect their economy, access and survival without telling them to greed unsafe resources.'
+      '- If the player is SECONDARY CARRY, preserve their own spike but make the primary carry the first resource priority. If PRIMARY CARRY, protect their economy, access and survival without telling them to greed unsafe resources.',
       '- Separate threat ACCESS from damage. A diver, engage champion, zone controller and follow-up carry can form one threat package.',
       '- Every important instruction must answer WHO, WHAT, WHEN and WHY.',
       '- Use named abilities/cooldowns from the supplied kit facts when they materially change the decision. Never invent an ability name or mechanic.',
@@ -447,7 +447,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
       'The personal trap may shape ONE cue only when status is READY. MASTERED is proof of learning, not an active weakness; do not re-teach it. Never turn BUILDING/NONE evidence into a claim about the player.',
       'The Decision Pre-Mortem may shape trigger/prevention wording only when status is READY. It ranks evidence-backed risk windows; it does not predict that a mistake will occur.',
-      'The Draft Carry Map sets resource hierarchy and the player\'s strategic responsibility for this composition. Keep the five-step path consistent with it.'
+      'The Draft Carry Map sets resource hierarchy and the player\'s strategic responsibility for this composition. Keep the five-step path consistent with it.',
       '',
       'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
