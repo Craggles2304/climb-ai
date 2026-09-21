@@ -195,9 +195,19 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <h4>{currentLesson.label}</h4>
             <p>{currentLesson.whyNow}</p>
             {curriculum?.decision&&<div className="dt6-decision"><b>CURRICULUM DECISION · {curriculum.decision.action}</b><span>{curriculum.decision.reason}</span></div>}
+            <div className="dt7-rep">
+              <div className="dt7-rep-head"><span>REP DIFFICULTY</span><b>LEVEL {currentLesson.repLadder.level}/5 · {currentLesson.repLadder.stage}</b></div>
+              <strong>{currentLesson.repLadder.label}</strong>
+              <p>{currentLesson.repLadder.objective}</p>
+              <small>{currentLesson.repLadder.reason}</small>
+            </div>
             <div className="dt6-rule">{currentLesson.gameRule}</div>
           </div>
           <div className="dt6-gates">
+            <div>
+              <span>REP PROMOTION GATE</span>
+              <strong>{currentLesson.repLadder.promotionGate}</strong>
+            </div>
             <div>
               <span>GRADUATION TEST</span>
               <strong>{currentLesson.graduationRule}</strong>

@@ -9,7 +9,9 @@ function lesson(key:any,label:string):any{
     behaviourKey:key,label,phase:'PRACTISE',readiness:'ACTIVE',confidence:'HIGH',priority:90,
     prerequisite:null,prerequisiteLabel:null,whyNow:'Current Curriculum lesson.',gameRule:'USE THE CLEAN TARGET BRANCH.',
     graduationRule:'PROVE REPEATED CLEAN EXECUTION.',evidence:'Repeated verified evidence.',comparableGames:5,cleanStreak:1,
-    memoryStrength:62,transferStrength:null,nextUnlock:null,
+    memoryStrength:62,transferStrength:null,transferGames:0,transferCleanStreak:0,
+    repLadder:{version:1,level:2,maxLevel:5,stage:'EXECUTE',label:'Execute the branch',objective:'Execute the target branch.',difficultyRule:'EXECUTE THE TARGET BRANCH.',promotionGate:'Repeated clean evidence.',demotionRule:'Regression lowers difficulty.',reason:'Synthetic Level 2 fixture.',evidence:'fixture'},
+    nextUnlock:null,
   };
 }
 
@@ -138,6 +140,6 @@ test('draft coach, Decision Graph and Companion share the same frozen CLIMB matc
   assert.ok(review.includes('CLIMB MISSION · FROZEN REP REVIEW'));
   assert.ok(review.includes('function renderClimbMissionReview'));
   assert.ok(review.includes('MISSION NOT TESTED'));
-  assert.ok(review.includes('ONE CLEAN REP ≠ GRADUATION'));
+  assert.ok(review.includes('ONE CLEAN REP ≠ DIFFICULTY PROMOTION OR GRADUATION'));
   assert.ok(review.includes('renderClimbMissionReview(review)'));
 });

@@ -905,3 +905,7 @@ img.logo-sm{width:132px}
 .dt6-boundary{margin-top:10px;font-size:7px;line-height:1.45;letter-spacing:.08em;text-transform:uppercase;color:#59656d}
 @media(max-width:980px){.dt6-current{grid-template-columns:1fr}.dt6-queue{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.dt6-head{grid-template-columns:1fr}.dt6-status{text-align:left}.dt6-queue{grid-template-columns:1fr}}
+
+.dt7-rep{margin-top:10px;padding:11px 12px;border:1px solid rgba(214,255,47,.14);background:linear-gradient(135deg,rgba(214,255,47,.04),rgba(255,255,255,.015));display:grid;gap:5px}
+.dt7-rep-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.dt7-rep-head span{font-size:8px;letter-spacing:.12em;color:#6f7c84}.dt7-rep-head b{font-size:8px;letter-spacing:.09em;color:#d6ff2f}
+.dt7-rep>strong{font-size:13px;letter-spacing:-.01em}.dt7-rep>p{margin:0!important;color:#a7b1b7!important}.dt7-rep>small{font-size:8px;line-height:1.45;color:#6f7c84}

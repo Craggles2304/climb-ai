@@ -662,6 +662,7 @@ export async function POST(req:NextRequest){
       coach,
       champion,
       role:roleResolution.role,
+      transferPrime:decisionTransferPrime,
     });
     const playbook=buildFrozenGamePlaybook({
       champion,
