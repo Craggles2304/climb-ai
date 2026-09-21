@@ -364,3 +364,18 @@ test('Scenario Memory chooses one spaced rep for the exact draft and persists it
   assert.ok(esports.includes('ONE REP THIS GAME'));
   assert.ok(esports.includes('WHY NOW'));
 });
+
+
+test('V5 Transfer Learning shows one novel principle test and freezes it with the pre-game plan',()=>{
+  assert.ok(draftCoach.includes('buildDecisionTransfer'));
+  assert.ok(draftCoach.includes('selectDecisionTransferPrime'));
+  assert.ok(draftCoach.includes('decisionTransferPrime,'));
+  assert.ok(proLearning.includes('buildDecisionTransfer'));
+  assert.ok(proLearning.includes('decisionTransfer'));
+  assert.ok(esports.includes('DECISION TWIN V5 · TRANSFER LEARNING'));
+  assert.ok(esports.includes('function renderDecisionTransfer'));
+  assert.ok(esports.includes('APPLY THE PRINCIPLE'));
+  assert.ok(esports.includes('WHAT MAKES THIS DIFFERENT'));
+  assert.ok(esports.includes("enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null"));
+  assert.ok(esports.includes('decisionTransferPrime:coach?._decisionTransferPrime||null'));
+});
