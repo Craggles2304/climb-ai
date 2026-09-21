@@ -41,6 +41,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [twin,setTwin]=useState<DecisionTwinV2Profile|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
+  const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
   const valid=UUID.test(accountId);
 
   useEffect(()=>{
@@ -53,7 +54,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load Decision Twin.');
         return body;
       })
-      .then(body=>{if(!cancelled)setTwin(body?.twin??null)})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load Decision Twin.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -151,6 +152,39 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
           <div><span>NOT OBSERVED</span><b>{ledger?.unobservedRisks??0}</b></div>
         </div>
       </div>
+
+      {twin.challenge&&<div className="dt2-challenge glass">
+        <div className="dt2-challenge-head">
+          <div><span>WHAT WOULD MY TWIN DO?</span><h3>Pause the decision. Choose before you see the model.</h3></div>
+          <small>{twin.challenge.minuteLabel} · {twin.challenge.behaviourLabel} · {twin.challenge.confidence}</small>
+        </div>
+        <p className="dt2-challenge-situation">{twin.challenge.situation}</p>
+        <div className="dt2-challenge-options">
+          <button className={challengeChoice==='ACTUAL'?'selected':''} onClick={()=>setChallengeChoice('ACTUAL')}>
+            <span>A</span><b>{twin.challenge.actual}</b>
+          </button>
+          <button className={challengeChoice==='ALTERNATIVE'?'selected':''} onClick={()=>setChallengeChoice('ALTERNATIVE')}>
+            <span>B</span><b>{twin.challenge.alternative}</b>
+          </button>
+        </div>
+        {challengeChoice&&<div className="dt2-challenge-reveal">
+          <div>
+            <span>YOU CHOSE</span>
+            <b>{challengeChoice==='ACTUAL'?'A · RECORDED BRANCH':'B · REVIEWED ALTERNATIVE'}</b>
+          </div>
+          <div>
+            <span>YOUR DECISION TWIN</span>
+            <b>{twin.challenge.twinTendency==='ACTUAL'?'LEANED A':twin.challenge.twinTendency==='ALTERNATIVE'?'LEANED B':'NOT ENOUGH EVIDENCE'}</b>
+            <small>{twin.challenge.twinEvidence}</small>
+          </div>
+          <div>
+            <span>COACHING READ</span>
+            <b>{twin.challenge.whyBetter}</b>
+            <small>{twin.challenge.tradeoff}</small>
+          </div>
+          <p>{twin.challenge.outcomeBoundary}</p>
+        </div>}
+      </div>}
 
       <div className="dt2-policy">THE MODEL CHANGES WHEN YOU CHANGE · NO IDENTITY FROM ONE BAD GAME · NO “ACCURACY” CREDIT FOR A RISK WINDOW THAT NEVER OCCURRED</div>
     </>}
