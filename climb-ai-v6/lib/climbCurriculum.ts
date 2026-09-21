@@ -2,6 +2,7 @@ import type {DecisionBehaviourKey,DecisionTwinConfidence} from './decisionTwin';
 import type {DecisionTwinV2Profile,DecisionTwinActiveFocus} from './decisionTwinV2';
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
+import {buildClimbRepLadder,type ClimbRepLadder} from './climbRepLadder';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -32,6 +33,9 @@ export interface CurriculumLesson{
   cleanStreak:number;
   memoryStrength:number|null;
   transferStrength:number|null;
+  transferGames:number;
+  transferCleanStreak:number;
+  repLadder:ClimbRepLadder;
   nextUnlock:string|null;
 }
 
@@ -154,6 +158,13 @@ function makeLesson(
     :prerequisite&&!prerequisiteStable
       ?'LOCKED'
       :'READY';
+  const comparableGames=mem?.comparableGames??0;
+  const cleanStreak=mem?.cleanStreak??0;
+  const memoryStrength=mem?.memoryStrength??null;
+  const transferStrength=tx?.transferStrength??null;
+  const transferGames=tx?.transferGames??0;
+  const transferCleanStreak=tx?.transferCleanStreak??0;
+  const repLadder=buildClimbRepLadder({behaviourKey:key,phase,comparableGames,cleanStreak,memoryStrength,transferGames,transferCleanStreak,transferStrength});
   return{
     behaviourKey:key,
     label:LABELS[key],
@@ -167,10 +178,13 @@ function makeLesson(
     gameRule:focus?.rule??mem?.targetBranch??tx?.principle??RULES[key],
     graduationRule:graduationRule(phase),
     evidence:mem?.evidence??tx?.evidence??focus?.evidence??'More repeated verified decision evidence is required.',
-    comparableGames:mem?.comparableGames??0,
-    cleanStreak:mem?.cleanStreak??0,
-    memoryStrength:mem?.memoryStrength??null,
-    transferStrength:tx?.transferStrength??null,
+    comparableGames,
+    cleanStreak,
+    memoryStrength,
+    transferStrength,
+    transferGames,
+    transferCleanStreak,
+    repLadder,
     nextUnlock:null,
   };
 }
