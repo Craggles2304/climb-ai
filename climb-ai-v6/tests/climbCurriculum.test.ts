@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import {buildClimbCurriculum} from '../lib/climbCurriculum';
 
 function twin(active:any[],games=8):any{
@@ -96,4 +97,35 @@ test('curriculum will not claim a teaching sequence from too little history',()=
   assert.equal(result.status,'BUILDING');
   assert.match(result.summary,/still building/i);
   assert.match(result.boundary,/one clean game cannot graduate/i);
+});
+
+
+test('foundation prerequisite becomes the current lesson even before it has its own repeated memory',()=>{
+  const result=buildClimbCurriculum(
+    twin([focus('POWER_SPIKE_CONVERSION',100)]),
+    memory([card('POWER_SPIKE_CONVERSION','DUE')]),
+    transfer([]),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'RESET_DISCIPLINE');
+  assert.equal(result.currentLesson?.phase,'FOUNDATION');
+  assert.match(result.currentLesson?.whyNow||'',/unlock/i);
+  const power=result.queue.find((item:any)=>item.behaviourKey==='POWER_SPIKE_CONVERSION');
+  assert.equal(power?.readiness,'LOCKED');
+});
+
+test('Progress, API and learning snapshot expose one evidence-gated Curriculum',()=>{
+  const component=fs.readFileSync('components/DecisionTwinCommandCenter.tsx','utf8');
+  const route=fs.readFileSync('app/api/decision-twin/route.ts','utf8');
+  const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
+  const repo=fs.readFileSync('lib/server/proLearningRepository.ts','utf8');
+  assert.ok(component.includes('CLIMB CURRICULUM'));
+  assert.ok(component.includes('CURRENT LESSON'));
+  assert.ok(component.includes('GRADUATION TEST'));
+  assert.ok(component.includes('NEXT UNLOCK'));
+  assert.ok(route.includes('buildClimbCurriculum(twin,scenarioMemory,decisionTransfer)'));
+  assert.ok(route.includes('curriculum,'));
+  assert.ok(repo.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now)'));
+  assert.ok(repo.includes('scenarioMemory,decisionTransfer,curriculum,generatedAt:now'));
+  assert.ok(draft.includes("source:'CLIMB_CURRICULUM'"));
+  assert.ok(draft.includes('Do not force the current development focus into an irrelevant draft'));
 });
