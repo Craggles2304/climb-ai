@@ -14,6 +14,7 @@ import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type Per
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
+import {buildDecisionTransfer,selectDecisionTransferPrime,type DecisionTransferPrime} from '@/lib/decisionTransfer';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -234,7 +235,8 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   })).filter((row:any)=>row.analysis?.version===1);
   const decisionTwin=storedTwin?.version===1&&Array.isArray(storedTwin?.behaviours)?storedTwin:buildDecisionTwin(rows);
   const scenarioMemory=buildScenarioMemory(rows);
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null,decisionTwin,scenarioMemory};
+  const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric)}:null,decisionTwin,scenarioMemory,decisionTransfer};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -485,7 +487,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -515,6 +517,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       decisionPremortem:input.decisionPremortem,
       decisionSimulation:input.decisionSimulation,
       scenarioPrime:input.scenarioPrime,
+      decisionTransferPrime:input.decisionTransferPrime,
       situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
@@ -626,6 +629,16 @@ export async function POST(req:NextRequest){
       situationContext,
       simulation:decisionSimulation,
     });
+    const decisionTransferPrime=selectDecisionTransferPrime({
+      transfer:context.decisionTransfer,
+      memory:context.scenarioMemory,
+      scenarioPrime,
+      decisionTransferPrime,
+      situationContext,
+      simulation:decisionSimulation,
+      champion,
+      role:roleResolution.role,
+    });
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
@@ -658,6 +671,7 @@ export async function POST(req:NextRequest){
       decisionPremortem,
       decisionSimulation,
       scenarioPrime,
+      decisionTransferPrime,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,
