@@ -55,6 +55,7 @@
     ].filter(Boolean).join(' · ');
     const branchHistory=safeArray(stored.branchSelections).map(item=>clean(item?.branch)).filter(Boolean);
     const contingencyHistory=safeArray(stored.contingencySelections).map(item=>clean(item?.contingency)).filter(Boolean);
+    const climbMission=stored.climbMission||null;
     return{
       version:2,
       champion:clean(stored.champion),
@@ -74,6 +75,9 @@
       branchHistory,
       selectedContingency:clean(stored.selectedContingency),
       contingencyHistory,
+      missionTitle:clean(climbMission?.title),
+      missionCue:clean(climbMission?.cue||climbMission?.action),
+      missionWhy:clean(climbMission?.whyThisGame),
       capturedAt:clean(stored.capturedAt),
     };
   }
@@ -107,9 +111,9 @@
     return{
       ...(fallback||{}),
       ...deep,
-      missionTitle:clean(fallback?.missionTitle),
-      missionCue:clean(fallback?.missionCue),
-      missionWhy:clean(fallback?.missionWhy),
+      missionTitle:clean(deep?.missionTitle||fallback?.missionTitle),
+      missionCue:clean(deep?.missionCue||fallback?.missionCue),
+      missionWhy:clean(deep?.missionWhy||fallback?.missionWhy),
     };
   }
 
@@ -143,6 +147,7 @@
       <details class="op333-details"><summary>COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER</summary><div class="op333-details-body">
         <section id="op332Premortem" class="op332-premortem"><div class="op332-premortem-head"><div><span>RISK MAP · DID THE PATTERN HOLD?</span><div id="op332PremortemStatus" class="op332-premortem-status">CHECKING FROZEN RISKS</div></div></div><div id="op332PremortemList" class="op332-premortem-list"></div><small id="op332PremortemBoundary" class="op332-premortem-proof"></small></section>
         <section id="op332Simulation" class="op332-simulation"><div class="op332-simulation-head"><div><span>MATCH REHEARSAL · REVIEW</span><div id="op332SimulationStatus" class="op332-simulation-status">CHECKING REHEARSED SCENARIOS</div></div></div><div id="op332SimulationList" class="op332-simulation-list"></div><small id="op332SimulationBoundary" class="op332-simulation-proof"></small></section>
+        <section id="op332MissionReview" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>CLIMB MISSION · FROZEN REP REVIEW</span><div id="op332MissionStatus" class="op332-memory-status">CHECKING MATCH REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MISSION</b><strong id="op332MissionReviewName"></strong><p id="op332MissionReviewContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MissionReviewResult"></strong><p id="op332MissionReviewNote"></p></article><article class="op332-memory-card"><b>CURRICULUM EFFECT</b><strong id="op332MissionReviewNext"></strong><p>One match rep adds evidence to the active lesson; it never creates graduation by itself.</p></article></div><small id="op332MissionReviewBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Memory" class="op332-memory"><div class="op332-memory-head"><span>DECISION LAB · SPACED REP REVIEW</span><div id="op332MemoryStatus" class="op332-memory-status">CHECKING SCHEDULED REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MEMORY</b><strong id="op332MemoryName"></strong><p id="op332MemoryContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MemoryResult"></strong><p id="op332MemoryNote"></p></article><article class="op332-memory-card"><b>NEXT RULE</b><strong id="op332MemoryNext"></strong><p>One clean game reinforces the pattern; repeated comparable games are still required for mastery.</p></article></div><small id="op332MemoryBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Transfer" class="op332-transfer"><div class="op332-transfer-head"><span>CLIMB PROFILE · SKILL TRANSFER</span><div id="op332TransferStatus" class="op332-transfer-status">CHECKING GENERALISATION</div></div><div class="op332-transfer-grid"><article class="op332-transfer-card"><b>TEST</b><strong id="op332TransferName"></strong><p id="op332TransferContext"></p></article><article class="op332-transfer-card"><b>RESULT</b><strong id="op332TransferResult"></strong><p id="op332TransferNote"></p></article><article class="op332-transfer-card"><b>MEANING</b><strong id="op332TransferMeaning"></strong><p>Transfer is evidence that the principle survived a different condition; it is not proof that every future matchup is solved.</p></article></div><small id="op332TransferBoundary" class="op332-transfer-proof"></small></section>
         <section id="op332Response" class="op332-response"><div class="op332-response-head"><div><span>COACHING RESPONSE · DID THE CUE TRANSFER?</span><div id="op332ResponseStatus" class="op332-response-status">CHECKING TRAINED BEHAVIOUR</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>PRE-GAME CUE</b><strong id="op332ResponseCue"></strong><p id="op332ResponseNote"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332ResponseRate"></strong><p id="op332ResponseStats"></p></article></div><small id="op332ResponseBoundary" class="op332-response-proof"></small></section>
@@ -407,6 +412,32 @@
     setText('op332SimulationBoundary',clean(simulation?.boundary)||'ONLY VERIFIED COMPARABLE DECISIONS ARE SCORED · NOT OBSERVED IS NEUTRAL.');
   }
 
+  function renderClimbMissionReview(review){
+    const root=$('op332MissionReview');if(!root)return;
+    const mission=review?.decisionGraph?.summary?.climbMission||null;
+    const status=clean(mission?.status||'NO_MISSION').toUpperCase();
+    root.classList.toggle('executed',status==='EXECUTED');
+    root.classList.toggle('missed',status==='MISSED');
+    const label=status==='EXECUTED'?'MISSION EXECUTED'
+      :status==='MISSED'?'MISSION MISSED'
+      :status==='MIXED'?'MISSION PARTLY EXECUTED'
+      :status==='NOT_OBSERVED'?'MISSION NOT TESTED'
+      :'NO MATCH REP FROZEN';
+    setText('op332MissionStatus',label);
+    setText('op332MissionReviewName',clean(mission?.behaviourLabel)||(status==='NO_MISSION'?'No relevant Curriculum rep':'CLIMB Mission'));
+    const tag=clean(mission?.targetTag).replace(/_/g,' ');
+    const matched=Number(mission?.matchedMoments)||0;
+    setText('op332MissionReviewContext',tag?(tag+' · '+String(matched)+' verified mission moment'+(matched===1?'':'s')):'No match-specific mission context was available.');
+    setText('op332MissionReviewResult',status==='EXECUTED'?'CLEAN REP':status==='MISSED'?'REPEAT REP':status==='MIXED'?'MIXED REP':status==='NOT_OBSERVED'?'NO SCORE':'NO REP');
+    setText('op332MissionReviewNote',clean(mission?.note)||'No frozen match mission result was available.');
+    setText('op332MissionReviewNext',status==='EXECUTED'?'ADD EVIDENCE · KEEP THE GRADUATION GATE'
+      :status==='MISSED'?'KEEP THIS LESSON ACTIVE · REPEAT THE DECISION'
+      :status==='MIXED'?'KEEP DRILLING · THE BRANCH IS NOT STABLE'
+      :status==='NOT_OBSERVED'?'UNCHANGED · WAIT FOR THE NEXT RELEVANT WINDOW'
+      :'CURRICULUM CONTINUES WITHOUT A FORCED MATCH REP');
+    setText('op332MissionReviewBoundary',clean(mission?.boundary)||'NO MATCHING VERIFIED DECISION = NOT OBSERVED · ONE CLEAN REP ≠ GRADUATION.');
+  }
+
   function renderScenarioPrimeReview(review){
     const root=$('op332Memory');if(!root)return;
     const memory=review?.decisionGraph?.summary?.scenarioPrime||null;
@@ -585,6 +616,7 @@
     renderDecisionGraph(review);
     renderPremortem(review);
     renderSimulationReview(review);
+    renderClimbMissionReview(review);
     renderScenarioPrimeReview(review);
     renderDecisionTransferReview(review);
     renderCoachingResponse(review);
