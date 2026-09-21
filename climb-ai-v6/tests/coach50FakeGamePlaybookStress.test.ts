@@ -129,6 +129,10 @@ test('50 fake games keep one frozen pregame playbook through 300 changing live s
       assert.ok(selected.fight.length>20);
       assert.ok(selected.objective.length>20);
       assert.ok(selected.never.length>20);
+      assert.ok(['FARM','FIGHT','PRESSURE','STABILISE','SET UP'].includes(selected.priority));
+      assert.ok(selected.job.length>10);
+      assert.ok(selected.fightWhen.length>10);
+      assert.ok(selected.stop.length>10);
 
       // Fake telemetry exists only in the simulation. It must never rewrite the coach.
       const rebuilt=buildFrozenGamePlaybook({champion:player.champion,role,rank,ours:draft.ours,enemies:draft.enemies,plan});
@@ -152,6 +156,9 @@ test('50 fake games keep one frozen pregame playbook through 300 changing live s
     assert.match(playbook.branches.BEHIND.headline,/BEHIND/);
     assert.notEqual(playbook.branches.AHEAD.rule,playbook.branches.BEHIND.rule);
     assert.notEqual(playbook.branches.EVEN.rule,playbook.branches.BEHIND.rule);
+    assert.equal(playbook.branches.AHEAD.priority,'PRESSURE');
+    assert.equal(playbook.branches.BEHIND.priority,'STABILISE');
+    assert.notEqual(playbook.branches.AHEAD.job,playbook.branches.BEHIND.job);
     assert.ok(playbook.baseCall.length>10);
     assert.ok(playbook.threatRule.length>10);
     assert.ok(playbook.objectiveRule.length>10);
