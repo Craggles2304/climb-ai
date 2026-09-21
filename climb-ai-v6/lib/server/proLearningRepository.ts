@@ -59,6 +59,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const decisionTwinV2=buildDecisionTwinV2(rows,now);
   const scenarioMemory=buildScenarioMemory(rows,now);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory,now);
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now);
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
