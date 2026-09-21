@@ -130,7 +130,6 @@
         </div>
       </section>
       <section class="op333-key"><div class="op333-key-head"><span>KEY DECISIONS · 5 MAX</span><small id="op333KeyMeta">ONLY WHAT MATTERED MOST</small></div><div id="op333KeyList" class="op333-key-list"></div></section>
-      <section class="op332-next"><span>NEXT GAME · ONE FOCUS</span><h3 id="op332NextTitle"></h3><p id="op332NextRule"></p></section>
       <details class="op333-details"><summary>MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE</summary><div class="op333-details-body">
         <div class="op332-baseline"><div class="op332-section-label">THE PLAN YOU ACTUALLY TOOK INTO THE GAME</div><div class="op332-baseline-grid"><article class="op332-plan"><span>01 · VS THEIR TEAM</span><strong id="op332Vs"></strong><p id="op332VsWhy"></p></article><article class="op332-plan"><span>02 · YOUR WIN CONDITION</span><strong id="op332Win"></strong><p id="op332WinWhy"></p></article><article class="op332-plan mission"><span>CLIMB MISSION · PERSISTENT</span><strong id="op332Mission"></strong><p id="op332MissionWhy"></p></article></div><p id="op332LockNote" class="op332-lock-note">REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING</p></div>
         <div class="op332-main"><section class="op332-column good"><h3>3 THINGS DONE WELL</h3><div id="op332Good" class="op332-list"></div></section><section class="op332-column fix"><h3>3 THINGS TO IMPROVE</h3><div id="op332Improve" class="op332-list"></div></section></div>
@@ -341,7 +340,7 @@
       const card=document.createElement('article');card.className='op332-simulation-card';
       const label=document.createElement('span');label.textContent='NO SCORE';
       const title=document.createElement('strong');title.textContent='Simulation was not active';
-      const copy=document.createElement('p');copy.textContent=clean(simulation?.note)||'No pre-game Decision Twin simulation was frozen for this match.';
+      const copy=document.createElement('p');copy.textContent=clean(simulation?.note)||'No pre-game match rehearsal was frozen for this game.';
       card.append(label,title,copy);list.appendChild(card);
       setText('op332SimulationBoundary',clean(simulation?.boundary)||'UNOBSERVED SCENARIOS ARE NEVER COUNTED AS SUCCESS OR FAILURE.');
       return;
@@ -396,7 +395,7 @@
       :status==='NOT_OBSERVED'?'TRANSFER NOT TESTED'
       :'NO TRANSFER TEST ACTIVE';
     setText('op332TransferStatus',label);
-    setText('op332TransferName',clean(transfer?.behaviourLabel)||(status==='NO_TEST'?'No frozen V5 test':'Transfer test'));
+    setText('op332TransferName',clean(transfer?.behaviourLabel)||(status==='NO_TEST'?'No frozen skill-transfer test':'Skill transfer'));
     const source=clean(transfer?.sourceTag).replace(/_/g,' ');
     const target=clean(transfer?.targetTag).replace(/_/g,' ');
     setText('op332TransferContext',source&&target?source+' → '+target+' · '+clean(transfer?.dimension).replace(/_/g,' '):'No novel condition was frozen before this game.');
