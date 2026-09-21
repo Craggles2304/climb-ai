@@ -11,6 +11,7 @@ import {canonicalRole,resolvePlayerRole,normalizeTeamAroundPlayer,resolveEnemyRo
 import {buildRankAwareDraftPlan} from '@/lib/draftCoachEngine';
 import {buildFrozenGamePlaybook} from '@/lib/frozenGamePlaybook';
 import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type PersonalTrap,type DraftSituationContext} from '@/lib/decisionTwin';
+import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -390,7 +391,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -415,6 +416,9 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- If PERSONAL TRAP EVIDENCE has status READY, weave exactly one short personal cue into the strategically correct plan. It is historical evidence, not permission to distort the draft read.',
       '- If PERSONAL TRAP EVIDENCE is MASTERED, do not re-teach it as an active weakness. Preserve the learned behaviour and coach the next real draft requirement.',
       '- If PERSONAL TRAP EVIDENCE is BUILDING or NONE, do not invent a personal weakness or claim a repeated tendency.',
+      '- DECISION PRE-MORTEM is an evidence-bounded map of the player\'s highest-risk decision windows for THIS static draft. Use it to sharpen triggers and prevention rules, not to claim certainty or probability.',
+      '- If DECISION PRE-MORTEM is READY, the root win-condition plan should naturally protect against its highest-priority risks without turning the response into a list of warnings.',
+      '- If DECISION PRE-MORTEM is BUILDING or NONE, do not invent predicted mistakes.',
       '- This root plan will be frozen before the game and expanded into prewritten AHEAD / EVEN / BEHIND branches. Make the strategy stable enough to remain correct across those states without using live gold, kills, items, cooldown tracking or objective timers.',
       '- Do not assume the app will detect whether the player is ahead, even or behind. The PLAYER will choose the matching prewritten branch during the game.',
       '',
@@ -428,10 +432,12 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'ENEMY TEAM: '+JSON.stringify(enemies),
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
       'PERSONAL TRAP EVIDENCE: '+JSON.stringify(personalTrap),
+      'DECISION PRE-MORTEM: '+JSON.stringify(decisionPremortem),
       'RIOT / DATA DRAGON KIT FACTS: '+JSON.stringify(kits),
       '',
       'The development focus may shape ONE cue where relevant, but it must not override the correct draft plan.',
       'The personal trap may shape ONE cue only when status is READY. MASTERED is proof of learning, not an active weakness; do not re-teach it. Never turn BUILDING/NONE evidence into a claim about the player.',
+      'The Decision Pre-Mortem may shape trigger/prevention wording only when status is READY. It ranks evidence-backed risk windows; it does not predict that a mistake will occur.',
       '',
       'Build the pre-game coaching plan that will become the immutable root of a frozen in-game playbook. The deterministic fallback below is orientation only. Improve it substantially when the supplied champion interactions justify a sharper read:',
       JSON.stringify(fallback),
@@ -476,7 +482,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -503,6 +509,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       never:input.coach.never,
       ifBehind:input.coach.ifBehind,
       personalTrap:input.personalTrap,
+      decisionPremortem:input.decisionPremortem,
       situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
@@ -561,6 +568,12 @@ export async function POST(req:NextRequest){
       ours,
       enemies,
     });
+    const decisionPremortem=buildDecisionPremortem(context.decisionTwin,{
+      champion,
+      role:roleResolution.role,
+      ours,
+      enemies,
+    });
 
     const kits=await kitFacts([...ours,...enemies]);
     const fallback=completeCoach(buildRankAwareDraftPlan({
@@ -577,7 +590,7 @@ export async function POST(req:NextRequest){
     enrichRulePlan(fallback,userRole,enemies,kits);
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,decisionPremortem,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
@@ -585,6 +598,7 @@ export async function POST(req:NextRequest){
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
         player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
         personalTrap,
+        decisionPremortem,
         coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
@@ -601,6 +615,7 @@ export async function POST(req:NextRequest){
       ours,
       enemies,
       plan:coach as any,
+      decisionPremortem,
     });
     await persistLockedCoachForPregame(db,device,{
       champion,
@@ -608,6 +623,7 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       coach,
       personalTrap,
+      decisionPremortem,
       situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       playbook,
@@ -619,6 +635,7 @@ export async function POST(req:NextRequest){
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
       personalTrap,
+      decisionPremortem,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,

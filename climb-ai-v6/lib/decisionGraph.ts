@@ -1,6 +1,7 @@
 import type {ProMatchAnalysis,ProMetric,ProEvidence} from './riot/proAnalysis';
 import type {StrengthTimeline,FightReview} from './riot/liveStrength';
 import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} from './decisionTwin';
+import {reviewDecisionPremortem,type DecisionPremortem,type DecisionPremortemReview} from './decisionPremortem';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -53,6 +54,7 @@ export interface LockedDecisionPlan{
     situationTag?:DecisionSituationTag|null;
   }|null;
   situationContext?:DraftSituationContext|null;
+  decisionPremortem?:DecisionPremortem|null;
 }
 
 export interface DecisionGraphNode{
@@ -105,6 +107,7 @@ export interface DecisionGraph{
       status:'NO_CUE'|'NO_MATCH'|'EXECUTING'|'MIXED'|'MISSING';
       note:string;
     };
+    premortem:DecisionPremortemReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -481,6 +484,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const matchedMoments=executed+missed;
   const responseRate=matchedMoments?Math.round(executed/matchedMoments*100):null;
   const responseStatus=!activeTrap?'NO_CUE':matchedMoments===0?'NO_MATCH':executed===matchedMoments?'EXECUTING':missed===matchedMoments?'MISSING':'MIXED';
+  const premortemReview=reviewDecisionPremortem(plan?.decisionPremortem,finalNodes.map(node=>({behaviourKey:node.behaviourKey,verdict:node.verdict,confidence:node.confidence,situationTags:node.situationTags})));
 
   return{
     version:1,
@@ -517,6 +521,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
                 ?'Every verified comparable decision this game still reproduced the trained behaviour.'
                 :'The trained behaviour was executed in some comparable moments and missed in others.',
       },
+      premortem:premortemReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -538,5 +543,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     ifBehind:clean(raw.ifBehind)||null,
     personalTrap:raw.personalTrap??null,
     situationContext:raw.situationContext??null,
+    decisionPremortem:raw.decisionPremortem??raw.playbook?.decisionPremortem??null,
   };
 }

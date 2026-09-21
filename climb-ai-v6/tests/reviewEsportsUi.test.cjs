@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.22');
+  assert.equal(pkg.version,'0.7.23');
 });
 
 
@@ -162,6 +162,19 @@ test('post-game review closes the loop by measuring whether the pre-game Persona
   assert.ok(core.includes('NOT TESTED THIS GAME'));
   assert.ok(core.includes('ASSOCIATION ONLY'));
   assert.ok(core.includes('renderCoachingResponse(review)'));
+});
+
+
+test('post-game review scores the frozen Decision Pre-Mortem without treating unobserved risks as success',()=>{
+  assert.ok(decisionGraph.includes('reviewDecisionPremortem'));
+  assert.ok(decisionGraph.includes('premortem:premortemReview'));
+  assert.ok(core.includes('DECISION PRE-MORTEM · DID THE RISK MAP HOLD?'));
+  assert.ok(core.includes('function renderPremortem'));
+  assert.ok(core.includes('BEAT PATTERN'));
+  assert.ok(core.includes('PATTERN HIT'));
+  assert.ok(core.includes('NOT OBSERVED'));
+  assert.ok(core.includes('RISK MAP NOT TESTED THIS GAME'));
+  assert.ok(core.includes('renderPremortem(review)'));
 });
 
 
