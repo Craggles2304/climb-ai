@@ -1,5 +1,6 @@
 import type {CoachEnginePlan} from './draftCoachEngine';
 import type {DraftRole,DraftRolePlayer} from './draftRoleResolver';
+import type {DecisionPremortem} from './decisionPremortem';
 
 export type FrozenBranchKey='AHEAD'|'EVEN'|'BEHIND';
 
@@ -10,6 +11,7 @@ export interface FrozenBranch{
   fight:string;
   objective:string;
   never:string;
+  decisionRisk:string;
 }
 
 export interface FrozenCheckpoint{
@@ -32,6 +34,7 @@ export interface FrozenGamePlaybook{
   never:string;
   branches:Record<FrozenBranchKey,FrozenBranch>;
   checkpoints:FrozenCheckpoint[];
+  decisionPremortem:DecisionPremortem|null;
 }
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
@@ -62,6 +65,7 @@ export function buildFrozenGamePlaybook(input:{
   ours:DraftRolePlayer[];
   enemies:DraftRolePlayer[];
   plan:CoachEnginePlan;
+  decisionPremortem?:DecisionPremortem|null;
 }):FrozenGamePlaybook{
   const champion=clean(input.champion);
   const draftFingerprint='ours['+fingerprint(input.ours)+']::enemies['+fingerprint(input.enemies)+']';
@@ -69,6 +73,9 @@ export function buildFrozenGamePlaybook(input:{
   const baseFight=compact(input.plan.fightTrigger||input.plan.threatAnswer);
   const baseObjective=compact(input.plan.objectiveSetup);
   const baseNever=compact(input.plan.never||input.plan.lanePlan?.respect||'DO NOT BREAK THE DRAFT PLAN FOR A LOW-VALUE CHASE.');
+  const decisionPremortem=input.decisionPremortem?.status==='READY'?input.decisionPremortem:null;
+  const topRisk=decisionPremortem?.risks?.[0]??null;
+  const branchRisk=(key:FrozenBranchKey)=>compact(topRisk?.branchRules?.[key]||'NO VERIFIED PERSONAL RISK OVERRIDE — EXECUTE THE BASE DRAFT PLAN.');
 
   const ahead:FrozenBranch={
     key:'AHEAD',
@@ -77,6 +84,7 @@ export function buildFrozenGamePlaybook(input:{
     fight:compact(`KEEP THE SAME FIRST-CONTACT RULE: ${baseFight}`),
     objective:compact(`TURN THE LEAD INTO SETUP: ${baseObjective}`),
     never:compact(`DO NOT THROW ACCESS / POSITION FOR EXTRA KILLS. ${baseNever}`),
+    decisionRisk:branchRisk('AHEAD'),
   };
 
   const even:FrozenBranch={
@@ -86,6 +94,7 @@ export function buildFrozenGamePlaybook(input:{
     fight:compact(baseFight),
     objective:compact(baseObjective),
     never:baseNever,
+    decisionRisk:branchRisk('EVEN'),
   };
 
   const behind:FrozenBranch={
@@ -95,6 +104,7 @@ export function buildFrozenGamePlaybook(input:{
     fight:compact(`DO NOT FORCE FROM SECOND MOVE. USE THE SAME THREAT RULE: ${input.plan.threatAnswer}`),
     objective:compact(`CONCEDE SETUP YOU CANNOT HOLD; RE-ENTER ONLY THROUGH YOUR PREPLANNED GEOMETRY: ${baseObjective}`),
     never:compact(`DO NOT PAY HP / SUMMONERS TO DEFEND SPACE YOU CANNOT CONTROL. ${baseNever}`),
+    decisionRisk:branchRisk('BEHIND'),
   };
 
   return{
@@ -110,6 +120,7 @@ export function buildFrozenGamePlaybook(input:{
     threatRule:compact(input.plan.threatAnswer),
     never:baseNever,
     branches:{AHEAD:ahead,EVEN:even,BEHIND:behind},
+    decisionPremortem,
     checkpoints:[
       {
         minute:5,
@@ -118,6 +129,7 @@ export function buildFrozenGamePlaybook(input:{
           'WHICH PREBUILT BRANCH FITS: AHEAD / EVEN / BEHIND?',
           compact('IS THE LANE STILL BEING PLAYED BY THE ORIGINAL RULE? '+input.plan.lanePlan.wave,150),
           compact('ARE YOU RESPECTING THE DRAFT THREAT? '+input.plan.threatAnswer,150),
+          ...(topRisk?[compact('PRE-MORTEM #1 · '+topRisk.trigger+' '+topRisk.preventionRule,150)]:[]),
         ],
       },
       {
@@ -127,6 +139,7 @@ export function buildFrozenGamePlaybook(input:{
           'WHICH PREBUILT BRANCH FITS NOW: AHEAD / EVEN / BEHIND?',
           compact('IS YOUR NEXT FIGHT STILL STARTING ON THE RIGHT CONDITION? '+baseFight,150),
           compact('ARE YOU RESETTING / MOVING EARLY ENOUGH FOR THE ORIGINAL OBJECTIVE PLAN? '+baseObjective,150),
+          ...(topRisk?[compact('PERSONAL RISK CHECK · '+topRisk.branchRules.EVEN,150)]:[]),
         ],
       },
       {
@@ -136,6 +149,7 @@ export function buildFrozenGamePlaybook(input:{
           'WHICH PREBUILT BRANCH FITS NOW: AHEAD / EVEN / BEHIND?',
           compact('BEFORE THE NEXT MAJOR FIGHT, CAN YOU STILL EXECUTE: '+input.plan.headline,150),
           compact('IF THE GAME IS MESSY, RETURN TO THE NEVER RULE: '+baseNever,150),
+          ...(topRisk?[compact('DO NOT LET THE GAME STATE ERASE THE PRE-MORTEM: '+topRisk.preventionRule,150)]:[]),
         ],
       },
     ],
