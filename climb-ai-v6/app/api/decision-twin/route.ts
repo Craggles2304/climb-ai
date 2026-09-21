@@ -53,7 +53,7 @@ export async function GET(req:Request){
       scenarioMemory,
       decisionTransfer,
       curriculum,
-      grounding:'decision-twin-v5+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
+      grounding:'climb-profile+curriculum+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
       factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','premortem_review','coaching_response'],
     });
   }catch(error){
