@@ -51,7 +51,7 @@ test('review layer loads after the evidence renderer and Companion version match
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
   const esportsIndex=loader.indexOf("load('review-esports.js')");
   assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
-  assert.equal(pkg.version,'0.7.24');
+  assert.equal(pkg.version,'0.7.25');
 });
 
 
@@ -210,4 +210,16 @@ test('Scenario Memory closes the spaced-repetition loop without one-game mastery
   assert.ok(core.includes('REP NOT TESTED'));
   assert.ok(core.includes('One clean game reinforces the memory'));
   assert.ok(core.includes('renderScenarioPrimeReview(review)'));
+});
+
+
+test('V5 transfer review only credits frozen novel decisions that actually occurred',()=>{
+  assert.ok(decisionGraph.includes('reviewDecisionTransfer'));
+  assert.ok(decisionGraph.includes('decisionTransfer:decisionTransferReview'));
+  assert.ok(core.includes('DECISION TWIN V5 · TRANSFER REVIEW'));
+  assert.ok(core.includes('function renderDecisionTransferReview'));
+  assert.ok(core.includes('PRINCIPLE TRANSFERRED'));
+  assert.ok(core.includes('TRANSFER FAILED'));
+  assert.ok(core.includes('TRANSFER NOT TESTED'));
+  assert.ok(core.includes('renderDecisionTransferReview(review)'));
 });

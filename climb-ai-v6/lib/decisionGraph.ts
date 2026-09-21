@@ -4,6 +4,7 @@ import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} fr
 import {reviewDecisionPremortem,type DecisionPremortem,type DecisionPremortemReview} from './decisionPremortem';
 import {reviewDecisionSimulation,type DecisionSimulation,type DecisionSimulationReview} from './decisionSimulation';
 import {reviewScenarioPrime,type ScenarioPrime,type ScenarioPrimeReview} from './scenarioMemory';
+import {reviewDecisionTransfer,type DecisionTransferPrime,type DecisionTransferReview} from './decisionTransfer';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -59,6 +60,7 @@ export interface LockedDecisionPlan{
   decisionPremortem?:DecisionPremortem|null;
   decisionSimulation?:DecisionSimulation|null;
   scenarioPrime?:ScenarioPrime|null;
+  decisionTransferPrime?:DecisionTransferPrime|null;
 }
 
 export interface DecisionGraphNode{
@@ -114,6 +116,7 @@ export interface DecisionGraph{
     premortem:DecisionPremortemReview;
     simulation:DecisionSimulationReview;
     scenarioPrime:ScenarioPrimeReview;
+    decisionTransfer:DecisionTransferReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -494,6 +497,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const premortemReview=reviewDecisionPremortem(plan?.decisionPremortem,observedDecisions);
   const simulationReview=reviewDecisionSimulation(plan?.decisionSimulation,observedDecisions);
   const scenarioPrimeReview=reviewScenarioPrime(plan?.scenarioPrime,observedDecisions);
+  const decisionTransferReview=reviewDecisionTransfer(plan?.decisionTransferPrime,observedDecisions);
 
   return{
     version:1,
@@ -533,6 +537,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       premortem:premortemReview,
       simulation:simulationReview,
       scenarioPrime:scenarioPrimeReview,
+      decisionTransfer:decisionTransferReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -557,5 +562,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     decisionPremortem:raw.decisionPremortem??raw.playbook?.decisionPremortem??null,
     decisionSimulation:raw.decisionSimulation??null,
     scenarioPrime:raw.scenarioPrime??null,
+    decisionTransferPrime:raw.decisionTransferPrime??null,
   };
 }

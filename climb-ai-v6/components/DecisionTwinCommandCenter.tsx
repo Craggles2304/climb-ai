@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import type {DecisionTwinV2Profile,DecisionTwinActiveFocus,DecisionContextProfile} from '@/lib/decisionTwinV2';
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemory';
+import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionTransfer';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -25,6 +26,18 @@ function MemoryCard({item}:{item:ScenarioMemoryCard}){
     <p>{item.summary}</p>
     <div className="dt4-memory-meter"><i style={{width:`${item.memoryStrength}%`}}/><span>{item.memoryStrength}/100 memory</span></div>
     <div className="dt2-mini-row"><span>{item.comparableGames} comparable games</span><span>{item.dueNextGame?'DUE NEXT MATCH':item.gamesUntilReview+' games to review'}</span></div>
+  </article>;
+}
+
+function TransferCard({item}:{item:DecisionTransferCard}){
+  const breadth=item.dimension==='BOTH'?'Champion + Context':item.dimension==='CHAMPION'?'New Champions':item.dimension==='CONTEXT'?'New Contexts':'Local Only';
+  return <article className={`dt5-transfer-card ${item.state.toLowerCase()}`}>
+    <div className="dt2-card-top"><span>{breadth}</span><b>{item.state.replaceAll('_',' ')}</b></div>
+    <h3>{item.behaviourLabel}</h3>
+    <p>{item.summary}</p>
+    <div className="dt5-transfer-path"><span>{item.sourceChampion}</span><i>→</i><strong>{item.novelChampions.length?item.novelChampions.slice(0,2).join(' / '):item.novelContexts.length?item.novelContexts.slice(0,2).map(pretty).join(' / '):'NEXT NOVEL TEST'}</strong></div>
+    <div className="dt5-transfer-meter"><i style={{width:`${item.transferStrength}%`}}/><span>{item.transferStrength}/100 transfer</span></div>
+    <div className="dt2-mini-row"><span>{item.transferGames} novel games</span><span>{item.transferCleanRate===null?'NO TEST YET':item.transferCleanRate+'% clean'}</span></div>
   </article>;
 }
 
@@ -51,6 +64,7 @@ function FocusCard({item}:{item:DecisionTwinActiveFocus}){
 export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [twin,setTwin]=useState<DecisionTwinV2Profile|null>(null);
   const [memory,setMemory]=useState<ScenarioMemoryProfile|null>(null);
+  const [transfer,setTransfer]=useState<DecisionTransferProfile|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -58,7 +72,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setMemory(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -66,7 +80,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load Decision Twin.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load Decision Twin.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -78,17 +92,19 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const ledger=twin?.riskLedger??null;
   const memoryCards=useMemo(()=>memory?.cards?.filter(item=>item.state!=='BUILDING').slice(0,5)??[],[memory]);
   const activeRep=memory?.activeRep??null;
+  const transferCards=useMemo(()=>transfer?.cards?.slice(0,5)??[],[transfer]);
+  const activeTransfer=transfer?.activeTransfer??null;
 
   if(!valid)return null;
 
   return <section className="dt2-shell">
     <div className="dt2-head">
       <div>
-        <div className="eyebrow">DECISION TWIN V2 · PLAYER OPERATING MODEL</div>
+        <div className="eyebrow">DECISION TWIN V5 · PLAYER OPERATING MODEL</div>
         <h2>Your game does not have one version of you.</h2>
         <p className="muted">OP CLIMB models the decisions you repeat, the contexts that change you, the risks it can forecast before draft lock and the next realistic version of your play.</p>
       </div>
-      {twin&&<div className="dt2-version"><span>MODEL</span><b>V2</b><small>{twin.gamesAnalyzed} games</small></div>}
+      {twin&&<div className="dt2-version"><span>MODEL</span><b>V5</b><small>{twin.gamesAnalyzed} games</small></div>}
     </div>
 
     {loading&&<div className="glass card dt2-empty">BUILDING YOUR DECISION MODEL…</div>}
@@ -173,6 +189,24 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         <div className="dt4-boundary">{memory?.boundary||'One game cannot create mastery.'}</div>
       </div>
 
+      <div className="dt5-map glass">
+        <div className="dt5-map-head">
+          <div><span>DECISION TWIN V5 · TRANSFER MAP</span><h3>Did you learn the decision — or only memorise the original cue?</h3><p>{transfer?.summary||'Transfer Learning begins after a Scenario Memory is locally mastered.'}</p></div>
+          <div className="dt5-map-stats">
+            <div><b>{transfer?.locallyMastered??0}</b><span>LOCAL</span></div>
+            <div><b>{transfer?.transferring??0}</b><span>TRANSFERRING</span></div>
+            <div><b>{transfer?.principleOwned??0}</b><span>OWNED</span></div>
+          </div>
+        </div>
+        {activeTransfer&&<div className="dt5-active-transfer">
+          <div><span>NEXT GENERALISATION TARGET</span><h4>{activeTransfer.behaviourLabel}</h4><p>{activeTransfer.principle}</p></div>
+          <div><span>LEARNED LOCALLY</span><strong>{activeTransfer.sourceChampion} · {pretty(activeTransfer.sourceTag)}</strong></div>
+          <div className="target"><span>PROVE IT BEYOND THE CUE</span><strong>{activeTransfer.state==='REGRESSED'?'REOPEN TRANSFER':activeTransfer.state==='LOCAL_ONLY'?'FIRST NOVEL TEST':'KEEP EXPANDING BREADTH'}</strong></div>
+        </div>}
+        {transferCards.length?<div className="dt5-transfer-grid">{transferCards.map(item=><TransferCard key={item.id} item={item}/>)}</div>:<div className="dt2-empty">NO LOCALLY MASTERED MEMORY IS READY FOR TRANSFER TESTING YET</div>}
+        <div className="dt5-boundary">{transfer?.boundary||'Generalisation is never claimed from one clean game.'}</div>
+      </div>
+
       <div className="dt2-section-head">
         <div><span>ACTIVE FIVE · TWIN-RANKED</span><h3>The five behaviours costing the most controllable value now.</h3></div>
         <small>The list changes as your evidence changes.</small>
@@ -228,7 +262,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         </div>}
       </div>}
 
-      <div className="dt2-policy">THE MODEL CHANGES WHEN YOU CHANGE · NO IDENTITY FROM ONE BAD GAME · NO “ACCURACY” CREDIT FOR A RISK WINDOW THAT NEVER OCCURRED</div>
+      <div className="dt2-policy">THE MODEL CHANGES WHEN YOU CHANGE · LOCAL MASTERY ≠ GENERALISATION · NO TRANSFER CREDIT WITHOUT A FROZEN NOVEL TEST</div>
     </>}
   </section>;
 }

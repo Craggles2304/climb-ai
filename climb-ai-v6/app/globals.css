@@ -840,3 +840,39 @@ img.logo-sm{width:132px}
 .dt4-boundary{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055);font-size:8px;letter-spacing:.09em;text-transform:uppercase;color:#5f6a74;text-align:center}
 @media(max-width:1150px){.dt4-memory-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dt4-active-rep{grid-template-columns:1fr}.dt4-lab-head{flex-direction:column}.dt4-lab-stats{min-width:0;width:100%}}
 @media(max-width:650px){.dt4-memory-grid{grid-template-columns:1fr}.dt4-lab-stats{grid-template-columns:repeat(3,1fr)}}
+
+
+/* --- Decision Twin V5 Transfer Learning --- */
+.dt5-map{margin-top:22px;border-radius:22px;padding:22px;border:1px solid rgba(74,154,255,.18);background:linear-gradient(145deg,rgba(74,154,255,.035),rgba(255,255,255,.014))}
+.dt5-map-head{display:flex;justify-content:space-between;gap:24px;align-items:flex-start}
+.dt5-map-head>div:first-child{max-width:760px}
+.dt5-map-head>div:first-child>span,.dt5-active-transfer span{font-size:10px;letter-spacing:.14em;text-transform:uppercase;font-weight:800;color:#8fbaff}
+.dt5-map-head h3{margin:6px 0 7px;font-size:27px;letter-spacing:-.04em}
+.dt5-map-head p{margin:0;color:#87929d;line-height:1.55;font-size:12px}
+.dt5-map-stats{display:grid;grid-template-columns:repeat(3,minmax(84px,1fr));gap:7px;min-width:300px}
+.dt5-map-stats>div{border:1px solid rgba(255,255,255,.075);border-radius:14px;padding:12px;text-align:center;display:grid;gap:2px}
+.dt5-map-stats b{font-size:25px;line-height:1;color:#8fbaff}
+.dt5-map-stats span{font-size:8px;letter-spacing:.12em;text-transform:uppercase;color:#69747f}
+.dt5-active-transfer{margin-top:15px;display:grid;grid-template-columns:1.15fr 1fr 1fr;gap:8px}
+.dt5-active-transfer>div{border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.52);border-radius:14px;padding:14px}
+.dt5-active-transfer>div:first-child,.dt5-active-transfer>.target{border-color:rgba(74,154,255,.22)}
+.dt5-active-transfer>.target{background:rgba(74,154,255,.035)}
+.dt5-active-transfer h4{margin:5px 0 6px;font-size:15px;letter-spacing:-.02em}
+.dt5-active-transfer p{margin:0;color:#89949e;font-size:11px;line-height:1.45}
+.dt5-active-transfer strong{display:block;margin-top:6px;font-size:11px;line-height:1.46;text-transform:uppercase}
+.dt5-transfer-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px;margin-top:12px}
+.dt5-transfer-card{border:1px solid rgba(255,255,255,.08);background:rgba(3,7,10,.52);border-radius:16px;padding:14px;min-height:215px}
+.dt5-transfer-card.local_only,.dt5-transfer-card.testing,.dt5-transfer-card.regressed{border-color:rgba(255,118,95,.18)}
+.dt5-transfer-card.transferring,.dt5-transfer-card.generalising{border-color:rgba(74,154,255,.25)}
+.dt5-transfer-card.principle_owned{border-color:rgba(214,255,47,.25)}
+.dt5-transfer-card h3{margin:10px 0 7px;font-size:16px;letter-spacing:-.025em}
+.dt5-transfer-card p{margin:0;color:#87929d;line-height:1.45;font-size:11px;min-height:68px}
+.dt5-transfer-path{margin-top:11px;display:grid;grid-template-columns:1fr auto 1fr;gap:6px;align-items:center;border:1px solid rgba(255,255,255,.06);border-radius:10px;padding:8px}
+.dt5-transfer-path span,.dt5-transfer-path strong{font-size:8px;line-height:1.25;text-transform:uppercase}
+.dt5-transfer-path span{color:#7d8993}.dt5-transfer-path strong{color:#b8d3ff}.dt5-transfer-path i{font-style:normal;color:#8fbaff}
+.dt5-transfer-meter{margin-top:10px;height:18px;border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.025);border-radius:999px;position:relative;overflow:hidden}
+.dt5-transfer-meter i{display:block;height:100%;background:linear-gradient(90deg,rgba(74,154,255,.15),rgba(74,154,255,.42));border-right:1px solid rgba(143,186,255,.7)}
+.dt5-transfer-meter span{position:absolute;inset:0;display:grid;place-items:center;font-size:8px;letter-spacing:.08em;text-transform:uppercase;font-weight:900}
+.dt5-boundary{margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055);font-size:8px;letter-spacing:.09em;text-transform:uppercase;color:#5f6a74;text-align:center}
+@media(max-width:1150px){.dt5-transfer-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.dt5-active-transfer{grid-template-columns:1fr}.dt5-map-head{flex-direction:column}.dt5-map-stats{min-width:0;width:100%}}
+@media(max-width:650px){.dt5-transfer-grid{grid-template-columns:1fr}.dt5-map-stats{grid-template-columns:repeat(3,1fr)}}
