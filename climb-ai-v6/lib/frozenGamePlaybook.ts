@@ -12,6 +12,10 @@ export interface FrozenBranch{
   objective:string;
   never:string;
   decisionRisk:string;
+  priority:'FARM'|'FIGHT'|'PRESSURE'|'STABILISE'|'SET UP';
+  job:string;
+  fightWhen:string;
+  stop:string;
 }
 
 export interface FrozenCheckpoint{
@@ -47,6 +51,14 @@ function fingerprint(players:DraftRolePlayer[]){
     .map(player=>clean(player.role).toUpperCase()+':'+clean(player.champion).toLowerCase())
     .sort()
     .join('|');
+}
+
+function basePriority(plan:CoachEnginePlan):FrozenBranch['priority']{
+  const text=(clean(plan.headline)+' '+clean(plan.why)+' '+clean(plan.fightTrigger)).toUpperCase();
+  if(/FARM|SCALE|SURVIVE|WAIT|PRESERVE|ABSORB/.test(text))return 'FARM';
+  if(/PRESS|TEMPO|FIRST MOVE|DENY|CONTROL/.test(text))return 'PRESSURE';
+  if(/FIGHT|ENGAGE|DIVE|PICK|ATTACK|PUNISH/.test(text))return 'FIGHT';
+  return 'SET UP';
 }
 
 function roleEconomyRule(role:DraftRole|null,champion:string){
@@ -85,6 +97,10 @@ export function buildFrozenGamePlaybook(input:{
     objective:compact(`TURN THE LEAD INTO SETUP: ${baseObjective}`),
     never:compact(`DO NOT THROW ACCESS / POSITION FOR EXTRA KILLS. ${baseNever}`),
     decisionRisk:branchRisk('AHEAD'),
+    priority:'PRESSURE',
+    job:compact('CONTROL THE LEAD → '+input.plan.headline+' → '+baseObjective,135),
+    fightWhen:compact(baseFight,120),
+    stop:compact(baseNever,120),
   };
 
   const even:FrozenBranch={
@@ -95,6 +111,10 @@ export function buildFrozenGamePlaybook(input:{
     objective:compact(baseObjective),
     never:baseNever,
     decisionRisk:branchRisk('EVEN'),
+    priority:basePriority(input.plan),
+    job:compact(input.plan.headline||input.plan.why,135),
+    fightWhen:compact(baseFight,120),
+    stop:compact(baseNever,120),
   };
 
   const behind:FrozenBranch={
@@ -105,6 +125,10 @@ export function buildFrozenGamePlaybook(input:{
     objective:compact(`CONCEDE SETUP YOU CANNOT HOLD; RE-ENTER ONLY THROUGH YOUR PREPLANNED GEOMETRY: ${baseObjective}`),
     never:compact(`DO NOT PAY HP / SUMMONERS TO DEFEND SPACE YOU CANNOT CONTROL. ${baseNever}`),
     decisionRisk:branchRisk('BEHIND'),
+    priority:'STABILISE',
+    job:compact(input.plan.ifBehind||economy,135),
+    fightWhen:compact('SECOND MOVE ONLY · '+input.plan.threatAnswer,120),
+    stop:compact('DO NOT PAY HP / SUMMONERS FOR SPACE YOU CANNOT HOLD. '+baseNever,120),
   };
 
   return{
