@@ -15,6 +15,7 @@ export interface FrozenContingency{
   fightWhen:string;
   objective:string;
   never:string;
+  priority:'ORIGINAL'|'FARM'|'FIGHT'|'PRESSURE'|'STABILISE'|'SET UP';
 }
 
 export interface FrozenContingencyMap{
@@ -86,6 +87,7 @@ export function buildFrozenContingencyMap(input:{
     fightWhen:compact(baseFight,120),
     objective:compact(baseObjective,130),
     never:compact(baseNever,120),
+    priority:'ORIGINAL',
   };
 
   const planBJob=!secondary
@@ -111,6 +113,7 @@ export function buildFrozenContingencyMap(input:{
     fightWhen:secondary?compact('CONNECT TO '+secondary+' ONLY WHEN '+baseFight,120):'USE RECOVERY INSTEAD.',
     objective:secondary?compact('SET UP EARLY ENOUGH FOR '+secondary+' TO ENTER CLEANLY. '+baseObjective,130):'USE RECOVERY INSTEAD.',
     never:secondary?compact('DO NOT KEEP FUNNELLING THE ORIGINAL PLAN AFTER '+primary+' HAS NO CLEAN ACCESS. '+baseNever,120):'DO NOT INVENT A SECONDARY CARRY.',
+    priority:'SET UP',
   };
 
   const recovery:FrozenContingency={
@@ -124,6 +127,7 @@ export function buildFrozenContingencyMap(input:{
     fightWhen:compact('ONLY AFTER THE ENEMY SPENDS ACCESS / OVEREXTENDS INTO YOUR SETUP. '+clean(input.plan.threatAnswer),120),
     objective:compact('TRADE OR CONCEDE SETUP YOU CANNOT HOLD → RESET FIRST → RE-ENTER ONLY ON THE FROZEN OBJECTIVE RULE. '+baseObjective,130),
     never:compact('DO NOT FORCE A LOSING FRONT-TO-BACK JUST BECAUSE THE ORIGINAL PLAN FAILED. '+baseNever,120),
+    priority:'STABILISE',
   };
 
   return{
