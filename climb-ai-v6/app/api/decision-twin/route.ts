@@ -5,6 +5,7 @@ import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import {buildDecisionTransfer} from '@/lib/decisionTransfer';
+import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -46,12 +47,14 @@ export async function GET(req:Request){
     const twin=buildDecisionTwinV2(rows);
     const scenarioMemory=buildScenarioMemory(rows);
     const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
+    const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer);
     return NextResponse.json({
       twin,
       scenarioMemory,
       decisionTransfer,
+      curriculum,
       grounding:'decision-twin-v5+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','premortem_review','coaching_response'],
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);
