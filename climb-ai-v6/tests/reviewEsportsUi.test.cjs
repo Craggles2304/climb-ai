@@ -248,9 +248,9 @@ test('post-game review preserves player contingency choices without pretending t
 
 
 test('post-game Game Read reviews player selections without live auto-switching',()=>{
-  const recognition=fs.readFileSync(path.join(root,'companion','electron','plan-recognition-review.js'),'utf8');
-  assert.ok(loader.includes("load('plan-recognition-review.js')"));
-  assert.ok(loader.indexOf("load('plan-recognition-review.js')")<loader.indexOf("load('review-v2-core.js')"));
+  const recognition=fs.readFileSync(path.join(root,'companion','electron','plan-recognition-review.cjs'),'utf8');
+  assert.ok(loader.includes("load('plan-recognition-review.cjs')"));
+  assert.ok(loader.indexOf("load('plan-recognition-review.cjs')")<loader.indexOf("load('review-v2-core.js')"));
   assert.ok(core.includes('GAME READ'));
   assert.ok(core.includes('function renderPlanRecognition(review)'));
   assert.ok(core.includes('opPlanRecognitionReview'));
