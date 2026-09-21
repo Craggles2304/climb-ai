@@ -33,6 +33,7 @@
   let coachInFlight=false;
   let lastPlaybook=null;
   let selectedBranch='EVEN';
+  let selectedContingency='PLAN_A';
   let lastCoachMeta={source:'local',quality:null,failure:null};
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
@@ -150,6 +151,7 @@ body.op-remember-live .rem5-branch-btn{appearance:none;border:1px solid rgba(255
 body.op-remember-live .rem5-branch-btn:hover{border-color:rgba(214,255,47,.3);color:#d6ff2f}
 body.op-remember-live .rem5-branch-btn.active{border-color:rgba(214,255,47,.55);color:#071009;background:#d6ff2f}
 body.op-remember-live .rem5-branch-card{display:grid;grid-template-columns:.8fr 1.25fr 1.25fr;gap:8px}
+body.op-remember-live .rem9-contingency{border:1px solid rgba(90,156,255,.20);background:linear-gradient(135deg,rgba(39,86,155,.07),rgba(4,8,12,.64))}body.op-remember-live .rem9-contingency>summary{cursor:pointer;list-style:none;padding:10px 11px;color:#91b9ff;font-size:7px;letter-spacing:.14em;font-weight:950;text-transform:uppercase}body.op-remember-live .rem9-contingency>summary::-webkit-details-marker{display:none}body.op-remember-live .rem9-contingency>summary:after{content:' +';float:right;color:#91b9ff}body.op-remember-live .rem9-contingency[open]>summary:after{content:' −'}body.op-remember-live .rem9-body{padding:0 10px 10px;display:grid;gap:8px}.rem9-tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}.rem9-btn{appearance:none;border:1px solid rgba(255,255,255,.10);background:#071019;color:#7f8f9a;padding:8px 9px;font:950 7px/1 system-ui;letter-spacing:.12em;text-transform:uppercase;cursor:pointer}.rem9-btn:hover{border-color:rgba(113,167,255,.34);color:#a8c8ff}.rem9-btn.active{border-color:rgba(113,167,255,.55);background:#5f9fff;color:#06101a}.rem9-btn:disabled{opacity:.34;cursor:not-allowed}.rem9-card{display:grid;grid-template-columns:.85fr 1fr 1.35fr;gap:7px}.rem9-cell{padding:9px 10px;border:1px solid rgba(255,255,255,.075);background:rgba(4,8,12,.60)}.rem9-cell span{display:block;color:#687985;font-size:6px;letter-spacing:.13em;font-weight:950;text-transform:uppercase}.rem9-cell strong{display:block;margin-top:5px;color:#dfe8ee;font-size:8px;line-height:1.35;text-transform:uppercase}.rem9-cell.job strong{color:#bcd5ff}.rem9-boundary{font-size:6px;letter-spacing:.09em;color:#5d6c76;text-transform:uppercase;line-height:1.4}
 body.op-remember-live .rem5-branch-cell{padding:10px 11px;border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.62);min-width:0}
 body.op-remember-live .rem5-branch-cell span{display:block;color:#6e7e89;font-size:6px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}
 body.op-remember-live .rem5-branch-cell strong{display:block;margin-top:5px;font-size:9px;line-height:1.35;text-transform:uppercase}
@@ -158,7 +160,7 @@ body.op-remember-live .rem5-riskline{display:grid;grid-template-columns:auto 1fr
 body.op-remember-live .rem5-riskline span{color:#ffbb57;font-size:6px;letter-spacing:.14em;font-weight:950;text-transform:uppercase;white-space:nowrap}
 body.op-remember-live .rem5-riskline strong{color:#d7dee3;font-size:7px;line-height:1.35;text-transform:uppercase}
 body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#55626b;text-align:right;text-transform:uppercase}body.op-remember-live .rem5-coach-detail{border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.42)}body.op-remember-live .rem5-coach-detail>summary{cursor:pointer;list-style:none;padding:10px 11px;color:#8997a1;font-size:7px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}body.op-remember-live .rem5-coach-detail>summary::-webkit-details-marker{display:none}body.op-remember-live .rem5-coach-detail>summary:after{content:' +';float:right;color:#d6ff2f}body.op-remember-live .rem5-coach-detail[open]>summary:after{content:' −'}body.op-remember-live .rem5-coach-detail-body{padding:0 9px 9px;display:grid;gap:8px}
-@media(max-width:980px){body.op-remember-live .rem4-carry-strip{grid-template-columns:1fr!important}body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
+@media(max-width:980px){body.op-remember-live .rem4-carry-strip{grid-template-columns:1fr!important}body.op-remember-live .rem5-trap,body.op-remember-live .rem5-branch-card,body.op-remember-live .rem9-card,body.op-remember-live .rem5-premortem-list,body.op-remember-live .rem6-simulation-list,body.op-remember-live .rem7-memory,body.op-remember-live .rem8-transfer{grid-template-columns:1fr}body.op-remember-live .rem5-policy{text-align:left}}
 @media(max-height:850px){body.op-remember-live #opRememberHud{min-height:760px!important}body.op-remember-live .rem4-body{grid-template-rows:94px 142px 125px 102px auto auto!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 @media(max-width:980px){body.op-remember-live #opRememberHud{min-height:auto!important}body.op-remember-live .rem4-body{display:block!important}body.op-remember-live .rem4-body>section,body.op-remember-live .rem4-body>details{margin-top:10px!important}body.op-remember-live .rem4-pick{min-height:70px!important}body.op-remember-live .rem4-call strong{font-size:38px!important}}
 `;
@@ -200,6 +202,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
       branchSelections:same&&Array.isArray(previous?.branchSelections)?previous.branchSelections.slice(-20):[],
+      selectedContingency:same&&previous?.selectedContingency?previous.selectedContingency:selectedContingency,
+      contingencySelections:same&&Array.isArray(previous?.contingencySelections)?previous.contingencySelections.slice(-20):[],
       capturedAt:same&&previous?.capturedAt?previous.capturedAt:new Date().toISOString(),
       updatedAt:new Date().toISOString(),
     };
@@ -213,6 +217,18 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     history.push({branch,at:new Date().toISOString(),source:'PLAYER_CLICK'});
     stored.selectedBranch=branch;
     stored.branchSelections=history;
+    stored.updatedAt=new Date().toISOString();
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+  }
+
+  function persistContingencySelection(key){
+    const stored=loadDeepLockedPlan();
+    const item=stored?.playbook?.contingencyMap?.contingencies?.[key];
+    if(!item?.available)return;
+    const history=Array.isArray(stored.contingencySelections)?stored.contingencySelections.slice(-19):[];
+    history.push({contingency:key,at:new Date().toISOString(),source:'PLAYER_CLICK'});
+    stored.selectedContingency=key;
+    stored.contingencySelections=history;
     stored.updatedAt=new Date().toISOString();
     try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
   }
@@ -243,7 +259,23 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div class="rem5-branch-cell"><span>FIGHT RULE</span><strong id="opRemBranchFight">USE THE BASE PLAN</strong></div>
         <div class="rem5-branch-cell"><span>OBJECTIVE RULE</span><strong id="opRemBranchObjective">USE THE BASE PLAN</strong></div>
       </div>
-      <details class="rem5-coach-detail"><summary>COACH DETAIL · RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL</summary><div class="rem5-coach-detail-body">
+      <details class="rem5-coach-detail"><summary>COACH DETAIL · CONTINGENCY / RISK MAP / DECISION LAB / SKILL TRANSFER / REHEARSAL</summary><div class="rem5-coach-detail-body">
+        <details id="opRemContingency" class="rem9-contingency">
+          <summary id="opRemContingencySummary">FROZEN CONTINGENCY MAP · PLAN A ACTIVE · YOU CHOOSE IF IT BREAKS</summary>
+          <div class="rem9-body">
+            <div class="rem9-tabs" role="group" aria-label="Choose frozen contingency">
+              <button type="button" class="rem9-btn active" data-op-contingency="PLAN_A">PLAN A</button>
+              <button type="button" class="rem9-btn" data-op-contingency="PLAN_B">PLAN B</button>
+              <button type="button" class="rem9-btn" data-op-contingency="RECOVERY">RECOVERY</button>
+            </div>
+            <div class="rem9-card">
+              <div class="rem9-cell"><span>USE WHEN</span><strong id="opRemContingencyWhen">ORIGINAL CARRY CONDITION IS STILL PLAYABLE.</strong></div>
+              <div class="rem9-cell"><span>PLAY AROUND</span><strong id="opRemContingencyPlay">ORIGINAL PLAN</strong></div>
+              <div class="rem9-cell job"><span>YOUR JOB</span><strong id="opRemContingencyJob">EXECUTE PLAN A.</strong></div>
+            </div>
+            <div id="opRemContingencyBoundary" class="rem9-boundary">PLAYER SELECTS THIS FROM THE GAME THEY CAN SEE · OP CLIMB NEVER AUTO-SWITCHES THE WIN CONDITION.</div>
+          </div>
+        </details>
         <div id="opRemPremortem" class="rem5-premortem building">
           <div class="rem5-premortem-head"><span>RISK MAP</span><strong id="opRemPremortemTitle">BUILDING YOUR RISK MAP</strong><small id="opRemPremortemBoundary">EVIDENCE-BOUNDED · FROZEN BEFORE GAME</small></div>
           <div id="opRemPremortemList" class="rem5-premortem-list"></div>
@@ -274,6 +306,14 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       selectedBranch=key;
       persistBranchSelection(key);
       renderSelectedBranch();
+    }));
+    panel.querySelectorAll('[data-op-contingency]').forEach(button=>button.addEventListener('click',()=>{
+      const key=upper(button.getAttribute('data-op-contingency'));
+      const item=lastPlaybook?.contingencyMap?.contingencies?.[key];
+      if(!item?.available)return;
+      selectedContingency=key;
+      persistContingencySelection(key);
+      renderSelectedContingency();
     }));
     return panel;
   }
@@ -403,6 +443,51 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       :'SAFE LOCAL PLAN';
   }
 
+  function applySelectedContingencyOverlay(){
+    const map=lastPlaybook?.contingencyMap||null;
+    const item=map?.contingencies?.[selectedContingency]||null;
+    if(!item?.available||selectedContingency==='PLAN_A')return;
+    set('opRemCarryPrimary',item.resourceOwner||map?.primaryCarry||'YOUR CARRY');
+    set('opRemCarryPlay',item.playAround||'FROZEN CONTINGENCY');
+    set('opRemGameCall',item.job||'USE THE FROZEN CONTINGENCY');
+    set('opRemGameCallWhy',(item.label||selectedContingency)+' · PLAYER SELECTED · FROZEN BEFORE GAME');
+    set('opRemFightWhen',item.fightWhen||'USE THE PREWRITTEN FIGHT RULE');
+    set('opRemStopRule',item.never||'DO NOT FORCE THE ORIGINAL PLAN');
+  }
+
+  function renderSelectedContingency(){
+    ensurePlaybookPanel();
+    const map=lastPlaybook?.contingencyMap||null;
+    const options=map?.contingencies||null;
+    if(!options){
+      selectedContingency='PLAN_A';
+      set('opRemContingencyWhen','WAITING FOR FROZEN CONTINGENCY MAP');
+      set('opRemContingencyPlay','ORIGINAL PLAN');
+      set('opRemContingencyJob','EXECUTE PLAN A');
+      return;
+    }
+    const stored=loadDeepLockedPlan();
+    if(stored?.draftFingerprint===lastPlaybook?.draftFingerprint&&options?.[stored?.selectedContingency]?.available){
+      selectedContingency=upper(stored.selectedContingency);
+    }
+    if(!options?.[selectedContingency]?.available)selectedContingency='PLAN_A';
+    document.querySelectorAll('[data-op-contingency]').forEach(button=>{
+      const key=upper(button.getAttribute('data-op-contingency'));
+      const available=Boolean(options?.[key]?.available);
+      button.disabled=!available;
+      button.classList.toggle('active',key===selectedContingency);
+      if(key==='PLAN_B'&&!available)button.title='NO STRONG SECONDARY CARRY WAS IDENTIFIED FROM CHAMPION SELECT';
+    });
+    const item=options[selectedContingency];
+    set('opRemContingencySummary','FROZEN CONTINGENCY MAP · '+selectedContingency.replace('_',' ')+' ACTIVE · YOU CHOOSE IF IT BREAKS');
+    set('opRemContingencyWhen',item?.when||'USE THE ORIGINAL PLAN');
+    set('opRemContingencyPlay',item?.playAround||item?.resourceOwner||'ORIGINAL PLAN');
+    set('opRemContingencyJob',item?.job||'EXECUTE THE FROZEN PLAN');
+    const boundary=$('opRemContingencyBoundary');
+    if(boundary)boundary.textContent=clean(map?.boundary)||'PLAYER SELECTS THE CONTINGENCY · OP CLIMB NEVER AUTO-SWITCHES.';
+    renderSelectedBranch();
+  }
+
   function renderSelfChecks(playbook){
     const root=$('opRemChecks');if(!root||!Array.isArray(playbook?.checkpoints))return;
     root.replaceChildren();
@@ -438,6 +523,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemDecisionCall',branch.priority||'SET UP');
     set('opRemFightWhen',branch.fightWhen||branch.fight||'USE THE BASE FIGHT RULE');
     set('opRemStopRule',branch.stop||branch.never||'DO NOT FORCE THE WRONG FIGHT');
+    applySelectedContingencyOverlay();
     const rule=$('opRemBranchRule');
     if(rule)rule.textContent=upper(branch.rule||'PLAYER CHOOSES THIS PREWRITTEN BRANCH')+' · NEVER AUTO-CHANGED';
   }
@@ -449,7 +535,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastPlaybook=playbook;
       renderCarryMap(playbook.carryMap||null);
       if(!lastPlaybook.branches[selectedBranch])selectedBranch='EVEN';
+      const stored=loadDeepLockedPlan();
+      if(stored?.draftFingerprint===playbook.draftFingerprint&&playbook?.contingencyMap?.contingencies?.[stored?.selectedContingency]?.available)selectedContingency=upper(stored.selectedContingency);
+      else selectedContingency='PLAN_A';
       renderSelectedBranch();
+      renderSelectedContingency();
       renderSelfChecks(playbook);
       return;
     }
