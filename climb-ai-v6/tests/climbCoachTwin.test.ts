@@ -128,6 +128,66 @@ test('repeated within-player response can produce an evidence-backed coaching pr
   assert.match(intervention?.whyThisMethod||'',/repeated verified response/i);
 });
 
+test('Coach Twin discovers a hidden coaching-format advantage without being told the affinity',()=>{
+  const rows:HistoryAnalysisRow[]=[];
+  const methodsSeen=new Set<string>();
+  const hiddenBest='WHEN_THEN';
+
+  for(let game=0;game<12;game++){
+    const twin=buildClimbCoachTwin(rows);
+    const intervention=selectClimbCoachIntervention({twin,mission:mission()});
+    assert.ok(intervention);
+    methodsSeen.add(intervention!.method);
+
+    // The hidden player model is deliberately outside Coach Twin.
+    // Coach Twin sees only the frozen method and the verified response afterwards.
+    const outcome=intervention!.method===hiddenBest?'EXECUTED':'MISSED';
+    rows.push(row(game,review(game,intervention!.method,outcome,outcome==='EXECUTED'?100:0)));
+  }
+
+  const learned=buildClimbCoachTwin(rows);
+  const profile=learned.behaviourProfiles[0];
+  assert.ok(methodsSeen.size>=4,'Coach Twin should explore multiple formats before exploiting one.');
+  assert.equal(profile.preferredMethod,hiddenBest);
+  assert.ok(['MEDIUM','HIGH'].includes(profile.preferenceConfidence));
+
+  const next=selectClimbCoachIntervention({twin:learned,mission:mission()});
+  assert.equal(next?.method,hiddenBest);
+  assert.equal(next?.selectionMode,'PREFERRED');
+});
+
+test('Coach Twin challenges an old preference when hidden response changes',()=>{
+  const rows:HistoryAnalysisRow[]=[];
+
+  // Establish a real preference first.
+  for(let game=0;game<12;game++){
+    const twin=buildClimbCoachTwin(rows);
+    const intervention=selectClimbCoachIntervention({twin,mission:mission()});
+    assert.ok(intervention);
+    const outcome=intervention!.method==='WHEN_THEN'?'EXECUTED':'MISSED';
+    rows.push(row(game,review(game,intervention!.method,outcome,outcome==='EXECUTED'?100:0)));
+  }
+  assert.equal(buildClimbCoachTwin(rows).behaviourProfiles[0]?.preferredMethod,'WHEN_THEN');
+
+  // The hidden player response changes. Coach Twin is not told this happened.
+  let retest:any=null;
+  for(let game=12;game<20;game++){
+    const twin=buildClimbCoachTwin(rows);
+    const intervention=selectClimbCoachIntervention({twin,mission:mission()});
+    assert.ok(intervention);
+    if(intervention!.selectionMode==='RETEST'){
+      retest=intervention;
+      break;
+    }
+    const outcome=intervention!.method==='SELF_EXPLAIN'?'EXECUTED':'MISSED';
+    rows.push(row(game,review(game,intervention!.method,outcome,outcome==='EXECUTED'?100:0)));
+  }
+
+  assert.ok(retest,'Coach Twin should retest rather than permanently lock to a historical preference.');
+  assert.notEqual(retest.method,'WHEN_THEN');
+  assert.equal(retest.selectionMode,'RETEST');
+});
+
 test('NOT_OBSERVED coaching tests are neutral and do not create false preference evidence',()=>{
   const twin=buildClimbCoachTwin([
     row(0,review(0,'WHEN_THEN','NOT_OBSERVED')),
