@@ -15,6 +15,7 @@ import {buildDecisionTwin,buildDraftSituationContext,selectPersonalTrap,type Per
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import {buildClimbMatchMission,type ClimbMatchMission} from '@/lib/climbMissionDesign';
+import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachIntervention} from '@/lib/climbCoachTwin';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
@@ -243,11 +244,12 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
   const decisionTwinV2=buildDecisionTwinV2(rows);
   const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
+  const coachTwin=buildClimbCoachTwin(rows);
   const curriculumLesson=curriculum.status==='ACTIVE'?curriculum.currentLesson:null;
   const mission=curriculumLesson
     ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
     :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -503,7 +505,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -535,6 +537,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       scenarioPrime:input.scenarioPrime,
       decisionTransferPrime:input.decisionTransferPrime,
       climbMission:input.climbMission,
+      coachIntervention:input.coachIntervention,
       situationContext:input.situationContext,
       quality:input.quality,
       draftFingerprint:input.playbook?.draftFingerprint??null,
@@ -664,6 +667,11 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       transferPrime:decisionTransferPrime,
     });
+    const coachIntervention=selectClimbCoachIntervention({
+      twin:context.coachTwin,
+      mission:climbMission,
+      situationContext,
+    });
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
@@ -684,6 +692,7 @@ export async function POST(req:NextRequest){
       scenarioPrime,
       decisionTransferPrime,
       climbMission,
+      coachIntervention,
       situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
       playbook,
@@ -700,6 +709,8 @@ export async function POST(req:NextRequest){
       scenarioPrime,
       decisionTransferPrime,
       climbMission,
+      coachIntervention,
+      coachTwin:context.coachTwin,
       playbook,
       playbookPolicy:{
         frozenFromPregame:true,
