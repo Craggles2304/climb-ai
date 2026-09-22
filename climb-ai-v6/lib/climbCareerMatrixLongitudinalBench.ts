@@ -144,7 +144,7 @@ function model(kind:LongitudinalCareerKind):CareerModel{
     order:['FIGHT_SELECTION'],
     states:{
       FIGHT_SELECTION:skill(.38),
-      DEATH_RECOVERY:skill(.82,90),
+      DEATH_RECOVERY:skill(.72),
     },
   };
   if(kind==='TRANSFER_HANDOFF')return{
@@ -189,13 +189,12 @@ function signalFor(input:{
   random:()=>number;
 }):CareerMatrixSignal{
   const state=input.career.states[input.key]!;
-  const isNoiseSpike=input.career.kind==='NOISE_RESISTANCE'&&input.key==='DEATH_RECOVERY'&&input.game%7===0;
-  const confidenceValue:isNoiseSpike extends true ? never : never = null as never;
-  void confidenceValue;
-  const signalConfidence:DecisionTwinConfidence=isNoiseSpike?'LOW':confidence(input.game+5);
+  const isNoiseSkill=input.career.kind==='NOISE_RESISTANCE'&&input.key==='DEATH_RECOVERY';
+  const isNoiseSpike=isNoiseSkill&&input.game%7===0;
+  const signalConfidence:DecisionTwinConfidence=isNoiseSkill?'LOW':confidence(input.game+5);
   const rawSeverity=(1-state.skill)*100+noise(input.random,isNoiseSpike?4:5)+(isNoiseSpike?72:0);
   const severity=clamp(rawSeverity);
-  const recurrence=isNoiseSpike?12:baseRecurrence(input.key,input.game,input.career);
+  const recurrence=isNoiseSkill?12:baseRecurrence(input.key,input.game,input.career);
   const strictPrerequisite=PREREQUISITE[input.key]??null;
   return{
     key:input.key,
