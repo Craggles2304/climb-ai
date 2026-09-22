@@ -2,7 +2,7 @@ import type {DecisionBehaviourKey,DecisionTwinConfidence} from './decisionTwin';
 import type {DecisionTwinV2Profile,DecisionTwinActiveFocus} from './decisionTwinV2';
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
-import {buildClimbRepLadder,type ClimbRepLadder} from './climbRepLadder';
+import {buildClimbRepLadder,type ClimbRepLadder,type ClimbRepLevel} from './climbRepLadder';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -39,6 +39,11 @@ export interface CurriculumLesson{
   nextUnlock:string|null;
 }
 
+export interface CurriculumRepLedgerEntry{
+  level:ClimbRepLevel;
+  phase:CurriculumPhase;
+}
+
 export interface ClimbCurriculum{
   version:1;
   generatedAt:string;
@@ -48,6 +53,7 @@ export interface ClimbCurriculum{
   nextLesson:CurriculumLesson|null;
   queue:CurriculumLesson[];
   graduated:CurriculumLesson[];
+  repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>;
   decision:CurriculumDecision;
   summary:string;
   boundary:string;
@@ -141,11 +147,31 @@ function whyNow(input:{
   if(input.focus)return input.focus.reason;
   return'OP CLIMB has enough repeated evidence to keep this skill in the development queue.';
 }
+function previousLessonFor(previous:ClimbCurriculum|null|undefined,key:DecisionBehaviourKey){
+  const candidates=[
+    previous?.currentLesson,
+    previous?.nextLesson,
+    ...(previous?.queue??[]),
+    ...(previous?.graduated??[]),
+  ].filter(Boolean) as CurriculumLesson[];
+  return candidates.find(item=>item.behaviourKey===key)??null;
+}
+function previousRepState(previous:ClimbCurriculum|null|undefined,key:DecisionBehaviourKey){
+  const lesson=previousLessonFor(previous,key);
+  const stored=(previous as any)?.repLedger?.[key];
+  if(typeof stored==='number')return{level:stored as ClimbRepLevel,phase:lesson?.phase??null};
+  if(stored&&typeof stored==='object'&&typeof stored.level==='number'){
+    return{level:stored.level as ClimbRepLevel,phase:(stored.phase??lesson?.phase??null) as CurriculumPhase|null};
+  }
+  return{level:lesson?.repLadder?.level??null,phase:lesson?.phase??null};
+}
+
 function makeLesson(
   key:DecisionBehaviourKey,
   twin:DecisionTwinV2Profile,
   memory:ScenarioMemoryProfile,
   transfer:DecisionTransferProfile,
+  previousState:{level:ClimbRepLevel|null;phase:CurriculumPhase|null}={level:null,phase:null},
 ):CurriculumLesson{
   const focus=focusFor(twin,key);
   const mem=bestMemory(memory,key);
@@ -164,7 +190,18 @@ function makeLesson(
   const transferStrength=tx?.transferStrength??null;
   const transferGames=tx?.transferGames??0;
   const transferCleanStreak=tx?.transferCleanStreak??0;
-  const repLadder=buildClimbRepLadder({behaviourKey:key,phase,comparableGames,cleanStreak,memoryStrength,transferGames,transferCleanStreak,transferStrength});
+  const repLadder=buildClimbRepLadder({
+    behaviourKey:key,
+    phase,
+    comparableGames,
+    cleanStreak,
+    memoryStrength,
+    transferGames,
+    transferCleanStreak,
+    transferStrength,
+    previousLevel:previousState.level,
+    previousPhase:previousState.phase,
+  });
   return{
     behaviourKey:key,
     label:LABELS[key],
@@ -189,7 +226,12 @@ function makeLesson(
   };
 }
 
-function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile,transfer:DecisionTransferProfile){
+function curriculumOrder(
+  twin:DecisionTwinV2Profile,
+  memory:ScenarioMemoryProfile,
+  transfer:DecisionTransferProfile,
+  previous:ClimbCurriculum|null|undefined,
+){
   const keys=new Set<DecisionBehaviourKey>();
   for(const item of twin.activeFive)keys.add(item.key);
   for(const card of memory.cards.filter(card=>card.state!=='BUILDING'))keys.add(card.behaviourKey);
@@ -201,7 +243,7 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
     if(prerequisite&&!behaviourStable(memory,transfer,prerequisite))keys.add(prerequisite);
   }
 
-  const lessons=[...keys].map(key=>makeLesson(key,twin,memory,transfer));
+  const lessons=[...keys].map(key=>makeLesson(key,twin,memory,transfer,previousRepState(previous,key)));
   for(const locked of lessons.filter(item=>item.readiness==='LOCKED'&&item.prerequisite)){
     const prerequisite=lessons.find(item=>item.behaviourKey===locked.prerequisite);
     if(prerequisite&&prerequisite.readiness==='READY'){
@@ -337,7 +379,7 @@ export function buildClimbCurriculum(
   generatedAt=new Date().toISOString(),
   previous:ClimbCurriculum|null=null,
 ):ClimbCurriculum{
-  const lessons=curriculumOrder(twin,memory,transfer);
+  const lessons=curriculumOrder(twin,memory,transfer,previous);
   const graduated=lessons.filter(item=>item.readiness==='COMPLETE');
   const building=!lessons.length||twin.gamesAnalyzed<3;
   const selection=selectCurriculumLesson(lessons,previous,building);
@@ -356,6 +398,8 @@ export function buildClimbCurriculum(
   }
 
   const status:ClimbCurriculum['status']=building?'BUILDING':current?'ACTIVE':'COMPLETE';
+  const repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>={...(previous?.repLedger??{}) as any};
+  for(const lesson of lessons)repLedger[lesson.behaviourKey]={level:lesson.repLadder.level,phase:lesson.phase};
   return{
     version:1,
     generatedAt,
@@ -365,6 +409,7 @@ export function buildClimbCurriculum(
     nextLesson:next,
     queue:lessons.filter(item=>item.readiness!=='COMPLETE').slice(0,5),
     graduated,
+    repLedger,
     decision:selection.decision,
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'

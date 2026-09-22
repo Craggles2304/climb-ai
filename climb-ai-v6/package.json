@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "test": "node --import tsx --test tests/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "simulate:climb": "tsx scripts/run-climb-simulation-lab.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",
