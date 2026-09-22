@@ -273,4 +273,13 @@ test('Draft Coach and Decision Graph freeze and review one Coaching Strategy',()
   assert.ok(draft.includes('coachingStrategy:input.coachingStrategy'));
   assert.ok(graph.includes('reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview)'));
   assert.ok(graph.includes('coachingStrategy:raw.coachingStrategy??null'));
+  const companion=fs.readFileSync('companion/electron/remember-v5-esports.js','utf8');
+  const review=fs.readFileSync('companion/electron/review-v2-core.js','utf8');
+  assert.ok(companion.includes('enrichedCoach._coachingStrategy=response?.coachingStrategy||null'));
+  assert.ok(companion.includes('coachingStrategy:coach?._coachingStrategy||null'));
+  assert.ok(companion.includes('function renderCoachingStrategy'));
+  assert.ok(companion.includes('FADE')&&companion.includes('COACHING STRATEGY'));
+  assert.ok(review.includes('COACHING STRATEGY · SUPPORT REVIEW'));
+  assert.ok(review.includes('function renderCoachingStrategyReview'));
+  assert.ok(review.includes('AUTONOMY EVIDENCE'));
 });
