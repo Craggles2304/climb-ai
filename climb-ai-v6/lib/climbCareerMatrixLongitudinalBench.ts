@@ -128,7 +128,7 @@ function model(kind:LongitudinalCareerKind):CareerModel{
     states:{
       THREAT_ADAPTATION:skill(.34),
       FIGHT_SELECTION:skill(.42),
-      CARRY_PRESERVATION:skill(.46),
+      CARRY_PRESERVATION:skill(.58),
     },
   };
   if(kind==='PREREQUISITE_CHAIN')return{
