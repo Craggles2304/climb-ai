@@ -204,10 +204,11 @@ function transferState(input:{
   novelContexts:DecisionSituationTag[];
 }):DecisionTransferState{
   if(!input.novel.length)return'LOCAL_ONLY';
-  const older=input.novel.slice(0,-3);
-  const olderRate=pct(older.filter(item=>item.verdict==='GOOD').length,older.length)??0;
-  const recentThree=input.novel.slice(-3);
-  if(older.length>=3&&recentThree.length===3&&olderRate>=80&&recentThree.every(item=>item.verdict==='IMPROVE'))return'REGRESSED';
+  const prior=input.novel.slice(0,-2);
+  const priorClean=prior.filter(item=>item.verdict==='GOOD').length;
+  const priorRate=pct(priorClean,prior.length)??0;
+  const recentTwo=input.novel.slice(-2);
+  if(priorClean>=2&&priorRate>=67&&recentTwo.length===2&&recentTwo.every(item=>item.verdict==='IMPROVE'))return'REGRESSED';
   const cleanStreak=streak(input.novel);
   const breadthScore=breadth(input.novelChampions,input.novelContexts);
   if(input.clean>=4&&(input.recentRate??0)>=80&&cleanStreak>=3&&breadthScore>=2)return'PRINCIPLE_OWNED';
