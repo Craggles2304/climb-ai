@@ -297,7 +297,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         {matrixCandidates.length>0&&<div className="dt6-matrix">
           <div className="dt6-matrix-head">
             <div><span>MULTI-SKILL CAREER MATRIX</span><h4>Why this skill gets the coaching slot.</h4></div>
-            <small>{careerMatrix?.recommendedSkill?pretty(careerMatrix.recommendedSkill):'NO ACTIVE RECOMMENDATION'}</small>
+            <small>{careerMatrix?.selectionMode||'BUILDING'} · {careerMatrix?.recommendedSkill?pretty(careerMatrix.recommendedSkill):'NO ACTIVE RECOMMENDATION'}</small>
           </div>
           <div className="dt6-matrix-list">
             {matrixCandidates.map((item,index)=><CareerMatrixRow key={item.key} item={item} index={index} recommended={item.key===careerMatrix?.recommendedSkill}/>)}
