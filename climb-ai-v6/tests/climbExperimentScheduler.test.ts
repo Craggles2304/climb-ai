@@ -158,9 +158,9 @@ test('last observed miss restores support before another holdout',()=>{
 
 test('under-represented supported condition is scheduled when faded evidence dominates',()=>{
   const rows=[
-    row(0,{supported:false,clean:true,intent:'ALIGNED'}),
-    row(1,{supported:false,clean:true,intent:'ALIGNED'}),
-    row(2,{supported:false,clean:true,intent:'ALIGNED'}),
+    row(0,{supported:false,clean:true}),
+    row(1,{supported:false,clean:true}),
+    row(2,{supported:false,clean:true}),
   ];
   const experiment=buildClimbExperimentSchedule({rows,mission:mission()});
   assert.equal(experiment?.experimentType,'SUPPORTED_RETEST');
