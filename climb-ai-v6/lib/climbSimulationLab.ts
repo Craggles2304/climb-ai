@@ -387,6 +387,7 @@ function transitionInvariant(input:{
   game:number;
   preLevel:number|null;
   postLevel:number|null;
+  preLesson:CurriculumLesson|null;
   postLesson:CurriculumLesson|null;
   postMemory:ScenarioMemoryCard|null;
   postTransfer:ReturnType<typeof transferCard>;
@@ -408,7 +409,10 @@ function transitionInvariant(input:{
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
   if(input.review.status==='NOT_OBSERVED'&&input.preLevel!==null&&input.postLevel!==null&&input.postLevel!==input.preLevel){
-    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' to '+String(input.postLevel)+'.');
+    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' ('+String(input.preLesson?.behaviourKey??'none')+') to '+String(input.postLevel)+' ('+String(input.postLesson?.behaviourKey??'none')+').');
+  }
+  if(input.review.status==='NOT_OBSERVED'&&input.preLesson?.behaviourKey!==input.postLesson?.behaviourKey){
+    errors.push(prefix+'NOT_OBSERVED changed active objective from '+String(input.preLesson?.behaviourKey??'none')+' to '+String(input.postLesson?.behaviourKey??'none')+'.');
   }
   if(input.preLevel!==null&&input.postLevel!==null&&input.postLevel<input.preLevel-1){
     errors.push(prefix+'difficulty demoted more than one layer ('+String(input.preLevel)+' → '+String(input.postLevel)+').');
@@ -660,6 +664,7 @@ export function runSimulationCareer(input:{
       game,
       preLevel,
       postLevel,
+      preLesson,
       postLesson,
       postMemory,
       postTransfer,
