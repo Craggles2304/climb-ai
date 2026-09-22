@@ -53,6 +53,32 @@ test('transfer-stage learning contract schedules a frozen novel test instead of 
   assert.match(autonomous.activeContract?.graduateWhen||'',/principle owned/i);
 });
 
+test('stabilising contract fades adaptive support only after repeated clean local evidence',()=>{
+  const current=lesson('STABILISE');
+  current.comparableGames=5;
+  current.cleanStreak=3;
+  current.memoryStrength=76;
+  current.repLadder={...current.repLadder,level:3,stage:'STABILISE'};
+  const autonomous=buildClimbAutonomousCurriculum({
+    generatedAt:'2026-09-23T00:00:00.000Z',gamesAnalyzed:8,status:'ACTIVE',currentLesson:current,nextLesson:null,
+    decision:{action:'KEEP',previousLesson:'CARRY_PRESERVATION',currentLesson:'CARRY_PRESERVATION',changed:false,reason:'Keep.'},
+    careerMatrix:matrix(),
+  });
+  assert.equal(autonomous.state,'STABILISE');
+  assert.equal(autonomous.activeContract?.supportPolicy,'FADED');
+});
+
+test('transfer test always removes adaptive teaching overlay while keeping the frozen mission',()=>{
+  const autonomous=buildClimbAutonomousCurriculum({
+    generatedAt:'2026-09-23T00:00:00.000Z',gamesAnalyzed:8,status:'ACTIVE',currentLesson:lesson('TRANSFER'),nextLesson:null,
+    decision:{action:'KEEP',previousLesson:'CARRY_PRESERVATION',currentLesson:'CARRY_PRESERVATION',changed:false,reason:'Keep.'},
+    careerMatrix:matrix(),
+  });
+  assert.equal(autonomous.state,'TRANSFER_TEST');
+  assert.equal(autonomous.activeContract?.supportPolicy,'FADED');
+  assert.equal(autonomous.activeContract?.testDirective.mode,'TRANSFER_TEST');
+});
+
 test('V6 transfer contract refuses to force a mission when no matching frozen transfer prime exists',()=>{
   const current=lesson();
   const autonomous=buildClimbAutonomousCurriculum({
