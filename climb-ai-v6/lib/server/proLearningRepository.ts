@@ -11,6 +11,7 @@ import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import {buildDecisionTransfer} from '@/lib/decisionTransfer';
 import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import {buildClimbCoachTwin} from '@/lib/climbCoachTwin';
+import {buildClimbAutonomyProfile} from '@/lib/climbAutonomy';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -68,6 +69,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory,now);
   const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum);
   const coachTwin=buildClimbCoachTwin(rows,now);
+  const autonomyProfile=buildClimbAutonomyProfile(rows,now);
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
@@ -77,7 +79,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     .filter(item=>item.coachedDecisions>0)
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
   const learningJourney=buildLearningJourney(rows,now);
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin};
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
