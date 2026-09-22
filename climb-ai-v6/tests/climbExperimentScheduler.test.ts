@@ -128,6 +128,18 @@ test('AUTONOMOUS decision is never re-scaffolded just to balance comparison coun
   assert.match(experiment?.safetyReason||'',/sample balancing/i);
 });
 
+test('fresh FADED V6 contract collects independent evidence before adding a supported comparator',()=>{
+  const current=mission();
+  current.learningContractId='learning-contract:fight-selection';
+  current.autonomousSupportPolicy='FADED';
+  current.autonomousTestMode='LOCAL_REP';
+  const experiment=buildClimbExperimentSchedule({rows:[],mission:current});
+  assert.equal(experiment?.status,'SCHEDULED');
+  assert.equal(experiment?.experimentType,'AUTONOMY_RECHECK');
+  assert.equal(experiment?.requestedDeliveryPolicy,'NONE');
+  assert.match(experiment?.safetyReason||'',/independent execution evidence/i);
+});
+
 test('three supported matched reps with insufficient faded evidence schedule a FADE holdout',()=>{
   const rows=[
     row(0,{supported:true,clean:true,intent:'ALIGNED'}),
