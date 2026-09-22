@@ -45,12 +45,33 @@ test('one clean fake game cannot raise difficulty',()=>{
   assert.match(rep.promotionGate,/3 comparable/i);
 });
 
-test('verified regression deliberately lowers difficulty before complexity returns',()=>{
+test('isolated weaker evidence holds earned difficulty until sustained regression exists',()=>{
+  const held=buildClimbRepLadder(evidence({
+    phase:'PRACTISE',
+    comparableGames:9,
+    cleanStreak:0,
+    memoryStrength:58,
+    previousLevel:3,
+  }));
+  assert.equal(held.level,3);
+  assert.match(held.reason,/do not erase earned difficulty|hold this level/i);
+});
+
+test('verified sustained regression lowers difficulty by one layer, not several',()=>{
   const before=buildClimbRepLadder(evidence({phase:'TRANSFER',comparableGames:8,cleanStreak:4,memoryStrength:92,transferGames:4,transferCleanStreak:3,transferStrength:82}));
-  const reopened=buildClimbRepLadder(evidence({phase:'REOPEN',comparableGames:9,cleanStreak:0,memoryStrength:52,transferGames:4,transferCleanStreak:0,transferStrength:48}));
+  const reopened=buildClimbRepLadder(evidence({
+    phase:'REOPEN',
+    comparableGames:11,
+    cleanStreak:0,
+    memoryStrength:52,
+    transferGames:4,
+    transferCleanStreak:0,
+    transferStrength:48,
+    previousLevel:before.level,
+  }));
   assert.equal(before.level,5);
-  assert.equal(reopened.level,2);
-  assert.match(reopened.reason,/reduced the difficulty/i);
+  assert.equal(reopened.level,4);
+  assert.match(reopened.reason,/one layer/i);
 });
 
 test('Level 5 mission only activates when a matching frozen transfer test exists',()=>{
