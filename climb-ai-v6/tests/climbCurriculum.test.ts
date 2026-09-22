@@ -145,7 +145,10 @@ test('curriculum keeps one sticky active objective until its graduation gate is 
 test('Rep Ledger preserves earned difficulty when a lesson leaves and later re-enters the visible queue',()=>{
   const prior:any=previous('DEATH_RECOVERY');
   prior.currentLesson.repLadder={level:2};
-  prior.repLedger={FIGHT_SELECTION:4,DEATH_RECOVERY:2};
+  prior.repLedger={
+    FIGHT_SELECTION:{level:4,phase:'TRANSFER'},
+    DEATH_RECOVERY:{level:2,phase:'PRACTISE'},
+  };
   prior.queue=[prior.currentLesson];
 
   const result=buildClimbCurriculum(
@@ -161,12 +164,14 @@ test('Rep Ledger preserves earned difficulty when a lesson leaves and later re-e
     :result.queue.find((item:any)=>item.behaviourKey==='FIGHT_SELECTION');
   assert.ok(fight);
   assert.equal(fight?.repLadder.level,4);
-  assert.equal(result.repLedger.FIGHT_SELECTION,4);
+  assert.equal(result.repLedger.FIGHT_SELECTION?.level,4);
+  assert.equal(result.repLedger.FIGHT_SELECTION?.phase,'PRACTISE');
 });
 
 test('curriculum preserves earned Rep Ladder difficulty through an isolated miss',()=>{
   const prior:any=previous('FIGHT_SELECTION');
   prior.currentLesson.repLadder={level:4};
+  prior.currentLesson.phase='TRANSFER';
   const result=buildClimbCurriculum(
     twin([focus('FIGHT_SELECTION',90)]),
     memory([card('FIGHT_SELECTION','DUE',{cleanStreak:0,memoryStrength:58,lastVerdict:'IMPROVE'})]),
@@ -183,9 +188,26 @@ test('curriculum preserves earned Rep Ladder difficulty through an isolated miss
 test('curriculum steps down only one Rep Ladder layer after sustained verified regression',()=>{
   const prior:any=previous('FIGHT_SELECTION');
   prior.currentLesson.repLadder={level:5};
+  prior.currentLesson.phase='TRANSFER';
   const result=buildClimbCurriculum(
     twin([focus('FIGHT_SELECTION',90)]),
     memory([card('FIGHT_SELECTION','REGRESSED',{cleanStreak:0,memoryStrength:48,lastVerdict:'IMPROVE'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    prior,
+  );
+  assert.equal(result.currentLesson?.phase,'REOPEN');
+  assert.equal(result.currentLesson?.repLadder.level,4);
+});
+
+test('curriculum holds the same reduced level while one REOPEN episode remains active',()=>{
+  const prior:any=previous('FIGHT_SELECTION');
+  prior.currentLesson.phase='REOPEN';
+  prior.currentLesson.repLadder={level:4};
+  prior.repLedger={FIGHT_SELECTION:{level:4,phase:'REOPEN'}};
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','REGRESSED',{cleanStreak:0,memoryStrength:45,lastVerdict:'IMPROVE'})]),
     transfer([]),
     '2026-09-21T13:00:00.000Z',
     prior,
