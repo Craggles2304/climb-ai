@@ -103,6 +103,31 @@ test('repeated knowledge gap blocks support removal even when a comparison would
   assert.match(experiment?.safetyReason||'',/knowledge-gap/i);
 });
 
+test('repeated execution gap schedules supported execution-friction retest instead of FADE',()=>{
+  const rows=[
+    row(0,{supported:true,clean:false,intent:'EXECUTION_GAP'}),
+    row(1,{supported:true,clean:false,intent:'EXECUTION_GAP'}),
+    row(2,{supported:true,clean:true,intent:'EXECUTION_GAP'}),
+  ];
+  const experiment=buildClimbExperimentSchedule({rows,mission:mission()});
+  assert.equal(experiment?.status,'SCHEDULED');
+  assert.equal(experiment?.experimentType,'SUPPORTED_RETEST');
+  assert.equal(experiment?.requestedDeliveryPolicy,'LIGHT');
+  assert.match(experiment?.safetyReason||'',/execution-gap/i);
+});
+
+test('AUTONOMOUS decision is never re-scaffolded just to balance comparison counts',()=>{
+  const rows=[
+    row(0,{supported:false,clean:true,intent:'ALIGNED',targetTag:'MULTI_ACCESS',repLevel:3}),
+    row(1,{supported:false,clean:true,intent:'ALIGNED',targetTag:'MULTI_ACCESS',repLevel:3}),
+    row(2,{supported:false,clean:true,intent:'ALIGNED',targetTag:'MULTI_ACCESS',repLevel:3}),
+  ];
+  const experiment=buildClimbExperimentSchedule({rows,mission:mission()});
+  assert.equal(experiment?.experimentType,'AUTONOMY_RECHECK');
+  assert.equal(experiment?.requestedDeliveryPolicy,'NONE');
+  assert.match(experiment?.safetyReason||'',/sample balancing/i);
+});
+
 test('three supported matched reps with insufficient faded evidence schedule a FADE holdout',()=>{
   const rows=[
     row(0,{supported:true,clean:true,intent:'ALIGNED'}),
