@@ -75,3 +75,22 @@ test('Coaching Strategy changes support mode across synthetic careers without br
   }
 });
 
+test('Intent Gap keeps knowledge and execution as separate signals across synthetic careers',()=>{
+  const report=runClimbSimulationLab({gamesPerCareer:90,seed:23042026});
+  assert.deepEqual(report.invariantViolations,[],report.invariantViolations.slice(0,12).join('\n'));
+  const events=report.careers.flatMap(career=>career.events).filter(event=>event.missionStatus==='READY');
+
+  const knowledge=events.filter(event=>event.intentDiagnosis==='KNOWLEDGE_GAP');
+  const execution=events.filter(event=>event.intentDiagnosis==='EXECUTION_GAP');
+  const aligned=events.filter(event=>event.intentDiagnosis==='ALIGNED');
+  assert.ok(knowledge.length>0,'Synthetic careers should produce genuine pre-cue knowledge gaps.');
+  assert.ok(execution.length>0,'Synthetic careers should produce correct-intent execution gaps.');
+  assert.ok(aligned.length>0,'Synthetic careers should also produce aligned intent + execution.');
+
+  for(const event of events){
+    if(event.missionReview==='MISSED'&&event.intentCorrect===true)assert.equal(event.intentDiagnosis,'EXECUTION_GAP');
+    if(event.missionReview==='MISSED'&&event.intentCorrect===false)assert.equal(event.intentDiagnosis,'KNOWLEDGE_GAP');
+    if(event.missionReview==='NOT_OBSERVED')assert.equal(event.intentDiagnosis,'NO_EVIDENCE');
+  }
+});
+

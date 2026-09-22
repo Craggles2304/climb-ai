@@ -218,6 +218,24 @@ async function requestDraftCoach(context){
   }finally{clearTimeout(timeout)}
 }
 
+async function answerIntentProbe(context){
+  const cfg=currentConfig();
+  if(!cfg.token)return{ok:false,status:401,error:'Pair this PC to OP CLIMB first.'};
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  try{
+    const response=await fetch(`${cfg.webUrl}/api/live/intent-probe`,{
+      method:'POST',
+      headers:{'content-type':'application/json',authorization:`Bearer ${cfg.token}`},
+      body:JSON.stringify(context||{}),
+      signal:controller.signal,
+    });
+    const body=await response.json().catch(()=>({}));
+    return{...body,status:response.status,ok:Boolean(response.ok&&body?.ok)};
+  }catch(err){
+    return{ok:false,status:0,error:err?.name==='AbortError'?'Intent Gap answer timed out.':(err?.message||'Could not freeze Intent Gap answer.')};
+  }finally{clearTimeout(timeout)}
+}
+
 function trackerPath(){return app.isPackaged?path.join(process.resourcesPath,'tracker','main.mjs'):path.join(__dirname,'..','src','main.mjs')}
 function stopTracker(){
   stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
@@ -293,6 +311,7 @@ ipcMain.handle('companion:open-climb-path',(_event,path)=>{
   return{ok:true,path:target};
 });
 ipcMain.handle('companion:draft-coach',(_event,context)=>requestDraftCoach(context));
+ipcMain.handle('companion:intent-probe',(_event,context)=>answerIntentProbe(context));
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});

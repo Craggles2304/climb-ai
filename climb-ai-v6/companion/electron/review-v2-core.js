@@ -154,6 +154,7 @@
         <section id="op332Simulation" class="op332-simulation"><div class="op332-simulation-head"><div><span>MATCH REHEARSAL · REVIEW</span><div id="op332SimulationStatus" class="op332-simulation-status">CHECKING REHEARSED SCENARIOS</div></div></div><div id="op332SimulationList" class="op332-simulation-list"></div><small id="op332SimulationBoundary" class="op332-simulation-proof"></small></section>
         <section id="op332MissionReview" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>CLIMB MISSION · FROZEN REP REVIEW</span><div id="op332MissionStatus" class="op332-memory-status">CHECKING MATCH REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MISSION</b><strong id="op332MissionReviewName"></strong><p id="op332MissionReviewContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MissionReviewResult"></strong><p id="op332MissionReviewNote"></p></article><article class="op332-memory-card"><b>CURRICULUM EFFECT</b><strong id="op332MissionReviewNext"></strong><p>One match rep adds evidence to the active lesson; it never creates graduation by itself.</p></article></div><small id="op332MissionReviewBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Strategy" class="op332-response"><div class="op332-response-head"><div><span>COACHING STRATEGY · SUPPORT REVIEW</span><div id="op332StrategyStatus" class="op332-response-status">CHECKING SUPPORT POLICY</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN SUPPORT MODE</b><strong id="op332StrategyMode"></strong><p id="op332StrategyWhy"></p></article><article class="op332-response-card"><b>WHAT HAPPENED</b><strong id="op332StrategyResult"></strong><p id="op332StrategyNote"></p></article></div><small id="op332StrategyBoundary" class="op332-response-proof"></small></section>
+        <section id="op332IntentGap" class="op332-response"><div class="op332-response-head"><div><span>INTENT GAP · KNOWING VS DOING</span><div id="op332IntentStatus" class="op332-response-status">CHECKING PRE-CUE INTENT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>BEFORE THE COACH CUE</b><strong id="op332IntentPlan"></strong><p id="op332IntentMission"></p></article><article class="op332-response-card"><b>DIAGNOSIS</b><strong id="op332IntentDiagnosis"></strong><p id="op332IntentNote"></p></article></div><small id="op332IntentBoundary" class="op332-response-proof"></small></section>
         <section id="op332CoachTwin" class="op332-response"><div class="op332-response-head"><div><span>COACH TWIN · DID THIS TEACHING FORMAT LAND?</span><div id="op332CoachTwinStatus" class="op332-response-status">CHECKING FROZEN COACHING FORMAT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN METHOD</b><strong id="op332CoachTwinMethod"></strong><p id="op332CoachTwinWhy"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332CoachTwinResult"></strong><p id="op332CoachTwinNote"></p></article></div><small id="op332CoachTwinBoundary" class="op332-response-proof"></small></section>
         <section id="op332Memory" class="op332-memory"><div class="op332-memory-head"><span>DECISION LAB · SPACED REP REVIEW</span><div id="op332MemoryStatus" class="op332-memory-status">CHECKING SCHEDULED REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MEMORY</b><strong id="op332MemoryName"></strong><p id="op332MemoryContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MemoryResult"></strong><p id="op332MemoryNote"></p></article><article class="op332-memory-card"><b>NEXT RULE</b><strong id="op332MemoryNext"></strong><p>One clean game reinforces the pattern; repeated comparable games are still required for mastery.</p></article></div><small id="op332MemoryBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Transfer" class="op332-transfer"><div class="op332-transfer-head"><span>CLIMB PROFILE · SKILL TRANSFER</span><div id="op332TransferStatus" class="op332-transfer-status">CHECKING GENERALISATION</div></div><div class="op332-transfer-grid"><article class="op332-transfer-card"><b>TEST</b><strong id="op332TransferName"></strong><p id="op332TransferContext"></p></article><article class="op332-transfer-card"><b>RESULT</b><strong id="op332TransferResult"></strong><p id="op332TransferNote"></p></article><article class="op332-transfer-card"><b>MEANING</b><strong id="op332TransferMeaning"></strong><p>Transfer is evidence that the principle survived a different condition; it is not proof that every future matchup is solved.</p></article></div><small id="op332TransferBoundary" class="op332-transfer-proof"></small></section>
@@ -469,6 +470,28 @@
     setText('op332StrategyBoundary',clean(item?.boundary)||'CLEAN FADED REP = CONTEXTUAL AUTONOMY EVIDENCE · NOT PERMANENT MASTERY · ONE MISS NEVER ERASES LEARNING.');
   }
 
+  function renderIntentGapReview(review){
+    const root=$('op332IntentGap');if(!root)return;
+    const item=review?.decisionGraph?.summary?.intentGap||null;
+    const status=clean(item?.status||'NO_PROBE').toUpperCase();
+    const diagnosis=clean(item?.diagnosis||'NO_EVIDENCE').toUpperCase();
+    root.classList.toggle('executing',diagnosis==='ALIGNED'||diagnosis==='RECOVERED');
+    root.classList.toggle('missing',diagnosis==='KNOWLEDGE_GAP'||diagnosis==='EXECUTION_GAP');
+    const label=diagnosis==='KNOWLEDGE_GAP'?'KNOWLEDGE GAP'
+      :diagnosis==='EXECUTION_GAP'?'EXECUTION GAP'
+      :diagnosis==='ALIGNED'?'INTENT + EXECUTION ALIGNED'
+      :diagnosis==='RECOVERED'?'MISREAD RECOVERED'
+      :status==='NOT_OBSERVED'?'INTENT NOT TESTED'
+      :status==='NOT_ANSWERED'?'NO PRE-CUE ANSWER'
+      :'NO INTENT EVIDENCE';
+    setText('op332IntentStatus',label);
+    setText('op332IntentPlan',item?.intentCorrect===true?'CORRECT BRANCH BEFORE CUE':item?.intentCorrect===false?'OLD / WRONG BRANCH BEFORE CUE':'NO FROZEN ANSWER');
+    setText('op332IntentMission',clean(item?.missionStatus)?'MISSION RESULT · '+clean(item.missionStatus).replace(/_/g,' '):'NO VERIFIED MISSION RESULT');
+    setText('op332IntentDiagnosis',diagnosis.replace(/_/g,' '));
+    setText('op332IntentNote',clean(item?.note)||'No Intent Gap diagnosis was available for this game.');
+    setText('op332IntentBoundary',clean(item?.boundary)||'PRE-CUE INTENT + VERIFIED EXECUTION ONLY · OP CLIMB DOES NOT INFER HIDDEN THOUGHTS FROM TELEMETRY.');
+  }
+
   function renderCoachTwinReview(review){
     const root=$('op332CoachTwin');if(!root)return;
     const item=review?.decisionGraph?.summary?.coachIntervention||null;
@@ -669,6 +692,7 @@
     renderSimulationReview(review);
     renderClimbMissionReview(review);
     renderCoachingStrategyReview(review);
+    renderIntentGapReview(review);
     renderCoachTwinReview(review);
     renderScenarioPrimeReview(review);
     renderDecisionTransferReview(review);

@@ -6,6 +6,7 @@ import {buildDraftSituationContext,type DecisionBehaviourKey,type DecisionSituat
 import {buildClimbMatchMission,type ClimbMatchMission} from './climbMissionDesign';
 import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachTwin,type ClimbCoachIntervention} from './climbCoachTwin';
 import {buildClimbCoachingStrategy,type ClimbCoachingStrategy} from './climbCoachingStrategy';
+import {buildClimbIntentProbe,answerClimbIntentProbe,type ClimbIntentProbe} from './climbIntentGap';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -48,6 +49,8 @@ export interface SimulationGameEvent{
   strategyMode:string|null;
   strategyIntervened:boolean|null;
   strategyReview:string;
+  intentCorrect:boolean|null;
+  intentDiagnosis:string;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -315,6 +318,8 @@ function transitionInvariant(input:{
   coachReview:DecisionGraph['summary']['coachIntervention'];
   strategy:ClimbCoachingStrategy|null;
   strategyReview:DecisionGraph['summary']['coachingStrategy'];
+  intentProbe:ClimbIntentProbe|null;
+  intentReview:DecisionGraph['summary']['intentGap'];
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
@@ -351,6 +356,15 @@ function transitionInvariant(input:{
   if(input.strategyReview.status==='NOT_OBSERVED'&&input.review.status!=='NOT_OBSERVED'){
     errors.push(prefix+'Coaching Strategy became NOT_OBSERVED while its frozen mission was graded.');
   }
+  if(input.intentProbe?.response&&input.review.status==='MISSED'){
+    const expected=input.intentProbe.response.correct?'EXECUTION_GAP':'KNOWLEDGE_GAP';
+    if(input.intentReview.diagnosis!==expected){
+      errors.push(prefix+'Intent Gap collapsed knowing and doing: expected '+expected+' but got '+String(input.intentReview.diagnosis)+'.');
+    }
+  }
+  if(input.review.status==='NOT_OBSERVED'&&input.intentReview.diagnosis!=='NO_EVIDENCE'){
+    errors.push(prefix+'NOT_OBSERVED created an Intent Gap diagnosis.');
+  }
   if(input.mission?.repLevel===5&&input.mission.status==='READY'&&!input.transferPrime){
     errors.push(prefix+'Level 5 mission was forced without a frozen transfer test.');
   }
@@ -381,6 +395,7 @@ export function runSimulationCareer(input:{
   seed:number;
 }):SimulationCareerReport{
   const random=rng(input.seed);
+  const intentRandom=rng((input.seed^0x5f3759df)>>>0);
   const rows:HistoryAnalysisRow[]=[];
   const events:SimulationGameEvent[]=[];
   const invariants:string[]=[];
@@ -436,6 +451,15 @@ export function runSimulationCareer(input:{
     });
     if(mission?.status==='READY')missionsReady++;
     if(mission?.status==='NOT_RELEVANT')missionsNotRelevant++;
+    const rawIntentProbe=buildClimbIntentProbe(mission);
+    const intentCorrectChance=clamp(.18+skill*.82-(draftKind==='NOVEL_CHAMPION'?.13:draftKind==='NOVEL_PICK'?.08:0),.08,.96);
+    const intentCorrect=rawIntentProbe&&mission?.status==='READY'?intentRandom()<intentCorrectChance:null;
+    const intentOption=rawIntentProbe&&intentCorrect!==null
+      ?rawIntentProbe.options.find(item=>(item.id===rawIntentProbe.answerKey)===intentCorrect)
+      :null;
+    const intentProbe=rawIntentProbe&&intentOption
+      ?answerClimbIntentProbe(rawIntentProbe,intentOption.id,at)
+      :rawIntentProbe;
     const coachingStrategy=buildClimbCoachingStrategy({
       rows,
       curriculum:pre.curriculum,
@@ -471,6 +495,7 @@ export function runSimulationCareer(input:{
       situationContext,
       decisionTransferPrime:transferPrime,
       climbMission:mission,
+      intentProbe,
       coachingStrategy,
       coachIntervention,
     };
@@ -506,6 +531,8 @@ export function runSimulationCareer(input:{
       coachReview:graph.summary.coachIntervention,
       strategy:coachingStrategy,
       strategyReview:graph.summary.coachingStrategy,
+      intentProbe,
+      intentReview:graph.summary.intentGap,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -527,6 +554,8 @@ export function runSimulationCareer(input:{
       strategyMode:coachingStrategy?.mode??null,
       strategyIntervened:coachingStrategy?.intervene??null,
       strategyReview:graph.summary.coachingStrategy.status,
+      intentCorrect:intentProbe?.response?.correct??null,
+      intentDiagnosis:graph.summary.intentGap.diagnosis,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),

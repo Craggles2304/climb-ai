@@ -3,6 +3,7 @@ import type {DecisionBehaviourKey,DecisionSituationTag} from './decisionTwin';
 import type {ClimbCurriculum} from './climbCurriculum';
 import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesign';
 import type {ClimbCoachTwin} from './climbCoachTwin';
+import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntentGap';
 
 export type ClimbCoachingStrategyMode='TEACH'|'REINFORCE'|'DIAGNOSE'|'FADE';
 export type ClimbCoachingDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
@@ -25,6 +26,8 @@ export interface ClimbCoachingStrategy{
   recentCleanStreak:number;
   recentMissStreak:number;
   coachTwinStatus:string;
+  intentDiagnosis:ClimbIntentDiagnosis;
+  intentEvidenceStreak:number;
   title:string;
   playerMessage:string;
   decision:string;
@@ -108,6 +111,8 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
   cleanStreak:number;
   missStreak:number;
   coachTwinStatus:string;
+  intentDiagnosis:ClimbIntentDiagnosis;
+  intentEvidenceStreak:number;
 }):ClimbCoachingStrategy{
   const mission=input.mission;
   const base={
@@ -125,6 +130,8 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     recentCleanStreak:input.cleanStreak,
     recentMissStreak:input.missStreak,
     coachTwinStatus:input.coachTwinStatus,
+    intentDiagnosis:input.intentDiagnosis,
+    intentEvidenceStreak:input.intentEvidenceStreak,
     source:'CLIMB_COACHING_STRATEGY' as const,
     boundary:BOUNDARY,
   };
@@ -156,10 +163,14 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     ...base,
     intervene:true,
     deliveryPolicy:'LIGHT',
-    title:'REINFORCE · DO NOT OVERCOACH',
-    playerMessage:'ONE SHORT REMINDER · THEN PLAY.',
-    decision:'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
-    coachDirective:'Keep the Coach Twin format concise. Reinforce the existing branch; do not introduce a new concept or extra instruction.',
+    title:input.intentDiagnosis==='EXECUTION_GAP'?'EXECUTION GAP · REINFORCE':'REINFORCE · DO NOT OVERCOACH',
+    playerMessage:input.intentDiagnosis==='EXECUTION_GAP'?'YOU ALREADY KNOW THE BRANCH · MAKE THE DECISION EARLY ENOUGH TO EXECUTE IT.':'ONE SHORT REMINDER · THEN PLAY.',
+    decision:input.intentDiagnosis==='EXECUTION_GAP'
+      ?'Repeated pre-cue answers show the correct decision model was already present, but verified execution still broke down. OP CLIMB should reduce execution friction rather than add more theory.'
+      :'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
+    coachDirective:input.intentDiagnosis==='EXECUTION_GAP'
+      ?'Use one short trigger/action cue. Do not re-explain the concept; support timing, attention and execution.'
+      :'Keep the Coach Twin format concise. Reinforce the existing branch; do not introduce a new concept or extra instruction.',
     successDefinition:'Repeated matching clean decisions strengthen the lesson. A single miss should not trigger a full reset.',
     autonomyTest:false,
   };
@@ -167,12 +178,16 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     ...base,
     intervene:true,
     deliveryPolicy:'FULL',
-    title:'TEACH THE BRANCH',
-    playerMessage:'MAKE THE DECISION RULE EXPLICIT BEFORE THE GAME.',
-    decision:input.observed<2
-      ?'There is not enough observed mission evidence to assume the branch is understood yet.'
-      :'The branch is still unstable, so explicit coaching remains appropriate.',
-    coachDirective:'Use the Coach Twin delivery method to make the trigger and action explicit. Keep the intervention to this one Curriculum lesson.',
+    title:input.intentDiagnosis==='KNOWLEDGE_GAP'?'KNOWLEDGE GAP · TEACH THE READ':'TEACH THE BRANCH',
+    playerMessage:input.intentDiagnosis==='KNOWLEDGE_GAP'?'REBUILD THE DECISION MODEL · GET THE BRANCH RIGHT BEFORE EXECUTION SPEED MATTERS.':'MAKE THE DECISION RULE EXPLICIT BEFORE THE GAME.',
+    decision:input.intentDiagnosis==='KNOWLEDGE_GAP'
+      ?'Repeated pre-cue answers selected the wrong branch and verified execution also failed. OP CLIMB should teach understanding before demanding cleaner mechanics or timing.'
+      :input.observed<2
+        ?'There is not enough observed mission evidence to assume the branch is understood yet.'
+        :'The branch is still unstable, so explicit coaching remains appropriate.',
+    coachDirective:input.intentDiagnosis==='KNOWLEDGE_GAP'
+      ?'Explain why this branch is correct and contrast it with the old branch. Do not treat this as execution-only.'
+      :'Use the Coach Twin delivery method to make the trigger and action explicit. Keep the intervention to this one Curriculum lesson.',
     successDefinition:'Build repeated verified evidence before reducing support. One clean game cannot move directly to independent execution.',
     autonomyTest:false,
   };
@@ -197,6 +212,7 @@ export function buildClimbCoachingStrategy(input:{
   const recentFaded=strategyReviews.filter(review=>review.mode==='FADE').slice(-2);
   const fadedMisses=recentFaded.filter(review=>review.status==='MISSED').length;
   const twinStatus=coachStatus(input.coachTwin,mission.behaviourKey);
+  const intentHistory=summarizeIntentGapHistory(input.rows,mission.behaviourKey);
 
   const facts={
     mission,
@@ -205,7 +221,18 @@ export function buildClimbCoachingStrategy(input:{
     cleanStreak,
     missStreak,
     coachTwinStatus:twinStatus,
+    intentDiagnosis:intentHistory.recentDiagnosis,
+    intentEvidenceStreak:intentHistory.recentSameDiagnosisStreak,
   };
+
+  // Intent Gap separates knowing from doing before generic miss streaks are interpreted.
+  // Repeated knowledge gaps need teaching; repeated execution gaps need less theory and tighter execution support.
+  if(intentHistory.recentDiagnosis==='KNOWLEDGE_GAP'&&intentHistory.recentSameDiagnosisStreak>=2){
+    return strategyFor('TEACH',facts);
+  }
+  if(intentHistory.recentDiagnosis==='EXECUTION_GAP'&&intentHistory.recentSameDiagnosisStreak>=2){
+    return strategyFor('REINFORCE',facts);
+  }
 
   // A previously reduced-support rep that misses once gets light scaffolding back,
   // not a wholesale re-teach. Two faded misses are enough to diagnose the branch.

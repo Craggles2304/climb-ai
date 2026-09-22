@@ -35,6 +35,7 @@
   let selectedBranch='EVEN';
   let selectedContingency='PLAN_A';
   let lastCoachMeta={source:'local',quality:null,failure:null};
+  let skippedIntentProbeId='';
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -124,6 +125,11 @@ body.op-remember-live .rem10-strategy span{display:block;color:#78b7ff;font-size
 body.op-remember-live .rem10-strategy.fade span{color:#d6ff2f}body.op-remember-live .rem10-strategy.diagnose span{color:#ffbb57}
 body.op-remember-live .rem10-strategy strong{display:block;margin-top:5px;color:#f3f7f8;font-size:11px;line-height:1.25;text-transform:uppercase}
 body.op-remember-live .rem10-strategy p{margin:0;color:#9aa6ad;font-size:8px;line-height:1.42;text-transform:uppercase}
+body.op-remember-live .rem11-intent{border:1px solid rgba(178,122,255,.28);background:linear-gradient(135deg,rgba(105,56,174,.10),rgba(5,10,14,.74));padding:11px 12px;display:grid;gap:9px}
+body.op-remember-live .rem11-intent.answered{border-color:rgba(214,255,47,.24);background:linear-gradient(135deg,rgba(214,255,47,.045),rgba(5,10,14,.72))}
+body.op-remember-live .rem11-intent-head span{display:block;color:#ba8aff;font-size:6px;letter-spacing:.17em;font-weight:950;text-transform:uppercase}.rem11-intent-head strong{display:block;margin-top:5px;color:#f4f7f9;font-size:10px;line-height:1.35;text-transform:uppercase}.rem11-intent-head small{display:block;margin-top:5px;color:#78858e;font-size:6px;letter-spacing:.10em;text-transform:uppercase}
+body.op-remember-live .rem11-intent-options{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.rem11-intent-btn{appearance:none;text-align:left;border:1px solid rgba(255,255,255,.11);background:#071019;color:#dbe2e6;padding:10px 11px;font:850 8px/1.35 system-ui;text-transform:uppercase;cursor:pointer}.rem11-intent-btn:hover{border-color:rgba(186,138,255,.55)}.rem11-intent-btn:disabled{cursor:default;opacity:.55}.rem11-intent-btn.selected{border-color:rgba(214,255,47,.48);color:#eaff89;background:rgba(214,255,47,.06)}
+body.op-remember-live .rem11-intent.answered .rem11-intent-head span{color:#d6ff2f}@media(max-width:980px){body.op-remember-live .rem11-intent-options{grid-template-columns:1fr}}
 body.op-remember-live .rem5-premortem{border:1px solid rgba(255,184,76,.22);background:linear-gradient(135deg,rgba(255,184,76,.055),rgba(4,8,12,.72));padding:10px 11px;display:grid;gap:8px}
 body.op-remember-live .rem5-premortem.building{border-color:rgba(255,255,255,.08);background:rgba(4,8,12,.46)}
 body.op-remember-live .rem5-premortem-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -206,6 +212,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       scenarioPrime:coach?._scenarioPrime||null,
       decisionTransferPrime:coach?._decisionTransferPrime||null,
       climbMission:coach?._climbMission||null,
+      intentProbe:coach?._intentProbe||null,
       coachingStrategy:coach?._coachingStrategy||null,
       coachIntervention:coach?._coachIntervention||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
@@ -262,6 +269,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemStrategy" class="rem10-strategy">
         <div><span>COACHING STRATEGY</span><strong id="opRemStrategyMode">WAITING FOR MATCH REP</strong></div>
         <p id="opRemStrategyWhy">OP CLIMB WILL DECIDE WHETHER TO TEACH, REINFORCE, DIAGNOSE OR FADE SUPPORT AFTER THE MATCH REP IS FROZEN.</p>
+      </div>
+      <div id="opRemIntent" class="rem11-intent">
+        <div class="rem11-intent-head"><span>INTENT GAP · BEFORE THE COACH CUE</span><strong id="opRemIntentQuestion">NO INTENT CHECK ACTIVE</strong><small id="opRemIntentStatus">YOUR ANSWER IS FROZEN BEFORE THE COACHING CUE APPEARS</small></div>
+        <div id="opRemIntentOptions" class="rem11-intent-options"></div>
       </div>
       <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
         <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
@@ -348,6 +359,62 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemTrapCue',ready||mastered?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
     set('opRemTrapProof',ready||mastered?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
     root.title=ready||mastered?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
+  }
+
+  function renderIntentProbe(probe,coach){
+    ensurePlaybookPanel();
+    const root=$('opRemIntent'),options=$('opRemIntentOptions');if(!root||!options)return;
+    const active=probe?.version===1&&Array.isArray(probe?.options)&&probe.options.length===2;
+    root.style.display=active?'grid':'none';
+    options.replaceChildren();
+    if(!active)return;
+    const answered=Boolean(probe?.response?.selectedOptionId);
+    root.classList.toggle('answered',answered);
+    set('opRemIntentQuestion',probe.prompt||'WHICH BRANCH ARE YOU PLANNING TO TAKE?');
+    set('opRemIntentStatus',answered?'INTENT FROZEN · COACHING CUE UNLOCKED':'CHOOSE ONCE · YOU CANNOT CHANGE THIS AFTER THE COACHING CUE IS REVEALED');
+    for(const item of probe.options){
+      const button=document.createElement('button');
+      button.type='button';button.className='rem11-intent-btn';button.textContent=upper(item.label||item.id);
+      button.disabled=answered;
+      if(answered&&probe.response?.selectedOptionId===item.id)button.classList.add('selected');
+      if(!answered)button.addEventListener('click',async()=>{
+        const all=[...options.querySelectorAll('button')];all.forEach(node=>node.disabled=true);
+        set('opRemIntentStatus','FREEZING YOUR PRE-CUE ANSWER…');
+        try{
+          const result=await window.opCompanion?.answerIntentProbe?.({probeId:probe.id,optionId:item.id});
+          if(!result?.ok){
+            all.forEach(node=>node.disabled=false);
+            set('opRemIntentStatus',result?.error||'COULD NOT FREEZE INTENT · TRY AGAIN');
+            return;
+          }
+          const next={...probe,response:result?.probe?.response||{selectedOptionId:item.id,capturedAt:new Date().toISOString()}};
+          if(coach){coach._intentProbe=next;persistDeepLockedPlan(coach,clean(coach?._playbook?.champion||lastState?.matchup?.champion),clean(coach?._resolvedRole||lastState?.matchup?.role))}
+          renderIntentProbe(next,coach);
+          const climbMission=coach?._climbMission||null;
+          const coachIntervention=coach?._coachIntervention||null;
+          set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
+        }catch{
+          all.forEach(node=>node.disabled=false);
+          set('opRemIntentStatus','COULD NOT FREEZE INTENT · TRY AGAIN');
+        }
+      });
+      options.appendChild(button);
+    }
+    if(!answered){
+      const skip=document.createElement('button');
+      skip.type='button';skip.className='rem11-intent-btn';skip.textContent='SKIP · SHOW COACHING CUE';
+      skip.addEventListener('click',()=>{
+        skippedIntentProbeId=probe.id;
+        root.classList.add('answered');
+        set('opRemIntentStatus','INTENT CHECK SKIPPED · NO KNOWLEDGE/EXECUTION DIAGNOSIS WILL BE CREATED');
+        const climbMission=coach?._climbMission||null;
+        const coachIntervention=coach?._coachIntervention||null;
+        set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
+        [...options.querySelectorAll('button')].forEach(node=>node.disabled=true);
+        skip.classList.add('selected');
+      });
+      options.appendChild(skip);
+    }
   }
 
   function renderCoachingStrategy(strategy){
@@ -859,11 +926,14 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderScenarioPrime(coach?._scenarioPrime||null);
     renderDecisionTransfer(coach?._decisionTransferPrime||null);
     const climbMission=coach?._climbMission||null;
+    const intentProbe=coach?._intentProbe||null;
     const coachingStrategy=coach?._coachingStrategy||null;
     const coachIntervention=coach?._coachIntervention||null;
     renderCoachingStrategy(coachingStrategy);
-    set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
-    const missionNode=$('opRemMission');if(missionNode)missionNode.title=coachIntervention
+    renderIntentProbe(intentProbe,coach);
+    const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId&&skippedIntentProbeId!==intentProbe.id);
+    set('opRemMission',intentPending?'ANSWER THE INTENT CHECK ABOVE TO UNLOCK THIS COACHING CUE':(coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN')));
+    const missionNode=$('opRemMission');if(missionNode)missionNode.title=intentPending?'FREEZE YOUR OWN DECISION FIRST · THE COACHING CUE IS DELIBERATELY HIDDEN':coachIntervention
       ?[clean(coachIntervention.title),clean(coachIntervention.methodLabel),clean(coachIntervention.whyThisMethod),clean(coachIntervention.secondaryPrompt),clean(coachIntervention.boundary)].filter(Boolean).join(' · ')
       :climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
     renderDecisionSimulation(coach?._decisionSimulation||null);
@@ -905,6 +975,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
         enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null;
         enrichedCoach._climbMission=response?.climbMission||null;
+        enrichedCoach._intentProbe=response?.intentProbe||null;
         enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
@@ -974,6 +1045,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachAttemptAt=0;
       lastPlaybook=null;
       selectedBranch='EVEN';
+      skippedIntentProbeId='';
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);

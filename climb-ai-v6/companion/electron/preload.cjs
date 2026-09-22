@@ -13,6 +13,7 @@ contextBridge.exposeInMainWorld('opCompanion',{
   installUpdate:(phase)=>ipcRenderer.invoke('companion:install-update',phase),
   simulateBotLane:(context)=>ipcRenderer.invoke('companion:botlane-sim',context),
   draftCoach:(context)=>ipcRenderer.invoke('companion:draft-coach',context),
+  answerIntentProbe:(context)=>ipcRenderer.invoke('companion:intent-probe',context),
   onState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:state',listener);return()=>ipcRenderer.removeListener('companion:state',listener)},
   onUpdateState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:update-state',listener);return()=>ipcRenderer.removeListener('companion:update-state',listener)}
 });
