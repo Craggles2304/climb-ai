@@ -113,8 +113,8 @@ function supportFor(lesson:CurriculumLesson,state:ClimbLearningContract['state']
   if(state==='REOPEN')return'FULL';
   if(state==='TEACH')return'FULL';
   if(state==='PRACTISE')return lesson.repLadder.level>=2?'LIGHT':'FULL';
-  if(state==='STABILISE')return'LIGHT';
-  if(state==='TRANSFER_TEST')return lesson.repLadder.level>=5?'FADED':'LIGHT';
+  if(state==='STABILISE')return lesson.cleanStreak>=3&&lesson.comparableGames>=4?'FADED':'LIGHT';
+  if(state==='TRANSFER_TEST')return'FADED';
   return'NONE';
 }
 
