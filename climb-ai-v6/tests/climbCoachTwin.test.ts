@@ -199,4 +199,12 @@ test('Draft Coach, Decision Graph and player profile all share Coach Twin',()=>{
   assert.ok(graph.includes('coachIntervention:raw.coachIntervention??null'));
   assert.ok(repo.includes('coachTwin'));
   assert.ok(route.includes('coachTwin'));
+  const companion=fs.readFileSync('companion/electron/remember-v5-esports.js','utf8');
+  const review=fs.readFileSync('companion/electron/review-v2-core.js','utf8');
+  assert.ok(companion.includes('enrichedCoach._coachIntervention=response?.coachIntervention||null'));
+  assert.ok(companion.includes('coachIntervention:coach?._coachIntervention||null'));
+  assert.ok(companion.includes('coachIntervention?.primaryCue'));
+  assert.ok(review.includes('COACH TWIN · DID THIS TEACHING FORMAT LAND?'));
+  assert.ok(review.includes('function renderCoachTwinReview'));
+  assert.ok(review.includes('RESPONSE ASSOCIATION ≠ CAUSATION'));
 });
