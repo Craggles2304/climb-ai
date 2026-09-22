@@ -28,6 +28,7 @@ export interface ClimbRepEvidence{
   transferCleanStreak:number;
   transferStrength:number|null;
   previousLevel?:ClimbRepLevel|null;
+  previousPhase?:CurriculumPhase|null;
 }
 
 const STAGES:Record<ClimbRepLevel,{stage:ClimbRepStage;label:string;objective:string;difficultyRule:string;promotionGate:string}>={
@@ -90,15 +91,19 @@ export function buildClimbRepLadder(input:ClimbRepEvidence):ClimbRepLadder{
   const rawLevel=levelFor(input);
   const previous=input.previousLevel??null;
   let level:ClimbRepLevel=rawLevel;
-  if(previous!==null&&input.phase==='REOPEN'){
+  if(previous!==null&&input.phase==='REOPEN'&&input.previousPhase!=='REOPEN'){
     level=Math.max(1,previous-1) as ClimbRepLevel;
+  }else if(previous!==null&&input.phase==='REOPEN'){
+    level=previous;
   }else if(previous!==null&&rawLevel<previous){
     level=previous;
   }
   const stage=STAGES[level];
   const heldAfterSingleMiss=previous!==null&&rawLevel<previous&&input.phase!=='REOPEN';
-  const reason=input.phase==='REOPEN'&&previous!==null
+  const reason=input.phase==='REOPEN'&&previous!==null&&input.previousPhase!=='REOPEN'
     ?'Sustained verified regression returned after prior progress, so OP CLIMB has reduced difficulty by one layer instead of wiping the learned progression.'
+    :input.phase==='REOPEN'&&previous!==null
+      ?'This verified regression episode is still open. Hold the reduced difficulty here until the skill is rebuilt; do not demote again without a new regression episode.'
     :heldAfterSingleMiss
       ?'The latest evidence is weaker, but one or two misses do not erase earned difficulty. Hold this level until sustained comparable regression is verified.'
       :input.phase==='REOPEN'
