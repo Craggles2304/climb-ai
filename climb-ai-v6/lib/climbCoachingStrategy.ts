@@ -296,12 +296,13 @@ export function buildClimbCoachingStrategy(input:{
   const repeatedKnowledgeGap=intentHistory.recentDiagnosis==='KNOWLEDGE_GAP'&&intentHistory.recentSameDiagnosisStreak>=2;
   const repeatedExecutionGap=intentHistory.recentDiagnosis==='EXECUTION_GAP'&&intentHistory.recentSameDiagnosisStreak>=2;
   const safetyNeedsSupport=repeatedKnowledgeGap||repeatedExecutionGap||autonomyCard?.state==='REGRESSION_WATCH'||autonomyCard?.state==='SUPPORT_DEPENDENT';
+  const scheduledSupportExperiment=input.experimentSchedule?.status==='SCHEDULED'&&input.experimentSchedule.requestedDeliveryPolicy!=='NONE';
   const emit=(requested:ClimbCoachingStrategyMode)=>{
     let mode=requested;
     if(contract?.supportPolicy==='FULL'&&mode==='FADE')mode='REINFORCE';
     if(contract?.supportPolicy==='LIGHT'&&mode==='FADE')mode='REINFORCE';
     if(contract?.supportPolicy==='LIGHT'&&mode==='TEACH'&&!repeatedKnowledgeGap)mode='REINFORCE';
-    if(contract?.supportPolicy==='FADED'&&!safetyNeedsSupport&&mode!=='DIAGNOSE')mode='FADE';
+    if(contract?.supportPolicy==='FADED'&&!safetyNeedsSupport&&!scheduledSupportExperiment&&mode!=='DIAGNOSE')mode='FADE';
     return strategyFor(mode,{...facts,curriculumConstrained:Boolean(contract&&mode!==requested)});
   };
 
