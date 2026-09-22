@@ -60,7 +60,7 @@ export interface ClimbExperimentReview{
   boundary:string;
 }
 
-const BOUNDARY='CLIMB Experiment Scheduler chooses the most informative safe next support condition before the match. It never changes the frozen game plan, Curriculum lesson or Rep Ladder difficulty. A scheduled FADE holdout is only allowed when existing learning evidence makes reduced support reasonable; knowledge gaps, regression and unsafe early-stage learning keep support on. Results update evidence only after the frozen experiment is reviewed.';
+const BOUNDARY='CLIMB Experiment Scheduler chooses the most informative safe next support condition before the match. Autonomous Curriculum V6 can defer a support-removal experiment while the active learning contract still requires full scaffolding. It never changes the frozen game plan, Curriculum lesson or Rep Ladder difficulty. A scheduled FADE holdout is only allowed when existing learning evidence makes reduced support reasonable; knowledge gaps, regression and unsafe early-stage learning keep support on. Results update evidence only after the frozen experiment is reviewed.';
 const REVIEW_BOUNDARY='Experiment review checks whether the pre-game support condition was actually tested in a verified matching mission moment. NOT OBSERVED adds no evidence. The result informs future within-player comparisons; it does not create a causal claim from one trial.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
@@ -115,18 +115,31 @@ function schedule(input:{
   safetyReason:string;
   successRead:string;
 }):ClimbExperimentSchedule{
+  const curriculumBlocksFade=
+    input.status==='SCHEDULED'
+    &&input.policy==='NONE'
+    &&input.mission.autonomousSupportPolicy==='FULL';
+  const status:ClimbExperimentStatus=curriculumBlocksFade?'DEFERRED':input.status;
+  const type:ClimbExperimentType=curriculumBlocksFade?'SUPPORTED_RETEST':input.type;
+  const policy:ClimbExperimentDeliveryPolicy=curriculumBlocksFade?'LIGHT':input.policy;
+  const safetyReason=curriculumBlocksFade
+    ?'Autonomous Curriculum V6 still requires FULL learning support for this contract, so a FADE holdout is deferred until the curriculum reaches a support-fading gate.'
+    :input.safetyReason;
+  const informationNeed=curriculumBlocksFade
+    ?'Build the current learning contract far enough for V6 to permit a clean support-removal experiment.'
+    :input.informationNeed;
   return{
     version:1,
-    id:['climb-experiment',input.mission.id,input.type,input.mission.targetTag,'l'+String(input.mission.repLevel)].join(':').toLowerCase(),
+    id:['climb-experiment',input.mission.id,type,input.mission.targetTag,'l'+String(input.mission.repLevel)].join(':').toLowerCase(),
     missionId:input.mission.id,
     behaviourKey:input.mission.behaviourKey,
     behaviourLabel:input.mission.behaviourLabel,
     targetTag:input.mission.targetTag,
     repLevel:input.mission.repLevel,
     cellKey:cellKey(input.mission.targetTag,input.mission.repLevel),
-    status:input.status,
-    experimentType:input.type,
-    requestedDeliveryPolicy:input.policy,
+    status,
+    experimentType:type,
+    requestedDeliveryPolicy:policy,
     supportedObservedInCell:input.supported,
     fadedObservedInCell:input.faded,
     comparablePairsInCell:input.pairs,
@@ -136,8 +149,8 @@ function schedule(input:{
     interventionValueState:input.valueState,
     informationGain:input.informationGain,
     hypothesis:input.hypothesis,
-    informationNeed:input.informationNeed,
-    safetyReason:input.safetyReason,
+    informationNeed,
+    safetyReason,
     successRead:input.successRead,
     source:'CLIMB_EXPERIMENT_SCHEDULER',
     boundary:BOUNDARY,
