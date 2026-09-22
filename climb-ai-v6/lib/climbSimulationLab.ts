@@ -302,13 +302,11 @@ function transitionInvariant(input:{
   mission:ClimbMatchMission|null;
   transferPrime:DecisionTransferPrime|null;
   review:DecisionGraph['summary']['climbMission'];
-  preComparable:number;
-  postComparable:number;
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
-  if(input.review.status==='NOT_OBSERVED'&&input.postComparable!==input.preComparable){
-    errors.push(prefix+'NOT_OBSERVED changed comparable evidence.');
+  if(input.review.status==='NOT_OBSERVED'&&input.preLevel!==null&&input.postLevel!==null&&input.postLevel!==input.preLevel){
+    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' to '+String(input.postLevel)+'.');
   }
   if(input.mission&&input.review.missionId!==input.mission.id){
     errors.push(prefix+'post-game review did not use the frozen pre-game mission.');
@@ -451,8 +449,6 @@ export function runSimulationCareer(input:{
       mission,
       transferPrime,
       review:graph.summary.climbMission,
-      preComparable:memoryComparable(preMemory),
-      postComparable:memoryComparable(postMemory),
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
