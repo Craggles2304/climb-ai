@@ -173,6 +173,29 @@ test('Autonomous Curriculum FULL contract blocks a premature fade',()=>{
   assert.equal(strategy?.curriculumConstrained,true);
 });
 
+test('Autonomous Curriculum LIGHT contract blocks support-removal experiments and keeps a light scaffold',()=>{
+  const rows=[
+    row(0,missionReview(0,'EXECUTED')),
+    row(1,missionReview(1,'EXECUTED')),
+    row(2,missionReview(2,'EXECUTED')),
+    row(3,missionReview(3,'EXECUTED')),
+  ];
+  const fadeExperiment={
+    id:'fade-holdout',status:'SCHEDULED',experimentType:'FADE_HOLDOUT',requestedDeliveryPolicy:'NONE',informationNeed:'test',
+  } as any;
+  const strategy=buildClimbCoachingStrategy({
+    rows,
+    curriculum:curriculum('LIGHT'),
+    mission:mission(3,'STABILISE'),
+    coachTwin:coachTwin('PREFERENCE_EMERGING'),
+    experimentSchedule:fadeExperiment,
+  });
+  assert.equal(strategy?.mode,'REINFORCE');
+  assert.equal(strategy?.deliveryPolicy,'LIGHT');
+  assert.equal(strategy?.intervene,true);
+  assert.equal(strategy?.curriculumConstrained,true);
+});
+
 test('Autonomous Curriculum FADED contract requests independent execution when no safety signal requires support',()=>{
   const rows=[
     row(0,missionReview(0,'EXECUTED')),
