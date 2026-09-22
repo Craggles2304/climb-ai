@@ -38,7 +38,11 @@ test('Rep Ladder does not thrash difficulty across synthetic careers',()=>{
       const changes=career.promotions+career.demotions;
       assert.ok(
         changes<=12,
-        career.archetype+' thrashed difficulty '+String(changes)+' times across 120 games at seed '+String(seed),
+        career.archetype+' thrashed difficulty '+String(changes)+' times across 120 games at seed '+String(seed)+' · transitions '+JSON.stringify(
+          career.events
+            .filter(event=>event.repLevel!==null&&event.postRepLevel!==null&&event.repLevel!==event.postRepLevel)
+            .map(event=>({game:event.game,from:event.repLevel,to:event.postRepLevel,outcome:event.outcome,phase:event.curriculumPhase,postPhase:event.postCurriculumPhase,transfer:event.transferState}))
+        ),
       );
     }
   }
