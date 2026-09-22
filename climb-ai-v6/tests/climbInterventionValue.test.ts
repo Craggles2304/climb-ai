@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import {buildClimbInterventionValueProfile} from '../lib/climbInterventionValue';
+import {buildClimbCoachingStrategy} from '../lib/climbCoachingStrategy';
 import type {HistoryAnalysisRow} from '../lib/riot/proHistory';
 
 type Status='CLEAN'|'MISSED'|'MIXED'|'NOT_OBSERVED';
@@ -194,3 +195,37 @@ test('learning profile, API and Progress expose the same Intervention Value mode
   assert.ok(progress.includes('matched response difference'));
   assert.ok(progress.includes('interventionValue'));
 });
+
+function mission(){
+  return{
+    version:1,id:'mission-next',status:'READY',behaviourKey:'FIGHT_SELECTION',behaviourLabel:'Fight Selection',
+    curriculumPhase:'STABILISE',repLevel:3,repStage:'STABILISE',repLabel:'Stabilise',repObjective:'Repeat it.',
+    repDifficultyRule:'Repeat.',repPromotionGate:'Repeated clean evidence.',champion:'Jinx',role:'ADC',targetTag:'MULTI_ACCESS',
+    title:'Fight Selection',whyThisGame:'Multiple access threats.',trigger:'FIRST CONTACT STARTS.',
+    action:'CHECK ACCESS BEFORE ENTERING.',cue:'CHECK ACCESS.',successDefinition:'GOOD',failureDefinition:'IMPROVE',
+    rehearsalQuestion:'What must be true?',relevantEnemies:['Nocturne','Rakan'],reviewRule:'Verified only.',
+    graduationRule:'Repeated evidence.',source:'CLIMB_CURRICULUM',boundary:'Frozen.',
+  } as any;
+}
+function curriculum(){return{version:1,status:'ACTIVE',currentLesson:{behaviourKey:'FIGHT_SELECTION'},queue:[],graduated:[]} as any}
+function coachTwin(){return{version:1,generatedAt:'2026-09-22T12:00:00.000Z',gamesAnalyzed:10,interventionsFrozen:5,interventionsObserved:5,behavioursProfiled:1,behaviourProfiles:[],overallMethods:[],summary:'test',boundary:'test'} as any}
+
+test('strong matched support signal tunes Strategy without overriding autonomy hierarchy',()=>{
+  const rows:HistoryAnalysisRow[]=[];
+  let i=0;
+  for(let n=0;n<5;n++)rows.push(row(i++,{intervened:true,status:'CLEAN'}));
+  for(const status of ['MISSED','CLEAN','MISSED','CLEAN','CLEAN'] as Status[]){
+    rows.push(row(i++,{intervened:false,mode:'FADE',status}));
+  }
+  const value=buildClimbInterventionValueProfile(rows).cards[0];
+  assert.equal(value?.state,'STRONG_SUPPORT_ASSOCIATED_LIFT');
+  assert.equal(value?.matchedResponseDifference,40);
+
+  const strategy=buildClimbCoachingStrategy({rows,curriculum:curriculum(),mission:mission(),coachTwin:coachTwin()});
+  assert.equal(strategy?.interventionValueState,'STRONG_SUPPORT_ASSOCIATED_LIFT');
+  assert.equal(strategy?.interventionResponseDifference,40);
+  assert.equal(strategy?.mode,'REINFORCE');
+  assert.equal(strategy?.deliveryPolicy,'LIGHT');
+  assert.match(strategy?.decision||'',/association evidence, not proof of causation/i);
+});
+
