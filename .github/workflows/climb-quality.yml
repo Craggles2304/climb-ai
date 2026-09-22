@@ -48,8 +48,8 @@ jobs:
         run: node --import tsx --test tests/climbExperimentScheduler.test.ts
       - name: CLIMB synthetic career lab
         run: node --import tsx --test tests/climbSimulationLab.test.ts
-      - name: CLIMB Coach Bench
-        run: node --import tsx --test tests/climbCoachBench.test.ts
+      - name: CLIMB Career Matrix + Coach Bench
+        run: node --import tsx --test tests/climbCareerMatrix.test.ts tests/climbCoachBench.test.ts
       - name: Ability damage type regressions
         run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Conditional spell variant regressions
