@@ -221,7 +221,8 @@ test('a previously preferred method is retested when recent observed response co
   const twin=buildClimbCoachTwin(rows);
   const profile=twin.behaviourProfiles[0];
   assert.equal(profile.status,'RETESTING');
-  assert.equal(profile.preferredMethod,null);
+  assert.equal(profile.preferredMethod,'WHEN_THEN');
+  assert.equal(profile.preferenceConfidence,'LOW');
   const intervention=selectClimbCoachIntervention({twin,mission:mission()});
   assert.ok(intervention);
   assert.notEqual(intervention?.method,'WHEN_THEN');
