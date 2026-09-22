@@ -154,11 +154,11 @@ function stateFor(observations:GameObservation[]):ScenarioMemoryState{
   const recentClean=recent.filter(item=>item.verdict==='GOOD').length;
   const recentCleanRate=pct(recentClean,recent.length)??0;
   const streak=cleanStreak(observations);
-  const older=observations.slice(0,-2);
+  const older=observations.slice(0,-3);
   const olderClean=older.filter(item=>item.verdict==='GOOD').length;
   const olderCleanRate=pct(olderClean,older.length)??0;
-  const recentTwo=observations.slice(-2);
-  const regressed=older.length>=3&&olderCleanRate>=80&&recentTwo.some(item=>item.verdict==='IMPROVE');
+  const recentThree=observations.slice(-3);
+  const regressed=older.length>=3&&recentThree.length===3&&olderCleanRate>=80&&recentThree.every(item=>item.verdict==='IMPROVE');
   if(regressed)return'REGRESSED';
   if(observations.at(-1)?.verdict==='IMPROVE')return'DUE';
   if(streak>=3&&recentCleanRate>=80&&observations.length>=4)return'MASTERED';
