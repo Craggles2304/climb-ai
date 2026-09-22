@@ -389,7 +389,9 @@ function transitionInvariant(input:{
   postLevel:number|null;
   preLesson:CurriculumLesson|null;
   postLesson:CurriculumLesson|null;
+  preMemory:ScenarioMemoryCard|null;
   postMemory:ScenarioMemoryCard|null;
+  preTransfer:ReturnType<typeof transferCard>;
   postTransfer:ReturnType<typeof transferCard>;
   mission:ClimbMatchMission|null;
   transferPrime:DecisionTransferPrime|null;
@@ -409,7 +411,7 @@ function transitionInvariant(input:{
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
   if(input.review.status==='NOT_OBSERVED'&&input.preLevel!==null&&input.postLevel!==null&&input.postLevel!==input.preLevel){
-    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' ('+String(input.preLesson?.behaviourKey??'none')+') to '+String(input.postLevel)+' ('+String(input.postLesson?.behaviourKey??'none')+').');
+    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' ('+String(input.preLesson?.behaviourKey??'none')+' / '+String(input.preLesson?.phase??'none')+' / memory '+String(input.preMemory?.state??'none')+' / transfer '+String(input.preTransfer?.state??'none')+') to '+String(input.postLevel)+' ('+String(input.postLesson?.behaviourKey??'none')+' / '+String(input.postLesson?.phase??'none')+' / memory '+String(input.postMemory?.state??'none')+' / transfer '+String(input.postTransfer?.state??'none')+').');
   }
   if(input.review.status==='NOT_OBSERVED'&&input.preLesson?.behaviourKey!==input.postLesson?.behaviourKey){
     errors.push(prefix+'NOT_OBSERVED changed active objective from '+String(input.preLesson?.behaviourKey??'none')+' to '+String(input.postLesson?.behaviourKey??'none')+'.');
@@ -655,6 +657,8 @@ export function runSimulationCareer(input:{
     if(preLevel!==null&&postLevel!==null&&postLevel>preLevel)promotions++;
     if(preLevel!==null&&postLevel!==null&&postLevel<preLevel)demotions++;
 
+    const preMemory=bestMemory(pre.memory);
+    const preTransfer=transferCard(pre.transfer);
     const postMemory=bestMemory(post.memory);
     const postTransfer=transferCard(post.transfer);
     const postAutonomy=post.autonomy.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
@@ -666,7 +670,9 @@ export function runSimulationCareer(input:{
       postLevel,
       preLesson,
       postLesson,
+      preMemory,
       postMemory,
+      preTransfer,
       postTransfer,
       mission,
       transferPrime,
