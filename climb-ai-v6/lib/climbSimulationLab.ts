@@ -307,6 +307,9 @@ function transitionInvariant(input:{
   if(input.review.status==='NOT_OBSERVED'&&input.preLevel!==null&&input.postLevel!==null&&input.postLevel!==input.preLevel){
     errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' to '+String(input.postLevel)+'.');
   }
+  if(input.preLevel!==null&&input.postLevel!==null&&input.postLevel<input.preLevel-1){
+    errors.push(prefix+'difficulty demoted more than one layer ('+String(input.preLevel)+' → '+String(input.postLevel)+').');
+  }
   if(input.mission&&input.review.missionId!==input.mission.id){
     errors.push(prefix+'post-game review did not use the frozen pre-game mission.');
   }
