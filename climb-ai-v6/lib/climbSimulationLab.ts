@@ -65,6 +65,11 @@ export interface SimulationGameEvent{
   experimentType:string|null;
   experimentPolicy:string|null;
   experimentReview:string;
+  learningContractId:string|null;
+  autonomousState:string|null;
+  autonomousAction:string|null;
+  autonomousSupportPolicy:string|null;
+  autonomousTestMode:string|null;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -398,6 +403,7 @@ function transitionInvariant(input:{
   postInterventionValue:ClimbInterventionValueCard|null;
   experimentSchedule:ClimbExperimentSchedule|null;
   experimentReview:DecisionGraph['summary']['experimentSchedule'];
+  learningContract:NonNullable<ClimbCurriculum['autonomous']>['activeContract']|null;
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
@@ -463,7 +469,14 @@ function transitionInvariant(input:{
     errors.push(prefix+'post-game experiment review did not use the frozen pre-game experiment.');
   }
   if(input.experimentSchedule?.status==='SCHEDULED'&&input.review.status!=='NOT_OBSERVED'&&input.experimentReview.status!=='COMPLETED'){
-    errors.push(prefix+'scheduled experiment was observed but did not complete under the requested support policy.');
+    errors.push(prefix+'scheduled experiment was observed but did not complete under the requested support policy'
+      +' · experiment='+String(input.experimentSchedule.experimentType)
+      +' requested='+String(input.experimentSchedule.requestedDeliveryPolicy)
+      +' observed='+String(input.experimentReview.observedDeliveryPolicy)
+      +' strategy='+String(input.strategy?.mode??'NONE')+'/'+String(input.strategy?.deliveryPolicy??'NONE')
+      +' contract='+String(input.learningContract?.supportPolicy??'NONE')
+      +' autonomous='+String(input.learningContract?.state??'NONE')
+      +'.');
   }
   if(input.experimentSchedule?.requestedDeliveryPolicy==='NONE'&&input.experimentSchedule.status==='SCHEDULED'&&input.strategy?.intervene){
     errors.push(prefix+'scheduled FADE experiment still delivered adaptive coaching support.');
@@ -663,6 +676,7 @@ export function runSimulationCareer(input:{
       postInterventionValue,
       experimentSchedule,
       experimentReview:graph.summary.experimentSchedule,
+      learningContract,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -695,6 +709,11 @@ export function runSimulationCareer(input:{
       experimentType:experimentSchedule?.experimentType??null,
       experimentPolicy:experimentSchedule?.requestedDeliveryPolicy??null,
       experimentReview:graph.summary.experimentSchedule.status,
+      learningContractId:learningContract?.id??null,
+      autonomousState:learningContract?.state??pre.curriculum.autonomous?.state??null,
+      autonomousAction:learningContract?.action??pre.curriculum.autonomous?.action??null,
+      autonomousSupportPolicy:learningContract?.supportPolicy??null,
+      autonomousTestMode:learningContract?.testDirective.mode??null,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),
