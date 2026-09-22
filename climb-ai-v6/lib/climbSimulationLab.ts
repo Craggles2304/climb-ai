@@ -9,6 +9,7 @@ import {buildClimbCoachingStrategy,type ClimbCoachingStrategy} from './climbCoac
 import {buildClimbIntentProbe,answerClimbIntentProbe,type ClimbIntentProbe} from './climbIntentGap';
 import {buildClimbAutonomyProfile,type ClimbAutonomyProfile,type ClimbAutonomyCard} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueProfile,type ClimbInterventionValueCard} from './climbInterventionValue';
+import {buildClimbExperimentSchedule,type ClimbExperimentSchedule} from './climbExperimentScheduler';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -57,6 +58,9 @@ export interface SimulationGameEvent{
   autonomyStrength:number|null;
   interventionValueState:string|null;
   interventionResponseDifference:number|null;
+  experimentType:string|null;
+  experimentPolicy:string|null;
+  experimentReview:string;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -332,6 +336,8 @@ function transitionInvariant(input:{
   intentReview:DecisionGraph['summary']['intentGap'];
   postAutonomy:ClimbAutonomyCard|null;
   postInterventionValue:ClimbInterventionValueCard|null;
+  experimentSchedule:ClimbExperimentSchedule|null;
+  experimentReview:DecisionGraph['summary']['experimentSchedule'];
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
@@ -392,6 +398,18 @@ function transitionInvariant(input:{
   }
   if(input.postInterventionValue?.state==='STRONG_SUPPORT_ASSOCIATED_LIFT'&&input.postInterventionValue.comparablePairs<5){
     errors.push(prefix+'Strong Intervention Value signal appeared before five matched pairs.');
+  }
+  if(input.experimentSchedule&&input.experimentReview.experimentId!==input.experimentSchedule.id){
+    errors.push(prefix+'post-game experiment review did not use the frozen pre-game experiment.');
+  }
+  if(input.experimentSchedule?.status==='SCHEDULED'&&input.review.status!=='NOT_OBSERVED'&&input.experimentReview.status!=='COMPLETED'){
+    errors.push(prefix+'scheduled experiment was observed but did not complete under the requested support policy.');
+  }
+  if(input.experimentSchedule?.requestedDeliveryPolicy==='NONE'&&input.experimentSchedule.status==='SCHEDULED'&&input.strategy?.intervene){
+    errors.push(prefix+'scheduled FADE experiment still delivered adaptive coaching support.');
+  }
+  if(input.experimentSchedule?.status==='DEFERRED'&&input.experimentSchedule.requestedDeliveryPolicy==='NONE'){
+    errors.push(prefix+'deferred experiment incorrectly requested a support-removal condition.');
   }
   if(input.mission?.repLevel===5&&input.mission.status==='READY'&&!input.transferPrime){
     errors.push(prefix+'Level 5 mission was forced without a frozen transfer test.');
@@ -488,11 +506,13 @@ export function runSimulationCareer(input:{
     const intentProbe=rawIntentProbe&&intentOption
       ?answerClimbIntentProbe(rawIntentProbe,intentOption.id,at)
       :rawIntentProbe;
+    const experimentSchedule=buildClimbExperimentSchedule({rows,mission});
     const coachingStrategy=buildClimbCoachingStrategy({
       rows,
       curriculum:pre.curriculum,
       mission,
       coachTwin:pre.coachTwin,
+      experimentSchedule,
     });
     const coachIntervention=selectClimbCoachIntervention({
       twin:pre.coachTwin,
@@ -524,6 +544,7 @@ export function runSimulationCareer(input:{
       decisionTransferPrime:transferPrime,
       climbMission:mission,
       intentProbe,
+      experimentSchedule,
       coachingStrategy,
       coachIntervention,
     };
@@ -565,6 +586,8 @@ export function runSimulationCareer(input:{
       intentReview:graph.summary.intentGap,
       postAutonomy,
       postInterventionValue,
+      experimentSchedule,
+      experimentReview:graph.summary.experimentSchedule,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -592,6 +615,9 @@ export function runSimulationCareer(input:{
       autonomyStrength:postAutonomy?.autonomyStrength??null,
       interventionValueState:postInterventionValue?.state??null,
       interventionResponseDifference:postInterventionValue?.matchedResponseDifference??null,
+      experimentType:experimentSchedule?.experimentType??null,
+      experimentPolicy:experimentSchedule?.requestedDeliveryPolicy??null,
+      experimentReview:graph.summary.experimentSchedule.status,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),
