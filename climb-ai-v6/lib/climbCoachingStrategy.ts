@@ -4,6 +4,7 @@ import type {ClimbCurriculum} from './climbCurriculum';
 import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesign';
 import type {ClimbCoachTwin} from './climbCoachTwin';
 import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntentGap';
+import {buildClimbAutonomyProfile,type ClimbAutonomyState} from './climbAutonomy';
 
 export type ClimbCoachingStrategyMode='TEACH'|'REINFORCE'|'DIAGNOSE'|'FADE';
 export type ClimbCoachingDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
@@ -28,6 +29,9 @@ export interface ClimbCoachingStrategy{
   coachTwinStatus:string;
   intentDiagnosis:ClimbIntentDiagnosis;
   intentEvidenceStreak:number;
+  autonomyState:ClimbAutonomyState;
+  autonomyStrength:number|null;
+  supportDependenceGap:number|null;
   title:string;
   playerMessage:string;
   decision:string;
@@ -113,6 +117,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
   coachTwinStatus:string;
   intentDiagnosis:ClimbIntentDiagnosis;
   intentEvidenceStreak:number;
+  autonomyState:ClimbAutonomyState;
+  autonomyStrength:number|null;
+  supportDependenceGap:number|null;
 }):ClimbCoachingStrategy{
   const mission=input.mission;
   const base={
@@ -132,6 +139,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     coachTwinStatus:input.coachTwinStatus,
     intentDiagnosis:input.intentDiagnosis,
     intentEvidenceStreak:input.intentEvidenceStreak,
+    autonomyState:input.autonomyState,
+    autonomyStrength:input.autonomyStrength,
+    supportDependenceGap:input.supportDependenceGap,
     source:'CLIMB_COACHING_STRATEGY' as const,
     boundary:BOUNDARY,
   };
@@ -141,7 +151,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     deliveryPolicy:'NONE',
     title:'FADE THE COACHING',
     playerMessage:'YOU OWN THE READ · EXECUTE THE FROZEN MISSION WITHOUT AN EXTRA COACH TWIN CUE.',
-    decision:'Recent verified execution is strong enough to reduce scaffolding for this rep. OP CLIMB keeps the mission visible but removes the adaptive teaching overlay.',
+    decision:input.autonomyState==='AUTONOMOUS'
+      ?'Autonomy Engine has repeated clean unscaffolded evidence for this decision. OP CLIMB keeps the mission visible while leaving the adaptive teaching overlay off unless regression evidence appears.'
+      :'Recent verified execution is strong enough to reduce scaffolding for this rep. OP CLIMB keeps the mission visible but removes the adaptive teaching overlay.',
     coachDirective:'Do not add a new teaching format. Preserve the exact frozen mission and observe whether the player executes it independently.',
     successDefinition:'A matching verified clean mission moment is autonomy evidence. NOT OBSERVED scores nothing. One miss does not erase prior learning.',
     autonomyTest:true,
@@ -152,9 +164,11 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     deliveryPolicy:'DIAGNOSTIC',
     title:'DIAGNOSE THE BRANCH',
     playerMessage:'DO NOT ADD MORE ADVICE · TEST WHETHER YOU CAN IDENTIFY THE RIGHT BRANCH BEFORE THE MOMENT ARRIVES.',
-    decision:input.coachTwinStatus==='RETESTING'
-      ?'The previously strongest coaching format has stopped producing stable response, so OP CLIMB is testing a different delivery route.'
-      :'Repeated verified misses mean simply repeating the same cue is low-value. OP CLIMB will use a diagnostic coaching format before adding difficulty.',
+    decision:input.autonomyState==='SUPPORT_DEPENDENT'
+      ?'The player is substantially cleaner with support than during faded reps. OP CLIMB is diagnosing what disappears when scaffolding is removed before difficulty increases.'
+      :input.coachTwinStatus==='RETESTING'
+        ?'The previously strongest coaching format has stopped producing stable response, so OP CLIMB is testing a different delivery route.'
+        :'Repeated verified misses mean simply repeating the same cue is low-value. OP CLIMB will use a diagnostic coaching format before adding difficulty.',
     coachDirective:'Use a diagnostic or retest format. Test recognition of the branch; do not change the Curriculum lesson or tactical game plan.',
     successDefinition:'The same frozen mission must be judged from verified matching decisions. Diagnostic support does not lower the evidence gate.',
     autonomyTest:false,
@@ -165,9 +179,11 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     deliveryPolicy:'LIGHT',
     title:input.intentDiagnosis==='EXECUTION_GAP'?'EXECUTION GAP · REINFORCE':'REINFORCE · DO NOT OVERCOACH',
     playerMessage:input.intentDiagnosis==='EXECUTION_GAP'?'YOU ALREADY KNOW THE BRANCH · MAKE THE DECISION EARLY ENOUGH TO EXECUTE IT.':'ONE SHORT REMINDER · THEN PLAY.',
-    decision:input.intentDiagnosis==='EXECUTION_GAP'
-      ?'Repeated pre-cue answers show the correct decision model was already present, but verified execution still broke down. OP CLIMB should reduce execution friction rather than add more theory.'
-      :'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
+    decision:input.autonomyState==='REGRESSION_WATCH'
+      ?'Independent execution had previously held, but recent faded reps regressed. OP CLIMB is restoring one short scaffold without deleting the earlier autonomy evidence.'
+      :input.intentDiagnosis==='EXECUTION_GAP'
+        ?'Repeated pre-cue answers show the correct decision model was already present, but verified execution still broke down. OP CLIMB should reduce execution friction rather than add more theory.'
+        :'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
     coachDirective:input.intentDiagnosis==='EXECUTION_GAP'
       ?'Use one short trigger/action cue. Do not re-explain the concept; support timing, attention and execution.'
       :'Keep the Coach Twin format concise. Reinforce the existing branch; do not introduce a new concept or extra instruction.',
@@ -213,6 +229,8 @@ export function buildClimbCoachingStrategy(input:{
   const fadedMisses=recentFaded.filter(review=>review.status==='MISSED').length;
   const twinStatus=coachStatus(input.coachTwin,mission.behaviourKey);
   const intentHistory=summarizeIntentGapHistory(input.rows,mission.behaviourKey);
+  const autonomyProfile=buildClimbAutonomyProfile(input.rows);
+  const autonomyCard=autonomyProfile.cards.find(card=>card.behaviourKey===mission.behaviourKey)??null;
 
   const facts={
     mission,
@@ -223,6 +241,9 @@ export function buildClimbCoachingStrategy(input:{
     coachTwinStatus:twinStatus,
     intentDiagnosis:intentHistory.recentDiagnosis,
     intentEvidenceStreak:intentHistory.recentSameDiagnosisStreak,
+    autonomyState:autonomyCard?.state??'BUILDING',
+    autonomyStrength:autonomyCard?.autonomyStrength??null,
+    supportDependenceGap:autonomyCard?.supportDependenceGap??null,
   };
 
   // Intent Gap separates knowing from doing before generic miss streaks are interpreted.
@@ -233,6 +254,13 @@ export function buildClimbCoachingStrategy(input:{
   if(intentHistory.recentDiagnosis==='EXECUTION_GAP'&&intentHistory.recentSameDiagnosisStreak>=2){
     return strategyFor('REINFORCE',facts);
   }
+
+  // Autonomy Engine controls support after intent has been interpreted.
+  // A support-dependent player should be diagnosed before difficulty increases.
+  // A regression watch restores light scaffolding without deleting prior ownership.
+  if(autonomyCard?.state==='REGRESSION_WATCH')return strategyFor('REINFORCE',facts);
+  if(autonomyCard?.state==='SUPPORT_DEPENDENT')return strategyFor('DIAGNOSE',facts);
+  if(autonomyCard?.state==='AUTONOMOUS'&&mission.repLevel>=3)return strategyFor('FADE',facts);
 
   // A previously reduced-support rep that misses once gets light scaffolding back,
   // not a wholesale re-teach. Two faded misses are enough to diagnose the branch.

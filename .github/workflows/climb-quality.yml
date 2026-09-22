@@ -40,6 +40,8 @@ jobs:
         run: node --import tsx --test tests/climbCoachingStrategy.test.ts
       - name: CLIMB Intent Gap
         run: node --import tsx --test tests/climbIntentGap.test.ts
+      - name: CLIMB Autonomy Engine
+        run: node --import tsx --test tests/climbAutonomy.test.ts
       - name: CLIMB synthetic career lab
         run: node --import tsx --test tests/climbSimulationLab.test.ts
       - name: Ability damage type regressions
