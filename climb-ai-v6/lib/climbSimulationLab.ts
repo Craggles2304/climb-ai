@@ -536,6 +536,7 @@ export function runSimulationCareer(input:{
     const draftKind=chooseDraft({random,archetype:input.archetype,curriculum:pre.curriculum,game});
     const draft=draftFor(draftKind,game);
     const situationContext=buildDraftSituationContext({champion:draft.champion,role:'ADC',enemies:draft.enemies});
+    const learningContract=pre.curriculum.autonomous?.activeContract??null;
     const transferPrime=selectDecisionTransferPrime({
       transfer:pre.transfer,
       memory:pre.memory,
@@ -544,6 +545,8 @@ export function runSimulationCareer(input:{
       simulation:null,
       champion:draft.champion,
       role:'ADC',
+      enabled:learningContract?.testDirective.mode==='TRANSFER_TEST',
+      behaviourKey:learningContract?.testDirective.behaviourKey??null,
     });
     const activeLesson=pre.curriculum.status==='ACTIVE'?pre.curriculum.currentLesson:null;
     const mission=buildClimbMatchMission({
@@ -557,6 +560,7 @@ export function runSimulationCareer(input:{
       champion:draft.champion,
       role:'ADC',
       transferPrime,
+      learningContract,
     });
     if(mission?.status==='READY')missionsReady++;
     if(mission?.status==='NOT_RELEVANT')missionsNotRelevant++;
