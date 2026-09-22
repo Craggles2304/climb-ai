@@ -95,7 +95,7 @@ const TARGET_BEHAVIOUR:DecisionBehaviourKey='FIGHT_SELECTION';
 export const DEFAULT_SIMULATION_ARCHETYPES:SimulationArchetype[]=[
   {id:'FAST_LEARNER',label:'Fast learner',initialSkill:.58,learningRate:.14,maxSkill:.96,novelPenalty:.05,notObservedRate:.04,irrelevantDraftRate:.04,regressionAt:null,regressionDrop:0},
   {id:'STEADY_LEARNER',label:'Steady learner',initialSkill:.46,learningRate:.085,maxSkill:.93,novelPenalty:.08,notObservedRate:.07,irrelevantDraftRate:.08,regressionAt:null,regressionDrop:0},
-  {id:'STUBBORN_REPEATER',label:'Stubborn repeater',initialSkill:.31,learningRate:.018,maxSkill:.61,novelPenalty:.16,notObservedRate:.05,irrelevantDraftRate:.05,regressionAt:null,regressionDrop:0},
+  {id:'STUBBORN_REPEATER',label:'Stubborn repeater',initialSkill:.22,learningRate:.008,maxSkill:.46,novelPenalty:.20,notObservedRate:.05,irrelevantDraftRate:.05,regressionAt:null,regressionDrop:0},
   {id:'CONTEXT_MEMORIZER',label:'Context memorizer',initialSkill:.54,learningRate:.10,maxSkill:.91,novelPenalty:.48,notObservedRate:.05,irrelevantDraftRate:.05,regressionAt:null,regressionDrop:0},
   {id:'REGRESSION_CASE',label:'Regression case',initialSkill:.52,learningRate:.10,maxSkill:.92,novelPenalty:.08,notObservedRate:.05,irrelevantDraftRate:.05,regressionAt:.62,regressionDrop:.42},
   {id:'SPARSE_EVIDENCE',label:'Sparse evidence',initialSkill:.48,learningRate:.075,maxSkill:.90,novelPenalty:.10,notObservedRate:.38,irrelevantDraftRate:.30,regressionAt:null,regressionDrop:0},
