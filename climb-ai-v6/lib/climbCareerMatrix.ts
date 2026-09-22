@@ -100,7 +100,7 @@ export const CAREER_MATRIX_DEPENDENCIES:Partial<Record<DecisionBehaviourKey,Part
 const BOUNDARY='Multi-Skill Career Matrix prioritises evidence-backed development leverage, not raw mistake count. Dependency edges are coaching hypotheses, not universal causal claims: a skill only gains root-cause leverage when the downstream weakness is also observed. Low-evidence one-offs remain dormant, prerequisites stay locked, and local mastery still requires transfer evidence before principle ownership.';
 
 function clamp(value:number,min=0,max=100){return Math.max(min,Math.min(max,Math.round(value)))}
-function confidenceWeight(value:DecisionTwinConfidence){return value==='HIGH'?1:value==='MEDIUM'?.72:.45}
+function confidenceWeight(value:DecisionTwinConfidence){return value==='HIGH'?1:value==='MEDIUM'?0.72:0.45}
 function memoryScore(card:ScenarioMemoryCard|null){
   if(!card)return 55;
   if(card.state==='MASTERED')return 88;
@@ -192,7 +192,7 @@ function deferredReason(candidate:CareerMatrixCandidate,recommended:CareerMatrix
   if(candidate.state==='MASTERED')return'Principle owned; keep on maintenance rather than spending the active coaching slot.';
   if(candidate.state==='DORMANT')return'Observed, but evidence is too weak to spend the active coaching slot yet.';
   if(!recommended)return null;
-  if(candidate.behaviourKey===recommended.behaviourKey)return null;
+  if(candidate.key===recommended.key)return null;
   if(candidate.priorityScore+8<recommended.priorityScore)return'Real weakness, but lower current development leverage than '+recommended.label+'.';
   return'Keep in the queue while '+recommended.label+' owns the single active development slot.';
 }
