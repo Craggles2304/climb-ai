@@ -17,6 +17,8 @@ test('CLIMB Coach Bench compares production against scaffold and early-fade base
   console.table(report.policies.map(policy=>({
     policy:policy.policyId,
     score:policy.metrics.score,
+    eligible:policy.selectionEligible,
+    disqualifiedBy:policy.disqualifications.join(',')||'—',
     cleanRate:policy.metrics.cleanDecisionRate,
     supportRate:policy.metrics.supportRate,
     autonomy:policy.metrics.autonomyCareerRate,
@@ -31,7 +33,10 @@ test('CLIMB Coach Bench compares production against scaffold and early-fade base
   assert.ok(scaffold.supportRate>product.supportRate,'Always-scaffold baseline should consume more support.');
   assert.ok(product.autonomyCareerRate>scaffold.autonomyCareerRate,'Production should create more verified autonomy than permanent scaffolding.');
   assert.ok(earlyFade.unsafeFadeCount>product.unsafeFadeCount,'Early-fade baseline should expose why production safety gates matter.');
-  assert.equal(report.winner,'PRODUCT','Production coaching policy should beat deliberately crude baselines on the composite benchmark.');
+  assert.equal(byId.PRODUCT.selectionEligible,true);
+  assert.equal(byId.EARLY_FADE.selectionEligible,false,'Unsafe early fading must be excluded from policy selection even if its raw score is high.');
+  assert.ok(byId.EARLY_FADE.disqualifications.includes('UNSAFE_FADE'));
+  assert.equal(report.winner,'PRODUCT','Production should be the highest-scoring policy that passes hard safety/evidence gates.');
 });
 
 test('Coach Bench remains deterministic for the same seeds',()=>{
@@ -42,6 +47,8 @@ test('Coach Bench remains deterministic for the same seeds',()=>{
     b.policies.map(item=>({id:item.policyId,metrics:item.metrics})),
   );
   assert.deepEqual(a.guardrails,b.guardrails);
+  assert.equal(a.winner,b.winner);
+  assert.equal(a.scoreLeader,b.scoreLeader);
 });
 
 test('Coach Bench score never hides hard guardrail failure',()=>{
@@ -49,6 +56,8 @@ test('Coach Bench score never hides hard guardrail failure',()=>{
   const early=report.policies.find(item=>item.policyId==='EARLY_FADE');
   assert.ok(early);
   assert.ok(early.metrics.unsafeFadeCount>0,'Synthetic early fading should create unsafe reps in the benchmark.');
+  assert.equal(early.selectionEligible,false);
+  assert.ok(early.disqualifications.includes('UNSAFE_FADE'));
   const safety=report.guardrails.find(item=>item.key==='SAFER_THAN_EARLY_FADE');
   assert.equal(safety?.pass,true);
   assert.match(report.boundary,/Raw metrics and hard safety guardrails take priority over score/i);
