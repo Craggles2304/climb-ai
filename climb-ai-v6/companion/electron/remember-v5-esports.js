@@ -214,6 +214,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       climbMission:coach?._climbMission||null,
       intentProbe:coach?._intentProbe||null,
       coachingStrategy:coach?._coachingStrategy||null,
+      experimentSchedule:coach?._experimentSchedule||null,
       coachIntervention:coach?._coachIntervention||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
@@ -269,6 +270,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemStrategy" class="rem10-strategy">
         <div><span>COACHING STRATEGY</span><strong id="opRemStrategyMode">WAITING FOR MATCH REP</strong></div>
         <p id="opRemStrategyWhy">OP CLIMB WILL DECIDE WHETHER TO TEACH, REINFORCE, DIAGNOSE OR FADE SUPPORT AFTER THE MATCH REP IS FROZEN.</p>
+      </div>
+      <div id="opRemExperiment" class="rem10-strategy">
+        <div><span>EXPERIMENT SCHEDULER</span><strong id="opRemExperimentType">NO EXPERIMENT SCHEDULED</strong></div>
+        <p id="opRemExperimentWhy">OP CLIMB WILL ONLY CHANGE THE SUPPORT CONDITION WHEN THE NEXT TEST IS BOTH SAFE AND INFORMATIVE.</p>
       </div>
       <div id="opRemIntent" class="rem11-intent">
         <div class="rem11-intent-head"><span>INTENT GAP · BEFORE THE COACH CUE</span><strong id="opRemIntentQuestion">NO INTENT CHECK ACTIVE</strong><small id="opRemIntentStatus">YOUR ANSWER IS FROZEN BEFORE THE COACHING CUE APPEARS</small></div>
@@ -427,6 +432,20 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemStrategyWhy',strategy?.decision||'OP CLIMB WILL DECIDE WHETHER THIS REP NEEDS EXPLICIT TEACHING, LIGHT REINFORCEMENT, DIAGNOSIS OR LESS SUPPORT.');
     root.title=[clean(strategy?.playerMessage),clean(strategy?.coachDirective),clean(strategy?.successDefinition),clean(strategy?.boundary)].filter(Boolean).join(' · ');
   }
+
+  function renderExperimentSchedule(experiment){
+    ensurePlaybookPanel();
+    const root=$('opRemExperiment');if(!root)return;
+    const status=upper(experiment?.status||'NONE');
+    const type=upper(experiment?.experimentType||'NO_EXPERIMENT').replace(/_/g,' ');
+    root.classList.toggle('fade',experiment?.requestedDeliveryPolicy==='NONE');
+    root.classList.toggle('diagnose',experiment?.requestedDeliveryPolicy==='DIAGNOSTIC');
+    root.style.opacity=status==='DEFERRED'?'.72':'1';
+    set('opRemExperimentType',status==='DEFERRED'?'DEFERRED · '+type:status==='SCHEDULED'?type:'NO EXPERIMENT SCHEDULED');
+    set('opRemExperimentWhy',clean(experiment?.informationNeed)||'OP CLIMB WILL ONLY CHANGE THE SUPPORT CONDITION WHEN THE NEXT TEST IS BOTH SAFE AND INFORMATIVE.');
+    root.title=[clean(experiment?.hypothesis),clean(experiment?.safetyReason),clean(experiment?.successRead),clean(experiment?.boundary)].filter(Boolean).join(' · ');
+  }
+
 
   function renderDecisionPremortem(premortem){
     ensurePlaybookPanel();
@@ -928,8 +947,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const climbMission=coach?._climbMission||null;
     const intentProbe=coach?._intentProbe||null;
     const coachingStrategy=coach?._coachingStrategy||null;
+    const experimentSchedule=coach?._experimentSchedule||null;
     const coachIntervention=coach?._coachIntervention||null;
     renderCoachingStrategy(coachingStrategy);
+    renderExperimentSchedule(experimentSchedule);
     renderIntentProbe(intentProbe,coach);
     const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId&&skippedIntentProbeId!==intentProbe.id);
     set('opRemMission',intentPending?'ANSWER THE INTENT CHECK ABOVE TO UNLOCK THIS COACHING CUE':(coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN')));
@@ -977,6 +998,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._climbMission=response?.climbMission||null;
         enrichedCoach._intentProbe=response?.intentProbe||null;
         enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
+        enrichedCoach._experimentSchedule=response?.experimentSchedule||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
@@ -1049,6 +1071,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);
+      renderExperimentSchedule(null);
       renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
@@ -1059,6 +1082,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
   ensurePlaybookPanel();
   renderPersonalTrap(null);
   renderCoachingStrategy(null);
+  renderExperimentSchedule(null);
   renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
   window.opCompanion?.getState?.().then(onState).catch(()=>{});
