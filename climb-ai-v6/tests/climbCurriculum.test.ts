@@ -142,6 +142,36 @@ test('curriculum keeps one sticky active objective until its graduation gate is 
   assert.equal(result.queue.find((item:any)=>item.behaviourKey==='POWER_SPIKE_CONVERSION')?.readiness,'READY');
 });
 
+test('curriculum preserves earned Rep Ladder difficulty through an isolated miss',()=>{
+  const prior:any=previous('FIGHT_SELECTION');
+  prior.currentLesson.repLadder={level:4};
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','DUE',{cleanStreak:0,memoryStrength:58,lastVerdict:'IMPROVE'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    prior,
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(result.currentLesson?.phase,'PRACTISE');
+  assert.equal(result.currentLesson?.repLadder.level,4);
+  assert.match(result.currentLesson?.repLadder.reason||'',/do not erase earned difficulty|hold this level/i);
+});
+
+test('curriculum steps down only one Rep Ladder layer after sustained verified regression',()=>{
+  const prior:any=previous('FIGHT_SELECTION');
+  prior.currentLesson.repLadder={level:5};
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','REGRESSED',{cleanStreak:0,memoryStrength:48,lastVerdict:'IMPROVE'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    prior,
+  );
+  assert.equal(result.currentLesson?.phase,'REOPEN');
+  assert.equal(result.currentLesson?.repLadder.level,4);
+});
+
 test('graduation advances the curriculum to the next unlocked lesson',()=>{
   const result=buildClimbCurriculum(
     twin([focus('CARRY_PRESERVATION',90),focus('FIGHT_SELECTION',80)]),
