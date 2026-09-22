@@ -7,6 +7,7 @@ import {
   type SimulationPolicyId,
 } from './climbSimulationLab';
 import {runClimbCareerMatrixBench,type ClimbCareerMatrixBenchReport} from './climbCareerMatrixBench';
+import {runClimbAutonomousCurriculumBench,type ClimbAutonomousCurriculumBenchReport} from './climbAutonomousCurriculumBench';
 
 export interface ClimbCoachBenchMetrics{
   careers:number;
@@ -56,6 +57,7 @@ export interface ClimbCoachBenchReport{
   totalSyntheticGames:number;
   policies:ClimbCoachBenchPolicyReport[];
   careerMatrix:ClimbCareerMatrixBenchReport;
+  autonomousCurriculum:ClimbAutonomousCurriculumBenchReport;
   guardrails:ClimbCoachBenchGuardrail[];
   scoreLeader:SimulationPolicyId;
   winner:SimulationPolicyId;
@@ -242,10 +244,15 @@ export function runClimbCoachBench(input:{
   const invariantViolations=reports.flatMap(report=>report.careerReports.flatMap(career=>career.invariants.map(error=>report.policyId+': '+error)));
 
   const careerMatrix=runClimbCareerMatrixBench();
+  const autonomousCurriculum=runClimbAutonomousCurriculumBench();
   const guardrails:ClimbCoachBenchGuardrail[]=[{
     key:'MULTI_SKILL_CAREER_MATRIX',
     pass:careerMatrix.failures.length===0,
     detail:'Production must choose the gold-standard coaching target across frequency, severity, recency, prerequisite, transfer, deferred-skill and restraint traps.',
+  },{
+    key:'AUTONOMOUS_CURRICULUM_V6',
+    pass:autonomousCurriculum.failures.length===0,
+    detail:'V6 must preserve one learning contract through teach, practise, fade, transfer, interruption, graduation and replacement without inventing progress.',
   }];
   if(product){
     guardrails.push({
@@ -309,6 +316,7 @@ export function runClimbCoachBench(input:{
     totalSyntheticGames,
     policies:reports,
     careerMatrix,
+    autonomousCurriculum,
     guardrails,
     scoreLeader,
     winner,
