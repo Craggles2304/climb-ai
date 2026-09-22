@@ -4,6 +4,7 @@ import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
 
 export type CareerMatrixState='LOCKED'|'CANDIDATE'|'ACTIVE'|'REINFORCING'|'TRANSFER_TEST'|'MASTERED'|'DORMANT';
+export type CareerMatrixSelectionMode='START'|'HOLD'|'REGRESSION_OVERRIDE'|'COMPLETE';
 
 export interface CareerMatrixSignal{
   key:DecisionBehaviourKey;
@@ -42,6 +43,7 @@ export interface ClimbCareerMatrix{
   generatedAt:string;
   gamesAnalyzed:number;
   recommendedSkill:DecisionBehaviourKey|null;
+  selectionMode:CareerMatrixSelectionMode;
   recommendationReason:string;
   candidates:CareerMatrixCandidate[];
   deferred:CareerMatrixCandidate[];
@@ -235,6 +237,7 @@ export function rankCareerMatrixSignals(signals:CareerMatrixSignal[],options:Car
       curriculumDebt*.06+
       signal.regressionRisk*.04+
       noveltyNeed*.04+
+      (signal.locallyMastered&&!signal.principleOwned?14:0)+
       (active?6:0);
     if(signal.confidence==='LOW'&&root.rootCauseLeverage<25&&curriculumDebt<20)priorityScore-=18;
     if(!signal.prerequisiteSatisfied)priorityScore-=40;
@@ -264,7 +267,36 @@ export function rankCareerMatrixSignals(signals:CareerMatrixSignal[],options:Car
     a.label.localeCompare(b.label)
   );
 
-  const recommended=candidates.find(candidate=>!['LOCKED','MASTERED','DORMANT'].includes(candidate.state))??null;
+  const eligible=candidates.filter(candidate=>!['LOCKED','MASTERED','DORMANT'].includes(candidate.state));
+  const top=eligible[0]??null;
+  const activeCandidate=activeBehaviourKey
+    ?eligible.find(candidate=>candidate.key===activeBehaviourKey)??null
+    :null;
+  const regressionOverride=activeCandidate
+    ?eligible.find(candidate=>
+      candidate.key!==activeCandidate.key&&
+      candidate.regressionRisk>=90&&
+      candidate.priorityScore>=activeCandidate.priorityScore+3
+    )??null
+    :null;
+  const recommended=activeCandidate
+    ?regressionOverride??activeCandidate
+    :top;
+  const selectionMode:CareerMatrixSelectionMode=!recommended
+    ?'COMPLETE'
+    :regressionOverride
+      ?'REGRESSION_OVERRIDE'
+      :activeCandidate
+        ?'HOLD'
+        :'START';
+  const recommendationReason=selectionMode==='HOLD'&&recommended
+    ?'Keep coaching '+recommended.label+' until its current ownership gate is complete. A different weakness must show verified regression, not merely a slightly higher score, to steal the active development slot.'
+    :selectionMode==='REGRESSION_OVERRIDE'&&recommended
+      ?recommended.label+' has verified regression strong enough to interrupt the current learning contract.'
+      :recommended
+        ?recommended.whyNow
+        :'No skill currently has enough unlocked evidence to justify owning the active coaching slot.';
+  if(recommended&&selectionMode==='HOLD')recommended.whyNow=recommendationReason;
   for(const candidate of candidates)candidate.deferredReason=deferredReason(candidate,recommended);
 
   return{
@@ -272,9 +304,8 @@ export function rankCareerMatrixSignals(signals:CareerMatrixSignal[],options:Car
     generatedAt,
     gamesAnalyzed,
     recommendedSkill:recommended?.key??null,
-    recommendationReason:recommended
-      ?recommended.whyNow
-      :'No skill currently has enough unlocked evidence to justify owning the active coaching slot.',
+    selectionMode,
+    recommendationReason,
     candidates,
     deferred:candidates.filter(candidate=>candidate.key!==recommended?.key&&candidate.state!=='MASTERED'),
     boundary:BOUNDARY,
