@@ -8,6 +8,7 @@ import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachTwin,typ
 import {buildClimbCoachingStrategy,type ClimbCoachingStrategy} from './climbCoachingStrategy';
 import {buildClimbIntentProbe,answerClimbIntentProbe,type ClimbIntentProbe} from './climbIntentGap';
 import {buildClimbAutonomyProfile,type ClimbAutonomyProfile,type ClimbAutonomyCard} from './climbAutonomy';
+import {buildClimbInterventionValueProfile,type ClimbInterventionValueProfile,type ClimbInterventionValueCard} from './climbInterventionValue';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -54,6 +55,8 @@ export interface SimulationGameEvent{
   intentDiagnosis:string;
   autonomyState:string|null;
   autonomyStrength:number|null;
+  interventionValueState:string|null;
+  interventionResponseDifference:number|null;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -104,6 +107,7 @@ type ProfileBundle={
   curriculum:ClimbCurriculum;
   coachTwin:ClimbCoachTwin;
   autonomy:ClimbAutonomyProfile;
+  interventionValue:ClimbInterventionValueProfile;
 };
 
 const TARGET_BEHAVIOUR:DecisionBehaviourKey='FIGHT_SELECTION';
@@ -146,7 +150,8 @@ function rebuild(rows:HistoryAnalysisRow[],previous:ClimbCurriculum|null,at:stri
   const curriculum=buildClimbCurriculum(twin,memory,transfer,at,previous);
   const coachTwin=buildClimbCoachTwin(rows,at);
   const autonomy=buildClimbAutonomyProfile(rows,at);
-  return{twin,memory,transfer,curriculum,coachTwin,autonomy};
+  const interventionValue=buildClimbInterventionValueProfile(rows,at);
+  return{twin,memory,transfer,curriculum,coachTwin,autonomy,interventionValue};
 }
 
 type DraftKind='SOURCE'|'NOVEL_PICK'|'NOVEL_CHAMPION'|'IRRELEVANT';
@@ -326,6 +331,7 @@ function transitionInvariant(input:{
   intentProbe:ClimbIntentProbe|null;
   intentReview:DecisionGraph['summary']['intentGap'];
   postAutonomy:ClimbAutonomyCard|null;
+  postInterventionValue:ClimbInterventionValueCard|null;
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
@@ -378,6 +384,14 @@ function transitionInvariant(input:{
   }
   if(input.postAutonomy?.state==='SUPPORT_DEPENDENT'&&(input.postAutonomy.supportDependenceGap??0)<=0){
     errors.push(prefix+'Support dependence was claimed without cleaner supported execution than faded execution.');
+  }
+  if(input.postInterventionValue&&input.postInterventionValue.state!=='BUILDING'){
+    if(input.postInterventionValue.supportedObserved<3||input.postInterventionValue.fadedObserved<3||input.postInterventionValue.comparablePairs<3){
+      errors.push(prefix+'Intervention Value left BUILDING without enough matched supported/faded evidence.');
+    }
+  }
+  if(input.postInterventionValue?.state==='STRONG_SUPPORT_ASSOCIATED_LIFT'&&input.postInterventionValue.comparablePairs<5){
+    errors.push(prefix+'Strong Intervention Value signal appeared before five matched pairs.');
   }
   if(input.mission?.repLevel===5&&input.mission.status==='READY'&&!input.transferPrime){
     errors.push(prefix+'Level 5 mission was forced without a frozen transfer test.');
@@ -531,6 +545,7 @@ export function runSimulationCareer(input:{
     const postMemory=bestMemory(post.memory);
     const postTransfer=transferCard(post.transfer);
     const postAutonomy=post.autonomy.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
+    const postInterventionValue=post.interventionValue.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
     invariants.push(...transitionInvariant({
       archetype:input.archetype.id,
       game,
@@ -549,6 +564,7 @@ export function runSimulationCareer(input:{
       intentProbe,
       intentReview:graph.summary.intentGap,
       postAutonomy,
+      postInterventionValue,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -574,6 +590,8 @@ export function runSimulationCareer(input:{
       intentDiagnosis:graph.summary.intentGap.diagnosis,
       autonomyState:postAutonomy?.state??null,
       autonomyStrength:postAutonomy?.autonomyStrength??null,
+      interventionValueState:postInterventionValue?.state??null,
+      interventionResponseDifference:postInterventionValue?.matchedResponseDifference??null,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),

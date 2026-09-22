@@ -5,6 +5,7 @@ import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesi
 import type {ClimbCoachTwin} from './climbCoachTwin';
 import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntentGap';
 import {buildClimbAutonomyProfile,type ClimbAutonomyState} from './climbAutonomy';
+import {buildClimbInterventionValueProfile,type ClimbInterventionValueState} from './climbInterventionValue';
 
 export type ClimbCoachingStrategyMode='TEACH'|'REINFORCE'|'DIAGNOSE'|'FADE';
 export type ClimbCoachingDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
@@ -32,6 +33,9 @@ export interface ClimbCoachingStrategy{
   autonomyState:ClimbAutonomyState;
   autonomyStrength:number|null;
   supportDependenceGap:number|null;
+  interventionValueState:ClimbInterventionValueState;
+  interventionResponseDifference:number|null;
+  interventionValueConfidence:'LOW'|'MEDIUM'|'HIGH';
   title:string;
   playerMessage:string;
   decision:string;
@@ -120,6 +124,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
   autonomyState:ClimbAutonomyState;
   autonomyStrength:number|null;
   supportDependenceGap:number|null;
+  interventionValueState:ClimbInterventionValueState;
+  interventionResponseDifference:number|null;
+  interventionValueConfidence:'LOW'|'MEDIUM'|'HIGH';
 }):ClimbCoachingStrategy{
   const mission=input.mission;
   const base={
@@ -142,6 +149,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     autonomyState:input.autonomyState,
     autonomyStrength:input.autonomyStrength,
     supportDependenceGap:input.supportDependenceGap,
+    interventionValueState:input.interventionValueState,
+    interventionResponseDifference:input.interventionResponseDifference,
+    interventionValueConfidence:input.interventionValueConfidence,
     source:'CLIMB_COACHING_STRATEGY' as const,
     boundary:BOUNDARY,
   };
@@ -181,9 +191,11 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     playerMessage:input.intentDiagnosis==='EXECUTION_GAP'?'YOU ALREADY KNOW THE BRANCH · MAKE THE DECISION EARLY ENOUGH TO EXECUTE IT.':'ONE SHORT REMINDER · THEN PLAY.',
     decision:input.autonomyState==='REGRESSION_WATCH'
       ?'Independent execution had previously held, but recent faded reps regressed. OP CLIMB is restoring one short scaffold without deleting the earlier autonomy evidence.'
-      :input.intentDiagnosis==='EXECUTION_GAP'
-        ?'Repeated pre-cue answers show the correct decision model was already present, but verified execution still broke down. OP CLIMB should reduce execution friction rather than add more theory.'
-        :'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
+      :input.interventionValueState==='STRONG_SUPPORT_ASSOCIATED_LIFT'
+        ?'Matched supported-versus-faded reps show a strong repeated support-associated response difference for this branch. OP CLIMB will use light support selectively while continuing autonomy checks; this is association evidence, not proof of causation.'
+        :input.intentDiagnosis==='EXECUTION_GAP'
+          ?'Repeated pre-cue answers show the correct decision model was already present, but verified execution still broke down. OP CLIMB should reduce execution friction rather than add more theory.'
+          :'The player has usable recent evidence on this branch, but it is not stable enough to remove support completely.',
     coachDirective:input.intentDiagnosis==='EXECUTION_GAP'
       ?'Use one short trigger/action cue. Do not re-explain the concept; support timing, attention and execution.'
       :'Keep the Coach Twin format concise. Reinforce the existing branch; do not introduce a new concept or extra instruction.',
@@ -231,6 +243,8 @@ export function buildClimbCoachingStrategy(input:{
   const intentHistory=summarizeIntentGapHistory(input.rows,mission.behaviourKey);
   const autonomyProfile=buildClimbAutonomyProfile(input.rows);
   const autonomyCard=autonomyProfile.cards.find(card=>card.behaviourKey===mission.behaviourKey)??null;
+  const interventionValueProfile=buildClimbInterventionValueProfile(input.rows);
+  const interventionValueCard=interventionValueProfile.cards.find(card=>card.behaviourKey===mission.behaviourKey)??null;
 
   const facts={
     mission,
@@ -244,6 +258,9 @@ export function buildClimbCoachingStrategy(input:{
     autonomyState:autonomyCard?.state??'BUILDING',
     autonomyStrength:autonomyCard?.autonomyStrength??null,
     supportDependenceGap:autonomyCard?.supportDependenceGap??null,
+    interventionValueState:interventionValueCard?.state??'BUILDING',
+    interventionResponseDifference:interventionValueCard?.matchedResponseDifference??null,
+    interventionValueConfidence:interventionValueCard?.confidence??'LOW',
   };
 
   // Intent Gap separates knowing from doing before generic miss streaks are interpreted.
@@ -266,6 +283,16 @@ export function buildClimbCoachingStrategy(input:{
   // not a wholesale re-teach. Two faded misses are enough to diagnose the branch.
   if(fadedMisses>=2)return strategyFor('DIAGNOSE',facts);
   if(fadedMisses===1&&recentFaded.at(-1)?.status==='MISSED')return strategyFor('REINFORCE',facts);
+
+  // Intervention Value is lower-priority than Intent Gap and Autonomy. It can tune
+  // support only after those stronger learning-state signals have been handled.
+  // Matched response difference is association evidence, never a causal override.
+  if(interventionValueCard?.state==='FADE_ASSOCIATED_BETTER'&&mission.repLevel>=3&&cleanStreak>=2){
+    return strategyFor('FADE',facts);
+  }
+  if(interventionValueCard?.state==='STRONG_SUPPORT_ASSOCIATED_LIFT'&&mission.repLevel>=2){
+    return strategyFor('REINFORCE',facts);
+  }
 
   // Delivery instability or repeated verified branch misses should change the
   // coaching approach before difficulty or curriculum changes.
