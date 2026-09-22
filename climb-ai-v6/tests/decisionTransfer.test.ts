@@ -174,7 +174,7 @@ test('one isolated novel miss does not erase transferred learning',()=>{
   assert.equal(transfer.regressed,0);
 });
 
-test('a transferred principle reopens after sustained novel mistakes',()=>{
+test('a transferred principle reopens after two sustained novel mistakes',()=>{
   const {transfer}=build([
     row(0,'Aphelios','IMPROVE'),
     row(1,'Aphelios','GOOD'),
@@ -184,10 +184,8 @@ test('a transferred principle reopens after sustained novel mistakes',()=>{
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
     row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
-    row(8,'Jinx','GOOD','PICK_PRESSURE'),
-    row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(10,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
-    row(11,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(8,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(9,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'REGRESSED');
