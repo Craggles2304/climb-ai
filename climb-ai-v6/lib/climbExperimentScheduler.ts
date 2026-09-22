@@ -252,7 +252,7 @@ export function buildClimbExperimentSchedule(input:{
 
   if(counts.supported>=3&&counts.faded<3){
     return schedule({
-      mission,status:'SCHEDULED',type:autonomyState==='AUTONOMOUS'?'AUTONOMY_RECHECK':'FADE_HOLDOUT',policy:'NONE',
+      mission,status:'SCHEDULED',type:'FADE_HOLDOUT',policy:'NONE',
       supported:counts.supported,faded:counts.faded,pairs:counts.pairs,
       intentDiagnosis:intent.recentDiagnosis,intentStreak:intent.recentSameDiagnosisStreak,
       autonomyState,valueState,informationGain:'HIGH',
@@ -289,7 +289,7 @@ export function buildClimbExperimentSchedule(input:{
     });
   }
 
-  if(valueState==='FADE_ASSOCIATED_BETTER'||autonomyState==='AUTONOMOUS'){
+  if(valueState==='FADE_ASSOCIATED_BETTER'){
     return schedule({
       mission,status:'SCHEDULED',type:'AUTONOMY_RECHECK',policy:'NONE',
       supported:counts.supported,faded:counts.faded,pairs:counts.pairs,
