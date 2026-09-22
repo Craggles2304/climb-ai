@@ -5,6 +5,7 @@ import type {DecisionTwinV2Profile,DecisionTwinActiveFocus,DecisionContextProfil
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionTransfer';
 import type {ClimbCurriculum,CurriculumLesson} from '@/lib/climbCurriculum';
+import type {ClimbCoachTwin,ClimbCoachBehaviourProfile,ClimbCoachMethodStats} from '@/lib/climbCoachTwin';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -42,6 +43,24 @@ function TransferCard({item}:{item:DecisionTransferCard}){
   </article>;
 }
 
+function CoachMethodCard({item}:{item:ClimbCoachMethodStats}){
+  return <article className="dt5-transfer-card">
+    <div className="dt2-card-top"><span>COACHING FORMAT</span><b>{item.observedGames<2?'TESTING':'MEASURED'}</b></div>
+    <h3>{item.label}</h3>
+    <p>{item.observedGames?(item.observedGames+' observed tests · '+item.notObservedGames+' not observed'):'No observed comparable mission yet.'}</p>
+    <div className="dt5-transfer-meter"><i style={{width:String(item.executionRate??0)+'%'}}/><span>{item.executionRate===null?'BUILDING':item.executionRate+'% response'}</span></div>
+    <div className="dt2-mini-row"><span>{item.frozenGames} frozen</span><span>{item.recentExecutionRate===null?'RECENT BUILDING':item.recentExecutionRate+'% recent'}</span></div>
+  </article>;
+}
+
+function CoachProfileCard({item}:{item:ClimbCoachBehaviourProfile}){
+  return <article className="dt5-transfer-card">
+    <div className="dt2-card-top"><span>{item.behaviourLabel}</span><b>{item.status.replaceAll('_',' ')}</b></div>
+    <h3>{item.preferredMethodLabel||'Still learning how to coach this'}</h3>
+    <p>{item.evidence}</p>
+    <div className="dt2-mini-row"><span>{item.totalObserved} observed tests</span><span>{item.preferenceConfidence} confidence</span></div>
+  </article>;
+}
 function CurriculumQueueItem({item,index}:{item:CurriculumLesson;index:number}){
   return <article className={`dt6-queue-item ${item.readiness.toLowerCase()}`}>
     <div className="dt6-queue-index">{String(index+1).padStart(2,'0')}</div>
@@ -78,6 +97,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [memory,setMemory]=useState<ScenarioMemoryProfile|null>(null);
   const [transfer,setTransfer]=useState<DecisionTransferProfile|null>(null);
   const [curriculum,setCurriculum]=useState<ClimbCurriculum|null>(null);
+  const [coachTwin,setCoachTwin]=useState<ClimbCoachTwin|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -85,7 +105,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setCoachTwin(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -93,7 +113,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load CLIMB Profile.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setCoachTwin(body?.coachTwin??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load CLIMB Profile.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -110,6 +130,8 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const currentLesson=curriculum?.currentLesson??null;
   const nextLesson=curriculum?.nextLesson??null;
   const curriculumQueue=useMemo(()=>curriculum?.queue?.slice(0,4)??[],[curriculum]);
+  const coachProfiles=useMemo(()=>coachTwin?.behaviourProfiles?.slice(0,3)??[],[coachTwin]);
+  const coachMethods=useMemo(()=>coachTwin?.overallMethods?.slice().sort((a,b)=>(b.observedGames-a.observedGames)||((b.executionRate??-1)-(a.executionRate??-1))).slice(0,4)??[],[coachTwin]);
 
   if(!valid)return null;
 
@@ -224,6 +246,23 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         <div className="dt6-boundary">{curriculum?.boundary||'One clean game cannot graduate a lesson.'}</div>
       </div>
 
+      <div className="dt5-map glass">
+        <div className="dt5-map-head">
+          <div>
+            <span>COACH TWIN</span>
+            <h3>OP CLIMB is learning how you respond to coaching — not just what you need to learn.</h3>
+            <p>{coachTwin?.summary||'Coach Twin is still building from frozen coaching-format tests.'}</p>
+          </div>
+          <div className="dt5-map-stats">
+            <div><b>{coachTwin?.interventionsFrozen??0}</b><span>FROZEN TESTS</span></div>
+            <div><b>{coachTwin?.interventionsObserved??0}</b><span>OBSERVED</span></div>
+            <div><b>{coachTwin?.behavioursProfiled??0}</b><span>PROFILED</span></div>
+          </div>
+        </div>
+        {coachProfiles.length?<div className="dt5-transfer-grid">{coachProfiles.map(item=><CoachProfileCard key={item.behaviourKey} item={item}/>)}</div>:<div className="dt2-empty">NO COACHING-FORMAT PREFERENCE YET · OP CLIMB WILL ROTATE METHODS BEFORE IT CLAIMS ONE FITS YOU BETTER</div>}
+        {coachMethods.length?<div className="dt5-transfer-grid">{coachMethods.map(item=><CoachMethodCard key={item.method} item={item}/>)}</div>:null}
+        <div className="dt5-boundary">{coachTwin?.boundary||'One clean response never defines your coaching preference.'}</div>
+      </div>
       <div className="dt4-lab glass">
         <div className="dt4-lab-head">
           <div><span>DECISION LAB</span><h3>Scenario Memory · train the decision again only when it is due.</h3><p>{memory?.summary||'Scenario Memory is still building from repeated Decision Graph evidence.'}</p></div>
