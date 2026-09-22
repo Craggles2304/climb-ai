@@ -57,6 +57,7 @@ function review(index:number,method:string,status:'EXECUTED'|'MISSED'|'MIXED'|'N
     method:method as any,
     methodLabel:method,
     selectionMode:'EXPLORE',
+    deliveryPolicy:'FULL',
     status,
     matchedMoments:matched,
     cleanMoments:clean,

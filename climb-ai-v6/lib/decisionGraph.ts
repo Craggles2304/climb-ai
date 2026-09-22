@@ -7,6 +7,7 @@ import {reviewScenarioPrime,type ScenarioPrime,type ScenarioPrimeReview} from '.
 import {reviewDecisionTransfer,type DecisionTransferPrime,type DecisionTransferReview} from './decisionTransfer';
 import {reviewClimbMatchMission,type ClimbMatchMission,type ClimbMatchMissionReview} from './climbMissionDesign';
 import {reviewClimbCoachIntervention,type ClimbCoachIntervention,type ClimbCoachInterventionReview} from './climbCoachTwin';
+import {reviewClimbCoachingStrategy,type ClimbCoachingStrategy,type ClimbCoachingStrategyReview} from './climbCoachingStrategy';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -65,6 +66,7 @@ export interface LockedDecisionPlan{
   decisionTransferPrime?:DecisionTransferPrime|null;
   climbMission?:ClimbMatchMission|null;
   coachIntervention?:ClimbCoachIntervention|null;
+  coachingStrategy?:ClimbCoachingStrategy|null;
 }
 
 export interface DecisionGraphNode{
@@ -123,6 +125,7 @@ export interface DecisionGraph{
     decisionTransfer:DecisionTransferReview;
     climbMission:ClimbMatchMissionReview;
     coachIntervention:ClimbCoachInterventionReview;
+    coachingStrategy:ClimbCoachingStrategyReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -506,6 +509,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const decisionTransferReview=reviewDecisionTransfer(plan?.decisionTransferPrime,observedDecisions);
   const climbMissionReview=reviewClimbMatchMission(plan?.climbMission,observedDecisions);
   const coachInterventionReview=reviewClimbCoachIntervention(plan?.coachIntervention,climbMissionReview);
+  const coachingStrategyReview=reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview);
 
   return{
     version:1,
@@ -548,6 +552,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       decisionTransfer:decisionTransferReview,
       climbMission:climbMissionReview,
       coachIntervention:coachInterventionReview,
+      coachingStrategy:coachingStrategyReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -575,5 +580,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     decisionTransferPrime:raw.decisionTransferPrime??null,
     climbMission:raw.climbMission??null,
     coachIntervention:raw.coachIntervention??null,
+    coachingStrategy:raw.coachingStrategy??null,
   };
 }

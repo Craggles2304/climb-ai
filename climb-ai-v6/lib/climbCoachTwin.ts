@@ -3,7 +3,8 @@ import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} fr
 import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesign';
 
 export type ClimbCoachMethod='WHEN_THEN'|'CONTRAST_BRANCH'|'THREAT_ANCHOR'|'SELF_EXPLAIN';
-export type ClimbCoachSelectionMode='EXPLORE'|'PREFERRED'|'RETEST'|'STAGE_DEFAULT';
+export type ClimbCoachSelectionMode='EXPLORE'|'PREFERRED'|'RETEST'|'STAGE_DEFAULT'|'DIAGNOSTIC';
+export type ClimbCoachDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC';
 export type ClimbCoachReviewStatus='NO_INTERVENTION'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
 
 export interface ClimbCoachIntervention{
@@ -15,6 +16,7 @@ export interface ClimbCoachIntervention{
   targetTag:DecisionSituationTag;
   method:ClimbCoachMethod;
   selectionMode:ClimbCoachSelectionMode;
+  deliveryPolicy:ClimbCoachDeliveryPolicy;
   methodLabel:string;
   title:string;
   primaryCue:string;
@@ -37,6 +39,7 @@ export interface ClimbCoachInterventionReview{
   method:ClimbCoachMethod|null;
   methodLabel:string|null;
   selectionMode:ClimbCoachSelectionMode|null;
+  deliveryPolicy:ClimbCoachDeliveryPolicy|null;
   status:ClimbCoachReviewStatus;
   matchedMoments:number;
   cleanMoments:number;
@@ -283,15 +286,44 @@ function interventionCopy(method:ClimbCoachMethod,mission:ClimbMatchMission){
   };
 }
 
+function lightInterventionCopy(method:ClimbCoachMethod,mission:ClimbMatchMission){
+  const enemies=mission.relevantEnemies.slice(0,2).join(' + ');
+  if(method==='CONTRAST_BRANCH')return{
+    title:'REINFORCE · NEW BRANCH',
+    primaryCue:'NEW BRANCH · '+mission.action,
+    secondaryPrompt:null,
+  };
+  if(method==='THREAT_ANCHOR')return{
+    title:'REINFORCE · THREAT ANCHOR',
+    primaryCue:(enemies?'TRACK '+enemies+' · ':'TRACK ACCESS · ')+mission.action,
+    secondaryPrompt:null,
+  };
+  if(method==='SELF_EXPLAIN')return{
+    title:'REINFORCE · SELF-CHECK',
+    primaryCue:'CHECK · '+mission.rehearsalQuestion,
+    secondaryPrompt:null,
+  };
+  return{
+    title:'REINFORCE · WHEN → THEN',
+    primaryCue:'WHEN '+mission.trigger+' → '+mission.action,
+    secondaryPrompt:null,
+  };
+}
+
 export function selectClimbCoachIntervention(input:{
   twin:ClimbCoachTwin;
   mission:ClimbMatchMission|null|undefined;
   situationContext?:DraftSituationContext|null;
+  deliveryPolicy?:ClimbCoachDeliveryPolicy|'NONE';
 }):ClimbCoachIntervention|null{
   const mission=input.mission;
-  if(!mission||mission.status!=='READY')return null;
-  const selected=chooseMethod(input.twin,mission);
-  const copy=interventionCopy(selected.method,mission);
+  const deliveryPolicy=input.deliveryPolicy??'FULL';
+  if(!mission||mission.status!=='READY'||deliveryPolicy==='NONE')return null;
+  const baseSelected=chooseMethod(input.twin,mission);
+  const selected=deliveryPolicy==='DIAGNOSTIC'&&baseSelected.mode!=='RETEST'
+    ?{method:'SELF_EXPLAIN' as ClimbCoachMethod,mode:'DIAGNOSTIC' as const,reason:'Coaching Strategy is diagnosing whether the player recognises the branch before adding more instruction or difficulty.'}
+    :baseSelected;
+  const copy=deliveryPolicy==='LIGHT'?lightInterventionCopy(selected.method,mission):interventionCopy(selected.method,mission);
   const profile=profileFor(input.twin,mission.behaviourKey);
   return{
     version:1,
@@ -302,6 +334,7 @@ export function selectClimbCoachIntervention(input:{
     targetTag:mission.targetTag,
     method:selected.method,
     selectionMode:selected.mode,
+    deliveryPolicy,
     methodLabel:METHOD_LABELS[selected.method],
     title:copy.title,
     primaryCue:copy.primaryCue,
@@ -321,7 +354,7 @@ export function reviewClimbCoachIntervention(
   if(!intervention){
     return{
       version:1,active:false,interventionId:null,missionId:missionReview.missionId,behaviourKey:missionReview.behaviourKey,
-      behaviourLabel:missionReview.behaviourLabel,targetTag:missionReview.targetTag,method:null,methodLabel:null,selectionMode:null,
+      behaviourLabel:missionReview.behaviourLabel,targetTag:missionReview.targetTag,method:null,methodLabel:null,selectionMode:null,deliveryPolicy:null,
       status:'NO_INTERVENTION',matchedMoments:0,cleanMoments:0,improveMoments:0,responseScore:null,
       note:'No frozen Coach Twin intervention was attached to this match mission.',boundary:REVIEW_BOUNDARY,
     };
@@ -345,6 +378,7 @@ export function reviewClimbCoachIntervention(
     method:intervention.method,
     methodLabel:intervention.methodLabel,
     selectionMode:intervention.selectionMode,
+    deliveryPolicy:intervention.deliveryPolicy,
     status,
     matchedMoments:missionReview.matchedMoments,
     cleanMoments:missionReview.cleanMoments,

@@ -56,6 +56,7 @@
     const branchHistory=safeArray(stored.branchSelections).map(item=>clean(item?.branch)).filter(Boolean);
     const contingencyHistory=safeArray(stored.contingencySelections).map(item=>clean(item?.contingency)).filter(Boolean);
     const climbMission=stored.climbMission||null;
+    const coachingStrategy=stored.coachingStrategy||null;
     const coachIntervention=stored.coachIntervention||null;
     return{
       version:2,
@@ -79,6 +80,9 @@
       missionTitle:clean(coachIntervention?.methodLabel?('COACH TWIN · '+coachIntervention.methodLabel):climbMission?.title),
       missionCue:clean(coachIntervention?.primaryCue||climbMission?.cue||climbMission?.action),
       missionWhy:clean(coachIntervention?.whyThisMethod||climbMission?.whyThisGame),
+      strategyMode:clean(coachingStrategy?.mode),
+      strategyTitle:clean(coachingStrategy?.title),
+      strategyWhy:clean(coachingStrategy?.decision),
       capturedAt:clean(stored.capturedAt),
     };
   }
@@ -149,6 +153,7 @@
         <section id="op332Premortem" class="op332-premortem"><div class="op332-premortem-head"><div><span>RISK MAP · DID THE PATTERN HOLD?</span><div id="op332PremortemStatus" class="op332-premortem-status">CHECKING FROZEN RISKS</div></div></div><div id="op332PremortemList" class="op332-premortem-list"></div><small id="op332PremortemBoundary" class="op332-premortem-proof"></small></section>
         <section id="op332Simulation" class="op332-simulation"><div class="op332-simulation-head"><div><span>MATCH REHEARSAL · REVIEW</span><div id="op332SimulationStatus" class="op332-simulation-status">CHECKING REHEARSED SCENARIOS</div></div></div><div id="op332SimulationList" class="op332-simulation-list"></div><small id="op332SimulationBoundary" class="op332-simulation-proof"></small></section>
         <section id="op332MissionReview" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>CLIMB MISSION · FROZEN REP REVIEW</span><div id="op332MissionStatus" class="op332-memory-status">CHECKING MATCH REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MISSION</b><strong id="op332MissionReviewName"></strong><p id="op332MissionReviewContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MissionReviewResult"></strong><p id="op332MissionReviewNote"></p></article><article class="op332-memory-card"><b>CURRICULUM EFFECT</b><strong id="op332MissionReviewNext"></strong><p>One match rep adds evidence to the active lesson; it never creates graduation by itself.</p></article></div><small id="op332MissionReviewBoundary" class="op332-memory-proof"></small></section>
+        <section id="op332Strategy" class="op332-response"><div class="op332-response-head"><div><span>COACHING STRATEGY · SUPPORT REVIEW</span><div id="op332StrategyStatus" class="op332-response-status">CHECKING SUPPORT POLICY</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN SUPPORT MODE</b><strong id="op332StrategyMode"></strong><p id="op332StrategyWhy"></p></article><article class="op332-response-card"><b>WHAT HAPPENED</b><strong id="op332StrategyResult"></strong><p id="op332StrategyNote"></p></article></div><small id="op332StrategyBoundary" class="op332-response-proof"></small></section>
         <section id="op332CoachTwin" class="op332-response"><div class="op332-response-head"><div><span>COACH TWIN · DID THIS TEACHING FORMAT LAND?</span><div id="op332CoachTwinStatus" class="op332-response-status">CHECKING FROZEN COACHING FORMAT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN METHOD</b><strong id="op332CoachTwinMethod"></strong><p id="op332CoachTwinWhy"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332CoachTwinResult"></strong><p id="op332CoachTwinNote"></p></article></div><small id="op332CoachTwinBoundary" class="op332-response-proof"></small></section>
         <section id="op332Memory" class="op332-memory"><div class="op332-memory-head"><span>DECISION LAB · SPACED REP REVIEW</span><div id="op332MemoryStatus" class="op332-memory-status">CHECKING SCHEDULED REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MEMORY</b><strong id="op332MemoryName"></strong><p id="op332MemoryContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MemoryResult"></strong><p id="op332MemoryNote"></p></article><article class="op332-memory-card"><b>NEXT RULE</b><strong id="op332MemoryNext"></strong><p>One clean game reinforces the pattern; repeated comparable games are still required for mastery.</p></article></div><small id="op332MemoryBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Transfer" class="op332-transfer"><div class="op332-transfer-head"><span>CLIMB PROFILE · SKILL TRANSFER</span><div id="op332TransferStatus" class="op332-transfer-status">CHECKING GENERALISATION</div></div><div class="op332-transfer-grid"><article class="op332-transfer-card"><b>TEST</b><strong id="op332TransferName"></strong><p id="op332TransferContext"></p></article><article class="op332-transfer-card"><b>RESULT</b><strong id="op332TransferResult"></strong><p id="op332TransferNote"></p></article><article class="op332-transfer-card"><b>MEANING</b><strong id="op332TransferMeaning"></strong><p>Transfer is evidence that the principle survived a different condition; it is not proof that every future matchup is solved.</p></article></div><small id="op332TransferBoundary" class="op332-transfer-proof"></small></section>
@@ -443,6 +448,27 @@
     setText('op332MissionReviewBoundary',clean(mission?.boundary)||'NO MATCHING VERIFIED DECISION = NOT OBSERVED · ONE CLEAN REP ≠ DIFFICULTY PROMOTION OR GRADUATION.');
   }
 
+  function renderCoachingStrategyReview(review){
+    const root=$('op332Strategy');if(!root)return;
+    const item=review?.decisionGraph?.summary?.coachingStrategy||null;
+    const status=clean(item?.status||'NO_STRATEGY').toUpperCase();
+    const mode=clean(item?.mode||'NO STRATEGY').toUpperCase();
+    root.classList.toggle('executing',status==='CLEAN');
+    root.classList.toggle('missing',status==='MISSED');
+    const label=status==='CLEAN'?(item?.autonomyEvidence?'AUTONOMY EVIDENCE':'SUPPORT HELD')
+      :status==='MISSED'?'SUPPORT MISSED'
+      :status==='MIXED'?'MIXED RESPONSE'
+      :status==='NOT_OBSERVED'?'SUPPORT NOT TESTED'
+      :'NO STRATEGY FROZEN';
+    setText('op332StrategyStatus',label);
+    setText('op332StrategyMode',mode.replace(/_/g,' '));
+    const baseline=reviewBaseline(null,review);
+    setText('op332StrategyWhy',baseline?.strategyWhy||((item?.intervened?'ADAPTIVE COACHING ACTIVE':'ADAPTIVE COACHING FADED')+' · FROZEN BEFORE GAME'));
+    setText('op332StrategyResult',item?.autonomyEvidence?'CLEAN WITHOUT ADAPTIVE OVERLAY':status==='CLEAN'?'CLEAN WITH SUPPORT':status==='MISSED'?'RE-SUPPORT NEXT REP':status==='MIXED'?'KEEP SUPPORT STABLE':status==='NOT_OBSERVED'?'NO SCORE':'NO TEST');
+    setText('op332StrategyNote',clean(item?.note)||'No frozen support-policy result was available.');
+    setText('op332StrategyBoundary',clean(item?.boundary)||'CLEAN FADED REP = CONTEXTUAL AUTONOMY EVIDENCE · NOT PERMANENT MASTERY · ONE MISS NEVER ERASES LEARNING.');
+  }
+
   function renderCoachTwinReview(review){
     const root=$('op332CoachTwin');if(!root)return;
     const item=review?.decisionGraph?.summary?.coachIntervention||null;
@@ -642,6 +668,7 @@
     renderPremortem(review);
     renderSimulationReview(review);
     renderClimbMissionReview(review);
+    renderCoachingStrategyReview(review);
     renderCoachTwinReview(review);
     renderScenarioPrimeReview(review);
     renderDecisionTransferReview(review);

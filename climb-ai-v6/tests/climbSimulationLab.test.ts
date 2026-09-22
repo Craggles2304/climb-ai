@@ -53,3 +53,25 @@ test('Simulation Lab keeps frozen pre-game missions aligned with post-game Decis
     assert.ok(frozen.some(event=>event.missionReview==='EXECUTED'||event.missionReview==='MISSED'||event.missionReview==='NOT_OBSERVED'));
   }
 });
+
+test('Coaching Strategy changes support mode across synthetic careers without breaking frozen evidence',()=>{
+  const report=runClimbSimulationLab({gamesPerCareer:90,seed:23042026});
+  assert.deepEqual(report.invariantViolations,[],report.invariantViolations.slice(0,12).join('\n'));
+
+  const events=report.careers.flatMap(career=>career.events).filter(event=>event.missionStatus==='READY');
+  const modes=new Set(events.map(event=>event.strategyMode).filter(Boolean));
+  assert.ok(modes.has('TEACH'),'Synthetic careers should include explicit teaching.');
+  assert.ok(modes.has('REINFORCE'),'Synthetic careers should include light reinforcement.');
+  assert.ok(modes.has('FADE'),'At least one learner should earn a faded-support autonomy test.');
+  assert.ok(modes.has('DIAGNOSE'),'At least one repeated-miss/retest career should trigger diagnosis.');
+
+  const faded=events.filter(event=>event.strategyMode==='FADE');
+  assert.ok(faded.length>0);
+  assert.ok(faded.every(event=>event.strategyIntervened===false),'FADE must never keep the adaptive Coach Twin overlay active.');
+  assert.ok(faded.every(event=>event.coachMethod===null),'FADE must preserve the mission while removing Coach Twin delivery.');
+
+  for(const event of events){
+    if(event.missionReview==='NOT_OBSERVED')assert.equal(event.strategyReview,'NOT_OBSERVED');
+  }
+});
+

@@ -36,6 +36,8 @@ jobs:
         run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/decisionTwin.test.ts tests/decisionTwinV2.test.ts tests/decisionSimulation.test.ts tests/scenarioMemory.test.ts tests/decisionTransfer.test.ts tests/climbCurriculum.test.ts tests/climbRepLadder.test.ts tests/climbMissionDesign.test.ts tests/decisionPremortem.test.ts tests/decisionGraph.test.ts tests/learningJourney.test.ts tests/ilpCloudMerge.test.ts tests/ilpExplainability.test.ts
       - name: CLIMB Coach Twin adaptation
         run: node --import tsx --test tests/climbCoachTwin.test.ts
+      - name: CLIMB Coaching Strategy
+        run: node --import tsx --test tests/climbCoachingStrategy.test.ts
       - name: CLIMB synthetic career lab
         run: node --import tsx --test tests/climbSimulationLab.test.ts
       - name: Ability damage type regressions

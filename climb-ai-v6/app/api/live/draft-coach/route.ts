@@ -16,6 +16,7 @@ import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import {buildClimbMatchMission,type ClimbMatchMission} from '@/lib/climbMissionDesign';
 import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachIntervention} from '@/lib/climbCoachTwin';
+import {buildClimbCoachingStrategy,type ClimbCoachingStrategy} from '@/lib/climbCoachingStrategy';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
@@ -249,7 +250,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const mission=curriculumLesson
     ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
     :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin,historyRows:rows};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -505,7 +506,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;coachingStrategy:ClimbCoachingStrategy|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -537,6 +538,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       scenarioPrime:input.scenarioPrime,
       decisionTransferPrime:input.decisionTransferPrime,
       climbMission:input.climbMission,
+      coachingStrategy:input.coachingStrategy,
       coachIntervention:input.coachIntervention,
       situationContext:input.situationContext,
       quality:input.quality,
@@ -667,10 +669,17 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       transferPrime:decisionTransferPrime,
     });
+    const coachingStrategy=buildClimbCoachingStrategy({
+      rows:context.historyRows,
+      curriculum:context.curriculum,
+      mission:climbMission,
+      coachTwin:context.coachTwin,
+    });
     const coachIntervention=selectClimbCoachIntervention({
       twin:context.coachTwin,
       mission:climbMission,
       situationContext,
+      deliveryPolicy:coachingStrategy?.deliveryPolicy??'NONE',
     });
     const playbook=buildFrozenGamePlaybook({
       champion,
@@ -692,6 +701,7 @@ export async function POST(req:NextRequest){
       scenarioPrime,
       decisionTransferPrime,
       climbMission,
+      coachingStrategy,
       coachIntervention,
       situationContext,
       quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
@@ -709,6 +719,7 @@ export async function POST(req:NextRequest){
       scenarioPrime,
       decisionTransferPrime,
       climbMission,
+      coachingStrategy,
       coachIntervention,
       coachTwin:context.coachTwin,
       playbook,
