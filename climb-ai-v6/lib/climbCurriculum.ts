@@ -3,6 +3,7 @@ import type {DecisionTwinV2Profile,DecisionTwinActiveFocus} from './decisionTwin
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
 import {buildClimbRepLadder,type ClimbRepLadder,type ClimbRepLevel} from './climbRepLadder';
+import {buildClimbCareerMatrix,type ClimbCareerMatrix} from './climbCareerMatrix';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -54,6 +55,7 @@ export interface ClimbCurriculum{
   queue:CurriculumLesson[];
   graduated:CurriculumLesson[];
   repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>;
+  careerMatrix?:ClimbCareerMatrix;
   decision:CurriculumDecision;
   summary:string;
   boundary:string;
@@ -231,6 +233,7 @@ function curriculumOrder(
   memory:ScenarioMemoryProfile,
   transfer:DecisionTransferProfile,
   previous:ClimbCurriculum|null|undefined,
+  careerMatrix:ClimbCareerMatrix,
 ){
   const keys=new Set<DecisionBehaviourKey>();
   for(const item of twin.activeFive)keys.add(item.key);
@@ -252,11 +255,13 @@ function curriculumOrder(
     }
   }
   const phaseWeight=(phase:CurriculumPhase)=>phase==='REOPEN'?80:phase==='PRACTISE'?65:phase==='STABILISE'?55:phase==='TRANSFER'?45:phase==='FOUNDATION'?40:phase==='BUILDING'?20:0;
+  const matrixScore=(key:DecisionBehaviourKey)=>careerMatrix.candidates.find(item=>item.key===key)?.priorityScore??0;
   return lessons.sort((a,b)=>{
     const aUnlock=lessons.some(item=>item.prerequisite===a.behaviourKey&&item.readiness==='LOCKED')?18:0;
     const bUnlock=lessons.some(item=>item.prerequisite===b.behaviourKey&&item.readiness==='LOCKED')?18:0;
     const readiness=(value:CurriculumReadiness)=>value==='READY'?20:value==='LOCKED'?-30:-50;
     return readiness(b.readiness)-readiness(a.readiness)
+      ||matrixScore(b.behaviourKey)-matrixScore(a.behaviourKey)
       ||phaseWeight(b.phase)-phaseWeight(a.phase)
       ||bUnlock-aUnlock
       ||b.priority-a.priority
@@ -379,7 +384,12 @@ export function buildClimbCurriculum(
   generatedAt=new Date().toISOString(),
   previous:ClimbCurriculum|null=null,
 ):ClimbCurriculum{
-  const lessons=curriculumOrder(twin,memory,transfer,previous);
+  const careerMatrix=buildClimbCareerMatrix(twin,memory,transfer,{
+    generatedAt,
+    activeBehaviourKey:previous?.currentLesson?.behaviourKey??null,
+    previous:previous?.careerMatrix??null,
+  });
+  const lessons=curriculumOrder(twin,memory,transfer,previous,careerMatrix);
   const graduated=lessons.filter(item=>item.readiness==='COMPLETE');
   const building=!lessons.length||twin.gamesAnalyzed<3;
   const selection=selectCurriculumLesson(lessons,previous,building);
@@ -410,6 +420,7 @@ export function buildClimbCurriculum(
     queue:lessons.filter(item=>item.readiness!=='COMPLETE').slice(0,5),
     graduated,
     repLedger,
+    careerMatrix,
     decision:selection.decision,
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'
