@@ -120,8 +120,8 @@ function behaviourStable(memory:ScenarioMemoryProfile,transfer:DecisionTransferP
   return mem?.state==='MASTERED';
 }
 function phaseFor(mem:ScenarioMemoryCard|null,tx:DecisionTransferCard|null):CurriculumPhase{
-  if(tx?.state==='PRINCIPLE_OWNED')return'GRADUATED';
   if(mem?.state==='REGRESSED'||tx?.state==='REGRESSED')return'REOPEN';
+  if(tx?.state==='PRINCIPLE_OWNED')return'GRADUATED';
   if(mem?.state==='MASTERED')return'TRANSFER';
   if(mem?.state==='STABILISING')return'STABILISE';
   if(mem?.state==='DUE'||mem?.state==='LEARNING')return'PRACTISE';
