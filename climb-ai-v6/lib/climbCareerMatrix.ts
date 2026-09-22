@@ -111,9 +111,10 @@ function memoryScore(card:ScenarioMemoryCard|null){
   return 55;
 }
 function bestMemory(memory:ScenarioMemoryProfile,key:DecisionBehaviourKey){
+  const weight=(card:ScenarioMemoryCard)=>card.state==='REGRESSED'?7:card.state==='DUE'?6:card.state==='LEARNING'?5:card.state==='STABILISING'?4:card.state==='MASTERED'?3:1;
   return memory.cards
     .filter(card=>card.behaviourKey===key)
-    .sort((a,b)=>b.comparableGames-a.comparableGames||b.memoryStrength-a.memoryStrength)[0]??null;
+    .sort((a,b)=>weight(b)-weight(a)||b.comparableGames-a.comparableGames||b.memoryStrength-a.memoryStrength)[0]??null;
 }
 function transferCard(transfer:DecisionTransferProfile,key:DecisionBehaviourKey){
   return transfer.cards.find(card=>card.behaviourKey===key)??null;
