@@ -119,15 +119,32 @@ function schedule(input:{
     input.status==='SCHEDULED'
     &&input.policy==='NONE'
     &&['FULL','LIGHT'].includes(String(input.mission.autonomousSupportPolicy));
+  const curriculumNeedsFirstFade=
+    input.status==='SCHEDULED'
+    &&input.mission.autonomousSupportPolicy==='FADED'
+    &&input.type==='MATCHED_COMPARISON'
+    &&input.policy==='LIGHT';
   const status:ClimbExperimentStatus=curriculumBlocksFade?'DEFERRED':input.status;
-  const type:ClimbExperimentType=curriculumBlocksFade?'SUPPORTED_RETEST':input.type;
-  const policy:ClimbExperimentDeliveryPolicy=curriculumBlocksFade?'LIGHT':input.policy;
+  const type:ClimbExperimentType=curriculumBlocksFade
+    ?'SUPPORTED_RETEST'
+    :curriculumNeedsFirstFade
+      ?'AUTONOMY_RECHECK'
+      :input.type;
+  const policy:ClimbExperimentDeliveryPolicy=curriculumBlocksFade
+    ?'LIGHT'
+    :curriculumNeedsFirstFade
+      ?'NONE'
+      :input.policy;
   const safetyReason=curriculumBlocksFade
     ?'Autonomous Curriculum V6 still requires active learning support for this contract, so a FADE holdout is deferred until the curriculum reaches a support-fading gate.'
-    :input.safetyReason;
+    :curriculumNeedsFirstFade
+      ?'Autonomous Curriculum V6 has reached its faded-support gate. Independent execution evidence comes before adding another supported comparator.'
+      :input.safetyReason;
   const informationNeed=curriculumBlocksFade
     ?'Build the current learning contract far enough for V6 to permit a clean support-removal experiment.'
-    :input.informationNeed;
+    :curriculumNeedsFirstFade
+      ?'Observe the active objective without the adaptive cue. Support can be reintroduced later for a matched comparator or immediately if safety evidence requires it.'
+      :input.informationNeed;
   return{
     version:1,
     id:['climb-experiment',input.mission.id,type,input.mission.targetTag,'l'+String(input.mission.repLevel)].join(':').toLowerCase(),
