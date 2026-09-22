@@ -1,5 +1,6 @@
 import type {DecisionBehaviourKey} from './decisionTwin';
 import {rankCareerMatrixSignals,type CareerMatrixSignal} from './climbCareerMatrix';
+import {runClimbCareerMatrixLongitudinalBench,type ClimbCareerMatrixLongitudinalReport} from './climbCareerMatrixLongitudinalBench';
 
 export type CareerMatrixBenchCategory=
   |'FREQUENCY_TRAP'
@@ -31,6 +32,7 @@ export interface ClimbCareerMatrixBenchReport{
   deferredRecovery:number;
   coachingRestraint:number;
   results:CareerMatrixBenchCaseResult[];
+  longitudinal:ClimbCareerMatrixLongitudinalReport;
   failures:string[];
   boundary:string;
 }
@@ -204,7 +206,11 @@ export function runClimbCareerMatrixBench():ClimbCareerMatrixBenchReport{
   }
 
   const passed=results.filter(result=>result.pass).length;
-  const failures=results.filter(result=>!result.pass).map(result=>result.id+': expected '+String(result.expected)+' but received '+String(result.actual));
+  const longitudinal=runClimbCareerMatrixLongitudinalBench();
+  const failures=[
+    ...results.filter(result=>!result.pass).map(result=>result.id+': expected '+String(result.expected)+' but received '+String(result.actual)),
+    ...longitudinal.failures,
+  ];
   return{
     version:1,
     cases:results.length,
@@ -217,6 +223,7 @@ export function runClimbCareerMatrixBench():ClimbCareerMatrixBenchReport{
     deferredRecovery:categoryRate(results,['DEFERRED_RECOVERY']),
     coachingRestraint:categoryRate(results,['COACHING_RESTRAINT']),
     results,
+    longitudinal,
     failures,
     boundary:BOUNDARY,
   };
