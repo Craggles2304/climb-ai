@@ -6,6 +6,7 @@ import {
   type SimulationGameEvent,
   type SimulationPolicyId,
 } from './climbSimulationLab';
+import {runClimbCareerMatrixBench,type ClimbCareerMatrixBenchReport} from './climbCareerMatrixBench';
 
 export interface ClimbCoachBenchMetrics{
   careers:number;
@@ -54,6 +55,7 @@ export interface ClimbCoachBenchReport{
   archetypes:string[];
   totalSyntheticGames:number;
   policies:ClimbCoachBenchPolicyReport[];
+  careerMatrix:ClimbCareerMatrixBenchReport;
   guardrails:ClimbCoachBenchGuardrail[];
   scoreLeader:SimulationPolicyId;
   winner:SimulationPolicyId;
@@ -239,7 +241,12 @@ export function runClimbCoachBench(input:{
   const earlyFade=byId.EARLY_FADE;
   const invariantViolations=reports.flatMap(report=>report.careerReports.flatMap(career=>career.invariants.map(error=>report.policyId+': '+error)));
 
-  const guardrails:ClimbCoachBenchGuardrail[]=[];
+  const careerMatrix=runClimbCareerMatrixBench();
+  const guardrails:ClimbCoachBenchGuardrail[]=[{
+    key:'MULTI_SKILL_CAREER_MATRIX',
+    pass:careerMatrix.failures.length===0,
+    detail:'Production must choose the gold-standard coaching target across frequency, severity, recency, prerequisite, transfer, deferred-skill and restraint traps.',
+  }];
   if(product){
     guardrails.push({
       key:'PRODUCT_INVARIANTS',
@@ -301,6 +308,7 @@ export function runClimbCoachBench(input:{
     archetypes:archetypes.map(item=>item.id),
     totalSyntheticGames,
     policies:reports,
+    careerMatrix,
     guardrails,
     scoreLeader,
     winner,
