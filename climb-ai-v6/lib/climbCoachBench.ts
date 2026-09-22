@@ -36,6 +36,8 @@ export interface ClimbCoachBenchPolicyReport{
   policyId:SimulationPolicyId;
   label:string;
   metrics:ClimbCoachBenchMetrics;
+  selectionEligible:boolean;
+  disqualifications:string[];
   careerReports:SimulationCareerReport[];
 }
 
@@ -53,6 +55,7 @@ export interface ClimbCoachBenchReport{
   totalSyntheticGames:number;
   policies:ClimbCoachBenchPolicyReport[];
   guardrails:ClimbCoachBenchGuardrail[];
+  scoreLeader:SimulationPolicyId;
   winner:SimulationPolicyId;
   invariantViolations:string[];
   summary:string;
@@ -214,7 +217,20 @@ export function runClimbCoachBench(input:{
         }));
       });
     });
-    return{policyId,label:LABELS[policyId],metrics:policyMetrics(careerReports),careerReports};
+    const metrics=policyMetrics(careerReports);
+    const disqualifications:string[]=[];
+    if(careerReports.some(career=>career.invariants.length>0))disqualifications.push('LEARNING_INVARIANT_VIOLATION');
+    if(metrics.experimentPolicyMismatches>0)disqualifications.push('EXPERIMENT_POLICY_MISMATCH');
+    if(metrics.falseRegressionCount>0)disqualifications.push('FALSE_REGRESSION');
+    if(metrics.unsafeFadeCount>0)disqualifications.push('UNSAFE_FADE');
+    return{
+      policyId,
+      label:LABELS[policyId],
+      metrics,
+      selectionEligible:disqualifications.length===0,
+      disqualifications,
+      careerReports,
+    };
   });
 
   const byId=Object.fromEntries(reports.map(report=>[report.policyId,report])) as Partial<Record<SimulationPolicyId,ClimbCoachBenchPolicyReport>>;
@@ -272,7 +288,9 @@ export function runClimbCoachBench(input:{
   }
 
   const ranked=[...reports].sort((a,b)=>b.metrics.score-a.metrics.score||a.policyId.localeCompare(b.policyId));
-  const winner=ranked[0]?.policyId??'PRODUCT';
+  const scoreLeader=ranked[0]?.policyId??'PRODUCT';
+  const eligible=ranked.filter(report=>report.selectionEligible);
+  const winner=eligible[0]?.policyId??'PRODUCT';
   const totalSyntheticGames=reports.reduce((sum,report)=>sum+report.metrics.games,0);
   const failed=guardrails.filter(item=>!item.pass);
 
@@ -284,11 +302,12 @@ export function runClimbCoachBench(input:{
     totalSyntheticGames,
     policies:reports,
     guardrails,
+    scoreLeader,
     winner,
     invariantViolations,
     summary:failed.length
       ?'CLIMB Coach Bench found '+String(failed.length)+' failed coaching-policy guardrail'+(failed.length===1?'':'s')+' across '+String(totalSyntheticGames)+' synthetic games.'
-      :'CLIMB Coach Bench passed '+String(guardrails.length)+' policy guardrails across '+String(totalSyntheticGames)+' synthetic games. Highest composite score: '+winner+'.',
+      :'CLIMB Coach Bench passed '+String(guardrails.length)+' production guardrails across '+String(totalSyntheticGames)+' synthetic games. Selection-eligible winner: '+winner+'. Raw score leader: '+scoreLeader+(scoreLeader===winner?'.':' (disqualified by hard safety/evidence gates).'),
     boundary:BOUNDARY,
   };
 }
