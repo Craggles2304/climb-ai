@@ -12,6 +12,8 @@ console.log('');
 console.table(report.policies.map(policy=>({
   policy:policy.policyId,
   score:policy.metrics.score,
+  eligible:policy.selectionEligible,
+  disqualifiedBy:policy.disqualifications.join(', ')||'—',
   cleanRate:policy.metrics.cleanDecisionRate+'%',
   supportRate:policy.metrics.supportRate+'%',
   autonomyCareers:policy.metrics.autonomyCareerRate+'%',
@@ -25,6 +27,8 @@ console.table(report.policies.map(policy=>({
 })));
 console.log('');
 console.table(report.guardrails.map(item=>({guardrail:item.key,pass:item.pass,detail:item.detail})));
+console.log('\nSelection-eligible winner:',report.winner);
+console.log('Raw score leader:',report.scoreLeader);
 console.log('\n'+report.summary);
 console.log(report.boundary);
 
