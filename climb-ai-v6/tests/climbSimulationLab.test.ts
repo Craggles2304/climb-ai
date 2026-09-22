@@ -29,6 +29,21 @@ test('CLIMB Simulation Lab runs 540 full synthetic career games without breaking
   assert.ok(byId.SPARSE_EVIDENCE.notObserved>=20,'Sparse evidence career should contain substantial neutral NOT_OBSERVED games.');
 });
 
+test('Rep Ladder does not thrash difficulty across synthetic careers',()=>{
+  const seeds=[101,202,303,404,505];
+  for(const seed of seeds){
+    const report=runClimbSimulationLab({gamesPerCareer:120,seed});
+    assert.deepEqual(report.invariantViolations,[],report.invariantViolations.slice(0,12).join('\n'));
+    for(const career of report.careers){
+      const changes=career.promotions+career.demotions;
+      assert.ok(
+        changes<=12,
+        career.archetype+' thrashed difficulty '+String(changes)+' times across 120 games at seed '+String(seed),
+      );
+    }
+  }
+});
+
 test('Simulation Lab keeps frozen pre-game missions aligned with post-game Decision Graph review',()=>{
   const report=runClimbSimulationLab({gamesPerCareer:45,seed:88});
   for(const career of report.careers){
