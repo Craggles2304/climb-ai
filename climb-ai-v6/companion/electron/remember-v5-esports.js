@@ -117,6 +117,13 @@ body.op-remember-live .rem5-trap-copy span{display:block;color:#6f7d86;font-size
 body.op-remember-live .rem5-trap-copy strong{display:block;margin-top:5px;color:#ffd9d4;font-size:9px;line-height:1.4;text-transform:uppercase}
 body.op-remember-live .rem5-trap.building .rem5-trap-copy strong{color:#8f9ba3}
 body.op-remember-live .rem5-trap.mastered .rem5-trap-copy strong{color:#eaff89}
+body.op-remember-live .rem10-strategy{display:grid;grid-template-columns:minmax(150px,.55fr) 1.45fr;gap:10px;border:1px solid rgba(92,164,255,.22);background:linear-gradient(135deg,rgba(40,92,170,.08),rgba(5,10,14,.72));padding:11px 12px}
+body.op-remember-live .rem10-strategy.fade{border-color:rgba(214,255,47,.28);background:linear-gradient(135deg,rgba(214,255,47,.06),rgba(5,10,14,.72))}
+body.op-remember-live .rem10-strategy.diagnose{border-color:rgba(255,184,76,.30);background:linear-gradient(135deg,rgba(255,184,76,.055),rgba(5,10,14,.72))}
+body.op-remember-live .rem10-strategy span{display:block;color:#78b7ff;font-size:6px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}
+body.op-remember-live .rem10-strategy.fade span{color:#d6ff2f}body.op-remember-live .rem10-strategy.diagnose span{color:#ffbb57}
+body.op-remember-live .rem10-strategy strong{display:block;margin-top:5px;color:#f3f7f8;font-size:11px;line-height:1.25;text-transform:uppercase}
+body.op-remember-live .rem10-strategy p{margin:0;color:#9aa6ad;font-size:8px;line-height:1.42;text-transform:uppercase}
 body.op-remember-live .rem5-premortem{border:1px solid rgba(255,184,76,.22);background:linear-gradient(135deg,rgba(255,184,76,.055),rgba(4,8,12,.72));padding:10px 11px;display:grid;gap:8px}
 body.op-remember-live .rem5-premortem.building{border-color:rgba(255,255,255,.08);background:rgba(4,8,12,.46)}
 body.op-remember-live .rem5-premortem-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -199,6 +206,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       scenarioPrime:coach?._scenarioPrime||null,
       decisionTransferPrime:coach?._decisionTransferPrime||null,
       climbMission:coach?._climbMission||null,
+      coachingStrategy:coach?._coachingStrategy||null,
       coachIntervention:coach?._coachIntervention||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
@@ -250,6 +258,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemPersonalTrap" class="rem5-trap building">
         <div><span class="rem5-trap-kicker">CLIMB PROFILE</span><strong id="opRemTrapTitle" class="rem5-trap-title">BUILDING YOUR PROFILE</strong><small id="opRemTrapProof" class="rem5-trap-proof">NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE</small></div>
         <div class="rem5-trap-copy"><span>YOUR PATTERN</span><strong id="opRemTrapCue">FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.</strong></div>
+      </div>
+      <div id="opRemStrategy" class="rem10-strategy">
+        <div><span>COACHING STRATEGY</span><strong id="opRemStrategyMode">WAITING FOR MATCH REP</strong></div>
+        <p id="opRemStrategyWhy">OP CLIMB WILL DECIDE WHETHER TO TEACH, REINFORCE, DIAGNOSE OR FADE SUPPORT AFTER THE MATCH REP IS FROZEN.</p>
       </div>
       <div class="rem5-branch-tabs" role="group" aria-label="Choose current game state">
         <button type="button" class="rem5-branch-btn" data-op-branch="AHEAD">AHEAD</button>
@@ -336,6 +348,17 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemTrapCue',ready||mastered?(clean(trap?.cue)||'USE THE DRAFT PLAN'):(status==='NONE'?'NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.':'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.'));
     set('opRemTrapProof',ready||mastered?(clean(trap?.proof)||'REPEATED MATCH EVIDENCE'):(status==='NONE'?'NO FORCED PERSONALISATION':'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE'));
     root.title=ready||mastered?[clean(trap?.historicalSummary),clean(trap?.draftReason)].filter(Boolean).join(' · '):clean(trap?.historicalSummary||trap?.draftReason);
+  }
+
+  function renderCoachingStrategy(strategy){
+    ensurePlaybookPanel();
+    const root=$('opRemStrategy');if(!root)return;
+    const mode=upper(strategy?.mode||'BUILDING');
+    root.classList.toggle('fade',mode==='FADE');
+    root.classList.toggle('diagnose',mode==='DIAGNOSE');
+    set('opRemStrategyMode',strategy?.title||(mode==='BUILDING'?'WAITING FOR MATCH REP':mode));
+    set('opRemStrategyWhy',strategy?.decision||'OP CLIMB WILL DECIDE WHETHER THIS REP NEEDS EXPLICIT TEACHING, LIGHT REINFORCEMENT, DIAGNOSIS OR LESS SUPPORT.');
+    root.title=[clean(strategy?.playerMessage),clean(strategy?.coachDirective),clean(strategy?.successDefinition),clean(strategy?.boundary)].filter(Boolean).join(' · ');
   }
 
   function renderDecisionPremortem(premortem){
@@ -836,7 +859,9 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderScenarioPrime(coach?._scenarioPrime||null);
     renderDecisionTransfer(coach?._decisionTransferPrime||null);
     const climbMission=coach?._climbMission||null;
+    const coachingStrategy=coach?._coachingStrategy||null;
     const coachIntervention=coach?._coachIntervention||null;
+    renderCoachingStrategy(coachingStrategy);
     set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
     const missionNode=$('opRemMission');if(missionNode)missionNode.title=coachIntervention
       ?[clean(coachIntervention.title),clean(coachIntervention.methodLabel),clean(coachIntervention.whyThisMethod),clean(coachIntervention.secondaryPrompt),clean(coachIntervention.boundary)].filter(Boolean).join(' · ')
@@ -880,6 +905,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
         enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null;
         enrichedCoach._climbMission=response?.climbMission||null;
+        enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
@@ -950,6 +976,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       selectedBranch='EVEN';
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
+      renderCoachingStrategy(null);
       renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
@@ -959,6 +986,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
   installVisualLayer();
   ensurePlaybookPanel();
   renderPersonalTrap(null);
+  renderCoachingStrategy(null);
   renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
   window.opCompanion?.getState?.().then(onState).catch(()=>{});
