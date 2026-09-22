@@ -246,7 +246,7 @@ test('FADE review creates autonomy evidence only from a matching clean verified 
   const clean=reviewClimbCoachingStrategy(strategy,missionReview(5,'EXECUTED'));
   assert.equal(clean.status,'CLEAN');
   assert.equal(clean.autonomyEvidence,true);
-  assert.match(clean.note,/independent execution/i);
+  assert.match(clean.note,/autonomy evidence/i);
 
   const unseen=reviewClimbCoachingStrategy(strategy,missionReview(6,'NOT_OBSERVED'));
   assert.equal(unseen.status,'NOT_OBSERVED');
