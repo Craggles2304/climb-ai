@@ -9,6 +9,18 @@ test('CLIMB Simulation Lab runs 540 full synthetic career games without breaking
   assert.deepEqual(report.invariantViolations,[],report.invariantViolations.slice(0,12).join('\n'));
 
   const byId=Object.fromEntries(report.careers.map(career=>[career.archetype,career]));
+  console.log(report.careers.map(career=>({
+    archetype:career.archetype,
+    maxLevel:career.maxLevel,
+    finalLevel:career.finalLevel,
+    promotions:career.promotions,
+    demotions:career.demotions,
+    notObserved:career.notObserved,
+    memory:career.finalMemoryState,
+    transfer:career.finalTransferState,
+    principleOwned:career.principleOwned,
+    finalSkill:career.finalSkill,
+  })));
   assert.equal(byId.FAST_LEARNER.maxLevel,5,'Fast learner should reach the hardest transfer rep.');
   assert.ok(byId.STEADY_LEARNER.maxLevel>=4,'Steady learner should reach adaptive/transfer testing.');
   assert.ok(byId.STUBBORN_REPEATER.maxLevel<=3,'Stubborn repeater should not be promoted into transfer without evidence.');
