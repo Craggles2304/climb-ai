@@ -78,8 +78,10 @@ function row(index:number,review:ClimbMatchMissionReview,strategyReview:any=null
   };
 }
 
-function curriculum(){
-  return{version:1,status:'ACTIVE',currentLesson:{behaviourKey:'FIGHT_SELECTION'},queue:[],graduated:[]} as any;
+function curriculum(supportPolicy:null|'FULL'|'LIGHT'|'FADED'=null){
+  return{version:1,status:'ACTIVE',currentLesson:{behaviourKey:'FIGHT_SELECTION'},queue:[],graduated:[],
+    autonomous:supportPolicy?{activeContract:{id:'learning-contract:fight-selection',objectiveKey:'FIGHT_SELECTION',supportPolicy}}:undefined,
+  } as any;
 }
 
 function coachTwin(status='BUILDING'){
@@ -149,6 +151,42 @@ test('repeated clean observed decisions fade adaptive coaching without removing 
     deliveryPolicy:strategy?.deliveryPolicy,
   });
   assert.equal(intervention,null,'FADE must remove the adaptive Coach Twin overlay, not the mission itself.');
+});
+
+test('Autonomous Curriculum FULL contract blocks a premature fade',()=>{
+  const rows=[
+    row(0,missionReview(0,'MISSED')),
+    row(1,missionReview(1,'EXECUTED')),
+    row(2,missionReview(2,'EXECUTED')),
+    row(3,missionReview(3,'EXECUTED')),
+    row(4,missionReview(4,'EXECUTED')),
+  ];
+  const strategy=buildClimbCoachingStrategy({
+    rows,
+    curriculum:curriculum('FULL'),
+    mission:mission(3,'STABILISE'),
+    coachTwin:coachTwin('PREFERENCE_EMERGING'),
+  });
+  assert.equal(strategy?.mode,'REINFORCE');
+  assert.equal(strategy?.deliveryPolicy,'LIGHT');
+  assert.equal(strategy?.curriculumSupportPolicy,'FULL');
+  assert.equal(strategy?.curriculumConstrained,true);
+});
+
+test('Autonomous Curriculum FADED contract requests independent execution when no safety signal requires support',()=>{
+  const rows=[
+    row(0,missionReview(0,'EXECUTED')),
+    row(1,missionReview(1,'EXECUTED')),
+  ];
+  const strategy=buildClimbCoachingStrategy({
+    rows,
+    curriculum:curriculum('FADED'),
+    mission:mission(4,'ADAPT'),
+    coachTwin:coachTwin('PREFERENCE_EMERGING'),
+  });
+  assert.equal(strategy?.mode,'FADE');
+  assert.equal(strategy?.deliveryPolicy,'NONE');
+  assert.equal(strategy?.curriculumSupportPolicy,'FADED');
 });
 
 test('one missed faded rep restores light support instead of fully re-teaching the player',()=>{
