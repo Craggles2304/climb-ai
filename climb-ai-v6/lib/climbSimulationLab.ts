@@ -10,6 +10,7 @@ import {buildClimbIntentProbe,answerClimbIntentProbe,type ClimbIntentProbe} from
 import {buildClimbAutonomyProfile,type ClimbAutonomyProfile,type ClimbAutonomyCard} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueProfile,type ClimbInterventionValueCard} from './climbInterventionValue';
 import {buildClimbExperimentSchedule,type ClimbExperimentSchedule} from './climbExperimentScheduler';
+import type {ClimbLearningContract} from './climbAutonomousCurriculumV6';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -56,6 +57,11 @@ export interface SimulationGameEvent{
   strategyReview:string;
   strategyIntentDiagnosis:string|null;
   strategyIntentEvidenceStreak:number|null;
+  autonomousContractId:string|null;
+  autonomousState:string|null;
+  autonomousAction:string|null;
+  autonomousSupportPolicy:string|null;
+  autonomousTestMode:string|null;
   intentCorrect:boolean|null;
   intentDiagnosis:string;
   autonomyState:string|null;
@@ -446,6 +452,22 @@ function transitionInvariant(input:{
   if(input.strategyReview.status==='NOT_OBSERVED'&&input.review.status!=='NOT_OBSERVED'){
     errors.push(prefix+'Coaching Strategy became NOT_OBSERVED while its frozen mission was graded.');
   }
+  if(input.learningContract&&input.mission?.learningContractId!==input.learningContract.id){
+    errors.push(prefix+'frozen mission detached from Autonomous Curriculum contract '+input.learningContract.id+'.');
+  }
+  if(input.learningContract&&input.mission?.autonomousSupportPolicy!==input.learningContract.supportPolicy){
+    errors.push(prefix+'frozen mission support policy '+String(input.mission?.autonomousSupportPolicy)+' does not match contract '+input.learningContract.supportPolicy+'.');
+  }
+  if(input.learningContract&&['FULL','LIGHT'].includes(input.learningContract.supportPolicy)&&input.strategy?.deliveryPolicy==='NONE'){
+    errors.push(prefix+'Autonomous Curriculum '+input.learningContract.supportPolicy+' floor was violated by a no-support strategy.');
+  }
+  if(input.learningContract?.testDirective.mode==='TRANSFER_TEST'&&input.mission?.status==='READY'&&!input.transferPrime){
+    errors.push(prefix+'transfer-test contract created a READY mission without a frozen transfer prime.');
+  }
+  if(input.review.status==='NOT_OBSERVED'&&input.learningContract&&input.postLesson?.behaviourKey!==input.learningContract.objectiveKey){
+    errors.push(prefix+'NOT_OBSERVED detached the active lesson from learning contract '+input.learningContract.objectiveKey+'.');
+  }
+
   if(input.intentProbe?.response&&input.review.status==='MISSED'){
     const expected=input.intentProbe.response.correct?'EXECUTION_GAP':'KNOWLEDGE_GAP';
     if(input.intentReview.diagnosis!==expected){
@@ -711,6 +733,11 @@ export function runSimulationCareer(input:{
       strategyReview:graph.summary.coachingStrategy.status,
       strategyIntentDiagnosis:coachingStrategy?.intentDiagnosis??null,
       strategyIntentEvidenceStreak:coachingStrategy?.intentEvidenceStreak??null,
+      autonomousContractId:learningContract?.id??null,
+      autonomousState:learningContract?.state??null,
+      autonomousAction:learningContract?.action??null,
+      autonomousSupportPolicy:learningContract?.supportPolicy??null,
+      autonomousTestMode:learningContract?.testDirective.mode??null,
       intentCorrect:intentProbe?.response?.correct??null,
       intentDiagnosis:graph.summary.intentGap.diagnosis,
       autonomyState:postAutonomy?.state??null,
