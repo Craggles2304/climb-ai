@@ -143,7 +143,7 @@ const DEFAULT_RULES:Record<DecisionBehaviourKey,string>={
   SURVIVAL_VALUE:'WHEN YOUR LIFE HOLDS HIGH TEAM VALUE, PRESERVE UPTIME BEFORE REACHING FOR LOWER-VALUE ACCESS.',
 };
 
-const BOUNDARY='Decision Transfer only starts after a Scenario Memory is locally mastered. A clean decision in the same champion and same context is retention, not transfer. Generalisation requires repeated verified decisions under meaningfully different conditions.';
+const BOUNDARY='Decision Transfer only starts after a Scenario Memory has been locally mastered in verified history. A later isolated miss does not erase that earned transfer history; sustained regression can reopen it. Same-champion/same-context play is retention, not transfer, and generalisation still requires repeated verified decisions under meaningfully different conditions.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function pct(value:number,total:number){return total?Math.round(value/total*100):null}
@@ -259,14 +259,17 @@ export function buildDecisionTransfer(
     }
   });
 
-  const bestMastered=new Map<DecisionBehaviourKey,ScenarioMemoryProfile['cards'][number]>();
-  for(const card of memory.cards.filter(item=>item.state==='MASTERED')){
-    const current=bestMastered.get(card.behaviourKey);
-    if(!current||card.memoryStrength>current.memoryStrength||card.comparableGames>current.comparableGames)bestMastered.set(card.behaviourKey,card);
+  const bestHistoricallyMastered=new Map<DecisionBehaviourKey,ScenarioMemoryProfile['cards'][number]>();
+  for(const card of memory.cards.filter(item=>item.state!=='BUILDING')){
+    const observations=byBehaviour.get(card.behaviourKey)??[];
+    const sourceObs=observations.filter(item=>item.tags.includes(card.situationTag));
+    if(sourceObs.length<4||masteredIndex(sourceObs)===null)continue;
+    const current=bestHistoricallyMastered.get(card.behaviourKey);
+    if(!current||card.memoryStrength>current.memoryStrength||card.comparableGames>current.comparableGames)bestHistoricallyMastered.set(card.behaviourKey,card);
   }
 
   const cards:DecisionTransferCard[]=[];
-  for(const [behaviour,source] of bestMastered){
+  for(const [behaviour,source] of bestHistoricallyMastered){
     const observations=byBehaviour.get(behaviour)??[];
     const sourceObs=observations.filter(item=>item.tags.includes(source.situationTag));
     if(sourceObs.length<4)continue;
