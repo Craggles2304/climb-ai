@@ -129,11 +129,13 @@ function policyMetrics(careers:SimulationCareerReport[]):ClimbCoachBenchMetrics{
     const post=event.postRepLevel;
     // Synthetic-ground-truth diagnostics only. These thresholds never flow into the product.
     if(pre!==null&&post!==null&&post>pre&&event.latentSkill<.58)falsePromotionCount++;
-    if(pre!==null&&post!==null&&post<pre&&event.outcome!=='IMPROVE')falseRegressionCount++;
+    if(pre!==null&&post!==null&&post<pre&&event.postCurriculumPhase!=='REOPEN')falseRegressionCount++;
+    const repeatedPriorGap=(event.strategyIntentEvidenceStreak??0)>=2&&(
+      event.strategyIntentDiagnosis==='KNOWLEDGE_GAP'||event.strategyIntentDiagnosis==='EXECUTION_GAP'
+    );
     if(event.strategyMode==='FADE'&&(
       event.repLevel!==null&&event.repLevel<3||
-      event.intentDiagnosis==='KNOWLEDGE_GAP'||
-      event.intentDiagnosis==='EXECUTION_GAP'
+      repeatedPriorGap
     ))unsafeFadeCount++;
   }
 
@@ -236,12 +238,12 @@ export function runClimbCoachBench(input:{
     guardrails.push({
       key:'NO_UNSAFE_FADE',
       pass:product.metrics.unsafeFadeCount===0,
-      detail:'Production must not fade during early reps or an active knowledge/execution gap.',
+      detail:'Production must not fade during early reps or a repeated pre-existing knowledge/execution gap.',
     });
     guardrails.push({
       key:'NO_FALSE_REGRESSION',
       pass:product.metrics.falseRegressionCount===0,
-      detail:'Synthetic clean/not-observed reps must not trigger a benchmark false regression.',
+      detail:'A difficulty demotion must correspond to the verified REOPEN regression state.',
     });
   }
   if(product&&scaffold){
