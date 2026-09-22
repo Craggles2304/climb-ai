@@ -201,13 +201,13 @@ test('transfer regression stays open until three consecutive clean novel recover
     row(3,'Aphelios','GOOD'),
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
-    row(6,'Kai\\'Sa','GOOD','PICK_PRESSURE'),
+    row(6,'Kai\'Sa','GOOD','PICK_PRESSURE'),
     row(7,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(8,'Kai\\'Sa','IMPROVE','PICK_PRESSURE'),
+    row(8,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
   ];
   assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
-  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\\'Sa','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
-  assert.notEqual(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\\'Sa','GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\'Sa','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  assert.notEqual(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\'Sa','GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
 });
 
 test('exact-draft V5 selector yields one novel transfer test and defers to unstable V4 reps',()=>{
