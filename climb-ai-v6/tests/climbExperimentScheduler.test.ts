@@ -203,4 +203,13 @@ test('Draft Coach and Decision Graph freeze the same experiment contract',()=>{
   assert.ok(draft.includes('experimentSchedule,'));
   assert.ok(graph.includes('reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview)'));
   assert.ok(graph.includes('experimentSchedule:raw.experimentSchedule??null'));
+  const companion=fs.readFileSync('companion/electron/remember-v5-esports.js','utf8');
+  const review=fs.readFileSync('companion/electron/review-v2-core.js','utf8');
+  assert.ok(companion.includes('enrichedCoach._experimentSchedule=response?.experimentSchedule||null'));
+  assert.ok(companion.includes('experimentSchedule:coach?._experimentSchedule||null'));
+  assert.ok(companion.includes('function renderExperimentSchedule'));
+  assert.ok(companion.includes('EXPERIMENT SCHEDULER'));
+  assert.ok(review.includes('EXPERIMENT SCHEDULER · DID THE TEST ACTUALLY RUN?'));
+  assert.ok(review.includes('function renderExperimentScheduleReview'));
+  assert.ok(review.includes('POLICY_MISMATCH'));
 });
