@@ -52,6 +52,7 @@ test('isolated weaker evidence holds earned difficulty until sustained regressio
     cleanStreak:0,
     memoryStrength:58,
     previousLevel:3,
+    previousPhase:'STABILISE',
   }));
   assert.equal(held.level,3);
   assert.match(held.reason,/do not erase earned difficulty|hold this level/i);
@@ -68,10 +69,33 @@ test('verified sustained regression lowers difficulty by one layer, not several'
     transferCleanStreak:0,
     transferStrength:48,
     previousLevel:before.level,
+    previousPhase:'TRANSFER',
   }));
   assert.equal(before.level,5);
   assert.equal(reopened.level,4);
   assert.match(reopened.reason,/one layer/i);
+});
+
+test('an open regression episode does not demote again on the next rebuild',()=>{
+  const first=buildClimbRepLadder(evidence({
+    phase:'REOPEN',
+    comparableGames:11,
+    cleanStreak:0,
+    memoryStrength:48,
+    previousLevel:5,
+    previousPhase:'TRANSFER',
+  }));
+  const sameEpisode=buildClimbRepLadder(evidence({
+    phase:'REOPEN',
+    comparableGames:11,
+    cleanStreak:0,
+    memoryStrength:48,
+    previousLevel:first.level,
+    previousPhase:'REOPEN',
+  }));
+  assert.equal(first.level,4);
+  assert.equal(sameEpisode.level,4);
+  assert.match(sameEpisode.reason,/do not demote again/i);
 });
 
 test('Level 5 mission only activates when a matching frozen transfer test exists',()=>{
