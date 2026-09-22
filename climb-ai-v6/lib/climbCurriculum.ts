@@ -4,6 +4,7 @@ import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
 import {buildClimbRepLadder,type ClimbRepLadder,type ClimbRepLevel} from './climbRepLadder';
 import {buildClimbCareerMatrix,type ClimbCareerMatrix} from './climbCareerMatrix';
+import {buildClimbAutonomousCurriculum,type ClimbAutonomousCurriculum} from './climbAutonomousCurriculumV6';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -56,6 +57,7 @@ export interface ClimbCurriculum{
   graduated:CurriculumLesson[];
   repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>;
   careerMatrix?:ClimbCareerMatrix;
+  autonomous?:ClimbAutonomousCurriculum;
   decision:CurriculumDecision;
   summary:string;
   boundary:string;
@@ -410,6 +412,15 @@ export function buildClimbCurriculum(
   const status:ClimbCurriculum['status']=building?'BUILDING':current?'ACTIVE':'COMPLETE';
   const repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>={...(previous?.repLedger??{}) as any};
   for(const lesson of lessons)repLedger[lesson.behaviourKey]={level:lesson.repLadder.level,phase:lesson.phase};
+  const autonomous=buildClimbAutonomousCurriculum({
+    generatedAt,
+    gamesAnalyzed:twin.gamesAnalyzed,
+    status,
+    currentLesson:current,
+    nextLesson:next,
+    decision:selection.decision,
+    careerMatrix,
+  },previous?.autonomous??null);
   return{
     version:1,
     generatedAt,
@@ -421,6 +432,7 @@ export function buildClimbCurriculum(
     graduated,
     repLedger,
     careerMatrix,
+    autonomous,
     decision:selection.decision,
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'
