@@ -136,7 +136,8 @@ test('draft coach, Decision Graph and Companion share the same frozen CLIMB matc
   assert.ok(graph.includes('climbMission:raw.climbMission??null'));
   assert.ok(companion.includes('enrichedCoach._climbMission=response?.climbMission||null'));
   assert.ok(companion.includes('climbMission:coach?._climbMission||null'));
-  assert.ok(companion.includes("set('opRemMission',climbMission?.status==='READY'"));
+  assert.ok(companion.includes("const climbMission=coach?._climbMission||null"));
+  assert.ok(companion.includes("coachIntervention?.primaryCue||(climbMission?.status==='READY'"));
   assert.ok(review.includes('CLIMB MISSION · FROZEN REP REVIEW'));
   assert.ok(review.includes('function renderClimbMissionReview'));
   assert.ok(review.includes('MISSION NOT TESTED'));

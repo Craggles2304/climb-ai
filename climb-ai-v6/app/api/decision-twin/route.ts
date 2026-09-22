@@ -6,6 +6,7 @@ import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import {buildDecisionTransfer} from '@/lib/decisionTransfer';
 import {buildClimbCurriculum} from '@/lib/climbCurriculum';
+import {buildClimbCoachTwin} from '@/lib/climbCoachTwin';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -58,13 +59,15 @@ export async function GET(req:Request){
     const scenarioMemory=buildScenarioMemory(rows);
     const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
     const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
+    const coachTwin=buildClimbCoachTwin(rows);
     return NextResponse.json({
       twin,
       scenarioMemory,
       decisionTransfer,
       curriculum,
+      coachTwin,
       grounding:'climb-profile+curriculum+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','premortem_review','coaching_response'],
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','coach_twin','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);

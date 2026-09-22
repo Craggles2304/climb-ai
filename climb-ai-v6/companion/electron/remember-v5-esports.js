@@ -199,6 +199,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       scenarioPrime:coach?._scenarioPrime||null,
       decisionTransferPrime:coach?._decisionTransferPrime||null,
       climbMission:coach?._climbMission||null,
+      coachIntervention:coach?._coachIntervention||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -835,8 +836,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderScenarioPrime(coach?._scenarioPrime||null);
     renderDecisionTransfer(coach?._decisionTransferPrime||null);
     const climbMission=coach?._climbMission||null;
-    set('opRemMission',climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN');
-    const missionNode=$('opRemMission');if(missionNode)missionNode.title=climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
+    const coachIntervention=coach?._coachIntervention||null;
+    set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
+    const missionNode=$('opRemMission');if(missionNode)missionNode.title=coachIntervention
+      ?[clean(coachIntervention.title),clean(coachIntervention.methodLabel),clean(coachIntervention.whyThisMethod),clean(coachIntervention.secondaryPrompt),clean(coachIntervention.boundary)].filter(Boolean).join(' · ')
+      :climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
   }
@@ -876,6 +880,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._scenarioPrime=response?.scenarioPrime||null;
         enrichedCoach._decisionTransferPrime=response?.decisionTransferPrime||null;
         enrichedCoach._climbMission=response?.climbMission||null;
+        enrichedCoach._coachIntervention=response?.coachIntervention||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;

@@ -4,6 +4,7 @@ import {buildDecisionTransfer,selectDecisionTransferPrime,type DecisionTransferP
 import {buildClimbCurriculum,type ClimbCurriculum,type CurriculumLesson} from './climbCurriculum';
 import {buildDraftSituationContext,type DecisionBehaviourKey,type DecisionSituationTag} from './decisionTwin';
 import {buildClimbMatchMission,type ClimbMatchMission} from './climbMissionDesign';
+import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachTwin,type ClimbCoachIntervention} from './climbCoachTwin';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -40,6 +41,9 @@ export interface SimulationGameEvent{
   repStage:string|null;
   missionStatus:ClimbMatchMission['status']|null;
   missionReview:string;
+  coachMethod:string|null;
+  coachSelectionMode:string|null;
+  coachReview:string;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -88,6 +92,7 @@ type ProfileBundle={
   memory:ScenarioMemoryProfile;
   transfer:DecisionTransferProfile;
   curriculum:ClimbCurriculum;
+  coachTwin:ClimbCoachTwin;
 };
 
 const TARGET_BEHAVIOUR:DecisionBehaviourKey='FIGHT_SELECTION';
@@ -128,7 +133,8 @@ function rebuild(rows:HistoryAnalysisRow[],previous:ClimbCurriculum|null,at:stri
   const memory=buildScenarioMemory(rows,at);
   const transfer=buildDecisionTransfer(rows,memory,at);
   const curriculum=buildClimbCurriculum(twin,memory,transfer,at,previous);
-  return{twin,memory,transfer,curriculum};
+  const coachTwin=buildClimbCoachTwin(rows,at);
+  return{twin,memory,transfer,curriculum,coachTwin};
 }
 
 type DraftKind='SOURCE'|'NOVEL_PICK'|'NOVEL_CHAMPION'|'IRRELEVANT';
@@ -301,6 +307,8 @@ function transitionInvariant(input:{
   mission:ClimbMatchMission|null;
   transferPrime:DecisionTransferPrime|null;
   review:DecisionGraph['summary']['climbMission'];
+  intervention:ClimbCoachIntervention|null;
+  coachReview:DecisionGraph['summary']['coachIntervention'];
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
@@ -312,6 +320,15 @@ function transitionInvariant(input:{
   }
   if(input.mission&&input.review.missionId!==input.mission.id){
     errors.push(prefix+'post-game review did not use the frozen pre-game mission.');
+  }
+  if(input.intervention&&input.coachReview.interventionId!==input.intervention.id){
+    errors.push(prefix+'post-game Coach Twin review did not use the frozen pre-game coaching intervention.');
+  }
+  if(input.intervention&&input.coachReview.missionId!==input.intervention.missionId){
+    errors.push(prefix+'Coach Twin review detached from its frozen mission.');
+  }
+  if(input.coachReview.status==='NOT_OBSERVED'&&input.review.status!=='NOT_OBSERVED'){
+    errors.push(prefix+'Coach Twin became NOT_OBSERVED while its frozen mission was graded.');
   }
   if(input.mission?.repLevel===5&&input.mission.status==='READY'&&!input.transferPrime){
     errors.push(prefix+'Level 5 mission was forced without a frozen transfer test.');
@@ -398,6 +415,11 @@ export function runSimulationCareer(input:{
     });
     if(mission?.status==='READY')missionsReady++;
     if(mission?.status==='NOT_RELEVANT')missionsNotRelevant++;
+    const coachIntervention=selectClimbCoachIntervention({
+      twin:pre.coachTwin,
+      mission,
+      situationContext,
+    });
 
     const relevant=situationContext.tags.includes('MULTI_ACCESS')||situationContext.tags.includes('PICK_PRESSURE');
     const missionReady=mission?.status==='READY';
@@ -421,6 +443,7 @@ export function runSimulationCareer(input:{
       situationContext,
       decisionTransferPrime:transferPrime,
       climbMission:mission,
+      coachIntervention,
     };
     const graph=buildDecisionGraph({analysis,summary,lockedPlan,generatedAt:at});
     analysis.decisionGraph=graph;
@@ -450,6 +473,8 @@ export function runSimulationCareer(input:{
       mission,
       transferPrime,
       review:graph.summary.climbMission,
+      intervention:coachIntervention,
+      coachReview:graph.summary.coachIntervention,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -465,6 +490,9 @@ export function runSimulationCareer(input:{
       repStage:mission?.repStage??preLesson?.repLadder.stage??null,
       missionStatus:mission?.status??null,
       missionReview:graph.summary.climbMission.status,
+      coachMethod:coachIntervention?.method??null,
+      coachSelectionMode:coachIntervention?.selectionMode??null,
+      coachReview:graph.summary.coachIntervention.status,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),
