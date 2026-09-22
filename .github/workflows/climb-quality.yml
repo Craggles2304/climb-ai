@@ -44,6 +44,8 @@ jobs:
         run: node --import tsx --test tests/climbAutonomy.test.ts
       - name: CLIMB Intervention Value
         run: node --import tsx --test tests/climbInterventionValue.test.ts
+      - name: CLIMB Experiment Scheduler
+        run: node --import tsx --test tests/climbExperimentScheduler.test.ts
       - name: CLIMB synthetic career lab
         run: node --import tsx --test tests/climbSimulationLab.test.ts
       - name: Ability damage type regressions
