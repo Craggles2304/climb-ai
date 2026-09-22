@@ -5,6 +5,7 @@ import type {DecisionTwinV2Profile,DecisionTwinActiveFocus,DecisionContextProfil
 import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionTransfer';
 import type {ClimbCurriculum,CurriculumLesson} from '@/lib/climbCurriculum';
+import type {CareerMatrixCandidate} from '@/lib/climbCareerMatrix';
 import type {ClimbCoachTwin,ClimbCoachBehaviourProfile,ClimbCoachMethodStats} from '@/lib/climbCoachTwin';
 import type {ClimbAutonomyProfile,ClimbAutonomyCard} from '@/lib/climbAutonomy';
 import type {ClimbInterventionValueProfile,ClimbInterventionValueCard} from '@/lib/climbInterventionValue';
@@ -102,6 +103,23 @@ function CurriculumQueueItem({item,index}:{item:CurriculumLesson;index:number}){
   </article>;
 }
 
+function CareerMatrixRow({item,index,recommended}:{item:CareerMatrixCandidate;index:number;recommended:boolean}){
+  return <article className={`dt6-matrix-row ${item.state.toLowerCase()} ${recommended?'recommended':''}`}>
+    <div className="dt6-matrix-rank">{String(index+1).padStart(2,'0')}</div>
+    <div className="dt6-matrix-copy">
+      <div className="dt2-card-top"><span>{item.state.replaceAll('_',' ')}</span><b>{recommended?'COACH NOW':item.confidence}</b></div>
+      <h4>{item.label}</h4>
+      <p>{recommended?item.whyNow:item.deferredReason||item.whyNow}</p>
+    </div>
+    <div className="dt6-matrix-metrics">
+      <div><span>PRIORITY</span><strong>{item.priorityScore}</strong></div>
+      <div><span>LEVERAGE</span><strong>{item.developmentLeverage}</strong></div>
+      <div><span>ROOT</span><strong>{item.rootCauseLeverage}</strong></div>
+      <div><span>DEBT</span><strong>{item.curriculumDebt}</strong></div>
+    </div>
+  </article>;
+}
+
 function FocusCard({item}:{item:DecisionTwinActiveFocus}){
   const gap=Math.max(0,item.targetScore-item.currentScore);
   return <article className="dt2-focus-card">
@@ -162,6 +180,8 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const currentLesson=curriculum?.currentLesson??null;
   const nextLesson=curriculum?.nextLesson??null;
   const curriculumQueue=useMemo(()=>curriculum?.queue?.slice(0,4)??[],[curriculum]);
+  const careerMatrix=curriculum?.careerMatrix??null;
+  const matrixCandidates=useMemo(()=>careerMatrix?.candidates?.slice(0,5)??[],[careerMatrix]);
   const coachProfiles=useMemo(()=>coachTwin?.behaviourProfiles?.slice(0,3)??[],[coachTwin]);
   const coachMethods=useMemo(()=>coachTwin?.overallMethods?.slice().sort((a,b)=>(b.observedGames-a.observedGames)||((b.executionRate??-1)-(a.executionRate??-1))).slice(0,4)??[],[coachTwin]);
   const autonomyCards=useMemo(()=>autonomyProfile?.cards?.slice(0,5)??[],[autonomyProfile]);
@@ -274,6 +294,16 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             </div>
           </div>
         </div>:<div className="dt2-empty">NO EVIDENCE-BACKED LESSON YET · OP CLIMB WILL NOT INVENT A CURRICULUM FROM ONE GAME</div>}
+        {matrixCandidates.length>0&&<div className="dt6-matrix">
+          <div className="dt6-matrix-head">
+            <div><span>MULTI-SKILL CAREER MATRIX</span><h4>Why this skill gets the coaching slot.</h4></div>
+            <small>{careerMatrix?.recommendedSkill?pretty(careerMatrix.recommendedSkill):'NO ACTIVE RECOMMENDATION'}</small>
+          </div>
+          <div className="dt6-matrix-list">
+            {matrixCandidates.map((item,index)=><CareerMatrixRow key={item.key} item={item} index={index} recommended={item.key===careerMatrix?.recommendedSkill}/>)}
+          </div>
+          <div className="dt6-matrix-boundary">{careerMatrix?.boundary}</div>
+        </div>}
         {curriculumQueue.length>1&&<div className="dt6-queue">
           {curriculumQueue.map((item,index)=><CurriculumQueueItem key={item.behaviourKey} item={item} index={index}/>)}
         </div>}
