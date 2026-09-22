@@ -142,6 +142,28 @@ test('curriculum keeps one sticky active objective until its graduation gate is 
   assert.equal(result.queue.find((item:any)=>item.behaviourKey==='POWER_SPIKE_CONVERSION')?.readiness,'READY');
 });
 
+test('Rep Ledger preserves earned difficulty when a lesson leaves and later re-enters the visible queue',()=>{
+  const prior:any=previous('DEATH_RECOVERY');
+  prior.currentLesson.repLadder={level:2};
+  prior.repLedger={FIGHT_SELECTION:4,DEATH_RECOVERY:2};
+  prior.queue=[prior.currentLesson];
+
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','DUE',{cleanStreak:0,memoryStrength:55,lastVerdict:'IMPROVE'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    prior,
+  );
+
+  const fight=result.currentLesson?.behaviourKey==='FIGHT_SELECTION'
+    ?result.currentLesson
+    :result.queue.find((item:any)=>item.behaviourKey==='FIGHT_SELECTION');
+  assert.ok(fight);
+  assert.equal(fight?.repLadder.level,4);
+  assert.equal(result.repLedger.FIGHT_SELECTION,4);
+});
+
 test('curriculum preserves earned Rep Ladder difficulty through an isolated miss',()=>{
   const prior:any=previous('FIGHT_SELECTION');
   prior.currentLesson.repLadder={level:4};
