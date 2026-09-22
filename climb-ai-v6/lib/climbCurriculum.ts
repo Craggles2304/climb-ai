@@ -141,11 +141,22 @@ function whyNow(input:{
   if(input.focus)return input.focus.reason;
   return'OP CLIMB has enough repeated evidence to keep this skill in the development queue.';
 }
+function previousLessonFor(previous:ClimbCurriculum|null|undefined,key:DecisionBehaviourKey){
+  const candidates=[
+    previous?.currentLesson,
+    previous?.nextLesson,
+    ...(previous?.queue??[]),
+    ...(previous?.graduated??[]),
+  ].filter(Boolean) as CurriculumLesson[];
+  return candidates.find(item=>item.behaviourKey===key)??null;
+}
+
 function makeLesson(
   key:DecisionBehaviourKey,
   twin:DecisionTwinV2Profile,
   memory:ScenarioMemoryProfile,
   transfer:DecisionTransferProfile,
+  previousLesson:CurriculumLesson|null=null,
 ):CurriculumLesson{
   const focus=focusFor(twin,key);
   const mem=bestMemory(memory,key);
@@ -164,7 +175,17 @@ function makeLesson(
   const transferStrength=tx?.transferStrength??null;
   const transferGames=tx?.transferGames??0;
   const transferCleanStreak=tx?.transferCleanStreak??0;
-  const repLadder=buildClimbRepLadder({behaviourKey:key,phase,comparableGames,cleanStreak,memoryStrength,transferGames,transferCleanStreak,transferStrength});
+  const repLadder=buildClimbRepLadder({
+    behaviourKey:key,
+    phase,
+    comparableGames,
+    cleanStreak,
+    memoryStrength,
+    transferGames,
+    transferCleanStreak,
+    transferStrength,
+    previousLevel:previousLesson?.repLadder?.level??null,
+  });
   return{
     behaviourKey:key,
     label:LABELS[key],
@@ -189,7 +210,12 @@ function makeLesson(
   };
 }
 
-function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile,transfer:DecisionTransferProfile){
+function curriculumOrder(
+  twin:DecisionTwinV2Profile,
+  memory:ScenarioMemoryProfile,
+  transfer:DecisionTransferProfile,
+  previous:ClimbCurriculum|null|undefined,
+){
   const keys=new Set<DecisionBehaviourKey>();
   for(const item of twin.activeFive)keys.add(item.key);
   for(const card of memory.cards.filter(card=>card.state!=='BUILDING'))keys.add(card.behaviourKey);
@@ -201,7 +227,7 @@ function curriculumOrder(twin:DecisionTwinV2Profile,memory:ScenarioMemoryProfile
     if(prerequisite&&!behaviourStable(memory,transfer,prerequisite))keys.add(prerequisite);
   }
 
-  const lessons=[...keys].map(key=>makeLesson(key,twin,memory,transfer));
+  const lessons=[...keys].map(key=>makeLesson(key,twin,memory,transfer,previousLessonFor(previous,key)));
   for(const locked of lessons.filter(item=>item.readiness==='LOCKED'&&item.prerequisite)){
     const prerequisite=lessons.find(item=>item.behaviourKey===locked.prerequisite);
     if(prerequisite&&prerequisite.readiness==='READY'){
@@ -337,7 +363,7 @@ export function buildClimbCurriculum(
   generatedAt=new Date().toISOString(),
   previous:ClimbCurriculum|null=null,
 ):ClimbCurriculum{
-  const lessons=curriculumOrder(twin,memory,transfer);
+  const lessons=curriculumOrder(twin,memory,transfer,previous);
   const graduated=lessons.filter(item=>item.readiness==='COMPLETE');
   const building=!lessons.length||twin.gamesAnalyzed<3;
   const selection=selectCurriculumLesson(lessons,previous,building);
