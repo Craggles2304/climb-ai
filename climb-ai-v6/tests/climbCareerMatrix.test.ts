@@ -91,5 +91,13 @@ test('multi-skill gold-standard Coach Bench cases all pass',()=>{
   assert.equal(report.transferDiscipline,100);
   assert.equal(report.deferredRecovery,100);
   assert.equal(report.coachingRestraint,100);
+  assert.equal(report.longitudinal.careers,25);
+  assert.equal(report.longitudinal.totalGames,1200);
+  assert.ok(report.longitudinal.exactSelectionRate>=94,`Longitudinal selection rate ${report.longitudinal.exactSelectionRate}%`);
+  assert.ok(report.longitudinal.wrongSwitchesPer100<=1,`Wrong switches ${report.longitudinal.wrongSwitchesPer100}/100 games`);
+  assert.equal(report.longitudinal.lowConfidenceSteals,0);
+  assert.equal(report.longitudinal.prerequisiteViolations,0);
+  assert.equal(report.longitudinal.completedCareers,25);
+  assert.equal(report.longitudinal.deferredReturnRate,100);
   assert.deepEqual(report.failures,[]);
 });
