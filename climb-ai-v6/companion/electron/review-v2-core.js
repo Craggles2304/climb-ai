@@ -57,6 +57,7 @@
     const contingencyHistory=safeArray(stored.contingencySelections).map(item=>clean(item?.contingency)).filter(Boolean);
     const climbMission=stored.climbMission||null;
     const coachingStrategy=stored.coachingStrategy||null;
+    const experimentSchedule=stored.experimentSchedule||null;
     const coachIntervention=stored.coachIntervention||null;
     return{
       version:2,
@@ -83,6 +84,9 @@
       strategyMode:clean(coachingStrategy?.mode),
       strategyTitle:clean(coachingStrategy?.title),
       strategyWhy:clean(coachingStrategy?.decision),
+      experimentType:clean(experimentSchedule?.experimentType),
+      experimentNeed:clean(experimentSchedule?.informationNeed),
+      experimentStatus:clean(experimentSchedule?.status),
       capturedAt:clean(stored.capturedAt),
     };
   }
@@ -154,6 +158,7 @@
         <section id="op332Simulation" class="op332-simulation"><div class="op332-simulation-head"><div><span>MATCH REHEARSAL · REVIEW</span><div id="op332SimulationStatus" class="op332-simulation-status">CHECKING REHEARSED SCENARIOS</div></div></div><div id="op332SimulationList" class="op332-simulation-list"></div><small id="op332SimulationBoundary" class="op332-simulation-proof"></small></section>
         <section id="op332MissionReview" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>CLIMB MISSION · FROZEN REP REVIEW</span><div id="op332MissionStatus" class="op332-memory-status">CHECKING MATCH REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MISSION</b><strong id="op332MissionReviewName"></strong><p id="op332MissionReviewContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MissionReviewResult"></strong><p id="op332MissionReviewNote"></p></article><article class="op332-memory-card"><b>CURRICULUM EFFECT</b><strong id="op332MissionReviewNext"></strong><p>One match rep adds evidence to the active lesson; it never creates graduation by itself.</p></article></div><small id="op332MissionReviewBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Strategy" class="op332-response"><div class="op332-response-head"><div><span>COACHING STRATEGY · SUPPORT REVIEW</span><div id="op332StrategyStatus" class="op332-response-status">CHECKING SUPPORT POLICY</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN SUPPORT MODE</b><strong id="op332StrategyMode"></strong><p id="op332StrategyWhy"></p></article><article class="op332-response-card"><b>WHAT HAPPENED</b><strong id="op332StrategyResult"></strong><p id="op332StrategyNote"></p></article></div><small id="op332StrategyBoundary" class="op332-response-proof"></small></section>
+        <section id="op332Experiment" class="op332-response"><div class="op332-response-head"><div><span>EXPERIMENT SCHEDULER · DID THE TEST ACTUALLY RUN?</span><div id="op332ExperimentStatus" class="op332-response-status">CHECKING FROZEN EXPERIMENT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>SCHEDULED TEST</b><strong id="op332ExperimentType"></strong><p id="op332ExperimentNeed"></p></article><article class="op332-response-card"><b>EVIDENCE RESULT</b><strong id="op332ExperimentResult"></strong><p id="op332ExperimentNote"></p></article></div><small id="op332ExperimentBoundary" class="op332-response-proof"></small></section>
         <section id="op332IntentGap" class="op332-response"><div class="op332-response-head"><div><span>INTENT GAP · KNOWING VS DOING</span><div id="op332IntentStatus" class="op332-response-status">CHECKING PRE-CUE INTENT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>BEFORE THE COACH CUE</b><strong id="op332IntentPlan"></strong><p id="op332IntentMission"></p></article><article class="op332-response-card"><b>DIAGNOSIS</b><strong id="op332IntentDiagnosis"></strong><p id="op332IntentNote"></p></article></div><small id="op332IntentBoundary" class="op332-response-proof"></small></section>
         <section id="op332CoachTwin" class="op332-response"><div class="op332-response-head"><div><span>COACH TWIN · DID THIS TEACHING FORMAT LAND?</span><div id="op332CoachTwinStatus" class="op332-response-status">CHECKING FROZEN COACHING FORMAT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN METHOD</b><strong id="op332CoachTwinMethod"></strong><p id="op332CoachTwinWhy"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332CoachTwinResult"></strong><p id="op332CoachTwinNote"></p></article></div><small id="op332CoachTwinBoundary" class="op332-response-proof"></small></section>
         <section id="op332Memory" class="op332-memory"><div class="op332-memory-head"><span>DECISION LAB · SPACED REP REVIEW</span><div id="op332MemoryStatus" class="op332-memory-status">CHECKING SCHEDULED REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MEMORY</b><strong id="op332MemoryName"></strong><p id="op332MemoryContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MemoryResult"></strong><p id="op332MemoryNote"></p></article><article class="op332-memory-card"><b>NEXT RULE</b><strong id="op332MemoryNext"></strong><p>One clean game reinforces the pattern; repeated comparable games are still required for mastery.</p></article></div><small id="op332MemoryBoundary" class="op332-memory-proof"></small></section>
@@ -470,6 +475,29 @@
     setText('op332StrategyBoundary',clean(item?.boundary)||'CLEAN FADED REP = CONTEXTUAL AUTONOMY EVIDENCE · NOT PERMANENT MASTERY · ONE MISS NEVER ERASES LEARNING.');
   }
 
+  function renderExperimentScheduleReview(review){
+    const root=$('op332Experiment');if(!root)return;
+    const item=review?.decisionGraph?.summary?.experimentSchedule||null;
+    const status=clean(item?.status||'NO_EXPERIMENT').toUpperCase();
+    root.classList.toggle('executing',status==='COMPLETED');
+    root.classList.toggle('missing',status==='POLICY_MISMATCH');
+    const label=status==='COMPLETED'?'EXPERIMENT COMPLETED'
+      :status==='NOT_OBSERVED'?'EXPERIMENT NOT OBSERVED'
+      :status==='POLICY_MISMATCH'?'SUPPORT CONDITION MISMATCH'
+      :'NO EXPERIMENT';
+    setText('op332ExperimentStatus',label);
+    const baseline=reviewBaseline(null,review);
+    setText('op332ExperimentType',clean(item?.experimentType).replace(/_/g,' ')||clean(baseline?.experimentType).replace(/_/g,' ')||'NO FROZEN TEST');
+    setText('op332ExperimentNeed',baseline?.experimentNeed||'The scheduled information need was not available in this review session.');
+    setText('op332ExperimentResult',status==='COMPLETED'
+      ?(Number.isFinite(Number(item?.responseScore))?String(Math.round(Number(item.responseScore)))+'% VERIFIED RESPONSE':'COMPLETED')
+      :status==='NOT_OBSERVED'?'NO EVIDENCE ADDED'
+      :status==='POLICY_MISMATCH'?'DISCARDED · WRONG CONDITION'
+      :'NO TEST');
+    setText('op332ExperimentNote',clean(item?.note)||'No Experiment Scheduler review was available for this game.');
+    setText('op332ExperimentBoundary',clean(item?.boundary)||'ONLY THE FROZEN SUPPORT CONDITION COUNTS · NOT OBSERVED AND POLICY MISMATCH ADD NO EXPERIMENT EVIDENCE.');
+  }
+
   function renderIntentGapReview(review){
     const root=$('op332IntentGap');if(!root)return;
     const item=review?.decisionGraph?.summary?.intentGap||null;
@@ -692,6 +720,7 @@
     renderSimulationReview(review);
     renderClimbMissionReview(review);
     renderCoachingStrategyReview(review);
+    renderExperimentScheduleReview(review);
     renderIntentGapReview(review);
     renderCoachTwinReview(review);
     renderScenarioPrimeReview(review);
