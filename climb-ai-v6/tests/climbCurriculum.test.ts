@@ -98,6 +98,22 @@ test('regression reopens a lesson even after prior progress',()=>{
   assert.match(result.currentLesson?.graduationRule||'',/three clean comparable/i);
 });
 
+test('verified regression reopens a previously principle-owned skill',()=>{
+  const owned=tx('FIGHT_SELECTION','PRINCIPLE_OWNED',95);
+  owned.nextTransferNeeded=false;
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',95)]),
+    memory([card('FIGHT_SELECTION','REGRESSED',{memoryStrength:48,cleanStreak:0,lastVerdict:'IMPROVE'})]),
+    transfer([owned]),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(result.currentLesson?.phase,'REOPEN');
+  assert.equal(result.status,'ACTIVE');
+  assert.match(result.currentLesson?.whyNow||'',/returned|reopen/i);
+  assert.equal(result.autonomous?.action,'START_OBJECTIVE');
+  assert.equal(result.autonomous?.activeContract?.state,'REOPEN');
+});
+
 test('curriculum will not claim a teaching sequence from too little history',()=>{
   const result=buildClimbCurriculum(
     twin([focus('FIGHT_SELECTION')],2),
