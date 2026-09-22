@@ -237,7 +237,7 @@ export function rankCareerMatrixSignals(signals:CareerMatrixSignal[],options:Car
       curriculumDebt*.06+
       signal.regressionRisk*.04+
       noveltyNeed*.04+
-      (signal.locallyMastered&&!signal.principleOwned?14:0)+
+      (signal.locallyMastered&&!signal.principleOwned?8:0)+
       (active?6:0);
     if(signal.confidence==='LOW'&&root.rootCauseLeverage<25&&curriculumDebt<20)priorityScore-=18;
     if(!signal.prerequisiteSatisfied)priorityScore-=40;
