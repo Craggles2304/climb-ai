@@ -18,6 +18,7 @@ import {buildClimbMatchMission,type ClimbMatchMission} from '@/lib/climbMissionD
 import {buildClimbCoachTwin,selectClimbCoachIntervention,type ClimbCoachIntervention} from '@/lib/climbCoachTwin';
 import {buildClimbCoachingStrategy,type ClimbCoachingStrategy} from '@/lib/climbCoachingStrategy';
 import {buildClimbIntentProbe,publicClimbIntentProbe,type ClimbIntentProbe} from '@/lib/climbIntentGap';
+import {buildClimbExperimentSchedule,type ClimbExperimentSchedule} from '@/lib/climbExperimentScheduler';
 import {buildDecisionPremortem,type DecisionPremortem} from '@/lib/decisionPremortem';
 import {buildDecisionSimulation,type DecisionSimulation} from '@/lib/decisionSimulation';
 import {buildScenarioMemory,selectScenarioPrime,type ScenarioPrime} from '@/lib/scenarioMemory';
@@ -507,7 +508,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;coachingStrategy:ClimbCoachingStrategy|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -540,6 +541,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       decisionTransferPrime:input.decisionTransferPrime,
       climbMission:input.climbMission,
       intentProbe:input.intentProbe,
+      experimentSchedule:input.experimentSchedule,
       coachingStrategy:input.coachingStrategy,
       coachIntervention:input.coachIntervention,
       situationContext:input.situationContext,
@@ -672,11 +674,16 @@ export async function POST(req:NextRequest){
       transferPrime:decisionTransferPrime,
     });
     const intentProbe=buildClimbIntentProbe(climbMission);
+    const experimentSchedule=buildClimbExperimentSchedule({
+      rows:context.historyRows,
+      mission:climbMission,
+    });
     const coachingStrategy=buildClimbCoachingStrategy({
       rows:context.historyRows,
       curriculum:context.curriculum,
       mission:climbMission,
       coachTwin:context.coachTwin,
+      experimentSchedule,
     });
     const coachIntervention=selectClimbCoachIntervention({
       twin:context.coachTwin,
@@ -705,6 +712,7 @@ export async function POST(req:NextRequest){
       decisionTransferPrime,
       climbMission,
       intentProbe,
+      experimentSchedule,
       coachingStrategy,
       coachIntervention,
       situationContext,
@@ -724,6 +732,7 @@ export async function POST(req:NextRequest){
       decisionTransferPrime,
       climbMission,
       intentProbe:publicClimbIntentProbe(intentProbe),
+      experimentSchedule,
       coachingStrategy,
       coachIntervention,
       coachTwin:context.coachTwin,
