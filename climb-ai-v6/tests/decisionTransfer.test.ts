@@ -134,7 +134,7 @@ test('repeated clean decisions across different champion and context can promote
   assert.ok(card.transferStrength>=80);
 });
 
-test('a transferred principle reopens when mistakes return under novel conditions',()=>{
+test('one isolated novel miss does not erase transferred learning',()=>{
   const {transfer}=build([
     row(0,'Aphelios','IMPROVE'),
     row(1,'Aphelios','GOOD'),
@@ -144,8 +144,29 @@ test('a transferred principle reopens when mistakes return under novel condition
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
     row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
-    row(8,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(9,'Jinx','GOOD','PICK_PRESSURE'),
+    row(8,'Jinx','GOOD','PICK_PRESSURE'),
+    row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(10,'Jinx','GOOD','PICK_PRESSURE'),
+  ]);
+  const card=transfer.cards[0];
+  assert.notEqual(card.state,'REGRESSED');
+  assert.equal(transfer.regressed,0);
+});
+
+test('a transferred principle reopens after sustained novel mistakes',()=>{
+  const {transfer}=build([
+    row(0,'Aphelios','IMPROVE'),
+    row(1,'Aphelios','GOOD'),
+    row(2,'Aphelios','GOOD'),
+    row(3,'Aphelios','GOOD'),
+    row(4,'Aphelios','GOOD'),
+    row(5,'Jinx','GOOD','PICK_PRESSURE'),
+    row(6,'Jinx','GOOD','PICK_PRESSURE'),
+    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(8,'Jinx','GOOD','PICK_PRESSURE'),
+    row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(10,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
+    row(11,'Jinx','IMPROVE','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'REGRESSED');
