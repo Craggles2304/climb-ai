@@ -35,6 +35,7 @@
   let selectedBranch='EVEN';
   let selectedContingency='PLAN_A';
   let lastCoachMeta={source:'local',quality:null,failure:null};
+  let skippedIntentProbeId='';
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -398,6 +399,21 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         }
       });
       options.appendChild(button);
+    }
+    if(!answered){
+      const skip=document.createElement('button');
+      skip.type='button';skip.className='rem11-intent-btn';skip.textContent='SKIP · SHOW COACHING CUE';
+      skip.addEventListener('click',()=>{
+        skippedIntentProbeId=probe.id;
+        root.classList.add('answered');
+        set('opRemIntentStatus','INTENT CHECK SKIPPED · NO KNOWLEDGE/EXECUTION DIAGNOSIS WILL BE CREATED');
+        const climbMission=coach?._climbMission||null;
+        const coachIntervention=coach?._coachIntervention||null;
+        set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
+        [...options.querySelectorAll('button')].forEach(node=>node.disabled=true);
+        skip.classList.add('selected');
+      });
+      options.appendChild(skip);
     }
   }
 
@@ -915,7 +931,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const coachIntervention=coach?._coachIntervention||null;
     renderCoachingStrategy(coachingStrategy);
     renderIntentProbe(intentProbe,coach);
-    const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId);
+    const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId&&skippedIntentProbeId!==intentProbe.id);
     set('opRemMission',intentPending?'ANSWER THE INTENT CHECK ABOVE TO UNLOCK THIS COACHING CUE':(coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN')));
     const missionNode=$('opRemMission');if(missionNode)missionNode.title=intentPending?'FREEZE YOUR OWN DECISION FIRST · THE COACHING CUE IS DELIBERATELY HIDDEN':coachIntervention
       ?[clean(coachIntervention.title),clean(coachIntervention.methodLabel),clean(coachIntervention.whyThisMethod),clean(coachIntervention.secondaryPrompt),clean(coachIntervention.boundary)].filter(Boolean).join(' · ')
@@ -1029,6 +1045,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachAttemptAt=0;
       lastPlaybook=null;
       selectedBranch='EVEN';
+      skippedIntentProbeId='';
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);
