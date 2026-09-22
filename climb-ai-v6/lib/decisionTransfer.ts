@@ -397,11 +397,15 @@ export function selectDecisionTransferPrime(input:{
   simulation:DecisionSimulation|null|undefined;
   champion:string;
   role:string|null;
+  enabled?:boolean;
+  behaviourKey?:DecisionBehaviourKey|null;
 }):DecisionTransferPrime|null{
+  if(input.enabled===false)return null;
   if(input.scenarioPrime&&input.scenarioPrime.state!=='MASTERED')return null;
 
   const candidates=input.transfer.cards
     .filter(card=>card.nextTransferNeeded)
+    .filter(card=>!input.behaviourKey||card.behaviourKey===input.behaviourKey)
     .map(card=>{
       const targetTag=targetTagFor(card,input.situationContext);
       const championNovel=clean(input.champion)!==clean(card.sourceChampion);
