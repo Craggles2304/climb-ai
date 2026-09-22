@@ -54,6 +54,8 @@ export interface SimulationGameEvent{
   strategyMode:string|null;
   strategyIntervened:boolean|null;
   strategyReview:string;
+  strategyIntentDiagnosis:string|null;
+  strategyIntentEvidenceStreak:number|null;
   intentCorrect:boolean|null;
   intentDiagnosis:string;
   autonomyState:string|null;
@@ -70,6 +72,7 @@ export interface SimulationGameEvent{
   memoryState:string|null;
   transferState:string|null;
   postRepLevel:number|null;
+  postCurriculumPhase:CurriculumLesson['phase']|null;
 }
 
 export interface SimulationCareerReport{
@@ -677,6 +680,8 @@ export function runSimulationCareer(input:{
       strategyMode:coachingStrategy?.mode??null,
       strategyIntervened:coachingStrategy?.intervene??null,
       strategyReview:graph.summary.coachingStrategy.status,
+      strategyIntentDiagnosis:coachingStrategy?.intentDiagnosis??null,
+      strategyIntentEvidenceStreak:coachingStrategy?.intentEvidenceStreak??null,
       intentCorrect:intentProbe?.response?.correct??null,
       intentDiagnosis:graph.summary.intentGap.diagnosis,
       autonomyState:postAutonomy?.state??null,
@@ -693,6 +698,7 @@ export function runSimulationCareer(input:{
       memoryState:postMemory?.state??null,
       transferState:postTransfer?.state??null,
       postRepLevel:postLevel,
+      postCurriculumPhase:postLesson?.phase??null,
     });
   }
 
