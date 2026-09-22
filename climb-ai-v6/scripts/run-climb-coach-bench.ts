@@ -26,6 +26,13 @@ console.table(report.policies.map(policy=>({
   experimentCompletion:policy.metrics.experimentCompletionRate===null?'n/a':policy.metrics.experimentCompletionRate+'%',
 })));
 console.log('');
+console.log('MULTI-SKILL CAREER MATRIX');
+console.table(report.careerMatrix.results.map(item=>({case:item.id,category:item.category,expected:item.expected??'NONE',actual:item.actual??'NONE',pass:item.pass})));
+console.log('Selection accuracy:',report.careerMatrix.selectionAccuracy+'%');
+console.log('Root-cause accuracy:',report.careerMatrix.rootCauseAccuracy+'%');
+console.log('Prerequisite discipline:',report.careerMatrix.prerequisiteDiscipline+'%');
+console.log('Transfer discipline:',report.careerMatrix.transferDiscipline+'%');
+console.log('');
 console.table(report.guardrails.map(item=>({guardrail:item.key,pass:item.pass,detail:item.detail})));
 console.log('\nSelection-eligible winner:',report.winner);
 console.log('Raw score leader:',report.scoreLeader);
