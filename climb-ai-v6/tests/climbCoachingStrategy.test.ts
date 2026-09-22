@@ -212,6 +212,26 @@ test('Autonomous Curriculum FADED contract requests independent execution when n
   assert.equal(strategy?.curriculumSupportPolicy,'FADED');
 });
 
+test('FADED contract can temporarily restore LIGHT support for a scheduled comparison',()=>{
+  const rows=[
+    row(0,missionReview(0,'EXECUTED')),
+    row(1,missionReview(1,'EXECUTED')),
+  ];
+  const supportExperiment={
+    id:'supported-comparison',status:'SCHEDULED',experimentType:'SUPPORTED_RETEST',requestedDeliveryPolicy:'LIGHT',informationNeed:'compare supported execution',
+  } as any;
+  const strategy=buildClimbCoachingStrategy({
+    rows,
+    curriculum:curriculum('FADED'),
+    mission:mission(4,'ADAPT'),
+    coachTwin:coachTwin('PREFERENCE_EMERGING'),
+    experimentSchedule:supportExperiment,
+  });
+  assert.equal(strategy?.mode,'REINFORCE');
+  assert.equal(strategy?.deliveryPolicy,'LIGHT');
+  assert.equal(strategy?.intervene,true);
+});
+
 test('one missed faded rep restores light support instead of fully re-teaching the player',()=>{
   const fadedMiss={
     version:1,active:true,strategyId:'fade',missionId:'m',behaviourKey:'FIGHT_SELECTION',behaviourLabel:'Fight Selection',
