@@ -395,6 +395,7 @@ export function runSimulationCareer(input:{
   seed:number;
 }):SimulationCareerReport{
   const random=rng(input.seed);
+  const intentRandom=rng((input.seed^0x5f3759df)>>>0);
   const rows:HistoryAnalysisRow[]=[];
   const events:SimulationGameEvent[]=[];
   const invariants:string[]=[];
@@ -452,7 +453,7 @@ export function runSimulationCareer(input:{
     if(mission?.status==='NOT_RELEVANT')missionsNotRelevant++;
     const rawIntentProbe=buildClimbIntentProbe(mission);
     const intentCorrectChance=clamp(.18+skill*.82-(draftKind==='NOVEL_CHAMPION'?.13:draftKind==='NOVEL_PICK'?.08:0),.08,.96);
-    const intentCorrect=rawIntentProbe&&mission?.status==='READY'?random()<intentCorrectChance:null;
+    const intentCorrect=rawIntentProbe&&mission?.status==='READY'?intentRandom()<intentCorrectChance:null;
     const intentOption=rawIntentProbe&&intentCorrect!==null
       ?rawIntentProbe.options.find(item=>(item.id===rawIntentProbe.answerKey)===intentCorrect)
       :null;
