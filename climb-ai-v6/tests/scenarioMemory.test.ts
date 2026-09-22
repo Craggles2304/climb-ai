@@ -133,13 +133,29 @@ test('Scenario Memory masters only after repeated clean comparable games and spa
   assert.ok(card.memoryStrength>=80);
 });
 
-test('a previously stable memory reopens when the comparable mistake returns',()=>{
+test('one isolated miss does not erase a previously stable memory',()=>{
   const memory=buildScenarioMemory([
     row(0,'GOOD'),
     row(1,'GOOD'),
     row(2,'GOOD'),
-    row(3,'IMPROVE'),
-    row(4,'GOOD'),
+    row(3,'GOOD'),
+    row(4,'IMPROVE'),
+    row(5,'GOOD'),
+  ]);
+  const card=memory.cards[0];
+  assert.notEqual(card.state,'REGRESSED');
+  assert.equal(memory.regressed,0);
+});
+
+test('a previously stable memory reopens only after sustained comparable misses',()=>{
+  const memory=buildScenarioMemory([
+    row(0,'GOOD'),
+    row(1,'GOOD'),
+    row(2,'GOOD'),
+    row(3,'GOOD'),
+    row(4,'IMPROVE'),
+    row(5,'IMPROVE'),
+    row(6,'IMPROVE'),
   ]);
   const card=memory.cards[0];
   assert.equal(card.state,'REGRESSED');
