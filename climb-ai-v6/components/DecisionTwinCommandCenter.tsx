@@ -7,6 +7,7 @@ import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionT
 import type {ClimbCurriculum,CurriculumLesson} from '@/lib/climbCurriculum';
 import type {ClimbCoachTwin,ClimbCoachBehaviourProfile,ClimbCoachMethodStats} from '@/lib/climbCoachTwin';
 import type {ClimbAutonomyProfile,ClimbAutonomyCard} from '@/lib/climbAutonomy';
+import type {ClimbInterventionValueProfile,ClimbInterventionValueCard} from '@/lib/climbInterventionValue';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -76,6 +77,20 @@ function AutonomyCard({item}:{item:ClimbAutonomyCard}){
     <small>{item.nextTest}</small>
   </article>;
 }
+function InterventionValueCard({item}:{item:ClimbInterventionValueCard}){
+  const diff=item.matchedResponseDifference;
+  const diffLabel=diff===null?'BUILDING':(diff>0?'+':'')+String(diff)+' pts';
+  const supported=item.supportedResponseRate===null?'BUILDING':item.supportedResponseRate+'%';
+  const faded=item.fadedResponseRate===null?'BUILDING':item.fadedResponseRate+'%';
+  return <article className={`dt5-transfer-card ${item.state.toLowerCase()}`}>
+    <div className="dt2-card-top"><span>{item.behaviourLabel}</span><b>{item.confidence} · {item.state.replaceAll('_',' ')}</b></div>
+    <h3>{diffLabel} matched response difference</h3>
+    <p>{item.evidence}</p>
+    <div className="dt2-mini-row"><span>SUPPORTED {supported}</span><span>FADED {faded}</span></div>
+    <div className="dt2-mini-row"><span>{item.comparablePairs} matched pairs</span><span>{item.matchedCells} context/difficulty cells</span></div>
+    <small>{item.interpretation}</small>
+  </article>;
+}
 function CurriculumQueueItem({item,index}:{item:CurriculumLesson;index:number}){
   return <article className={`dt6-queue-item ${item.readiness.toLowerCase()}`}>
     <div className="dt6-queue-index">{String(index+1).padStart(2,'0')}</div>
@@ -114,6 +129,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [curriculum,setCurriculum]=useState<ClimbCurriculum|null>(null);
   const [coachTwin,setCoachTwin]=useState<ClimbCoachTwin|null>(null);
   const [autonomyProfile,setAutonomyProfile]=useState<ClimbAutonomyProfile|null>(null);
+  const [interventionValue,setInterventionValue]=useState<ClimbInterventionValueProfile|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -121,7 +137,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setCoachTwin(null);setAutonomyProfile(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setCoachTwin(null);setAutonomyProfile(null);setInterventionValue(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -129,7 +145,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load CLIMB Profile.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setCoachTwin(body?.coachTwin??null);setAutonomyProfile(body?.autonomyProfile??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setCoachTwin(body?.coachTwin??null);setAutonomyProfile(body?.autonomyProfile??null);setInterventionValue(body?.interventionValue??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load CLIMB Profile.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -149,6 +165,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const coachProfiles=useMemo(()=>coachTwin?.behaviourProfiles?.slice(0,3)??[],[coachTwin]);
   const coachMethods=useMemo(()=>coachTwin?.overallMethods?.slice().sort((a,b)=>(b.observedGames-a.observedGames)||((b.executionRate??-1)-(a.executionRate??-1))).slice(0,4)??[],[coachTwin]);
   const autonomyCards=useMemo(()=>autonomyProfile?.cards?.slice(0,5)??[],[autonomyProfile]);
+  const interventionCards=useMemo(()=>interventionValue?.cards?.slice(0,5)??[],[interventionValue]);
 
   if(!valid)return null;
 
@@ -296,6 +313,23 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         </div>
         {autonomyCards.length?<div className="dt5-transfer-grid">{autonomyCards.map(item=><AutonomyCard key={item.behaviourKey} item={item}/>)}</div>:<div className="dt2-empty">NO VERIFIED AUTONOMY TESTS YET · CLEAN WITH SUPPORT IS NOT THE SAME AS INDEPENDENT OWNERSHIP</div>}
         <div className="dt5-boundary">{autonomyProfile?.boundary||'One clean faded game can never create autonomy.'}</div>
+      </div>
+
+      <div className="dt5-map glass">
+        <div className="dt5-map-head">
+          <div>
+            <span>CLIMB INTERVENTION VALUE</span>
+            <h3>Is coaching support actually associated with a cleaner decision here — or were you already going to get it right?</h3>
+            <p>{interventionValue?.summary||'Intervention Value is waiting for matched supported and faded reps.'}</p>
+          </div>
+          <div className="dt5-map-stats">
+            <div><b>{interventionValue?.strongSupportLiftSignals??0}</b><span>STRONG SUPPORT SIGNALS</span></div>
+            <div><b>{interventionValue?.supportLiftSignals??0}</b><span>SUPPORT LIFT SIGNALS</span></div>
+            <div><b>{interventionValue?.fadeBetterSignals??0}</b><span>FADE BETTER</span></div>
+          </div>
+        </div>
+        {interventionCards.length?<div className="dt5-transfer-grid">{interventionCards.map(item=><InterventionValueCard key={item.behaviourKey} item={item}/>)}</div>:<div className="dt2-empty">NO MATCHED SUPPORT VS FADE COMPARISON YET · OP CLIMB WILL NOT CLAIM VALUE FROM UNMATCHED GAMES</div>}
+        <div className="dt5-boundary">{interventionValue?.boundary||'Matched response difference is association evidence, not proof of causation.'}</div>
       </div>
       <div className="dt4-lab glass">
         <div className="dt4-lab-head">
