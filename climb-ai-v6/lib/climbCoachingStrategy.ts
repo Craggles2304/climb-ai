@@ -299,6 +299,7 @@ export function buildClimbCoachingStrategy(input:{
   const emit=(requested:ClimbCoachingStrategyMode)=>{
     let mode=requested;
     if(contract?.supportPolicy==='FULL'&&mode==='FADE')mode='REINFORCE';
+    if(contract?.supportPolicy==='LIGHT'&&mode==='FADE')mode='REINFORCE';
     if(contract?.supportPolicy==='LIGHT'&&mode==='TEACH'&&!repeatedKnowledgeGap)mode='REINFORCE';
     if(contract?.supportPolicy==='FADED'&&!safetyNeedsSupport&&mode!=='DIAGNOSE')mode='FADE';
     return strategyFor(mode,{...facts,curriculumConstrained:Boolean(contract&&mode!==requested)});
