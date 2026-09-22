@@ -128,7 +128,7 @@ const RULES:Record<DecisionBehaviourKey,string>={
   SURVIVAL_VALUE:'WHEN YOUR LIFE HOLDS HIGH TEAM VALUE, SURVIVAL OUTRANKS ACCESS TO A LOWER-VALUE TARGET.',
 };
 
-const BOUNDARY='Scenario Memory uses repeated verified Decision Graph evidence. One game cannot create mastery, unobserved situations do not count as reps, and a mastered memory can reopen if comparable mistakes return.';
+const BOUNDARY='Scenario Memory uses repeated verified Decision Graph evidence. One game cannot create mastery, unobserved situations do not count as reps or move the comparable-evidence window, and a mastered memory can reopen only if comparable mistakes return.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
 function pct(value:number,total:number){return total?Math.round(value/total*100):null}
@@ -206,7 +206,7 @@ function summaryFor(card:{
 }
 
 export function buildScenarioMemory(rows:HistoryAnalysisRow[],generatedAt=new Date().toISOString()):ScenarioMemoryProfile{
-  const ordered=[...rows].filter(row=>row.analysis?.version===1).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt)).slice(-50);
+  const ordered=[...rows].filter(row=>row.analysis?.version===1).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
   const groups=new Map<string,{behaviour:DecisionBehaviourKey;tag:DecisionSituationTag;games:Map<number,GameObservation>}>();
 
   ordered.forEach((row,rowIndex)=>{
@@ -227,7 +227,11 @@ export function buildScenarioMemory(rows:HistoryAnalysisRow[],generatedAt=new Da
   });
 
   const cards=[...groups.values()].map(group=>{
-    const observations=[...group.games.values()].sort((a,b)=>a.rowIndex-b.rowIndex);
+    // Retention is bounded by comparable evidence, not by unrelated matches. An
+    // unobserved/irrelevant game must never evict a clean comparison and create a
+    // synthetic regression. New comparable decisions are the only thing that can
+    // move the 50-rep memory window.
+    const observations=[...group.games.values()].sort((a,b)=>a.rowIndex-b.rowIndex).slice(-50);
     const comparableGames=observations.length;
     const cleanGames=observations.filter(item=>item.verdict==='GOOD').length;
     const improveGames=comparableGames-cleanGames;
