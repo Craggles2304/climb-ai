@@ -267,7 +267,6 @@ function fakeSummary(clean:boolean|null,atSeconds:number):StrengthTimeline{
     modelNote:'Synthetic Simulation Lab strength timeline.',
   };
 }
-function memoryComparable(card:ScenarioMemoryCard|null){return card?.comparableGames??0}
 function chanceFor(input:{
   archetype:SimulationArchetype;
   skill:number;
@@ -435,7 +434,6 @@ export function runSimulationCareer(input:{
     if(preLevel!==null&&postLevel!==null&&postLevel>preLevel)promotions++;
     if(preLevel!==null&&postLevel!==null&&postLevel<preLevel)demotions++;
 
-    const preMemory=bestMemory(pre.memory);
     const postMemory=bestMemory(post.memory);
     const postTransfer=transferCard(post.transfer);
     invariants.push(...transitionInvariant({
