@@ -27,6 +27,7 @@ export interface ClimbRepEvidence{
   transferGames:number;
   transferCleanStreak:number;
   transferStrength:number|null;
+  previousLevel?:ClimbRepLevel|null;
 }
 
 const STAGES:Record<ClimbRepLevel,{stage:ClimbRepStage;label:string;objective:string;difficultyRule:string;promotionGate:string}>={
@@ -86,11 +87,23 @@ function levelFor(input:ClimbRepEvidence):ClimbRepLevel{
 }
 
 export function buildClimbRepLadder(input:ClimbRepEvidence):ClimbRepLadder{
-  const level=levelFor(input);
+  const rawLevel=levelFor(input);
+  const previous=input.previousLevel??null;
+  let level:ClimbRepLevel=rawLevel;
+  if(previous!==null&&input.phase==='REOPEN'){
+    level=Math.max(1,previous-1) as ClimbRepLevel;
+  }else if(previous!==null&&rawLevel<previous){
+    level=previous;
+  }
   const stage=STAGES[level];
-  const reason=input.phase==='REOPEN'
-    ?'Verified comparable mistakes returned after prior progress, so OP CLIMB has reduced the difficulty to rebuild clean execution before adding complexity again.'
-    :level===1
+  const heldAfterSingleMiss=previous!==null&&rawLevel<previous&&input.phase!=='REOPEN';
+  const reason=input.phase==='REOPEN'&&previous!==null
+    ?'Sustained verified regression returned after prior progress, so OP CLIMB has reduced difficulty by one layer instead of wiping the learned progression.'
+    :heldAfterSingleMiss
+      ?'The latest evidence is weaker, but one or two misses do not erase earned difficulty. Hold this level until sustained comparable regression is verified.'
+      :input.phase==='REOPEN'
+        ?'Verified comparable mistakes returned after prior progress, so OP CLIMB has reduced the difficulty to rebuild clean execution before adding complexity again.'
+        :level===1
       ?'The decision is not yet supported by enough repeated clean evidence to add execution complexity.'
       :level===2
         ?'The trigger is now recognised in repeated evidence; the next job is reliably executing the correct branch.'
@@ -115,7 +128,7 @@ export function buildClimbRepLadder(input:ClimbRepEvidence):ClimbRepLadder{
     objective:stage.objective,
     difficultyRule:stage.difficultyRule,
     promotionGate:stage.promotionGate,
-    demotionRule:'If repeated comparable IMPROVE evidence returns, reduce difficulty to the last stable layer before asking for harder transfer.',
+    demotionRule:'Only sustained comparable regression reduces difficulty, and each verified regression steps down one layer rather than wiping multiple earned levels.',
     reason,
     evidence,
   };
