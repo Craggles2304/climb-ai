@@ -94,6 +94,27 @@ test('same champion and same context after mastery is retention, not transfer',(
   assert.equal(card.transferStrength,0);
 });
 
+test('historically mastered local learning keeps its transfer record after one local miss',()=>{
+  const {memory,transfer}=build([
+    row(0,'Aphelios','IMPROVE'),
+    row(1,'Aphelios','GOOD'),
+    row(2,'Aphelios','GOOD'),
+    row(3,'Aphelios','GOOD'),
+    row(4,'Aphelios','GOOD'),
+    row(5,'Jinx','GOOD','PICK_PRESSURE'),
+    row(6,'Jinx','GOOD','PICK_PRESSURE'),
+    row(7,'Aphelios','IMPROVE','MULTI_ACCESS'),
+  ]);
+  const local=memory.cards.find(card=>card.behaviourKey==='CARRY_PRESERVATION'&&card.situationTag==='MULTI_ACCESS');
+  assert.ok(local);
+  assert.notEqual(local?.state,'MASTERED');
+  const card=transfer.cards[0];
+  assert.ok(card);
+  assert.equal(card.sourceChampion,'Aphelios');
+  assert.equal(card.transferGames,2);
+  assert.match(transfer.boundary,/does not erase/i);
+});
+
 test('clean decisions on a different champion begin transfer but do not instantly own the principle',()=>{
   const {transfer}=build([
     row(0,'Aphelios','IMPROVE'),
