@@ -222,6 +222,8 @@ test('Intent Gap is frozen server-side and Companion withholds the cue until ans
   assert.ok(preload.includes("answerIntentProbe:(context)=>ipcRenderer.invoke('companion:intent-probe',context)"));
   assert.ok(companion.includes('ANSWER THE INTENT CHECK ABOVE TO UNLOCK THIS COACHING CUE'));
   assert.ok(companion.includes('FREEZE YOUR OWN DECISION FIRST · THE COACHING CUE IS DELIBERATELY HIDDEN'));
+  assert.ok(companion.includes('SKIP · SHOW COACHING CUE'));
+  assert.ok(companion.includes('INTENT CHECK SKIPPED · NO KNOWLEDGE/EXECUTION DIAGNOSIS WILL BE CREATED'));
   assert.ok(post.includes('INTENT GAP · KNOWING VS DOING'));
   assert.ok(post.includes('function renderIntentGapReview'));
 });
