@@ -58,6 +58,8 @@ export interface ClimbMatchMissionReview{
   targetTag:DecisionSituationTag|null;
   repLevel:ClimbRepLevel|null;
   repStage:ClimbRepStage|null;
+  learningContractId?:string|null;
+  autonomousTestMode?:ClimbMatchMission['autonomousTestMode'];
   status:ClimbMatchMissionReviewStatus;
   matchedMoments:number;
   cleanMoments:number;
@@ -225,7 +227,9 @@ export function reviewClimbMatchMission(
   if(!mission||mission.status!=='READY'){
     return{
       version:1,active:false,missionId:mission?.id??null,behaviourKey:mission?.behaviourKey??null,behaviourLabel:mission?.behaviourLabel??null,
-      targetTag:mission?.targetTag??null,repLevel:mission?.repLevel??null,repStage:mission?.repStage??null,status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
+      targetTag:mission?.targetTag??null,repLevel:mission?.repLevel??null,repStage:mission?.repStage??null,
+      learningContractId:mission?.learningContractId??null,autonomousTestMode:mission?.autonomousTestMode??null,
+      status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
       note:mission?.status==='NOT_RELEVANT'?'The active Curriculum lesson did not have a strong draft-specific repetition in this game, so OP CLIMB did not force one.':'No frozen CLIMB match mission was available for review.',
       boundary:BOUNDARY,
     };
@@ -248,6 +252,8 @@ export function reviewClimbMatchMission(
     targetTag:mission.targetTag,
     repLevel:mission.repLevel??null,
     repStage:mission.repStage??null,
+    learningContractId:mission.learningContractId??null,
+    autonomousTestMode:mission.autonomousTestMode??null,
     status,
     matchedMoments:matched.length,
     cleanMoments,
