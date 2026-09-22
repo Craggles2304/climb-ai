@@ -118,12 +118,12 @@ function schedule(input:{
   const curriculumBlocksFade=
     input.status==='SCHEDULED'
     &&input.policy==='NONE'
-    &&input.mission.autonomousSupportPolicy==='FULL';
+    &&['FULL','LIGHT'].includes(String(input.mission.autonomousSupportPolicy));
   const status:ClimbExperimentStatus=curriculumBlocksFade?'DEFERRED':input.status;
   const type:ClimbExperimentType=curriculumBlocksFade?'SUPPORTED_RETEST':input.type;
   const policy:ClimbExperimentDeliveryPolicy=curriculumBlocksFade?'LIGHT':input.policy;
   const safetyReason=curriculumBlocksFade
-    ?'Autonomous Curriculum V6 still requires FULL learning support for this contract, so a FADE holdout is deferred until the curriculum reaches a support-fading gate.'
+    ?'Autonomous Curriculum V6 still requires active learning support for this contract, so a FADE holdout is deferred until the curriculum reaches a support-fading gate.'
     :input.safetyReason;
   const informationNeed=curriculumBlocksFade
     ?'Build the current learning contract far enough for V6 to permit a clean support-removal experiment.'
