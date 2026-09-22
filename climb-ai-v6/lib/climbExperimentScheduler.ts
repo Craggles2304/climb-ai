@@ -172,6 +172,19 @@ export function buildClimbExperimentSchedule(input:{
     });
   }
 
+  if(intent.recentDiagnosis==='EXECUTION_GAP'&&intent.recentSameDiagnosisStreak>=2){
+    return schedule({
+      mission,status:'SCHEDULED',type:'SUPPORTED_RETEST',policy:'LIGHT',
+      supported:counts.supported,faded:counts.faded,pairs:counts.pairs,
+      intentDiagnosis:intent.recentDiagnosis,intentStreak:intent.recentSameDiagnosisStreak,
+      autonomyState,valueState,informationGain:'HIGH',
+      hypothesis:'The player is identifying the correct branch before the cue but execution is still breaking down.',
+      informationNeed:'Use one concise scaffold to test whether reducing execution friction restores the verified decision before another holdout.',
+      safetyReason:'Repeated execution-gap evidence makes an immediate support-removal comparison less informative than a supported execution retest.',
+      successRead:'A clean supported execution rep can justify another FADE holdout once execution stabilises.',
+    });
+  }
+
   if(autonomyState==='REGRESSION_WATCH'){
     return schedule({
       mission,status:'SCHEDULED',type:'SUPPORTED_RETEST',policy:'LIGHT',
@@ -195,6 +208,19 @@ export function buildClimbExperimentSchedule(input:{
       informationNeed:'Diagnose whether the missing component is recognition, timing or execution before scheduling another holdout.',
       safetyReason:'Support dependence is already observed; blindly repeating FADE would measure failure without isolating the missing component.',
       successRead:'A diagnostic clean rep with correct pre-cue intent narrows the next experiment to execution support rather than re-teaching.',
+    });
+  }
+
+  if(autonomyState==='AUTONOMOUS'){
+    return schedule({
+      mission,status:'SCHEDULED',type:'AUTONOMY_RECHECK',policy:'NONE',
+      supported:counts.supported,faded:counts.faded,pairs:counts.pairs,
+      intentDiagnosis:intent.recentDiagnosis,intentStreak:intent.recentSameDiagnosisStreak,
+      autonomyState,valueState,informationGain:'MEDIUM',
+      hypothesis:'The decision already has repeated independent evidence, so support should stay minimal unless regression appears.',
+      informationNeed:'Keep the adaptive overlay off and verify that autonomy continues to hold in this matched rep.',
+      safetyReason:'Sample balancing must not reintroduce scaffolding to an already-autonomous decision without regression evidence.',
+      successRead:'Another clean faded rep preserves autonomy; repeated misses will trigger support restoration through the higher-priority regression gate.',
     });
   }
 
