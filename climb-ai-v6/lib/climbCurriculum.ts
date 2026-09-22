@@ -119,8 +119,14 @@ function behaviourStable(memory:ScenarioMemoryProfile,transfer:DecisionTransferP
   if(tx?.state==='PRINCIPLE_OWNED')return true;
   return mem?.state==='MASTERED';
 }
-function phaseFor(mem:ScenarioMemoryCard|null,tx:DecisionTransferCard|null):CurriculumPhase{
+function phaseFor(mem:ScenarioMemoryCard|null,tx:DecisionTransferCard|null,previousPhase:CurriculumPhase|null=null):CurriculumPhase{
   if(mem?.state==='REGRESSED'||tx?.state==='REGRESSED')return'REOPEN';
+  // A regression episode is a learning contract, not a one-game label. Once
+  // reopened, require the published recovery gate (three clean comparable
+  // decisions) before returning to normal progression. This prevents a single
+  // clean rep from closing the episode and a later miss streak from reopening it
+  // as a brand-new demotion.
+  if(previousPhase==='REOPEN'&&(mem?.cleanStreak??0)<3)return'REOPEN';
   if(tx?.state==='PRINCIPLE_OWNED')return'GRADUATED';
   if(mem?.state==='MASTERED')return'TRANSFER';
   if(mem?.state==='STABILISING')return'STABILISE';
@@ -182,7 +188,7 @@ function makeLesson(
   const tx=transferCard(transfer,key);
   const prerequisite=PREREQUISITE[key]??null;
   const prerequisiteStable=prerequisite?behaviourStable(memory,transfer,prerequisite):true;
-  const phase=phaseFor(mem,tx);
+  const phase=phaseFor(mem,tx,previousState.phase);
   const readiness:CurriculumReadiness=phase==='GRADUATED'
     ?'COMPLETE'
     :prerequisite&&!prerequisiteStable
