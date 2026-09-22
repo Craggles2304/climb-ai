@@ -81,6 +81,37 @@ test('coaching restraint allows no active recommendation when evidence is only a
   assert.equal(matrix.candidates[0]?.state,'DORMANT');
 });
 
+test('active learning contract holds against a merely higher-scoring challenger',()=>{
+  const first=rankCareerMatrixSignals([
+    signal('FIGHT_SELECTION',62,75,'HIGH',84),
+    signal('RESET_DISCIPLINE',48,60,'HIGH',68),
+  ],{gamesAnalyzed:10});
+  assert.equal(first.recommendedSkill,'FIGHT_SELECTION');
+
+  const second=rankCareerMatrixSignals([
+    signal('FIGHT_SELECTION',30,70,'HIGH',60),
+    signal('RESET_DISCIPLINE',78,85,'HIGH',100),
+  ],{gamesAnalyzed:11,activeBehaviourKey:'FIGHT_SELECTION',previous:first});
+  assert.equal(second.recommendedSkill,'FIGHT_SELECTION');
+  assert.equal(second.selectionMode,'HOLD');
+  assert.match(second.recommendationReason,/until its current ownership gate is complete/i);
+});
+
+test('verified regression can interrupt the active learning contract',()=>{
+  const first=rankCareerMatrixSignals([
+    signal('FIGHT_SELECTION',58,72,'HIGH',82),
+    signal('DEATH_RECOVERY',35,45,'HIGH',55),
+  ],{gamesAnalyzed:10});
+  assert.equal(first.recommendedSkill,'FIGHT_SELECTION');
+
+  const second=rankCareerMatrixSignals([
+    signal('FIGHT_SELECTION',45,70,'HIGH',70),
+    signal('DEATH_RECOVERY',92,90,'HIGH',100,{regressionRisk:100}),
+  ],{gamesAnalyzed:11,activeBehaviourKey:'FIGHT_SELECTION',previous:first});
+  assert.equal(second.recommendedSkill,'DEATH_RECOVERY');
+  assert.equal(second.selectionMode,'REGRESSION_OVERRIDE');
+});
+
 test('multi-skill gold-standard Coach Bench cases all pass',()=>{
   const report=runClimbCareerMatrixBench();
   assert.equal(report.cases,7);
