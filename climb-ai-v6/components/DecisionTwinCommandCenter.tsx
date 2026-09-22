@@ -6,6 +6,7 @@ import type {ScenarioMemoryProfile,ScenarioMemoryCard} from '@/lib/scenarioMemor
 import type {DecisionTransferProfile,DecisionTransferCard} from '@/lib/decisionTransfer';
 import type {ClimbCurriculum,CurriculumLesson} from '@/lib/climbCurriculum';
 import type {ClimbCoachTwin,ClimbCoachBehaviourProfile,ClimbCoachMethodStats} from '@/lib/climbCoachTwin';
+import type {ClimbAutonomyProfile,ClimbAutonomyCard} from '@/lib/climbAutonomy';
 
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -61,6 +62,20 @@ function CoachProfileCard({item}:{item:ClimbCoachBehaviourProfile}){
     <div className="dt2-mini-row"><span>{item.totalObserved} observed tests</span><span>{item.preferenceConfidence} confidence</span></div>
   </article>;
 }
+function AutonomyCard({item}:{item:ClimbAutonomyCard}){
+  const strength=item.autonomyStrength===null?'BUILDING':item.autonomyStrength+'/100';
+  const support=item.supportedCleanRate===null?'BUILDING':item.supportedCleanRate+'%';
+  const faded=item.fadedCleanRate===null?'NO FADE TEST':item.fadedCleanRate+'%';
+  return <article className={`dt5-transfer-card ${item.state.toLowerCase()}`}>
+    <div className="dt2-card-top"><span>{item.behaviourLabel}</span><b>{item.state.replaceAll('_',' ')}</b></div>
+    <h3>{strength} autonomy</h3>
+    <p>{item.evidence}</p>
+    <div className="dt5-transfer-meter"><i style={{width:String(item.autonomyStrength??0)+'%'}}/><span>{strength}</span></div>
+    <div className="dt2-mini-row"><span>SUPPORTED {support}</span><span>FADED {faded}</span></div>
+    <div className="dt2-mini-row"><span>{item.independentAlignedGames} independent aligned</span><span>{item.preCueCorrectRate===null?'INTENT BUILDING':item.preCueCorrectRate+'% pre-cue correct'}</span></div>
+    <small>{item.nextTest}</small>
+  </article>;
+}
 function CurriculumQueueItem({item,index}:{item:CurriculumLesson;index:number}){
   return <article className={`dt6-queue-item ${item.readiness.toLowerCase()}`}>
     <div className="dt6-queue-index">{String(index+1).padStart(2,'0')}</div>
@@ -98,6 +113,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const [transfer,setTransfer]=useState<DecisionTransferProfile|null>(null);
   const [curriculum,setCurriculum]=useState<ClimbCurriculum|null>(null);
   const [coachTwin,setCoachTwin]=useState<ClimbCoachTwin|null>(null);
+  const [autonomyProfile,setAutonomyProfile]=useState<ClimbAutonomyProfile|null>(null);
   const [loading,setLoading]=useState(false);
   const [error,setError]=useState('');
   const [challengeChoice,setChallengeChoice]=useState<'ACTUAL'|'ALTERNATIVE'|null>(null);
@@ -105,7 +121,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
 
   useEffect(()=>{
     let cancelled=false;
-    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setCoachTwin(null);setError('');return}
+    if(!valid){setTwin(null);setMemory(null);setTransfer(null);setCurriculum(null);setCoachTwin(null);setAutonomyProfile(null);setError('');return}
     setLoading(true);setError('');
     fetch(`/api/decision-twin?accountId=${encodeURIComponent(accountId)}`,{cache:'no-store'})
       .then(async response=>{
@@ -113,7 +129,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         if(!response.ok)throw new Error(body?.error||'Could not load CLIMB Profile.');
         return body;
       })
-      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setCoachTwin(body?.coachTwin??null);setChallengeChoice(null)}})
+      .then(body=>{if(!cancelled){setTwin(body?.twin??null);setMemory(body?.scenarioMemory??null);setTransfer(body?.decisionTransfer??null);setCurriculum(body?.curriculum??null);setCoachTwin(body?.coachTwin??null);setAutonomyProfile(body?.autonomyProfile??null);setChallengeChoice(null)}})
       .catch(err=>{if(!cancelled)setError(err instanceof Error?err.message:'Could not load CLIMB Profile.')})
       .finally(()=>{if(!cancelled)setLoading(false)});
     return()=>{cancelled=true};
@@ -132,6 +148,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const curriculumQueue=useMemo(()=>curriculum?.queue?.slice(0,4)??[],[curriculum]);
   const coachProfiles=useMemo(()=>coachTwin?.behaviourProfiles?.slice(0,3)??[],[coachTwin]);
   const coachMethods=useMemo(()=>coachTwin?.overallMethods?.slice().sort((a,b)=>(b.observedGames-a.observedGames)||((b.executionRate??-1)-(a.executionRate??-1))).slice(0,4)??[],[coachTwin]);
+  const autonomyCards=useMemo(()=>autonomyProfile?.cards?.slice(0,5)??[],[autonomyProfile]);
 
   if(!valid)return null;
 
@@ -262,6 +279,23 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
         {coachProfiles.length?<div className="dt5-transfer-grid">{coachProfiles.map(item=><CoachProfileCard key={item.behaviourKey} item={item}/>)}</div>:<div className="dt2-empty">NO COACHING-FORMAT PREFERENCE YET · OP CLIMB WILL ROTATE METHODS BEFORE IT CLAIMS ONE FITS YOU BETTER</div>}
         {coachMethods.length?<div className="dt5-transfer-grid">{coachMethods.map(item=><CoachMethodCard key={item.method} item={item}/>)}</div>:null}
         <div className="dt5-boundary">{coachTwin?.boundary||'One clean response never defines your coaching preference.'}</div>
+      </div>
+
+      <div className="dt5-map glass">
+        <div className="dt5-map-head">
+          <div>
+            <span>CLIMB AUTONOMY</span>
+            <h3>Can you still make the right decision when OP CLIMB stops carrying the cue?</h3>
+            <p>{autonomyProfile?.summary||'Autonomy is still building from supported versus faded coaching tests.'}</p>
+          </div>
+          <div className="dt5-map-stats">
+            <div><b>{autonomyProfile?.autonomous??0}</b><span>AUTONOMOUS</span></div>
+            <div><b>{autonomyProfile?.supportDependent??0}</b><span>SUPPORT DEPENDENT</span></div>
+            <div><b>{autonomyProfile?.regressionWatch??0}</b><span>REGRESSION WATCH</span></div>
+          </div>
+        </div>
+        {autonomyCards.length?<div className="dt5-transfer-grid">{autonomyCards.map(item=><AutonomyCard key={item.behaviourKey} item={item}/>)}</div>:<div className="dt2-empty">NO VERIFIED AUTONOMY TESTS YET · CLEAN WITH SUPPORT IS NOT THE SAME AS INDEPENDENT OWNERSHIP</div>}
+        <div className="dt5-boundary">{autonomyProfile?.boundary||'One clean faded game can never create autonomy.'}</div>
       </div>
       <div className="dt4-lab glass">
         <div className="dt4-lab-head">
