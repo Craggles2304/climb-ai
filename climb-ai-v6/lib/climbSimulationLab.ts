@@ -15,6 +15,8 @@ import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
 import type {StrengthTimeline,FightReview} from './riot/liveStrength';
 
+export type SimulationPolicyId='PRODUCT'|'ALWAYS_SCAFFOLD'|'EARLY_FADE';
+
 export type SimulationArchetypeId=
   |'FAST_LEARNER'
   |'STEADY_LEARNER'
@@ -300,11 +302,12 @@ function chanceFor(input:{
   level:number;
   novel:boolean;
   missionReady:boolean;
+  coachingAdjustment?:number;
 }){
   const difficultyPenalty=[0,.00,.06,.13,.22,.29][Math.max(1,Math.min(5,input.level))]??0;
   const novelty=input.novel?input.archetype.novelPenalty:0;
   const coaching=input.missionReady?.045:0;
-  return clamp(.10+input.skill*.92-difficultyPenalty-novelty+coaching,.04,.97);
+  return clamp(.10+input.skill*.92-difficultyPenalty-novelty+coaching+(input.coachingAdjustment??0),.04,.97);
 }
 function applyLearning(input:{
   archetype:SimulationArchetype;
@@ -316,6 +319,60 @@ function applyLearning(input:{
   const signal=input.clean?1:.32;
   const gain=input.archetype.learningRate*novelScale*signal*(1-input.skill);
   return Math.min(input.archetype.maxSkill,clamp(input.skill+gain));
+}
+
+function policyStrategy(
+  strategy:ClimbCoachingStrategy|null,
+  mission:ClimbMatchMission|null,
+  policy:SimulationPolicyId,
+):ClimbCoachingStrategy|null{
+  if(!strategy||!mission||mission.status!=='READY'||policy==='PRODUCT')return strategy;
+  if(policy==='ALWAYS_SCAFFOLD'){
+    if(strategy.intervene)return strategy;
+    return{
+      ...strategy,
+      id:strategy.id+':bench-always-scaffold',
+      mode:'REINFORCE',
+      intervene:true,
+      deliveryPolicy:'LIGHT',
+      title:'BENCH · ALWAYS SCAFFOLD',
+      playerMessage:'BENCH BASELINE: KEEP ONE SUPPORT CUE ACTIVE.',
+      decision:'Synthetic Coach Bench baseline keeps light scaffolding active instead of testing autonomy.',
+      coachDirective:'Keep one concise cue active for the matching mission.',
+      successDefinition:'Synthetic benchmark only.',
+      autonomyTest:false,
+      experimentId:null,
+      experimentType:null,
+      experimentInformationNeed:null,
+    };
+  }
+  if(mission.repLevel<2)return strategy;
+  return{
+    ...strategy,
+    id:strategy.id+':bench-early-fade',
+    mode:'FADE',
+    intervene:false,
+    deliveryPolicy:'NONE',
+    title:'BENCH · EARLY FADE',
+    playerMessage:'BENCH BASELINE: REMOVE SUPPORT EARLY.',
+    decision:'Synthetic Coach Bench baseline fades support from Rep Level 2 without production safety gates.',
+    coachDirective:'Remove the adaptive cue and observe independent execution.',
+    successDefinition:'Synthetic benchmark only.',
+    autonomyTest:true,
+    experimentId:null,
+    experimentType:null,
+    experimentInformationNeed:null,
+  };
+}
+function benchCoachingAdjustment(strategy:ClimbCoachingStrategy|null,skill:number,enabled:boolean){
+  if(!enabled||!strategy)return 0;
+  if(strategy.mode==='TEACH')return skill<.62?.10:.045;
+  if(strategy.mode==='REINFORCE')return skill<.72?.065:.03;
+  if(strategy.mode==='DIAGNOSE')return skill<.58?.045:.02;
+  if(skill<.42)return-.12;
+  if(skill<.58)return-.07;
+  if(skill<.70)return-.025;
+  return .005;
 }
 function transitionInvariant(input:{
   archetype:SimulationArchetypeId;
@@ -439,7 +496,10 @@ export function runSimulationCareer(input:{
   archetype:SimulationArchetype;
   games:number;
   seed:number;
+  policy?:SimulationPolicyId;
+  policyAffectsOutcomes?:boolean;
 }):SimulationCareerReport{
+  const policy=input.policy??'PRODUCT';
   const random=rng(input.seed);
   const intentRandom=rng((input.seed^0x5f3759df)>>>0);
   const rows:HistoryAnalysisRow[]=[];
@@ -506,14 +566,15 @@ export function runSimulationCareer(input:{
     const intentProbe=rawIntentProbe&&intentOption
       ?answerClimbIntentProbe(rawIntentProbe,intentOption.id,at)
       :rawIntentProbe;
-    const experimentSchedule=buildClimbExperimentSchedule({rows,mission});
-    const coachingStrategy=buildClimbCoachingStrategy({
+    const experimentSchedule=policy==='PRODUCT'?buildClimbExperimentSchedule({rows,mission}):null;
+    const baseCoachingStrategy=buildClimbCoachingStrategy({
       rows,
       curriculum:pre.curriculum,
       mission,
       coachTwin:pre.coachTwin,
       experimentSchedule,
     });
+    const coachingStrategy=policyStrategy(baseCoachingStrategy,mission,policy);
     const coachIntervention=selectClimbCoachIntervention({
       twin:pre.coachTwin,
       mission,
@@ -526,7 +587,14 @@ export function runSimulationCareer(input:{
     const forcedUnobserved=!relevant||(missionReady&&random()<input.archetype.notObservedRate);
     const novel=draftKind==='NOVEL_PICK'||draftKind==='NOVEL_CHAMPION';
     const level=mission?.repLevel??preLevel??1;
-    const clean=forcedUnobserved?null:random()<chanceFor({archetype:input.archetype,skill,level,novel,missionReady:Boolean(missionReady)});
+    const clean=forcedUnobserved?null:random()<chanceFor({
+      archetype:input.archetype,
+      skill,
+      level,
+      novel,
+      missionReady:Boolean(missionReady),
+      coachingAdjustment:benchCoachingAdjustment(coachingStrategy,skill,Boolean(input.policyAffectsOutcomes)),
+    });
 
     if(clean===null)notObserved++;
     else if(clean)goodDecisions++;
