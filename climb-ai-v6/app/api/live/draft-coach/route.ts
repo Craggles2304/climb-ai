@@ -656,6 +656,8 @@ export async function POST(req:NextRequest){
       situationContext,
       simulation:decisionSimulation,
     });
+    const learningContract=context.curriculum.autonomous?.activeContract??null;
+    const transferDirective=learningContract?.testDirective??null;
     const decisionTransferPrime=selectDecisionTransferPrime({
       transfer:context.decisionTransfer,
       memory:context.scenarioMemory,
@@ -664,6 +666,8 @@ export async function POST(req:NextRequest){
       simulation:decisionSimulation,
       champion,
       role:roleResolution.role,
+      enabled:transferDirective?.mode==='TRANSFER_TEST',
+      behaviourKey:transferDirective?.behaviourKey??null,
     });
     const climbMission=buildClimbMatchMission({
       lesson:context.curriculum.status==='ACTIVE'?context.curriculum.currentLesson:null,
@@ -672,6 +676,7 @@ export async function POST(req:NextRequest){
       champion,
       role:roleResolution.role,
       transferPrime:decisionTransferPrime,
+      learningContract,
     });
     const intentProbe=buildClimbIntentProbe(climbMission);
     const experimentSchedule=buildClimbExperimentSchedule({
@@ -710,6 +715,7 @@ export async function POST(req:NextRequest){
       decisionSimulation,
       scenarioPrime,
       decisionTransferPrime,
+      autonomousCurriculum:context.curriculum.autonomous??null,
       climbMission,
       intentProbe,
       experimentSchedule,
