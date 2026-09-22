@@ -9,6 +9,7 @@ import {reviewClimbMatchMission,type ClimbMatchMission,type ClimbMatchMissionRev
 import {reviewClimbCoachIntervention,type ClimbCoachIntervention,type ClimbCoachInterventionReview} from './climbCoachTwin';
 import {reviewClimbCoachingStrategy,type ClimbCoachingStrategy,type ClimbCoachingStrategyReview} from './climbCoachingStrategy';
 import {reviewClimbIntentGap,type ClimbIntentProbe,type ClimbIntentGapReview} from './climbIntentGap';
+import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExperimentReview} from './climbExperimentScheduler';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -69,6 +70,7 @@ export interface LockedDecisionPlan{
   coachIntervention?:ClimbCoachIntervention|null;
   coachingStrategy?:ClimbCoachingStrategy|null;
   intentProbe?:ClimbIntentProbe|null;
+  experimentSchedule?:ClimbExperimentSchedule|null;
 }
 
 export interface DecisionGraphNode{
@@ -129,6 +131,7 @@ export interface DecisionGraph{
     coachIntervention:ClimbCoachInterventionReview;
     coachingStrategy:ClimbCoachingStrategyReview;
     intentGap:ClimbIntentGapReview;
+    experimentSchedule:ClimbExperimentReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -514,6 +517,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const coachInterventionReview=reviewClimbCoachIntervention(plan?.coachIntervention,climbMissionReview);
   const coachingStrategyReview=reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview);
   const intentGapReview=reviewClimbIntentGap(plan?.intentProbe,climbMissionReview);
+  const experimentScheduleReview=reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview);
 
   return{
     version:1,
@@ -558,6 +562,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       coachIntervention:coachInterventionReview,
       coachingStrategy:coachingStrategyReview,
       intentGap:intentGapReview,
+      experimentSchedule:experimentScheduleReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -587,5 +592,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     coachIntervention:raw.coachIntervention??null,
     coachingStrategy:raw.coachingStrategy??null,
     intentProbe:raw.intentProbe??null,
+    experimentSchedule:raw.experimentSchedule??null,
   };
 }
