@@ -6,6 +6,7 @@ import type {ClimbCoachTwin} from './climbCoachTwin';
 import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntentGap';
 import {buildClimbAutonomyProfile,type ClimbAutonomyState} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueState} from './climbInterventionValue';
+import type {ClimbExperimentSchedule,ClimbExperimentType} from './climbExperimentScheduler';
 
 export type ClimbCoachingStrategyMode='TEACH'|'REINFORCE'|'DIAGNOSE'|'FADE';
 export type ClimbCoachingDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
@@ -36,6 +37,9 @@ export interface ClimbCoachingStrategy{
   interventionValueState:ClimbInterventionValueState;
   interventionResponseDifference:number|null;
   interventionValueConfidence:'LOW'|'MEDIUM'|'HIGH';
+  experimentId:string|null;
+  experimentType:ClimbExperimentType|null;
+  experimentInformationNeed:string|null;
   title:string;
   playerMessage:string;
   decision:string;
@@ -127,6 +131,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
   interventionValueState:ClimbInterventionValueState;
   interventionResponseDifference:number|null;
   interventionValueConfidence:'LOW'|'MEDIUM'|'HIGH';
+  experimentId:string|null;
+  experimentType:ClimbExperimentType|null;
+  experimentInformationNeed:string|null;
 }):ClimbCoachingStrategy{
   const mission=input.mission;
   const base={
@@ -152,6 +159,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     interventionValueState:input.interventionValueState,
     interventionResponseDifference:input.interventionResponseDifference,
     interventionValueConfidence:input.interventionValueConfidence,
+    experimentId:input.experimentId,
+    experimentType:input.experimentType,
+    experimentInformationNeed:input.experimentInformationNeed,
     source:'CLIMB_COACHING_STRATEGY' as const,
     boundary:BOUNDARY,
   };
@@ -226,6 +236,7 @@ export function buildClimbCoachingStrategy(input:{
   curriculum:ClimbCurriculum;
   mission:ClimbMatchMission|null|undefined;
   coachTwin:ClimbCoachTwin;
+  experimentSchedule?:ClimbExperimentSchedule|null;
 }):ClimbCoachingStrategy|null{
   const mission=input.mission;
   if(!mission||mission.status!=='READY')return null;
@@ -261,6 +272,9 @@ export function buildClimbCoachingStrategy(input:{
     interventionValueState:interventionValueCard?.state??'BUILDING',
     interventionResponseDifference:interventionValueCard?.matchedResponseDifference??null,
     interventionValueConfidence:interventionValueCard?.confidence??'LOW',
+    experimentId:input.experimentSchedule?.id??null,
+    experimentType:input.experimentSchedule?.experimentType??null,
+    experimentInformationNeed:input.experimentSchedule?.informationNeed??null,
   };
 
   // Intent Gap separates knowing from doing before generic miss streaks are interpreted.
@@ -278,6 +292,14 @@ export function buildClimbCoachingStrategy(input:{
   if(autonomyCard?.state==='REGRESSION_WATCH')return strategyFor('REINFORCE',facts);
   if(autonomyCard?.state==='SUPPORT_DEPENDENT')return strategyFor('DIAGNOSE',facts);
   if(autonomyCard?.state==='AUTONOMOUS'&&mission.repLevel>=3)return strategyFor('FADE',facts);
+
+  // Experiment Scheduler can choose the next support condition only after Intent Gap
+  // and Autonomy have had priority. DEFERRED experiments are descriptive only.
+  if(input.experimentSchedule?.status==='SCHEDULED'){
+    if(input.experimentSchedule.requestedDeliveryPolicy==='NONE')return strategyFor('FADE',facts);
+    if(input.experimentSchedule.requestedDeliveryPolicy==='DIAGNOSTIC')return strategyFor('DIAGNOSE',facts);
+    return strategyFor('REINFORCE',facts);
+  }
 
   // A previously reduced-support rep that misses once gets light scaffolding back,
   // not a wholesale re-teach. Two faded misses are enough to diagnose the branch.
