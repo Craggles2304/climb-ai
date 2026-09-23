@@ -5,9 +5,11 @@
   load('review-esports.js');
   load('review-v3-read-calibration.js');
   load('review-v4-causal-chain.js');
+  load('review-v5-causal-coach-router.js');
   load('remember-v3.js');
   load('remember-v3-matchup.js');
   load('remember-v5-esports.js');
   load('remember-v6-match-os.js');
   load('remember-v7-read-checkpoints.js');
+  load('remember-v8-causal-coach-router.js');
 })();

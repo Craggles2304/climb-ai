@@ -3,7 +3,7 @@ import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} fr
 import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesign';
 
 export type ClimbCoachMethod='WHEN_THEN'|'CONTRAST_BRANCH'|'THREAT_ANCHOR'|'SELF_EXPLAIN';
-export type ClimbCoachSelectionMode='EXPLORE'|'PREFERRED'|'RETEST'|'STAGE_DEFAULT'|'DIAGNOSTIC';
+export type ClimbCoachSelectionMode='EXPLORE'|'PREFERRED'|'RETEST'|'STAGE_DEFAULT'|'DIAGNOSTIC'|'CAUSAL_ROUTE';
 export type ClimbCoachDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC';
 export type ClimbCoachReviewStatus='NO_INTERVENTION'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
 
@@ -315,14 +315,18 @@ export function selectClimbCoachIntervention(input:{
   mission:ClimbMatchMission|null|undefined;
   situationContext?:DraftSituationContext|null;
   deliveryPolicy?:ClimbCoachDeliveryPolicy|'NONE';
+  forcedMethod?:ClimbCoachMethod|null;
+  forcedReason?:string|null;
 }):ClimbCoachIntervention|null{
   const mission=input.mission;
   const deliveryPolicy=input.deliveryPolicy??'FULL';
   if(!mission||mission.status!=='READY'||deliveryPolicy==='NONE')return null;
   const baseSelected=chooseMethod(input.twin,mission);
-  const selected=deliveryPolicy==='DIAGNOSTIC'&&baseSelected.mode!=='RETEST'
-    ?{method:'SELF_EXPLAIN' as ClimbCoachMethod,mode:'DIAGNOSTIC' as const,reason:'Coaching Strategy is diagnosing whether the player recognises the branch before adding more instruction or difficulty.'}
-    :baseSelected;
+  const selected=input.forcedMethod
+    ?{method:input.forcedMethod,mode:'CAUSAL_ROUTE' as const,reason:input.forcedReason||'Causal Coach Router selected the coaching format that matches the repeated root-cause layer.'}
+    :deliveryPolicy==='DIAGNOSTIC'&&baseSelected.mode!=='RETEST'
+      ?{method:'SELF_EXPLAIN' as ClimbCoachMethod,mode:'DIAGNOSTIC' as const,reason:'Coaching Strategy is diagnosing whether the player recognises the branch before adding more instruction or difficulty.'}
+      :baseSelected;
   const copy=deliveryPolicy==='LIGHT'?lightInterventionCopy(selected.method,mission):interventionCopy(selected.method,mission);
   const profile=profileFor(input.twin,mission.behaviourKey);
   return{
