@@ -15,12 +15,12 @@ export function FirstRun({task,gameName}:{task:ILPTask|undefined;gameName:string
   return <section className="glass firstrun">
     <div className="eyebrow">START HERE</div>
     <h2 className="firstrun-headline">
-      {gameName?`${gameName}, your plan is a guess until you upload a game.`:'Your plan is a guess until you upload a game.'}
+      {gameName?`${gameName}, your plan is a guess until we track a real game.`:'Your plan is a guess until we track a real game.'}
     </h2>
     <p className="firstrun-body">
       Everything below came from what you told us in onboarding, not from your matches.
-      One analysed game is enough to start replacing it with evidence — and to overturn it
-      entirely if we picked the wrong leak.
+      Open the Companion, play normally, and one analysed game can start replacing this
+      hypothesis with evidence — including overturning it if we picked the wrong leak.
     </p>
 
     {task&&<div className="firstrun-card">
@@ -40,8 +40,8 @@ export function FirstRun({task,gameName}:{task:ILPTask|undefined;gameName:string
     </div>}
 
     <div className="hero-actions">
-      <Link className="btn primary" href="/uploads">UPLOAD YOUR FIRST MATCH</Link>
-      <Link className="btn secondary" href="/account">CONNECT RIOT SYNC</Link>
+      <Link className="btn primary" href="/live">SET UP COMPANION · TRACK MY FIRST GAME</Link>
+      <Link className="btn secondary" href="/uploads">ADD A GAME MANUALLY</Link>
       <Link className="btn secondary" href="/dashboard?demo=1">SEE IT WITH DEMO DATA</Link>
     </div>
   </section>;
@@ -52,6 +52,9 @@ export function EmptyAccountNote({what}:{what:string}){
   return <div className="glass firstrun-note">
     <div className="eyebrow">NOTHING TO SHOW YET</div>
     <p>{what}</p>
-    <Link className="btn secondary" href="/uploads">UPLOAD A MATCH</Link>
+    <div className="hero-actions">
+      <Link className="btn primary" href="/live">TRACK A GAME WITH COMPANION</Link>
+      <Link className="btn secondary" href="/uploads">ADD MANUALLY</Link>
+    </div>
   </div>;
 }
