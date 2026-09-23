@@ -114,13 +114,14 @@
   function render(detail){
     install();latest={...latest,...(detail||{})};
     const root=$('opReadCheckpoint');if(!root)return;
+    if(latest.phase==='RECORDING')void syncPending();
     const minute=latest.phase==='RECORDING'?due(latest.gameTime):null;
     root.classList.toggle('active',Boolean(minute));
     if(!minute)return;
     $('opReadCheckTitle').textContent=minute+' MIN · FREEZE YOUR OWN GAME READ';
     $('opReadCheckClock').textContent='WINDOW '+minute+':00–'+(minute+2)+':00';
     const status=$('opReadCheckStatus');if(status)status.textContent='';
-    void syncPending();
+
   }
   install();
   window.addEventListener('op-climb-match-os',event=>render(event.detail||{}));
