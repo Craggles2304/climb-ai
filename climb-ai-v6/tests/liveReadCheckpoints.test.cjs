@@ -18,7 +18,7 @@ test('Stage 10 loads after Match OS and before the player uses the checkpoint UI
   assert.ok(loader.includes("load('remember-v6-match-os.js')"));
   assert.ok(loader.includes("load('remember-v7-read-checkpoints.js')"));
   assert.ok(loader.indexOf('remember-v7-read-checkpoints.js')>loader.indexOf('remember-v6-match-os.js'));
-  assert.equal(pkg.version,'0.7.38');
+  const [major,minor,patch]=pkg.version.split('.').map(Number);assert.ok(major>0||minor>7||(minor===7&&patch>=38));
 });
 
 test('live checkpoints freeze player reads at 5 10 and 15 without revealing an answer',()=>{

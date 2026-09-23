@@ -12,6 +12,7 @@ import {reviewClimbIntentGap,type ClimbIntentProbe,type ClimbIntentGapReview} fr
 import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExperimentReview} from './climbExperimentScheduler';
 import {reviewCompanionMatchContract,type CompanionMatchContract,type CompanionMatchContractReview} from './companionMatchContract';
 import {buildGameReadCalibration,type GameReadCalibrationReview,type LiveReadCheckpoint} from './gameReadCalibration';
+import {buildDecisionCausalChain,type DecisionCausalChainReview} from './decisionCausalChain';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -137,6 +138,7 @@ export interface DecisionGraph{
     experimentSchedule:ClimbExperimentReview;
     matchContract:CompanionMatchContractReview;
     readCalibration:GameReadCalibrationReview;
+    causalChain:DecisionCausalChainReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -525,6 +527,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const experimentScheduleReview=reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview);
   const matchContractReview=reviewCompanionMatchContract({contract:plan?.matchContract,mission:climbMissionReview,scenarioPrime:scenarioPrimeReview,transfer:decisionTransferReview});
   const readCalibration=buildGameReadCalibration({reads:input.readCheckpoints,points:summary.points as any});
+  const causalChain=buildDecisionCausalChain({readCalibration,nodes:finalNodes});
 
   return{
     version:1,
@@ -572,6 +575,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       experimentSchedule:experimentScheduleReview,
       matchContract:matchContractReview,
       readCalibration,
+      causalChain,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },

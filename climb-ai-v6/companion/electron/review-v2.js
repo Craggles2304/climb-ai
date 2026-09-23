@@ -4,6 +4,7 @@
   load('review-v2-core.js');
   load('review-esports.js');
   load('review-v3-read-calibration.js');
+  load('review-v4-causal-chain.js');
   load('remember-v3.js');
   load('remember-v3-matchup.js');
   load('remember-v5-esports.js');
