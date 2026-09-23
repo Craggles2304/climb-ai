@@ -72,6 +72,7 @@ export async function GET(req:NextRequest){
       nextFocus:sections.nextFocus,
       evidenceCount:sections.evidenceCount,
       decisionGraph:summary?.decisionGraph??latest.proAnalysis?.decisionGraph??null,
+      causalProfile:latest.causalProfile??null,
       recognitionEvidence:{
         strengthPoints:(Array.isArray(summary?.points)?summary.points:[]).slice(0,80).map((point:any)=>({
           atSeconds:Number(point?.atSeconds||0),
