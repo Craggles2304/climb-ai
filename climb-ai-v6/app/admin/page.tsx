@@ -3,6 +3,7 @@ import {AppShell} from '@/components/AppShell';
 import {MetricCard,PageHead} from '@/components/UI';
 import {getServerClient} from '@/lib/supabase/server';
 import {getActivationFunnel} from '@/lib/server/activationFunnel';
+import {getFoundingBetaValidation} from '@/lib/server/foundingBetaValidation';
 
 export const dynamic='force-dynamic';
 
@@ -26,7 +27,7 @@ export default async function Admin(){
     .maybeSingle();
   if(!profile?.is_founder)notFound();
 
-  const funnel=await getActivationFunnel(30);
+  const [funnel,beta]=await Promise.all([getActivationFunnel(30),getFoundingBetaValidation(45)]);
   const signup=funnel.steps[0]?.players||0;
   const grade=funnel.steps.find(s=>s.event==='op_grade_viewed')?.players||0;
   const ladder=funnel.steps.find(s=>s.event==='fix_ladder_viewed')?.players||0;
@@ -41,6 +42,45 @@ export default async function Admin(){
       subtitle={`Real first-session funnel · trailing ${funnel.windowDays} days · unique players, not page views.`}
     />
 
+
+  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.18)'}}>
+    <div className="eyebrow">STAGE 5 · FOUNDING BETA VALIDATION</div>
+    <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
+      <div><h2 style={{margin:'8px 0'}}>Is the whole coaching loop working for real players?</h2><p className="muted" style={{maxWidth:820}}>This scorecard only uses observed beta behaviour: first value, Companion adoption, tracked games, deliberate sessions, Career usage, usefulness feedback and eligible retention cohorts.</p></div>
+      <span className="op-tier op-tier-pro">{beta.gateStatus.replaceAll('_',' ')}</span>
+    </div>
+  </section>
+
+  {beta.error&&<section className="glass card" style={{marginBottom:18}}><div className="eyebrow">BETA TELEMETRY WARNING</div><p className="muted">{beta.error}</p></section>}
+
+  <div className="grid four" style={{marginBottom:16}}>
+    <MetricCard label="ACTIVATED FOUNDERS" value={beta.activatedPlayers}/>
+    <MetricCard label="FIRST COACHING VALUE" value={beta.activatedPlayers?`${beta.activationToGradePct}%`:'NO DATA'} detail="Signup → first OP Grade"/>
+    <MetricCard label="COMPANION ADOPTION" value={beta.activatedPlayers?`${beta.companionAdoptionPct}%`:'NO DATA'} detail="Activated → connected"/>
+    <MetricCard label="SESSION COMPLETION" value={beta.milestones.find(x=>x.event==='climb_session_started')?.players?`${beta.sessionCompletionPct}%`:'NO DATA'} detail="Started → banked 3-game block"/>
+  </div>
+
+  <div className="grid four" style={{marginBottom:18}}>
+    <MetricCard label="COACHING USEFUL" value={beta.usefulFeedback.rate===null?'NO DATA':`${beta.usefulFeedback.rate}%`} detail={`${beta.usefulFeedback.responses} rated focus${beta.usefulFeedback.responses===1?'':'es'}`}/>
+    <MetricCard label="DAY-1 RETURN" value={beta.day1.rate===null?'NO DATA':`${beta.day1.rate}%`} detail={`${beta.day1.eligible} eligible founders`}/>
+    <MetricCard label="DAY-7 RETURN" value={beta.day7.rate===null?'NO DATA':`${beta.day7.rate}%`} detail={`${beta.day7.eligible} eligible founders`}/>
+    <MetricCard label="CAREER ADOPTION" value={beta.milestones.find(x=>x.event==='op_grade_viewed')?.players?`${beta.careerAdoptionPct}%`:'NO DATA'} detail="Graded → Development Career"/>
+  </div>
+
+  <section className="glass card" style={{marginBottom:18}}>
+    <div className="eyebrow">BETA JOURNEY</div>
+    <h2>Where the real product loop breaks.</h2>
+    <p className="muted">Unlike the signup funnel below, these milestones are allowed to branch. Companion connection and Career exploration do not have to happen in one rigid page order.</p>
+    <div style={{overflowX:'auto',marginTop:16}}><table className="table"><thead><tr><th>Milestone</th><th>Players</th><th>From parent</th><th>From activated</th><th>Drop-off</th></tr></thead><tbody>{beta.milestones.map(step=><tr key={step.event}><td><b>{step.label}</b></td><td>{step.players}</td><td>{step.fromParent}%</td><td>{step.fromActivated}%</td><td>{step.dropOff||'—'}</td></tr>)}</tbody></table></div>
+    {beta.largestLeak&&<p className="muted" style={{marginBottom:0}}>Largest observed conversion leak: <b>{beta.largestLeak.label}</b> · {beta.largestLeak.fromParent}% from its parent milestone · {beta.largestLeak.dropOff} player{beta.largestLeak.dropOff===1?'':'s'} lost.</p>}
+  </section>
+
+  <section className="glass card" style={{marginBottom:18}}>
+    <div className="eyebrow">FOUNDING BETA EXIT GATES</div>
+    <h2>Do not scale because the demo looks good.</h2>
+    <p className="muted">A gate is only PASS when there is enough eligible evidence. WAIT means the cohort is still too small or too young to judge.</p>
+    <div style={{overflowX:'auto',marginTop:16}}><table className="table"><thead><tr><th>Gate</th><th>Actual</th><th>Target</th><th>Status</th></tr></thead><tbody>{beta.gates.map(g=><tr key={g.key}><td><b>{g.label}</b></td><td>{g.actual}</td><td>{g.target}</td><td><b className={g.met===true?'success':g.met===false?'danger':'muted'}>{g.met===true?'PASS':g.met===false?'MISS':'WAIT'}</b></td></tr>)}</tbody></table></div>
+  </section>
     {funnel.error&&<section className="glass card" style={{marginBottom:18}}>
       <div className="eyebrow">ANALYTICS WARNING</div>
       <h2>Activation data is unavailable.</h2>
