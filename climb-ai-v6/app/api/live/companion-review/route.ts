@@ -75,6 +75,7 @@ export async function GET(req:NextRequest){
       causalProfile:latest.causalProfile??null,
       playerCoachingIdentity:latest.playerCoachingIdentity??null,
       skillTransferGraph:latest.skillTransferGraph??null,
+      decisionPrincipleEngine:latest.decisionPrincipleEngine??null,
       learningVelocity:latest.learningVelocity??null,
       adaptiveCoachingSession:latest.adaptiveCoachingSession??null,
       recognitionEvidence:{
