@@ -4,23 +4,47 @@ import {Wordmark} from '@/components/UI';
 import {PublicFooter} from '@/components/PublicFooter';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
-import {PLAN_COPY,PLAN_ENTITLEMENTS,SubscriptionTier} from '@/lib/subscription';
+import {PLAN_COPY,TIER_RANK,type SubscriptionTier} from '@/lib/subscription';
 
-const positioning:Record<SubscriptionTier,{headline:string;summary:string;principle:string}>={
-  FREE:{headline:'PROVE THE LOOP',summary:'See whether OP CLIMB can find something useful from your games before you pay.',principle:'FIND THE REPEAT'},
-  PLUS:{headline:'UNDERSTAND THIS GAME',summary:'Unlock the complete draft read: how your team wins, how the enemy wins, and what your role must do.',principle:'READ THE GAME'},
-  PRO:{headline:'MODEL HOW YOU LEARN',summary:'Turn isolated reviews into a persistent development system that remembers, tests transfer and chooses what comes next.',principle:'MODEL THE PLAYER'},
+const positioning:Record<SubscriptionTier,{purpose:string;headline:string;summary:string;principle:string;why:string}>={
+  FREE:{purpose:'FIND THE PROBLEM',headline:"FIND WHAT'S HOLDING YOU BACK",summary:'Get a useful review, one next-game focus and proof that the same mistake is changing.',principle:'FIND',why:'Start here. Prove OP CLIMB can identify something worth fixing before you pay.'},
+  PLUS:{purpose:'UNDERSTAND THE GAME',headline:'KNOW HOW THIS GAME SHOULD BE PLAYED',summary:'Add the full 5v5 draft, both win conditions, your role and deeper fight/economy context.',principle:'UNDERSTAND',why:'Upgrade when knowing the mistake is no longer enough and you want the whole game explained.'},
+  PRO:{purpose:'DEVELOP THE PLAYER',headline:'BUILD A COACH THAT ACTUALLY KNOWS YOU',summary:'Turn separate reviews into persistent memory that tests learning and chooses what comes next.',principle:'DEVELOP',why:'Upgrade when you want OP CLIMB to remember patterns across games and move your development forward.'},
 };
+
+const rows=[
+  ['Game review','✓','✓','✓'],
+  ['One next-game focus','✓','✓','✓'],
+  ['Fix Ladder depth','2 stages','4 stages','All 5 stages'],
+  ['Progress history','7 days','90 days','Long-term'],
+  ['Full 5v5 draft plan','🔒','✓','✓'],
+  ['Your role in the draft','🔒','✓','✓'],
+  ['Win + loss conditions','🔒','✓','✓'],
+  ['Deeper economy + fight context','🔒','✓','✓'],
+  ['Remembers recurring habits','🔒','🔒','✓'],
+  ['Learns whether you really fixed it','🔒','🔒','✓'],
+  ['Tests the fix in new situations','🔒','🔒','✓'],
+  ['Connects skills to deeper principles','🔒','🔒','✓'],
+  ['Chooses what you should learn next','🔒','🔒','✓'],
+] as const;
 
 export default function Pricing(){
   const {tier}=useSubscription();
   return <>
-    <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/demo">DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
+    <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/#loop">HOW IT WORKS</Link><Link href="/demo">DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
     <main className="container pricing-public">
       <section className="pricing-hero">
-        <div className="eyebrow">ONE PRODUCT · THREE DEPTHS</div>
-        <h1>START WITH A USEFUL ANSWER.<br/><span>PAY FOR DEEPER COACHING.</span></h1>
-        <p>FREE proves the coaching loop. PLUS explains the game in front of you. PRO builds the persistent player model: Decision Twin, Scenario Memory, transfer testing and an Autonomous Curriculum.</p>
+        <div className="eyebrow">FREE → PLUS → PRO</div>
+        <h1>HOW DEEP DO YOU WANT<br/><span>YOUR COACH TO KNOW YOU?</span></h1>
+        <p>Every plan follows the same coaching journey. FREE finds the problem. PLUS explains the whole game around it. PRO remembers you across games and develops the player behind the results.</p>
+      </section>
+
+      <section className="pricing-story" aria-label="OP CLIMB coaching depth">
+        <div className="pricing-story-step"><span>FREE</span><strong>FIND THE PROBLEM</strong><small>Your games → one repeated mistake → one job for next game.</small></div>
+        <i className="pricing-story-arrow">→</i>
+        <div className="pricing-story-step"><span>PLUS</span><strong>UNDERSTAND THE GAME</strong><small>Add the full draft, both win conditions and exactly what your role needs to do.</small></div>
+        <i className="pricing-story-arrow">→</i>
+        <div className="pricing-story-step is-pro"><span>PRO</span><strong>DEVELOP THE PLAYER</strong><small>Remember patterns, test transfer and move you onto the next lesson when the evidence says you are ready.</small></div>
       </section>
 
       <section className="pricing-grid-v2">
@@ -28,36 +52,43 @@ export default function Pricing(){
           const copy=PLAN_COPY[plan];
           const position=positioning[plan];
           const current=tier===plan;
-          return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro':'')} key={plan}>
+          const included=TIER_RANK[tier]>TIER_RANK[plan];
+          return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro ':'')+(current?'is-current':'')} key={plan}>
             <div className="pricing-card-top"><span>{plan}</span>{current&&<b>CURRENT</b>}</div>
             <strong className="pricing-price">{copy.price}</strong>
+            <div className="pricing-purpose">{position.purpose}</div>
             <h2>{position.headline}</h2>
-            <p>{position.summary}</p>
-            <div className="pricing-unlocks">{PLAN_ENTITLEMENTS[plan].map(item=><div key={item}><i/> {item}</div>)}</div>
+            <p className="pricing-card-outcome">{position.summary}</p>
+            <div className="pricing-card-why">{position.why}</div>
             <div style={{marginTop:18}}>
               {plan==='FREE'
-                ?<Link href="/signup" className="btn primary">START FREE</Link>
+                ?current?<Link href="/dashboard" className="btn secondary">OPEN MY CLIMB</Link>:<span className="pricing-included">INCLUDED IN {tier}</span>
                 :current
                   ?<BillingPortalButton label="MANAGE CURRENT PLAN"/>
-                  :<UpgradeButton tier={plan} label={tier==='FREE'?'CHOOSE '+plan:'MOVE TO '+plan}/>}
+                  :included
+                    ?<span className="pricing-included">INCLUDED IN {tier}</span>
+                    :<UpgradeButton tier={plan} label={plan==='PLUS'?'UNLOCK FULL GAME COACHING':'BUILD MY PLAYER MODEL'}/>}
             </div>
           </article>;
         })}
       </section>
 
-      <section className="pricing-principle">
-        <div><span>FREE</span><b>{positioning.FREE.principle}</b></div><i>→</i>
-        <div><span>PLUS</span><b>{positioning.PLUS.principle}</b></div><i>→</i>
-        <div><span>PRO</span><b>{positioning.PRO.principle}</b></div>
+      <section className="pricing-compare" aria-label="Compare OP CLIMB plans">
+        <div className="pricing-compare-head"><div><span>WHAT CHANGES</span><strong>Compare the same journey row by row</strong></div><div><span>FREE</span><strong>Find</strong></div><div><span>PLUS</span><strong>Understand</strong></div><div><span>PRO</span><strong>Develop</strong></div></div>
+        {rows.map(([name,free,plus,pro])=><div className="pricing-feature-row" key={name}>
+          <div className="pricing-feature-name">{name}</div>
+          {[free,plus,pro].map((value,index)=><div key={index} className={'pricing-feature-cell '+(value==='🔒'?'is-locked':'is-yes')+(index===2?' is-pro':'')}>{value}</div>)}
+        </div>)}
+        <div className="pricing-compare-note">Branded systems such as Decision Twin, Scenario Memory, Skill Transfer and Autonomous Curriculum sit underneath the PRO outcomes above. You are paying for a coach that remembers and develops you—not for more dashboard clutter.</div>
       </section>
 
-      <section className="glass card" style={{marginTop:18,padding:22}}>
+      <section className="glass card" style={{marginTop:22,padding:22}}>
         <div className="eyebrow">WHY PRO EXISTS</div>
-        <h2 style={{margin:'8px 0'}}>NOT MORE CHARTS. A COACH THAT CAN MOVE YOU ON.</h2>
-        <p className="muted" style={{maxWidth:900}}>PRO is where OP CLIMB stops treating every match as a separate review. It remembers recurring situations, tests whether a learned decision transfers to new champions and contexts, and advances your curriculum only when repeated evidence says the lesson holds.</p>
+        <h2 style={{margin:'8px 0'}}>THE END GOAL IS NOT MORE ANALYSIS. IT IS A COACH THAT CAN MOVE ON WITH YOU.</h2>
+        <p className="muted" style={{maxWidth:920}}>PRO is where OP CLIMB stops treating every match as a separate review. It can remember recurring situations, test whether a learned decision survives a different champion or pressure pattern, connect different behaviours to a shared decision principle and advance your curriculum only when direct evidence supports it.</p>
       </section>
 
-      <section className="pricing-cta"><div className="eyebrow">TRY BEFORE YOU PAY</div><h2>OPEN THE PUBLIC COACHING DEMO.</h2><div><Link href="/demo" className="btn primary">TRY DEMO</Link><Link href="/signup" className="btn secondary">START FREE</Link></div></section>
+      <section className="pricing-cta"><div className="eyebrow">NOT READY TO PAY?</div><h2>START FREE AND MAKE US EARN THE UPGRADE.</h2><div><Link href="/signup" className="btn primary">START FREE</Link><Link href="/demo" className="btn secondary">TRY THE DEMO</Link></div></section>
     </main>
     <PublicFooter/>
   </>;
