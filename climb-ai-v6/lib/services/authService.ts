@@ -15,7 +15,7 @@ export class AuthNotConfiguredError extends Error{
 export interface AuthService{
   configured():boolean;
   signIn(email:string,password:string):Promise<AuthUser>;
-  signUp(email:string,password:string):Promise<AuthUser>;
+  signUp(email:string,password:string,redirectTo?:string):Promise<AuthUser>;
   resendConfirmation(email:string):Promise<void>;
   requestPasswordReset(email:string):Promise<void>;
   updatePassword(password:string):Promise<void>;
@@ -41,10 +41,10 @@ class SupabaseAuthService implements AuthService{
     return {id:user.id,email:user.email??email};
   }
 
-  async signUp(email:string,password:string):Promise<AuthUser>{
+  async signUp(email:string,password:string,redirectTo?:string):Promise<AuthUser>{
     const {data,error}=await (await this.client()).auth.signUp({
       email,password,
-      options:{emailRedirectTo:authCallback('/onboarding')},
+      options:{emailRedirectTo:authCallback(safeNext(redirectTo||'/onboarding'))},
     });
     if(error)throw new Error(friendly(error.message));
     if(data.session)await claimAnonymousHistory();
