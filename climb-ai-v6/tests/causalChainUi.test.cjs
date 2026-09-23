@@ -8,11 +8,13 @@ const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js
 const ui=fs.readFileSync(path.join(root,'companion','electron','review-v4-causal-chain.js'),'utf8');
 const graph=fs.readFileSync(path.join(root,'lib','decisionGraph.ts'),'utf8');
 const engine=fs.readFileSync(path.join(root,'lib','decisionCausalChain.ts'),'utf8');
+const pkg=JSON.parse(fs.readFileSync(path.join(root,'companion','package.json'),'utf8'));
 
 test('Stage 11 causal review loads after read calibration',()=>{
   assert.ok(loader.includes("load('review-v3-read-calibration.js')"));
   assert.ok(loader.includes("load('review-v4-causal-chain.js')"));
   assert.ok(loader.indexOf('review-v4-causal-chain.js')>loader.indexOf('review-v3-read-calibration.js'));
+  const [major,minor,patch]=pkg.version.split('.').map(Number);assert.ok(major>0||minor>7||(minor===7&&patch>=39));
 });
 
 test('causal review exposes the full read priority action result chain',()=>{
