@@ -3,7 +3,7 @@
   const clean=value=>String(value??'').replace(/\s+/g,' ').trim();
   const upper=value=>clean(value).toUpperCase();
   const STORE='opclimb.deep-locked-plan.v1';
-  let lastDetail={contract:null,gameTime:0,phase:'',selectedBranch:'EVEN',selectedContingency:'PLAN_A'};
+  let lastDetail={contract:null,intentProbe:null,intentSkipped:false,gameTime:0,phase:'',selectedBranch:'EVEN',selectedContingency:'PLAN_A'};
 
   function install(){
     if($('opMatchOs'))return $('opMatchOs');
@@ -65,7 +65,7 @@
   }
   function branchFor(contract,key){return contract?.branches?.[upper(key)]||contract?.branches?.EVEN||null}
   function storedDetail(){
-    try{const raw=JSON.parse(localStorage.getItem(STORE)||'null');return raw?.matchContract?{contract:raw.matchContract,gameTime:0,phase:'RECORDING',selectedBranch:raw.selectedBranch||'EVEN',selectedContingency:raw.selectedContingency||'PLAN_A'}:null}catch{return null}
+    try{const raw=JSON.parse(localStorage.getItem(STORE)||'null');return raw?.matchContract?{contract:raw.matchContract,intentProbe:raw.intentProbe||null,intentSkipped:false,gameTime:0,phase:'RECORDING',selectedBranch:raw.selectedBranch||'EVEN',selectedContingency:raw.selectedContingency||'PLAN_A'}:null}catch{return null}
   }
 
   function render(detail){
@@ -77,14 +77,31 @@
     }
     if(wait)wait.hidden=true;if(body)body.hidden=false;
     const phase=phaseFor(contract,lastDetail.gameTime),branch=branchFor(contract,lastDetail.selectedBranch);
+    const intentAnswered=Boolean(lastDetail.intentProbe?.response?.selectedOptionId);
+    const intentOpen=Boolean(contract.scaffolding?.intentRequiredBeforeCue&&!intentAnswered&&!lastDetail.intentSkipped);
+    const delivery=upper(contract.scaffolding?.deliveryPolicy||'FULL');
+    const autonomy=delivery==='NONE'||Boolean(contract.scaffolding?.autonomyTest);
+    const revealSpecificCue=!intentOpen&&!autonomy&&contract.scaffolding?.revealSpecificCueAfterIntent!==false;
+    const earlyLearningPhase=phase?.phase==='LOAD_IN'||phase?.phase==='LANE';
+    const phasePrimary=(intentOpen||autonomy)&&earlyLearningPhase
+      ?contract.strategic?.yourJob
+      :(phase?.primary||contract.strategic?.yourJob);
+    const phaseSecondary=intentOpen
+      ?(contract.scaffolding?.intentPrompt||'ANSWER THE INTENT CHECK BEFORE THE COACHING CUE IS REVEALED.')
+      :autonomy
+        ?contract.scaffolding?.playerInstruction
+        :(phase?.secondary||contract.learning?.cue);
     setText('opMatchOsTitle',(contract.champion||'YOU')+' · '+(contract.role||'ROLE')+' // MATCH CONTRACT');
     setText('opMatchOsClock',lastDetail.phase==='RECORDING'?clock(lastDetail.gameTime):'FROZEN PRE-GAME');
     setText('opMatchOsMode',String(contract.learning?.mode||'EXECUTE_PLAN').replaceAll('_',' '));
     setText('opMatchOsPlan',lastDetail.selectedContingency||'PLAN A');
     setText('opMatchOsWin',contract.strategic?.ourWinCondition);setText('opMatchOsLose',contract.strategic?.theirWinCondition);setText('opMatchOsJob',contract.strategic?.yourJob);
-    setText('opMatchOsPhase',phase?.label||'LOCK THE CONTRACT');setText('opMatchOsNow',phase?.primary||contract.strategic?.yourJob);setText('opMatchOsNowWhy',phase?.secondary||contract.learning?.cue);setText('opMatchOsGuard',phase?.guardrail||contract.strategic?.never);
-    setText('opMatchOsLearnTitle',(contract.learning?.title||'EXECUTE PLAN')+(contract.learning?.behaviour?' · '+contract.learning.behaviour:''));setText('opMatchOsCue',contract.learning?.cue);setText('opMatchOsTrigger','TRIGGER · '+(contract.learning?.trigger||'WHEN THE PLANNED WINDOW APPEARS.'));
-    setText('opMatchOsSuccess',contract.learning?.success||contract.proof?.pass);setText('opMatchOsSupport','COACH SUPPORT · '+(contract.learning?.supportMode||'FULL')+(contract.learning?.experiment?' · '+contract.learning.experiment:''));
+    setText('opMatchOsPhase',phase?.label||'LOCK THE CONTRACT');setText('opMatchOsNow',phasePrimary);setText('opMatchOsNowWhy',phaseSecondary);setText('opMatchOsGuard',phase?.guardrail||contract.strategic?.never);
+    setText('opMatchOsLearnTitle',intentOpen?'READ FIRST · INTENT CHECK':autonomy?'AUTONOMY TEST · '+(contract.learning?.behaviour||'DECISION'):((contract.learning?.title||'EXECUTE PLAN')+(contract.learning?.behaviour?' · '+contract.learning.behaviour:'')));
+    setText('opMatchOsCue',intentOpen?(contract.scaffolding?.intentPrompt||'COMMIT TO YOUR READ BEFORE THE COACHING CUE IS REVEALED.'):autonomy?(contract.scaffolding?.playerInstruction||'EXECUTE FROM YOUR OWN READ.'):revealSpecificCue?contract.learning?.cue:'ONE SHORT CUE ONLY · YOU OWN THE DECISION.');
+    setText('opMatchOsTrigger','TRIGGER · '+(contract.learning?.trigger||'WHEN THE PLANNED WINDOW APPEARS.'));
+    setText('opMatchOsSuccess',(intentOpen||autonomy)?'POST-GAME WILL SCORE THE VERIFIED DECISION · NO LIVE ANSWER REVEALED':(contract.learning?.success||contract.proof?.pass));
+    setText('opMatchOsSupport',intentOpen?'COACHING CUE LOCKED UNTIL YOUR INTENT IS FROZEN':(contract.scaffolding?.playerInstruction||('COACH SUPPORT · '+(contract.learning?.supportMode||'FULL')))+(contract.learning?.experiment?' · '+contract.learning.experiment:''));
     setText('opMatchOsBranchJob',branch?.job||branch?.headline||contract.strategic?.yourJob);setText('opMatchOsBranchFight',branch?.fightWhen||contract.strategic?.fightRule);setText('opMatchOsBranchStop',branch?.stop||contract.strategic?.never);
     setText('opMatchOsProof',contract.proof?.target||contract.proof?.pass);setText('opMatchOsNeutral',contract.proof?.notObserved||'NOT OBSERVED IS NEUTRAL.');
     document.querySelectorAll('[data-matchos-branch]').forEach(button=>button.classList.toggle('active',upper(button.getAttribute('data-matchos-branch'))===upper(lastDetail.selectedBranch||'EVEN')));
