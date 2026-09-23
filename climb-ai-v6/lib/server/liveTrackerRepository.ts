@@ -29,20 +29,20 @@ export async function listTrackerDevices(userId:string){const db=getSupabaseAdmi
 export async function revokeTrackerDevice(userId:string,deviceId:string){const db=getSupabaseAdmin();if(!db)return false;const {error}=await db.from('live_tracker_devices').update({revoked_at:new Date().toISOString()}).eq('id',deviceId).eq('user_id',userId);if(error)throw new Error(error.message);return true}
 export async function authenticateTrackerToken(token:string):Promise<TrackerDevice|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('live_tracker_devices').select('id,user_id,account_key,riot_account_id,device_name,revoked_at').eq('token_hash',hashTrackerToken(token)).is('revoked_at',null).maybeSingle();if(error||!data)return null;await db.from('live_tracker_devices').update({last_seen_at:new Date().toISOString()}).eq('id',data.id);return{id:data.id,userId:data.user_id,accountKey:data.account_key,riotAccountId:data.riot_account_id??null,deviceName:data.device_name}}
 
-export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';threatRead?:string|null;priorityRead?:string|null}){
+export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
   const {data:session,error:sessionError}=await db.from('live_telemetry_sessions').select('id').eq('device_id',device.id).eq('user_id',device.userId).eq('status','ACTIVE').order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(sessionError)throw new Error(sessionError.message);if(!session)return null;
-  const payload={user_id:device.userId,riot_account_id:device.riotAccountId,device_id:device.id,session_id:session.id,checkpoint_minute:input.checkpointMinute,game_seconds:input.gameSeconds,state_read:input.stateRead,threat_read:input.threatRead??null,priority_read:input.priorityRead??null,source:'PLAYER_CHECKPOINT'};
-  const {data,error}=await db.from('live_player_read_checkpoints').upsert(payload,{onConflict:'session_id,checkpoint_minute'}).select('id,checkpoint_minute,game_seconds,state_read,threat_read,priority_read,created_at').single();
+  const payload={user_id:device.userId,riot_account_id:device.riotAccountId,device_id:device.id,session_id:session.id,checkpoint_minute:input.checkpointMinute,game_seconds:input.gameSeconds,state_read:input.stateRead,confidence_read:input.confidenceRead??null,threat_read:input.threatRead??null,priority_read:input.priorityRead??null,source:'PLAYER_CHECKPOINT'};
+  const {data,error}=await db.from('live_player_read_checkpoints').upsert(payload,{onConflict:'session_id,checkpoint_minute'}).select('id,checkpoint_minute,game_seconds,state_read,confidence_read,threat_read,priority_read,created_at').single();
   if(error)throw new Error(error.message);return data;
 }
 
 async function readCheckpointsForSession(sessionId:string){
   const db=getSupabaseAdmin();if(!db)return[];
-  const {data,error}=await db.from('live_player_read_checkpoints').select('id,checkpoint_minute,game_seconds,state_read,threat_read,priority_read,created_at').eq('session_id',sessionId).order('checkpoint_minute',{ascending:true});
+  const {data,error}=await db.from('live_player_read_checkpoints').select('id,checkpoint_minute,game_seconds,state_read,confidence_read,threat_read,priority_read,created_at').eq('session_id',sessionId).order('checkpoint_minute',{ascending:true});
   if(error){console.warn('[read-checkpoints] lookup failed',error.message);return[]}
-  return(data??[]).map((row:any)=>({id:row.id,checkpointMinute:Number(row.checkpoint_minute),gameSeconds:Number(row.game_seconds),stateRead:row.state_read,threatRead:row.threat_read??null,priorityRead:row.priority_read??null,createdAt:row.created_at??null}));
+  return(data??[]).map((row:any)=>({id:row.id,checkpointMinute:Number(row.checkpoint_minute),gameSeconds:Number(row.game_seconds),stateRead:row.state_read,confidenceRead:row.confidence_read??null,threatRead:row.threat_read??null,priorityRead:row.priority_read??null,createdAt:row.created_at??null}));
 }
 
 export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelope){
