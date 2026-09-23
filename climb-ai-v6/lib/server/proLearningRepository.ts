@@ -14,6 +14,7 @@ import {buildClimbCoachTwin} from '@/lib/climbCoachTwin';
 import {buildClimbAutonomyProfile} from '@/lib/climbAutonomy';
 import {buildClimbInterventionValueProfile} from '@/lib/climbInterventionValue';
 import {buildClimbCareerExperience} from '@/lib/climbCareerExperience';
+import {buildDecisionCausalProfile,type DecisionCausalProfile} from '@/lib/decisionCausalProfile';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -73,6 +74,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const coachTwin=buildClimbCoachTwin(rows,now);
   const autonomyProfile=buildClimbAutonomyProfile(rows,now);
   const interventionValue=buildClimbInterventionValueProfile(rows,now);
+  const causalProfile=buildDecisionCausalProfile(rows,now);
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
@@ -83,7 +85,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
   const learningJourney=buildLearningJourney(rows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience};
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience,causalProfile};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
@@ -114,6 +116,14 @@ export async function rebuildProLearningProfileWithIlp(userId:string,riotAccount
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
   const ilp=await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows);
   return{profile:built.profile,ilp};
+}
+
+export async function getDecisionCausalProfile(userId:string,riotAccountId:string|null):Promise<DecisionCausalProfile|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const profile=(data?.recent_change as any)?.causalProfile;
+  return profile?.version===1?profile as DecisionCausalProfile:null;
 }
 
 export async function getProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
