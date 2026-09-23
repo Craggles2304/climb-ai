@@ -95,6 +95,19 @@ export interface SkillBridgePrime{
   boundary:string;
 }
 
+export interface SkillBridgeReview{
+  version:1;
+  active:boolean;
+  source:DecisionBehaviourKey|null;
+  target:DecisionBehaviourKey|null;
+  status:'NO_TEST'|'NOT_OBSERVED'|'BRIDGED'|'MISSED'|'MIXED';
+  matchedTargetMoments:number;
+  cleanTargetMoments:number;
+  improveTargetMoments:number;
+  note:string;
+  boundary:string;
+}
+
 type CanonicalEdge={source:DecisionBehaviourKey;target:DecisionBehaviourKey;type:'PREREQUISITE'|'SUPPORTS';weight:number;reason:string};
 type GameSkill={verdict:'GOOD'|'IMPROVE';champion:string;role:string|null;tags:DecisionSituationTag[]};
 
@@ -363,6 +376,36 @@ export function selectSkillBridgePrime(input:{
     relevantTags:tags,
     evidence:bridge.evidence,
     boundary:'This is a bridge test. Source-skill mastery may make the target decision easier to recognise, but only direct verified '+bridge.targetLabel+' evidence can change '+bridge.targetLabel+' progress.',
+  };
+}
+
+
+export function reviewSkillBridgePrime(
+  prime:SkillBridgePrime|null|undefined,
+  nodes:{behaviourKey:DecisionBehaviourKey;verdict:'GOOD'|'IMPROVE'|'NEUTRAL';confidence:'HIGH'|'MEDIUM'|'LOW'}[],
+):SkillBridgeReview{
+  if(!prime){
+    return{
+      version:1,active:false,source:null,target:null,status:'NO_TEST',matchedTargetMoments:0,cleanTargetMoments:0,improveTargetMoments:0,
+      note:'No Skill Bridge test was frozen before this game.',
+      boundary:'No frozen bridge means no cross-skill transfer score. OP CLIMB does not infer a bridge after seeing the result.',
+    };
+  }
+  const matched=nodes.filter(node=>node.behaviourKey===prime.target&&node.confidence!=='LOW'&&(node.verdict==='GOOD'||node.verdict==='IMPROVE'));
+  const clean=matched.filter(node=>node.verdict==='GOOD').length;
+  const improve=matched.filter(node=>node.verdict==='IMPROVE').length;
+  const status:SkillBridgeReview['status']=!matched.length?'NOT_OBSERVED':clean&&improve?'MIXED':improve?'MISSED':'BRIDGED';
+  return{
+    version:1,active:true,source:prime.source,target:prime.target,status,
+    matchedTargetMoments:matched.length,cleanTargetMoments:clean,improveTargetMoments:improve,
+    note:status==='NOT_OBSERVED'
+      ?'The target skill did not produce a verified direct decision, so the source skill earns no target credit.'
+      :status==='BRIDGED'
+        ?'The familiar source principle was present and the target skill also produced a direct clean decision. Credit belongs to the target decision; this is bridge evidence, not inherited mastery.'
+        :status==='MISSED'
+          ?'The target skill was directly observed and missed. Source-skill mastery did not transfer automatically.'
+          :'The target skill produced both clean and missed direct decisions. Keep testing the bridge without promoting target mastery.',
+    boundary:'Skill Bridge Review scores only direct verified target-skill decisions. Source mastery, edge strength and observed associations cannot pass or graduate the target skill.',
   };
 }
 
