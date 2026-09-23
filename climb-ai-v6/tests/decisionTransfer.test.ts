@@ -144,7 +144,7 @@ test('repeated clean decisions across different champion and context can promote
     row(5,'Jinx','GOOD','MULTI_ACCESS'),
     row(6,'Aphelios','GOOD','PICK_PRESSURE'),
     row(7,'Jinx','GOOD','PICK_PRESSURE'),
-    row(8,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(8,"Kai'Sa",'GOOD','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'PRINCIPLE_OWNED');
@@ -164,7 +164,7 @@ test('one isolated novel miss does not erase transferred learning',()=>{
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
-    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(7,"Kai'Sa",'GOOD','PICK_PRESSURE'),
     row(8,'Jinx','GOOD','PICK_PRESSURE'),
     row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
     row(10,'Jinx','GOOD','PICK_PRESSURE'),
@@ -183,9 +183,9 @@ test('a transferred principle reopens after two sustained novel mistakes',()=>{
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
-    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(7,"Kai'Sa",'GOOD','PICK_PRESSURE'),
     row(8,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(9,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
+    row(9,"Kai'Sa",'IMPROVE','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'REGRESSED');
@@ -201,13 +201,13 @@ test('transfer regression stays open until three consecutive clean novel recover
     row(3,'Aphelios','GOOD'),
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
-    row(6,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(6,"Kai'Sa",'GOOD','PICK_PRESSURE'),
     row(7,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(8,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
+    row(8,"Kai'Sa",'IMPROVE','PICK_PRESSURE'),
   ];
   assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
-  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\'Sa','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
-  assert.notEqual(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,'Kai\'Sa','GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  assert.notEqual(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
 });
 
 test('exact-draft V5 selector yields one novel transfer test and defers to unstable V4 reps',()=>{
