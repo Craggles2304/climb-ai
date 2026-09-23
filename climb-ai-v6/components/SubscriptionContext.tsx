@@ -28,8 +28,6 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
       const user=data.user;
       if(!user){setLolTier('FREE');setTftTier('FREE');return}
 
-      // Legacy app_metadata subscription_tier belongs to League. Product-specific
-      // entitlements override it once Stripe writes product_entitlements rows.
       const legacyLeagueTier=normalizeTier(user.app_metadata?.subscription_tier);
       const [{data:profile},{data:riotAccounts},{data:entitlements}]=await Promise.all([
         client.from('profiles').select('is_founder').eq('id',user.id).maybeSingle(),
@@ -44,7 +42,13 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
       ));
       if(founderByProfile||founderByRiot){setLolTier('PRO');setTftTier('PRO');return}
 
-      const live=(entitlements??[]).filter((row:any)=>['active','trialing'].includes(String(row.status||'active')));
+      const now=Date.now();
+      const live=(entitlements??[]).filter((row:any)=>{
+        if(!['active','trialing'].includes(String(row.status||'active').toLowerCase()))return false;
+        if(!row.current_period_end)return true;
+        const end=Date.parse(String(row.current_period_end));
+        return !Number.isFinite(end)||end>now;
+      });
       const productTier=(product:SubscriptionProduct,fallback:SubscriptionTier)=>{
         const row=live.find((item:any)=>String(item.product).toUpperCase()===product);
         return row?normalizeTier(row.tier):fallback;
