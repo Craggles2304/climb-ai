@@ -259,11 +259,17 @@ function actionFor(
   if(input.decision.action==='PREREQUISITE')return'PREREQUISITE_REDIRECT';
   if(input.decision.action==='REOPEN'&&input.decision.changed)return'REGRESSION_INTERRUPT';
   if(input.decision.action==='ADVANCE')return'REPLACE_OBJECTIVE';
-  if(!same)return previous?.activeContract?'REPLACE_OBJECTIVE':'START_OBJECTIVE';
+  if(!same){
+    if(!previous?.activeContract&&state==='TRANSFER_TEST')return'SCHEDULE_TRANSFER_TEST';
+    return previous?.activeContract?'REPLACE_OBJECTIVE':'START_OBJECTIVE';
+  }
   if(state==='TRANSFER_TEST'){
     return previous?.activeContract?.state==='TRANSFER_TEST'?'RETEST_TRANSFER':'SCHEDULE_TRANSFER_TEST';
   }
-  if(state==='STABILISE'&&previous?.activeContract?.supportPolicy==='FULL')return'FADE_SUPPORT';
+  if(state==='STABILISE'){
+    const nextSupport=supportFor(input.currentLesson!,state);
+    if(previous?.activeContract?.supportPolicy!==nextSupport)return'FADE_SUPPORT';
+  }
   return'HOLD_OBJECTIVE';
 }
 
