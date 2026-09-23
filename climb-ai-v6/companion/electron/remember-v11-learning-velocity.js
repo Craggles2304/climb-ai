@@ -66,4 +66,5 @@
   install();render(null);
   window.addEventListener('op-climb-learning-velocity',event=>render(event.detail||null));
   window.addEventListener('op-climb-live-roster',()=>render(null));
+  window.addEventListener('op-climb-match-os',()=>render(null));
 })();
