@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {buildDecisionPrincipleEngine,reviewDecisionPrinciplePrime,selectDecisionPrinciplePrime} from '../lib/climbDecisionPrinciples';
+import {buildDecisionPrincipleEngine,reviewDecisionPrinciplePrime,selectDecisionPrinciplePrime,type DecisionPrinciplePrime} from '../lib/climbDecisionPrinciples';
 import type {HistoryAnalysisRow} from '../lib/riot/proHistory';
 import type {SkillTransferGraph,SkillTransferNode} from '../lib/climbSkillTransferGraph';
 import type {DecisionBehaviourKey} from '../lib/decisionTwin';
@@ -83,7 +83,7 @@ test('source-only evidence is NOT_OBSERVED and cannot pass the principle test',(
     principleRule:'Keep options and information alive until commitment.',sourceBehaviour:'THREAT_ADAPTATION',sourceLabel:'Threat Adaptation',
     targetBehaviour:'CARRY_PRESERVATION',targetLabel:'Carry Preservation',sourceState:'STABLE',sourceEvidence:'stable',
     targetQuestion:'apply it?',relevantTags:['MULTI_ACCESS'],evidence:'cross-skill',boundary:'direct only',
-  } as const;
+  } satisfies DecisionPrinciplePrime;
   const sourceOnly=reviewDecisionPrinciplePrime(prime,[{behaviourKey:'THREAT_ADAPTATION',verdict:'GOOD',confidence:'HIGH'}]);
   assert.equal(sourceOnly.status,'NOT_OBSERVED');
   assert.equal(sourceOnly.matchedTargetMoments,0);
