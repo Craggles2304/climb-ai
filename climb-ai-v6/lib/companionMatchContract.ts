@@ -1,11 +1,11 @@
 import type {FrozenGamePlaybook,FrozenBranchKey} from './frozenGamePlaybook';
-import type {ClimbMatchMission} from './climbMissionDesign';
+import type {ClimbMatchMission,ClimbMatchMissionReview} from './climbMissionDesign';
 import type {ClimbCoachIntervention} from './climbCoachTwin';
 import type {ClimbCoachingStrategy} from './climbCoachingStrategy';
 import type {ClimbExperimentSchedule} from './climbExperimentScheduler';
 import type {PersonalTrap} from './decisionTwin';
-import type {ScenarioPrime} from './scenarioMemory';
-import type {DecisionTransferPrime} from './decisionTransfer';
+import type {ScenarioPrime,ScenarioPrimeReview} from './scenarioMemory';
+import type {DecisionTransferPrime,DecisionTransferReview} from './decisionTransfer';
 
 export type CompanionLearningMode='EXECUTE_PLAN'|'CURRICULUM_REP'|'SPACED_REP'|'TRANSFER_TEST';
 export type CompanionMatchPhase='LOAD_IN'|'LANE'|'FIRST_CHECK'|'MID_GAME'|'OPEN_GAME';
@@ -294,5 +294,88 @@ export function buildCompanionMatchContract(input:{
       playerChoosesGameState:true,
       playerChoosesContingency:true,
     },
+  };
+}
+
+
+export type CompanionContractReviewStatus='NO_CONTRACT'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
+
+export interface CompanionMatchContractReview{
+  version:1;
+  active:boolean;
+  mode:CompanionLearningMode|null;
+  behaviour:string|null;
+  status:CompanionContractReviewStatus;
+  matchedMoments:number;
+  cleanMoments:number;
+  improveMoments:number;
+  headline:string;
+  proof:string;
+  nextAction:string;
+  boundary:string;
+}
+
+export function reviewCompanionMatchContract(input:{
+  contract:CompanionMatchContract|null|undefined;
+  mission:ClimbMatchMissionReview;
+  scenarioPrime:ScenarioPrimeReview;
+  transfer:DecisionTransferReview;
+}):CompanionMatchContractReview{
+  const contract=input.contract;
+  if(!contract||contract.version!=='MATCH_OS_V1'){
+    return{
+      version:1,active:false,mode:null,behaviour:null,status:'NO_CONTRACT',
+      matchedMoments:0,cleanMoments:0,improveMoments:0,
+      headline:'NO FROZEN MATCH CONTRACT',
+      proof:'This game predates Match OS or no contract was persisted before play.',
+      nextAction:'Use the normal Decision Graph review.',
+      boundary:'No Match OS claim is made without a frozen pre-game contract.',
+    };
+  }
+
+  const mode=contract.learning.mode;
+  const source=mode==='TRANSFER_TEST'?input.transfer:mode==='SPACED_REP'?input.scenarioPrime:input.mission;
+  const matched=Number(source?.matchedMoments||0);
+  const cleanMoments=Number(source?.cleanMoments||0);
+  const improveMoments=Number(source?.improveMoments||0);
+  const raw=String(source?.status||'').toUpperCase();
+
+  const status:CompanionContractReviewStatus=
+    raw==='TRANSFERRED'||raw==='EXECUTED'?'EXECUTED':
+    raw==='FAILED_TRANSFER'||raw==='MISSED'?'MISSED':
+    raw==='MIXED'?'MIXED':
+    raw==='NOT_OBSERVED'||raw==='NO_TEST'||raw==='NO_REP'||raw==='NO_MISSION'?'NOT_OBSERVED':
+    matched===0?'NOT_OBSERVED':
+    cleanMoments>0&&improveMoments===0?'EXECUTED':
+    improveMoments>0&&cleanMoments===0?'MISSED':'MIXED';
+
+  const headline=
+    status==='EXECUTED'?'CONTRACT REP EXECUTED':
+    status==='MISSED'?'CONTRACT REP MISSED':
+    status==='MIXED'?'CONTRACT REP MIXED':
+    status==='NOT_OBSERVED'?'CONTRACT REP NOT OBSERVED':'NO CONTRACT';
+
+  const nextAction=
+    status==='EXECUTED'
+      ?'KEEP THE EVIDENCE. CURRICULUM DECIDES WHETHER TO REPEAT, FADE SUPPORT OR MOVE THE DIFFICULTY.'
+      :status==='MISSED'
+        ?'KEEP THE SAME LEARNING TARGET UNTIL REPEATED EVIDENCE JUSTIFIES A CHANGE.'
+        :status==='MIXED'
+          ?'DO NOT PROMOTE THE SKILL YET. THE CLEAN BRANCH IS NOT STABLE.'
+          :'DO NOT SCORE THE PLAYER. THE PLANNED DECISION WINDOW DID NOT APPEAR.';
+
+  return{
+    version:1,
+    active:true,
+    mode,
+    behaviour:contract.learning.behaviour,
+    status,
+    matchedMoments:matched,
+    cleanMoments,
+    improveMoments,
+    headline,
+    proof:clean(source?.note)||contract.proof.target,
+    nextAction,
+    boundary:'MATCH OS ONLY SCORES VERIFIED DECISION-GRAPH MOMENTS AGAINST THE CONTRACT FROZEN BEFORE PLAY. NOT OBSERVED IS NEUTRAL.',
   };
 }
