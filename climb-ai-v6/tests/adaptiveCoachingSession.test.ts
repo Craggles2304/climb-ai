@@ -190,6 +190,7 @@ test('session Fade policy cannot override a FULL safety strategy',()=>{
     successDefinition:'base',autonomyTest:false,source:'CLIMB_COACHING_STRATEGY',boundary:'base',
   } as any;
   const routed=applyAdaptiveCoachingSession(strategy,session);
+  assert.ok(routed);
   assert.equal(routed.mode,'TEACH');
   assert.equal(routed.deliveryPolicy,'FULL');
   assert.equal(routed.adaptiveSessionConstrained,true);
