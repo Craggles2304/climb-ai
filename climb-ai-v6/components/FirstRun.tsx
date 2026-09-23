@@ -15,7 +15,7 @@ export function FirstRun({task,gameName}:{task:ILPTask|undefined;gameName:string
   return <section className="glass firstrun">
     <div className="eyebrow">START HERE</div>
     <h2 className="firstrun-headline">
-      {gameName?`${gameName}, your plan is a guess until you upload a game.`:'Your plan is a guess until you upload a game.'}
+      {gameName?`${gameName}, your plan is a guess until we track a real game.`:'Your plan is a guess until we track a real game.'}
     </h2>
     <p className="firstrun-body">
       Everything below came from what you told us in onboarding, not from your matches.
@@ -52,6 +52,6 @@ export function EmptyAccountNote({what}:{what:string}){
   return <div className="glass firstrun-note">
     <div className="eyebrow">NOTHING TO SHOW YET</div>
     <p>{what}</p>
-    <Link className="btn secondary" href="/uploads">UPLOAD A MATCH</Link>
+    <Link className="btn primary" href="/live">TRACK A GAME WITH COMPANION</Link>\n    <Link className="btn secondary" href="/uploads">ADD MANUALLY</Link>
   </div>;
 }
