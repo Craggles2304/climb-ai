@@ -20,6 +20,7 @@ export type AnalyticsEvent=
   |'hunt_loop_completed'|'feedback_given'|'app_error'
   |'companion_pair_started'|'companion_connected'|'companion_recording_started'|'companion_game_completed'
   |'climb_session_started'|'climb_session_completed'|'career_viewed'
+  |'beta_invite_claimed'|'beta_report_submitted'
   |'tft_section_view'|'tft_sync_started'|'tft_match_synced'|'tft_coach_view'|'tft_pricing_viewed'
   |'tft_manual_game_added'|'tft_set_lab_viewed';
 
