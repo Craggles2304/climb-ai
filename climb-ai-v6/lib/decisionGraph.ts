@@ -11,6 +11,7 @@ import {reviewClimbCoachingStrategy,type ClimbCoachingStrategy,type ClimbCoachin
 import {reviewClimbIntentGap,type ClimbIntentProbe,type ClimbIntentGapReview} from './climbIntentGap';
 import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExperimentReview} from './climbExperimentScheduler';
 import {reviewCompanionMatchContract,type CompanionMatchContract,type CompanionMatchContractReview} from './companionMatchContract';
+import {buildGameReadCalibration,type GameReadCalibrationReview,type LiveReadCheckpoint} from './gameReadCalibration';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -135,6 +136,7 @@ export interface DecisionGraph{
     intentGap:ClimbIntentGapReview;
     experimentSchedule:ClimbExperimentReview;
     matchContract:CompanionMatchContractReview;
+    readCalibration:GameReadCalibrationReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -479,7 +481,7 @@ function dedupe(nodes:DecisionGraphNode[]){
 }
 function confidenceRank(value:DecisionNodeConfidence){return value==='HIGH'?3:value==='MEDIUM'?2:1}
 
-export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:StrengthTimeline;lockedPlan?:LockedDecisionPlan|null;generatedAt?:string}):DecisionGraph{
+export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:StrengthTimeline;lockedPlan?:LockedDecisionPlan|null;readCheckpoints?:LiveReadCheckpoint[]|null;generatedAt?:string}):DecisionGraph{
   const {analysis,summary}=input;
   const plan=input.lockedPlan??null;
   const nodes:DecisionGraphNode[]=[];
@@ -522,6 +524,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const intentGapReview=reviewClimbIntentGap(plan?.intentProbe,climbMissionReview);
   const experimentScheduleReview=reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview);
   const matchContractReview=reviewCompanionMatchContract({contract:plan?.matchContract,mission:climbMissionReview,scenarioPrime:scenarioPrimeReview,transfer:decisionTransferReview});
+  const readCalibration=buildGameReadCalibration({reads:input.readCheckpoints,points:summary.points as any});
 
   return{
     version:1,
@@ -568,6 +571,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       intentGap:intentGapReview,
       experimentSchedule:experimentScheduleReview,
       matchContract:matchContractReview,
+      readCalibration,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
