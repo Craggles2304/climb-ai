@@ -350,7 +350,9 @@ test('Draft Coach and Decision Graph freeze and review one Coaching Strategy',()
   const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
   const graph=fs.readFileSync('lib/decisionGraph.ts','utf8');
   assert.ok(draft.includes('buildClimbCoachingStrategy'));
-  assert.ok(draft.includes("deliveryPolicy:coachingStrategy?.deliveryPolicy??'NONE'"));
+  assert.ok(draft.includes('buildCausalCoachRoute'));
+  assert.ok(draft.includes('deliveryPolicy:causalCoachRoute.deliveryPolicy'));
+  assert.ok(draft.includes('forcedMethod:causalCoachRoute.forceCoachMethod'));
   assert.ok(draft.includes('coachingStrategy:input.coachingStrategy'));
   assert.ok(graph.includes('reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview)'));
   assert.ok(graph.includes('coachingStrategy:raw.coachingStrategy??null'));
