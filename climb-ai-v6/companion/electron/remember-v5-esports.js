@@ -41,6 +41,17 @@
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
   const tile=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${assetId(name)}_0.jpg`;
   const set=(id,value)=>{const node=$(id);if(node&&clean(value))node.textContent=upper(value)};
+  function emitMatchContract(coach){
+    try{
+      window.dispatchEvent(new CustomEvent('op-climb-match-os',{detail:{
+        contract:coach?._matchContract||null,
+        gameTime:Number(lastRoster?.gameTime)||0,
+        phase:clean(lastState?.phase),
+        selectedBranch,
+        selectedContingency,
+      }}));
+    }catch{}
+  }
 
   function installVisualLayer(){
     if($('op-v5-esports-style'))return;
@@ -216,6 +227,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       coachingStrategy:coach?._coachingStrategy||null,
       experimentSchedule:coach?._experimentSchedule||null,
       coachIntervention:coach?._coachIntervention||null,
+      matchContract:coach?._matchContract||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -237,6 +249,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     stored.branchSelections=history;
     stored.updatedAt=new Date().toISOString();
     try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+    emitMatchContract(lastCoach);
   }
 
   function persistContingencySelection(key){
@@ -249,6 +262,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     stored.contingencySelections=history;
     stored.updatedAt=new Date().toISOString();
     try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+    emitMatchContract(lastCoach);
   }
 
   function ensurePlaybookPanel(){
@@ -959,6 +973,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       :climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
+    emitMatchContract(coach);
   }
 
   async function requestCoach(signature,champion,userRole,ours,enemies){
@@ -1000,6 +1015,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
         enrichedCoach._experimentSchedule=response?.experimentSchedule||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
+        enrichedCoach._matchContract=response?.matchContract||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
@@ -1053,6 +1069,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     void requestCoach(rosterSignature,champion,userRole,ours,enemies);
+    emitMatchContract(lastCoach);
   }
 
   function onState(state){
@@ -1076,6 +1093,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
+    else emitMatchContract(lastCoach);
   }
 
   installVisualLayer();
