@@ -288,6 +288,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         <div><span>COACHING STRATEGY</span><strong id="opRemStrategyMode">WAITING FOR MATCH REP</strong></div>
         <p id="opRemStrategyWhy">OP CLIMB WILL DECIDE WHETHER TO TEACH, REINFORCE, DIAGNOSE OR FADE SUPPORT AFTER THE MATCH REP IS FROZEN.</p>
       </div>
+      <div id="opRemCausalRoute" class="rem10-strategy">
+        <div><span>CAUSAL COACH LAYER</span><strong id="opRemCausalRouteMode">BUILDING ROOT-CAUSE MEMORY</strong></div>
+        <p id="opRemCausalRouteWhy">ONE MATCH CANNOT ROUTE THE COACH. REPEATED VERIFIED READ → DECISION CHAINS ARE REQUIRED.</p>
+      </div>
       <div id="opRemExperiment" class="rem10-strategy">
         <div><span>EXPERIMENT SCHEDULER</span><strong id="opRemExperimentType">NO EXPERIMENT SCHEDULED</strong></div>
         <p id="opRemExperimentWhy">OP CLIMB WILL ONLY CHANGE THE SUPPORT CONDITION WHEN THE NEXT TEST IS BOTH SAFE AND INFORMATIVE.</p>
@@ -449,6 +453,20 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemStrategyMode',strategy?.title||(mode==='BUILDING'?'WAITING FOR MATCH REP':mode));
     set('opRemStrategyWhy',strategy?.decision||'OP CLIMB WILL DECIDE WHETHER THIS REP NEEDS EXPLICIT TEACHING, LIGHT REINFORCEMENT, DIAGNOSIS OR LESS SUPPORT.');
     root.title=[clean(strategy?.playerMessage),clean(strategy?.coachDirective),clean(strategy?.successDefinition),clean(strategy?.boundary)].filter(Boolean).join(' · ');
+  }
+
+  function renderCausalCoachRoute(route){
+    ensurePlaybookPanel();
+    const root=$('opRemCausalRoute');if(!root)return;
+    const active=Boolean(route?.active);
+    const layer=upper(route?.sourceLayerLabel||'BUILDING ROOT-CAUSE MEMORY');
+    const mode=upper(String(route?.mode||'EVIDENCE_BUILD').replace(/_/g,' '));
+    root.classList.toggle('fade',mode==='AUTONOMY TEST');
+    root.classList.toggle('diagnose',mode==='RECOGNITION FIRST'||mode==='RECOGNITION RETEST');
+    root.style.opacity=active?'1':'.72';
+    set('opRemCausalRouteMode',active?layer+' · '+mode:'BUILDING ROOT-CAUSE MEMORY');
+    set('opRemCausalRouteWhy',clean(route?.pregameDirective)||'ONE MATCH CANNOT ROUTE THE COACH. REPEATED VERIFIED READ → DECISION CHAINS ARE REQUIRED.');
+    root.title=[clean(route?.evidence),clean(route?.liveDirective),route?.safetyConstrained?'SAFETY CONSTRAINT KEPT MORE SUPPORT ACTIVE':'',clean(route?.boundary)].filter(Boolean).join(' · ');
   }
 
   function renderExperimentSchedule(experiment){
@@ -965,9 +983,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const climbMission=coach?._climbMission||null;
     const intentProbe=coach?._intentProbe||null;
     const coachingStrategy=coach?._coachingStrategy||null;
+    const causalCoachRoute=coach?._causalCoachRoute||null;
     const experimentSchedule=coach?._experimentSchedule||null;
     const coachIntervention=coach?._coachIntervention||null;
     renderCoachingStrategy(coachingStrategy);
+    renderCausalCoachRoute(causalCoachRoute);
     renderExperimentSchedule(experimentSchedule);
     renderIntentProbe(intentProbe,coach);
     const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId&&skippedIntentProbeId!==intentProbe.id);
@@ -1093,6 +1113,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);
+      renderCausalCoachRoute(null);
       renderExperimentSchedule(null);
       renderPlaybook(null,lastCoachMeta);
     }
@@ -1105,6 +1126,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
   ensurePlaybookPanel();
   renderPersonalTrap(null);
   renderCoachingStrategy(null);
+  renderCausalCoachRoute(null);
   renderExperimentSchedule(null);
   renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));
