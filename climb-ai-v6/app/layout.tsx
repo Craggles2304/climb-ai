@@ -10,6 +10,7 @@ import './op-tempo-visual.css';
 import './public-launch.css';
 import './ilp-explainability.css';
 import './ux-journey.css';
+import './public-personal.css';
 import type {Metadata} from 'next';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';

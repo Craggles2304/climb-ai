@@ -90,9 +90,9 @@ export function PublicMatchPreview(){
 
   return <section className={styles.trySection} id="try-it">
     <div className={styles.sectionIntro}>
-      <div className="eyebrow">TRY IT BEFORE YOU SIGN UP</div>
-      <h2>PICK A GAME. WATCH OP CLIMB FIND THE COACHING MOMENT.</h2>
-      <p>Choose a sample match and the page will surface the kind of decision OP CLIMB would carry into the next game. These are illustrative product samples, not testimonials or claimed player results.</p>
+      <div className="eyebrow">SAMPLE COACHING REPORT</div>
+      <h2>SEE HOW OP CLIMB TURNS A MATCH INTO ONE COACHING DECISION.</h2>
+      <p>Your Riot-ID preview above uses your real recent ranked games. This section lets you explore illustrative match-level coaching examples without waiting for a lookup.</p>
     </div>
     <div className={styles.tryGrid}>
       <div className={styles.lookupCard}>
@@ -100,8 +100,8 @@ export function PublicMatchPreview(){
         <div className={styles.sampleList}>{SAMPLES.map(sample=><button type="button" key={sample.id} className={sample.id===selected.id?styles.sampleActive:''} onClick={()=>choose(sample)} disabled={scanning}>
           <span><b>{sample.champion}</b><small>{sample.role} · {sample.rank.replace(' SAMPLE','')}</small></span><em>{sample.result}</em>
         </button>)}</div>
-        <div className={styles.lookupNote}><b>YOUR OWN GAMES</b><span>Create a free account to connect your Riot profile or Windows Companion and build the full Fix Ladder from your evidence.</span></div>
-        <div className={styles.ctaStack}><Link className="btn primary" href="/signup" data-landing-cta="sample-picker">START FREE</Link><small>Free to start · No card required</small></div>
+        <div className={styles.lookupNote}><b>WANT YOUR OWN READ?</b><span>Use the Riot-ID box above for a real partial report with no OP CLIMB account required.</span></div>
+        <div className={styles.ctaStack}><a className="btn primary" href="#analyse" data-landing-cta="sample-picker">ANALYSE MY GAMES</a><small>No account needed for the first result</small></div>
       </div>
 
       <article className={`${styles.resultCard} ${scanning?styles.scanning:''}`} aria-live="polite" aria-busy={scanning}>
@@ -134,11 +134,13 @@ export function BeginnerGlossary(){
 }
 
 const FAQ=[
-  ['What games and ranks does OP CLIMB support?','The main coaching product is for League of Legends. The public try-it uses sample games during beta. The coaching model is designed for every rank from Iron upward; what changes is the standard and the priority, not whether you are “high enough” to use it.'],
-  ['Is the Windows Companion safe to use?','The Companion does not inject into League or automate gameplay. It reads Riot client/live-client data, keeps matchup guidance precomputed, and uses the detailed evidence for post-game coaching rather than hidden-information live shotcalling.'],
-  ['Do I need to pay or enter a card to start?','No card is required to create an account. FREE is the starting tier; PLUS and PRO are the deeper diagnosis tiers shown on the pricing page.'],
-  ['Do I need the Companion installed?','No. You can start with the web app and supported match inputs. The Windows Companion adds richer match capture, champ-select matchup planning and detailed post-game evidence.'],
-  ['Will OP CLIMB guarantee I rank up?','No coaching product can honestly guarantee rank. OP CLIMB is built to make one repeated decision visible, give you a specific next-game rule and then measure whether the behaviour changes.'],
+  ['Can I see something useful before creating an account?','Yes. Enter your Riot ID and region on the homepage. OP CLIMB can read up to your last 20 ranked solo games and return a partial personal report without saving that public preview to an OP CLIMB account.'],
+  ['What games and ranks does OP CLIMB support?','The main coaching product is for League of Legends ranked play. The coaching model is designed for every rank from Iron upward; what changes is the standard and the priority, not whether you are “high enough” to use it.'],
+  ['Is the Windows Companion safe to use?','The Companion is designed not to inject into League or automate gameplay. It reads Riot client/live-client data and uses recorded evidence for planning and post-game coaching. OP CLIMB does not present itself as a Riot product or endorsement.'],
+  ['How is this different from a normal stats tracker?','A stats tracker is useful for describing performance. OP CLIMB is built around a coaching loop: find one repeated decision, give one next-game rule, watch whether it changes, then move the lesson on when the evidence supports it.'],
+  ['Do I need the Companion installed?','No. The Riot-ID preview and web app can work without the Companion. The Windows Companion adds richer match capture, champ-select planning and more detailed post-game evidence.'],
+  ['Do I need to pay or enter a card to start?','No. The public Riot-ID preview needs no OP CLIMB account, and FREE does not require a card. PLUS and PRO add deeper game context and long-term player modelling.'],
+  ['Will OP CLIMB guarantee I rank up?','No coaching product can honestly guarantee rank. OP CLIMB measures whether targeted behaviours change across your games; rank movement still depends on execution, volume, matchmaking and the rest of your play.'],
 ];
 
 export function LandingFaq(){
@@ -147,7 +149,7 @@ export function LandingFaq(){
     <div className={styles.faqList}>{FAQ.map(([question,answer])=><details key={question} onToggle={e=>{
       if((e.currentTarget as HTMLDetailsElement).open)track('landing_faq_opened',{question});
     }}><summary>{question}<span>+</span></summary><p>{answer}</p></details>)}</div>
-    <div className={styles.ctaStack}><Link className="btn primary" href="/signup" data-landing-cta="faq">START FREE</Link><small>Free to start · No card required</small></div>
+    <div className={styles.ctaStack}><a className="btn primary" href="#analyse" data-landing-cta="faq">ANALYSE MY GAMES</a><small>See the first result before creating an account</small></div>
   </section>;
 }
 
