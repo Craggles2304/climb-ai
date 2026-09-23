@@ -2,6 +2,7 @@ import type {CurriculumLesson} from './climbCurriculum';
 import type {DecisionBehaviourKey,DecisionSituationTag,DraftSituationContext} from './decisionTwin';
 import type {DecisionTransferPrime} from './decisionTransfer';
 import type {ClimbRepLevel,ClimbRepStage} from './climbRepLadder';
+import type {ClimbLearningContract} from './climbAutonomousCurriculumV6';
 
 export type ClimbMatchMissionStatus='READY'|'NOT_RELEVANT';
 export type ClimbMatchMissionReviewStatus='NO_MISSION'|'NOT_OBSERVED'|'EXECUTED'|'MISSED'|'MIXED';
@@ -34,6 +35,10 @@ export interface ClimbMatchMission{
   reviewRule:string;
   graduationRule:string;
   source:'CLIMB_CURRICULUM';
+  learningContractId?:string|null;
+  autonomousAction?:ClimbLearningContract['action']|null;
+  autonomousSupportPolicy?:ClimbLearningContract['supportPolicy']|null;
+  autonomousTestMode?:ClimbLearningContract['testDirective']['mode']|null;
   boundary:string;
 }
 
@@ -53,6 +58,8 @@ export interface ClimbMatchMissionReview{
   targetTag:DecisionSituationTag|null;
   repLevel:ClimbRepLevel|null;
   repStage:ClimbRepStage|null;
+  learningContractId?:string|null;
+  autonomousTestMode?:ClimbMatchMission['autonomousTestMode'];
   status:ClimbMatchMissionReviewStatus;
   matchedMoments:number;
   cleanMoments:number;
@@ -156,6 +163,7 @@ export function buildClimbMatchMission(input:{
   champion:string;
   role:string|null|undefined;
   transferPrime?:DecisionTransferPrime|null;
+  learningContract?:ClimbLearningContract|null;
 }):ClimbMatchMission|null{
   const lesson=input.lesson;
   if(!lesson)return null;
@@ -169,7 +177,12 @@ export function buildClimbMatchMission(input:{
   const action=ladder.level>=4&&matchingTransfer?.targetMove?clean(matchingTransfer.targetMove):baseAction;
   const trigger=ladder.level>=4&&matchingTransfer?.trigger?clean(matchingTransfer.trigger):baseTrigger;
   const baseRelevant=isRelevant(lesson.behaviourKey,targetTag,input.situationContext);
-  const relevant=ladder.level===5?Boolean(matchingTransfer)&&baseRelevant:baseRelevant;
+  const contractRequiresTransfer=input.learningContract?.testDirective.mode==='TRANSFER_TEST';
+  const relevant=contractRequiresTransfer
+    ?Boolean(matchingTransfer)&&baseRelevant
+    :ladder.level===5
+      ?Boolean(matchingTransfer)&&baseRelevant
+      :baseRelevant;
   const cue=`REP ${ladder.level}/5 · ${trigger} ${action}`;
   return{
     version:1,
@@ -199,6 +212,10 @@ export function buildClimbMatchMission(input:{
     reviewRule:'Score only medium/high-confidence Decision Graph moments matching this behaviour and mission context. No matching moment = NOT OBSERVED.',
     graduationRule:lesson.graduationRule,
     source:'CLIMB_CURRICULUM',
+    learningContractId:input.learningContract?.id??null,
+    autonomousAction:input.learningContract?.action??null,
+    autonomousSupportPolicy:input.learningContract?.supportPolicy??null,
+    autonomousTestMode:input.learningContract?.testDirective.mode??null,
     boundary:BOUNDARY,
   };
 }
@@ -210,7 +227,9 @@ export function reviewClimbMatchMission(
   if(!mission||mission.status!=='READY'){
     return{
       version:1,active:false,missionId:mission?.id??null,behaviourKey:mission?.behaviourKey??null,behaviourLabel:mission?.behaviourLabel??null,
-      targetTag:mission?.targetTag??null,repLevel:mission?.repLevel??null,repStage:mission?.repStage??null,status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
+      targetTag:mission?.targetTag??null,repLevel:mission?.repLevel??null,repStage:mission?.repStage??null,
+      learningContractId:mission?.learningContractId??null,autonomousTestMode:mission?.autonomousTestMode??null,
+      status:'NO_MISSION',matchedMoments:0,cleanMoments:0,improveMoments:0,
       note:mission?.status==='NOT_RELEVANT'?'The active Curriculum lesson did not have a strong draft-specific repetition in this game, so OP CLIMB did not force one.':'No frozen CLIMB match mission was available for review.',
       boundary:BOUNDARY,
     };
@@ -233,6 +252,8 @@ export function reviewClimbMatchMission(
     targetTag:mission.targetTag,
     repLevel:mission.repLevel??null,
     repStage:mission.repStage??null,
+    learningContractId:mission.learningContractId??null,
+    autonomousTestMode:mission.autonomousTestMode??null,
     status,
     matchedMoments:matched.length,
     cleanMoments,

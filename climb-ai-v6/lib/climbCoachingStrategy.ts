@@ -7,6 +7,7 @@ import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntent
 import {buildClimbAutonomyProfile,type ClimbAutonomyState} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueState} from './climbInterventionValue';
 import type {ClimbExperimentSchedule,ClimbExperimentType} from './climbExperimentScheduler';
+import type {AutonomousSupportPolicy} from './climbAutonomousCurriculumV6';
 
 export type ClimbCoachingStrategyMode='TEACH'|'REINFORCE'|'DIAGNOSE'|'FADE';
 export type ClimbCoachingDeliveryPolicy='FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
@@ -46,6 +47,9 @@ export interface ClimbCoachingStrategy{
   coachDirective:string;
   successDefinition:string;
   autonomyTest:boolean;
+  curriculumContractId?:string|null;
+  curriculumSupportPolicy?:AutonomousSupportPolicy|null;
+  curriculumConstrained?:boolean;
   source:'CLIMB_COACHING_STRATEGY';
   boundary:string;
 }
@@ -69,7 +73,7 @@ export interface ClimbCoachingStrategyReview{
   boundary:string;
 }
 
-const BOUNDARY='CLIMB Coaching Strategy decides the amount and purpose of coaching support before the game. It never changes the frozen win condition or Curriculum lesson. NOT OBSERVED is neutral, one miss cannot erase learned evidence, and reduced support is used to test independent execution rather than to withhold the game plan.';
+const BOUNDARY='CLIMB Coaching Strategy decides the amount and purpose of coaching support before the game. Autonomous Curriculum V6 constrains when scaffolding may be reduced, while verified knowledge gaps, execution gaps, support dependence or regression may restore support. It never changes the frozen win condition or Curriculum lesson. NOT OBSERVED is neutral, one miss cannot erase learned evidence, and reduced support is used to test independent execution rather than to withhold the game plan.';
 const REVIEW_BOUNDARY='Strategy review grades only the frozen support policy against the matching verified CLIMB Mission. A clean faded rep is evidence of independent execution in that observed context, not proof of permanent mastery.';
 
 function clean(value:unknown){return String(value??'').replace(/\s+/g,' ').trim()}
@@ -134,6 +138,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
   experimentId:string|null;
   experimentType:ClimbExperimentType|null;
   experimentInformationNeed:string|null;
+  curriculumContractId?:string|null;
+  curriculumSupportPolicy?:AutonomousSupportPolicy|null;
+  curriculumConstrained?:boolean;
 }):ClimbCoachingStrategy{
   const mission=input.mission;
   const base={
@@ -162,6 +169,9 @@ function strategyFor(mode:ClimbCoachingStrategyMode,input:{
     experimentId:input.experimentId,
     experimentType:input.experimentType,
     experimentInformationNeed:input.experimentInformationNeed,
+    curriculumContractId:input.curriculumContractId??null,
+    curriculumSupportPolicy:input.curriculumSupportPolicy??null,
+    curriculumConstrained:Boolean(input.curriculumConstrained),
     source:'CLIMB_COACHING_STRATEGY' as const,
     boundary:BOUNDARY,
   };
@@ -275,56 +285,75 @@ export function buildClimbCoachingStrategy(input:{
     experimentId:input.experimentSchedule?.id??null,
     experimentType:input.experimentSchedule?.experimentType??null,
     experimentInformationNeed:input.experimentSchedule?.informationNeed??null,
+    curriculumContractId:input.curriculum.autonomous?.activeContract?.id??null,
+    curriculumSupportPolicy:input.curriculum.autonomous?.activeContract?.supportPolicy??null,
+    curriculumConstrained:false,
+  };
+
+  const contract=input.curriculum.autonomous?.activeContract?.objectiveKey===mission.behaviourKey
+    ?input.curriculum.autonomous.activeContract
+    :null;
+  const repeatedKnowledgeGap=intentHistory.recentDiagnosis==='KNOWLEDGE_GAP'&&intentHistory.recentSameDiagnosisStreak>=2;
+  const repeatedExecutionGap=intentHistory.recentDiagnosis==='EXECUTION_GAP'&&intentHistory.recentSameDiagnosisStreak>=2;
+  const safetyNeedsSupport=repeatedKnowledgeGap||repeatedExecutionGap||autonomyCard?.state==='REGRESSION_WATCH'||autonomyCard?.state==='SUPPORT_DEPENDENT';
+  const scheduledSupportExperiment=input.experimentSchedule?.status==='SCHEDULED'&&input.experimentSchedule.requestedDeliveryPolicy!=='NONE';
+  const emit=(requested:ClimbCoachingStrategyMode)=>{
+    let mode=requested;
+    if(contract?.supportPolicy==='FULL'&&mode==='FADE')mode='REINFORCE';
+    if(contract?.supportPolicy==='LIGHT'&&mode==='FADE')mode='REINFORCE';
+    if(contract?.supportPolicy==='LIGHT'&&mode==='TEACH'&&!repeatedKnowledgeGap)mode='REINFORCE';
+    if(contract?.supportPolicy==='FADED'&&!safetyNeedsSupport&&!scheduledSupportExperiment&&mode!=='DIAGNOSE')mode='FADE';
+    return strategyFor(mode,{...facts,curriculumConstrained:Boolean(contract&&mode!==requested)});
   };
 
   // Intent Gap separates knowing from doing before generic miss streaks are interpreted.
   // Repeated knowledge gaps need teaching; repeated execution gaps need less theory and tighter execution support.
   if(intentHistory.recentDiagnosis==='KNOWLEDGE_GAP'&&intentHistory.recentSameDiagnosisStreak>=2){
-    return strategyFor('TEACH',facts);
+    return emit('TEACH');
   }
   if(intentHistory.recentDiagnosis==='EXECUTION_GAP'&&intentHistory.recentSameDiagnosisStreak>=2){
-    return strategyFor('REINFORCE',facts);
+    return emit('REINFORCE');
   }
 
   // Autonomy Engine controls support after intent has been interpreted.
   // A support-dependent player should be diagnosed before difficulty increases.
   // A regression watch restores light scaffolding without deleting prior ownership.
-  if(autonomyCard?.state==='REGRESSION_WATCH')return strategyFor('REINFORCE',facts);
-  if(autonomyCard?.state==='SUPPORT_DEPENDENT')return strategyFor('DIAGNOSE',facts);
-  if(autonomyCard?.state==='AUTONOMOUS'&&mission.repLevel>=3)return strategyFor('FADE',facts);
+  if(autonomyCard?.state==='REGRESSION_WATCH')return emit('REINFORCE');
+  if(autonomyCard?.state==='SUPPORT_DEPENDENT')return emit('DIAGNOSE');
+  if(autonomyCard?.state==='AUTONOMOUS'&&mission.repLevel>=3)return emit('FADE');
 
   // Experiment Scheduler can choose the next support condition only after Intent Gap
   // and Autonomy have had priority. DEFERRED experiments are descriptive only.
   if(input.experimentSchedule?.status==='SCHEDULED'){
-    if(input.experimentSchedule.requestedDeliveryPolicy==='NONE')return strategyFor('FADE',facts);
-    if(input.experimentSchedule.requestedDeliveryPolicy==='DIAGNOSTIC')return strategyFor('DIAGNOSE',facts);
-    return strategyFor('REINFORCE',facts);
+    if(input.experimentSchedule.requestedDeliveryPolicy==='NONE')return emit('FADE');
+    if(input.experimentSchedule.requestedDeliveryPolicy==='DIAGNOSTIC')return emit('DIAGNOSE');
+    return emit('REINFORCE');
   }
 
   // A previously reduced-support rep that misses once gets light scaffolding back,
   // not a wholesale re-teach. Two faded misses are enough to diagnose the branch.
-  if(fadedMisses>=2)return strategyFor('DIAGNOSE',facts);
-  if(fadedMisses===1&&recentFaded.at(-1)?.status==='MISSED')return strategyFor('REINFORCE',facts);
+  if(fadedMisses>=2)return emit('DIAGNOSE');
+  if(fadedMisses===1&&recentFaded.at(-1)?.status==='MISSED')return emit('REINFORCE');
 
   // Intervention Value is lower-priority than Intent Gap and Autonomy. It can tune
   // support only after those stronger learning-state signals have been handled.
   // Matched response difference is association evidence, never a causal override.
   if(interventionValueCard?.state==='FADE_ASSOCIATED_BETTER'&&mission.repLevel>=3&&cleanStreak>=2){
-    return strategyFor('FADE',facts);
+    return emit('FADE');
   }
   if(interventionValueCard?.state==='STRONG_SUPPORT_ASSOCIATED_LIFT'&&mission.repLevel>=2){
-    return strategyFor('REINFORCE',facts);
+    return emit('REINFORCE');
   }
 
   // Delivery instability or repeated verified branch misses should change the
   // coaching approach before difficulty or curriculum changes.
   if(twinStatus==='RETESTING'||missStreak>=2||(reviews.length>=4&&(executionRate??100)<35)){
-    return strategyFor('DIAGNOSE',facts);
+    return emit('DIAGNOSE');
   }
 
   // New/recognition-stage learning receives explicit scaffolding.
   if(reviews.length<2||mission.repLevel<=1||mission.repStage==='RECOGNISE'){
-    return strategyFor('TEACH',facts);
+    return emit('TEACH');
   }
 
   // Fade only after repeated clean observed decisions. This is an autonomy test,
@@ -335,15 +364,15 @@ export function buildClimbCoachingStrategy(input:{
     (executionRate??0)>=75&&
     mission.repLevel>=3
   ){
-    return strategyFor('FADE',facts);
+    return emit('FADE');
   }
 
   // Improving but not yet independent: one concise reminder is enough.
   if(cleanStreak>=1||(reviews.length>=3&&(executionRate??0)>=50)){
-    return strategyFor('REINFORCE',facts);
+    return emit('REINFORCE');
   }
 
-  return strategyFor('TEACH',facts);
+  return emit('TEACH');
 }
 
 export function reviewClimbCoachingStrategy(

@@ -10,6 +10,7 @@ import {buildClimbIntentProbe,answerClimbIntentProbe,type ClimbIntentProbe} from
 import {buildClimbAutonomyProfile,type ClimbAutonomyProfile,type ClimbAutonomyCard} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueProfile,type ClimbInterventionValueCard} from './climbInterventionValue';
 import {buildClimbExperimentSchedule,type ClimbExperimentSchedule} from './climbExperimentScheduler';
+import type {ClimbLearningContract} from './climbAutonomousCurriculumV6';
 import {buildDecisionGraph,type DecisionGraph,type LockedDecisionPlan} from './decisionGraph';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import type {ProMatchAnalysis} from './riot/proAnalysis';
@@ -65,6 +66,11 @@ export interface SimulationGameEvent{
   experimentType:string|null;
   experimentPolicy:string|null;
   experimentReview:string;
+  learningContractId:string|null;
+  autonomousState:string|null;
+  autonomousAction:string|null;
+  autonomousSupportPolicy:string|null;
+  autonomousTestMode:string|null;
   transferPrime:boolean;
   outcome:'GOOD'|'IMPROVE'|'NOT_OBSERVED';
   latentSkill:number;
@@ -379,11 +385,15 @@ function benchCoachingAdjustment(strategy:ClimbCoachingStrategy|null,skill:numbe
 }
 function transitionInvariant(input:{
   archetype:SimulationArchetypeId;
+  policy:SimulationPolicyId;
   game:number;
   preLevel:number|null;
   postLevel:number|null;
+  preLesson:CurriculumLesson|null;
   postLesson:CurriculumLesson|null;
+  preMemory:ScenarioMemoryCard|null;
   postMemory:ScenarioMemoryCard|null;
+  preTransfer:ReturnType<typeof transferCard>;
   postTransfer:ReturnType<typeof transferCard>;
   mission:ClimbMatchMission|null;
   transferPrime:DecisionTransferPrime|null;
@@ -398,11 +408,15 @@ function transitionInvariant(input:{
   postInterventionValue:ClimbInterventionValueCard|null;
   experimentSchedule:ClimbExperimentSchedule|null;
   experimentReview:DecisionGraph['summary']['experimentSchedule'];
+  learningContract:NonNullable<ClimbCurriculum['autonomous']>['activeContract']|null;
 }){
   const errors:string[]=[];
   const prefix=input.archetype+' game '+String(input.game)+': ';
   if(input.review.status==='NOT_OBSERVED'&&input.preLevel!==null&&input.postLevel!==null&&input.postLevel!==input.preLevel){
-    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' to '+String(input.postLevel)+'.');
+    errors.push(prefix+'NOT_OBSERVED changed Rep Ladder difficulty from '+String(input.preLevel)+' ('+String(input.preLesson?.behaviourKey??'none')+' / '+String(input.preLesson?.phase??'none')+' / memory '+String(input.preMemory?.state??'none')+' / transfer '+String(input.preTransfer?.state??'none')+') to '+String(input.postLevel)+' ('+String(input.postLesson?.behaviourKey??'none')+' / '+String(input.postLesson?.phase??'none')+' / memory '+String(input.postMemory?.state??'none')+' / transfer '+String(input.postTransfer?.state??'none')+').');
+  }
+  if(input.review.status==='NOT_OBSERVED'&&input.preLesson?.behaviourKey!==input.postLesson?.behaviourKey){
+    errors.push(prefix+'NOT_OBSERVED changed active objective from '+String(input.preLesson?.behaviourKey??'none')+' to '+String(input.postLesson?.behaviourKey??'none')+'.');
   }
   if(input.preLevel!==null&&input.postLevel!==null&&input.postLevel<input.preLevel-1){
     errors.push(prefix+'difficulty demoted more than one layer ('+String(input.preLevel)+' → '+String(input.postLevel)+').');
@@ -434,6 +448,22 @@ function transitionInvariant(input:{
   if(input.strategyReview.status==='NOT_OBSERVED'&&input.review.status!=='NOT_OBSERVED'){
     errors.push(prefix+'Coaching Strategy became NOT_OBSERVED while its frozen mission was graded.');
   }
+  if(input.learningContract&&input.mission?.learningContractId!==input.learningContract.id){
+    errors.push(prefix+'frozen mission detached from Autonomous Curriculum contract '+input.learningContract.id+'.');
+  }
+  if(input.learningContract&&input.mission?.autonomousSupportPolicy!==input.learningContract.supportPolicy){
+    errors.push(prefix+'frozen mission support policy '+String(input.mission?.autonomousSupportPolicy)+' does not match contract '+input.learningContract.supportPolicy+'.');
+  }
+  if(input.policy==='PRODUCT'&&input.learningContract&&['FULL','LIGHT'].includes(input.learningContract.supportPolicy)&&input.strategy?.deliveryPolicy==='NONE'){
+    errors.push(prefix+'Autonomous Curriculum '+input.learningContract.supportPolicy+' floor was violated by a no-support strategy.');
+  }
+  if(input.learningContract?.testDirective.mode==='TRANSFER_TEST'&&input.mission?.status==='READY'&&!input.transferPrime){
+    errors.push(prefix+'transfer-test contract created a READY mission without a frozen transfer prime.');
+  }
+  if(input.review.status==='NOT_OBSERVED'&&input.learningContract&&input.postLesson?.behaviourKey!==input.learningContract.objectiveKey){
+    errors.push(prefix+'NOT_OBSERVED detached the active lesson from learning contract '+input.learningContract.objectiveKey+'.');
+  }
+
   if(input.intentProbe?.response&&input.review.status==='MISSED'){
     const expected=input.intentProbe.response.correct?'EXECUTION_GAP':'KNOWLEDGE_GAP';
     if(input.intentReview.diagnosis!==expected){
@@ -463,7 +493,14 @@ function transitionInvariant(input:{
     errors.push(prefix+'post-game experiment review did not use the frozen pre-game experiment.');
   }
   if(input.experimentSchedule?.status==='SCHEDULED'&&input.review.status!=='NOT_OBSERVED'&&input.experimentReview.status!=='COMPLETED'){
-    errors.push(prefix+'scheduled experiment was observed but did not complete under the requested support policy.');
+    errors.push(prefix+'scheduled experiment was observed but did not complete under the requested support policy'
+      +' · experiment='+String(input.experimentSchedule.experimentType)
+      +' requested='+String(input.experimentSchedule.requestedDeliveryPolicy)
+      +' observed='+String(input.experimentReview.observedDeliveryPolicy)
+      +' strategy='+String(input.strategy?.mode??'NONE')+'/'+String(input.strategy?.deliveryPolicy??'NONE')
+      +' contract='+String(input.learningContract?.supportPolicy??'NONE')
+      +' autonomous='+String(input.learningContract?.state??'NONE')
+      +'.');
   }
   if(input.experimentSchedule?.requestedDeliveryPolicy==='NONE'&&input.experimentSchedule.status==='SCHEDULED'&&input.strategy?.intervene){
     errors.push(prefix+'scheduled FADE experiment still delivered adaptive coaching support.');
@@ -536,6 +573,7 @@ export function runSimulationCareer(input:{
     const draftKind=chooseDraft({random,archetype:input.archetype,curriculum:pre.curriculum,game});
     const draft=draftFor(draftKind,game);
     const situationContext=buildDraftSituationContext({champion:draft.champion,role:'ADC',enemies:draft.enemies});
+    const learningContract=pre.curriculum.autonomous?.activeContract??null;
     const transferPrime=selectDecisionTransferPrime({
       transfer:pre.transfer,
       memory:pre.memory,
@@ -544,6 +582,8 @@ export function runSimulationCareer(input:{
       simulation:null,
       champion:draft.champion,
       role:'ADC',
+      enabled:learningContract?.testDirective.mode==='TRANSFER_TEST',
+      behaviourKey:learningContract?.testDirective.behaviourKey??null,
     });
     const activeLesson=pre.curriculum.status==='ACTIVE'?pre.curriculum.currentLesson:null;
     const mission=buildClimbMatchMission({
@@ -557,6 +597,7 @@ export function runSimulationCareer(input:{
       champion:draft.champion,
       role:'ADC',
       transferPrime,
+      learningContract,
     });
     if(mission?.status==='READY')missionsReady++;
     if(mission?.status==='NOT_RELEVANT')missionsNotRelevant++;
@@ -634,17 +675,23 @@ export function runSimulationCareer(input:{
     if(preLevel!==null&&postLevel!==null&&postLevel>preLevel)promotions++;
     if(preLevel!==null&&postLevel!==null&&postLevel<preLevel)demotions++;
 
+    const preMemory=bestMemory(pre.memory);
+    const preTransfer=transferCard(pre.transfer);
     const postMemory=bestMemory(post.memory);
     const postTransfer=transferCard(post.transfer);
     const postAutonomy=post.autonomy.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
     const postInterventionValue=post.interventionValue.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
     invariants.push(...transitionInvariant({
       archetype:input.archetype.id,
+      policy,
       game,
       preLevel,
       postLevel,
+      preLesson,
       postLesson,
+      preMemory,
       postMemory,
+      preTransfer,
       postTransfer,
       mission,
       transferPrime,
@@ -659,6 +706,7 @@ export function runSimulationCareer(input:{
       postInterventionValue,
       experimentSchedule,
       experimentReview:graph.summary.experimentSchedule,
+      learningContract,
     }));
 
     const activeCount=post.curriculum.queue.filter(item=>item.readiness==='ACTIVE').length;
@@ -691,6 +739,11 @@ export function runSimulationCareer(input:{
       experimentType:experimentSchedule?.experimentType??null,
       experimentPolicy:experimentSchedule?.requestedDeliveryPolicy??null,
       experimentReview:graph.summary.experimentSchedule.status,
+      learningContractId:learningContract?.id??null,
+      autonomousState:learningContract?.state??pre.curriculum.autonomous?.state??null,
+      autonomousAction:learningContract?.action??pre.curriculum.autonomous?.action??null,
+      autonomousSupportPolicy:learningContract?.supportPolicy??null,
+      autonomousTestMode:learningContract?.testDirective.mode??null,
       transferPrime:Boolean(transferPrime),
       outcome:clean===null?'NOT_OBSERVED':clean?'GOOD':'IMPROVE',
       latentSkill:Number(skill.toFixed(3)),

@@ -144,7 +144,7 @@ test('repeated clean decisions across different champion and context can promote
     row(5,'Jinx','GOOD','MULTI_ACCESS'),
     row(6,'Aphelios','GOOD','PICK_PRESSURE'),
     row(7,'Jinx','GOOD','PICK_PRESSURE'),
-    row(8,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(8,"Kai'Sa",'GOOD','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'PRINCIPLE_OWNED');
@@ -164,7 +164,7 @@ test('one isolated novel miss does not erase transferred learning',()=>{
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
-    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
+    row(7,"Kai'Sa",'GOOD','PICK_PRESSURE'),
     row(8,'Jinx','GOOD','PICK_PRESSURE'),
     row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
     row(10,'Jinx','GOOD','PICK_PRESSURE'),
@@ -174,7 +174,7 @@ test('one isolated novel miss does not erase transferred learning',()=>{
   assert.equal(transfer.regressed,0);
 });
 
-test('a transferred principle reopens after sustained novel mistakes',()=>{
+test('a transferred principle reopens after two sustained novel mistakes',()=>{
   const {transfer}=build([
     row(0,'Aphelios','IMPROVE'),
     row(1,'Aphelios','GOOD'),
@@ -183,16 +183,38 @@ test('a transferred principle reopens after sustained novel mistakes',()=>{
     row(4,'Aphelios','GOOD'),
     row(5,'Jinx','GOOD','PICK_PRESSURE'),
     row(6,'Jinx','GOOD','PICK_PRESSURE'),
-    row(7,'Kai\'Sa','GOOD','PICK_PRESSURE'),
-    row(8,'Jinx','GOOD','PICK_PRESSURE'),
-    row(9,'Jinx','IMPROVE','PICK_PRESSURE'),
-    row(10,'Kai\'Sa','IMPROVE','PICK_PRESSURE'),
-    row(11,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(7,"Kai'Sa",'GOOD','PICK_PRESSURE'),
+    row(8,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(9,"Kai'Sa",'IMPROVE','PICK_PRESSURE'),
   ]);
   const card=transfer.cards[0];
   assert.equal(card.state,'REGRESSED');
   assert.equal(transfer.regressed,1);
   assert.equal(card.nextTransferNeeded,true);
+});
+
+test('transfer regression stays open until three consecutive clean novel recovery reps',()=>{
+  const base=[
+    row(0,'Aphelios','IMPROVE'),
+    row(1,'Aphelios','GOOD'),
+    row(2,'Aphelios','GOOD'),
+    row(3,'Aphelios','GOOD'),
+    row(4,'Aphelios','GOOD'),
+    row(5,'Jinx','GOOD','PICK_PRESSURE'),
+    row(6,"Kai'Sa",'GOOD','PICK_PRESSURE'),
+    row(7,'Jinx','IMPROVE','PICK_PRESSURE'),
+    row(8,"Kai'Sa",'IMPROVE','PICK_PRESSURE'),
+  ];
+  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
+  const recovered=[...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')];
+  assert.notEqual(build(recovered).transfer.cards[0]?.state,'REGRESSED');
+  const secondMissOne=[...recovered,row(12,"Kai'Sa",'IMPROVE','PICK_PRESSURE')];
+  const secondMissTwo=[...secondMissOne,row(13,'Jinx','IMPROVE','PICK_PRESSURE')];
+  const secondMissThree=[...secondMissTwo,row(14,"Kai'Sa",'IMPROVE','PICK_PRESSURE')];
+  assert.notEqual(build(secondMissOne).transfer.cards[0]?.state,'REGRESSED','A closed regression episode must not resurrect from one later miss.');
+  assert.notEqual(build(secondMissTwo).transfer.cards[0]?.state,'REGRESSED','A rebuilt principle needs stronger evidence before a second reopen.');
+  assert.equal(build(secondMissThree).transfer.cards[0]?.state,'REGRESSED','Three later consecutive novel misses should reopen a rebuilt transfer principle.');
 });
 
 test('exact-draft V5 selector yields one novel transfer test and defers to unstable V4 reps',()=>{

@@ -8,7 +8,7 @@ function row(index:number,verdict:'GOOD'|'IMPROVE',tag='MULTI_ACCESS',behaviour=
   return{
     champion:'Aphelios',
     role:'ADC',
-    createdAt:'2026-09-'+String(index+1).padStart(2,'0')+'T12:00:00.000Z',
+    createdAt:new Date(Date.UTC(2026,8,1+index,12,0,0)).toISOString(),
     analysis:{
       version:1,
       champion:'Aphelios',
@@ -52,6 +52,12 @@ function row(index:number,verdict:'GOOD'|'IMPROVE',tag='MULTI_ACCESS',behaviour=
       },
     } as any,
   };
+}
+
+function neutralRow(index:number):HistoryAnalysisRow{
+  const base=row(index,'GOOD');
+  (base.analysis as any).decisionGraph.nodes=[];
+  return base;
 }
 
 const context={
@@ -162,6 +168,20 @@ test('a previously stable memory reopens only after sustained comparable misses'
   assert.equal(card.dueNextGame,true);
   assert.equal(memory.regressed,1);
   assert.match(memory.summary,/reopened/i);
+});
+
+test('irrelevant games cannot evict comparable evidence and manufacture a regression',()=>{
+  const comparable:HistoryAnalysisRow[]=[];
+  for(let i=0;i<47;i++)comparable.push(row(i,i===0||i<10?'IMPROVE':'GOOD'));
+  comparable.push(row(47,'IMPROVE'),row(48,'IMPROVE'),row(49,'IMPROVE'));
+  const before=buildScenarioMemory(comparable,'2026-10-25T12:00:00.000Z');
+  assert.equal(before.cards[0]?.state,'DUE');
+  assert.equal(before.cards[0]?.comparableGames,50);
+
+  const after=buildScenarioMemory([...comparable,neutralRow(50)],'2026-10-26T12:00:00.000Z');
+  assert.equal(after.cards[0]?.state,'DUE');
+  assert.equal(after.cards[0]?.comparableGames,50);
+  assert.equal(after.regressed,0);
 });
 
 test('V4 selects one draft-matched due memory and binds it to the exact V3 simulation',()=>{

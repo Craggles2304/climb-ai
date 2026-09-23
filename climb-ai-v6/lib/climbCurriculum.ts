@@ -4,6 +4,7 @@ import type {ScenarioMemoryProfile,ScenarioMemoryCard} from './scenarioMemory';
 import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTransfer';
 import {buildClimbRepLadder,type ClimbRepLadder,type ClimbRepLevel} from './climbRepLadder';
 import {buildClimbCareerMatrix,type ClimbCareerMatrix} from './climbCareerMatrix';
+import {buildClimbAutonomousCurriculum,type ClimbAutonomousCurriculum} from './climbAutonomousCurriculumV6';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -56,6 +57,7 @@ export interface ClimbCurriculum{
   graduated:CurriculumLesson[];
   repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>;
   careerMatrix?:ClimbCareerMatrix;
+  autonomous?:ClimbAutonomousCurriculum;
   decision:CurriculumDecision;
   summary:string;
   boundary:string;
@@ -117,9 +119,15 @@ function behaviourStable(memory:ScenarioMemoryProfile,transfer:DecisionTransferP
   if(tx?.state==='PRINCIPLE_OWNED')return true;
   return mem?.state==='MASTERED';
 }
-function phaseFor(mem:ScenarioMemoryCard|null,tx:DecisionTransferCard|null):CurriculumPhase{
-  if(tx?.state==='PRINCIPLE_OWNED')return'GRADUATED';
+function phaseFor(mem:ScenarioMemoryCard|null,tx:DecisionTransferCard|null,previousPhase:CurriculumPhase|null=null):CurriculumPhase{
   if(mem?.state==='REGRESSED'||tx?.state==='REGRESSED')return'REOPEN';
+  // A regression episode is a learning contract, not a one-game label. Once
+  // reopened, require the published recovery gate (three clean comparable
+  // decisions) before returning to normal progression. This prevents a single
+  // clean rep from closing the episode and a later miss streak from reopening it
+  // as a brand-new demotion.
+  if(previousPhase==='REOPEN'&&(mem?.cleanStreak??0)<3)return'REOPEN';
+  if(tx?.state==='PRINCIPLE_OWNED')return'GRADUATED';
   if(mem?.state==='MASTERED')return'TRANSFER';
   if(mem?.state==='STABILISING')return'STABILISE';
   if(mem?.state==='DUE'||mem?.state==='LEARNING')return'PRACTISE';
@@ -180,7 +188,7 @@ function makeLesson(
   const tx=transferCard(transfer,key);
   const prerequisite=PREREQUISITE[key]??null;
   const prerequisiteStable=prerequisite?behaviourStable(memory,transfer,prerequisite):true;
-  const phase=phaseFor(mem,tx);
+  const phase=phaseFor(mem,tx,previousState.phase);
   const readiness:CurriculumReadiness=phase==='GRADUATED'
     ?'COMPLETE'
     :prerequisite&&!prerequisiteStable
@@ -410,6 +418,15 @@ export function buildClimbCurriculum(
   const status:ClimbCurriculum['status']=building?'BUILDING':current?'ACTIVE':'COMPLETE';
   const repLedger:Partial<Record<DecisionBehaviourKey,CurriculumRepLedgerEntry>>={...(previous?.repLedger??{}) as any};
   for(const lesson of lessons)repLedger[lesson.behaviourKey]={level:lesson.repLadder.level,phase:lesson.phase};
+  const autonomous=buildClimbAutonomousCurriculum({
+    generatedAt,
+    gamesAnalyzed:twin.gamesAnalyzed,
+    status,
+    currentLesson:current,
+    nextLesson:next,
+    decision:selection.decision,
+    careerMatrix,
+  },previous?.autonomous??null);
   return{
     version:1,
     generatedAt,
@@ -421,6 +438,7 @@ export function buildClimbCurriculum(
     graduated,
     repLedger,
     careerMatrix,
+    autonomous,
     decision:selection.decision,
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'

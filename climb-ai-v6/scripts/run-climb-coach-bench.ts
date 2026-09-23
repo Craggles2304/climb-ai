@@ -37,6 +37,13 @@ console.log('Longitudinal exact selection:',report.careerMatrix.longitudinal.exa
 console.log('Wrong switches / 100:',report.careerMatrix.longitudinal.wrongSwitchesPer100);
 console.log('Deferred return:',report.careerMatrix.longitudinal.deferredReturnRate+'%');
 console.log('');
+console.log('AUTONOMOUS CURRICULUM V6');
+console.table(report.autonomousCurriculum.results.map(item=>({case:item.id,expected:item.expected,actual:item.actual,pass:item.pass})));
+console.log('Lifecycle accuracy:',report.autonomousCurriculum.lifecycleAccuracy+'%');
+console.log('Contract continuity:',report.autonomousCurriculum.contractContinuity+'%');
+console.log('Transfer discipline:',report.autonomousCurriculum.transferDiscipline+'%');
+console.log('Interruption discipline:',report.autonomousCurriculum.interruptionDiscipline+'%');
+console.log('');
 console.table(report.guardrails.map(item=>({guardrail:item.key,pass:item.pass,detail:item.detail})));
 console.log('\nSelection-eligible winner:',report.winner);
 console.log('Raw score leader:',report.scoreLeader);

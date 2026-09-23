@@ -204,10 +204,28 @@ function transferState(input:{
   novelContexts:DecisionSituationTag[];
 }):DecisionTransferState{
   if(!input.novel.length)return'LOCAL_ONLY';
-  const older=input.novel.slice(0,-3);
-  const olderRate=pct(older.filter(item=>item.verdict==='GOOD').length,older.length)??0;
-  const recentThree=input.novel.slice(-3);
-  if(older.length>=3&&recentThree.length===3&&olderRate>=80&&recentThree.every(item=>item.verdict==='IMPROVE'))return'REGRESSED';
+  let activeRegressionEnd=-1;
+  let completedRegressionEpisodes=0;
+  for(let index=0;index<input.novel.length;index++){
+    if(activeRegressionEnd>=0){
+      const recovered=index>=activeRegressionEnd+3
+        &&input.novel.slice(index-2,index+1).every(item=>item.verdict==='GOOD');
+      if(recovered){
+        activeRegressionEnd=-1;
+        completedRegressionEpisodes++;
+      }
+      continue;
+    }
+    const missesRequired=completedRegressionEpisodes>0?3:2;
+    if(index<missesRequired-1)continue;
+    const recentMisses=input.novel.slice(index-missesRequired+1,index+1);
+    if(!recentMisses.every(item=>item.verdict==='IMPROVE'))continue;
+    const prior=input.novel.slice(0,index-missesRequired+1);
+    const priorClean=prior.filter(item=>item.verdict==='GOOD').length;
+    const priorRate=pct(priorClean,prior.length)??0;
+    if(priorClean>=2&&priorRate>=67)activeRegressionEnd=index;
+  }
+  if(activeRegressionEnd>=0)return'REGRESSED';
   const cleanStreak=streak(input.novel);
   const breadthScore=breadth(input.novelChampions,input.novelContexts);
   if(input.clean>=4&&(input.recentRate??0)>=80&&cleanStreak>=3&&breadthScore>=2)return'PRINCIPLE_OWNED';
@@ -397,11 +415,15 @@ export function selectDecisionTransferPrime(input:{
   simulation:DecisionSimulation|null|undefined;
   champion:string;
   role:string|null;
+  enabled?:boolean;
+  behaviourKey?:DecisionBehaviourKey|null;
 }):DecisionTransferPrime|null{
+  if(input.enabled===false)return null;
   if(input.scenarioPrime&&input.scenarioPrime.state!=='MASTERED')return null;
 
   const candidates=input.transfer.cards
     .filter(card=>card.nextTransferNeeded)
+    .filter(card=>!input.behaviourKey||card.behaviourKey===input.behaviourKey)
     .map(card=>{
       const targetTag=targetTagFor(card,input.situationContext);
       const championNovel=clean(input.champion)!==clean(card.sourceChampion);

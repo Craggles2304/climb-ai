@@ -98,6 +98,22 @@ test('regression reopens a lesson even after prior progress',()=>{
   assert.match(result.currentLesson?.graduationRule||'',/three clean comparable/i);
 });
 
+test('verified regression reopens a previously principle-owned skill',()=>{
+  const owned=tx('FIGHT_SELECTION','PRINCIPLE_OWNED',95);
+  owned.nextTransferNeeded=false;
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',95)]),
+    memory([card('FIGHT_SELECTION','REGRESSED',{memoryStrength:48,cleanStreak:0,lastVerdict:'IMPROVE'})]),
+    transfer([owned]),
+  );
+  assert.equal(result.currentLesson?.behaviourKey,'FIGHT_SELECTION');
+  assert.equal(result.currentLesson?.phase,'REOPEN');
+  assert.equal(result.status,'ACTIVE');
+  assert.match(result.currentLesson?.whyNow||'',/returned|reopen/i);
+  assert.equal(result.autonomous?.action,'START_OBJECTIVE');
+  assert.equal(result.autonomous?.activeContract?.state,'REOPEN');
+});
+
 test('curriculum will not claim a teaching sequence from too little history',()=>{
   const result=buildClimbCurriculum(
     twin([focus('FIGHT_SELECTION')],2),
@@ -214,6 +230,49 @@ test('curriculum holds the same reduced level while one REOPEN episode remains a
   );
   assert.equal(result.currentLesson?.phase,'REOPEN');
   assert.equal(result.currentLesson?.repLadder.level,4);
+});
+
+test('REOPEN stays active until three clean comparable decisions rebuild the skill',()=>{
+  const prior:any=previous('FIGHT_SELECTION');
+  prior.currentLesson.phase='REOPEN';
+  prior.currentLesson.repLadder={level:4};
+  prior.repLedger={FIGHT_SELECTION:{level:4,phase:'REOPEN'}};
+
+  const oneClean=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','LEARNING',{cleanStreak:1,memoryStrength:52,lastVerdict:'GOOD'})]),
+    transfer([]),
+    '2026-09-21T13:00:00.000Z',
+    prior,
+  );
+  assert.equal(oneClean.currentLesson?.phase,'REOPEN');
+  assert.equal(oneClean.currentLesson?.repLadder.level,4);
+
+  const twoClean=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','STABILISING',{cleanStreak:2,memoryStrength:68,lastVerdict:'GOOD'})]),
+    transfer([]),
+    '2026-09-21T14:00:00.000Z',
+    oneClean,
+  );
+  assert.equal(twoClean.currentLesson?.phase,'REOPEN');
+  assert.equal(twoClean.currentLesson?.repLadder.level,4);
+});
+
+test('REOPEN exits only after the three-clean recovery gate is met',()=>{
+  const prior:any=previous('FIGHT_SELECTION');
+  prior.currentLesson.phase='REOPEN';
+  prior.currentLesson.repLadder={level:4};
+  prior.repLedger={FIGHT_SELECTION:{level:4,phase:'REOPEN'}};
+  const result=buildClimbCurriculum(
+    twin([focus('FIGHT_SELECTION',90)]),
+    memory([card('FIGHT_SELECTION','MASTERED',{cleanStreak:3,memoryStrength:88,lastVerdict:'GOOD'})]),
+    transfer([]),
+    '2026-09-21T15:00:00.000Z',
+    prior,
+  );
+  assert.equal(result.currentLesson?.phase,'TRANSFER');
+  assert.equal(result.autonomous?.activeContract?.state,'TRANSFER_TEST');
 });
 
 test('graduation advances the curriculum to the next unlocked lesson',()=>{

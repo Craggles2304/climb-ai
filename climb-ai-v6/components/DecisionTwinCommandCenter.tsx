@@ -181,6 +181,8 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
   const nextLesson=curriculum?.nextLesson??null;
   const curriculumQueue=useMemo(()=>curriculum?.queue?.slice(0,4)??[],[curriculum]);
   const careerMatrix=curriculum?.careerMatrix??null;
+  const autonomous=curriculum?.autonomous??null;
+  const learningContract=autonomous?.activeContract??null;
   const matrixCandidates=useMemo(()=>careerMatrix?.candidates?.slice(0,5)??[],[careerMatrix]);
   const coachProfiles=useMemo(()=>coachTwin?.behaviourProfiles?.slice(0,3)??[],[coachTwin]);
   const coachMethods=useMemo(()=>coachTwin?.overallMethods?.slice().sort((a,b)=>(b.observedGames-a.observedGames)||((b.executionRate??-1)-(a.executionRate??-1))).slice(0,4)??[],[coachTwin]);
@@ -265,6 +267,24 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
             <small>{curriculum?.gamesAnalyzed??0} games</small>
           </div>
         </div>
+        {autonomous&&<div className="dt8-contract">
+          <div className="dt8-contract-head">
+            <div><span>AUTONOMOUS CURRICULUM V6</span><h4>{learningContract?learningContract.objectiveLabel:'NO ACTIVE LEARNING CONTRACT'}</h4></div>
+            <div><b>{autonomous.action.replaceAll('_',' ')}</b><small>{learningContract?learningContract.state:'BUILDING'}</small></div>
+          </div>
+          {learningContract?<>
+            <div className="dt8-progress"><i style={{width:`${learningContract.completion}%`}}/><span>{learningContract.completion}% contract progress</span></div>
+            <div className="dt8-contract-grid">
+              <div><span>SUPPORT POLICY</span><strong>{learningContract.supportPolicy}</strong><small>{learningContract.stopTeachingWhen}</small></div>
+              <div><span>NEXT TEST</span><strong>{learningContract.testDirective.mode.replaceAll('_',' ')}</strong><small>{learningContract.testDirective.instruction}</small></div>
+              <div><span>REPLACEMENT</span><strong>{learningContract.replacement.nextLabel||'WAITING FOR EVIDENCE'}</strong><small>{learningContract.replacement.reason}</small></div>
+            </div>
+            <div className="dt8-gates">
+              {learningContract.gates.map(gate=><div key={gate.id} className={gate.met?'met':''}><span>{gate.label}</span><b>{gate.current}/{gate.target}</b><small>{gate.met?'GATE CLEARED':gate.evidence}</small></div>)}
+            </div>
+            <div className="dt8-contract-foot"><b>CONTRACT · {learningContract.id}</b><span>Started game {learningContract.startedGame} · active {learningContract.ageGames} game{learningContract.ageGames===1?'':'s'}</span></div>
+          </>:<p>{autonomous.summary}</p>}
+        </div>}
         {currentLesson?<div className="dt6-current">
           <div className="dt6-current-main">
             <span>CURRENT LESSON · {currentLesson.phase}</span>
