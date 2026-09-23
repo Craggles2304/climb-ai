@@ -223,6 +223,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       learningVelocity:coach?._learningVelocity||null,
       skillTransferGraph:coach?._skillTransferGraph||null,
       skillBridgePrime:coach?._skillBridgePrime||null,
+      decisionPrincipleEngine:coach?._decisionPrincipleEngine||null,
+      decisionPrinciplePrime:coach?._decisionPrinciplePrime||null,
       adaptiveCoachingSession:coach?._adaptiveCoachingSession||null,
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
@@ -1038,6 +1040,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._learningVelocity=response?.learningVelocity||null;
         enrichedCoach._skillTransferGraph=response?.skillTransferGraph||null;
         enrichedCoach._skillBridgePrime=response?.skillBridgePrime||null;
+        enrichedCoach._decisionPrincipleEngine=response?.decisionPrincipleEngine||null;
+        enrichedCoach._decisionPrinciplePrime=response?.decisionPrinciplePrime||null;
         enrichedCoach._adaptiveCoachingSession=response?.adaptiveCoachingSession||null;
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
