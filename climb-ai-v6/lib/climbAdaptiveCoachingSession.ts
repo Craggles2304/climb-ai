@@ -4,6 +4,7 @@ import type {ClimbCurriculum} from './climbCurriculum';
 import type {ClimbCoachingDeliveryPolicy,ClimbCoachingStrategy,ClimbCoachingStrategyMode} from './climbCoachingStrategy';
 import type {PlayerCoachingIdentity} from './playerCoachingIdentity';
 import type {CausalCoachLayer} from './decisionCausalChain';
+import type {LearningVelocityPolicy} from './climbLearningVelocity';
 
 export type AdaptiveCoachingSessionPhase=
   |'DIAGNOSE_TEACH'
@@ -76,6 +77,8 @@ export interface AdaptiveCoachingSession{
   replanCount:number;
   routeWatchLayer:CausalCoachLayer|null;
   routeWatchCount:number;
+  phaseCleanStreak:number;
+  learningVelocityPolicy:LearningVelocityPolicy|null;
   lastEvaluatedAt:string|null;
   previousSessionId:string|null;
   events:AdaptiveCoachingSessionEvent[];
@@ -279,7 +282,7 @@ function blank(input:{
     version:1,id:null,generatedAt:input.generatedAt,gamesAnalyzed:input.gamesAnalyzed,status:'BUILDING',
     objectiveKey:null,objectiveLabel:null,startedGame:null,ageGames:0,plannedGames:5,currentStep:null,currentStepNumber:null,
     blockPlan:STEPS,observedGames:0,notObservedGames:0,completedSteps:0,replanCount:input.previous?.replanCount??0,
-    routeWatchLayer:null,routeWatchCount:0,lastEvaluatedAt:input.previous?.lastEvaluatedAt??null,
+    routeWatchLayer:null,routeWatchCount:0,phaseCleanStreak:0,learningVelocityPolicy:null,lastEvaluatedAt:input.previous?.lastEvaluatedAt??null,
     previousSessionId:input.previous?.id??null,events:[],
     nextGameBrief:briefFor({identity:input.identity,curriculum:input.curriculum,step:null,gameNumber:1,blocker}),
     summary:'Adaptive Coaching Session is waiting for one active evidence-backed development objective before planning a multi-game block.',
@@ -311,6 +314,7 @@ export function buildAdaptiveCoachingSession(input:{
   identity:PlayerCoachingIdentity;
   curriculum:ClimbCurriculum;
   previous?:AdaptiveCoachingSession|null;
+  learningPolicy?:LearningVelocityPolicy|null;
   generatedAt?:string;
 }):AdaptiveCoachingSession{
   const generatedAt=input.generatedAt??new Date().toISOString();
@@ -331,6 +335,8 @@ export function buildAdaptiveCoachingSession(input:{
   let replanCount=same?input.previous!.replanCount:0;
   let routeWatchLayer:CausalCoachLayer|null=same?input.previous!.routeWatchLayer:null;
   let routeWatchCount=same?input.previous!.routeWatchCount:0;
+  let phaseCleanStreak=same?(input.previous!.phaseCleanStreak??0):0;
+  const learningVelocityPolicy=input.learningPolicy??(same?(input.previous!.learningVelocityPolicy??null):null);
   const latestHistoricalAt=input.rows.length?[...input.rows].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt)).at(-1)?.createdAt??null:null;
   let lastEvaluatedAt=same?input.previous!.lastEvaluatedAt:latestHistoricalAt;
   let blocker:string|null=null;
@@ -365,6 +371,7 @@ export function buildAdaptiveCoachingSession(input:{
       const identityAlreadyShifted=input.identity.change.status==='SHIFTED'&&input.identity.rootCause.layer===observedLayer;
       if(routeWatchCount>=2||identityAlreadyShifted){
         currentIndex=phaseForLayer(observedLayer);
+        phaseCleanStreak=0;
         replanCount+=1;
         status='REPLANNED';
         blocker='Session replanned around repeated '+clean(observedLayer).replaceAll('_',' ')+' evidence without rewriting the Curriculum objective.';
@@ -385,6 +392,7 @@ export function buildAdaptiveCoachingSession(input:{
 
     if(intent==='KNOWLEDGE_GAP'){
       currentIndex=0;
+      phaseCleanStreak=0;
       status='ACTIVE';
       blocker='Verified knowledge gap restored Diagnose / Teach.';
       events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:before===0?'HOLD':'REGRESS',rep,note:blocker}));
@@ -393,6 +401,7 @@ export function buildAdaptiveCoachingSession(input:{
 
     if(before>=2&&!canFade(input.identity,input.curriculum)){
       currentIndex=input.identity.autonomy.supportNeed==='FULL'?0:1;
+      phaseCleanStreak=0;
       status='ACTIVE';
       blocker='Fade is safety-blocked by the current support/autonomy evidence.';
       events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'REGRESS',rep,note:blocker}));
@@ -401,20 +410,24 @@ export function buildAdaptiveCoachingSession(input:{
 
     if(before===0){
       if(missionClean&&strategyClean&&intent!=='UNSTABLE'){
-        currentIndex=1;completedSteps=Math.max(completedSteps,1);blocker=null;
+        currentIndex=1;phaseCleanStreak=0;completedSteps=Math.max(completedSteps,1);blocker=null;
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'ADVANCE',rep,note:'The player produced a clean observed rep without a verified knowledge gap. Move from Diagnose / Teach to Reinforce.'}));
       }else{
+        phaseCleanStreak=0;
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'HOLD',rep,note:'The teaching/diagnostic rep is not clean enough to reduce support yet.'}));
       }
       continue;
     }
 
     if(before===1){
-      if(missionClean&&strategyClean&&canFade(input.identity,input.curriculum)){
-        currentIndex=2;completedSteps=Math.max(completedSteps,2);blocker=null;
-        events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'ADVANCE',rep,note:'Reinforcement held under verified evidence and the safety layer allows a reduced-support test.'}));
+      const required=Math.max(1,Math.min(3,learningVelocityPolicy?.reinforceCleanRepsRequired??1));
+      if(missionClean&&strategyClean)phaseCleanStreak+=1;else phaseCleanStreak=0;
+      if(missionClean&&strategyClean&&canFade(input.identity,input.curriculum)&&phaseCleanStreak>=required){
+        currentIndex=2;phaseCleanStreak=0;completedSteps=Math.max(completedSteps,2);blocker=null;
+        events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'ADVANCE',rep,note:'Reinforcement reached the Learning Velocity clean-rep target ('+String(required)+') and the safety layer allows a reduced-support test.'}));
       }else{
         if(missionClean&&strategyClean&&!canFade(input.identity,input.curriculum))blocker='The rep was clean, but support cannot fade until autonomy/support evidence clears the safety gate.';
+        else if(missionClean&&strategyClean&&phaseCleanStreak<required)blocker='Learning Velocity requires '+String(required)+' clean reinforcement reps before Fade; current streak '+String(phaseCleanStreak)+'/'+String(required)+'.';
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'HOLD',rep,note:blocker??'Reinforcement has not produced a clean enough observed rep to start fading support.'}));
       }
       continue;
@@ -422,10 +435,15 @@ export function buildAdaptiveCoachingSession(input:{
 
     if(before===2){
       const autonomyEvidence=Boolean(rep.strategy?.autonomyEvidence)||Boolean(rep.strategy&&!rep.strategy.intervened);
+      const required=Math.max(1,Math.min(2,learningVelocityPolicy?.fadeCleanRepsRequired??1));
+      if(missionClean&&strategyClean&&autonomyEvidence)phaseCleanStreak+=1;else phaseCleanStreak=0;
       if(missionClean&&strategyClean&&autonomyEvidence){
-        if(transferReady(input.curriculum)){
-          currentIndex=3;completedSteps=Math.max(completedSteps,3);blocker=null;
-          events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'ADVANCE',rep,note:'A clean reduced-support rep is verified and the existing Curriculum now allows a transfer test.'}));
+        if(phaseCleanStreak<required){
+          blocker='Learning Velocity requires '+String(required)+' clean independent reps before a Transfer test; current streak '+String(phaseCleanStreak)+'/'+String(required)+'.';
+          events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'HOLD',rep,note:blocker}));
+        }else if(transferReady(input.curriculum)){
+          currentIndex=3;phaseCleanStreak=0;completedSteps=Math.max(completedSteps,3);blocker=null;
+          events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'ADVANCE',rep,note:'The independent-rep target is verified and the existing Curriculum now allows a transfer test.'}));
         }else{
           blocker='Clean autonomy evidence earned, but transfer remains locked until the existing Curriculum reaches its local-mastery gate.';
           events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'HOLD',rep,note:blocker}));
@@ -438,14 +456,14 @@ export function buildAdaptiveCoachingSession(input:{
 
     if(before===3){
       if(!transferReady(input.curriculum)){
-        currentIndex=2;status='REPLANNED';replanCount+=1;
+        currentIndex=2;phaseCleanStreak=0;status='REPLANNED';replanCount+=1;
         blocker='Transfer became unavailable under the current Curriculum evidence, so the session returned to Fade / local stability.';
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'REPLAN',rep,note:blocker}));
       }else if(transferStatus==='TRANSFERRED'){
-        currentIndex=4;completedSteps=Math.max(completedSteps,4);status='READY_TO_GRADUATE';blocker=null;
+        currentIndex=4;phaseCleanStreak=0;completedSteps=Math.max(completedSteps,4);status='READY_TO_GRADUATE';blocker=null;
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'READY_TO_GRADUATE',rep,note:'The novel-condition test transferred cleanly. Move to the final proof / Curriculum graduation check.'}));
       }else if(transferStatus==='FAILED_TRANSFER'){
-        currentIndex=1;status='REPLANNED';replanCount+=1;
+        currentIndex=1;phaseCleanStreak=0;status='REPLANNED';replanCount+=1;
         blocker='Transfer failed. Preserve local mastery, restore reinforcement and rebuild generalisation evidence.';
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'REPLAN',rep,note:blocker}));
       }else{
@@ -461,6 +479,7 @@ export function buildAdaptiveCoachingSession(input:{
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'COMPLETE',rep,note:'The existing Curriculum moved on. This coaching block is complete.'}));
       }else{
         currentIndex=fallbackIndex(input.identity,input.curriculum);
+        phaseCleanStreak=0;
         status='REPLANNED';replanCount+=1;
         blocker='The final proof rep did not unlock Curriculum graduation yet. Replan to the current evidence-backed phase instead of awarding fake mastery.';
         events.push(event({at:rep.at,gameNumber,before,after:currentIndex,action:'REPLAN',rep,note:blocker}));
@@ -499,6 +518,8 @@ export function buildAdaptiveCoachingSession(input:{
     replanCount,
     routeWatchLayer,
     routeWatchCount,
+    phaseCleanStreak,
+    learningVelocityPolicy,
     lastEvaluatedAt,
     previousSessionId:same?input.previous?.previousSessionId??null:input.previous?.id??null,
     events:events.slice(-12),
