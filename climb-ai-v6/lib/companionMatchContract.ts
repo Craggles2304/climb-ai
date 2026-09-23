@@ -7,6 +7,7 @@ import type {PersonalTrap} from './decisionTwin';
 import type {ScenarioPrime,ScenarioPrimeReview} from './scenarioMemory';
 import type {DecisionTransferPrime,DecisionTransferReview} from './decisionTransfer';
 import type {ClimbIntentProbe} from './climbIntentGap';
+import type {HistoryAnalysisRow} from './riot/proHistory';
 
 export type CompanionLearningMode='EXECUTE_PLAN'|'CURRICULUM_REP'|'SPACED_REP'|'TRANSFER_TEST';
 export type CompanionMatchPhase='LOAD_IN'|'LANE'|'FIRST_CHECK'|'MID_GAME'|'OPEN_GAME';
@@ -58,6 +59,14 @@ export interface CompanionMatchContract{
     revealSpecificCueAfterIntent:boolean;
     autonomyTest:boolean;
     playerInstruction:string;
+  };
+  continuity:{
+    available:boolean;
+    previousStatus:'EXECUTED'|'MISSED'|'MIXED'|'NOT_OBSERVED'|'NONE';
+    previousBehaviour:string|null;
+    previousMode:string|null;
+    previousSummary:string;
+    whyNow:string;
   };
   branches:Record<FrozenBranchKey,{
     headline:string;
@@ -133,6 +142,64 @@ function learningTitle(mode:CompanionLearningMode,input:{
   return'EXECUTE THE FROZEN GAME PLAN';
 }
 
+
+function continuityFromHistory(rows:HistoryAnalysisRow[]|undefined,input:{
+  mission:ClimbMatchMission|null|undefined;
+  scenarioPrime:ScenarioPrime|null|undefined;
+  transferPrime:DecisionTransferPrime|null|undefined;
+}):CompanionMatchContract['continuity']{
+  const ordered=[...(rows??[])].filter(row=>row?.analysis?.version===1).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
+  let previous:any=null;
+  for(let i=ordered.length-1;i>=0;i--){
+    const summary=(ordered[i].analysis as any)?.decisionGraph?.summary;
+    const matchContract=summary?.matchContract;
+    const mission=summary?.climbMission;
+    if(matchContract?.active){
+      previous={
+        status:String(matchContract.status||'NONE').toUpperCase(),
+        behaviour:clean(matchContract.behaviour)||null,
+        mode:clean(matchContract.mode)||null,
+        note:clean(matchContract.proof||matchContract.headline),
+      };
+      break;
+    }
+    if(mission?.active){
+      previous={
+        status:String(mission.status||'NONE').toUpperCase(),
+        behaviour:clean(mission.behaviourLabel)||null,
+        mode:'CURRICULUM_REP',
+        note:clean(mission.note),
+      };
+      break;
+    }
+  }
+
+  const status=(['EXECUTED','MISSED','MIXED','NOT_OBSERVED'].includes(previous?.status)?previous.status:'NONE') as CompanionMatchContract['continuity']['previousStatus'];
+  const previousSummary=
+    status==='EXECUTED'?'LAST VERIFIED REP WAS CLEAN. THE COACH WILL ONLY ADD DIFFICULTY WHEN THE LEARNING EVIDENCE SUPPORTS IT.':
+    status==='MISSED'?'LAST VERIFIED REP MISSED THE TARGET BRANCH. THE PRINCIPLE STAYS ACTIVE UNTIL THE EVIDENCE CHANGES.':
+    status==='MIXED'?'LAST VERIFIED REP WAS MIXED. THE CORRECT BRANCH APPEARED, BUT IT IS NOT STABLE YET.':
+    status==='NOT_OBSERVED'?'LAST PLANNED REP DID NOT APPEAR. NO PASS OR FAIL WAS RECORDED.':
+    'NO PRIOR MATCH OS REP IS AVAILABLE YET.';
+
+  const whyNow=compact(
+    input.transferPrime?.whyNow
+    ||input.scenarioPrime?.dueReason
+    ||input.mission?.whyThisGame
+    ||'EXECUTE THE FROZEN DRAFT PLAN AND LET VERIFIED POST-GAME EVIDENCE DECIDE WHAT COMES NEXT.',
+    190,
+  );
+
+  return{
+    available:status!=='NONE',
+    previousStatus:status,
+    previousBehaviour:previous?.behaviour??null,
+    previousMode:previous?.mode??null,
+    previousSummary:previous?.note?compact(previous.note,180):previousSummary,
+    whyNow,
+  };
+}
+
 export function buildCompanionMatchContract(input:{
   champion:string;
   role:string|null;
@@ -147,6 +214,7 @@ export function buildCompanionMatchContract(input:{
   coachingStrategy:ClimbCoachingStrategy|null|undefined;
   experimentSchedule:ClimbExperimentSchedule|null|undefined;
   intentProbe?:ClimbIntentProbe|null;
+  historyRows?:HistoryAnalysisRow[];
 }):CompanionMatchContract{
   const {coach,playbook}=input;
   const mode=learningMode(input);
@@ -201,6 +269,8 @@ export function buildCompanionMatchContract(input:{
   const experiment=input.experimentSchedule?.status==='SCHEDULED'
     ?compact(input.experimentSchedule?.experimentType||'SCHEDULED TEST',100)
     :null;
+
+  const continuity=continuityFromHistory(input.historyRows,input);
 
   const theirWinCondition=compact(
     coach.theirPlan
@@ -276,6 +346,7 @@ export function buildCompanionMatchContract(input:{
       autonomyTest,
       playerInstruction,
     },
+    continuity,
     branches:{AHEAD:branch('AHEAD'),EVEN:branch('EVEN'),BEHIND:branch('BEHIND')},
     checkpoints:(playbook.checkpoints??[]).map(item=>({
       minute:Number(item.minute),
