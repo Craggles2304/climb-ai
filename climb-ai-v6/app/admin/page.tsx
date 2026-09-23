@@ -7,6 +7,8 @@ import {getFoundingBetaValidation} from '@/lib/server/foundingBetaValidation';
 import {getBetaOperationsSnapshot} from '@/lib/server/betaOperations';
 import {betaMetricValue,getBetaExperiments} from '@/lib/server/betaExperimentRepository';
 import {BetaExperimentConsole} from '@/components/BetaExperimentConsole';
+import {getBetaCohortAdminSnapshot} from '@/lib/server/betaCohortRepository';
+import {BetaCohortConsole} from '@/components/BetaCohortConsole';
 
 export const dynamic='force-dynamic';
 
@@ -30,7 +32,7 @@ export default async function Admin(){
     .maybeSingle();
   if(!profile?.is_founder)notFound();
 
-  const [funnel,beta,ops,experiments]=await Promise.all([getActivationFunnel(30),getFoundingBetaValidation(45),getBetaOperationsSnapshot(45),getBetaExperiments(8)]);
+  const [funnel,beta,ops,experiments,cohort]=await Promise.all([getActivationFunnel(30),getFoundingBetaValidation(45),getBetaOperationsSnapshot(45),getBetaExperiments(8),getBetaCohortAdminSnapshot()]);
   const signup=funnel.steps[0]?.players||0;
   const grade=funnel.steps.find(s=>s.event==='op_grade_viewed')?.players||0;
   const ladder=funnel.steps.find(s=>s.event==='fix_ladder_viewed')?.players||0;
@@ -48,6 +50,8 @@ export default async function Admin(){
     />
 
 
+
+  <BetaCohortConsole snapshot={cohort}/>
 
   <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.24)'}}>
     <div className="eyebrow">STAGE 6 · FOUNDING BETA OPERATIONS</div>
