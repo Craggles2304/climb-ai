@@ -1,11 +1,6 @@
 import type {Metadata} from 'next';
-import {Oswald,Barlow,JetBrains_Mono} from 'next/font/google';
 import {BroadcastLanding} from '@/components/BroadcastLanding';
 import {TrackView} from '@/components/TrackView';
-
-const display=Oswald({subsets:['latin'],weight:['600','700'],variable:'--font-display',display:'swap'});
-const body=Barlow({subsets:['latin'],weight:['400','500','600'],variable:'--font-body',display:'swap'});
-const mono=JetBrains_Mono({subsets:['latin'],weight:['400','600'],variable:'--font-mono',display:'swap'});
 
 export const metadata:Metadata={
   title:{absolute:'OP CLIMB — Your Games. Your Coach.'},
@@ -14,8 +9,11 @@ export const metadata:Metadata={
 };
 
 export default function Landing(){
-  return <div className={display.variable+' '+body.variable+' '+mono.variable}>
+  return <>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"/>
     <TrackView event="landing_view"/>
     <BroadcastLanding/>
-  </div>;
+  </>;
 }
