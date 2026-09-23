@@ -6,7 +6,7 @@ import {buildLiveProAnalysis,mergeProAnalyses,type ProMatchAnalysis} from '@/lib
 import type {LiveTelemetryPlayer,LiveTelemetrySnapshot} from '@/lib/riot/liveTelemetry';
 import {riotService} from '@/lib/services/riotService';
 import {riotEnabled} from '@/lib/riot/client';
-import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningProfile,rebuildProLearningProfileWithIlp,getProLearningProfile,getDecisionCausalProfile,getPlayerCoachingIdentity,getLearningVelocityProfile,getAdaptiveCoachingSession,type PostGameIlpSyncResult} from './proLearningRepository';
+import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningProfile,rebuildProLearningProfileWithIlp,getProLearningProfile,getDecisionCausalProfile,getPlayerCoachingIdentity,getSkillTransferGraph,getLearningVelocityProfile,getAdaptiveCoachingSession,type PostGameIlpSyncResult} from './proLearningRepository';
 import {buildDecisionGraph,lockedPlanFromPregameContext,type LockedDecisionPlan} from '@/lib/decisionGraph';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
@@ -96,16 +96,17 @@ export async function latestLiveReview(userId:string,accountKey:string){
   }else if(!learningPlanSync){
     learningPlanSync=await sessionLearningPlanStatus(session.id);
   }
-  const [historyProfile,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession]=await Promise.all([
+  const [historyProfile,causalProfile,playerCoachingIdentity,skillTransferGraph,learningVelocity,adaptiveCoachingSession]=await Promise.all([
     getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null),
     getDecisionCausalProfile(userId,session.riot_account_id??null).catch(()=>null),
     getPlayerCoachingIdentity(userId,session.riot_account_id??null).catch(()=>null),
+    getSkillTransferGraph(userId,session.riot_account_id??null).catch(()=>null),
     getLearningVelocityProfile(userId,session.riot_account_id??null).catch(()=>null),
     getAdaptiveCoachingSession(userId,session.riot_account_id??null).catch(()=>null),
   ]);
   const decisionGraph=proAnalysis?.decisionGraph??(session.summary as any)?.decisionGraph??null;
   const finalSummary=strength?{...strength,proAnalysis,decisionGraph,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment,learningPlanSync}:session.summary;
-  return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession,playerReadCheckpoints:readCheckpoints};
+  return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile,causalProfile,playerCoachingIdentity,skillTransferGraph,learningVelocity,adaptiveCoachingSession,playerReadCheckpoints:readCheckpoints};
 }
 
 async function finalizeSession(sessionId:string){
