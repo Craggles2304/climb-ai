@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {saveEvents} from '@/lib/server/telemetryRepository';
 import {getServerClient} from '@/lib/supabase/server';
+import {RELEASE_MANIFEST} from '@/lib/releaseManifest';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -37,7 +38,9 @@ export async function POST(req:NextRequest){
     // to choose a user id, and signed-out funnel events still retain anon_id.
     const supabase=await getServerClient();
     const {data:userData}=supabase?await supabase.auth.getUser():{data:{user:null}} as any;
-    const result=await saveEvents(input.anonId,input.sessionId,input.events,userData.user?.id);
+    const release={buildCommit:(process.env.VERCEL_GIT_COMMIT_SHA||'local').slice(0,12),webVersion:RELEASE_MANIFEST.webVersion,environment:process.env.VERCEL_ENV||process.env.NODE_ENV||'local'};
+    const events=input.events.map(event=>({...event,props:{...event.props,...release}}));
+    const result=await saveEvents(input.anonId,input.sessionId,events,userData.user?.id);
     return NextResponse.json({ok:true,...result});
   }catch(err){
     console.error('[analytics] write failed',err);
