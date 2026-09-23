@@ -52,6 +52,8 @@ jobs:
         run: node --import tsx --test tests/climbCareerMatrix.test.ts tests/climbAutonomousCurriculumV6.test.ts tests/climbCoachBench.test.ts
       - name: CLIMB Career Experience
         run: node --import tsx --test tests/climbCareerExperience.test.ts
+      - name: Stage 9 Companion Match OS
+        run: node --import tsx --test tests/companionMatchContract.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
       - name: Stage 5 founding beta validation
