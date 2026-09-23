@@ -16,6 +16,7 @@
       '.op-causal-list{display:grid;gap:8px;margin-top:10px}.op-causal-item{border:1px solid rgba(255,255,255,.08);background:#071016;padding:10px}.op-causal-item.root{border-color:rgba(255,139,147,.28)}.op-causal-item.clean{border-color:rgba(214,255,47,.20)}',
       '.op-causal-flow{display:grid;grid-template-columns:1fr 28px 1fr 28px 1fr 28px 1.1fr;align-items:stretch;gap:4px}.op-causal-step{border:1px solid rgba(255,255,255,.07);background:rgba(255,255,255,.02);padding:8px}.op-causal-step span{display:block;font-size:6px;letter-spacing:.13em;color:#77858e;font-weight:900}.op-causal-step strong{display:block;margin-top:5px;font-size:9px;color:#ecf1f3;line-height:1.35}.op-causal-arrow{display:flex;align-items:center;justify-content:center;color:#56636c;font-weight:950}',
       '.op-causal-diagnosis{margin-top:8px;display:grid;grid-template-columns:.8fr 2fr;gap:8px}.op-causal-diagnosis b{font-size:8px;color:#64a9ff}.op-causal-diagnosis p{margin:0;font-size:8px;color:#8b979f;line-height:1.45}.op-causal-evidence{margin-top:7px;font-size:7px;color:#66737c;line-height:1.45}',
+      '.op-causal-memory{margin-top:10px;border:1px solid rgba(100,169,255,.18);background:rgba(100,169,255,.035);padding:10px 11px}.op-causal-memory>span{display:block;font-size:6px;letter-spacing:.15em;color:#64a9ff;font-weight:950}.op-causal-memory strong{display:block;margin-top:5px;font-size:10px;color:#eef3f5}.op-causal-memory p{margin:5px 0 0;font-size:8px;color:#86939b;line-height:1.45}',
       '.op-causal-boundary{display:block;margin-top:9px;font-size:7px;color:#606c74;line-height:1.45}',
       '@media(max-width:980px){.op-causal-flow{grid-template-columns:1fr}.op-causal-arrow{transform:rotate(90deg);height:18px}.op-causal-diagnosis{grid-template-columns:1fr}}'
     ].join('');
@@ -26,6 +27,7 @@
       '<div class="op-causal-head"><div><span>DECISION ROOT CAUSE · READ → PRIORITY → ACTION → RESULT</span><strong id="opCausalHeadline">BUILDING CAUSAL CHAIN</strong></div><b id="opCausalLayer">BUILDING</b></div>',
       '<div class="op-causal-action"><span>NEXT COACHING LAYER</span><strong id="opCausalAction"></strong></div>',
       '<div id="opCausalList" class="op-causal-list"></div>',
+      '<div id="opCausalMemory" class="op-causal-memory" hidden><span>ROOT CAUSE MEMORY · MULTI-GAME</span><strong id="opCausalMemoryHeadline"></strong><p id="opCausalMemoryRule"></p></div>',
       '<small id="opCausalBoundary" class="op-causal-boundary"></small>'
     ].join('');
     anchor.parentNode.insertBefore(root,anchor.nextSibling);
@@ -66,6 +68,13 @@
     $('opCausalLayer').textContent=upper(String(causal.primaryCoachLayer||'BUILDING').replaceAll('_',' '));
     $('opCausalAction').textContent=upper(causal.primaryAction);
     $('opCausalBoundary').textContent=upper(causal.boundary);
+    const profile=review?.causalProfile||null;
+    const memory=$('opCausalMemory');
+    if(memory)memory.hidden=!profile;
+    if(profile){
+      $('opCausalMemoryHeadline').textContent=upper(profile.summary);
+      $('opCausalMemoryRule').textContent=upper(profile.nextCoachRule);
+    }
     const list=$('opCausalList');if(!list)return;
     list.replaceChildren(...(Array.isArray(causal.chains)?causal.chains:[]).map(itemCard));
   }
