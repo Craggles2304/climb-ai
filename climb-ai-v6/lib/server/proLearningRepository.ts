@@ -83,7 +83,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
   const learningJourney=buildLearningJourney(rows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,careerExperience,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue};
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
