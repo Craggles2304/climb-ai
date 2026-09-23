@@ -54,7 +54,7 @@ export function CompactFixLadder({fights,historyProfile}:{fights:FightReview[];h
       {next.map((fix,index)=><CompactRow key={fix.id} fix={fix} number={index+2} open={open===fix.id} onToggle={()=>setOpen(open===fix.id?null:fix.id)}/>) }
     </div>}
 
-    {locked.length>0&&<details style={detailsShell}><summary style={summaryStyle}>{locked.length} MORE DETECTED FIX{locked.length===1?'':'ES'} · UPGRADE TO UNLOCK</summary><div style={{display:'grid',gap:6,marginTop:10}}>{locked.map((fix,index)=><div key={fix.id} style={lockedRow}><b>{String(depth+index+1).padStart(2,'0')}</b><span>{fix.stage} · {fix.title}</span><strong>🔒</strong></div>)}</div></details>}
+    {locked.length>0&&<details style={detailsShell}><summary style={summaryStyle}>{locked.length} MORE DETECTED FIX{locked.length===1?'':'ES'} · UPGRADE TO UNLOCK</summary><div style={{display:'grid',gap:6,marginTop:10}}>{locked.map((fix,index)=><div key={fix.id} style={lockedRow}><b>{String(depth+index+1).padStart(2,'0')}</b><span>{fix.stage} · {fix.title}</span><strong>🔒</strong></div>)}</div><a href="/pricing" className="text-link" style={{display:'inline-block',marginTop:10}}>COMPARE PLAN UNLOCKS →</a></details>}
 
     {tier==='PRO'&&historyProfile&&<div style={historyBar}><span><b>{historyProfile.gamesAnalyzed}</b> games learned</span><span><b>{historyProfile.fingerprint.patternRate}%</b> primary-pattern rate</span><span><b>{historyProfile.fingerprint.trend}</b> trend</span></div>}
   </section>;
