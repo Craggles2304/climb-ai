@@ -46,3 +46,12 @@ test('post-game Companion shows the Match OS contract result first',()=>{
   assert.ok(review.includes('function renderMatchContractReview'));
   assert.ok(review.includes('renderMatchContractReview(review)'));
 });
+
+
+test('Match OS obeys Intent Gap and autonomy cue fading instead of leaking the answer',()=>{
+  assert.ok(os.includes('intentOpen'));
+  assert.ok(os.includes("delivery==='NONE'"));
+  assert.ok(os.includes('COACHING CUE LOCKED UNTIL YOUR INTENT IS FROZEN'));
+  assert.ok(os.includes('POST-GAME WILL SCORE THE VERIFIED DECISION · NO LIVE ANSWER REVEALED'));
+  assert.ok(bridge.includes('intentSkipped'));
+});
