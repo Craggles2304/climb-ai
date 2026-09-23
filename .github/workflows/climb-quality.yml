@@ -64,6 +64,8 @@ jobs:
         run: node --import tsx --test tests/playerCoachingIdentity.test.ts
       - name: Stage 14 Adaptive Coaching Sessions
         run: node --import tsx --test tests/adaptiveCoachingSession.test.ts
+      - name: Stage 14 Adaptive Coaching Sessions
+        run: node --import tsx --test tests/adaptiveCoachingSession.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
       - name: Stage 5 founding beta validation
