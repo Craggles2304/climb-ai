@@ -204,19 +204,18 @@ function ruleFallback(champion:string,userRole:string,ours:Player[],enemies:Play
   };
 }
 
-async function paidStrategy(db:any,userId:string){
+async function leagueSubscriptionTier(db:any,userId:string){
   const [profileResult,entitlementResult,userResult]=await Promise.all([
     db.from('profiles').select('is_founder').eq('id',userId).maybeSingle(),
     db.from('product_entitlements').select('tier,status,current_period_end').eq('user_id',userId).eq('product','LOL').maybeSingle(),
     db.auth.admin.getUserById(userId),
   ]);
-  if(profileResult?.data?.is_founder===true)return true;
+  if(profileResult?.data?.is_founder===true)return 'PRO' as const;
   const entitlement=entitlementResult?.data as any;
   const status=String(entitlement?.status??'').toLowerCase();
   const periodEnd=entitlement?.current_period_end?new Date(entitlement.current_period_end).getTime():Number.POSITIVE_INFINITY;
   const live=['active','trialing'].includes(status)&&(!Number.isFinite(periodEnd)||periodEnd>Date.now());
-  const tier=live?normalizeTier(entitlement?.tier):normalizeTier(userResult?.data?.user?.app_metadata?.subscription_tier);
-  return hasTier(tier,'PLUS');
+  return live?normalizeTier(entitlement?.tier):normalizeTier(userResult?.data?.user?.app_metadata?.subscription_tier);
 }
 
 
@@ -431,7 +430,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,playerCoachingIdentity:PlayerCoachingIdentity,learningVelocity:LearningVelocityProfile,skillTransferGraph:SkillTransferGraph,adaptiveCoachingSession:AdaptiveCoachingSession,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,playerCoachingIdentity:PlayerCoachingIdentity|null,learningVelocity:LearningVelocityProfile|null,skillTransferGraph:SkillTransferGraph|null,adaptiveCoachingSession:AdaptiveCoachingSession|null,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -541,7 +540,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity;learningVelocity:LearningVelocityProfile;skillTransferGraph:SkillTransferGraph;skillBridgePrime:SkillBridgePrime|null;adaptiveCoachingSession:AdaptiveCoachingSession;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity|null;learningVelocity:LearningVelocityProfile|null;skillTransferGraph:SkillTransferGraph|null;skillBridgePrime:SkillBridgePrime|null;adaptiveCoachingSession:AdaptiveCoachingSession|null;personalTrap:PersonalTrap|null;decisionPremortem:DecisionPremortem|null;decisionSimulation:DecisionSimulation|null;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -621,8 +620,9 @@ export async function POST(req:NextRequest){
 
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({ok:false,error:'Draft coach is unavailable.'},{status:503});
-    const [paid,context]=await Promise.all([paidStrategy(db,device.userId),playerContext(db,device)]);
-    if(!paid)return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
+    const [subscriptionTier,context]=await Promise.all([leagueSubscriptionTier(db,device.userId),playerContext(db,device)]);
+    if(!hasTier(subscriptionTier,'PLUS'))return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
+    const proModel=hasTier(subscriptionTier,'PRO');
 
     const roleResolution=resolvePlayerRole({
       champion,
@@ -637,13 +637,13 @@ export async function POST(req:NextRequest){
     const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
     const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
     const situationContext=buildDraftSituationContext({champion,role:roleResolution.role,enemies});
-    const personalTrap=selectPersonalTrap(context.decisionTwin,{
+    const personalTrap=selectPersonalTrap(proModel?context.decisionTwin:undefined,{
       champion,
       role:roleResolution.role,
       ours,
       enemies,
     });
-    const decisionPremortem=buildDecisionPremortem(context.decisionTwin,{
+    const decisionPremortem=buildDecisionPremortem(proModel?context.decisionTwin:undefined,{
       champion,
       role:roleResolution.role,
       ours,
@@ -666,15 +666,15 @@ export async function POST(req:NextRequest){
     const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,context.playerCoachingIdentity,context.learningVelocity,context.skillTransferGraph,context.adaptiveCoachingSession,personalTrap,decisionPremortem,carryMap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,proModel?context.mission:null,proModel?context.playerCoachingIdentity:null,proModel?context.learningVelocity:null,proModel?context.skillTransferGraph:null,proModel?context.adaptiveCoachingSession:null,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
         ok:false,
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
         player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
-        personalTrap,
-        decisionPremortem,
+        personalTrap:proModel?personalTrap:null,
+        decisionPremortem:proModel?decisionPremortem:null,
         coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
@@ -685,22 +685,22 @@ export async function POST(req:NextRequest){
     if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
     const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
     const decisionSimulation=buildDecisionSimulation({
-      twin:context.decisionTwin,
+      twin:proModel?context.decisionTwin:undefined,
       premortem:decisionPremortem,
       situationContext,
       champion,
       role:roleResolution.role,
       coach,
     });
-    const scenarioPrime=selectScenarioPrime({
+    const scenarioPrime=proModel?selectScenarioPrime({
       memory:context.scenarioMemory,
       situationContext,
       simulation:decisionSimulation,
-    });
-    const learningContract=context.curriculum.autonomous?.activeContract??null;
-    const skillBridgePrime=selectSkillBridgePrime({graph:context.skillTransferGraph,situationContext,behaviourKey:context.curriculum.currentLesson?.behaviourKey??null});
+    }):null;
+    const learningContract=proModel?(context.curriculum.autonomous?.activeContract??null):null;
+    const skillBridgePrime=proModel?selectSkillBridgePrime({graph:context.skillTransferGraph,situationContext,behaviourKey:context.curriculum.currentLesson?.behaviourKey??null}):null;
     const transferDirective=learningContract?.testDirective??null;
-    const decisionTransferPrime=selectDecisionTransferPrime({
+    const decisionTransferPrime=proModel?selectDecisionTransferPrime({
       transfer:context.decisionTransfer,
       memory:context.scenarioMemory,
       scenarioPrime,
@@ -710,8 +710,8 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       enabled:transferDirective?.mode==='TRANSFER_TEST',
       behaviourKey:transferDirective?.behaviourKey??null,
-    });
-    const climbMission=buildClimbMatchMission({
+    }):null;
+    const climbMission=proModel?buildClimbMatchMission({
       lesson:context.curriculum.status==='ACTIVE'?context.curriculum.currentLesson:null,
       situationContext,
       coach,
@@ -719,25 +719,25 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       transferPrime:decisionTransferPrime,
       learningContract,
-    });
-    const intentProbe=buildClimbIntentProbe(climbMission);
-    const experimentSchedule=buildClimbExperimentSchedule({
+    }):null;
+    const intentProbe=proModel?buildClimbIntentProbe(climbMission):null;
+    const experimentSchedule=proModel?buildClimbExperimentSchedule({
       rows:context.historyRows,
       mission:climbMission,
       learningBias:learningVelocityExperimentBias(context.learningVelocity,climbMission?.behaviourKey),
-    });
-    const coachingStrategy=applyAdaptiveCoachingSession(buildClimbCoachingStrategy({
+    }):null;
+    const coachingStrategy=proModel?applyAdaptiveCoachingSession(buildClimbCoachingStrategy({
       rows:context.historyRows,
       curriculum:context.curriculum,
       mission:climbMission,
-      coachTwin:context.coachTwin,
+      coachTwin:proModel?context.coachTwin:null,
       experimentSchedule,
-    }),context.adaptiveCoachingSession);
-    const causalCoachRoute=buildCausalCoachRoute({profile:context.causalProfile,strategy:coachingStrategy,mission:climbMission});
-    const velocityMethod=!causalCoachRoute.forceCoachMethod&&causalCoachRoute.deliveryPolicy!=='DIAGNOSTIC'
+    }),context.adaptiveCoachingSession):null;
+    const causalCoachRoute=proModel?buildCausalCoachRoute({profile:context.causalProfile,strategy:coachingStrategy,mission:climbMission}):null;
+    const velocityMethod=proModel&&causalCoachRoute&&!causalCoachRoute.forceCoachMethod&&causalCoachRoute.deliveryPolicy!=='DIAGNOSTIC'
       ?selectLearningVelocityCoachMethod(context.learningVelocity,climbMission?.behaviourKey)
       :null;
-    const coachIntervention=selectClimbCoachIntervention({
+    const coachIntervention=proModel&&causalCoachRoute?selectClimbCoachIntervention({
       twin:context.coachTwin,
       mission:climbMission,
       situationContext,
@@ -749,7 +749,7 @@ export async function POST(req:NextRequest){
           ?'Learning Velocity selected the coaching format with the strongest repeated association to clean independent follow-through for this behaviour.'
           :null,
       forcedSelectionMode:causalCoachRoute.forceCoachMethod?'CAUSAL_ROUTE':velocityMethod?'LEARNING_VELOCITY':null,
-    });
+    }):null;
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
@@ -757,7 +757,7 @@ export async function POST(req:NextRequest){
       ours,
       enemies,
       plan:coach as any,
-      decisionPremortem,
+      decisionPremortem:proModel?decisionPremortem:null,
     });
     const matchContract=buildCompanionMatchContract({
       champion,
@@ -780,17 +780,17 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       source:ai?'ai':'rules',
       coach,
-      playerCoachingIdentity:context.playerCoachingIdentity,
-      learningVelocity:context.learningVelocity,
-      skillTransferGraph:context.skillTransferGraph,
+      playerCoachingIdentity:proModel?context.playerCoachingIdentity:null,
+      learningVelocity:proModel?context.learningVelocity:null,
+      skillTransferGraph:proModel?context.skillTransferGraph:null,
       skillBridgePrime,
-      adaptiveCoachingSession:context.adaptiveCoachingSession,
-      personalTrap,
-      decisionPremortem,
-      decisionSimulation,
+      adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null,
+      personalTrap:proModel?personalTrap:null,
+      decisionPremortem:proModel?decisionPremortem:null,
+      decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:context.curriculum.autonomous??null,
+      autonomousCurriculum:proModel?(context.curriculum.autonomous??null):null,
       climbMission,
       intentProbe,
       experimentSchedule,
@@ -808,19 +808,20 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
-      playerCoachingIdentity:context.playerCoachingIdentity,
-      learningVelocity:context.learningVelocity,
-      skillTransferGraph:context.skillTransferGraph,
+      productAccess:{tier:subscriptionTier,proModel},
+      playerCoachingIdentity:proModel?context.playerCoachingIdentity:null,
+      learningVelocity:proModel?context.learningVelocity:null,
+      skillTransferGraph:proModel?context.skillTransferGraph:null,
       skillBridgePrime,
-      adaptiveCoachingSession:context.adaptiveCoachingSession,
-      personalTrap,
-      decisionPremortem,
-      decisionSimulation,
+      adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null,
+      personalTrap:proModel?personalTrap:null,
+      decisionPremortem:proModel?decisionPremortem:null,
+      decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:context.curriculum.autonomous??null,
+      autonomousCurriculum:proModel?(context.curriculum.autonomous??null):null,
       climbMission,
-      intentProbe:publicClimbIntentProbe(intentProbe),
+      intentProbe:proModel&&intentProbe?publicClimbIntentProbe(intentProbe):null,
       experimentSchedule,
       coachingStrategy,
       causalCoachRoute,
