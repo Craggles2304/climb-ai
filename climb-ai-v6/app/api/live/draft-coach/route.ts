@@ -653,24 +653,24 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       coach,
     });
-    const scenarioPrime=selectScenarioPrime({
-      memory:proModel?context.scenarioMemory:undefined,
+    const scenarioPrime=proModel?selectScenarioPrime({
+      memory:context.scenarioMemory,
       situationContext,
       simulation:decisionSimulation,
-    });
+    }):null;
     const learningContract=proModel?(context.curriculum.autonomous?.activeContract??null):null;
     const transferDirective=learningContract?.testDirective??null;
-    const decisionTransferPrime=selectDecisionTransferPrime({
-      transfer:proModel?context.decisionTransfer:undefined,
-      memory:proModel?context.scenarioMemory:undefined,
+    const decisionTransferPrime=proModel?selectDecisionTransferPrime({
+      transfer:context.decisionTransfer,
+      memory:context.scenarioMemory,
       scenarioPrime,
       situationContext,
       simulation:decisionSimulation,
       champion,
       role:roleResolution.role,
-      enabled:proModel&&transferDirective?.mode==='TRANSFER_TEST',
+      enabled:transferDirective?.mode==='TRANSFER_TEST',
       behaviourKey:transferDirective?.behaviourKey??null,
-    });
+    }):null;
     const climbMission=buildClimbMatchMission({
       lesson:proModel&&context.curriculum.status==='ACTIVE'?context.curriculum.currentLesson:null,
       situationContext,
