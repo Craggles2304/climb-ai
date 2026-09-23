@@ -20,3 +20,15 @@ create index if not exists live_player_read_checkpoints_user_idx
 
 create index if not exists live_player_read_checkpoints_session_idx
   on public.live_player_read_checkpoints(session_id,checkpoint_minute);
+
+alter table public.live_player_read_checkpoints enable row level security;
+
+revoke all on table public.live_player_read_checkpoints from public, anon, authenticated;
+grant select, insert, update, delete on table public.live_player_read_checkpoints to service_role;
+
+create index if not exists live_player_read_checkpoints_device_idx
+  on public.live_player_read_checkpoints(device_id);
+
+create index if not exists live_player_read_checkpoints_riot_account_idx
+  on public.live_player_read_checkpoints(riot_account_id)
+  where riot_account_id is not null;
