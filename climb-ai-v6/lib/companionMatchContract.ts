@@ -146,7 +146,7 @@ export function buildCompanionMatchContract(input:{
   coachIntervention:ClimbCoachIntervention|null|undefined;
   coachingStrategy:ClimbCoachingStrategy|null|undefined;
   experimentSchedule:ClimbExperimentSchedule|null|undefined;
-  intentProbe:ClimbIntentProbe|null|undefined;
+  intentProbe?:ClimbIntentProbe|null;
 }):CompanionMatchContract{
   const {coach,playbook}=input;
   const mode=learningMode(input);
