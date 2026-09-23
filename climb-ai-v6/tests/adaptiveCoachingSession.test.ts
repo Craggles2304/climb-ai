@@ -65,6 +65,18 @@ test('new practice objective starts at Reinforce rather than blindly restarting 
   assert.equal(session.blockPlan.length,5);
 });
 
+
+test('new session never fast-forwards by replaying historical reps',()=>{
+  const session=buildAdaptiveCoachingSession({
+    rows:[row(1),row(2),row(3)],identity:identity(),curriculum:curriculum(),generatedAt:'2026-01-03T23:00:00.000Z',
+  });
+  assert.equal(session.currentStep?.phase,'REINFORCE');
+  assert.equal(session.observedGames,0);
+  assert.equal(session.notObservedGames,0);
+  assert.equal(session.events.filter(item=>item.action==='ADVANCE').length,0);
+  assert.equal(session.lastEvaluatedAt,new Date(Date.UTC(2026,0,3)).toISOString());
+});
+
 test('NOT OBSERVED holds the current phase and awards no progression',()=>{
   const start=buildAdaptiveCoachingSession({rows:[],identity:identity(),curriculum:curriculum(),generatedAt:'2026-01-01T00:00:00.000Z'});
   const next=buildAdaptiveCoachingSession({
