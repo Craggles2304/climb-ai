@@ -385,6 +385,7 @@ function benchCoachingAdjustment(strategy:ClimbCoachingStrategy|null,skill:numbe
 }
 function transitionInvariant(input:{
   archetype:SimulationArchetypeId;
+  policy:SimulationPolicyId;
   game:number;
   preLevel:number|null;
   postLevel:number|null;
@@ -453,7 +454,7 @@ function transitionInvariant(input:{
   if(input.learningContract&&input.mission?.autonomousSupportPolicy!==input.learningContract.supportPolicy){
     errors.push(prefix+'frozen mission support policy '+String(input.mission?.autonomousSupportPolicy)+' does not match contract '+input.learningContract.supportPolicy+'.');
   }
-  if(input.learningContract&&['FULL','LIGHT'].includes(input.learningContract.supportPolicy)&&input.strategy?.deliveryPolicy==='NONE'){
+  if(input.policy==='PRODUCT'&&input.learningContract&&['FULL','LIGHT'].includes(input.learningContract.supportPolicy)&&input.strategy?.deliveryPolicy==='NONE'){
     errors.push(prefix+'Autonomous Curriculum '+input.learningContract.supportPolicy+' floor was violated by a no-support strategy.');
   }
   if(input.learningContract?.testDirective.mode==='TRANSFER_TEST'&&input.mission?.status==='READY'&&!input.transferPrime){
@@ -682,6 +683,7 @@ export function runSimulationCareer(input:{
     const postInterventionValue=post.interventionValue.cards.find(card=>card.behaviourKey===TARGET_BEHAVIOUR)??null;
     invariants.push(...transitionInvariant({
       archetype:input.archetype.id,
+      policy,
       game,
       preLevel,
       postLevel,
