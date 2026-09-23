@@ -29,6 +29,22 @@ export async function listTrackerDevices(userId:string){const db=getSupabaseAdmi
 export async function revokeTrackerDevice(userId:string,deviceId:string){const db=getSupabaseAdmin();if(!db)return false;const {error}=await db.from('live_tracker_devices').update({revoked_at:new Date().toISOString()}).eq('id',deviceId).eq('user_id',userId);if(error)throw new Error(error.message);return true}
 export async function authenticateTrackerToken(token:string):Promise<TrackerDevice|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('live_tracker_devices').select('id,user_id,account_key,riot_account_id,device_name,revoked_at').eq('token_hash',hashTrackerToken(token)).is('revoked_at',null).maybeSingle();if(error||!data)return null;await db.from('live_tracker_devices').update({last_seen_at:new Date().toISOString()}).eq('id',data.id);return{id:data.id,userId:data.user_id,accountKey:data.account_key,riotAccountId:data.riot_account_id??null,deviceName:data.device_name}}
 
+export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';threatRead?:string|null;priorityRead?:string|null}){
+  const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
+  const {data:session,error:sessionError}=await db.from('live_telemetry_sessions').select('id').eq('device_id',device.id).eq('user_id',device.userId).eq('status','ACTIVE').order('started_at',{ascending:false}).limit(1).maybeSingle();
+  if(sessionError)throw new Error(sessionError.message);if(!session)return null;
+  const payload={user_id:device.userId,riot_account_id:device.riotAccountId,device_id:device.id,session_id:session.id,checkpoint_minute:input.checkpointMinute,game_seconds:input.gameSeconds,state_read:input.stateRead,threat_read:input.threatRead??null,priority_read:input.priorityRead??null,source:'PLAYER_CHECKPOINT'};
+  const {data,error}=await db.from('live_player_read_checkpoints').upsert(payload,{onConflict:'session_id,checkpoint_minute'}).select('id,checkpoint_minute,game_seconds,state_read,threat_read,priority_read,created_at').single();
+  if(error)throw new Error(error.message);return data;
+}
+
+async function readCheckpointsForSession(sessionId:string){
+  const db=getSupabaseAdmin();if(!db)return[];
+  const {data,error}=await db.from('live_player_read_checkpoints').select('id,checkpoint_minute,game_seconds,state_read,threat_read,priority_read,created_at').eq('session_id',sessionId).order('checkpoint_minute',{ascending:true});
+  if(error){console.warn('[read-checkpoints] lookup failed',error.message);return[]}
+  return(data??[]).map((row:any)=>({id:row.id,checkpointMinute:Number(row.checkpoint_minute),gameSeconds:Number(row.game_seconds),stateRead:row.state_read,threatRead:row.threat_read??null,priorityRead:row.priority_read??null,createdAt:row.created_at??null}));
+}
+
 export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');const now=new Date().toISOString();
   const existing=await db.from('live_telemetry_sessions').select('id,started_at').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();if(existing.error)throw new Error(existing.error.message);
@@ -48,18 +64,18 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const {data:snapshots,error:snapshotError}=await db.from('live_telemetry_snapshots').select('game_time,payload').eq('session_id',session.id).order('game_time',{ascending:true});if(snapshotError)throw new Error(snapshotError.message);
   const normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
-  const lockedPlan=await linkedDecisionPlan(session.id);
+  const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(session.id),readCheckpointsForSession(session.id)]);
   let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
   if(normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
     const base=buildLiveProAnalysis(normalized,strength);
-    proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan})};
+    proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan,readCheckpoints})};
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
       const persisted=await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>{console.warn('[pro-backfill] match analysis failed',err);return null});
       if(persisted)await syncLearningPlanForSession(session.id,userId,session.riot_account_id??null,'BACKFILL',proAnalysis);
     }
   }else if(proAnalysis&&strength&&!proAnalysis.decisionGraph){
-    proAnalysis={...proAnalysis,decisionGraph:buildDecisionGraph({analysis:proAnalysis,summary:strength,lockedPlan})};
+    proAnalysis={...proAnalysis,decisionGraph:buildDecisionGraph({analysis:proAnalysis,summary:strength,lockedPlan,readCheckpoints})};
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
       await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis}).catch(err=>console.warn('[decision-graph] backfill persist failed',err));
@@ -83,7 +99,7 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const historyProfile=await getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null);
   const decisionGraph=proAnalysis?.decisionGraph??(session.summary as any)?.decisionGraph??null;
   const finalSummary=strength?{...strength,proAnalysis,decisionGraph,riotEnrichment:(await sessionEnrichmentStatus(session.id))??enrichment,learningPlanSync}:session.summary;
-  return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile};
+  return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile,playerReadCheckpoints:readCheckpoints};
 }
 
 async function finalizeSession(sessionId:string){
@@ -94,9 +110,9 @@ async function finalizeSession(sessionId:string){
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
   const snapshots=(data??[]).map(row=>row.payload as LiveTelemetrySnapshot),summary=buildStrengthTimeline(snapshots);
-  const lockedPlan=await linkedDecisionPlan(sessionId);
+  const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(sessionId),readCheckpointsForSession(sessionId)]);
   const baseAnalysis=snapshots.length?buildLiveProAnalysis(snapshots,summary):null;
-  const proAnalysis=baseAnalysis?{...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan})}:null;
+  const proAnalysis=baseAnalysis?{...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints})}:null;
   const storedSummary={...summary,proAnalysis,decisionGraph:proAnalysis?.decisionGraph??null,lockedPlanAvailable:Boolean(lockedPlan),riotEnrichment:{status:riotEnabled()?'PENDING':'DISABLED'}};
   const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);if(!snapshots.length)return;
 
