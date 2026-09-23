@@ -55,3 +55,11 @@ test('Match OS obeys Intent Gap and autonomy cue fading instead of leaking the a
   assert.ok(os.includes('POST-GAME WILL SCORE THE VERIFIED DECISION · NO LIVE ANSWER REVEALED'));
   assert.ok(bridge.includes('intentSkipped'));
 });
+
+
+test('Match OS shows verified cross-game Coach Memory when prior evidence exists',()=>{
+  assert.ok(os.includes('COACH MEMORY'));
+  assert.ok(os.includes('LAST VERIFIED REP'));
+  assert.ok(os.includes('WHY THIS REP NOW'));
+  assert.ok(os.includes('contract.continuity?.available'));
+});
