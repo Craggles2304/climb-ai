@@ -5,6 +5,7 @@ import type {DecisionTransferProfile,DecisionTransferCard} from './decisionTrans
 import {buildClimbRepLadder,type ClimbRepLadder,type ClimbRepLevel} from './climbRepLadder';
 import {buildClimbCareerMatrix,type ClimbCareerMatrix} from './climbCareerMatrix';
 import {buildClimbAutonomousCurriculum,type ClimbAutonomousCurriculum} from './climbAutonomousCurriculumV6';
+import {skillGraphPriorityBoost,type SkillTransferGraph} from './climbSkillTransferGraph';
 
 export type CurriculumPhase='BUILDING'|'FOUNDATION'|'PRACTISE'|'STABILISE'|'TRANSFER'|'GRADUATED'|'REOPEN';
 export type CurriculumReadiness='LOCKED'|'READY'|'ACTIVE'|'COMPLETE';
@@ -242,6 +243,7 @@ function curriculumOrder(
   transfer:DecisionTransferProfile,
   previous:ClimbCurriculum|null|undefined,
   careerMatrix:ClimbCareerMatrix,
+  skillGraph:SkillTransferGraph|null|undefined,
 ){
   const keys=new Set<DecisionBehaviourKey>();
   for(const item of twin.activeFive)keys.add(item.key);
@@ -264,12 +266,13 @@ function curriculumOrder(
   }
   const phaseWeight=(phase:CurriculumPhase)=>phase==='REOPEN'?80:phase==='PRACTISE'?65:phase==='STABILISE'?55:phase==='TRANSFER'?45:phase==='FOUNDATION'?40:phase==='BUILDING'?20:0;
   const matrixScore=(key:DecisionBehaviourKey)=>careerMatrix.candidates.find(item=>item.key===key)?.priorityScore??0;
+  const graphBoost=(key:DecisionBehaviourKey)=>skillGraphPriorityBoost(skillGraph,key);
   return lessons.sort((a,b)=>{
     const aUnlock=lessons.some(item=>item.prerequisite===a.behaviourKey&&item.readiness==='LOCKED')?18:0;
     const bUnlock=lessons.some(item=>item.prerequisite===b.behaviourKey&&item.readiness==='LOCKED')?18:0;
     const readiness=(value:CurriculumReadiness)=>value==='READY'?20:value==='LOCKED'?-30:-50;
     return readiness(b.readiness)-readiness(a.readiness)
-      ||matrixScore(b.behaviourKey)-matrixScore(a.behaviourKey)
+      ||(matrixScore(b.behaviourKey)+graphBoost(b.behaviourKey))-(matrixScore(a.behaviourKey)+graphBoost(a.behaviourKey))
       ||phaseWeight(b.phase)-phaseWeight(a.phase)
       ||bUnlock-aUnlock
       ||b.priority-a.priority
@@ -391,13 +394,14 @@ export function buildClimbCurriculum(
   transfer:DecisionTransferProfile,
   generatedAt=new Date().toISOString(),
   previous:ClimbCurriculum|null=null,
+  skillGraph:SkillTransferGraph|null=null,
 ):ClimbCurriculum{
   const careerMatrix=buildClimbCareerMatrix(twin,memory,transfer,{
     generatedAt,
     activeBehaviourKey:previous?.currentLesson?.behaviourKey??null,
     previous:previous?.careerMatrix??null,
   });
-  const lessons=curriculumOrder(twin,memory,transfer,previous,careerMatrix);
+  const lessons=curriculumOrder(twin,memory,transfer,previous,careerMatrix,skillGraph);
   const graduated=lessons.filter(item=>item.readiness==='COMPLETE');
   const building=!lessons.length||twin.gamesAnalyzed<3;
   const selection=selectCurriculumLesson(lessons,previous,building);
@@ -443,7 +447,7 @@ export function buildClimbCurriculum(
     summary:status==='BUILDING'
       ?'CLIMB Curriculum is still building. OP CLIMB needs repeated verified decisions before it chooses a development sequence.'
       :current
-        ?'Current lesson: '+current.label+'. '+selection.decision.reason+' '+(blocked.length?String(blocked.length)+' later skill'+(blocked.length===1?' is':'s are')+' locked behind prerequisite evidence.':'The next lesson will unlock only when repeated evidence justifies moving on.')
+        ?'Current lesson: '+current.label+'. '+selection.decision.reason+' '+(skillGraph?.nextBridge&&skillGraph.nextBridge.target===next?.behaviourKey?' Skill Graph recommends '+skillGraph.nextBridge.sourceLabel+' → '+skillGraph.nextBridge.targetLabel+' as the next direct test after this lesson.':'')+' '+(blocked.length?String(blocked.length)+' later skill'+(blocked.length===1?' is':'s are')+' locked behind prerequisite evidence.':'The next lesson will unlock only when repeated evidence justifies moving on.')
         :'Every evidence-backed lesson currently in the curriculum is graduated. OP CLIMB will maintain them on spaced review and wait for a new verified limiter.',
     boundary:BOUNDARY,
   };
