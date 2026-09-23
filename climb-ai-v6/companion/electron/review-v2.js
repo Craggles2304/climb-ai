@@ -9,6 +9,8 @@
   load('review-v6-player-coaching-identity.js');
   load('review-v7-adaptive-coaching-session.js');
   load('review-v8-learning-velocity.js');
+  load('review-v9-skill-transfer-graph.js');
+  load('review-v9-skill-transfer-graph.js');
   load('remember-v3.js');
   load('remember-v3-matchup.js');
   load('remember-v5-esports.js');
@@ -18,4 +20,6 @@
   load('remember-v9-player-coaching-identity.js');
   load('remember-v10-adaptive-coaching-session.js');
   load('remember-v11-learning-velocity.js');
+  load('remember-v12-skill-transfer-graph.js');
+  load('remember-v12-skill-transfer-graph.js');
 })();

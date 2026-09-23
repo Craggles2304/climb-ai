@@ -158,5 +158,5 @@ test('Progress page exposes the evidence-bounded Learning Journey and the server
   assert.ok(route.includes('buildLearningJourney(rows)'));
   assert.ok(route.includes("grounding:'decision-twin-history'"));
   assert.ok(repo.includes('learningJourney=buildLearningJourney(rows,now)'));
-  assert.ok(repo.includes('learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now'));
+  assert.ok(repo.includes('learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,curriculum,generatedAt:now'));
 });
