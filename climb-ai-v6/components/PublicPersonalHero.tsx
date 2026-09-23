@@ -92,11 +92,14 @@ function RiotForm({placement,onResult,onAvailability}:{placement:string;onResult
     }
   };
 
-  if(available===false)return <div className={styles.lookupUnavailable}><a className="btn primary" href="#try-it" data-landing-cta={placement+'-sample-fallback'}>SEE THE COACHING DEMO →</a><span>Live Riot-ID analysis is built but production Riot API access is not enabled yet.</span></div>;
+  if(available===false)return <div className={styles.lookupUnavailable}>
+    <a className={styles.demoButton} href="#try-it" data-landing-cta={placement+'-sample-fallback'}>OPEN THE LIVE COACHING DEMO →</a>
+    <span>Riot production access is currently off, so we&apos;re showing the coaching experience instead of sending you into a broken lookup.</span>
+  </div>;
 
   return <form className={styles.riotForm} onSubmit={submit}>
     <label className={styles.riotInput}>
-      <span>RIOT ID</span>
+      <span>YOUR RIOT ID</span>
       <input value={riotId} onChange={event=>setRiotId(event.target.value)} placeholder="Name#TAG" autoComplete="off" aria-label="Riot ID"/>
     </label>
     <label className={styles.regionInput}>
@@ -105,7 +108,7 @@ function RiotForm({placement,onResult,onAvailability}:{placement:string;onResult
         {REGIONS.map(item=><option key={item}>{item}</option>)}
       </select>
     </label>
-    <button className="btn primary" disabled={busy||available===null} type="submit">{available===null?'CHECKING RIOT ACCESS…':busy?'ANALYSING…':'ANALYSE MY GAMES →'}</button>
+    <button className={styles.analyseButton} disabled={busy||available===null} type="submit">{available===null?'CHECKING RIOT…':busy?'ANALYSING…':'ANALYSE MY GAMES →'}</button>
     {busy&&<div className={styles.scanLine}><i/><span>{SCAN_STEPS[scanIndex]}</span></div>}
     {error&&<div className={styles.formError}>{error}</div>}
   </form>;
@@ -113,55 +116,77 @@ function RiotForm({placement,onResult,onAvailability}:{placement:string;onResult
 
 function SampleReport(){
   return <article className={styles.reportCard} aria-label="Example personal report">
-    <div className={styles.reportHead}><div><span>EXAMPLE PERSONAL READ</span><strong>JINX · ADC</strong></div><b>GOLD IV</b></div>
-    <div className={styles.reportGrid}>
-      <div><span>CS @ 10</span><strong>58.6</strong><small>your recent baseline</small></div>
-      <div><span>EARLY-DEATH GAMES</span><strong>40%</strong><small>death before 10:00</small></div>
-      <div><span>AVG DEATHS</span><strong>5.8</strong><small>last ranked sample</small></div>
+    <div className={styles.reportChrome}><span>OP // PLAYER READ</span><b>01</b></div>
+    <div className={styles.reportIdentity}>
+      <div><small>EXAMPLE PROFILE</small><strong>JINX · ADC</strong><span>GOLD IV</span></div>
+      <div className={styles.grade}><small>FOCUS</small><b>01</b></div>
     </div>
-    <div className={styles.focusBlock}><span>TOP FIX THIS WEEK</span><strong>PROTECT THE FIRST RESET WINDOW</strong><p>When the lane becomes unstable, preserve HP and the wave before forcing another trade.</p></div>
-    <div className={styles.lockedPlan}><span>FULL CLIMB PLAN</span><b>🔒 ACCOUNT REQUIRED</b><i/><i/><i/></div>
-    <small className={styles.honesty}>Illustrative layout only. Your report uses your Riot match data and your own baseline.</small>
+    <div className={styles.reportGrid}>
+      <div><span>CS @ 10</span><strong>58.6</strong><small>recent baseline</small></div>
+      <div data-tone="WATCH"><span>EARLY-DEATH GAMES</span><strong>40%</strong><small>death before 10:00</small></div>
+      <div><span>AVG DEATHS</span><strong>5.8</strong><small>ranked sample</small></div>
+    </div>
+    <div className={styles.focusBlock}>
+      <span>THIS WEEK&apos;S FIX</span>
+      <strong>PROTECT THE FIRST RESET WINDOW.</strong>
+      <p>When the lane becomes unstable, preserve HP and the wave before forcing another trade.</p>
+      <div><b>RULE</b><small>Do not spend your next tempo window chasing a low-value trade.</small></div>
+    </div>
+    <div className={styles.lockedPlan}><span>FULL PLAYER MODEL</span><b>LOCKED UNTIL YOU SAVE YOUR HISTORY</b><i/><i/><i/></div>
+    <small className={styles.honesty}>Illustrative layout. Personal reports use the player&apos;s own match evidence.</small>
   </article>;
 }
 
 function PersonalReport({data}:{data:PreviewResponse}){
   const report=data.report!;
   return <article className={styles.reportCard+' '+styles.personalReport} aria-live="polite">
-    <div className={styles.reportHead}><div><span>YOUR FIRST OP CLIMB READ</span><strong>{data.account?.gameName}#{data.account?.tagline}</strong></div><b>{report.rank}</b></div>
-    <div className={styles.identityRow}><span>{report.primaryRole}</span><span>{report.mainChampion}</span><span>{report.gamesAnalyzed} GAMES</span><span>{report.winRate}% WR</span></div>
+    <div className={styles.reportChrome}><span>OP // YOUR PLAYER READ</span><b>LIVE</b></div>
+    <div className={styles.reportIdentity}>
+      <div><small>{data.account?.region}</small><strong>{data.account?.gameName}#{data.account?.tagline}</strong><span>{report.rank} · {report.primaryRole} · {report.mainChampion}</span></div>
+      <div className={styles.grade}><small>GAMES</small><b>{report.gamesAnalyzed}</b></div>
+    </div>
     <div className={styles.reportGrid}>
       {report.insights.map(insight=><div key={insight.label} data-tone={insight.tone}><span>{insight.label}</span><strong>{insight.value}</strong><small>{insight.detail}</small></div>)}
     </div>
-    <div className={styles.focusBlock}><span>FIRST COACHING PRIORITY · {report.focus.category.replaceAll('_',' ')}</span><strong>{report.focus.title}</strong><p>{report.focus.detail}</p><b>{report.focus.rule}</b><small>{report.focus.evidence}</small></div>
+    <div className={styles.focusBlock}><span>THIS WEEK&apos;S FIRST FIX · {report.focus.category.replaceAll('_',' ')}</span><strong>{report.focus.title}</strong><p>{report.focus.detail}</p><div><b>RULE</b><small>{report.focus.rule}</small></div><em>{report.focus.evidence}</em></div>
     <div className={styles.trendLine}><span>RECENT TREND</span><strong>{report.trend}</strong></div>
-    <div className={styles.lockedPlan}><span>YOUR FULL CLIMB PLAN</span><b>🔒 SAVE THE HISTORY + BUILD THE PLAN</b><i/><i/><i/></div>
-    <div className={styles.reportActions}><Link className="btn primary" href="/signup" data-landing-cta="personal-report-unlock">CREATE FREE ACCOUNT TO UNLOCK</Link><small>No card required · this public preview is not saved</small></div>
+    <div className={styles.lockedPlan}><span>FULL PLAYER MODEL</span><b>SAVE THE HISTORY + BUILD THE PLAN</b><i/><i/><i/></div>
+    <div className={styles.reportActions}><Link className={styles.analyseButton} href="/signup" data-landing-cta="personal-report-unlock">CREATE FREE ACCOUNT →</Link><small>No card required · this public preview is not saved</small></div>
   </article>;
 }
 
 export function PublicPersonalHero(){
   const [result,setResult]=useState<PreviewResponse|null>(null);
   const [available,setAvailable]=useState<boolean|null>(null);
-  const proof=useMemo(()=>result?.report?(String(result.report.gamesAnalyzed)+' ranked games analysed · '+result.report.rank):'No account needed for the first result',[result]);
+  const proof=useMemo(()=>result?.report?(String(result.report.gamesAnalyzed)+' ranked games analysed · '+result.report.rank):'Personal coaching, not another stats page',[result]);
 
-  return <section className={'container landing-hero-v2 '+styles.hero} id="analyse">
-    <div className={styles.heroCopy}>
-      <div className="eyebrow">COACHING BUILT FROM YOUR OWN GAMES</div>
-      <h1>CLIMB FASTER WITH COACHING<br/><span>BUILT AROUND HOW YOU PLAY.</span></h1>
-      <p>{available===false?'The personal Riot-ID report is built and ready, but production Riot API access is not enabled yet. Explore the coaching demo now; the Name#TAG analyser will switch on automatically when Riot access is enabled.':'Enter your Riot ID. OP CLIMB reads up to your last 20 ranked solo games, finds the pattern worth fixing first and gives you a partial personal report before you create an account.'}</p>
-      <RiotForm placement="hero" onResult={setResult} onAvailability={setAvailable}/>
-      <div className={styles.formTrust}><span>✓ NO ACCOUNT FOR THE PREVIEW</span><span>✓ RIOT MATCH DATA</span><span>✓ {proof.toUpperCase()}</span></div>
+  return <section className={styles.heroShell} id="analyse">
+    <div className={styles.heroGrid}/>
+    <div className={'container '+styles.hero}>
+      <div className={styles.heroCopy}>
+        <div className={styles.systemLine}><span>OP CLIMB</span><i/><b>PLAYER DEVELOPMENT SYSTEM</b></div>
+        <div className={styles.kicker}>YOUR GAMES → YOUR PATTERN → YOUR NEXT FIX</div>
+        <h1><span>YOUR GAMES.</span><br/>YOUR COACH.</h1>
+        <p>{available===false?'OP CLIMB is built to read your ranked evidence, find the pattern costing you games and turn it into one clear focus. Riot production access is currently off, so the site switches to the coaching demo instead of pretending the lookup works.':'Enter your Riot ID. OP CLIMB reads up to your last 20 ranked solo games, finds the pattern worth fixing first and gives you a personal coaching read before you create an account.'}</p>
+        <RiotForm placement="hero" onResult={setResult} onAvailability={setAvailable}/>
+        <div className={styles.formTrust}><span>NO CARD</span><span>NO GENERIC TIPS</span><span>{proof.toUpperCase()}</span></div>
+      </div>
+      <div className={styles.reportStage}>
+        <div className={styles.stageLabel}><span>LIVE COACHING OUTPUT</span><b>01 / FIRST PRIORITY</b></div>
+        {result?.report?<PersonalReport data={result}/>:<SampleReport/>}
+        <div className={styles.stageFooter}><span>DECISION TWIN</span><i/><span>SCENARIO MEMORY</span><i/><span>PRINCIPLE ENGINE</span></div>
+      </div>
     </div>
-    {result?.report?<PersonalReport data={result}/>:<SampleReport/>}
   </section>;
 }
 
 export function FinalRiotCta(){
   const [result,setResult]=useState<PreviewResponse|null>(null);
   if(result?.report)return <section className={'container '+styles.finalResult}><PersonalReport data={result}/></section>;
-  return <section className={'container '+styles.finalCta}>
-    <div><div className="eyebrow">YOUR GAMES ARE THE SALES PITCH</div><h2>DON&apos;T SIGN UP BLIND.<br/>SEE YOUR FIRST RESULT.</h2><p>Enter the Riot ID you actually play ranked on. We&apos;ll show the partial read first.</p></div>
-    <RiotForm placement="final" onResult={setResult}/>
+  return <section className={styles.finalShell}>
+    <div className={'container '+styles.finalCta}>
+      <div><div className={styles.kicker}>ONE INPUT. ONE FIRST FIX.</div><h2>PUT YOUR OWN GAMES<br/>ON THE SCREEN.</h2><p>Start with your Riot ID when live access is available, or use the coaching demo now.</p></div>
+      <RiotForm placement="final" onResult={setResult}/>
+    </div>
   </section>;
 }
