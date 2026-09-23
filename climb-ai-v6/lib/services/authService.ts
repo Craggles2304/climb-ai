@@ -16,7 +16,7 @@ export interface AuthService{
   configured():boolean;
   signIn(email:string,password:string):Promise<AuthUser>;
   signUp(email:string,password:string,redirectTo?:string):Promise<AuthUser>;
-  resendConfirmation(email:string):Promise<void>;
+  resendConfirmation(email:string,redirectTo?:string):Promise<void>;
   requestPasswordReset(email:string):Promise<void>;
   updatePassword(password:string):Promise<void>;
   signInWithGoogle(redirectTo?:string):Promise<void>;
@@ -51,10 +51,10 @@ class SupabaseAuthService implements AuthService{
     return {id:data.user?.id??'pending',email};
   }
 
-  async resendConfirmation(email:string){
+  async resendConfirmation(email:string,redirectTo?:string){
     const {error}=await (await this.client()).auth.resend({
       type:'signup',email,
-      options:{emailRedirectTo:authCallback('/onboarding')},
+      options:{emailRedirectTo:authCallback(safeNext(redirectTo||'/onboarding'))},
     });
     if(error)throw new Error(friendly(error.message));
   }
