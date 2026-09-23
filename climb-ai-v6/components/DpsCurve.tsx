@@ -15,7 +15,7 @@ import type {DpsPoint} from '@/lib/champions/dps';
  */
 
 export const BASE_COLOR='#C2703C';   // copper
-export const ITEM_COLOR='#4A90FF';   // brand blue
+export const ITEM_COLOR='#35D6E8';   // brand blue
 
 interface Row{level:number;base:number;withItem?:number}
 
@@ -60,7 +60,7 @@ export function DpsCurve({
               labelFormatter={(l)=>`Level ${l}`}
               formatter={(v:number,name:string)=>[`${v} DPS`,name==='base'?'No items':itemName??'With item']}/>
             {spikeLevels.map(l=>
-              <ReferenceLine key={l} x={l} stroke="rgba(74,144,255,.28)" strokeDasharray="3 3"/>)}
+              <ReferenceLine key={l} x={l} stroke="rgba(53,214,232,.28)" strokeDasharray="3 3"/>)}
             <Line type="monotone" dataKey="base" stroke={BASE_COLOR} strokeWidth={2} dot={false} name="base"/>
             {withItem&&
               <Line type="monotone" dataKey="withItem" stroke={ITEM_COLOR} strokeWidth={2} dot={false} name="withItem"/>}

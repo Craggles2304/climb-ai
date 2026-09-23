@@ -9,15 +9,15 @@ export default function GlobalError({error,reset}:{error:Error&{digest?:string};
   return <html lang="en">
     <body style={{
       margin:0,minHeight:'100vh',display:'grid',placeItems:'center',
-      background:'#07080A',color:'#ECEEEF',
-      fontFamily:'Inter,system-ui,-apple-system,Segoe UI,sans-serif',
+      background:'#06080E',color:'#E9ECF3',
+      fontFamily:'system-ui,-apple-system,Segoe UI,sans-serif',
       padding:'24px',
     }}>
       <div style={{maxWidth:520}}>
         <div style={{
           fontSize:11,letterSpacing:'.16em',textTransform:'uppercase',
-          color:'#4A90FF',fontWeight:800,
-        }}>OVERPOWERED</div>
+          color:'#35D6E8',fontWeight:800,
+        }}>OP CLIMB</div>
         <h1 style={{fontSize:32,letterSpacing:'-.04em',lineHeight:1.1,margin:'14px 0 12px'}}>
           The app failed to start.
         </h1>
@@ -26,7 +26,7 @@ export default function GlobalError({error,reset}:{error:Error&{digest?:string};
           side, not something you did.
         </p>
         <button onClick={reset} style={{
-          background:'#0060FC',color:'#fff',border:0,borderRadius:13,
+          background:'linear-gradient(180deg,#F4D27E,#E3B34C 60%,#B9892C)',color:'#1A1204',border:'1px solid #E3B34C',borderRadius:0,
           padding:'13px 20px',fontWeight:800,fontSize:14,cursor:'pointer',
         }}>RELOAD</button>
         {error.digest&&<p style={{color:'#6B7278',fontSize:11,marginTop:18}}>

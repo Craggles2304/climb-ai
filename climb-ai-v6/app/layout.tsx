@@ -11,11 +11,17 @@ import './public-launch.css';
 import './ilp-explainability.css';
 import './ux-journey.css';
 import './public-personal.css';
+import './broadcast-system.css';
 import type {Metadata} from 'next';
+import {Oswald,Barlow,JetBrains_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';
 import {LearningPlanProvider} from '@/components/LearningPlanContext';
 import {SubscriptionProvider} from '@/components/SubscriptionContext';
+
+const display=Oswald({subsets:['latin'],weight:['600','700'],variable:'--font-display',display:'swap'});
+const body=Barlow({subsets:['latin'],weight:['400','500','600'],variable:'--font-body',display:'swap'});
+const mono=JetBrains_Mono({subsets:['latin'],weight:['400','600'],variable:'--font-mono',display:'swap'});
 
 const SITE='https://opclimb.com';
 const description='OP CLIMB turns your League of Legends matches into a personal coaching plan: one repeated leak, one next-game rule, and proof across future games.';
@@ -32,4 +38,4 @@ export const metadata:Metadata={
   manifest:'/manifest.webmanifest',
 };
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body><SessionProvider><SubscriptionProvider><AccountProvider><LearningPlanProvider>{children}</LearningPlanProvider></AccountProvider></SubscriptionProvider></SessionProvider></body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body className={display.variable+' '+body.variable+' '+mono.variable}><SessionProvider><SubscriptionProvider><AccountProvider><LearningPlanProvider>{children}</LearningPlanProvider></AccountProvider></SubscriptionProvider></SessionProvider></body></html>}

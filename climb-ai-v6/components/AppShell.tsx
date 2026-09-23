@@ -108,7 +108,7 @@ export function AppShell({children}:{children:React.ReactNode}){
 
     <main className={'app-main op-main '+(live?'op-live-main':'')}>
       <header className="op-broadcast-hud">
-        <div className="op-hud-brand"><span className="op-hud-mark">OP</span><div><small>{coaching.tier} COACH</small><strong>{title}</strong></div></div>
+        <div className="op-hud-brand"><span className="op-hud-mark"><svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 29 16 16 30 3 16Z" fill="none" stroke="currentColor" strokeWidth="2"/><path d="M16 9 22 16 16 23 10 16Z" fill="#35D6E8"/></svg></span><div><small>{coaching.tier} COACH</small><strong>{title}</strong></div></div>
         <div className="op-hud-player"><div><small>PLAYER</small><strong>{active.gameName}{active.tagline}</strong></div><div><small>RANK</small><strong>{active.rank}</strong></div><div><small>ROLE</small><strong>{active.role}</strong></div><span className={'op-hud-state '+(live?'live':'')}><i/>{live?'MATCH MODE':'READY'}</span></div>
       </header>
       <div className="op-energy-rail"><i/><span>ONE FOCUS. ONE GAME AT A TIME.</span></div>
