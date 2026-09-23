@@ -773,7 +773,7 @@ export async function POST(req:NextRequest){
       coachingStrategy,
       experimentSchedule,
       intentProbe,
-      historyRows:context.historyRows,
+      historyRows:proModel?context.historyRows:[],
     });
     await persistLockedCoachForPregame(db,device,{
       champion,
@@ -826,7 +826,7 @@ export async function POST(req:NextRequest){
       coachingStrategy,
       causalCoachRoute,
       coachIntervention,
-      coachTwin:context.coachTwin,
+      coachTwin:proModel?context.coachTwin:null,
       playbook,
       matchContract,
       playbookPolicy:{
