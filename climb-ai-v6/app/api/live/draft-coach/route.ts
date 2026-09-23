@@ -722,6 +722,7 @@ export async function POST(req:NextRequest){
       coachIntervention,
       coachingStrategy,
       experimentSchedule,
+      intentProbe,
     });
     await persistLockedCoachForPregame(db,device,{
       champion,
