@@ -45,6 +45,8 @@
     try{
       window.dispatchEvent(new CustomEvent('op-climb-match-os',{detail:{
         contract:coach?._matchContract||null,
+        intentProbe:coach?._intentProbe||null,
+        intentSkipped:Boolean(coach?._intentProbe?.id&&skippedIntentProbeId===coach._intentProbe.id),
         gameTime:Number(lastRoster?.gameTime)||0,
         phase:clean(lastState?.phase),
         selectedBranch,
@@ -431,6 +433,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
         [...options.querySelectorAll('button')].forEach(node=>node.disabled=true);
         skip.classList.add('selected');
+        emitMatchContract(coach);
       });
       options.appendChild(skip);
     }
