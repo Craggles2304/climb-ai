@@ -4,6 +4,9 @@ import {MetricCard,PageHead} from '@/components/UI';
 import {getServerClient} from '@/lib/supabase/server';
 import {getActivationFunnel} from '@/lib/server/activationFunnel';
 import {getFoundingBetaValidation} from '@/lib/server/foundingBetaValidation';
+import {getBetaOperationsSnapshot} from '@/lib/server/betaOperations';
+import {betaMetricValue,getBetaExperiments} from '@/lib/server/betaExperimentRepository';
+import {BetaExperimentConsole} from '@/components/BetaExperimentConsole';
 
 export const dynamic='force-dynamic';
 
@@ -27,7 +30,7 @@ export default async function Admin(){
     .maybeSingle();
   if(!profile?.is_founder)notFound();
 
-  const [funnel,beta]=await Promise.all([getActivationFunnel(30),getFoundingBetaValidation(45)]);
+  const [funnel,beta,ops,experiments]=await Promise.all([getActivationFunnel(30),getFoundingBetaValidation(45),getBetaOperationsSnapshot(45),getBetaExperiments(8)]);
   const signup=funnel.steps[0]?.players||0;
   const grade=funnel.steps.find(s=>s.event==='op_grade_viewed')?.players||0;
   const ladder=funnel.steps.find(s=>s.event==='fix_ladder_viewed')?.players||0;
@@ -35,13 +38,53 @@ export default async function Admin(){
   const overall=signup?Math.round(hq/signup*100):0;
   const gradeRate=signup?Math.round(grade/signup*100):0;
   const ladderRate=grade?Math.round(ladder/grade*100):0;
+  const activeExperimentCurrent=experiments.active?betaMetricValue(beta,experiments.active.metricKey):null;
+  const recommendedBaseline=ops.recommendedExperiment?betaMetricValue(beta,ops.recommendedExperiment.metricKey):null;
 
   return <AppShell>
     <PageHead
-      title="Activation Control Room"
-      subtitle={`Real first-session funnel · trailing ${funnel.windowDays} days · unique players, not page views.`}
+      title="Beta Operations Control Room"
+      subtitle={`Stage 6 · rescue the real player journey, run one measurable release experiment at a time, then scale only what works.`}
     />
 
+
+
+  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.24)'}}>
+    <div className="eyebrow">STAGE 6 · FOUNDING BETA OPERATIONS</div>
+    <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
+      <div><h2 style={{margin:'8px 0'}}>Stop guessing what to fix next.</h2><p className="muted" style={{maxWidth:860}}>Every beta profile is mapped to the first broken point in the real coaching loop. The queue below prioritises rescue work; the experiment ledger freezes the baseline and build before a product change is judged.</p></div>
+      <span className="op-tier op-tier-pro">{ops.blockedPlayers} NEED RESCUE</span>
+    </div>
+  </section>
+
+  {ops.error&&<section className="glass card" style={{marginBottom:18}}><div className="eyebrow">BETA OPS WARNING</div><p className="muted">{ops.error}</p></section>}
+
+  <div className="grid four" style={{marginBottom:16}}>
+    <MetricCard label="BETA PROFILES" value={ops.participants.length}/>
+    <MetricCard label="RESCUE QUEUE" value={ops.blockedPlayers} detail="First broken point per player"/>
+    <MetricCard label="HEALTHY LOOP" value={ops.healthyPlayers} detail="Core loop complete + active"/>
+    <MetricCard label="LATEST BUILD" value={ops.buildCoverage.latestBuild||'LEGACY'} detail={`${ops.buildCoverage.stampedEvents} stamped · ${ops.buildCoverage.unstampedEvents} legacy events`}/>
+  </div>
+
+  <section className="glass card" style={{marginBottom:18}}>
+    <div className="eyebrow">HIGHEST-IMPACT BLOCKER</div>
+    {ops.topBlocker?<><h2 style={{margin:'8px 0'}}>{ops.topBlocker.surface}</h2><p className="muted">{ops.topBlocker.players} player{ops.topBlocker.players===1?'':'s'} currently sit at <b>{ops.topBlocker.state.replaceAll('_',' ')}</b>. This is the highest weighted rescue state in the current cohort.</p></>:<><h2>No active blocker.</h2><p className="muted">The measured beta loop is currently healthy.</p></>}
+  </section>
+
+  <BetaExperimentConsole
+    active={experiments.active}
+    history={experiments.history}
+    recommendation={ops.recommendedExperiment}
+    currentValue={activeExperimentCurrent}
+    recommendedBaseline={recommendedBaseline}
+  />
+
+  <section className="glass card" style={{marginBottom:18}}>
+    <div className="eyebrow">PLAYER RESCUE QUEUE</div>
+    <h2>Who is stuck, where, and what to investigate first.</h2>
+    <p className="muted">The state is evidence-based. A player moves only when the corresponding milestone is actually observed.</p>
+    <div style={{overflowX:'auto',marginTop:16}}><table className="table"><thead><tr><th>Player</th><th>State</th><th>Surface</th><th>Last activity</th><th>Build</th><th>Next action</th></tr></thead><tbody>{ops.rescueQueue.length?ops.rescueQueue.map(player=><tr key={player.id}><td><b>{player.label}</b></td><td>{player.state.replaceAll('_',' ')}</td><td>{player.surface}</td><td>{player.hoursSinceActivity===null?'NO EVENT':`${player.hoursSinceActivity}h ago`}</td><td>{player.latestBuild||'LEGACY'}</td><td style={{minWidth:320}}>{player.nextAction}</td></tr>):<tr><td colSpan={6}>No player currently needs rescue.</td></tr>}</tbody></table></div>
+  </section>
 
   <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.18)'}}>
     <div className="eyebrow">STAGE 5 · FOUNDING BETA VALIDATION</div>
