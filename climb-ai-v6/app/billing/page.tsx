@@ -1,1 +1,31 @@
-import {AppShell} from '@/components/AppShell';import {PageHead} from '@/components/UI';export default function Billing(){return <AppShell><PageHead title="Billing" subtitle="Stripe-hosted checkout and billing portal architecture."/><div className="glass card"><div className="eyebrow">CURRENT PLAN</div><h2>FREE</h2><p className="muted">No card information is stored in OVERPOWERED. Production billing should redirect to Stripe Checkout and Stripe Billing Portal.</p><button className="btn primary">UPGRADE</button></div></AppShell>}
+'use client';
+import Link from 'next/link';
+import {AppShell} from '@/components/AppShell';
+import {PageHead} from '@/components/UI';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
+import {PLAN_COPY,PLAN_ENTITLEMENTS} from '@/lib/subscription';
+
+export default function Billing(){
+  const {tier,loading}=useSubscription();
+  const copy=PLAN_COPY[tier];
+  return <AppShell>
+    <PageHead title="Billing" subtitle="Your League plan, upgrades and subscription controls."/>
+    <section className="glass card" style={{padding:24}}>
+      <div className="eyebrow">CURRENT LEAGUE PLAN</div>
+      <h1 style={{margin:'8px 0'}}>{loading?'LOADING…':tier}</h1>
+      <h2 style={{margin:'0 0 8px'}}>{copy.price}</h2>
+      <p className="muted">{copy.description}</p>
+      <div style={{display:'grid',gap:7,margin:'18px 0'}}>
+        {PLAN_ENTITLEMENTS[tier].map(item=><div key={item}>✓ {item}</div>)}
+      </div>
+      <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
+        {tier==='FREE'&&<><UpgradeButton tier="PLUS"/><UpgradeButton tier="PRO"/></>}
+        {tier==='PLUS'&&<><UpgradeButton tier="PRO" label="MOVE TO PRO"/><BillingPortalButton/></>}
+        {tier==='PRO'&&<BillingPortalButton/>}
+        <Link className="btn secondary" href="/pricing">COMPARE PLANS</Link>
+      </div>
+      <p className="muted" style={{fontSize:11,marginTop:14}}>Checkout and subscription management are hosted by Stripe. OP CLIMB does not store your card details. Downgrades, cancellation and payment-method changes are handled in the Stripe billing portal.</p>
+    </section>
+  </AppShell>;
+}
