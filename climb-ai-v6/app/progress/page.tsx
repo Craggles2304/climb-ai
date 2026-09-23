@@ -8,6 +8,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import {LearningJourneyTimeline} from '@/components/LearningJourneyTimeline';
 import {DecisionTwinCommandCenter} from '@/components/DecisionTwinCommandCenter';
 import {CareerDevelopmentMap} from '@/components/CareerDevelopmentMap';
+import {TrackView} from '@/components/TrackView';
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const delta=(a:number,b:number)=>a-b;
 const signed=(n:number,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
@@ -31,6 +32,7 @@ export default function Progress(){
   const simpleSignal=active.role==='ADC'?(postDelta>=0?'Your farm after lane is improving.':'You are still losing farm after lane.'):(deathDelta>=0?'Your death control is improving.':'Deaths are still costing your games.');
 
   return <AppShell>
+    <TrackView event="career_viewed" props={{games:matches.length,rank:active.rank}}/>
     <PageHead title="Progress" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} VIEW ${detail.depth}/10`}/>
 
     <section className="vf-progress-hero">
