@@ -78,6 +78,7 @@ test('Match Contract gives one coherent player-facing hierarchy',()=>{
     coachIntervention:{primaryCue:'NAME THE SECOND THREAT BEFORE YOU STEP FORWARD.',deliveryPolicy:'LIGHT'} as any,
     coachingStrategy:{deliveryPolicy:'LIGHT'} as any,
     experimentSchedule:null,
+    intentProbe:{version:1,id:'probe-1',response:null,prompt:'WHICH BRANCH WILL YOU TAKE?'} as any,
   });
   assert.equal(contract.version,'MATCH_OS_V1');
   assert.equal(contract.learning.mode,'TRANSFER_TEST');
@@ -85,6 +86,9 @@ test('Match Contract gives one coherent player-facing hierarchy',()=>{
   assert.equal(contract.phaseDeck.length,5);
   assert.equal(contract.policy.usesLiveTelemetryForTactics,false);
   assert.equal(contract.policy.playerChoosesGameState,true);
+  assert.equal(contract.scaffolding.deliveryPolicy,'LIGHT');
+  assert.equal(contract.scaffolding.intentRequiredBeforeCue,true);
+  assert.equal(contract.scaffolding.revealSpecificCueAfterIntent,true);
 });
 
 test('Match Contract review keeps NOT OBSERVED neutral and recognises transfer success',()=>{
@@ -107,4 +111,20 @@ test('Match Contract review keeps NOT OBSERVED neutral and recognises transfer s
   });
   assert.equal(executed.status,'EXECUTED');
   assert.equal(executed.cleanMoments,1);
+});
+
+
+test('Autonomy mode keeps the strategic plan visible but fades the learning answer',()=>{
+  const contract=buildCompanionMatchContract({
+    champion:'Jinx',role:'ADC',rank:'Gold IV',coach,playbook,
+    personalTrap:null,mission,scenarioPrime:null,transferPrime:null,
+    coachIntervention:null,
+    coachingStrategy:{deliveryPolicy:'NONE',autonomyTest:true,mode:'FADE'} as any,
+    experimentSchedule:null,
+    intentProbe:null,
+  });
+  assert.equal(contract.scaffolding.autonomyTest,true);
+  assert.equal(contract.scaffolding.deliveryPolicy,'NONE');
+  assert.equal(contract.scaffolding.revealSpecificCueAfterIntent,false);
+  assert.equal(contract.strategic.ourWinCondition,'FRONT TO BACK · PROTECT JINX');
 });
