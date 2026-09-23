@@ -60,7 +60,7 @@ test('correct read and matching priority followed by a bad decision diagnoses ex
 
 test('wrong read followed by a clean verified decision credits recovery rather than blaming execution',()=>{
   const result=buildDecisionCausalChain({
-    readCalibration:calibration({stateRead:'AHEAD',actualVerdict:'BEHIND' as any,priorityRead:'STABILISE',confidenceRead:'MEDIUM'}),
+    readCalibration:calibration({stateRead:'AHEAD',actualVerdict:'THEM_STRONGER',priorityRead:'STABILISE',confidenceRead:'MEDIUM'}),
     nodes:[node({type:'SURVIVAL',verdict:'GOOD',consequence:'Stayed alive through the pressure.'})],
   });
   assert.equal(result.chains[0].diagnosis,'MISREAD_RECOVERED');
