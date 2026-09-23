@@ -57,7 +57,7 @@ jobs:
       - name: Stage 10 Live Read Calibration
         run: node --import tsx --test tests/gameReadCalibration.test.ts
       - name: Stage 11 Decision Causal Chain
-        run: node --import tsx --test tests/decisionCausalChain.test.ts
+        run: node --import tsx --test tests/decisionCausalChain.test.ts tests/decisionCausalProfile.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
       - name: Stage 5 founding beta validation
