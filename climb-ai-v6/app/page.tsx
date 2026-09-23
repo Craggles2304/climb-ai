@@ -1,9 +1,9 @@
 import type {Metadata} from 'next';
-import {Big_Shoulders_Display,Barlow,JetBrains_Mono} from 'next/font/google';
+import {Oswald,Barlow,JetBrains_Mono} from 'next/font/google';
 import {BroadcastLanding} from '@/components/BroadcastLanding';
 import {TrackView} from '@/components/TrackView';
 
-const display=Big_Shoulders_Display({subsets:['latin'],weight:['600','800','900'],variable:'--font-display',display:'swap'});
+const display=Oswald({subsets:['latin'],weight:['600','700'],variable:'--font-display',display:'swap'});
 const body=Barlow({subsets:['latin'],weight:['400','500','600'],variable:'--font-body',display:'swap'});
 const mono=JetBrains_Mono({subsets:['latin'],weight:['400','600'],variable:'--font-mono',display:'swap'});
 
