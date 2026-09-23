@@ -10,6 +10,7 @@ const schema=z.object({
   checkpointMinute:z.union([z.literal(5),z.literal(10),z.literal(15)]),
   gameSeconds:z.number().finite().min(0).max(60*120),
   stateRead:z.enum(['AHEAD','EVEN','BEHIND']),
+  confidenceRead:z.enum(['HIGH','MEDIUM','LOW']).nullable().optional(),
   threatRead:z.string().trim().max(80).nullable().optional(),
   priorityRead:z.string().trim().max(80).nullable().optional(),
 });
