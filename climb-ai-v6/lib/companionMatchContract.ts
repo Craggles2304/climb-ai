@@ -6,6 +6,7 @@ import type {ClimbExperimentSchedule} from './climbExperimentScheduler';
 import type {PersonalTrap} from './decisionTwin';
 import type {ScenarioPrime,ScenarioPrimeReview} from './scenarioMemory';
 import type {DecisionTransferPrime,DecisionTransferReview} from './decisionTransfer';
+import type {ClimbIntentProbe} from './climbIntentGap';
 
 export type CompanionLearningMode='EXECUTE_PLAN'|'CURRICULUM_REP'|'SPACED_REP'|'TRANSFER_TEST';
 export type CompanionMatchPhase='LOAD_IN'|'LANE'|'FIRST_CHECK'|'MID_GAME'|'OPEN_GAME';
@@ -47,6 +48,16 @@ export interface CompanionMatchContract{
     title:string;
     trap:string|null;
     proof:string|null;
+  };
+  scaffolding:{
+    strategyMode:string;
+    deliveryPolicy:'FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
+    intentProbeId:string|null;
+    intentPrompt:string|null;
+    intentRequiredBeforeCue:boolean;
+    revealSpecificCueAfterIntent:boolean;
+    autonomyTest:boolean;
+    playerInstruction:string;
   };
   branches:Record<FrozenBranchKey,{
     headline:string;
@@ -135,6 +146,7 @@ export function buildCompanionMatchContract(input:{
   coachIntervention:ClimbCoachIntervention|null|undefined;
   coachingStrategy:ClimbCoachingStrategy|null|undefined;
   experimentSchedule:ClimbExperimentSchedule|null|undefined;
+  intentProbe:ClimbIntentProbe|null|undefined;
 }):CompanionMatchContract{
   const {coach,playbook}=input;
   const mode=learningMode(input);
@@ -174,7 +186,18 @@ export function buildCompanionMatchContract(input:{
     ||'WHAT WILL YOU DO WHEN THE TRIGGER APPEARS?',
     160,
   );
-  const supportMode=upper(input.coachingStrategy?.deliveryPolicy||input.coachIntervention?.deliveryPolicy||'FULL');
+  const deliveryPolicy=(input.coachingStrategy?.deliveryPolicy||input.coachIntervention?.deliveryPolicy||'FULL') as 'FULL'|'LIGHT'|'DIAGNOSTIC'|'NONE';
+  const supportMode=upper(deliveryPolicy);
+  const intentRequired=Boolean(input.intentProbe?.version===1&&!input.intentProbe?.response);
+  const revealSpecificCueAfterIntent=deliveryPolicy!=='NONE';
+  const autonomyTest=Boolean(input.coachingStrategy?.autonomyTest||deliveryPolicy==='NONE');
+  const playerInstruction=deliveryPolicy==='NONE'
+    ?'AUTONOMY TEST · OP CLIMB WILL NOT GIVE THE DECISION CUE. READ THE TRIGGER AND EXECUTE THE PRINCIPLE YOURSELF.'
+    :deliveryPolicy==='DIAGNOSTIC'
+      ?'DIAGNOSTIC REP · COMMIT TO YOUR OWN READ BEFORE COACH SUPPORT IS REVEALED.'
+      :deliveryPolicy==='LIGHT'
+        ?'LIGHT SUPPORT · ONE SHORT CUE ONLY. YOU OWN THE DECISION.'
+        :'FULL SUPPORT · USE THE CUE, THEN EXECUTE THE DECISION YOURSELF.';
   const experiment=input.experimentSchedule?.status==='SCHEDULED'
     ?compact(input.experimentSchedule?.experimentType||'SCHEDULED TEST',100)
     :null;
@@ -242,6 +265,16 @@ export function buildCompanionMatchContract(input:{
       title:compact(input.personalTrap?.title||(personalReady?'PERSONAL TRAP':'PROFILE BUILDING'),100),
       trap:personalTrap,
       proof:personalReady?compact(input.personalTrap?.proof||input.personalTrap?.historicalSummary,170):null,
+    },
+    scaffolding:{
+      strategyMode:upper(input.coachingStrategy?.mode||'TEACH'),
+      deliveryPolicy,
+      intentProbeId:clean(input.intentProbe?.id)||null,
+      intentPrompt:clean(input.intentProbe?.prompt)||null,
+      intentRequiredBeforeCue:intentRequired,
+      revealSpecificCueAfterIntent,
+      autonomyTest,
+      playerInstruction,
     },
     branches:{AHEAD:branch('AHEAD'),EVEN:branch('EVEN'),BEHIND:branch('BEHIND')},
     checkpoints:(playbook.checkpoints??[]).map(item=>({
