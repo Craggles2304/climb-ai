@@ -737,7 +737,7 @@ export async function POST(req:NextRequest){
       rows:context.historyRows,
       curriculum:context.curriculum,
       mission:climbMission,
-      coachTwin:proModel?context.coachTwin:null,
+      coachTwin:context.coachTwin,
       experimentSchedule,
     }),context.adaptiveCoachingSession):null;
     const causalCoachRoute=proModel?buildCausalCoachRoute({profile:context.causalProfile,strategy:coachingStrategy,mission:climbMission}):null;
