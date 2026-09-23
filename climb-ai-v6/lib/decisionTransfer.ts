@@ -204,19 +204,23 @@ function transferState(input:{
   novelContexts:DecisionSituationTag[];
 }):DecisionTransferState{
   if(!input.novel.length)return'LOCAL_ONLY';
-  let lastRegressionEnd=-1;
-  for(let end=1;end<input.novel.length;end++){
-    const pair=input.novel.slice(end-1,end+1);
+  let activeRegressionEnd=-1;
+  for(let index=0;index<input.novel.length;index++){
+    if(activeRegressionEnd>=0){
+      const recovered=index>=activeRegressionEnd+3
+        &&input.novel.slice(index-2,index+1).every(item=>item.verdict==='GOOD');
+      if(recovered)activeRegressionEnd=-1;
+      continue;
+    }
+    if(index<1)continue;
+    const pair=input.novel.slice(index-1,index+1);
     if(!pair.every(item=>item.verdict==='IMPROVE'))continue;
-    const prior=input.novel.slice(0,end-1);
+    const prior=input.novel.slice(0,index-1);
     const priorClean=prior.filter(item=>item.verdict==='GOOD').length;
     const priorRate=pct(priorClean,prior.length)??0;
-    if(priorClean>=2&&priorRate>=67)lastRegressionEnd=end;
+    if(priorClean>=2&&priorRate>=67)activeRegressionEnd=index;
   }
-  if(lastRegressionEnd>=0){
-    const recovery=input.novel.slice(lastRegressionEnd+1);
-    if(streak(recovery)<3)return'REGRESSED';
-  }
+  if(activeRegressionEnd>=0)return'REGRESSED';
   const cleanStreak=streak(input.novel);
   const breadthScore=breadth(input.novelChampions,input.novelContexts);
   if(input.clean>=4&&(input.recentRate??0)>=80&&cleanStreak>=3&&breadthScore>=2)return'PRINCIPLE_OWNED';
