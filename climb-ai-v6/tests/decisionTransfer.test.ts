@@ -209,7 +209,12 @@ test('transfer regression stays open until three consecutive clean novel recover
   assert.equal(build([...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED');
   const recovered=[...base,row(9,'Jinx','GOOD','PICK_PRESSURE'),row(10,"Kai'Sa",'GOOD','PICK_PRESSURE'),row(11,'Jinx','GOOD','PICK_PRESSURE')];
   assert.notEqual(build(recovered).transfer.cards[0]?.state,'REGRESSED');
-  assert.notEqual(build([...recovered,row(12,"Kai'Sa",'IMPROVE','PICK_PRESSURE')]).transfer.cards[0]?.state,'REGRESSED','A closed regression episode must not resurrect from one later miss.');
+  const secondMissOne=[...recovered,row(12,"Kai'Sa",'IMPROVE','PICK_PRESSURE')];
+  const secondMissTwo=[...secondMissOne,row(13,'Jinx','IMPROVE','PICK_PRESSURE')];
+  const secondMissThree=[...secondMissTwo,row(14,"Kai'Sa",'IMPROVE','PICK_PRESSURE')];
+  assert.notEqual(build(secondMissOne).transfer.cards[0]?.state,'REGRESSED','A closed regression episode must not resurrect from one later miss.');
+  assert.notEqual(build(secondMissTwo).transfer.cards[0]?.state,'REGRESSED','A rebuilt principle needs stronger evidence before a second reopen.');
+  assert.equal(build(secondMissThree).transfer.cards[0]?.state,'REGRESSED','Three later consecutive novel misses should reopen a rebuilt transfer principle.');
 });
 
 test('exact-draft V5 selector yields one novel transfer test and defers to unstable V4 reps',()=>{
