@@ -43,9 +43,9 @@ export function BillingPortalButton({label='MANAGE SUBSCRIPTION',className='btn 
 
 export function ProMoatGate({compact=false}:{compact?:boolean}){
   return <div className="glass card" style={{padding:compact?16:24}}>
-    <div className="eyebrow">PRO · PLAYER MODEL</div>
-    <h3 style={{margin:'6px 0'}}>Your Decision Twin keeps learning even when this view is locked.</h3>
-    <p className="muted">Unlock Scenario Memory, transfer tests, Autonomous Curriculum, Coach Twin, autonomy tracking and long-term decision identity.</p>
-    <UpgradeButton tier="PRO" label="UNLOCK MY PLAYER MODEL"/>
+    <div className="eyebrow">PRO · DEVELOPS THE PLAYER</div>
+    <h3 style={{margin:'6px 0'}}>This is where OP CLIMB stops treating every game as a separate review.</h3>
+    <p className="muted">PRO remembers recurring habits, checks whether a fix survives new situations and moves you onto the next evidence-backed lesson when the current one is genuinely learned.</p>
+    <UpgradeButton tier="PRO" label="BUILD MY PLAYER MODEL"/>
   </div>;
 }

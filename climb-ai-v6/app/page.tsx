@@ -31,7 +31,7 @@ export default function Landing(){return <>
   <LandingFunnelTracking/>
   <header className="container public-topbar">
     <Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link>
-    <nav><Link href="/demo">DEMO</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup" data-landing-cta="top-nav">START FREE</Link></nav>
+    <nav><Link href="#loop">HOW IT WORKS</Link><Link href="/demo">DEMO</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup" data-landing-cta="top-nav">START FREE</Link></nav>
   </header>
 
   <main className="landing-v2">
@@ -73,13 +73,13 @@ export default function Landing(){return <>
     <ProofWithoutPretending/>
 
     <section className="container landing-tier-preview">
-      <div className="landing-section-head"><div><div className="eyebrow">ONE PRODUCT · THREE DEPTHS</div><h2>PAY FOR A DEEPER COACH, NOT MORE NOISE.</h2></div><p>Start free. Upgrade when you want the system to understand more than the latest result.</p></div>
-      <div className="tier-preview-grid">
-        <div><span>FREE</span><strong>Prove the loop</strong><small>Recent evidence · one active focus · simple match review</small></div>
-        <div><span>PLUS</span><strong>Understand this game</strong><small>Full draft win/loss condition · deeper fight and economy diagnosis · 90-day context</small></div>
-        <div className="is-pro"><span>PRO</span><strong>Build your player model</strong><small>Decision Twin · Scenario Memory · transfer tests · Autonomous Curriculum</small></div>
+      <div className="landing-section-head"><div><div className="eyebrow">ONE COACHING JOURNEY · THREE DEPTHS</div><h2>START WITH THE PROBLEM. UNLOCK MORE ONLY WHEN YOU WANT MORE CONTEXT.</h2></div><p>The plans are not three different apps. Each level takes the same player journey one layer deeper.</p></div>
+      <div className="landing-tier-journey">
+        <article className="landing-tier-step"><em>YOU START HERE</em><span>FREE</span><strong>FIND THE PROBLEM</strong><p>See the repeated mistake, take one rule into the next game and prove whether it changes.</p><div className="landing-tier-locks"><small className="unlocked">✓ GAME REVIEW</small><small className="unlocked">✓ ONE ACTIVE FOCUS</small><small>🔒 FULL DRAFT PLAN</small></div></article>
+        <article className="landing-tier-step"><em>WHEN YOU WANT THE WHOLE GAME</em><span>PLUS · £9.99</span><strong>UNDERSTAND THE GAME</strong><p>See how both comps win, what your role needed to do and the deeper context around the mistake.</p><div className="landing-tier-locks"><small className="unlocked">✓ FULL 5V5 READ</small><small className="unlocked">✓ 90-DAY CONTEXT</small><small>🔒 LONG-TERM PLAYER MEMORY</small></div></article>
+        <article className="landing-tier-step is-pro"><em>WHEN YOU WANT A REAL DEVELOPMENT SYSTEM</em><span>PRO · £19.99</span><strong>DEVELOP THE PLAYER</strong><p>Build a coach that remembers your habits, tests whether learning transfers and decides what should replace a mastered lesson.</p><div className="landing-tier-locks"><small className="unlocked">✓ REMEMBERS YOU</small><small className="unlocked">✓ TESTS TRANSFER</small><small className="unlocked">✓ CHOOSES WHAT COMES NEXT</small></div></article>
       </div>
-      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}><StartFree placement="tiers"/><Link href="/pricing" className="text-link">COMPARE FREE, PLUS &amp; PRO →</Link></div>
+      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}><StartFree placement="tiers"/><Link href="/pricing" className="text-link">SEE EXACTLY WHAT UNLOCKS AT EACH LEVEL →</Link></div>
     </section>
 
     <section className="container landing-trust-strip"><div><b>TRY FIRST</b><span>See the coaching before you commit.</span></div><div><b>YOUR GAMES</b><span>Advice is tied back to what you actually did.</span></div><div><b>FREE TO START</b><span>No card required.</span></div><div><b>NO FAKE PROOF</b><span>No invented testimonials or made-up rank climbs.</span></div></section>
