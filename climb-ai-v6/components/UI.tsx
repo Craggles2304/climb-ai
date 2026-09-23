@@ -1,13 +1,13 @@
 import Link from 'next/link';
-import Image from 'next/image';
 import {Match,Mission} from '@/lib/types';
-import {BRAND} from '@/lib/brand';
 
-/** Existing OVERPOWERED artwork with the CLIMB AI product name locked beneath it. */
+/** Broadcast wordmark shared by public and authenticated product chrome. */
 export function Wordmark({size='md',priority=false}:{size?:'sm'|'md';priority?:boolean}){
-  return <span style={{display:'inline-grid',justifyItems:'center',lineHeight:1}}>
-    <Image className={`logo logo-${size}`} src={BRAND.logo.lockup} alt={`${BRAND.name} — ${BRAND.tagline}`} width={size==='sm'?132:186} height={size==='sm'?66:93} priority={priority}/>
-    <span style={{fontSize:size==='sm'?9:11,fontWeight:900,letterSpacing:'.22em',marginTop:size==='sm'?-8:-11,color:'var(--blue,#4b94ff)',whiteSpace:'nowrap'}}>CLIMB AI</span>
+  void priority;
+  return <span className="broadcast-wordmark" aria-label="OP CLIMB">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 29 16 16 30 3 16Z" fill="none" stroke="#E3B34C" strokeWidth="2"/><path d="M16 9 22 16 16 23 10 16Z" fill="#35D6E8"/></svg>
+    <span>OP<b>CLIMB</b></span>
+    {size==='md'&&<small>PLAYER DEVELOPMENT</small>}
   </span>;
 }
 
