@@ -37,12 +37,28 @@ function splitRiotId(value:string){
   return{gameName:value.slice(0,index).trim(),tagline:value.slice(index+1).trim()};
 }
 
-function RiotForm({placement,onResult}:{placement:string;onResult?:(result:PreviewResponse)=>void}){
+function RiotForm({placement,onResult,onAvailability}:{placement:string;onResult?:(result:PreviewResponse)=>void;onAvailability?:(enabled:boolean)=>void}){
   const [riotId,setRiotId]=useState('');
   const [region,setRegion]=useState<(typeof REGIONS)[number]>('EUW');
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState('');
   const [scanIndex,setScanIndex]=useState(0);
+  const [available,setAvailable]=useState<boolean|null>(null);
+
+  useEffect(()=>{
+    let live=true;
+    fetch('/api/public/preview').then(response=>response.json()).then(body=>{
+      if(!live)return;
+      const enabled=Boolean(body?.enabled);
+      setAvailable(enabled);
+      onAvailability?.(enabled);
+    }).catch(()=>{
+      if(!live)return;
+      setAvailable(false);
+      onAvailability?.(false);
+    });
+    return()=>{live=false};
+  },[onAvailability]);
 
   useEffect(()=>{
     if(!busy){setScanIndex(0);return}
@@ -76,6 +92,8 @@ function RiotForm({placement,onResult}:{placement:string;onResult?:(result:Previ
     }
   };
 
+  if(available===false)return <div className={styles.lookupUnavailable}><a className="btn primary" href="#try-it" data-landing-cta={placement+'-sample-fallback'}>SEE THE COACHING DEMO →</a><span>Live Riot-ID analysis is built but production Riot API access is not enabled yet.</span></div>;
+
   return <form className={styles.riotForm} onSubmit={submit}>
     <label className={styles.riotInput}>
       <span>RIOT ID</span>
@@ -87,7 +105,7 @@ function RiotForm({placement,onResult}:{placement:string;onResult?:(result:Previ
         {REGIONS.map(item=><option key={item}>{item}</option>)}
       </select>
     </label>
-    <button className="btn primary" disabled={busy} type="submit">{busy?'ANALYSING…':'ANALYSE MY GAMES →'}</button>
+    <button className="btn primary" disabled={busy||available===null} type="submit">{available===null?'CHECKING RIOT ACCESS…':busy?'ANALYSING…':'ANALYSE MY GAMES →'}</button>
     {busy&&<div className={styles.scanLine}><i/><span>{SCAN_STEPS[scanIndex]}</span></div>}
     {error&&<div className={styles.formError}>{error}</div>}
   </form>;
@@ -124,14 +142,15 @@ function PersonalReport({data}:{data:PreviewResponse}){
 
 export function PublicPersonalHero(){
   const [result,setResult]=useState<PreviewResponse|null>(null);
+  const [available,setAvailable]=useState<boolean|null>(null);
   const proof=useMemo(()=>result?.report?(String(result.report.gamesAnalyzed)+' ranked games analysed · '+result.report.rank):'No account needed for the first result',[result]);
 
   return <section className={'container landing-hero-v2 '+styles.hero} id="analyse">
     <div className={styles.heroCopy}>
       <div className="eyebrow">COACHING BUILT FROM YOUR OWN GAMES</div>
       <h1>CLIMB FASTER WITH COACHING<br/><span>BUILT AROUND HOW YOU PLAY.</span></h1>
-      <p>Enter your Riot ID. OP CLIMB reads up to your last 20 ranked solo games, finds the pattern worth fixing first and gives you a partial personal report before you create an account.</p>
-      <RiotForm placement="hero" onResult={setResult}/>
+      <p>{available===false?'The personal Riot-ID report is built and ready, but production Riot API access is not enabled yet. Explore the coaching demo now; the Name#TAG analyser will switch on automatically when Riot access is enabled.':'Enter your Riot ID. OP CLIMB reads up to your last 20 ranked solo games, finds the pattern worth fixing first and gives you a partial personal report before you create an account.'}</p>
+      <RiotForm placement="hero" onResult={setResult} onAvailability={setAvailable}/>
       <div className={styles.formTrust}><span>✓ NO ACCOUNT FOR THE PREVIEW</span><span>✓ RIOT MATCH DATA</span><span>✓ {proof.toUpperCase()}</span></div>
     </div>
     {result?.report?<PersonalReport data={result}/>:<SampleReport/>}
