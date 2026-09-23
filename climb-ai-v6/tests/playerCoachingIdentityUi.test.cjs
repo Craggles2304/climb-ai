@@ -26,7 +26,7 @@ test('Draft Coach consumes the Coach Brief and freezes the identity into pregame
   assert.ok(draft.includes('PLAYER COACHING IDENTITY: '));
   assert.ok(draft.includes('COACHING IDENTITY USE RULE:'));
   assert.ok(draft.includes('playerCoachingIdentity:input.playerCoachingIdentity'));
-  assert.ok(draft.includes('playerCoachingIdentity:context.playerCoachingIdentity'));
+  assert.ok(draft.includes('playerCoachingIdentity:proModel?context.playerCoachingIdentity:null'));
   assert.ok(remember.includes('_playerCoachingIdentity=response?.playerCoachingIdentity||null'));
   assert.ok(remember.includes('playerCoachingIdentity:coach?._playerCoachingIdentity||null'));
 });
