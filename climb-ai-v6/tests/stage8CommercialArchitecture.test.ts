@@ -32,3 +32,12 @@ test('Paid users manage plan changes through Stripe portal',()=>{
   assert.match(checkout,/createBillingPortal/);
   assert.match(portal,/createBillingPortal/);
 });
+
+
+test('PLUS draft intelligence does not consume or expose the PRO player model',()=>{
+  const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
+  assert.match(draft,/const proModel=hasTier\(subscriptionTier,'PRO'\)/);
+  assert.match(draft,/proModel\?context\.decisionTwin:undefined/);
+  assert.match(draft,/coachTwin:proModel\?context\.coachTwin:null/);
+  assert.match(draft,/autonomousCurriculum:proModel\?/);
+});
