@@ -57,11 +57,6 @@ export interface SimulationGameEvent{
   strategyReview:string;
   strategyIntentDiagnosis:string|null;
   strategyIntentEvidenceStreak:number|null;
-  autonomousContractId:string|null;
-  autonomousState:string|null;
-  autonomousAction:string|null;
-  autonomousSupportPolicy:string|null;
-  autonomousTestMode:string|null;
   intentCorrect:boolean|null;
   intentDiagnosis:string;
   autonomyState:string|null;
@@ -733,11 +728,6 @@ export function runSimulationCareer(input:{
       strategyReview:graph.summary.coachingStrategy.status,
       strategyIntentDiagnosis:coachingStrategy?.intentDiagnosis??null,
       strategyIntentEvidenceStreak:coachingStrategy?.intentEvidenceStreak??null,
-      autonomousContractId:learningContract?.id??null,
-      autonomousState:learningContract?.state??null,
-      autonomousAction:learningContract?.action??null,
-      autonomousSupportPolicy:learningContract?.supportPolicy??null,
-      autonomousTestMode:learningContract?.testDirective.mode??null,
       intentCorrect:intentProbe?.response?.correct??null,
       intentDiagnosis:graph.summary.intentGap.diagnosis,
       autonomyState:postAutonomy?.state??null,
