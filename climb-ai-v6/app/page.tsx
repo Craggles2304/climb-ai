@@ -21,12 +21,12 @@ const steps=[
 export default function Landing(){return <>
   <TrackView event="landing_view"/>
   <LandingFunnelTracking/>
-  <header className="container public-topbar">
+  <header className="public-v4-topbar"><div className="container public-v4-topbar-inner">
     <Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link>
-    <nav><Link href="#how-it-works">HOW IT WORKS</Link><Link href="#try-it">SAMPLE REPORT</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="#analyse" data-landing-cta="top-nav">ANALYSE MY GAMES</Link></nav>
+    <nav><Link href="#how-it-works">HOW IT WORKS</Link><Link href="#try-it">SAMPLE REPORT</Link><Link href="/pricing">PRICING</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="#analyse" data-landing-cta="top-nav">ANALYSE MY GAMES</Link></nav></div>
   </header>
 
-  <main className="landing-v2 landing-v3">
+  <main className="landing-v2 landing-v3 landing-v4">
     <PublicPersonalHero/>
 
     <section className="container landing-loop-v2" id="how-it-works">
