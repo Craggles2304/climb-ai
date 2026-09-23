@@ -43,6 +43,8 @@ test('invite journey survives auth and only authenticated users can claim',()=>{
   assert.ok(claim.includes('getCurrentUser'));
   assert.ok(claim.includes("status:401"));
   assert.ok(auth.includes("emailRedirectTo:authCallback(safeNext(redirectTo||'/onboarding'))"));
+  const login=fs.readFileSync('app/login/page.tsx','utf8');
+  assert.ok(login.includes('resendConfirmation(email,next)'));
 });
 
 test('only active controlled-beta testers can submit build-linked reports',()=>{
@@ -81,4 +83,8 @@ test('founder admin exposes cohort slots, invite ledger, testers and report tria
   assert.ok(api.includes('CREATE_INVITE'));
   assert.ok(api.includes('REVOKE_INVITE'));
   assert.ok(api.includes('UPDATE_REPORT'));
+  assert.ok(api.includes('UPDATE_TESTER'));
+  assert.ok(console.includes("status:'PAUSED'"));
+  assert.ok(console.includes("status:'COMPLETED'"));
+  assert.ok(console.includes("status:'REMOVED'"));
 });
