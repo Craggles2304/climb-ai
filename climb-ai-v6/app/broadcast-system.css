@@ -296,3 +296,5 @@ h1,h2{line-height:.92!important}
 
 /* reduced motion */
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
+
+.op-hud-mark svg{width:28px;height:28px;display:block}.op-hud-mark{display:grid!important;place-items:center!important;width:38px!important;height:38px!important}
