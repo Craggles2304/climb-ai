@@ -8,6 +8,7 @@
   load('review-v5-causal-coach-router.js');
   load('review-v6-player-coaching-identity.js');
   load('review-v7-adaptive-coaching-session.js');
+  load('review-v7-adaptive-coaching-session.js');
   load('remember-v3.js');
   load('remember-v3-matchup.js');
   load('remember-v5-esports.js');
@@ -15,5 +16,6 @@
   load('remember-v7-read-checkpoints.js');
   load('remember-v8-causal-coach-router.js');
   load('remember-v9-player-coaching-identity.js');
+  load('remember-v10-adaptive-coaching-session.js');
   load('remember-v10-adaptive-coaching-session.js');
 })();
