@@ -68,6 +68,8 @@ jobs:
         run: node --import tsx --test tests/learningVelocity.test.ts
       - name: Stage 16 Skill Transfer Graph
         run: node --import tsx --test tests/skillTransferGraph.test.ts
+      - name: Stage 16 Skill Transfer Graph
+        run: node --import tsx --test tests/skillTransferGraph.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
       - name: Stage 5 founding beta validation
