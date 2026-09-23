@@ -21,10 +21,12 @@
     try{localStorage.setItem(STORE,JSON.stringify(stored));return stored}catch{return null}
   }
   function reads(){return Array.isArray(load()?.readCheckpoints)?load().readCheckpoints:[]}
+  function causalRoute(){return load()?.causalCoachRoute||null}
+  function checkpointMinutes(){const route=causalRoute();const values=Array.isArray(route?.checkpointMinutes)?route.checkpointMinutes.map(Number).filter(value=>CHECKPOINTS.includes(value)):[];return values.length?values:CHECKPOINTS}
   function answered(minute){return reads().some(item=>Number(item?.checkpointMinute)===Number(minute))}
   function due(seconds){
     const t=Math.max(0,Number(seconds)||0);
-    return CHECKPOINTS.find(minute=>t>=minute*60&&t<minute*60+120&&!answered(minute))||null;
+    return checkpointMinutes().find(minute=>t>=minute*60&&t<minute*60+120&&!answered(minute))||null;
   }
   function install(){
     if($('opReadCheckpoint'))return $('opReadCheckpoint');
@@ -43,13 +45,13 @@
     const root=document.createElement('section');
     root.id='opReadCheckpoint';root.className='readcheck';
     root.innerHTML=[
-      '<div class="readcheck-head"><div><span>LIVE READ CHECK · NO ANSWER REVEALED</span><strong id="opReadCheckTitle">FREEZE YOUR OWN READ</strong></div><small id="opReadCheckClock"></small></div>',
+      '<div class="readcheck-head"><div><span id="opReadCheckKicker">LIVE READ CHECK · NO ANSWER REVEALED</span><strong id="opReadCheckTitle">FREEZE YOUR OWN READ</strong></div><small id="opReadCheckClock"></small></div>',
       '<div class="readcheck-grid">',
       '<div class="readcheck-q"><span>1 · WHAT STATE ARE WE IN?</span><div id="opReadStateOptions" class="readcheck-options"></div></div>',
       '<div class="readcheck-q"><span>2 · HOW SURE ARE YOU?</span><div id="opReadConfidenceOptions" class="readcheck-options"></div></div>',
       '<div class="readcheck-q"><span>3 · WHAT IS YOUR NEXT PRIORITY?</span><div id="opReadPriorityOptions" class="readcheck-options"></div></div>',
       '</div>',
-      '<div class="readcheck-foot"><p>THIS READ IS FROZEN BEFORE POST-GAME EVIDENCE. OP CLIMB WILL SCORE GAME-STATE CALIBRATION LATER.</p><div><span id="opReadCheckStatus" class="readcheck-status"></span><button id="opReadCheckSave" class="readcheck-save" disabled>LOCK MY READ</button></div></div>'
+      '<div class="readcheck-foot"><p id="opReadCheckPrompt">THIS READ IS FROZEN BEFORE POST-GAME EVIDENCE. OP CLIMB WILL SCORE GAME-STATE CALIBRATION LATER.</p><div><span id="opReadCheckStatus" class="readcheck-status"></span><button id="opReadCheckSave" class="readcheck-save" disabled>LOCK MY READ</button></div></div>'
     ].join('');
     const branch=document.querySelector('#opMatchOs .matchos-branch');
     if(branch?.parentNode)branch.parentNode.insertBefore(root,branch);else body.appendChild(root);
@@ -97,7 +99,8 @@
         try{localStorage.setItem(STORE,JSON.stringify(stored))}catch{}
       }
     }
-    const status=$('opReadCheckStatus');if(status)status.textContent=synced?'READ LOCKED · SERVER VERIFIED':'READ LOCKED · LOCAL COPY SAVED';
+    const route=causalRoute();const chosenPriority=priorityRead;
+    const status=$('opReadCheckStatus');if(status)status.textContent=route?.mode==='COMMITMENT_TEST'?'READ LOCKED · COMMIT TO '+chosenPriority:(synced?'READ LOCKED · SERVER VERIFIED':'READ LOCKED · LOCAL COPY SAVED');
     saving=false;resetChoices();render(latest);
   }
   async function syncPending(){
@@ -118,8 +121,12 @@
     const minute=latest.phase==='RECORDING'?due(latest.gameTime):null;
     root.classList.toggle('active',Boolean(minute));
     if(!minute)return;
-    $('opReadCheckTitle').textContent=minute+' MIN · FREEZE YOUR OWN GAME READ';
+    const route=causalRoute();
+    const focus=String(route?.checkpointFocus||'CALIBRATION').replaceAll('_',' ');
+    $('opReadCheckKicker').textContent='LIVE READ CHECK · '+focus+' · NO ANSWER REVEALED';
+    $('opReadCheckTitle').textContent=minute+' MIN · '+(route?.mode==='COMMITMENT_TEST'?'FREEZE READ + PRIORITY':route?.mode==='EXECUTION_ONLY'?'QUICK SELF-READ · EXECUTION STAYS THE FOCUS':route?.mode==='AUTONOMY_TEST'?'AUTONOMY CHECK · NO EXTRA CUE':'FREEZE YOUR OWN GAME READ');
     $('opReadCheckClock').textContent='WINDOW '+minute+':00–'+(minute+2)+':00';
+    $('opReadCheckPrompt').textContent=String(route?.checkpointPrompt||'THIS READ IS FROZEN BEFORE POST-GAME EVIDENCE. OP CLIMB WILL SCORE GAME-STATE CALIBRATION LATER.').toUpperCase();
     const status=$('opReadCheckStatus');if(status)status.textContent='';
 
   }
