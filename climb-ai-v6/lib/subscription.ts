@@ -44,38 +44,37 @@ export const METRIC_TIER:Record<CoachingMetricKey,SubscriptionTier>={
  * Keep homepage, pricing, billing and in-product gates derived from this story.
  */
 export const PLAN_COPY={
-  FREE:{name:'FREE',price:'£0',historyDays:7,fixDepth:2,reviewAllowance:'3 detailed reviews / week',description:'Find the repeat, get one next-game rule, and see whether it changed.'},
-  PLUS:{name:'PLUS',price:'£9.99/month',historyDays:90,fixDepth:4,reviewAllowance:'Higher review allowance',description:'Understand how this draft is won, how it is lost, and what your role must do.'},
-  PRO:{name:'PRO',price:'£19.99/month',historyDays:3650,fixDepth:5,reviewAllowance:'Highest coaching allowance',description:'Build a persistent player model that decides what you should learn next.'},
+  FREE:{name:'FREE',price:'£0',historyDays:7,fixDepth:2,reviewAllowance:'3 detailed reviews / week',description:'Find what is holding you back, take one rule into the next game and prove whether it changes.'},
+  PLUS:{name:'PLUS',price:'£9.99/month',historyDays:90,fixDepth:4,reviewAllowance:'Higher review allowance',description:'Understand the whole game around the mistake: both win conditions, your role and deeper fight/economy context.'},
+  PRO:{name:'PRO',price:'£19.99/month',historyDays:3650,fixDepth:5,reviewAllowance:'Highest coaching allowance',description:'Build a coach that remembers your habits, tests what you learned and chooses what you should work on next.'},
 } as const;
 
 export const PLAN_ENTITLEMENTS={
   FREE:[
-    'RECENT GAME EVIDENCE',
-    'ONE ACTIVE DEVELOPMENT FOCUS',
+    'RECENT GAME REVIEW',
+    'ONE NEXT-GAME FOCUS',
     'OP MATCH GRADE',
-    'BASIC FIGHT + DEATH CONTROL',
+    'BASIC FIGHT + DEATH COACHING',
     '2 FIX LADDER STAGES',
-    '7-DAY PROGRESS VIEW',
+    '7-DAY PROGRESS',
   ],
   PLUS:[
     'EVERYTHING IN FREE',
-    'FULL 5V5 WIN CONDITION',
-    'THEY WIN IF / LOSS CONDITION',
+    'FULL 5V5 GAME PLAN',
+    'OUR WIN CONDITION + THEIR WIN CONDITION',
     'YOUR ROLE IN THE DRAFT',
-    'ECONOMY + RESET LEAKS',
+    'DEEPER ECONOMY + RESET CONTEXT',
     '4 FIX LADDER STAGES',
-    '90-DAY ANALYTICS',
+    '90-DAY HISTORY',
   ],
   PRO:[
     'EVERYTHING IN PLUS',
-    'DECISION TWIN',
-    'SCENARIO MEMORY',
-    'TRANSFER + GENERALISATION TESTS',
-    'AUTONOMOUS CURRICULUM',
-    'COACH TWIN',
-    'AUTONOMY + INTERVENTION VALUE',
-    'CHAMPION IDENTITY + LONG-TERM PATTERN MEMORY',
+    'REMEMBERS RECURRING HABITS',
+    'SCENARIO MEMORY ACROSS GAMES',
+    'TESTS LEARNING IN NEW SITUATIONS',
+    'CONNECTS SKILLS INTO DECISION PRINCIPLES',
+    'CHOOSES WHAT YOU SHOULD LEARN NEXT',
+    'LONG-TERM CHAMPION + PLAYER IDENTITY',
     'ALL 5 FIX LADDER STAGES',
   ],
 } as const;
