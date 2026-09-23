@@ -10,6 +10,7 @@ import {reviewClimbCoachIntervention,type ClimbCoachIntervention,type ClimbCoach
 import {reviewClimbCoachingStrategy,type ClimbCoachingStrategy,type ClimbCoachingStrategyReview} from './climbCoachingStrategy';
 import {reviewClimbIntentGap,type ClimbIntentProbe,type ClimbIntentGapReview} from './climbIntentGap';
 import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExperimentReview} from './climbExperimentScheduler';
+import {reviewCompanionMatchContract,type CompanionMatchContract,type CompanionMatchContractReview} from './companionMatchContract';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -71,6 +72,7 @@ export interface LockedDecisionPlan{
   coachingStrategy?:ClimbCoachingStrategy|null;
   intentProbe?:ClimbIntentProbe|null;
   experimentSchedule?:ClimbExperimentSchedule|null;
+  matchContract?:CompanionMatchContract|null;
 }
 
 export interface DecisionGraphNode{
@@ -132,6 +134,7 @@ export interface DecisionGraph{
     coachingStrategy:ClimbCoachingStrategyReview;
     intentGap:ClimbIntentGapReview;
     experimentSchedule:ClimbExperimentReview;
+    matchContract:CompanionMatchContractReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -518,6 +521,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const coachingStrategyReview=reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview);
   const intentGapReview=reviewClimbIntentGap(plan?.intentProbe,climbMissionReview);
   const experimentScheduleReview=reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview);
+  const matchContractReview=reviewCompanionMatchContract({contract:plan?.matchContract,mission:climbMissionReview,scenarioPrime:scenarioPrimeReview,transfer:decisionTransferReview});
 
   return{
     version:1,
@@ -563,6 +567,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       coachingStrategy:coachingStrategyReview,
       intentGap:intentGapReview,
       experimentSchedule:experimentScheduleReview,
+      matchContract:matchContractReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -593,5 +598,6 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     coachingStrategy:raw.coachingStrategy??null,
     intentProbe:raw.intentProbe??null,
     experimentSchedule:raw.experimentSchedule??null,
+    matchContract:raw.matchContract??null,
   };
 }
