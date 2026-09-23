@@ -54,6 +54,8 @@ jobs:
         run: node --import tsx --test tests/climbCareerExperience.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
+      - name: Stage 5 founding beta validation
+        run: node --import tsx --test tests/foundingBetaValidation.test.ts
       - name: Ability damage type regressions
         run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Conditional spell variant regressions
