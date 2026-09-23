@@ -2,19 +2,22 @@
 import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
 import {useAccount,matchesFor} from '@/components/AccountContext';
+import {useSubscription} from '@/components/SubscriptionContext';
 import {LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip,ResponsiveContainer} from 'recharts';
 import {climbScore} from '@/lib/engine';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {LearningJourneyTimeline} from '@/components/LearningJourneyTimeline';
 import {DecisionTwinCommandCenter} from '@/components/DecisionTwinCommandCenter';
 import {CareerDevelopmentMap} from '@/components/CareerDevelopmentMap';
+import {ProMoatGate} from '@/components/BillingActions';
 import {TrackView} from '@/components/TrackView';
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const delta=(a:number,b:number)=>a-b;
-const signed=(n:number,digits=1)=>`${n>0?'+':''}${n.toFixed(digits)}`;
+const signed=(n:number,digits=1)=>(n>0?'+':'')+n.toFixed(digits);
 
 export default function Progress(){
   const {active}=useAccount();
+  const {tier}=useSubscription();
   const matches=matchesFor(active.id);
   const detail=coachingLevelFor(active.rank);
   const ordered=[...matches].reverse();
@@ -33,15 +36,15 @@ export default function Progress(){
 
   return <AppShell>
     <TrackView event="career_viewed" props={{games:matches.length,rank:active.rank}}/>
-    <PageHead title="Progress" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} VIEW ${detail.depth}/10`}/>
+    <PageHead title="Progress" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+detail.tier+' VIEW '+detail.depth+'/10'}/>
 
     <section className="vf-progress-hero">
-      <div className="vf-op-score" style={{'--score':`${Math.max(0,Math.min(100,score))}%`} as React.CSSProperties}>
+      <div className="vf-op-score" style={{'--score':Math.max(0,Math.min(100,score))+'%'} as React.CSSProperties}>
         <div><span>OP SCORE</span><strong>{score}</strong><small>{trend}</small></div>
       </div>
       <div className="vf-progress-signals">
-        <div><span>{detail.depth<=2?'MAIN TREND':'POST-15 CS'}</span><strong>{detail.depth<=2?trend:post.toFixed(1)}</strong><small>{detail.depth<=2?simpleSignal:(previous.length?`${signed(postDelta)} vs previous 5`:'NEW')}</small></div>
-        {detail.depth>=2&&<div><span>DEATH CONTROL</span><strong>{deaths.toFixed(1)}</strong><small className={deathDelta>=0?'success':'danger'}>{previous.length?`${signed(deathDelta)} fewer`:'NEW'} vs previous 5</small></div>}
+        <div><span>{detail.depth<=2?'MAIN TREND':'POST-15 CS'}</span><strong>{detail.depth<=2?trend:post.toFixed(1)}</strong><small>{detail.depth<=2?simpleSignal:(previous.length?signed(postDelta)+' vs previous 5':'NEW')}</small></div>
+        {detail.depth>=2&&<div><span>DEATH CONTROL</span><strong>{deaths.toFixed(1)}</strong><small className={deathDelta>=0?'success':'danger'}>{previous.length?signed(deathDelta)+' fewer':'NEW'} vs previous 5</small></div>}
         {detail.depth>=4&&<div><span>FULL-GAME CS</span><strong>{cs.toFixed(1)}</strong><small>{active.role==='ADC'?'ECONOMY':'CONTEXT'}</small></div>}
       </div>
     </section>
@@ -57,7 +60,7 @@ export default function Progress(){
     </section>
 
     <CareerDevelopmentMap accountId={active.id}/>
-    <DecisionTwinCommandCenter accountId={active.id}/>
+    {tier==='PRO'?<DecisionTwinCommandCenter accountId={active.id}/>:<ProMoatGate/>}
     <LearningJourneyTimeline accountId={active.id}/>
   </AppShell>;
 }
