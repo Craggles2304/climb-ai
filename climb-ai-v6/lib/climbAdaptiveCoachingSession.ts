@@ -321,7 +321,7 @@ export function buildAdaptiveCoachingSession(input:{
   const objectiveKey=lesson.behaviourKey;
   const objectiveLabel=lesson.label||labelKey(objectiveKey);
   const same=Boolean(input.previous?.id&&input.previous.objectiveKey===objectiveKey&&!['COMPLETE'].includes(input.previous.status));
-  const startedGame=same&&input.previous?.startedGame?input.previous.startedGame:gamesAnalyzed;
+  const startedGame=same&&input.previous?.startedGame?input.previous.startedGame:gamesAnalyzed+1;
   let currentIndex=same&&input.previous?.currentStep?phaseIndex(input.previous.currentStep.phase):initialIndex(input.identity,input.curriculum);
   if(currentIndex<0)currentIndex=0;
   let status:AdaptiveCoachingSessionStatus=same?(input.previous!.status==='REPLANNED'?'ACTIVE':input.previous!.status):'ACTIVE';
@@ -331,7 +331,8 @@ export function buildAdaptiveCoachingSession(input:{
   let replanCount=same?input.previous!.replanCount:0;
   let routeWatchLayer:CausalCoachLayer|null=same?input.previous!.routeWatchLayer:null;
   let routeWatchCount=same?input.previous!.routeWatchCount:0;
-  let lastEvaluatedAt=same?input.previous!.lastEvaluatedAt:null;
+  const latestHistoricalAt=input.rows.length?[...input.rows].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt)).at(-1)?.createdAt??null:null;
+  let lastEvaluatedAt=same?input.previous!.lastEvaluatedAt:latestHistoricalAt;
   let blocker:string|null=null;
   const events:AdaptiveCoachingSessionEvent[]=same?[...(input.previous!.events??[])].slice(-12):[];
   if(!same){
