@@ -99,9 +99,10 @@ export function buildDecisionCausalProfile(rows:HistoryAnalysisRow[],generatedAt
 
   const top=layerStats[0]??null;
   const clean=layerStats.find(item=>item.layer==='AUTONOMY')??null;
-  const repeated=Boolean(top&&top.layer!=='EVIDENCE'&&top.chains>=3&&top.games>=2&&top.share>=60);
+  const failureLayers=new Set<CausalCoachLayer>(['GAME_READ','FOLLOW_THROUGH','EXECUTION','RECOGNITION']);
+  const repeated=Boolean(top&&failureLayers.has(top.layer)&&top.chains>=3&&top.games>=2&&top.share>=60);
   const stableClean=Boolean(clean&&clean.chains>=4&&clean.games>=3&&clean.share>=70);
-  const emerging=Boolean(top&&top.chains>=2&&top.games>=2&&top.share>=50);
+  const emerging=Boolean(top&&failureLayers.has(top.layer)&&top.chains>=2&&top.games>=2&&top.share>=50);
   const status:CausalProfileStatus=stableClean?'STABLE_CLEAN':repeated?'REPEATED_ROOT_CAUSE':emerging?'PATTERN_EMERGING':'BUILDING';
   const dominantLayer=status==='BUILDING'?null:stableClean?'AUTONOMY':top?.layer??null;
   const dominantStat=dominantLayer?layerStats.find(item=>item.layer===dominantLayer)??null:null;
