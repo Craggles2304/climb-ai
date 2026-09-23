@@ -205,17 +205,22 @@ function transferState(input:{
 }):DecisionTransferState{
   if(!input.novel.length)return'LOCAL_ONLY';
   let activeRegressionEnd=-1;
+  let completedRegressionEpisodes=0;
   for(let index=0;index<input.novel.length;index++){
     if(activeRegressionEnd>=0){
       const recovered=index>=activeRegressionEnd+3
         &&input.novel.slice(index-2,index+1).every(item=>item.verdict==='GOOD');
-      if(recovered)activeRegressionEnd=-1;
+      if(recovered){
+        activeRegressionEnd=-1;
+        completedRegressionEpisodes++;
+      }
       continue;
     }
-    if(index<1)continue;
-    const pair=input.novel.slice(index-1,index+1);
-    if(!pair.every(item=>item.verdict==='IMPROVE'))continue;
-    const prior=input.novel.slice(0,index-1);
+    const missesRequired=completedRegressionEpisodes>0?3:2;
+    if(index<missesRequired-1)continue;
+    const recentMisses=input.novel.slice(index-missesRequired+1,index+1);
+    if(!recentMisses.every(item=>item.verdict==='IMPROVE'))continue;
+    const prior=input.novel.slice(0,index-missesRequired+1);
     const priorClean=prior.filter(item=>item.verdict==='GOOD').length;
     const priorRate=pct(priorClean,prior.length)??0;
     if(priorClean>=2&&priorRate>=67)activeRegressionEnd=index;
