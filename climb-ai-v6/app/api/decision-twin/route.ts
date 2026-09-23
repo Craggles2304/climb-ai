@@ -15,6 +15,7 @@ import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/pla
 import {buildAdaptiveCoachingSession,type AdaptiveCoachingSession} from '@/lib/climbAdaptiveCoachingSession';
 import {buildLearningVelocityProfile,type LearningVelocityProfile} from '@/lib/climbLearningVelocity';
 import {buildSkillTransferGraph} from '@/lib/climbSkillTransferGraph';
+import {buildDecisionPrincipleEngine} from '@/lib/climbDecisionPrinciples';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -82,6 +83,7 @@ export async function GET(req:Request){
     const scenarioMemory=buildScenarioMemory(rows);
     const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
     const skillTransferGraph=buildSkillTransferGraph({rows,twin,memory:scenarioMemory,transfer:decisionTransfer});
+    const decisionPrincipleEngine=buildDecisionPrincipleEngine({rows,skillGraph:skillTransferGraph});
     const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum,skillTransferGraph);
     const coachTwin=buildClimbCoachTwin(rows);
     const autonomyProfile=buildClimbAutonomyProfile(rows);
@@ -95,6 +97,7 @@ export async function GET(req:Request){
       scenarioMemory,
       decisionTransfer,
       skillTransferGraph,
+      decisionPrincipleEngine,
       curriculum,
       coachTwin,
       autonomyProfile,
@@ -104,7 +107,7 @@ export async function GET(req:Request){
       learningVelocity,
       adaptiveCoachingSession,
       grounding:'climb-profile+curriculum+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','skill_transfer_graph','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','causal_profile','player_coaching_identity','learning_velocity','adaptive_coaching_session','premortem_review','coaching_response'],
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','skill_transfer_graph','decision_principle_engine','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','causal_profile','player_coaching_identity','learning_velocity','adaptive_coaching_session','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);
