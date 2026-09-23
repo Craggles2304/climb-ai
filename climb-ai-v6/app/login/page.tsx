@@ -24,7 +24,7 @@ function LoginForm(){
 
   const submit=async(e:React.FormEvent)=>{e.preventDefault();setError('');setResent(false);setBusy(true);try{await authService.signIn(email,password);router.push(next);router.refresh()}catch(err){setError(err instanceof AuthNotConfiguredError?err.message:err instanceof Error?err.message:'Something went wrong.')}finally{setBusy(false)}};
   const google=async()=>{setError('');setBusy(true);try{await authService.signInWithGoogle(next)}catch(err){setError(err instanceof Error?err.message:'Something went wrong.');setBusy(false)}};
-  const resend=async()=>{if(!email)return setError('Enter the email address you signed up with first.');setError('');setResent(false);setResendBusy(true);try{await authService.resendConfirmation(email);setResent(true)}catch(err){setError(err instanceof Error?err.message:'Could not resend the confirmation email.')}finally{setResendBusy(false)}};
+  const resend=async()=>{if(!email)return setError('Enter the email address you signed up with first.');setError('');setResent(false);setResendBusy(true);try{await authService.resendConfirmation(email,next);setResent(true)}catch(err){setError(err instanceof Error?err.message:'Could not resend the confirmation email.')}finally{setResendBusy(false)}};
   const needsConfirmation=error.toLowerCase().includes('confirm your email');
 
   return <>

@@ -58,6 +58,8 @@ jobs:
         run: node --import tsx --test tests/foundingBetaValidation.test.ts
       - name: Stage 6 beta operations
         run: node --import tsx --test tests/betaOperations.test.ts
+      - name: Stage 7 controlled founding beta
+        run: node --import tsx --test tests/controlledBetaCohort.test.ts
       - name: Ability damage type regressions
         run: node --import tsx --test tests/abilityDamageType.test.ts
       - name: Conditional spell variant regressions

@@ -1002,3 +1002,19 @@ img.logo-sm{width:132px}
 @media(max-width:1180px){.career3-skill-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:820px){.career3-head,.career3-group-head,.career3-timeline-head{align-items:flex-start;flex-direction:column}.career3-stage{text-align:left}.career3-hero,.career3-now,.career3-story-grid{grid-template-columns:1fr}.career3-skill-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.career3-now-grid{grid-template-columns:1fr}}
 @media(max-width:540px){.career3-skill-grid{grid-template-columns:1fr}.career3-hero-stats{grid-template-columns:1fr 1fr}}
+
+
+/* --- Stage 7 Founding Beta controls --- */
+.beta7-fab{position:fixed;right:18px;bottom:18px;z-index:70;border:1px solid rgba(214,255,47,.32);background:rgba(10,14,17,.96);color:#d6ff2f;padding:11px 13px;font-size:8px;font-weight:900;letter-spacing:.11em;cursor:pointer;box-shadow:0 12px 40px rgba(0,0,0,.32)}
+.beta7-fab:hover{border-color:rgba(214,255,47,.6)}
+.beta7-modal-backdrop{position:fixed;inset:0;z-index:90;background:rgba(0,0,0,.72);display:grid;place-items:center;padding:20px}
+.beta7-modal{width:min(720px,100%);max-height:90vh;overflow:auto;padding:22px}
+.beta7-modal-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start}
+.beta7-modal-head h2{margin:6px 0 0}
+.beta7-invite-url{display:flex;gap:8px;align-items:center;margin-top:10px}
+.beta7-invite-url input{min-width:0;flex:1}
+.beta7-status{font-size:8px;font-weight:900;letter-spacing:.08em}
+.beta7-status.active,.beta7-status.claimed,.beta7-status.resolved{color:#d6ff2f}
+.beta7-status.pending,.beta7-status.reviewing{color:#8fb4ff}
+.beta7-status.blocker,.beta7-status.high,.beta7-status.open{color:#ff8b8b}
+@media(max-width:620px){.beta7-fab{right:10px;bottom:62px}.beta7-modal-head{flex-direction:column}}
