@@ -518,14 +518,15 @@ function safetyProtected(strategy:ClimbCoachingStrategy){
 }
 
 export function applyAdaptiveCoachingSession(
-  strategy:ClimbCoachingStrategy,
+  strategy:ClimbCoachingStrategy|null|undefined,
   session:AdaptiveCoachingSession|null|undefined,
-):ClimbCoachingStrategy&{
+):(ClimbCoachingStrategy&{
   adaptiveSessionId?:string|null;
   adaptiveSessionPhase?:AdaptiveCoachingSessionPhase|null;
   adaptiveSessionStep?:number|null;
   adaptiveSessionConstrained?:boolean;
-}{
+})|null{
+  if(!strategy)return null;
   if(!session?.id||session.status==='BUILDING'||session.status==='COMPLETE'||!session.currentStep)return strategy;
   const step=session.currentStep;
   let mode:ClimbCoachingStrategyMode=step.coachMode==='DIAGNOSE'?'DIAGNOSE':step.coachMode;
