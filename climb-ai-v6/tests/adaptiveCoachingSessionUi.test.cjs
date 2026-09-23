@@ -30,7 +30,7 @@ test('draft coaching is routed through the current session phase before the caus
 
 test('Companion freezes and restores the session with the locked pregame coach',()=>{
   assert.ok(draft.includes('adaptiveCoachingSession:input.adaptiveCoachingSession'));
-  assert.ok(draft.includes('adaptiveCoachingSession:context.adaptiveCoachingSession'));
+  assert.ok(draft.includes('adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null'));
   assert.ok(remember.includes('_adaptiveCoachingSession=response?.adaptiveCoachingSession||null'));
   assert.ok(remember.includes('adaptiveCoachingSession:coach?._adaptiveCoachingSession||null'));
 });
