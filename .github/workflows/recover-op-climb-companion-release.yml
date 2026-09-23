@@ -2,35 +2,63 @@ name: Recover OP CLIMB Companion Release
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - '.github/workflows/recover-op-climb-companion-release.yml'
 
 permissions:
   contents: write
-  actions: write
+  actions: read
 
 jobs:
   recover-release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - name: Download tested 0.7.4 installer artifact
+      - name: Checkout current release definition
+        uses: actions/checkout@v4
+
+      - name: Resolve latest tested Companion artifact
+        id: tested
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          expected_version="$(jq -r '.version' climb-ai-v6/companion/package.json)"
+          test -n "$expected_version"
+          test "$expected_version" != "null"
+
+          run_id="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow 'Build OP CLIMB Companion' \
+            --branch main \
+            --status success \
+            --limit 1 \
+            --json databaseId \
+            --jq '.[0].databaseId')"
+
+          test -n "$run_id"
+          echo "version=$expected_version" >> "$GITHUB_OUTPUT"
+          echo "run_id=$run_id" >> "$GITHUB_OUTPUT"
+          echo "Recovering tested Companion $expected_version from successful workflow run $run_id."
+
+      - name: Download latest tested installer artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EXPECTED_VERSION: ${{ steps.tested.outputs.version }}
+          TESTED_RUN_ID: ${{ steps.tested.outputs.run_id }}
+        run: |
+          set -euo pipefail
           mkdir -p dist
-          gh run download 35270825261 \
+          gh run download "$TESTED_RUN_ID" \
             --repo "$GITHUB_REPOSITORY" \
             --name op-climb-companion-windows \
             --dir dist
+
           test -f dist/OP-Climb-Companion-Setup.exe
           test -f dist/OP-Climb-Companion-Setup.exe.blockmap
           test -f dist/latest.yml
-          grep -q '^version: 0.7.4$' dist/latest.yml
+
+          feed_version="$(awk '/^version:/{print $2; exit}' dist/latest.yml)"
+          test "$feed_version" = "$EXPECTED_VERSION"
+
           expected_sha512="$(openssl dgst -sha512 -binary dist/OP-Climb-Companion-Setup.exe | base64 -w0)"
           feed_sha512="$(awk '/^sha512:/{print $2; exit}' dist/latest.yml)"
           test "$expected_sha512" = "$feed_sha512"
@@ -38,6 +66,7 @@ jobs:
       - name: Recreate beta release and publish verified set
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECTED_VERSION: ${{ steps.tested.outputs.version }}
         run: |
           set -euo pipefail
 
@@ -47,16 +76,16 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target main \
             --prerelease \
-            --title 'OP CLIMB Companion Beta' \
-            --notes 'Unsigned Windows beta build for controlled OP CLIMB testing. Windows SmartScreen may show an unknown publisher warning during the beta.'
+            --title "OP CLIMB Companion Beta $EXPECTED_VERSION" \
+            --notes "Recovered from the latest successful main-branch Windows build for Companion $EXPECTED_VERSION. Unsigned beta build; Windows SmartScreen may show an unknown publisher warning."
 
           upload_file() {
-            local path="$1"
+            local file="$1"
             local name
-            name="$(basename "$path")"
+            name="$(basename "$file")"
             for attempt in 1 2 3 4; do
               echo "Uploading $name, attempt $attempt of 4"
-              if timeout 300 gh release upload companion-beta "$path" --repo "$GITHUB_REPOSITORY" --clobber; then
+              if timeout 300 gh release upload companion-beta "$file" --repo "$GITHUB_REPOSITORY" --clobber; then
                 return 0
               fi
               [ "$attempt" -eq 4 ] || sleep $((attempt * 8))
@@ -72,17 +101,22 @@ jobs:
       - name: Final release verification
         env:
           GH_TOKEN: ${{ github.token }}
+          EXPECTED_VERSION: ${{ steps.tested.outputs.version }}
         run: |
           set -euo pipefail
           release_id="$(gh api "repos/$GITHUB_REPOSITORY/releases/tags/companion-beta" --jq '.id')"
+
           for name in OP-Climb-Companion-Setup.exe OP-Climb-Companion-Setup.exe.blockmap latest.yml; do
-            path="dist/$name"
-            size="$(stat -c%s "$path")"
-            digest="sha256:$(sha256sum "$path" | awk '{print $1}')"
+            file="dist/$name"
+            size="$(stat -c%s "$file")"
+            digest="sha256:$(sha256sum "$file" | awk '{print $1}')"
             asset="$(gh api "repos/$GITHUB_REPOSITORY/releases/$release_id/assets?per_page=100" | jq -c --arg name "$name" '.[] | select(.name == $name)' | head -n1)"
             test -n "$asset"
             test "$(jq -r '.state' <<<"$asset")" = 'uploaded'
             test "$(jq -r '.size' <<<"$asset")" = "$size"
             test "$(jq -r '.digest' <<<"$asset")" = "$digest"
           done
-          echo 'OP CLIMB Companion 0.7.4 release set is complete and hash-verified.'
+
+          feed_version="$(awk '/^version:/{print $2; exit}' dist/latest.yml)"
+          test "$feed_version" = "$EXPECTED_VERSION"
+          echo "OP CLIMB Companion $EXPECTED_VERSION recovery set is complete and hash-verified."
