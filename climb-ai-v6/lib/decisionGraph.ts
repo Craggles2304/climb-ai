@@ -15,6 +15,7 @@ import {buildGameReadCalibration,type GameReadCalibrationReview,type LiveReadChe
 import {buildDecisionCausalChain,type DecisionCausalChainReview} from './decisionCausalChain';
 import {reviewCausalCoachRoute,type CausalCoachRoute,type CausalCoachRouteReview} from './causalCoachRouter';
 import {reviewSkillBridgePrime,type SkillBridgePrime,type SkillBridgeReview} from './climbSkillTransferGraph';
+import {reviewDecisionPrinciplePrime,type DecisionPrinciplePrime,type DecisionPrincipleReview} from './climbDecisionPrinciples';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -72,6 +73,7 @@ export interface LockedDecisionPlan{
   scenarioPrime?:ScenarioPrime|null;
   decisionTransferPrime?:DecisionTransferPrime|null;
   skillBridgePrime?:SkillBridgePrime|null;
+  decisionPrinciplePrime?:DecisionPrinciplePrime|null;
   climbMission?:ClimbMatchMission|null;
   coachIntervention?:ClimbCoachIntervention|null;
   coachingStrategy?:ClimbCoachingStrategy|null;
@@ -136,6 +138,7 @@ export interface DecisionGraph{
     scenarioPrime:ScenarioPrimeReview;
     decisionTransfer:DecisionTransferReview;
     skillBridge:SkillBridgeReview;
+    decisionPrinciple:DecisionPrincipleReview;
     climbMission:ClimbMatchMissionReview;
     coachIntervention:ClimbCoachInterventionReview;
     coachingStrategy:ClimbCoachingStrategyReview;
@@ -527,6 +530,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const scenarioPrimeReview=reviewScenarioPrime(plan?.scenarioPrime,observedDecisions);
   const decisionTransferReview=reviewDecisionTransfer(plan?.decisionTransferPrime,observedDecisions);
   const skillBridgeReview=reviewSkillBridgePrime(plan?.skillBridgePrime,observedDecisions);
+  const decisionPrincipleReview=reviewDecisionPrinciplePrime(plan?.decisionPrinciplePrime,observedDecisions);
   const climbMissionReview=reviewClimbMatchMission(plan?.climbMission,observedDecisions);
   const coachInterventionReview=reviewClimbCoachIntervention(plan?.coachIntervention,climbMissionReview);
   const coachingStrategyReview=reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview);
@@ -577,6 +581,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       scenarioPrime:scenarioPrimeReview,
       decisionTransfer:decisionTransferReview,
       skillBridge:skillBridgeReview,
+      decisionPrinciple:decisionPrincipleReview,
       climbMission:climbMissionReview,
       coachIntervention:coachInterventionReview,
       coachingStrategy:coachingStrategyReview,
@@ -612,6 +617,7 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     scenarioPrime:raw.scenarioPrime??null,
     decisionTransferPrime:raw.decisionTransferPrime??null,
     skillBridgePrime:raw.skillBridgePrime??null,
+    decisionPrinciplePrime:raw.decisionPrinciplePrime??null,
     climbMission:raw.climbMission??null,
     coachIntervention:raw.coachIntervention??null,
     coachingStrategy:raw.coachingStrategy??null,
