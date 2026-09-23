@@ -13,6 +13,7 @@ import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExp
 import {reviewCompanionMatchContract,type CompanionMatchContract,type CompanionMatchContractReview} from './companionMatchContract';
 import {buildGameReadCalibration,type GameReadCalibrationReview,type LiveReadCheckpoint} from './gameReadCalibration';
 import {buildDecisionCausalChain,type DecisionCausalChainReview} from './decisionCausalChain';
+import {reviewCausalCoachRoute,type CausalCoachRoute,type CausalCoachRouteReview} from './causalCoachRouter';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -72,6 +73,7 @@ export interface LockedDecisionPlan{
   climbMission?:ClimbMatchMission|null;
   coachIntervention?:ClimbCoachIntervention|null;
   coachingStrategy?:ClimbCoachingStrategy|null;
+  causalCoachRoute?:CausalCoachRoute|null;
   intentProbe?:ClimbIntentProbe|null;
   experimentSchedule?:ClimbExperimentSchedule|null;
   matchContract?:CompanionMatchContract|null;
@@ -139,6 +141,7 @@ export interface DecisionGraph{
     matchContract:CompanionMatchContractReview;
     readCalibration:GameReadCalibrationReview;
     causalChain:DecisionCausalChainReview;
+    causalCoachRoute: CausalCoachRouteReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -528,6 +531,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const matchContractReview=reviewCompanionMatchContract({contract:plan?.matchContract,mission:climbMissionReview,scenarioPrime:scenarioPrimeReview,transfer:decisionTransferReview});
   const readCalibration=buildGameReadCalibration({reads:input.readCheckpoints,points:summary.points as any});
   const causalChain=buildDecisionCausalChain({readCalibration,nodes:finalNodes});
+  const causalCoachRouteReview=reviewCausalCoachRoute(plan?.causalCoachRoute,causalChain);
 
   return{
     version:1,
@@ -576,6 +580,7 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       matchContract:matchContractReview,
       readCalibration,
       causalChain,
+      causalCoachRoute:causalCoachRouteReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -604,6 +609,7 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     climbMission:raw.climbMission??null,
     coachIntervention:raw.coachIntervention??null,
     coachingStrategy:raw.coachingStrategy??null,
+    causalCoachRoute:raw.causalCoachRoute??null,
     intentProbe:raw.intentProbe??null,
     experimentSchedule:raw.experimentSchedule??null,
     matchContract:raw.matchContract??null,
