@@ -6,8 +6,8 @@ import {TrackView} from '@/components/TrackView';
 import {BeginnerGlossary,LandingFaq,LandingFunnelTracking,ProofWithoutPretending,PublicMatchPreview} from '@/components/LandingConversion';
 
 export const metadata:Metadata={
-  title:{absolute:'OP CLIMB — One Clear Focus From Your League Games'},
-  description:'Connect your Riot account, find the repeat that is costing you games, and take one clear rule into your next match.',
+  title:{absolute:'OP CLIMB — A League Coach That Learns How You Play'},
+  description:'Turn your League games into one next-game decision, proof that it changed, and a coaching path that develops as you do.',
   alternates:{canonical:'/'},
 };
 
@@ -18,10 +18,10 @@ const signals=[
 ] as const;
 
 const steps=[
-  {step:'01',name:'PLAY',detail:'Play normally. Do not try to impress the app.'},
-  {step:'02',name:'REVIEW',detail:'We look for the decision that keeps showing up.'},
-  {step:'03',name:'FIX',detail:'You get one clear rule for the next game.'},
-  {step:'04',name:'PROVE',detail:'We check whether the habit actually changed.'},
+  {step:'01',name:'PLAY',detail:'Play normally. OP CLIMB needs your real decisions, not a test performance.'},
+  {step:'02',name:'FIND',detail:'It finds the repeated decision costing you most.'},
+  {step:'03',name:'FIX',detail:'You get one clear rule to take into the next game.'},
+  {step:'04',name:'PROVE',detail:'The next games decide whether the lesson stays, transfers or moves on.'},
 ];
 
 const StartFree=({placement}:{placement:string})=><div className="hero-actions" style={{display:'inline-flex',flexDirection:'column',alignItems:'flex-start',gap:7}}><Link className="btn primary" href="/signup" data-landing-cta={placement}>START FREE</Link><small className="muted" style={{fontSize:11}}>No card required</small></div>;
@@ -37,19 +37,19 @@ export default function Landing(){return <>
   <main className="landing-v2">
     <section className="container landing-hero-v2">
       <div className="landing-copy">
-        <div className="eyebrow">COACHING FROM THE GAMES YOU ACTUALLY PLAY</div>
-        <h1>STOP TRYING TO FIX EVERYTHING.<br/><span>FIX ONE THING.</span></h1>
-        <p>Connect Riot. OP CLIMB looks at your games, finds the repeat that is hurting you most, and gives you one simple rule for the next match. Then it checks whether you changed it.</p>
+        <div className="eyebrow">A LEAGUE COACH THAT LEARNS FROM YOUR REAL GAMES</div>
+        <h1>DON&apos;T JUST REVIEW YOUR GAMES.<br/><span>BUILD A BETTER PLAYER.</span></h1>
+        <p>OP CLIMB finds the decision that keeps costing you games, gives you one rule to fix it, then checks whether the change actually holds. As your evidence grows, the coaching moves on with you.</p>
         <StartFree placement="hero"/>
         <a href="#try-it" className="text-link" style={{display:'block',marginTop:14}}>SEE A REAL EXAMPLE FIRST ↓</a>
-        <div className="public-proof-strip"><span>YOUR GAMES</span><span>ONE CLEAR FOCUS</span><span>REMEMBERS THE PATTERN</span><span>NO STAT DUMP</span></div>
+        <div className="public-proof-strip"><span>YOUR GAMES</span><span>ONE CLEAR FOCUS</span><span>REMEMBERS THE PATTERN</span><span>PROVES THE CHANGE</span></div>
       </div>
 
       <div className="landing-console" aria-label="Sample OP CLIMB coaching output">
         <div className="console-top"><div><span>LAST GAME</span><b>JINX · ADC</b></div><div className="console-score"><small>GOLD COACH</small><strong>01</strong><em>FOCUS</em></div></div>
         <div className="console-divider"/>
-        <div className="console-priority"><span>THIS IS WHAT YOU'RE FIXING</span><strong>STOP THE SECOND DEATH</strong><small>After you die: take safe resources, get information back, then fight. No revenge play.</small></div>
-        <div className="console-signals">{signals.map(x=><div key={x.k} className={`console-signal is-${x.tone}`}><span>{x.k}</span><b>{x.v}</b></div>)}</div>
+        <div className="console-priority"><span>THIS IS WHAT YOU&apos;RE FIXING</span><strong>STOP THE SECOND DEATH</strong><small>After you die: take safe resources, get information back, then fight. No revenge play.</small></div>
+        <div className="console-signals">{signals.map(x=><div key={x.k} className={'console-signal is-'+x.tone}><span>{x.k}</span><b>{x.v}</b></div>)}</div>
         <div className="console-ladder" aria-label="Progress"><i className="done"/><i className="active"/><i/><i/><i/></div>
         <div className="console-timeline"><div><i className="warn"/><b>18:42</b><span>DIED</span></div><div><i className="blue"/><b>19:56</b><span>DIED AGAIN</span></div><div><i className="good"/><b>NEXT</b><span>RECOVER FIRST</span></div></div>
         <a href="#try-it" className="console-link">TRY THE EXAMPLE →</a>
@@ -60,34 +60,34 @@ export default function Landing(){return <>
     <BeginnerGlossary/>
 
     <section className="container landing-loop-v2" id="loop">
-      <div className="landing-section-head"><div><div className="eyebrow">HOW IT WORKS</div><h2>PLAY. REVIEW. FIX. REPEAT.</h2></div><p>You do not need another dashboard full of numbers.</p></div>
+      <div className="landing-section-head"><div><div className="eyebrow">THE DEVELOPMENT LOOP</div><h2>PLAY. FIND. FIX. PROVE.</h2></div><p>The goal is not more information. It is better decisions that survive the next situation.</p></div>
       <div className="hunt-rail">{steps.map(({step,name,detail})=><div key={step}><span>{step}</span><b>{name}</b><small>{detail}</small></div>)}</div>
     </section>
 
     <section className="container landing-proof-grid">
-      <article><span>01</span><div><b>WE SPOT THE REPEAT</b><strong>Not every mistake matters equally.</strong><small>We look for the behaviour that keeps appearing across your games.</small></div></article>
-      <article><span>02</span><div><b>YOU GET ONE RULE</b><strong>Something you can remember while playing.</strong><small>No ten-point checklist. One job for the next game.</small></div></article>
-      <article><span>03</span><div><b>WE CHECK THE NEXT GAME</b><strong>Did you actually change it?</strong><small>When the habit improves, your focus moves on.</small></div></article>
+      <article><span>01</span><div><b>WE FIND THE REPEAT</b><strong>Not every mistake deserves your attention.</strong><small>OP CLIMB prioritises the decision pattern that keeps reappearing in your evidence.</small></div></article>
+      <article><span>02</span><div><b>YOU GET ONE RULE</b><strong>Something usable inside the next game.</strong><small>No ten-point checklist. One active development job until the evidence changes.</small></div></article>
+      <article><span>03</span><div><b>THE COACH MOVES ON</b><strong>Improvement has to survive a new situation.</strong><small>PRO can test transfer across champions and contexts before treating a principle as owned.</small></div></article>
     </section>
 
     <ProofWithoutPretending/>
 
     <section className="container landing-tier-preview">
-      <div className="landing-section-head"><div><div className="eyebrow">START SIMPLE</div><h2>THE COACHING GETS DEEPER WHEN YOU NEED IT.</h2></div><p>The first answer should be useful, not complicated.</p></div>
+      <div className="landing-section-head"><div><div className="eyebrow">ONE PRODUCT · THREE DEPTHS</div><h2>PAY FOR A DEEPER COACH, NOT MORE NOISE.</h2></div><p>Start free. Upgrade when you want the system to understand more than the latest result.</p></div>
       <div className="tier-preview-grid">
-        <div><span>FREE</span><strong>Find your focus</strong><small>Your recent games · one next-game rule · simple review</small></div>
-        <div><span>PLUS</span><strong>Understand the pattern</strong><small>More game history · stronger comparisons · deeper coaching</small></div>
-        <div className="is-pro"><span>PRO</span><strong>Build a long-term coach</strong><small>More history · repeated patterns · deeper champion and decision review</small></div>
+        <div><span>FREE</span><strong>Prove the loop</strong><small>Recent evidence · one active focus · simple match review</small></div>
+        <div><span>PLUS</span><strong>Understand this game</strong><small>Full draft win/loss condition · deeper fight and economy diagnosis · 90-day context</small></div>
+        <div className="is-pro"><span>PRO</span><strong>Build your player model</strong><small>Decision Twin · Scenario Memory · transfer tests · Autonomous Curriculum</small></div>
       </div>
-      <StartFree placement="tiers"/>
+      <div style={{display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}><StartFree placement="tiers"/><Link href="/pricing" className="text-link">COMPARE FREE, PLUS &amp; PRO →</Link></div>
     </section>
 
     <section className="container landing-trust-strip"><div><b>TRY FIRST</b><span>See the coaching before you commit.</span></div><div><b>YOUR GAMES</b><span>Advice is tied back to what you actually did.</span></div><div><b>FREE TO START</b><span>No card required.</span></div><div><b>NO FAKE PROOF</b><span>No invented testimonials or made-up rank climbs.</span></div></section>
 
     <LandingFaq/>
 
-    <section className="container landing-final-cta"><div className="eyebrow">GIVE YOUR NEXT GAME ONE JOB</div><h2>PLAY WITH A PURPOSE.<br/>SEE IF IT CHANGED.</h2><StartFree placement="final"/></section>
+    <section className="container landing-final-cta"><div className="eyebrow">GIVE YOUR NEXT GAME ONE JOB</div><h2>FIX THE DECISION.<br/>PROVE IT HOLDS.</h2><StartFree placement="final"/></section>
   </main>
 
   <PublicFooter/>
-</>}
+</>};
