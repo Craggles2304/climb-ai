@@ -102,7 +102,7 @@ function confidence(a:unknown,b:unknown):NodeConfidence{
 }
 function nearestNext(nodes:CausalDecisionNode[],at:number){
   const candidates=nodes
-    .filter(node=>Number.isFinite(Number(node?.atSeconds))&&Number(node.atSeconds)>=at-5&&Number(node.atSeconds)<=at+150)
+    .filter(node=>Number.isFinite(Number(node?.atSeconds))&&Number(node.atSeconds)>=at&&Number(node.atSeconds)<=at+150)
     .sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds)||rank(b.confidence)-rank(a.confidence));
   return candidates[0]??null;
 }
