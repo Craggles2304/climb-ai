@@ -221,6 +221,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lanePartner:clean(coach?.lanePartner),
       playerCoachingIdentity:coach?._playerCoachingIdentity||null,
       learningVelocity:coach?._learningVelocity||null,
+      skillTransferGraph:coach?._skillTransferGraph||null,
+      skillBridgePrime:coach?._skillBridgePrime||null,
       adaptiveCoachingSession:coach?._adaptiveCoachingSession||null,
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
@@ -243,7 +245,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       capturedAt:same&&previous?.capturedAt?previous.capturedAt:new Date().toISOString(),
       updatedAt:new Date().toISOString(),
     };
-    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next));window.dispatchEvent(new CustomEvent('op-climb-player-identity',{detail:next.playerCoachingIdentity||null}));window.dispatchEvent(new CustomEvent('op-climb-learning-velocity',{detail:next.learningVelocity||null}));window.dispatchEvent(new CustomEvent('op-climb-adaptive-session',{detail:next.adaptiveCoachingSession||null}))}catch{}
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next));window.dispatchEvent(new CustomEvent('op-climb-player-identity',{detail:next.playerCoachingIdentity||null}));window.dispatchEvent(new CustomEvent('op-climb-learning-velocity',{detail:next.learningVelocity||null}));window.dispatchEvent(new CustomEvent('op-climb-skill-transfer-graph',{detail:next.skillTransferGraph||null}));window.dispatchEvent(new CustomEvent('op-climb-adaptive-session',{detail:next.adaptiveCoachingSession||null}))}catch{}
   }
 
   function persistBranchSelection(branch){
@@ -1034,6 +1036,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._coachQuality=response?.coachQuality||null;
         enrichedCoach._playerCoachingIdentity=response?.playerCoachingIdentity||null;
         enrichedCoach._learningVelocity=response?.learningVelocity||null;
+        enrichedCoach._skillTransferGraph=response?.skillTransferGraph||null;
+        enrichedCoach._skillBridgePrime=response?.skillBridgePrime||null;
         enrichedCoach._adaptiveCoachingSession=response?.adaptiveCoachingSession||null;
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
