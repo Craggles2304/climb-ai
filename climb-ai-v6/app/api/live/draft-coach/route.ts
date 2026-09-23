@@ -740,6 +740,7 @@ export async function POST(req:NextRequest){
         :velocityMethod
           ?'Learning Velocity selected the coaching format with the strongest repeated association to clean independent follow-through for this behaviour.'
           :null,
+      forcedSelectionMode:causalCoachRoute.forceCoachMethod?'CAUSAL_ROUTE':velocityMethod?'LEARNING_VELOCITY':null,
     });
     const playbook=buildFrozenGamePlaybook({
       champion,
