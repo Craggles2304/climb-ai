@@ -41,6 +41,19 @@
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
   const tile=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/loading/${assetId(name)}_0.jpg`;
   const set=(id,value)=>{const node=$(id);if(node&&clean(value))node.textContent=upper(value)};
+  function emitMatchContract(coach){
+    try{
+      window.dispatchEvent(new CustomEvent('op-climb-match-os',{detail:{
+        contract:coach?._matchContract||null,
+        intentProbe:coach?._intentProbe||null,
+        intentSkipped:Boolean(coach?._intentProbe?.id&&skippedIntentProbeId===coach._intentProbe.id),
+        gameTime:Number(lastRoster?.gameTime)||0,
+        phase:clean(lastState?.phase),
+        selectedBranch,
+        selectedContingency,
+      }}));
+    }catch{}
+  }
 
   function installVisualLayer(){
     if($('op-v5-esports-style'))return;
@@ -206,6 +219,13 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       laneOpponent:clean(coach?.laneOpponent),
       laneOpponents:Array.isArray(coach?.laneOpponents)?coach.laneOpponents.map(clean).filter(Boolean).slice(0,2):[],
       lanePartner:clean(coach?.lanePartner),
+      playerCoachingIdentity:coach?._playerCoachingIdentity||null,
+      learningVelocity:coach?._learningVelocity||null,
+      skillTransferGraph:coach?._skillTransferGraph||null,
+      skillBridgePrime:coach?._skillBridgePrime||null,
+      decisionPrincipleEngine:coach?._decisionPrincipleEngine||null,
+      decisionPrinciplePrime:coach?._decisionPrinciplePrime||null,
+      adaptiveCoachingSession:coach?._adaptiveCoachingSession||null,
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
       decisionSimulation:coach?._decisionSimulation||null,
@@ -214,8 +234,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       climbMission:coach?._climbMission||null,
       intentProbe:coach?._intentProbe||null,
       coachingStrategy:coach?._coachingStrategy||null,
+      causalCoachRoute:coach?._causalCoachRoute||null,
       experimentSchedule:coach?._experimentSchedule||null,
       coachIntervention:coach?._coachIntervention||null,
+      matchContract:coach?._matchContract||null,
       draftFingerprint:clean(coach._playbook.draftFingerprint),
       playbook:coach._playbook,
       selectedBranch:same&&previous?.selectedBranch?previous.selectedBranch:selectedBranch,
@@ -225,7 +247,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       capturedAt:same&&previous?.capturedAt?previous.capturedAt:new Date().toISOString(),
       updatedAt:new Date().toISOString(),
     };
-    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next))}catch{}
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next));window.dispatchEvent(new CustomEvent('op-climb-player-identity',{detail:next.playerCoachingIdentity||null}));window.dispatchEvent(new CustomEvent('op-climb-learning-velocity',{detail:next.learningVelocity||null}));window.dispatchEvent(new CustomEvent('op-climb-skill-transfer-graph',{detail:next.skillTransferGraph||null}));window.dispatchEvent(new CustomEvent('op-climb-adaptive-session',{detail:next.adaptiveCoachingSession||null}))}catch{}
   }
 
   function persistBranchSelection(branch){
@@ -237,6 +259,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     stored.branchSelections=history;
     stored.updatedAt=new Date().toISOString();
     try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+    emitMatchContract(lastCoach);
   }
 
   function persistContingencySelection(key){
@@ -249,6 +272,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     stored.contingencySelections=history;
     stored.updatedAt=new Date().toISOString();
     try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(stored))}catch{}
+    emitMatchContract(lastCoach);
   }
 
   function ensurePlaybookPanel(){
@@ -270,6 +294,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       <div id="opRemStrategy" class="rem10-strategy">
         <div><span>COACHING STRATEGY</span><strong id="opRemStrategyMode">WAITING FOR MATCH REP</strong></div>
         <p id="opRemStrategyWhy">OP CLIMB WILL DECIDE WHETHER TO TEACH, REINFORCE, DIAGNOSE OR FADE SUPPORT AFTER THE MATCH REP IS FROZEN.</p>
+      </div>
+      <div id="opRemCausalRoute" class="rem10-strategy">
+        <div><span>CAUSAL COACH LAYER</span><strong id="opRemCausalRouteMode">BUILDING ROOT-CAUSE MEMORY</strong></div>
+        <p id="opRemCausalRouteWhy">ONE MATCH CANNOT ROUTE THE COACH. REPEATED VERIFIED READ → DECISION CHAINS ARE REQUIRED.</p>
       </div>
       <div id="opRemExperiment" class="rem10-strategy">
         <div><span>EXPERIMENT SCHEDULER</span><strong id="opRemExperimentType">NO EXPERIMENT SCHEDULED</strong></div>
@@ -417,6 +445,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         set('opRemMission',coachIntervention?.primaryCue||(climbMission?.status==='READY'?(climbMission.cue||climbMission.action):'NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN'));
         [...options.querySelectorAll('button')].forEach(node=>node.disabled=true);
         skip.classList.add('selected');
+        emitMatchContract(coach);
       });
       options.appendChild(skip);
     }
@@ -431,6 +460,20 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     set('opRemStrategyMode',strategy?.title||(mode==='BUILDING'?'WAITING FOR MATCH REP':mode));
     set('opRemStrategyWhy',strategy?.decision||'OP CLIMB WILL DECIDE WHETHER THIS REP NEEDS EXPLICIT TEACHING, LIGHT REINFORCEMENT, DIAGNOSIS OR LESS SUPPORT.');
     root.title=[clean(strategy?.playerMessage),clean(strategy?.coachDirective),clean(strategy?.successDefinition),clean(strategy?.boundary)].filter(Boolean).join(' · ');
+  }
+
+  function renderCausalCoachRoute(route){
+    ensurePlaybookPanel();
+    const root=$('opRemCausalRoute');if(!root)return;
+    const active=Boolean(route?.active);
+    const layer=upper(route?.sourceLayerLabel||'BUILDING ROOT-CAUSE MEMORY');
+    const mode=upper(String(route?.mode||'EVIDENCE_BUILD').replace(/_/g,' '));
+    root.classList.toggle('fade',mode==='AUTONOMY TEST');
+    root.classList.toggle('diagnose',mode==='RECOGNITION FIRST'||mode==='RECOGNITION RETEST');
+    root.style.opacity=active?'1':'.72';
+    set('opRemCausalRouteMode',active?layer+' · '+mode:'BUILDING ROOT-CAUSE MEMORY');
+    set('opRemCausalRouteWhy',clean(route?.pregameDirective)||'ONE MATCH CANNOT ROUTE THE COACH. REPEATED VERIFIED READ → DECISION CHAINS ARE REQUIRED.');
+    root.title=[clean(route?.evidence),clean(route?.liveDirective),route?.safetyConstrained?'SAFETY CONSTRAINT KEPT MORE SUPPORT ACTIVE':'',clean(route?.boundary)].filter(Boolean).join(' · ');
   }
 
   function renderExperimentSchedule(experiment){
@@ -947,9 +990,11 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     const climbMission=coach?._climbMission||null;
     const intentProbe=coach?._intentProbe||null;
     const coachingStrategy=coach?._coachingStrategy||null;
+    const causalCoachRoute=coach?._causalCoachRoute||null;
     const experimentSchedule=coach?._experimentSchedule||null;
     const coachIntervention=coach?._coachIntervention||null;
     renderCoachingStrategy(coachingStrategy);
+    renderCausalCoachRoute(causalCoachRoute);
     renderExperimentSchedule(experimentSchedule);
     renderIntentProbe(intentProbe,coach);
     const intentPending=Boolean(intentProbe?.version===1&&!intentProbe?.response?.selectedOptionId&&skippedIntentProbeId!==intentProbe.id);
@@ -959,6 +1004,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       :climbMission?[clean(climbMission.title),clean(climbMission.whyThisGame),clean(climbMission.successDefinition),clean(climbMission.reviewRule)].filter(Boolean).join(' · '):'';
     renderDecisionSimulation(coach?._decisionSimulation||null);
     renderPlaybook(coach?._playbook||null,{source:coach?._coachSource||'local',quality:coach?._coachQuality||null});
+    emitMatchContract(coach);
   }
 
   async function requestCoach(signature,champion,userRole,ours,enemies){
@@ -990,6 +1036,13 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._playbookPolicy=response?.playbookPolicy||null;
         enrichedCoach._coachSource=clean(response?.source)||'rules';
         enrichedCoach._coachQuality=response?.coachQuality||null;
+        enrichedCoach._playerCoachingIdentity=response?.playerCoachingIdentity||null;
+        enrichedCoach._learningVelocity=response?.learningVelocity||null;
+        enrichedCoach._skillTransferGraph=response?.skillTransferGraph||null;
+        enrichedCoach._skillBridgePrime=response?.skillBridgePrime||null;
+        enrichedCoach._decisionPrincipleEngine=response?.decisionPrincipleEngine||null;
+        enrichedCoach._decisionPrinciplePrime=response?.decisionPrinciplePrime||null;
+        enrichedCoach._adaptiveCoachingSession=response?.adaptiveCoachingSession||null;
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
         enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
@@ -998,8 +1051,10 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._climbMission=response?.climbMission||null;
         enrichedCoach._intentProbe=response?.intentProbe||null;
         enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
+        enrichedCoach._causalCoachRoute=response?.causalCoachRoute||null;
         enrichedCoach._experimentSchedule=response?.experimentSchedule||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
+        enrichedCoach._matchContract=response?.matchContract||null;
         if(Array.isArray(response?.player?.laneOpponents)&&response.player.laneOpponents.length)enrichedCoach.laneOpponents=response.player.laneOpponents;
         if(clean(response?.player?.lanePartner))enrichedCoach.lanePartner=response.player.lanePartner;
         if(Array.isArray(response?.resolvedDraft?.ours))enrichedCoach._resolvedOurRoles=response.resolvedDraft.ours;
@@ -1053,6 +1108,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     void requestCoach(rosterSignature,champion,userRole,ours,enemies);
+    emitMatchContract(lastCoach);
   }
 
   function onState(state){
@@ -1071,17 +1127,20 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);
+      renderCausalCoachRoute(null);
       renderExperimentSchedule(null);
       renderPlaybook(null,lastCoachMeta);
     }
     if(champion)document.body.style.setProperty('--op-live-splash',`url("${splash(champion)}")`);
     if(lastRoster)applyRoster(lastRoster);
+    else emitMatchContract(lastCoach);
   }
 
   installVisualLayer();
   ensurePlaybookPanel();
   renderPersonalTrap(null);
   renderCoachingStrategy(null);
+  renderCausalCoachRoute(null);
   renderExperimentSchedule(null);
   renderPlaybook(null,lastCoachMeta);
   window.addEventListener('op-climb-live-roster',event=>applyRoster(event.detail||{}));

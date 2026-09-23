@@ -10,6 +10,12 @@ import {reviewClimbCoachIntervention,type ClimbCoachIntervention,type ClimbCoach
 import {reviewClimbCoachingStrategy,type ClimbCoachingStrategy,type ClimbCoachingStrategyReview} from './climbCoachingStrategy';
 import {reviewClimbIntentGap,type ClimbIntentProbe,type ClimbIntentGapReview} from './climbIntentGap';
 import {reviewClimbExperimentSchedule,type ClimbExperimentSchedule,type ClimbExperimentReview} from './climbExperimentScheduler';
+import {reviewCompanionMatchContract,type CompanionMatchContract,type CompanionMatchContractReview} from './companionMatchContract';
+import {buildGameReadCalibration,type GameReadCalibrationReview,type LiveReadCheckpoint} from './gameReadCalibration';
+import {buildDecisionCausalChain,type DecisionCausalChainReview} from './decisionCausalChain';
+import {reviewCausalCoachRoute,type CausalCoachRoute,type CausalCoachRouteReview} from './causalCoachRouter';
+import {reviewSkillBridgePrime,type SkillBridgePrime,type SkillBridgeReview} from './climbSkillTransferGraph';
+import {reviewDecisionPrinciplePrime,type DecisionPrinciplePrime,type DecisionPrincipleReview} from './climbDecisionPrinciples';
 
 export type DecisionNodeConfidence='HIGH'|'MEDIUM'|'LOW';
 export type DecisionNodeVerdict='GOOD'|'IMPROVE'|'NEUTRAL';
@@ -66,11 +72,15 @@ export interface LockedDecisionPlan{
   decisionSimulation?:DecisionSimulation|null;
   scenarioPrime?:ScenarioPrime|null;
   decisionTransferPrime?:DecisionTransferPrime|null;
+  skillBridgePrime?:SkillBridgePrime|null;
+  decisionPrinciplePrime?:DecisionPrinciplePrime|null;
   climbMission?:ClimbMatchMission|null;
   coachIntervention?:ClimbCoachIntervention|null;
   coachingStrategy?:ClimbCoachingStrategy|null;
+  causalCoachRoute?:CausalCoachRoute|null;
   intentProbe?:ClimbIntentProbe|null;
   experimentSchedule?:ClimbExperimentSchedule|null;
+  matchContract?:CompanionMatchContract|null;
 }
 
 export interface DecisionGraphNode{
@@ -127,11 +137,17 @@ export interface DecisionGraph{
     simulation:DecisionSimulationReview;
     scenarioPrime:ScenarioPrimeReview;
     decisionTransfer:DecisionTransferReview;
+    skillBridge:SkillBridgeReview;
+    decisionPrinciple:DecisionPrincipleReview;
     climbMission:ClimbMatchMissionReview;
     coachIntervention:ClimbCoachInterventionReview;
     coachingStrategy:ClimbCoachingStrategyReview;
     intentGap:ClimbIntentGapReview;
     experimentSchedule:ClimbExperimentReview;
+    matchContract:CompanionMatchContractReview;
+    readCalibration:GameReadCalibrationReview;
+    causalChain:DecisionCausalChainReview;
+    causalCoachRoute: CausalCoachRouteReview;
     mostRepeatedBehaviour:DecisionBehaviourKey|null;
     mostRepeatedLabel:string|null;
   };
@@ -476,7 +492,7 @@ function dedupe(nodes:DecisionGraphNode[]){
 }
 function confidenceRank(value:DecisionNodeConfidence){return value==='HIGH'?3:value==='MEDIUM'?2:1}
 
-export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:StrengthTimeline;lockedPlan?:LockedDecisionPlan|null;generatedAt?:string}):DecisionGraph{
+export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:StrengthTimeline;lockedPlan?:LockedDecisionPlan|null;readCheckpoints?:LiveReadCheckpoint[]|null;generatedAt?:string}):DecisionGraph{
   const {analysis,summary}=input;
   const plan=input.lockedPlan??null;
   const nodes:DecisionGraphNode[]=[];
@@ -513,11 +529,17 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
   const simulationReview=reviewDecisionSimulation(plan?.decisionSimulation,observedDecisions);
   const scenarioPrimeReview=reviewScenarioPrime(plan?.scenarioPrime,observedDecisions);
   const decisionTransferReview=reviewDecisionTransfer(plan?.decisionTransferPrime,observedDecisions);
+  const skillBridgeReview=reviewSkillBridgePrime(plan?.skillBridgePrime,observedDecisions);
+  const decisionPrincipleReview=reviewDecisionPrinciplePrime(plan?.decisionPrinciplePrime,observedDecisions);
   const climbMissionReview=reviewClimbMatchMission(plan?.climbMission,observedDecisions);
   const coachInterventionReview=reviewClimbCoachIntervention(plan?.coachIntervention,climbMissionReview);
   const coachingStrategyReview=reviewClimbCoachingStrategy(plan?.coachingStrategy,climbMissionReview);
   const intentGapReview=reviewClimbIntentGap(plan?.intentProbe,climbMissionReview);
   const experimentScheduleReview=reviewClimbExperimentSchedule(plan?.experimentSchedule,climbMissionReview,coachingStrategyReview);
+  const matchContractReview=reviewCompanionMatchContract({contract:plan?.matchContract,mission:climbMissionReview,scenarioPrime:scenarioPrimeReview,transfer:decisionTransferReview});
+  const readCalibration=buildGameReadCalibration({reads:input.readCheckpoints,points:summary.points as any});
+  const causalChain=buildDecisionCausalChain({readCalibration,nodes:finalNodes});
+  const causalCoachRouteReview=reviewCausalCoachRoute(plan?.causalCoachRoute,causalChain);
 
   return{
     version:1,
@@ -558,11 +580,17 @@ export function buildDecisionGraph(input:{analysis:ProMatchAnalysis;summary:Stre
       simulation:simulationReview,
       scenarioPrime:scenarioPrimeReview,
       decisionTransfer:decisionTransferReview,
+      skillBridge:skillBridgeReview,
+      decisionPrinciple:decisionPrincipleReview,
       climbMission:climbMissionReview,
       coachIntervention:coachInterventionReview,
       coachingStrategy:coachingStrategyReview,
       intentGap:intentGapReview,
       experimentSchedule:experimentScheduleReview,
+      matchContract:matchContractReview,
+      readCalibration,
+      causalChain,
+      causalCoachRoute:causalCoachRouteReview,
       mostRepeatedBehaviour:repeated,
       mostRepeatedLabel:repeated?LABELS[repeated]:null,
     },
@@ -588,10 +616,14 @@ export function lockedPlanFromPregameContext(context:any):LockedDecisionPlan|nul
     decisionSimulation:raw.decisionSimulation??null,
     scenarioPrime:raw.scenarioPrime??null,
     decisionTransferPrime:raw.decisionTransferPrime??null,
+    skillBridgePrime:raw.skillBridgePrime??null,
+    decisionPrinciplePrime:raw.decisionPrinciplePrime??null,
     climbMission:raw.climbMission??null,
     coachIntervention:raw.coachIntervention??null,
     coachingStrategy:raw.coachingStrategy??null,
+    causalCoachRoute:raw.causalCoachRoute??null,
     intentProbe:raw.intentProbe??null,
     experimentSchedule:raw.experimentSchedule??null,
+    matchContract:raw.matchContract??null,
   };
 }

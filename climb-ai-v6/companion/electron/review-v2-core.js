@@ -156,6 +156,7 @@
       <details class="op333-details"><summary>COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER</summary><div class="op333-details-body">
         <section id="op332Premortem" class="op332-premortem"><div class="op332-premortem-head"><div><span>RISK MAP · DID THE PATTERN HOLD?</span><div id="op332PremortemStatus" class="op332-premortem-status">CHECKING FROZEN RISKS</div></div></div><div id="op332PremortemList" class="op332-premortem-list"></div><small id="op332PremortemBoundary" class="op332-premortem-proof"></small></section>
         <section id="op332Simulation" class="op332-simulation"><div class="op332-simulation-head"><div><span>MATCH REHEARSAL · REVIEW</span><div id="op332SimulationStatus" class="op332-simulation-status">CHECKING REHEARSED SCENARIOS</div></div></div><div id="op332SimulationList" class="op332-simulation-list"></div><small id="op332SimulationBoundary" class="op332-simulation-proof"></small></section>
+        <section id="op332MatchContract" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>MATCH OS · CONTRACT REVIEW</span><div id="op332MatchContractStatus" class="op332-memory-status">CHECKING FROZEN CONTRACT</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>ONE REP</b><strong id="op332MatchContractRep"></strong><p id="op332MatchContractMode"></p></article><article class="op332-memory-card"><b>VERIFIED RESULT</b><strong id="op332MatchContractResult"></strong><p id="op332MatchContractProof"></p></article><article class="op332-memory-card"><b>WHAT HAPPENS NEXT</b><strong id="op332MatchContractNext"></strong><p>Match OS reports evidence; Autonomous Curriculum decides whether the lesson repeats, fades support or advances.</p></article></div><small id="op332MatchContractBoundary" class="op332-memory-proof"></small></section>
         <section id="op332MissionReview" class="op332-memory op332-mission-review"><div class="op332-memory-head"><span>CLIMB MISSION · FROZEN REP REVIEW</span><div id="op332MissionStatus" class="op332-memory-status">CHECKING MATCH REP</div></div><div class="op332-memory-grid"><article class="op332-memory-card"><b>MISSION</b><strong id="op332MissionReviewName"></strong><p id="op332MissionReviewContext"></p></article><article class="op332-memory-card"><b>RESULT</b><strong id="op332MissionReviewResult"></strong><p id="op332MissionReviewNote"></p></article><article class="op332-memory-card"><b>CURRICULUM EFFECT</b><strong id="op332MissionReviewNext"></strong><p>One match rep adds evidence to the active lesson; it never creates graduation by itself.</p></article></div><small id="op332MissionReviewBoundary" class="op332-memory-proof"></small></section>
         <section id="op332Strategy" class="op332-response"><div class="op332-response-head"><div><span>COACHING STRATEGY · SUPPORT REVIEW</span><div id="op332StrategyStatus" class="op332-response-status">CHECKING SUPPORT POLICY</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>FROZEN SUPPORT MODE</b><strong id="op332StrategyMode"></strong><p id="op332StrategyWhy"></p></article><article class="op332-response-card"><b>WHAT HAPPENED</b><strong id="op332StrategyResult"></strong><p id="op332StrategyNote"></p></article></div><small id="op332StrategyBoundary" class="op332-response-proof"></small></section>
         <section id="op332Experiment" class="op332-response"><div class="op332-response-head"><div><span>EXPERIMENT SCHEDULER · DID THE TEST ACTUALLY RUN?</span><div id="op332ExperimentStatus" class="op332-response-status">CHECKING FROZEN EXPERIMENT</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>SCHEDULED TEST</b><strong id="op332ExperimentType"></strong><p id="op332ExperimentNeed"></p></article><article class="op332-response-card"><b>EVIDENCE RESULT</b><strong id="op332ExperimentResult"></strong><p id="op332ExperimentNote"></p></article></div><small id="op332ExperimentBoundary" class="op332-response-proof"></small></section>
@@ -423,6 +424,21 @@
       card.append(label,title,badge,copy);list.appendChild(card);
     });
     setText('op332SimulationBoundary',clean(simulation?.boundary)||'ONLY VERIFIED COMPARABLE DECISIONS ARE SCORED · NOT OBSERVED IS NEUTRAL.');
+  }
+
+  function renderMatchContractReview(review){
+    const root=$('op332MatchContract');if(!root)return;
+    const item=review?.decisionGraph?.summary?.matchContract||null;
+    const status=clean(item?.status||'NO_CONTRACT').toUpperCase();
+    root.classList.toggle('executed',status==='EXECUTED');
+    root.classList.toggle('missed',status==='MISSED');
+    setText('op332MatchContractStatus',status==='EXECUTED'?'CONTRACT EXECUTED':status==='MISSED'?'CONTRACT MISSED':status==='MIXED'?'CONTRACT MIXED':status==='NOT_OBSERVED'?'CONTRACT NOT TESTED':'NO MATCH OS CONTRACT');
+    setText('op332MatchContractRep',clean(item?.behaviour)||(status==='NO_CONTRACT'?'No frozen Match OS rep':'Frozen Match OS rep'));
+    setText('op332MatchContractMode',clean(item?.mode).replace(/_/g,' ')||'NO LEARNING MODE');
+    setText('op332MatchContractResult',clean(item?.headline)||'NO CONTRACT RESULT');
+    setText('op332MatchContractProof',clean(item?.proof)||'No verified contract evidence was available.');
+    setText('op332MatchContractNext',clean(item?.nextAction)||'Use the normal Decision Graph review.');
+    setText('op332MatchContractBoundary',clean(item?.boundary)||'MATCH OS ONLY SCORES VERIFIED DECISION-GRAPH MOMENTS AGAINST THE CONTRACT FROZEN BEFORE PLAY.');
   }
 
   function renderClimbMissionReview(review){
@@ -718,6 +734,7 @@
     renderDecisionGraph(review);
     renderPremortem(review);
     renderSimulationReview(review);
+    renderMatchContractReview(review);
     renderClimbMissionReview(review);
     renderCoachingStrategyReview(review);
     renderExperimentScheduleReview(review);

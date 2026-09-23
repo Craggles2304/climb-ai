@@ -3,28 +3,60 @@ import Link from 'next/link';
 import {Wordmark} from '@/components/UI';
 import {PublicFooter} from '@/components/PublicFooter';
 import {useSubscription} from '@/components/SubscriptionContext';
-import {PLAN_COPY,SubscriptionTier} from '@/lib/subscription';
+import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
+import {PLAN_COPY,PLAN_ENTITLEMENTS,SubscriptionTier} from '@/lib/subscription';
 
-const plans:{n:SubscriptionTier;headline:string;summary:string;unlocks:string[];details:string[]}[]=[
-  {n:'FREE',headline:'SEE THE LEAK',summary:'Useful first coaching loop with no payment.',unlocks:['Simple role-specific Companion plan','OP Match Grade','Fight + death control','2 Fix Ladder stages'],details:['Four-step pre-game execution plan','One Climb Mission','Basic CS / match review','Strength / weakness timestamps','3 detailed reviews per week','7-day progress view']},
-  {n:'PLUS',headline:'UNDERSTAND HOW TO WIN',summary:'Adds the full match read: exactly how your draft wins, how it loses, and what your role must do.',unlocks:['OUR WIN CONDITION in Companion','THEY WIN IF / loss condition','Unspent gold + reset leaks','4 Fix Ladder stages'],details:['Full 5v5 draft win-condition sequence','Your role inside the win condition','Biggest throw condition','Thrown Advantage Rate','Underdog Conversion','Power Window Conversion','Resource Conversion','How you win / lose each reviewed fight','90-day analytics']},
-  {n:'PRO',headline:'BUILD YOUR PLAYER MODEL',summary:'Persistent learning across games, champions and recurring decisions.',unlocks:['Everything in PLUS','Decision Fingerprint','Long-term pattern memory','All 5 Fix Ladder stages'],details:['Deep draft reasoning around formation and threats','Lead Protection','Reset Quality + Power-Spike Conversion','Objective Readiness + Farm-vs-Fight','Repeat Threat + Opponent Adaptation','Carry Preservation + Survival Value','Champion Identity coaching','Historical OP Leak Rate + Recovery trends','Deepest adaptive ILP']},
-];
+const positioning:Record<SubscriptionTier,{headline:string;summary:string;principle:string}>={
+  FREE:{headline:'PROVE THE LOOP',summary:'See whether OP CLIMB can find something useful from your games before you pay.',principle:'FIND THE REPEAT'},
+  PLUS:{headline:'UNDERSTAND THIS GAME',summary:'Unlock the complete draft read: how your team wins, how the enemy wins, and what your role must do.',principle:'READ THE GAME'},
+  PRO:{headline:'MODEL HOW YOU LEARN',summary:'Turn isolated reviews into a persistent development system that remembers, tests transfer and chooses what comes next.',principle:'MODEL THE PLAYER'},
+};
 
 export default function Pricing(){
   const {tier}=useSubscription();
   return <>
     <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/demo">DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
     <main className="container pricing-public">
-      <section className="pricing-hero"><div className="eyebrow">COACHING DEPTH</div><h1>PAY FOR A DEEPER<br/><span>DIAGNOSIS.</span></h1><p>FREE stays simple and useful. PLUS unlocks the exact win/loss condition for the draft. PRO adds the deeper long-term player model — not just more charts.</p></section>
-      <section className="pricing-grid-v2">{plans.map(plan=>{const copy=PLAN_COPY[plan.n];const current=tier===plan.n;return <article className={`pricing-card-v2 ${plan.n==='PRO'?'is-pro':''}`} key={plan.n}>
-        <div className="pricing-card-top"><span>{plan.n}</span>{current&&<b>CURRENT</b>}</div>
-        <strong className="pricing-price">{copy.price}</strong><h2>{plan.headline}</h2><p>{plan.summary}</p>
-        <div className="pricing-unlocks">{plan.unlocks.map(x=><div key={x}><i/> {x}</div>)}</div>
-        <details><summary>FULL FEATURE LIST</summary><ul>{plan.details.map(x=><li key={x}>{x}</li>)}</ul></details>
-        {plan.n==='FREE'?<Link href="/signup" className="btn primary">START FREE</Link>:<div className="pricing-upgrade-note"><b>{plan.n} ACCESS</b><span>Active paid and trialing entitlements unlock the deeper Companion match read. Upgrade checkout is being connected.</span><Link href="/signup" className="text-link">CREATE ACCOUNT →</Link></div>}
-      </article>})}</section>
-      <section className="pricing-principle"><div><span>FREE</span><b>TELL ME WHAT TO DO</b></div><i>→</i><div><span>PLUS</span><b>TELL ME HOW THIS GAME IS WON</b></div><i>→</i><div><span>PRO</span><b>MODEL THE PLAYER</b></div></section>
+      <section className="pricing-hero">
+        <div className="eyebrow">ONE PRODUCT · THREE DEPTHS</div>
+        <h1>START WITH A USEFUL ANSWER.<br/><span>PAY FOR DEEPER COACHING.</span></h1>
+        <p>FREE proves the coaching loop. PLUS explains the game in front of you. PRO builds the persistent player model: Decision Twin, Scenario Memory, transfer testing and an Autonomous Curriculum.</p>
+      </section>
+
+      <section className="pricing-grid-v2">
+        {(['FREE','PLUS','PRO'] as SubscriptionTier[]).map(plan=>{
+          const copy=PLAN_COPY[plan];
+          const position=positioning[plan];
+          const current=tier===plan;
+          return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro':'')} key={plan}>
+            <div className="pricing-card-top"><span>{plan}</span>{current&&<b>CURRENT</b>}</div>
+            <strong className="pricing-price">{copy.price}</strong>
+            <h2>{position.headline}</h2>
+            <p>{position.summary}</p>
+            <div className="pricing-unlocks">{PLAN_ENTITLEMENTS[plan].map(item=><div key={item}><i/> {item}</div>)}</div>
+            <div style={{marginTop:18}}>
+              {plan==='FREE'
+                ?<Link href="/signup" className="btn primary">START FREE</Link>
+                :current
+                  ?<BillingPortalButton label="MANAGE CURRENT PLAN"/>
+                  :<UpgradeButton tier={plan} label={tier==='FREE'?'CHOOSE '+plan:'MOVE TO '+plan}/>}
+            </div>
+          </article>;
+        })}
+      </section>
+
+      <section className="pricing-principle">
+        <div><span>FREE</span><b>{positioning.FREE.principle}</b></div><i>→</i>
+        <div><span>PLUS</span><b>{positioning.PLUS.principle}</b></div><i>→</i>
+        <div><span>PRO</span><b>{positioning.PRO.principle}</b></div>
+      </section>
+
+      <section className="glass card" style={{marginTop:18,padding:22}}>
+        <div className="eyebrow">WHY PRO EXISTS</div>
+        <h2 style={{margin:'8px 0'}}>NOT MORE CHARTS. A COACH THAT CAN MOVE YOU ON.</h2>
+        <p className="muted" style={{maxWidth:900}}>PRO is where OP CLIMB stops treating every match as a separate review. It remembers recurring situations, tests whether a learned decision transfers to new champions and contexts, and advances your curriculum only when repeated evidence says the lesson holds.</p>
+      </section>
+
       <section className="pricing-cta"><div className="eyebrow">TRY BEFORE YOU PAY</div><h2>OPEN THE PUBLIC COACHING DEMO.</h2><div><Link href="/demo" className="btn primary">TRY DEMO</Link><Link href="/signup" className="btn secondary">START FREE</Link></div></section>
     </main>
     <PublicFooter/>

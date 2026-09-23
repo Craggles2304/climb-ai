@@ -14,6 +14,12 @@ import {buildClimbCoachTwin} from '@/lib/climbCoachTwin';
 import {buildClimbAutonomyProfile} from '@/lib/climbAutonomy';
 import {buildClimbInterventionValueProfile} from '@/lib/climbInterventionValue';
 import {buildClimbCareerExperience} from '@/lib/climbCareerExperience';
+import {buildDecisionCausalProfile,type DecisionCausalProfile} from '@/lib/decisionCausalProfile';
+import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/playerCoachingIdentity';
+import {buildAdaptiveCoachingSession,type AdaptiveCoachingSession} from '@/lib/climbAdaptiveCoachingSession';
+import {buildLearningVelocityProfile,type LearningVelocityProfile} from '@/lib/climbLearningVelocity';
+import {buildSkillTransferGraph,type SkillTransferGraph} from '@/lib/climbSkillTransferGraph';
+import {buildDecisionPrincipleEngine,type DecisionPrincipleEngine} from '@/lib/climbDecisionPrinciples';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis}
 
@@ -64,15 +70,24 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   if(learningResult.error)throw new Error(learningResult.error.message);
   const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
   const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
+  const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
+  const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
+  const previousLearningVelocity=((learningResult.data?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
   const profile=buildProLearningProfile(rows),now=new Date().toISOString();
   const decisionTwin=buildDecisionTwin(rows,now);
   const decisionTwinV2=buildDecisionTwinV2(rows,now);
   const scenarioMemory=buildScenarioMemory(rows,now);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory,now);
-  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum);
+  const skillTransferGraph=buildSkillTransferGraph({rows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer,generatedAt:now});
+  const decisionPrincipleEngine=buildDecisionPrincipleEngine({rows,skillGraph:skillTransferGraph,generatedAt:now});
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum,skillTransferGraph);
   const coachTwin=buildClimbCoachTwin(rows,now);
   const autonomyProfile=buildClimbAutonomyProfile(rows,now);
   const interventionValue=buildClimbInterventionValueProfile(rows,now);
+  const causalProfile=buildDecisionCausalProfile(rows,now);
+  const playerCoachingIdentity=buildPlayerCoachingIdentity({rows,twin:decisionTwinV2,curriculum,coachTwin,causalProfile,autonomyProfile,interventionValue,previous:previousPlayerCoachingIdentity,generatedAt:now});
+  const learningVelocity=buildLearningVelocityProfile({rows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity,generatedAt:now});
+  const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy,generatedAt:now});
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
@@ -83,7 +98,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
   const learningJourney=buildLearningJourney(rows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
-  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience};
+  const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession};
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
@@ -114,6 +129,54 @@ export async function rebuildProLearningProfileWithIlp(userId:string,riotAccount
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
   const ilp=await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows);
   return{profile:built.profile,ilp};
+}
+
+export async function getDecisionCausalProfile(userId:string,riotAccountId:string|null):Promise<DecisionCausalProfile|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const profile=(data?.recent_change as any)?.causalProfile;
+  return profile?.version===1?profile as DecisionCausalProfile:null;
+}
+
+export async function getPlayerCoachingIdentity(userId:string,riotAccountId:string|null):Promise<PlayerCoachingIdentity|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const identity=(data?.recent_change as any)?.playerCoachingIdentity;
+  return identity?.version===1?identity as PlayerCoachingIdentity:null;
+}
+
+export async function getSkillTransferGraph(userId:string,riotAccountId:string|null):Promise<SkillTransferGraph|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const graph=(data?.recent_change as any)?.skillTransferGraph;
+  return graph?.version===1?graph as SkillTransferGraph:null;
+}
+
+export async function getDecisionPrincipleEngine(userId:string,riotAccountId:string|null):Promise<DecisionPrincipleEngine|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const engine=(data?.recent_change as any)?.decisionPrincipleEngine;
+  return engine?.version===1?engine as DecisionPrincipleEngine:null;
+}
+
+export async function getLearningVelocityProfile(userId:string,riotAccountId:string|null):Promise<LearningVelocityProfile|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const profile=(data?.recent_change as any)?.learningVelocity;
+  return profile?.version===1?profile as LearningVelocityProfile:null;
+}
+
+export async function getAdaptiveCoachingSession(userId:string,riotAccountId:string|null):Promise<AdaptiveCoachingSession|null>{
+  const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  const session=(data?.recent_change as any)?.adaptiveCoachingSession;
+  return session?.version===1?session as AdaptiveCoachingSession:null;
 }
 
 export async function getProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{

@@ -2,6 +2,7 @@ import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {requireLeagueTier} from '@/lib/server/subscriptionAccess';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildScenarioMemory} from '@/lib/scenarioMemory';
 import {buildDecisionTransfer} from '@/lib/decisionTransfer';
@@ -9,6 +10,12 @@ import {buildClimbCurriculum} from '@/lib/climbCurriculum';
 import {buildClimbCoachTwin} from '@/lib/climbCoachTwin';
 import {buildClimbAutonomyProfile} from '@/lib/climbAutonomy';
 import {buildClimbInterventionValueProfile} from '@/lib/climbInterventionValue';
+import {buildDecisionCausalProfile} from '@/lib/decisionCausalProfile';
+import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/playerCoachingIdentity';
+import {buildAdaptiveCoachingSession,type AdaptiveCoachingSession} from '@/lib/climbAdaptiveCoachingSession';
+import {buildLearningVelocityProfile,type LearningVelocityProfile} from '@/lib/climbLearningVelocity';
+import {buildSkillTransferGraph} from '@/lib/climbSkillTransferGraph';
+import {buildDecisionPrincipleEngine} from '@/lib/climbDecisionPrinciples';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -19,6 +26,18 @@ export async function GET(req:Request){
     const input=querySchema.parse({accountId:new URL(req.url).searchParams.get('accountId')});
     const user=await getCurrentUser();
     if(!user)return NextResponse.json({error:'Sign in to view your Decision Twin.'},{status:401});
+
+    const access=await requireLeagueTier(user.id,'PRO');
+    if(!access.allowed){
+      return NextResponse.json({
+        error:'PRO unlocks your persistent player model.',
+        upgradeRequired:true,
+        requiredTier:'PRO',
+        currentTier:access.entitlement.tier,
+        unlocks:['Decision Twin','Scenario Memory','Transfer Tests','Autonomous Curriculum','Coach Twin','Autonomy + Intervention Value','Skill Transfer Graph','Decision Principle Engine'],
+      },{status:403});
+    }
+
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({error:'Decision Twin is unavailable.'},{status:503});
 
@@ -49,6 +68,9 @@ export async function GET(req:Request){
     if(historyResult.error)throw new Error(historyResult.error.message);
     if(learningResult.error)throw new Error(learningResult.error.message);
     const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
+    const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
+    const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
+    const previousLearningVelocity=((learningResult.data?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
 
     const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map((row:any)=>({
       champion:String(row.champion||'Unknown'),
@@ -60,20 +82,32 @@ export async function GET(req:Request){
     const twin=buildDecisionTwinV2(rows);
     const scenarioMemory=buildScenarioMemory(rows);
     const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
-    const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
+    const skillTransferGraph=buildSkillTransferGraph({rows,twin,memory:scenarioMemory,transfer:decisionTransfer});
+    const decisionPrincipleEngine=buildDecisionPrincipleEngine({rows,skillGraph:skillTransferGraph});
+    const curriculum=buildClimbCurriculum(twin,scenarioMemory,decisionTransfer,undefined,previousCurriculum,skillTransferGraph);
     const coachTwin=buildClimbCoachTwin(rows);
     const autonomyProfile=buildClimbAutonomyProfile(rows);
     const interventionValue=buildClimbInterventionValueProfile(rows);
+    const causalProfile=buildDecisionCausalProfile(rows);
+    const playerCoachingIdentity=buildPlayerCoachingIdentity({rows,twin,curriculum,coachTwin,causalProfile,autonomyProfile,interventionValue,previous:previousPlayerCoachingIdentity});
+    const learningVelocity=buildLearningVelocityProfile({rows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity});
+    const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy});
     return NextResponse.json({
       twin,
       scenarioMemory,
       decisionTransfer,
+      skillTransferGraph,
+      decisionPrincipleEngine,
       curriculum,
       coachTwin,
       autonomyProfile,
       interventionValue,
+      causalProfile,
+      playerCoachingIdentity,
+      learningVelocity,
+      adaptiveCoachingSession,
       grounding:'climb-profile+curriculum+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','premortem_review','coaching_response'],
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','skill_transfer_graph','decision_principle_engine','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','causal_profile','player_coaching_identity','learning_velocity','adaptive_coaching_session','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);
