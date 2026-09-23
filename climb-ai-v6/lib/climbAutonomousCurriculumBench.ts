@@ -270,18 +270,19 @@ export function runClimbAutonomousCurriculumBench():ClimbAutonomousCurriculumBen
 
   const replacement=build({
     gamesAnalyzed:13,
-    currentLesson:lesson('FIGHT_SELECTION','PRACTISE'),
+    currentLesson:lesson('DEATH_RECOVERY','PRACTISE'),
     nextLesson:lesson('RESET_DISCIPLINE','PRACTISE'),
-    decision:decision('ADVANCE','CARRY_PRESERVATION','FIGHT_SELECTION'),
+    decision:decision('ADVANCE','FIGHT_SELECTION','DEATH_RECOVERY'),
   },retest);
   results.push(result(
     'graduation-replaces-objective',
     replacement.action==='REPLACE_OBJECTIVE'
-      &&replacement.activeContract?.objectiveKey==='FIGHT_SELECTION'
+      &&replacement.activeContract?.objectiveKey==='DEATH_RECOVERY'
+      &&replacement.activeContract?.id!==retest.activeContract?.id
       &&replacement.objectiveChanges===1,
-    'REPLACE_OBJECTIVE / FIGHT_SELECTION / one change',
-    replacement.action+' / '+String(replacement.activeContract?.objectiveKey)+' / '+String(replacement.objectiveChanges),
-    'Once the previous principle is genuinely graduated, V6 must create a new contract for the next unlocked objective.',
+    'REPLACE_OBJECTIVE / DEATH_RECOVERY / new contract / one change',
+    replacement.action+' / '+String(replacement.activeContract?.objectiveKey)+' / '+String(replacement.activeContract?.id)+' / '+String(replacement.objectiveChanges),
+    'Once the previous principle is genuinely graduated, V6 must close that contract and create a new contract for the next unlocked objective.',
   ));
 
   const complete=build({
