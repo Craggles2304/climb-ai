@@ -24,7 +24,7 @@ test('Founding Beta model measures the real coaching loop without forcing Compan
     if(i<3)rows.push(row(id,'climb_session_completed',signup+d(.2)+i*1000));
     if(i<5)rows.push(row(id,'career_viewed',signup+d(.04)+i*1000));
     if(i<7)rows.push(row(id,'dashboard_view',signup+d(1)+i*1000));
-    if(i<4)rows.push(row(id,'dashboard_view',signup+d(7)+i*1000));
+    if(i<2)rows.push(row(id,'dashboard_view',signup+d(7)+i*1000));
   }
   for(let i=0;i<5;i++)rows.push(row('u'+i,'feedback_given',signup+d(.05)+i*1000,{useful:i<4}));
 
@@ -38,7 +38,7 @@ test('Founding Beta model measures the real coaching loop without forcing Compan
   assert.deepEqual(report.usefulFeedback,{responses:5,useful:4,rate:80});
   assert.equal(report.day1.eligible,12);
   assert.equal(report.day1.returned,7);
-  assert.equal(report.day7.returned,4);
+  assert.equal(report.day7.returned,2);
   assert.equal(report.gateStatus,'BLOCKED');
 });
 
