@@ -7,6 +7,7 @@ export interface LiveReadCheckpoint{
   checkpointMinute:number;
   gameSeconds:number;
   stateRead:GameStateRead;
+  confidenceRead:'HIGH'|'MEDIUM'|'LOW'|null;
   threatRead:string|null;
   priorityRead:string|null;
   createdAt?:string|null;
@@ -16,6 +17,7 @@ export interface GameReadCalibrationItem{
   checkpointMinute:number;
   gameSeconds:number;
   stateRead:GameStateRead;
+  confidenceRead:'HIGH'|'MEDIUM'|'LOW'|null;
   actualState:GameStateRead|null;
   status:GameReadStatus;
   confidence:'HIGH'|'MEDIUM'|'LOW';
@@ -40,6 +42,9 @@ export interface GameReadCalibrationReview{
   missedStrongWindow:number;
   underestimatedDeficit:number;
   overcautious:number;
+  highConfidenceErrors:number;
+  lowConfidenceCorrect:number;
+  confidenceProfile:'BUILDING'|'CALIBRATED'|'OVERCONFIDENT'|'UNDERCONFIDENT'|'MIXED';
   items:GameReadCalibrationItem[];
   headline:string;
   nextFocus:string;
@@ -79,7 +84,7 @@ export function buildGameReadCalibration(input:{reads?:LiveReadCheckpoint[]|null
     const match=nearest(points,Number(read.gameSeconds)||Number(read.checkpointMinute)*60);
     if(!match){
       return{
-        checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,actualState:null,status:'NOT_VERIFIABLE',
+        checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,confidenceRead:read.confidenceRead??null,actualState:null,status:'NOT_VERIFIABLE',
         confidence:'LOW',distanceSeconds:null,threatRead:read.threatRead??null,priorityRead:read.priorityRead??null,
         title:state+' READ RECORDED · NOT GRADED',
         proof:'No close-enough recorded visible-state comparison was available. OP CLIMB keeps the read without inventing a verdict.',
@@ -88,14 +93,14 @@ export function buildGameReadCalibration(input:{reads?:LiveReadCheckpoint[]|null
     const actual=stateFromVerdict(match.point?.verdict);
     if(!actual){
       return{
-        checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,actualState:null,status:'NOT_VERIFIABLE',
+        checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,confidenceRead:read.confidenceRead??null,actualState:null,status:'NOT_VERIFIABLE',
         confidence:'LOW',distanceSeconds:match.distance,threatRead:read.threatRead??null,priorityRead:read.priorityRead??null,
         title:state+' READ RECORDED · NOT GRADED',proof:'The closest recorded point did not contain a gradeable visible-state verdict.',
       };
     }
     const supported=expected[state]===upper(match.point?.verdict);
     return{
-      checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,actualState:actual,
+      checkpointMinute:Number(read.checkpointMinute),gameSeconds:Number(read.gameSeconds),stateRead:state,confidenceRead:read.confidenceRead??null,actualState:actual,
       status:supported?'SUPPORTED':'REVIEW',confidence:match.distance<=45?'HIGH':'MEDIUM',distanceSeconds:match.distance,
       threatRead:read.threatRead??null,priorityRead:read.priorityRead??null,
       title:supported?state+' READ SUPPORTED':state+' READ NEEDS REVIEW',
@@ -113,6 +118,9 @@ export function buildGameReadCalibration(input:{reads?:LiveReadCheckpoint[]|null
     if(item.stateRead==='BEHIND'&&item.actualState==='EVEN')overcautious+=1;
   }
   const supportRate=graded.length?Math.round(supported/graded.length*100):null;
+  const highConfidenceErrors=graded.filter(item=>item.status==='REVIEW'&&item.confidenceRead==='HIGH').length;
+  const lowConfidenceCorrect=graded.filter(item=>item.status==='SUPPORTED'&&item.confidenceRead==='LOW').length;
+  const confidenceProfile=graded.length<2?'BUILDING':highConfidenceErrors>lowConfidenceCorrect&&highConfidenceErrors>0?'OVERCONFIDENT':lowConfidenceCorrect>highConfidenceErrors&&lowConfidenceCorrect>0?'UNDERCONFIDENT':highConfidenceErrors===0&&lowConfidenceCorrect===0?'CALIBRATED':'MIXED';
   const aggressive=overreadAdvantage+underestimatedDeficit;
   const cautious=missedStrongWindow+overcautious;
   const profile:GameReadProfile=
@@ -131,7 +139,7 @@ export function buildGameReadCalibration(input:{reads?:LiveReadCheckpoint[]|null
   return{
     version:1,active:items.length>0,totalReads:items.length,gradedReads:graded.length,supportedReads:supported,
     reviewReads:graded.length-supported,notVerifiable:items.length-graded.length,supportRate,profile,
-    overreadAdvantage,missedStrongWindow,underestimatedDeficit,overcautious,items,
+    overreadAdvantage,missedStrongWindow,underestimatedDeficit,overcautious,highConfidenceErrors,lowConfidenceCorrect,confidenceProfile,items,
     headline:graded.length?String(supported)+'/'+String(graded.length)+' GAME-STATE READS SUPPORTED':String(items.length)+' GAME-STATE READ'+(items.length===1?'':'S')+' RECORDED · NONE GRADED',
     nextFocus,
     boundary:'READ CALIBRATION USES ONLY PLAYER-FROZEN CHECKPOINTS AND THE CLOSEST RECORDED VISIBLE-STATE EVIDENCE. THREAT AND PRIORITY ANSWERS ARE PRESERVED AS REFLECTION DATA UNLESS A FUTURE EVIDENCE MODEL CAN VERIFY THEM.',
