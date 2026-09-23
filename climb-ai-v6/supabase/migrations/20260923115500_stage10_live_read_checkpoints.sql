@@ -7,6 +7,7 @@ create table if not exists public.live_player_read_checkpoints (
   checkpoint_minute integer not null check (checkpoint_minute in (5,10,15)),
   game_seconds numeric not null,
   state_read text not null check (state_read in ('AHEAD','EVEN','BEHIND')),
+  confidence_read text null check (confidence_read in ('HIGH','MEDIUM','LOW')),
   threat_read text null,
   priority_read text null,
   source text not null default 'PLAYER_CHECKPOINT',
