@@ -83,10 +83,6 @@ export interface BetaOperationsSnapshot{
   buildCoverage:{stampedEvents:number;unstampedEvents:number;latestBuild:string|null};
 }
 
-const STATE_META:Record<BetaParticipantState,{priority:number;surface:string;blocker:string;action:string;metric:BetaMetricKey;experiment:string;hypothesis:string;delta:number}>={
-  NO_ACTIVATION_TEMETRY_PLACEHOLDER:null as never,
-} as never;
-
 const META:Record<BetaParticipantState,{priority:number;surface:string;blocker:string;action:string;metric:BetaMetricKey;experiment:string;hypothesis:string;delta:number}>={
   NO_ACTIVATION_TELEMETRY:{priority:78,surface:'ONBOARDING',blocker:'Profile exists but the current activation journey has not been observed.',action:'Run or repair the current onboarding path so this player produces a measurable activation trail.',metric:'activationToGradePct',experiment:'Repair measurable first-value activation',hypothesis:'If the current onboarding path reaches a useful first coaching read without a dead end, more activated players will reach their first OP Grade.',delta:15},
   NEEDS_FIRST_VALUE:{priority:80,surface:'ACTIVATION',blocker:'Signup happened, but the player never reached a first useful coaching read.',action:'Inspect the exact activation step after signup and remove the first-value delay or dead end.',metric:'activationToGradePct',experiment:'Shorten time to first coaching value',hypothesis:'If the first analysis is clearer and faster, more activated players will reach their first OP Grade.',delta:15},
