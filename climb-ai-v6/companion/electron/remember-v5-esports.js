@@ -227,6 +227,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       climbMission:coach?._climbMission||null,
       intentProbe:coach?._intentProbe||null,
       coachingStrategy:coach?._coachingStrategy||null,
+      causalCoachRoute:coach?._causalCoachRoute||null,
       experimentSchedule:coach?._experimentSchedule||null,
       coachIntervention:coach?._coachIntervention||null,
       matchContract:coach?._matchContract||null,
@@ -1016,6 +1017,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._climbMission=response?.climbMission||null;
         enrichedCoach._intentProbe=response?.intentProbe||null;
         enrichedCoach._coachingStrategy=response?.coachingStrategy||null;
+        enrichedCoach._causalCoachRoute=response?.causalCoachRoute||null;
         enrichedCoach._experimentSchedule=response?.experimentSchedule||null;
         enrichedCoach._coachIntervention=response?.coachIntervention||null;
         enrichedCoach._matchContract=response?.matchContract||null;
