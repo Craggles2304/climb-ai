@@ -68,6 +68,7 @@ const transfer:any={
   targetMove:'APPLY THE PRINCIPLE WITHOUT THE OLD CHAMPION CUE.',
   principle:'FIRST CONTACT DOES NOT REMOVE THE REMAINING THREAT.',
   trigger:'WHEN THE FIRST ACCESS LAYER COMMITS.',
+  whyNow:'This draft gives the learned principle a novel champion/context test.',
 };
 
 test('Match Contract gives one coherent player-facing hierarchy',()=>{
@@ -127,4 +128,31 @@ test('Autonomy mode keeps the strategic plan visible but fades the learning answ
   assert.equal(contract.scaffolding.deliveryPolicy,'NONE');
   assert.equal(contract.scaffolding.revealSpecificCueAfterIntent,false);
   assert.equal(contract.strategic.ourWinCondition,'FRONT TO BACK · PROTECT JINX');
+});
+
+
+test('Coach Memory carries verified prior-game evidence into the next Match Contract',()=>{
+  const historyRows:any[]=[{
+    createdAt:'2026-09-22T20:00:00.000Z',
+    analysis:{
+      version:1,
+      decisionGraph:{summary:{matchContract:{
+        active:true,
+        status:'MISSED',
+        behaviour:'Carry Preservation',
+        mode:'CURRICULUM_REP',
+        proof:'The second-access branch was missed in the verified decision window.',
+      }}},
+    },
+  }];
+  const contract=buildCompanionMatchContract({
+    champion:'Jinx',role:'ADC',rank:'Gold IV',coach,playbook,
+    personalTrap:null,mission,scenarioPrime:null,transferPrime:transfer,
+    coachIntervention:null,coachingStrategy:{deliveryPolicy:'LIGHT'} as any,
+    experimentSchedule:null,intentProbe:null,historyRows,
+  });
+  assert.equal(contract.continuity.available,true);
+  assert.equal(contract.continuity.previousStatus,'MISSED');
+  assert.equal(contract.continuity.previousBehaviour,'Carry Preservation');
+  assert.match(contract.continuity.whyNow,/novel champion\/context test/i);
 });
