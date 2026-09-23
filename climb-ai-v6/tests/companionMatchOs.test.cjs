@@ -9,6 +9,7 @@ const os=fs.readFileSync(path.join(root,'companion','electron','remember-v6-matc
 const bridge=fs.readFileSync(path.join(root,'companion','electron','remember-v5-esports.js'),'utf8');
 const review=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
+const contract=fs.readFileSync(path.join(root,'lib','companionMatchContract.ts'),'utf8');
 
 test('Companion loads Match OS after the existing deep coaching surface',()=>{
   assert.ok(loader.includes("load('remember-v5-esports.js')"));
@@ -30,9 +31,10 @@ test('Match OS compresses the League system into one live contract',()=>{
 
 test('Match OS changes display phase by clock only and never auto-selects tactical state',()=>{
   assert.ok(os.includes('phaseFor(contract,lastDetail.gameTime)'));
-  assert.ok(os.includes('OP CLIMB DOES NOT AUTO-SELECT YOUR GAME STATE'));
-  assert.ok(route.includes('usesLiveTelemetryForTactics:false'));
-  assert.ok(route.includes('clockOnlyPhaseProgression:true'));
+  assert.ok(contract.includes('OP CLIMB DOES NOT AUTO-SELECT YOUR GAME STATE'));
+  assert.ok(contract.includes('usesLiveTelemetryForTactics:false'));
+  assert.ok(contract.includes('clockOnlyPhaseProgression:true'));
+  assert.ok(contract.includes('playerChoosesGameState:true'));
 });
 
 test('existing Companion bridge carries and persists the frozen Match Contract',()=>{
