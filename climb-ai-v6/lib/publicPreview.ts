@@ -81,7 +81,7 @@ export function buildPublicPreview(matchesInput:Match[],rankLabel:string):Public
     insights.push({
       label:'YOUR CS @ 10',
       value:String(value),
-      detail:`Average across ${cs10.length} recent ranked game${cs10.length===1?'':'s'} with timeline data. This is your own baseline, not a fabricated rank average.`,
+      detail:`Average across ${cs10.length} recent ranked game${cs10.length===1?'':'s'} with timeline data. This is your own baseline, not an external rank benchmark.`,
       tone:value>=70?'GOOD':value<55?'WATCH':'NEUTRAL',
     });
   }
