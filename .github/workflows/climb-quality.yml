@@ -31,7 +31,7 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
       - name: Companion desktop syntax
-        run: node --check companion/electron/main.cjs && node --check companion/electron/renderer.js && node --check companion/electron/preload.cjs && node --check companion/electron/remember-v2.js && node --check companion/electron/remember-v6-match-os.js && node --check companion/electron/review-v2.js && node --check companion/electron/plan-recognition-review.cjs && node --check companion/electron/review-v2-core.js && node --check companion/electron/review-esports.js && node --check companion/src/main.mjs && node --test tests/companionPhaseOrder.test.cjs tests/companionRoleInference.test.cjs tests/companionStrategy.test.cjs tests/companionStrategyAccess.test.cjs tests/universalRoleStrategy.test.cjs tests/rememberHud.test.cjs tests/companionMatchOs.test.cjs tests/reviewEsportsUi.test.cjs tests/planRecognitionReview.test.cjs
+        run: node --check companion/electron/main.cjs && node --check companion/electron/renderer.js && node --check companion/electron/preload.cjs && node --check companion/electron/remember-v2.js && node --check companion/electron/remember-v6-match-os.js && node --check companion/electron/remember-v7-read-checkpoints.js && node --check companion/electron/review-v2.js && node --check companion/electron/plan-recognition-review.cjs && node --check companion/electron/review-v2-core.js && node --check companion/electron/review-esports.js && node --check companion/src/main.mjs && node --test tests/companionPhaseOrder.test.cjs tests/companionRoleInference.test.cjs tests/companionStrategy.test.cjs tests/companionStrategyAccess.test.cjs tests/universalRoleStrategy.test.cjs tests/rememberHud.test.cjs tests/companionMatchOs.test.cjs tests/liveReadCheckpoints.test.cjs tests/reviewEsportsUi.test.cjs tests/planRecognitionReview.test.cjs
       - name: Adaptive ILP evidence regressions
         run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/decisionTwin.test.ts tests/decisionTwinV2.test.ts tests/decisionSimulation.test.ts tests/scenarioMemory.test.ts tests/decisionTransfer.test.ts tests/climbCurriculum.test.ts tests/climbRepLadder.test.ts tests/climbMissionDesign.test.ts tests/decisionPremortem.test.ts tests/decisionGraph.test.ts tests/learningJourney.test.ts tests/ilpCloudMerge.test.ts tests/ilpExplainability.test.ts
       - name: CLIMB Coach Twin adaptation
@@ -54,6 +54,8 @@ jobs:
         run: node --import tsx --test tests/climbCareerExperience.test.ts
       - name: Stage 9 Companion Match OS
         run: node --import tsx --test tests/companionMatchContract.test.ts
+      - name: Stage 10 Live Read Calibration
+        run: node --import tsx --test tests/gameReadCalibration.test.ts
       - name: Stage 4 beta hardening
         run: node --import tsx --test tests/betaHardening.test.ts
       - name: Stage 5 founding beta validation
