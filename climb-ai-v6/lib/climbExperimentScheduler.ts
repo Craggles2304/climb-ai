@@ -5,6 +5,7 @@ import type {ClimbCoachingStrategyReview} from './climbCoachingStrategy';
 import {summarizeIntentGapHistory,type ClimbIntentDiagnosis} from './climbIntentGap';
 import {buildClimbAutonomyProfile,type ClimbAutonomyState} from './climbAutonomy';
 import {buildClimbInterventionValueProfile,type ClimbInterventionValueState} from './climbInterventionValue';
+import type {LearningExperimentBias} from './climbLearningVelocity';
 
 export type ClimbExperimentStatus='DEFERRED'|'SCHEDULED';
 export type ClimbExperimentType='SUPPORTED_RETEST'|'FADE_HOLDOUT'|'DIAGNOSTIC_RETEST'|'AUTONOMY_RECHECK'|'MATCHED_COMPARISON';
@@ -177,6 +178,7 @@ function schedule(input:{
 export function buildClimbExperimentSchedule(input:{
   rows:HistoryAnalysisRow[];
   mission:ClimbMatchMission|null|undefined;
+  learningBias?:LearningExperimentBias|null;
 }):ClimbExperimentSchedule|null{
   const mission=input.mission;
   if(!mission||mission.status!=='READY')return null;
@@ -332,7 +334,7 @@ export function buildClimbExperimentSchedule(input:{
     });
   }
 
-  const chooseFade=counts.supported>counts.faded;
+  const chooseFade=counts.supported>counts.faded||(counts.supported===counts.faded&&input.learningBias==='FADE_WHEN_SAFE');
   return schedule({
     mission,status:'SCHEDULED',type:'MATCHED_COMPARISON',policy:chooseFade?'NONE':'LIGHT',
     supported:counts.supported,faded:counts.faded,pairs:counts.pairs,
@@ -340,8 +342,12 @@ export function buildClimbExperimentSchedule(input:{
     autonomyState,valueState,informationGain:'MEDIUM',
     hypothesis:'The current matched cell still has comparison uncertainty.',
     informationNeed:chooseFade
-      ?'Add the under-represented faded condition to balance the matched comparison.'
-      :'Add the under-represented supported condition to balance the matched comparison.',
+      ?(counts.supported===counts.faded&&input.learningBias==='FADE_WHEN_SAFE'
+        ?'Learning Velocity has enough stable independence evidence to use the safe tie-breaker for a faded comparator.'
+        :'Add the under-represented faded condition to balance the matched comparison.')
+      :(counts.supported===counts.faded&&input.learningBias==='CONSOLIDATE'
+        ?'Learning Velocity is still in consolidation, so use the safe tie-breaker for one concise supported comparator.'
+        :'Add the under-represented supported condition to balance the matched comparison.'),
     safetyReason:'No higher-priority knowledge, regression or support-dependence gate blocks a matched comparison at this rep difficulty.',
     successRead:'The observed rep reduces support-condition imbalance and increases the information available to Intervention Value.',
   });
