@@ -12,6 +12,7 @@ import {buildClimbInterventionValueProfile} from '@/lib/climbInterventionValue';
 import {buildDecisionCausalProfile} from '@/lib/decisionCausalProfile';
 import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/playerCoachingIdentity';
 import {buildAdaptiveCoachingSession,type AdaptiveCoachingSession} from '@/lib/climbAdaptiveCoachingSession';
+import {buildLearningVelocityProfile,type LearningVelocityProfile} from '@/lib/climbLearningVelocity';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -54,6 +55,7 @@ export async function GET(req:Request){
     const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
     const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
     const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
+    const previousLearningVelocity=((learningResult.data?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
 
     const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map((row:any)=>({
       champion:String(row.champion||'Unknown'),
@@ -71,7 +73,8 @@ export async function GET(req:Request){
     const interventionValue=buildClimbInterventionValueProfile(rows);
     const causalProfile=buildDecisionCausalProfile(rows);
     const playerCoachingIdentity=buildPlayerCoachingIdentity({rows,twin,curriculum,coachTwin,causalProfile,autonomyProfile,interventionValue,previous:previousPlayerCoachingIdentity});
-    const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession});
+    const learningVelocity=buildLearningVelocityProfile({rows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity});
+    const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy});
     return NextResponse.json({
       twin,
       scenarioMemory,
@@ -82,9 +85,10 @@ export async function GET(req:Request){
       interventionValue,
       causalProfile,
       playerCoachingIdentity,
+      learningVelocity,
       adaptiveCoachingSession,
       grounding:'climb-profile+curriculum+transfer-learning+scenario-memory+historical-pro-analysis+decision-graph+premortem-review',
-      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','causal_profile','player_coaching_identity','adaptive_coaching_session','premortem_review','coaching_response'],
+      factsUsed:['historical_pro_analysis','decision_graph','situation_patterns','scenario_memory','decision_transfer','climb_curriculum','coach_twin','climb_autonomy','intervention_value','intent_gap','coaching_strategy','causal_profile','player_coaching_identity','learning_velocity','adaptive_coaching_session','premortem_review','coaching_response'],
     });
   }catch(error){
     console.error('[decision-twin-v2] request failed',error);
