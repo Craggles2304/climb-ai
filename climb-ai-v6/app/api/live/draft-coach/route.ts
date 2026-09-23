@@ -31,6 +31,7 @@ import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/pla
 import {buildAdaptiveCoachingSession,applyAdaptiveCoachingSession,type AdaptiveCoachingSession} from '@/lib/climbAdaptiveCoachingSession';
 import {buildClimbInterventionValueProfile} from '@/lib/climbInterventionValue';
 import {buildLearningVelocityProfile,learningVelocityExperimentBias,selectLearningVelocityCoachMethod,type LearningVelocityProfile} from '@/lib/climbLearningVelocity';
+import {buildSkillTransferGraph,selectSkillBridgePrime,type SkillTransferGraph,type SkillBridgePrime} from '@/lib/climbSkillTransferGraph';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -257,7 +258,8 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const scenarioMemory=buildScenarioMemory(rows);
   const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory);
   const decisionTwinV2=buildDecisionTwinV2(rows);
-  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum);
+  const skillTransferGraph=buildSkillTransferGraph({rows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer});
+  const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum,skillTransferGraph);
   const coachTwin=buildClimbCoachTwin(rows);
   const storedCausalProfile=((learningResult?.data?.recent_change as any)?.causalProfile??null);
   const causalProfile=storedCausalProfile?.version===1?storedCausalProfile:buildDecisionCausalProfile(rows);
@@ -269,7 +271,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const mission=curriculumLesson
     ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
     :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession,historyRows:rows};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,skillTransferGraph,curriculum,coachTwin,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession,historyRows:rows};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -429,7 +431,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,playerCoachingIdentity:PlayerCoachingIdentity,learningVelocity:LearningVelocityProfile,adaptiveCoachingSession:AdaptiveCoachingSession,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,playerCoachingIdentity:PlayerCoachingIdentity,learningVelocity:LearningVelocityProfile,skillTransferGraph:SkillTransferGraph,adaptiveCoachingSession:AdaptiveCoachingSession,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -456,6 +458,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- PLAYER COACHING IDENTITY is the persisted coaching contract. Use its Coach Brief to choose explanation order, question style and amount of scaffolding; never let it override the actual draft, carry map or enemy threat structure.',
       '- A BUILDING or EMERGING coaching identity is descriptive only. Do not invent a learning preference, root cause or support need that the identity has not earned.',
       '- LEARNING VELOCITY controls coaching cadence, repetition targets and evidence-backed format retests. It may change WHEN OP CLIMB tests independence, never the evidence required for mastery or transfer.',
+      '- SKILL TRANSFER GRAPH connects related decision skills. Use it to explain or sequence a direct target test, never to inherit mastery or award target progress from a source skill.',
       '- Coaching-method velocity signals are associations, not proof that a wording format caused faster learning.',
       '- ADAPTIVE COACHING SESSION is the current multi-game development block. Respect its nextGameBrief for coaching depth and emphasis. A session phase may change HOW the lesson is delivered, but never fabricate transfer, graduation or draft relevance.',
       '- If PERSONAL TRAP EVIDENCE has status READY, weave exactly one short personal cue into the strategically correct plan. It is historical evidence, not permission to distort the draft read.',
@@ -478,6 +481,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
       'PLAYER COACHING IDENTITY: '+JSON.stringify(playerCoachingIdentity),
       'LEARNING VELOCITY: '+JSON.stringify(learningVelocity),
+      'SKILL TRANSFER GRAPH: '+JSON.stringify(skillTransferGraph),
+      'SKILL GRAPH USE RULE: A graph edge may explain what to test next. Only direct target-skill evidence can change target progress. Observed links are associations, not causal claims.',
       'LEARNING VELOCITY USE RULE: Follow explanationDensity and method/cadence guidance only when evidence-gated. Do not describe pace as personality, talent or fixed ability.',
       'ADAPTIVE COACHING SESSION: '+JSON.stringify(adaptiveCoachingSession),
       'SESSION USE RULE: Treat nextGameBrief as the active session phase. Do not skip evidence gates, call a transfer test when transfer is locked, or award graduation from this draft response.',
@@ -536,7 +541,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity;learningVelocity:LearningVelocityProfile;adaptiveCoachingSession:AdaptiveCoachingSession;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity;learningVelocity:LearningVelocityProfile;skillTransferGraph:SkillTransferGraph;skillBridgePrime:SkillBridgePrime|null;adaptiveCoachingSession:AdaptiveCoachingSession;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -564,6 +569,8 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       ifBehind:input.coach.ifBehind,
       playerCoachingIdentity:input.playerCoachingIdentity,
       learningVelocity:input.learningVelocity,
+      skillTransferGraph:input.skillTransferGraph,
+      skillBridgePrime:input.skillBridgePrime,
       adaptiveCoachingSession:input.adaptiveCoachingSession,
       personalTrap:input.personalTrap,
       decisionPremortem:input.decisionPremortem,
@@ -659,7 +666,7 @@ export async function POST(req:NextRequest){
     const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,context.playerCoachingIdentity,context.learningVelocity,context.adaptiveCoachingSession,personalTrap,decisionPremortem,carryMap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,context.playerCoachingIdentity,context.learningVelocity,context.skillTransferGraph,context.adaptiveCoachingSession,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
@@ -691,6 +698,7 @@ export async function POST(req:NextRequest){
       simulation:decisionSimulation,
     });
     const learningContract=context.curriculum.autonomous?.activeContract??null;
+    const skillBridgePrime=selectSkillBridgePrime({graph:context.skillTransferGraph,situationContext,behaviourKey:context.curriculum.currentLesson?.behaviourKey??null});
     const transferDirective=learningContract?.testDirective??null;
     const decisionTransferPrime=selectDecisionTransferPrime({
       transfer:context.decisionTransfer,
@@ -774,6 +782,8 @@ export async function POST(req:NextRequest){
       coach,
       playerCoachingIdentity:context.playerCoachingIdentity,
       learningVelocity:context.learningVelocity,
+      skillTransferGraph:context.skillTransferGraph,
+      skillBridgePrime,
       adaptiveCoachingSession:context.adaptiveCoachingSession,
       personalTrap,
       decisionPremortem,
@@ -800,6 +810,8 @@ export async function POST(req:NextRequest){
       coach,
       playerCoachingIdentity:context.playerCoachingIdentity,
       learningVelocity:context.learningVelocity,
+      skillTransferGraph:context.skillTransferGraph,
+      skillBridgePrime,
       adaptiveCoachingSession:context.adaptiveCoachingSession,
       personalTrap,
       decisionPremortem,
