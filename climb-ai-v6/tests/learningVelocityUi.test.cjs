@@ -29,7 +29,7 @@ test('Draft Coach consumes velocity for cadence, safe experiment choice and coac
   assert.ok(draft.includes('learningVelocityExperimentBias'));
   assert.ok(draft.includes('selectLearningVelocityCoachMethod'));
   assert.ok(draft.includes('learningVelocity:input.learningVelocity'));
-  assert.ok(draft.includes('learningVelocity:context.learningVelocity'));
+  assert.ok(draft.includes('learningVelocity:proModel?context.learningVelocity:null'));
 });
 
 test('Coach Authority shares the same velocity policy',()=>{
