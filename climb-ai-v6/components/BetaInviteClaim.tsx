@@ -2,6 +2,7 @@
 import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {useRouter} from 'next/navigation';
+import {track} from '@/lib/analytics';
 
 export function BetaInviteClaim({token}:{token:string}){
   const router=useRouter();
@@ -23,7 +24,7 @@ export function BetaInviteClaim({token}:{token:string}){
       const response=await fetch('/api/beta/claim',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({token})});
       const body=await response.json();
       if(!response.ok)throw new Error(body.error||'Could not claim your beta place.');
-      setTester({cohort:Number(body.cohort),status:'ACTIVE'});
+      setTester({cohort:Number(body.cohort),status:'ACTIVE'});track('beta_invite_claimed',{cohort:Number(body.cohort)});
     }catch(raw){setError(raw instanceof Error?raw.message:'Could not claim your beta place.')}
     finally{setBusy(false)}
   };
