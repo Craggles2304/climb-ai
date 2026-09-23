@@ -219,6 +219,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       laneOpponent:clean(coach?.laneOpponent),
       laneOpponents:Array.isArray(coach?.laneOpponents)?coach.laneOpponents.map(clean).filter(Boolean).slice(0,2):[],
       lanePartner:clean(coach?.lanePartner),
+      playerCoachingIdentity:coach?._playerCoachingIdentity||null,
       personalTrap:coach?._personalTrap||null,
       decisionPremortem:coach?._decisionPremortem||coach?._playbook?.decisionPremortem||null,
       decisionSimulation:coach?._decisionSimulation||null,
@@ -240,7 +241,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       capturedAt:same&&previous?.capturedAt?previous.capturedAt:new Date().toISOString(),
       updatedAt:new Date().toISOString(),
     };
-    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next))}catch{}
+    try{localStorage.setItem(DEEP_PLAN_STORAGE_KEY,JSON.stringify(next));window.dispatchEvent(new CustomEvent('op-climb-player-identity',{detail:next.playerCoachingIdentity||null}))}catch{}
   }
 
   function persistBranchSelection(branch){
@@ -1029,6 +1030,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
         enrichedCoach._playbookPolicy=response?.playbookPolicy||null;
         enrichedCoach._coachSource=clean(response?.source)||'rules';
         enrichedCoach._coachQuality=response?.coachQuality||null;
+        enrichedCoach._playerCoachingIdentity=response?.playerCoachingIdentity||null;
         enrichedCoach._personalTrap=response?.personalTrap||null;
         enrichedCoach._decisionPremortem=response?.decisionPremortem||response?.playbook?.decisionPremortem||null;
         enrichedCoach._decisionSimulation=response?.decisionSimulation||null;
