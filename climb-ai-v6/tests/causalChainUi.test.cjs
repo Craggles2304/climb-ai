@@ -21,6 +21,7 @@ test('causal review exposes the full read priority action result chain',()=>{
   assert.ok(ui.includes('NEXT VERIFIED DECISION'));
   assert.ok(ui.includes('OBSERVED RESULT'));
   assert.ok(ui.includes('NEXT COACHING LAYER'));
+  assert.ok(ui.includes('ROOT CAUSE MEMORY · MULTI-GAME'));
 });
 
 test('causal engine keeps evidence boundaries and distinct root-cause classes',()=>{
@@ -31,6 +32,16 @@ test('causal engine keeps evidence boundaries and distinct root-cause classes',(
   assert.ok(engine.includes('CLEAN_CHAIN'));
   assert.ok(engine.includes('NOT_VERIFIABLE'));
   assert.ok(engine.includes('IT DOES NOT CLAIM THE EARLIER READ OR PRIORITY CAUSED THE LATER RESULT'));
+});
+
+test('Stage 11 returns repeated causal memory through the live review path',()=>{
+  const liveRepo=fs.readFileSync(path.join(root,'lib','server','liveTrackerRepository.ts'),'utf8');
+  const learningRepo=fs.readFileSync(path.join(root,'lib','server','proLearningRepository.ts'),'utf8');
+  const route=fs.readFileSync(path.join(root,'app','api','live','companion-review','route.ts'),'utf8');
+  assert.ok(learningRepo.includes('buildDecisionCausalProfile'));
+  assert.ok(learningRepo.includes('getDecisionCausalProfile'));
+  assert.ok(liveRepo.includes('causalProfile'));
+  assert.ok(route.includes('causalProfile:latest.causalProfile??null'));
 });
 
 test('Decision Graph owns Stage 11 causal reconstruction',()=>{
