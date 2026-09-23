@@ -64,8 +64,6 @@ jobs:
         run: node --import tsx --test tests/playerCoachingIdentity.test.ts
       - name: Stage 14 Adaptive Coaching Sessions
         run: node --import tsx --test tests/adaptiveCoachingSession.test.ts
-      - name: Stage 15 Learning Velocity
-        run: node --import tsx --test tests/learningVelocity.test.ts
       - name: Stage 15 Learning Velocity + Coaching Effectiveness
         run: node --import tsx --test tests/learningVelocity.test.ts
       - name: Stage 4 beta hardening
