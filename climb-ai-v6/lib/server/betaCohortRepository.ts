@@ -132,6 +132,19 @@ export async function getBetaTesterStatus(userId:string){
   return data?{cohort:Number(data.cohort),status:data.status as BetaTesterStatus,joinedAt:String(data.joined_at)}:null;
 }
 
+
+export async function updateBetaTesterStatus(input:{userId:string;status:BetaTesterStatus;notes?:string|null}){
+  const db=getSupabaseAdmin();
+  if(!db)throw new Error('Supabase admin storage is not configured.');
+  const {data,error}=await db.from('beta_testers').update({
+    status:input.status,
+    status_updated_at:new Date().toISOString(),
+    notes:(input.notes||'').trim().slice(0,2000)||null,
+  }).eq('user_id',input.userId).select('user_id,status').single();
+  if(error)throw new Error(error.message);
+  return data;
+}
+
 export async function submitBetaReport(input:{
   userId:string;
   kind:'BUG'|'FRICTION'|'COACHING';
