@@ -167,10 +167,11 @@ export function BroadcastLanding(){
     }catch(err){
       const message=err instanceof Error?err.message:'Could not analyse those games.';
       setError(message);
-      runSample(entered);
+      setBusy(false);
+      window.setTimeout(()=>runSample(entered),0);
       track('public_riot_preview_failed',{placement:'broadcast_home',region,message});
     }finally{
-      if(available!==false)setBusy(false);
+      setBusy(false);
     }
   };
 
