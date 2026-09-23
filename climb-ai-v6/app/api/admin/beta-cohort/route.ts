@@ -6,6 +6,7 @@ import {
   getBetaCohortAdminSnapshot,
   revokeBetaInvite,
   updateBetaReport,
+  updateBetaTesterStatus,
 } from '@/lib/server/betaCohortRepository';
 
 export const runtime='nodejs';
@@ -38,6 +39,13 @@ const revokeSchema=z.object({
   action:z.literal('REVOKE_INVITE'),
   id:z.string().uuid(),
 });
+const testerSchema=z.object({
+  action:z.literal('UPDATE_TESTER'),
+  userId:z.string().uuid(),
+  status:z.enum(['ACTIVE','PAUSED','COMPLETED','REMOVED']),
+  notes:z.string().max(2000).optional().default(''),
+});
+
 const reportSchema=z.object({
   action:z.literal('UPDATE_REPORT'),
   id:z.string().uuid(),
@@ -77,6 +85,12 @@ export async function PATCH(req:NextRequest){
   if(revoke.success){
     try{return NextResponse.json({ok:true,result:await revokeBetaInvite(revoke.data.id)})}
     catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:'Could not revoke invite.'},{status:409})}
+  }
+
+  const tester=testerSchema.safeParse(raw);
+  if(tester.success){
+    try{return NextResponse.json({ok:true,result:await updateBetaTesterStatus({userId:tester.data.userId,status:tester.data.status,notes:tester.data.notes})})}
+    catch(error){return NextResponse.json({ok:false,error:error instanceof Error?error.message:'Could not update beta tester.'},{status:409})}
   }
 
   const report=reportSchema.safeParse(raw);
