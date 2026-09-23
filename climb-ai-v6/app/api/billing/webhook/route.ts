@@ -24,13 +24,24 @@ export async function POST(req:Request){
     }
 
     if(['customer.subscription.created','customer.subscription.updated','customer.subscription.deleted'].includes(String(event.type))){
-      await syncSubscription(object);
+      const subscription=await latestSubscription(object);
+      await syncSubscription(subscription);
     }
 
     return NextResponse.json({received:true});
   }catch(error){
     console.error('[stripe-webhook]',error);
     return NextResponse.json({error:'Webhook processing failed.'},{status:500});
+  }
+}
+
+async function latestSubscription(object:any){
+  const id=idOf(object?.id);
+  if(!id)return object;
+  try{return await getStripeSubscription(id)}
+  catch(error){
+    console.warn('[stripe-webhook] latest subscription lookup failed; using signed event snapshot',error);
+    return object;
   }
 }
 
