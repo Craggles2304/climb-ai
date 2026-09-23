@@ -201,8 +201,8 @@ export function runClimbAutonomousCurriculumBench():ClimbAutonomousCurriculumBen
   },hold);
   results.push(result(
     'fade-support-at-stabilise',
-    stabilise.action==='FADE_SUPPORT'&&stabilise.activeContract?.supportPolicy==='LIGHT'&&stabilise.activeContract?.id===start.activeContract?.id,
-    'FADE_SUPPORT / LIGHT / same contract',
+    stabilise.action==='FADE_SUPPORT'&&stabilise.activeContract?.supportPolicy==='FADED'&&stabilise.activeContract?.id===start.activeContract?.id,
+    'FADE_SUPPORT / FADED / same contract',
     stabilise.action+' / '+String(stabilise.activeContract?.supportPolicy)+' / '+String(stabilise.activeContract?.id),
     'V6 should reduce scaffolding as local execution stabilises without changing the objective.',
   ));
