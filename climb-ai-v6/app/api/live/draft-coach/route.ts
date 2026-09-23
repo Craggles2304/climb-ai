@@ -27,6 +27,7 @@ import {buildDecisionTransfer,selectDecisionTransferPrime,type DecisionTransferP
 import {buildCompanionMatchContract,type CompanionMatchContract} from '@/lib/companionMatchContract';
 import {buildDecisionCausalProfile} from '@/lib/decisionCausalProfile';
 import {buildCausalCoachRoute,type CausalCoachRoute} from '@/lib/causalCoachRouter';
+import {buildPlayerCoachingIdentity,type PlayerCoachingIdentity} from '@/lib/playerCoachingIdentity';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -240,6 +241,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const task=tasks[0]??null;
   const storedTwin=learningResult?.data?.learning_identity;
   const previousCurriculum=((learningResult?.data?.recent_change as any)?.curriculum??null);
+  const previousPlayerCoachingIdentity=((learningResult?.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
   const rows:HistoryAnalysisRow[]=(historyResult?.data??[]).map((row:any)=>({
     champion:clean(row?.champion)||'Unknown',
     role:clean(row?.role)||null,
@@ -254,11 +256,12 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const coachTwin=buildClimbCoachTwin(rows);
   const storedCausalProfile=((learningResult?.data?.recent_change as any)?.causalProfile??null);
   const causalProfile=storedCausalProfile?.version===1?storedCausalProfile:buildDecisionCausalProfile(rows);
+  const playerCoachingIdentity=buildPlayerCoachingIdentity({rows,twin:decisionTwinV2,curriculum,coachTwin,causalProfile,previous:previousPlayerCoachingIdentity});
   const curriculumLesson=curriculum.status==='ACTIVE'?curriculum.currentLesson:null;
   const mission=curriculumLesson
     ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
     :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin,causalProfile,historyRows:rows};
+  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,curriculum,coachTwin,causalProfile,playerCoachingIdentity,historyRows:rows};
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -418,7 +421,7 @@ function sanitizeCoach(parsed:DraftCoach,enemies:Player[],fallback:DraftCoach){
 }
 
 
-async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
+async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Player[],fallback:DraftCoach,rank:string,mission:any,playerCoachingIdentity:PlayerCoachingIdentity,personalTrap:PersonalTrap,decisionPremortem:DecisionPremortem,carryMap:DraftCarryMap,kits:KitFact[]){
   if(!process.env.OPENAI_API_KEY)return null;
   try{
     const system=[
@@ -442,6 +445,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       '- The five steps must form one causal win path, not five unrelated tips.',
       '- Do not say PLAY MID GAME, PLAY CLEAN, STAY CONNECTED, FARM CLEAN or similar unless the sentence also names the champion/ability/condition that makes it correct.',
       '- The output must be useful enough that the player could repeat the plan back in champion select.',
+      '- PLAYER COACHING IDENTITY is the persisted coaching contract. Use its Coach Brief to choose explanation order, question style and amount of scaffolding; never let it override the actual draft, carry map or enemy threat structure.',
+      '- A BUILDING or EMERGING coaching identity is descriptive only. Do not invent a learning preference, root cause or support need that the identity has not earned.',
       '- If PERSONAL TRAP EVIDENCE has status READY, weave exactly one short personal cue into the strategically correct plan. It is historical evidence, not permission to distort the draft read.',
       '- If PERSONAL TRAP EVIDENCE is MASTERED, do not re-teach it as an active weakness. Preserve the learned behaviour and coach the next real draft requirement.',
       '- If PERSONAL TRAP EVIDENCE is BUILDING or NONE, do not invent a personal weakness or claim a repeated tendency.',
@@ -460,6 +465,8 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
       'OUR TEAM: '+JSON.stringify(ours),
       'ENEMY TEAM: '+JSON.stringify(enemies),
       'CURRENT DEVELOPMENT FOCUS: '+JSON.stringify(mission),
+      'PLAYER COACHING IDENTITY: '+JSON.stringify(playerCoachingIdentity),
+      'COACHING IDENTITY USE RULE: Follow coachBrief for HOW to coach this player, while the draft decides WHAT the strategic plan is. Never turn the identity into a personality or ability judgment.',
       'CURRICULUM USE RULE: Do not force the current development focus into an irrelevant draft. Reinforce it only when this composition can naturally express that decision; the frozen game plan and enemy threat structure remain primary.',
       'PERSONAL TRAP EVIDENCE: '+JSON.stringify(personalTrap),
       'DECISION PRE-MORTEM: '+JSON.stringify(decisionPremortem),
@@ -514,7 +521,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
   }
 }
 
-async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
+async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity;personalTrap:PersonalTrap;decisionPremortem:DecisionPremortem;decisionSimulation:DecisionSimulation;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
       .select('id,context,last_seen_at,started_at')
@@ -540,6 +547,7 @@ async function persistLockedCoachForPregame(db:any,device:any,input:{champion:st
       objectiveSetup:input.coach.objectiveSetup??null,
       never:input.coach.never,
       ifBehind:input.coach.ifBehind,
+      playerCoachingIdentity:input.playerCoachingIdentity,
       personalTrap:input.personalTrap,
       decisionPremortem:input.decisionPremortem,
       decisionSimulation:input.decisionSimulation,
@@ -634,7 +642,7 @@ export async function POST(req:NextRequest){
     const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,personalTrap,decisionPremortem,carryMap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,context.mission,context.playerCoachingIdentity,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
       return NextResponse.json({
@@ -738,6 +746,7 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       source:ai?'ai':'rules',
       coach,
+      playerCoachingIdentity:context.playerCoachingIdentity,
       personalTrap,
       decisionPremortem,
       decisionSimulation,
@@ -761,6 +770,7 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
+      playerCoachingIdentity:context.playerCoachingIdentity,
       personalTrap,
       decisionPremortem,
       decisionSimulation,
