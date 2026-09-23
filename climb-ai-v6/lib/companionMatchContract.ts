@@ -160,7 +160,7 @@ export function buildCompanionMatchContract(input:{
   );
   const success=compact(
     input.mission?.successDefinition
-    ||input.transferPrime?.successDefinition
+    ||(input.transferPrime?.principle?('APPLY THE PRINCIPLE CLEANLY: '+input.transferPrime.principle):'')
     ||'EXECUTE THE CLEAN BRANCH WHEN THE PLANNED DECISION WINDOW APPEARS.',
     180,
   );
