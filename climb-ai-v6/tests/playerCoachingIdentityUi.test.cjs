@@ -26,7 +26,7 @@ test('Draft Coach consumes the Coach Brief and freezes the identity into pregame
   assert.ok(draft.includes('PLAYER COACHING IDENTITY: '));
   assert.ok(draft.includes('COACHING IDENTITY USE RULE:'));
   assert.ok(draft.includes('playerCoachingIdentity:input.playerCoachingIdentity'));
-  assert.ok(draft.includes('playerCoachingIdentity:proModel?context.playerCoachingIdentity:null'));
+  assert.ok(draft.includes('playerCoachingIdentity:proModel?coachingContext.playerCoachingIdentity:null'));
   assert.ok(remember.includes('_playerCoachingIdentity=response?.playerCoachingIdentity||null'));
   assert.ok(remember.includes('playerCoachingIdentity:coach?._playerCoachingIdentity||null'));
 });
@@ -50,7 +50,7 @@ test('post-game Companion receives the refreshed identity and shows whether the 
 
 test('web coach authority exposes the same player coaching identity',()=>{
   assert.ok(authority.includes('playerCoachingIdentity:'));
-  assert.ok(authority.includes('recent_change as any'));
+  assert.ok(authority.includes('const recent=roleRecent??globalRecent'));
 });
 
 test('Stage 13 UI layers load after causal coaching layers and require Companion 0.7.41+',()=>{

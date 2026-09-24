@@ -3,6 +3,7 @@ import {z} from 'zod';
 import {getServerClient} from '@/lib/supabase/server';
 import {saveMatches} from '@/lib/server/matchRepository';
 import type {Match,Role} from '@/lib/types';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -17,10 +18,7 @@ const schema=z.object({
   durationSeconds:z.number().int().min(300).max(7200),
 });
 
-function roleOf(value:unknown):Role{
-  const v=String(value||'ADC').toUpperCase();
-  return ['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(v)?v as Role:'ADC';
-}
+function roleOf(value:unknown):Role{return canonicalLeagueRole(value)??'ADC'}
 
 export async function POST(req:Request){
   const supabase=await getServerClient();

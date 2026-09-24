@@ -6,13 +6,14 @@ import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {loadProfile,PlayerProfile,PROFILE_ACCOUNT_ID,PROFILE_EVENT} from '@/lib/profile';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {deriveStoredLiveMetrics} from '@/lib/liveMatchMetricFallback';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 type LinkAccountInput={gameName:string;tagline:string;region:string;role:Role;champions?:string[]};
 type Ctx={accounts:RiotAccount[];active:RiotAccount;setActive:(id:string)=>void;profile:PlayerProfile|null;isOwnAccount:boolean;isEmpty:boolean;authenticated:boolean;hydrated:boolean;refresh:()=>Promise<void>;linkAccount:(input:LinkAccountInput)=>Promise<void>};
 const AccountContext=createContext<Ctx|null>(null);const ACTIVE_KEY='climb_active_account';let cloudRuntime=false;const runtimeMatches=new Map<string,Match[]>();
 export function matchesFor(accountId:string):Match[]{if(runtimeMatches.has(accountId))return runtimeMatches.get(accountId)!;if(cloudRuntime)return[];if(accountId===PROFILE_ACCOUNT_ID)return[];return demoMatchesFor(accountId)}
 function localAccountFromProfile(p:PlayerProfile):RiotAccount{return{id:p.id,label:'YOU',gameName:p.gameName||'Your account',tagline:p.tagline||'',region:p.region||'EUW',role:p.role,rank:p.rank,champions:p.champions,isPrimary:true,syncStatus:'PENDING'}}
-function roleOf(value:unknown):Role{const v=String(value||'ADC').toUpperCase();return['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(v)?v as Role:'ADC'}
+function roleOf(value:unknown):Role{return canonicalLeagueRole(value)??'ADC'}
 function accountRank(row:any,profile:any){if(row.rank_tier){const division=row.rank_division?` ${row.rank_division}`:'';const lp=typeof row.league_points==='number'?` · ${row.league_points} LP`:'';return`${row.rank_tier}${division}${lp}`}return profile?.rank||'UNRANKED'}
 function firstNumber(...values:unknown[]){for(const value of values){if(value===null||value===undefined||value==='')continue;const number=Number(value);if(Number.isFinite(number))return number}return undefined}
 function stringArray(value:unknown){return Array.isArray(value)?value.map(v=>String(v||'').trim()).filter(Boolean):undefined}

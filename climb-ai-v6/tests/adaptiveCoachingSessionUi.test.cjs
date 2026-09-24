@@ -21,7 +21,7 @@ test('Stage 14 persists one adaptive session beside the Player Coaching Identity
 
 test('draft coaching is routed through the current session phase before the causal router',()=>{
   const apply=draft.indexOf('applyAdaptiveCoachingSession');
-  const causal=draft.indexOf('buildCausalCoachRoute({profile:context.causalProfile,strategy:coachingStrategy');
+  const causal=draft.indexOf('buildCausalCoachRoute({profile:coachingContext.causalProfile,strategy:coachingStrategy');
   assert.ok(apply>=0);
   assert.ok(causal>apply);
   assert.ok(draft.includes('ADAPTIVE COACHING SESSION: '));
@@ -30,7 +30,7 @@ test('draft coaching is routed through the current session phase before the caus
 
 test('Companion freezes and restores the session with the locked pregame coach',()=>{
   assert.ok(draft.includes('adaptiveCoachingSession:input.adaptiveCoachingSession'));
-  assert.ok(draft.includes('adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null'));
+  assert.ok(draft.includes('adaptiveCoachingSession:proModel?coachingContext.adaptiveCoachingSession:null'));
   assert.ok(remember.includes('_adaptiveCoachingSession=response?.adaptiveCoachingSession||null'));
   assert.ok(remember.includes('adaptiveCoachingSession:coach?._adaptiveCoachingSession||null'));
 });
@@ -53,7 +53,7 @@ test('post-game UI surfaces session event and replan explanation',()=>{
 
 test('web coach authority receives the same adaptive session contract',()=>{
   assert.ok(authority.includes('adaptiveCoachingSession:'));
-  assert.ok(authority.includes('recent_change as any'));
+  assert.ok(authority.includes('const recent=roleRecent??globalRecent'));
 });
 
 test('Stage 14 UI scripts load after Stage 13 and require Companion 0.7.42+',()=>{

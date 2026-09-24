@@ -191,6 +191,91 @@ function neutralizeConditionals(value:string){
     .replace(/\bWHILE\b/gi,'DURING');
 }
 function clip(value:string,max:number){return value.length<=max?value:value.slice(0,max-1).replace(/\s+\S*$/,'')+'…'}
+
+function languageForDepth(value:string,depth:number){
+  let out=value;
+  if(depth<=6){
+    const reach=depth<=2?'MAIN DANGER':depth<=4?'ENGAGE THREATS':'DIVE THREATS';
+    out=out
+      .replace(/ACCESS PACKAGE/gi,reach)
+      .replace(/SECOND ACCESS TOOL/gi,depth<=2?'NEXT SPELL THEY CAN USE TO REACH YOU':'SECOND ENGAGE TOOL')
+      .replace(/ACCESS TOOL/gi,depth<=2?'SPELL THEY CAN USE TO REACH YOU':'ENGAGE TOOL')
+      .replace(/ACCESS CHAIN/gi,depth<=2?'NEXT WAY THEY CAN GET TO YOU':'CHAIN OF ENGAGE TOOLS')
+      .replace(/FIRST ACCESS/gi,depth<=2?'FIRST WAY IN':'FIRST ENGAGE')
+      .replace(/SECOND ACCESS/gi,depth<=2?'NEXT WAY IN':'SECOND ENGAGE')
+      .replace(/TARGET ACCESSIBILITY/gi,depth<=2?'HIT WHAT YOU CAN REACH SAFELY':'SAFE TARGET CHOICE')
+      .replace(/\bACCESS\b/gi,depth<=2?'WAY TO REACH YOU':'REACH')
+      .replace(/FRONT EDGE/gi,depth<=2?'TEAMMATES IN FRONT':'FRONT LINE')
+      .replace(/FIRST CONTACT/gi,depth<=2?'START OF THE FIGHT':'ENGAGE');
+  }
+  if(depth<=4){
+    out=out
+      .replace(/OPPORTUNITY COST/gi,'WHAT YOU GIVE UP')
+      .replace(/RESOURCE TRADE-OFF/gi,'SPELL TRADE-OFF')
+      .replace(/DECISION THRESHOLD/gi,'CLEAR GO / NO-GO POINT')
+      .replace(/INFORMATION STATE/gi,'WHAT YOU KNOW')
+      .replace(/OPTION VALUE/gi,'YOUR OTHER CHOICES')
+      .replace(/TEMPO WINDOW/gi,'TIMING WINDOW')
+      .replace(/\bTEMPO\b/gi,'TIMING');
+  }
+  if(depth<=3){
+    out=out
+      .replace(/\bPRIORITY\b/gi,'FIRST MOVE')
+      .replace(/\bROTATION\b/gi,'MOVE')
+      .replace(/\bSEQUENCING\b/gi,'ORDER OF PLAYS')
+      .replace(/\bSEQUENCE\b/gi,'ORDER');
+  }
+  if(depth<=2){
+    out=out
+      .replace(/FRONT-TO-BACK/gi,'HIT THE SAFE TARGET IN FRONT')
+      .replace(/KITE BACK/gi,'MOVE BACK WHILE HITTING')
+      .replace(/COOLDOWN DOWN/gi,'IMPORTANT SPELL DOWN')
+      .replace(/\bCOOLDOWN\b/gi,'SPELL')
+      .replace(/\bDPS\b/gi,'DAMAGE')
+      .replace(/\bPEEL\b/gi,'PROTECT')
+      .replace(/\bCC\b/gi,'STUN OR CONTROL')
+      .replace(/RESET SPACING/gi,'MOVE BACK TO A SAFE DISTANCE')
+      .replace(/\bPOSITIONING\b/gi,'WHERE YOU STAND')
+      .replace(/\bPOSITION\b/gi,'WHERE YOU STAND')
+      .replace(/\bFLANK\b/gi,'SIDE ATTACK')
+      .replace(/\bCONTESTING\b/gi,'FIGHTING FOR')
+      .replace(/\bCONTEST\b/gi,'FIGHT FOR')
+      .replace(/\bQUADRANT\b/gi,'JUNGLE SIDE')
+      .replace(/\bCOLLAPSE\b/gi,'MOVE TO THE FIGHT')
+      .replace(/\bRESOURCE\b/gi,'SPELL OR ESCAPE')
+      .replace(/\bRESET\b/gi,'RECALL OR BACK OFF')
+      .replace(/\bENTRY\b/gi,'WAY IN')
+      .replace(/\bFRONTLINE\b/gi,'TEAMMATES IN FRONT')
+      .replace(/\bENGAGE\b/gi,'GO IN')
+      .replace(/\bPRESSURE\b/gi,'MAKE THEM REACT')
+      .replace(/\bSPIKE\b/gi,'STRONG ITEM POINT')
+      .replace(/\bLAYER\b/gi,'USE TOGETHER')
+      .replace(/\bCONVERT\b/gi,'TAKE SOMETHING AFTER');
+  }
+  return out;
+}
+
+function applyRankLanguage(plan:CoachEnginePlan,depth:number){
+  if(depth>=7)return plan;
+  const cleanText=(value:string)=>languageForDepth(value,depth);
+  plan.headline=cleanText(plan.headline);
+  plan.why=cleanText(plan.why);
+  plan.theirPlan=cleanText(plan.theirPlan);
+  plan.threatLabel=cleanText(plan.threatLabel);
+  plan.threatAnswer=cleanText(plan.threatAnswer);
+  plan.fightTrigger=cleanText(plan.fightTrigger);
+  plan.objectiveSetup=cleanText(plan.objectiveSetup);
+  plan.never=cleanText(plan.never);
+  plan.ifBehind=cleanText(plan.ifBehind);
+  plan.lanePlan={
+    wave:cleanText(plan.lanePlan.wave),
+    trade:cleanText(plan.lanePlan.trade),
+    respect:cleanText(plan.lanePlan.respect),
+  };
+  plan.steps=plan.steps.map(step=>({label:cleanText(step.label),value:cleanText(step.value)}));
+  return plan;
+}
+
 function planText(plan:CoachEnginePlan){
   return [
     plan.headline,plan.why,plan.theirPlan,plan.threatAnswer,plan.fightTrigger,plan.objectiveSetup,
@@ -270,7 +355,32 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
       if(extra)plan.theirPlan=clip(plan.theirPlan+' '+extra+' SUPPLIES THE NEXT LAYER.',190);
     }
   }
-  return plan;
+
+  // Rank depth must change the decision contract, not merely the amount of prose.
+  // These layers are deliberately cumulative: higher-ranked players keep the
+  // lower-level rule, then receive one additional decision variable to manage.
+  if(depth>=4){
+    plan.objectiveSetup=clip(plan.objectiveSetup+' BASIC MACRO: FIX THE NEAREST SAFE WAVE, THEN MOVE.',300);
+  }
+  if(depth>=5){
+    plan.lanePlan.wave=clip(plan.lanePlan.wave+' TEMPO SEQUENCE: FINISH THE WAVE ACTION, THEN TAKE THE NEXT MAP ACTION.',260);
+  }
+  if(depth>=6){
+    plan.why=clip(plan.why+' OPPORTUNITY COST: GIVE LOW-VALUE SPACE RATHER THAN LOSE HP OR POSITION BEFORE THE REAL WINDOW.',340);
+  }
+  if(depth>=7){
+    plan.never=clip(plan.never+' DECISION THRESHOLD: DO NOT COMMIT THE NEXT RESOURCE UNTIL THE SECOND ACCESS TOOL IS SHOWN.',300);
+  }
+  if(depth>=8){
+    plan.threatAnswer=clip(plan.threatAnswer+' RESOURCE TRADE-OFF: IF '+threat+' STILL HAS ACCESS, KEEP ONE RESPONSE FOR THE ACCESS CHAIN.',320);
+  }
+  if(depth>=9){
+    plan.ifBehind=clip(plan.ifBehind+' MAP TRADE: IF YOUR ENTRY IS LOST, TAKE THE OPPOSITE SAFE RESOURCE INSTEAD OF HALF-CONTESTING.',300);
+  }
+  if(depth>=10){
+    plan.objectiveSetup=clip(plan.objectiveSetup+' INFORMATION STATE: WHEN '+threat+' IS UNSHOWN, PRESERVE OPTION VALUE; SHIFT ONLY AFTER THEIR ACCESS IS LOCATED.',380);
+  }
+  return applyRankLanguage(plan,depth);
 }
 
 export function buildRankAwareDraftPlan(input:CoachEngineInput):CoachEnginePlan{

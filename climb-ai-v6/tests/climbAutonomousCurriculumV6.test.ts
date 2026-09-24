@@ -117,7 +117,7 @@ test('production surfaces and pregame route are wired to the V6 contract',()=>{
   assert.ok(curriculum.includes('autonomous,'));
   assert.ok(route.includes("enabled:transferDirective?.mode==='TRANSFER_TEST'"));
   assert.ok(route.includes('behaviourKey:transferDirective?.behaviourKey??null'));
-  assert.ok(route.includes('autonomousCurriculum:proModel?(context.curriculum.autonomous??null):null'));
+  assert.ok(route.includes('autonomousCurriculum:proModel?(coachingContext.curriculum.autonomous??null):null'));
   assert.ok(route.includes('learningContract,'));
   assert.ok(mission.includes("contractRequiresTransfer=input.learningContract?.testDirective.mode==='TRANSFER_TEST'"));
   assert.ok(component.includes('AUTONOMOUS CURRICULUM V6'));

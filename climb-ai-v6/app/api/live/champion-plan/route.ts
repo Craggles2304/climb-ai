@@ -51,6 +51,7 @@ export async function GET(req:NextRequest){
       :[],
     draftTheirWinCondition:paid?data?.teamPlan?.theirWinCondition??null:null,
     draftBiggestThrow:paid?data?.teamPlan?.biggestThrow??null:null,
+    adaptiveBuild:data?.teamPlan?.adaptiveBuild??data?.adaptiveBuild??null,
   };
 
   const teamPlan={

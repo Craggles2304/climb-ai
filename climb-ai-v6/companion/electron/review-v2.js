@@ -22,4 +22,5 @@
   load('remember-v11-learning-velocity.js');
   load('remember-v12-skill-transfer-graph.js');
   load('remember-v13-decision-principle-engine.js');
+  load('remember-v14-focus-layout.js');
 })();

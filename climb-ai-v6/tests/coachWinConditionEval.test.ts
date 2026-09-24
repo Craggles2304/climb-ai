@@ -29,15 +29,17 @@ const kits=[
   {champion:'Fiddlesticks',spells:[{name:'Terrify'},{name:'Crowstorm'}]},
 ];
 
-const tiers=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER'] as const;
+const tiers=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'] as const;
 
 function planForRank(tier:typeof tiers[number]):CoachEvalPlan{
   const depth=tiers.indexOf(tier);
-  const silver=depth>=2,gold=depth>=3,platinum=depth>=4,emerald=depth>=5,diamond=depth>=6,master=depth>=7;
+  const silver=depth>=2,gold=depth>=3,platinum=depth>=4,emerald=depth>=5,diamond=depth>=6,master=depth>=7,grandmaster=depth>=8,challenger=depth>=9;
   const laneTrade=gold
     ?'AFTER Miss Fortune spends Double Up on the wave, take one short trade and return to farm range.'
     :'Miss Fortune is the trade reference: punish her only from your normal farm range.';
-  const threatAnswer=silver
+  const threatAnswer=grandmaster
+    ?`WHEN Volibear uses Thundering Smash or Irelia commits Vanguard's Edge, keep Annie / Shen between them and Kog'Maw; IF Fiddlesticks remains unseen, preserve your second defensive resource${challenger?'; WHEN Heimerdinger owns the choke, shift the fight to the opposite entry before extending':''}.`
+    :silver
     ?platinum
       ?'WHEN Volibear uses Thundering Smash or Irelia commits, keep Annie between them and Kog\'Maw; preserve your escape for the second entry.'
       :'WHEN Irelia or Volibear enters, keep Annie between them and Kog\'Maw and kite backward.'
@@ -89,7 +91,7 @@ function planForRank(tier:typeof tiers[number]):CoachEvalPlan{
   };
 }
 
-test('the paid-coach benchmark covers every solo-queue tier from Iron through Master',()=>{
+test('the paid-coach benchmark covers every solo-queue tier from Iron through Challenger',()=>{
   const results=tiers.map(tier=>{
     const result=evaluateWinConditionPlan({plan:planForRank(tier),ours,enemies,kits,rank:tier,role:'ADC'});
     assert.equal(result.tier,tier);
@@ -160,16 +162,20 @@ test('Master coaching requires real champion and kit interactions, not just more
   assert.equal(result.metrics.adcTargetRule,true);
 });
 
-test('rank rubrics explicitly step from simple decisions to Master fine-margin analysis',()=>{
+test('rank rubrics explicitly step from simple decisions to Challenger fine-margin analysis',()=>{
   const iron=coachRankRubric('Iron IV');
   const gold=coachRankRubric('Gold II');
   const emerald=coachRankRubric('Emerald I');
   const master=coachRankRubric('Master 200 LP');
+  const grandmaster=coachRankRubric('Grandmaster 500 LP');
+  const challenger=coachRankRubric('Challenger 900 LP');
   assert.equal(iron.tier,'IRON');
-  assert.equal(master.tier,'MASTER');
-  assert.ok(iron.passScore<gold.passScore&&gold.passScore<emerald.passScore&&emerald.passScore<master.passScore);
+  assert.equal(challenger.tier,'CHALLENGER');
+  assert.ok(iron.passScore<gold.passScore&&gold.passScore<emerald.passScore&&emerald.passScore<master.passScore&&master.passScore<grandmaster.passScore&&grandmaster.passScore<challenger.passScore);
   assert.equal(iron.minAbilityMentions,0);
   assert.ok(master.minAbilityMentions>=3);
-  assert.ok(master.minConditionalRules>=6);
-  assert.ok(master.theirPlanEnemyMentions>=2);
+  assert.ok(grandmaster.minAbilityMentions>=4);
+  assert.ok(challenger.minConditionalRules>=8);
+  assert.ok(challenger.theirPlanEnemyMentions>=3);
+  assert.equal(challenger.maxGenericHits,0);
 });

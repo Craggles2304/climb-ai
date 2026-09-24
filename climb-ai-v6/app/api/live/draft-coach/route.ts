@@ -35,6 +35,8 @@ import {buildSkillTransferGraph,selectSkillBridgePrime,type SkillTransferGraph,t
 import {buildDecisionPrincipleEngine,selectDecisionPrinciplePrime,type DecisionPrincipleEngine,type DecisionPrinciplePrime} from '@/lib/climbDecisionPrinciples';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
+import type {Role} from '@/lib/types';
+import {canonicalLeagueRole,rowsForRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -226,10 +228,10 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
   const taskPromise=device.riotAccountId
-    ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(12)
+    ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
     :Promise.resolve({data:[],error:null});
   const learningPromise=device.riotAccountId
-    ?db.from('op_player_learning_profiles').select('learning_identity,recent_change').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
+    ?db.from('op_player_learning_profiles').select('learning_identity,recent_change,role_profiles').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
   const historyPromise=device.riotAccountId
     ?db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('created_at',{ascending:true}).limit(50)
@@ -242,7 +244,6 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     const status=clean(task?.status||'ACTIVE').toUpperCase();
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
   }).sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50));
-  const task=tasks[0]??null;
   const storedTwin=learningResult?.data?.learning_identity;
   const previousCurriculum=((learningResult?.data?.recent_change as any)?.curriculum??null);
   const previousPlayerCoachingIdentity=((learningResult?.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
@@ -268,11 +269,66 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const interventionValue=buildClimbInterventionValueProfile(rows);
   const learningVelocity=buildLearningVelocityProfile({rows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity});
   const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy});
-  const curriculumLesson=curriculum.status==='ACTIVE'?curriculum.currentLesson:null;
-  const mission=curriculumLesson
-    ?{title:curriculumLesson.label,gameRule:curriculumLesson.gameRule,metric:curriculumLesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:curriculumLesson.graduationRule}
-    :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null;
-  return{rank,profileRole:clean(profileResult?.data?.role)||null,mission,decisionTwin,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,coachTwin,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession,historyRows:rows};
+  const roleProfiles=((learningResult?.data?.role_profiles&&typeof learningResult.data.role_profiles==='object')?learningResult.data.role_profiles:{}) as Record<string,any>;
+  return{
+    rank,profileRole:clean(profileResult?.data?.role)||null,tasks,roleProfiles,
+    mission:null,decisionTwin,decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,
+    coachTwin,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession,historyRows:rows,
+  };
+}
+
+function selectRoleLearningContext(context:any,roleValue:string|null|undefined){
+  const role=canonicalLeagueRole(roleValue);
+  const task=(context.tasks??[]).find((candidate:any)=>taskAppliesToRole(candidate,role))??null;
+  if(!role){
+    const lesson=context.curriculum?.status==='ACTIVE'?context.curriculum.currentLesson:null;
+    return{...context,mission:lesson?{title:lesson.label,gameRule:lesson.gameRule,metric:lesson.behaviourKey,source:'CLIMB_CURRICULUM',graduationRule:lesson.graduationRule}:task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE'}:null,roleContext:{role:null,source:'GLOBAL_FALLBACK',games:context.historyRows?.length??0}};
+  }
+  const scopedRows=rowsForRole(context.historyRows??[],role);
+  const persisted=context.roleProfiles?.[role];
+  let roleTwin:any=null,roleTwinV2:any=null,roleCurriculum:any=null,roleCoachTwin:any=null,roleCausal:any=null,roleIdentity:any=null,roleVelocity:any=null,roleAdaptive:any=null;
+  if(persisted?.recentChange){
+    roleTwin=persisted.learningIdentity??null;
+    roleTwinV2=persisted.recentChange.decisionTwinV2??null;
+    roleCurriculum=persisted.recentChange.curriculum??null;
+    roleCoachTwin=persisted.recentChange.coachTwin??null;
+    roleCausal=persisted.recentChange.causalProfile??null;
+    roleIdentity=persisted.recentChange.playerCoachingIdentity??null;
+    roleVelocity=persisted.recentChange.learningVelocity??null;
+    roleAdaptive=persisted.recentChange.adaptiveCoachingSession??null;
+  }else if(scopedRows.length){
+    roleTwin=buildDecisionTwin(scopedRows);
+    roleTwinV2=buildDecisionTwinV2(scopedRows);
+    const localMemory=buildScenarioMemory(scopedRows);
+    const localTransfer=buildDecisionTransfer(scopedRows,localMemory);
+    const localGraph=buildSkillTransferGraph({rows:scopedRows,twin:roleTwinV2,memory:localMemory,transfer:localTransfer});
+    roleCurriculum=buildClimbCurriculum(roleTwinV2,localMemory,localTransfer,undefined,null,localGraph);
+    roleCoachTwin=buildClimbCoachTwin(scopedRows);
+    roleCausal=buildDecisionCausalProfile(scopedRows);
+    const localIntervention=buildClimbInterventionValueProfile(scopedRows);
+    roleIdentity=buildPlayerCoachingIdentity({rows:scopedRows,twin:roleTwinV2,curriculum:roleCurriculum,coachTwin:roleCoachTwin,causalProfile:roleCausal,interventionValue:localIntervention});
+    roleVelocity=buildLearningVelocityProfile({rows:scopedRows,coachTwin:roleCoachTwin,interventionValue:localIntervention,identity:roleIdentity,curriculum:roleCurriculum});
+    roleAdaptive=buildAdaptiveCoachingSession({rows:scopedRows,identity:roleIdentity,curriculum:roleCurriculum,learningPolicy:roleVelocity.policy});
+  }
+  const curriculum=roleCurriculum??context.curriculum;
+  const lesson=curriculum?.status==='ACTIVE'?curriculum.currentLesson:null;
+  const mission=lesson
+    ?{title:lesson.label,gameRule:lesson.gameRule,metric:lesson.behaviourKey,source:'ROLE_CURRICULUM',graduationRule:lesson.graduationRule,roleScope:role}
+    :task?{title:clean(task.title),gameRule:clean(task.gameRule),metric:clean(task.metric),source:'ACTIVE_FIVE',roleScope:task.roleScope??role}:null;
+  return{
+    ...context,
+    mission,
+    decisionTwin:roleTwin??context.decisionTwin,
+    decisionTwinV2:roleTwinV2??context.decisionTwinV2,
+    curriculum,
+    coachTwin:roleCoachTwin??context.coachTwin,
+    causalProfile:roleCausal??context.causalProfile,
+    playerCoachingIdentity:roleIdentity??context.playerCoachingIdentity,
+    learningVelocity:roleVelocity??context.learningVelocity,
+    adaptiveCoachingSession:roleAdaptive??context.adaptiveCoachingSession,
+    historyRows:scopedRows.length?scopedRows:context.historyRows,
+    roleContext:{role,source:persisted?'PERSISTED_ROLE_PROFILE':scopedRows.length?'ON_DEMAND_ROLE_PROFILE':'GLOBAL_FALLBACK',games:scopedRows.length},
+  };
 }
 
 async function kitFacts(players:Player[]):Promise<KitFact[]>{
@@ -637,19 +693,20 @@ export async function POST(req:NextRequest){
       profileRole:context.profileRole,
       gameMode:input.gameMode,
     });
+    const coachingContext=selectRoleLearningContext(context,roleResolution.role);
     const ours=normalizeTeamAroundPlayer(oursRaw,champion,roleResolution) as Player[];
     const enemies=resolveEnemyRoles(enemiesRaw) as Player[];
     const userRole=roleResolution.role??'';
     const laneOpponents=laneOpponentsFor(roleResolution.role,enemies);
     const lanePartner=lanePartnerFor(roleResolution.role,ours,champion);
     const situationContext=buildDraftSituationContext({champion,role:roleResolution.role,enemies});
-    const personalTrap=selectPersonalTrap(proModel?context.decisionTwin:undefined,{
+    const personalTrap=selectPersonalTrap(proModel?coachingContext.decisionTwin:undefined,{
       champion,
       role:roleResolution.role,
       ours,
       enemies,
     });
-    const decisionPremortem=buildDecisionPremortem(proModel?context.decisionTwin:undefined,{
+    const decisionPremortem=buildDecisionPremortem(proModel?coachingContext.decisionTwin:undefined,{
       champion,
       role:roleResolution.role,
       ours,
@@ -662,7 +719,7 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       ours,
       enemies,
-      rank:context.rank,
+      rank:coachingContext.rank,
     }) as DraftCoach,userRole,enemies);
     fallback.laneOpponents=laneOpponents;
     fallback.lanePartner=lanePartner;
@@ -672,16 +729,16 @@ export async function POST(req:NextRequest){
     const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,context.rank,proModel?context.mission:null,proModel?context.playerCoachingIdentity:null,proModel?context.learningVelocity:null,proModel?context.skillTransferGraph:null,proModel?context.decisionPrincipleEngine:null,proModel?context.adaptiveCoachingSession:null,personalTrap,decisionPremortem,carryMap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,coachingContext.rank,proModel?coachingContext.mission:null,proModel?coachingContext.playerCoachingIdentity:null,proModel?coachingContext.learningVelocity:null,proModel?coachingContext.skillTransferGraph:null,proModel?coachingContext.decisionPrincipleEngine:null,proModel?coachingContext.adaptiveCoachingSession:null,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
-      const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:context.rank,role:userRole});
+      const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:coachingContext.rank,role:userRole});
       return NextResponse.json({
         ok:false,
         error:'Premium draft analysis did not clear the '+fallbackQuality.tier+' coaching quality gate. Keep the local safe plan and retry next draft.',
         player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
         personalTrap:proModel?personalTrap:null,
         decisionPremortem:proModel?decisionPremortem:null,
-        coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:context.rank,tier:fallbackQuality.tier},
+        coachQuality:{score:fallbackQuality.score,pass:false,issues:fallbackQuality.issues,groundedKits:kits.length,rank:coachingContext.rank,tier:fallbackQuality.tier},
       },{status:503});
     }
     const coach=completeCoach(ai??fallback,userRole,enemies);
@@ -689,9 +746,9 @@ export async function POST(req:NextRequest){
     coach.lanePartner=lanePartner;
     if(laneOpponents.length)coach.laneOpponent=laneOpponents[0];
     if(!ai)coach.lanePlan=resolvedLanePlan(userRole,laneOpponents,lanePartner,kits);
-    const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:context.rank,role:userRole});
+    const quality=evaluateWinConditionPlan({plan:coach,ours,enemies,kits,rank:coachingContext.rank,role:userRole});
     const decisionSimulation=buildDecisionSimulation({
-      twin:proModel?context.decisionTwin:undefined,
+      twin:proModel?coachingContext.decisionTwin:undefined,
       premortem:decisionPremortem,
       situationContext,
       champion,
@@ -699,17 +756,17 @@ export async function POST(req:NextRequest){
       coach,
     });
     const scenarioPrime=proModel?selectScenarioPrime({
-      memory:context.scenarioMemory,
+      memory:coachingContext.scenarioMemory,
       situationContext,
       simulation:decisionSimulation,
     }):null;
-    const learningContract=proModel?(context.curriculum.autonomous?.activeContract??null):null;
-    const skillBridgePrime=proModel?selectSkillBridgePrime({graph:context.skillTransferGraph,situationContext,behaviourKey:context.curriculum.currentLesson?.behaviourKey??null}):null;
-    const decisionPrinciplePrime=proModel?selectDecisionPrinciplePrime({engine:context.decisionPrincipleEngine,skillGraph:context.skillTransferGraph,situationContext,behaviourKey:context.curriculum.currentLesson?.behaviourKey??null}):null;
+    const learningContract=proModel?(coachingContext.curriculum.autonomous?.activeContract??null):null;
+    const skillBridgePrime=proModel?selectSkillBridgePrime({graph:coachingContext.skillTransferGraph,situationContext,behaviourKey:coachingContext.curriculum.currentLesson?.behaviourKey??null}):null;
+    const decisionPrinciplePrime=proModel?selectDecisionPrinciplePrime({engine:coachingContext.decisionPrincipleEngine,skillGraph:coachingContext.skillTransferGraph,situationContext,behaviourKey:coachingContext.curriculum.currentLesson?.behaviourKey??null}):null;
     const transferDirective=learningContract?.testDirective??null;
     const decisionTransferPrime=proModel?selectDecisionTransferPrime({
-      transfer:context.decisionTransfer,
-      memory:context.scenarioMemory,
+      transfer:coachingContext.decisionTransfer,
+      memory:coachingContext.scenarioMemory,
       scenarioPrime,
       situationContext,
       simulation:decisionSimulation,
@@ -719,7 +776,7 @@ export async function POST(req:NextRequest){
       behaviourKey:transferDirective?.behaviourKey??null,
     }):null;
     const climbMission=proModel?buildClimbMatchMission({
-      lesson:context.curriculum.status==='ACTIVE'?context.curriculum.currentLesson:null,
+      lesson:coachingContext.curriculum.status==='ACTIVE'?coachingContext.curriculum.currentLesson:null,
       situationContext,
       coach,
       champion,
@@ -729,23 +786,23 @@ export async function POST(req:NextRequest){
     }):null;
     const intentProbe=proModel?buildClimbIntentProbe(climbMission):null;
     const experimentSchedule=proModel?buildClimbExperimentSchedule({
-      rows:context.historyRows,
+      rows:coachingContext.historyRows,
       mission:climbMission,
-      learningBias:learningVelocityExperimentBias(context.learningVelocity,climbMission?.behaviourKey),
+      learningBias:learningVelocityExperimentBias(coachingContext.learningVelocity,climbMission?.behaviourKey),
     }):null;
     const coachingStrategy=proModel?applyAdaptiveCoachingSession(buildClimbCoachingStrategy({
-      rows:context.historyRows,
-      curriculum:context.curriculum,
+      rows:coachingContext.historyRows,
+      curriculum:coachingContext.curriculum,
       mission:climbMission,
-      coachTwin:context.coachTwin,
+      coachTwin:coachingContext.coachTwin,
       experimentSchedule,
-    }),context.adaptiveCoachingSession):null;
-    const causalCoachRoute=proModel?buildCausalCoachRoute({profile:context.causalProfile,strategy:coachingStrategy,mission:climbMission}):null;
+    }),coachingContext.adaptiveCoachingSession):null;
+    const causalCoachRoute=proModel?buildCausalCoachRoute({profile:coachingContext.causalProfile,strategy:coachingStrategy,mission:climbMission}):null;
     const velocityMethod=proModel&&causalCoachRoute&&!causalCoachRoute.forceCoachMethod&&causalCoachRoute.deliveryPolicy!=='DIAGNOSTIC'
-      ?selectLearningVelocityCoachMethod(context.learningVelocity,climbMission?.behaviourKey)
+      ?selectLearningVelocityCoachMethod(coachingContext.learningVelocity,climbMission?.behaviourKey)
       :null;
     const coachIntervention=proModel&&causalCoachRoute?selectClimbCoachIntervention({
-      twin:context.coachTwin,
+      twin:coachingContext.coachTwin,
       mission:climbMission,
       situationContext,
       deliveryPolicy:causalCoachRoute.deliveryPolicy,
@@ -760,7 +817,7 @@ export async function POST(req:NextRequest){
     const playbook=buildFrozenGamePlaybook({
       champion,
       role:roleResolution.role,
-      rank:context.rank,
+      rank:coachingContext.rank,
       ours,
       enemies,
       plan:coach as any,
@@ -769,7 +826,7 @@ export async function POST(req:NextRequest){
     const matchContract=buildCompanionMatchContract({
       champion,
       role:roleResolution.role,
-      rank:context.rank,
+      rank:coachingContext.rank,
       coach,
       playbook,
       personalTrap,
@@ -780,26 +837,26 @@ export async function POST(req:NextRequest){
       coachingStrategy,
       experimentSchedule,
       intentProbe,
-      historyRows:proModel?context.historyRows:[],
+      historyRows:proModel?coachingContext.historyRows:[],
     });
     await persistLockedCoachForPregame(db,device,{
       champion,
       role:roleResolution.role,
       source:ai?'ai':'rules',
       coach,
-      playerCoachingIdentity:proModel?context.playerCoachingIdentity:null,
-      learningVelocity:proModel?context.learningVelocity:null,
-      skillTransferGraph:proModel?context.skillTransferGraph:null,
+      playerCoachingIdentity:proModel?coachingContext.playerCoachingIdentity:null,
+      learningVelocity:proModel?coachingContext.learningVelocity:null,
+      skillTransferGraph:proModel?coachingContext.skillTransferGraph:null,
       skillBridgePrime,
-      decisionPrincipleEngine:proModel?context.decisionPrincipleEngine:null,
+      decisionPrincipleEngine:proModel?coachingContext.decisionPrincipleEngine:null,
       decisionPrinciplePrime,
-      adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null,
+      adaptiveCoachingSession:proModel?coachingContext.adaptiveCoachingSession:null,
       personalTrap:proModel?personalTrap:null,
       decisionPremortem:proModel?decisionPremortem:null,
       decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:proModel?(context.curriculum.autonomous??null):null,
+      autonomousCurriculum:proModel?(coachingContext.curriculum.autonomous??null):null,
       climbMission,
       intentProbe,
       experimentSchedule,
@@ -807,7 +864,7 @@ export async function POST(req:NextRequest){
       causalCoachRoute,
       coachIntervention,
       situationContext,
-      quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
+      quality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:coachingContext.rank,tier:quality.tier},
       playbook,
       matchContract,
     });
@@ -818,26 +875,27 @@ export async function POST(req:NextRequest){
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
       productAccess:{tier:subscriptionTier,proModel},
-      playerCoachingIdentity:proModel?context.playerCoachingIdentity:null,
-      learningVelocity:proModel?context.learningVelocity:null,
-      skillTransferGraph:proModel?context.skillTransferGraph:null,
+      roleLearning:coachingContext.roleContext,
+      playerCoachingIdentity:proModel?coachingContext.playerCoachingIdentity:null,
+      learningVelocity:proModel?coachingContext.learningVelocity:null,
+      skillTransferGraph:proModel?coachingContext.skillTransferGraph:null,
       skillBridgePrime,
-      decisionPrincipleEngine:proModel?context.decisionPrincipleEngine:null,
+      decisionPrincipleEngine:proModel?coachingContext.decisionPrincipleEngine:null,
       decisionPrinciplePrime,
-      adaptiveCoachingSession:proModel?context.adaptiveCoachingSession:null,
+      adaptiveCoachingSession:proModel?coachingContext.adaptiveCoachingSession:null,
       personalTrap:proModel?personalTrap:null,
       decisionPremortem:proModel?decisionPremortem:null,
       decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:proModel?(context.curriculum.autonomous??null):null,
+      autonomousCurriculum:proModel?(coachingContext.curriculum.autonomous??null):null,
       climbMission,
       intentProbe:proModel&&intentProbe?publicClimbIntentProbe(intentProbe):null,
       experimentSchedule,
       coachingStrategy,
       causalCoachRoute,
       coachIntervention,
-      coachTwin:proModel?context.coachTwin:null,
+      coachTwin:proModel?coachingContext.coachTwin:null,
       playbook,
       matchContract,
       playbookPolicy:{
@@ -849,7 +907,7 @@ export async function POST(req:NextRequest){
         contingencies:['PLAN_A','PLAN_B','RECOVERY'],
         checkpoints:[5,10,15],
       },
-      coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:context.rank,tier:quality.tier},
+      coachQuality:{score:quality.score,pass:quality.pass,issues:quality.issues,groundedKits:kits.length,rank:coachingContext.rank,tier:quality.tier},
       draft:{ours:names(ours),enemies:names(enemies)},
       resolvedDraft:{
         ours:ours.map(player=>({champion:player.champion,role:role(player.role)||null})),

@@ -25,7 +25,7 @@ test('repeated evidence promotes a mission and protects Coach work from replacem
   const tasks=[task('coach',10,'COACH'),task('a',40),task('b',50),task('c',60),task('d',70)];
   const history=[row(g1,'CHAIN_DEATH'),row(g2,null),row(g3,'CHAIN_DEATH')];
   const result=adaptActiveFiveFromPostGameEvidence({tasks,profile:profile([fix()],3,g3),history,accountId:'acct',role:'JUNGLE',now:g3});
-  const adaptive=result.tasks.find(t=>t.id==='op-pro-chain-death') as (ILPTask&{adaptive?:AdaptiveIlpMeta})|undefined;
+  const adaptive=result.tasks.find(t=>t.id==='op-pro-jungle-chain-death') as (ILPTask&{adaptive?:AdaptiveIlpMeta})|undefined;
   assert.ok(adaptive);
   assert.equal(adaptive?.adaptive?.recentSupportGames,2);
   assert.notEqual(result.tasks.find(t=>t.id==='coach')?.status,'PAUSED');

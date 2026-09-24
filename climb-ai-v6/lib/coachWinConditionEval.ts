@@ -52,7 +52,7 @@ export interface CoachEvalResult{
   };
 }
 
-const RUBRICS:Record<Exclude<CoachingTier,'GRANDMASTER'|'CHALLENGER'>,Omit<CoachRankRubric,'tier'>>={
+const RUBRICS:Record<CoachingTier,Omit<CoachRankRubric,'tier'>>={
   IRON:{passScore:58,minChampionMentions:2,minAbilityMentions:0,minConditionalRules:1,maxConditionalRules:4,theirPlanEnemyMentions:1,maxGenericHits:3},
   BRONZE:{passScore:62,minChampionMentions:2,minAbilityMentions:0,minConditionalRules:1,maxConditionalRules:5,theirPlanEnemyMentions:1,maxGenericHits:3},
   SILVER:{passScore:66,minChampionMentions:3,minAbilityMentions:0,minConditionalRules:2,maxConditionalRules:7,theirPlanEnemyMentions:1,maxGenericHits:2},
@@ -61,6 +61,8 @@ const RUBRICS:Record<Exclude<CoachingTier,'GRANDMASTER'|'CHALLENGER'>,Omit<Coach
   EMERALD:{passScore:78,minChampionMentions:4,minAbilityMentions:2,minConditionalRules:4,maxConditionalRules:12,theirPlanEnemyMentions:2,maxGenericHits:1},
   DIAMOND:{passScore:82,minChampionMentions:5,minAbilityMentions:2,minConditionalRules:5,maxConditionalRules:null,theirPlanEnemyMentions:2,maxGenericHits:1},
   MASTER:{passScore:86,minChampionMentions:5,minAbilityMentions:3,minConditionalRules:6,maxConditionalRules:null,theirPlanEnemyMentions:2,maxGenericHits:1},
+  GRANDMASTER:{passScore:90,minChampionMentions:6,minAbilityMentions:4,minConditionalRules:7,maxConditionalRules:null,theirPlanEnemyMentions:3,maxGenericHits:0},
+  CHALLENGER:{passScore:93,minChampionMentions:7,minAbilityMentions:4,minConditionalRules:8,maxConditionalRules:null,theirPlanEnemyMentions:3,maxGenericHits:0},
 };
 
 const GENERIC_PHRASES=[
@@ -103,9 +105,8 @@ function fieldIsSpecific(value:unknown,names:string[],abilities:string[],needsCo
 }
 
 export function coachRankRubric(rank?:string|null):CoachRankRubric{
-  const raw=coachingTierFor(rank);
-  const tier=(raw==='GRANDMASTER'||raw==='CHALLENGER'?'MASTER':raw) as keyof typeof RUBRICS;
-  return{tier:raw,...RUBRICS[tier]};
+  const tier=coachingTierFor(rank);
+  return{tier,...RUBRICS[tier]};
 }
 
 export function evaluateWinConditionPlan(input:{
