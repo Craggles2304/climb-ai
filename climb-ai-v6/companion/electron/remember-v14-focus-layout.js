@@ -159,7 +159,11 @@
       makeLine('OPTIMAL CORE',optimalItems,false);
       makeLine('MY RECOMMENDATION',recommendedItems,true);
       const changes=Array.isArray(build?.changes)?build.changes.filter(Boolean).slice(0,2):[];
-      if(read)read.textContent=upper(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||''));
+      if(read){
+        const sources=Array.isArray(build?.evidence?.sources)?build.evidence.sources.filter(source=>source?.usable).map(source=>source.source):[];
+        const sourceLine=sources.length>=2?('SOURCES · '+sources.join(' + ')+' · '):'INTERNAL BUILD ENGINE · ';
+        read.textContent=upper(sourceLine+(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||'')));
+      }
     }else if(fallback.length){
       makeLine('RECOMMENDED',fallback,true);
       if(read)read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
