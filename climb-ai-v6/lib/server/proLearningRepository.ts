@@ -22,6 +22,7 @@ import {buildSkillTransferGraph,type SkillTransferGraph} from '@/lib/climbSkillT
 import {buildDecisionPrincipleEngine,type DecisionPrincipleEngine} from '@/lib/climbDecisionPrinciples';
 import {buildLearningPatchContext} from '@/lib/patchIntelligence';
 import {patchChangesForHistory} from './lolPatchIntelligenceRepository';
+import {CURRENT_LEARNING_MODEL_VERSION,buildLearningModelHealth,learningModelNeedsRebuild,type LearningModelHealth} from '@/lib/learningModelVersion';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis;patch?:string|null;gameVersion?:string|null;patchContext?:Record<string,unknown>}
 
@@ -103,6 +104,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const learningJourney=buildLearningJourney(rows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
   const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,patchContext,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession};
+  const learningModelHealth=buildLearningModelHealth(recentChange,now);
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
     user_id:userId,
     riot_account_id:riotAccountId,
@@ -116,10 +118,69 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     current_focus:decisionTwin.currentLimiter??{},
     recent_change:recentChange,
     patch_context:patchContext,
+    learning_model_version:CURRENT_LEARNING_MODEL_VERSION,
+    learning_model_health:learningModelHealth,
     latest_analysis_at:profile.latestAnalysisAt,
     updated_at:now,
   },{onConflict:'user_id,riot_account_id'});if(saveError)throw new Error(saveError.message);
   return{profile,rows,decisionTwin};
+}
+
+const currentRebuilds=new Map<string,Promise<void>>();
+
+export async function ensureLearningModelCurrent(userId:string,riotAccountId:string|null):Promise<LearningModelHealth|null>{
+  const db=getSupabaseAdmin();
+  if(!db||!riotAccountId)return null;
+  const key=userId+'|'+riotAccountId;
+  const {data,error}=await db.from('op_player_learning_profiles')
+    .select('learning_model_version,learning_model_health,recent_change')
+    .eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(error)throw new Error(error.message);
+  if(!data)return null;
+
+  const liveHealth=buildLearningModelHealth((data.recent_change as Record<string,unknown>|null)??null);
+  if(!learningModelNeedsRebuild({storedVersion:data.learning_model_version,recentChange:(data.recent_change as Record<string,unknown>|null)??null,health:data.learning_model_health})){
+    return (data.learning_model_health as LearningModelHealth|undefined)??liveHealth;
+  }
+
+  let running=currentRebuilds.get(key);
+  if(!running){
+    running=(async()=>{
+      const built=await buildAndSaveProLearningProfile(userId,riotAccountId);
+      if(built)await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync after self-heal failed',err));
+    })().finally(()=>currentRebuilds.delete(key));
+    currentRebuilds.set(key,running);
+  }
+  await running;
+
+  const {data:refreshed,error:refreshError}=await db.from('op_player_learning_profiles')
+    .select('learning_model_health').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
+  if(refreshError)throw new Error(refreshError.message);
+  return (refreshed?.learning_model_health as LearningModelHealth|undefined)??null;
+}
+
+export async function rebuildAllLearningProfiles(){
+  const db=getSupabaseAdmin();
+  if(!db)throw new Error('Supabase admin storage is not configured.');
+  const {data,error}=await db.from('op_player_learning_profiles').select('user_id,riot_account_id').order('updated_at',{ascending:true}).limit(5000);
+  if(error)throw new Error(error.message);
+  const results:Array<{userId:string;riotAccountId:string;ok:boolean;complete:boolean;presentLayers:number;missing:string[];error?:string}>=[];
+  for(const row of data??[]){
+    const userId=String((row as any).user_id||''),riotAccountId=String((row as any).riot_account_id||'');
+    if(!userId||!riotAccountId)continue;
+    try{
+      const built=await buildAndSaveProLearningProfile(userId,riotAccountId);
+      if(built)await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync during full rebuild failed',err));
+      const {data:stored,error:storedError}=await db.from('op_player_learning_profiles')
+        .select('learning_model_health').eq('user_id',userId).eq('riot_account_id',riotAccountId).single();
+      if(storedError)throw new Error(storedError.message);
+      const health=stored.learning_model_health as LearningModelHealth;
+      results.push({userId,riotAccountId,ok:true,complete:Boolean(health?.complete),presentLayers:Number(health?.presentLayers||0),missing:Array.isArray(health?.missing)?health.missing.map(String):[]});
+    }catch(error){
+      results.push({userId,riotAccountId,ok:false,complete:false,presentLayers:0,missing:[],error:error instanceof Error?error.message:String(error)});
+    }
+  }
+  return{modelVersion:CURRENT_LEARNING_MODEL_VERSION,total:results.length,complete:results.filter(r=>r.complete).length,failed:results.filter(r=>!r.ok).length,results};
 }
 
 export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
@@ -138,6 +199,7 @@ export async function rebuildProLearningProfileWithIlp(userId:string,riotAccount
 
 export async function getDecisionCausalProfile(userId:string,riotAccountId:string|null):Promise<DecisionCausalProfile|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const profile=(data?.recent_change as any)?.causalProfile;
@@ -146,6 +208,7 @@ export async function getDecisionCausalProfile(userId:string,riotAccountId:strin
 
 export async function getPlayerCoachingIdentity(userId:string,riotAccountId:string|null):Promise<PlayerCoachingIdentity|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const identity=(data?.recent_change as any)?.playerCoachingIdentity;
@@ -154,6 +217,7 @@ export async function getPlayerCoachingIdentity(userId:string,riotAccountId:stri
 
 export async function getSkillTransferGraph(userId:string,riotAccountId:string|null):Promise<SkillTransferGraph|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const graph=(data?.recent_change as any)?.skillTransferGraph;
@@ -162,6 +226,7 @@ export async function getSkillTransferGraph(userId:string,riotAccountId:string|n
 
 export async function getDecisionPrincipleEngine(userId:string,riotAccountId:string|null):Promise<DecisionPrincipleEngine|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const engine=(data?.recent_change as any)?.decisionPrincipleEngine;
@@ -170,6 +235,7 @@ export async function getDecisionPrincipleEngine(userId:string,riotAccountId:str
 
 export async function getLearningVelocityProfile(userId:string,riotAccountId:string|null):Promise<LearningVelocityProfile|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const profile=(data?.recent_change as any)?.learningVelocity;
@@ -178,6 +244,7 @@ export async function getLearningVelocityProfile(userId:string,riotAccountId:str
 
 export async function getAdaptiveCoachingSession(userId:string,riotAccountId:string|null):Promise<AdaptiveCoachingSession|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('recent_change').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();
   if(error)throw new Error(error.message);
   const session=(data?.recent_change as any)?.adaptiveCoachingSession;
@@ -186,6 +253,7 @@ export async function getAdaptiveCoachingSession(userId:string,riotAccountId:str
 
 export async function getProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
   const db=getSupabaseAdmin();if(!db||!riotAccountId)return null;
+  await ensureLearningModelCurrent(userId,riotAccountId);
   const {data,error}=await db.from('op_player_learning_profiles').select('games_analyzed,fingerprint,metric_rollups,fix_ladder,champion_profiles,latest_analysis_at').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle();if(error)throw new Error(error.message);if(!data)return null;
   const leak=(data.metric_rollups as any)?.historical_leak_rate,recovery=(data.metric_rollups as any)?.historical_recovery;
   return{version:1,gamesAnalyzed:Number(data.games_analyzed||0),fingerprint:data.fingerprint as any,metricRollups:data.metric_rollups as any,fixLadder:data.fix_ladder as any,championProfiles:data.champion_profiles as any,opLeakRate:{occurrencesPerGame:extractLeakRate(leak?.recentValue),cleanScore:Number(leak?.averageScore??0),trend:leak?.trend??'BUILDING'},recovery:{score:typeof recovery?.averageScore==='number'?recovery.averageScore:null,trend:recovery?.trend??'BUILDING',availableGames:Number(recovery?.availableGames||0)},latestAnalysisAt:data.latest_analysis_at??null};
