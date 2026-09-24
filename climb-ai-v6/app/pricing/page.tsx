@@ -7,9 +7,9 @@ import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
 import {PLAN_COPY,TIER_RANK,type SubscriptionTier} from '@/lib/subscription';
 
 const positioning:Record<SubscriptionTier,{purpose:string;headline:string;summary:string;principle:string;why:string}>={
-  FREE:{purpose:'FIND THE PROBLEM',headline:"FIND WHAT'S HOLDING YOU BACK",summary:'Get a useful review, one next-game focus and proof that the same mistake is changing.',principle:'FIND',why:'Start here. Prove OP CLIMB can identify something worth fixing before you pay.'},
-  PLUS:{purpose:'UNDERSTAND THE GAME',headline:'KNOW HOW THIS GAME SHOULD BE PLAYED',summary:'Add the full 5v5 draft, both win conditions, your role and deeper fight/economy context.',principle:'UNDERSTAND',why:'Upgrade when knowing the mistake is no longer enough and you want the whole game explained.'},
-  PRO:{purpose:'DEVELOP THE PLAYER',headline:'BUILD A COACH THAT ACTUALLY KNOWS YOU',summary:'Turn separate reviews into persistent memory that tests learning and chooses what comes next.',principle:'DEVELOP',why:'Upgrade when you want OP CLIMB to remember patterns across games and move your development forward.'},
+  FREE:{purpose:'PROVE THE COACHING LOOP',headline:"FIND WHAT'S HOLDING YOU BACK",summary:'Get a useful review, one next-game focus and evidence that the same mistake is changing.',principle:'FIND',why:'Best if you want to see whether OP CLIMB can genuinely help before paying anything.'},
+  PLUS:{purpose:'GAME-BY-GAME COACHING',headline:'UNDERSTAND THE WHOLE MATCH',summary:'Add the full 5v5 draft, both win conditions, your role and deeper fight, reset and economy context.',principle:'UNDERSTAND',why:'Best if you want each game explained properly, but do not yet need a long-term player model.'},
+  PRO:{purpose:'LONG-TERM PLAYER DEVELOPMENT',headline:'BUILD A COACH THAT ACTUALLY KNOWS YOU',summary:'Turn separate reviews into persistent memory that tests learning, transfer and what should come next.',principle:'DEVELOP',why:'Best if you want OP CLIMB to learn your recurring decisions and manage your development over time.'},
 };
 
 const rows=[
@@ -31,20 +31,20 @@ const rows=[
 export default function Pricing(){
   const {tier}=useSubscription();
   return <>
-    <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/#loop">HOW IT WORKS</Link><Link href="/demo">DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
+    <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/#how-it-works">HOW IT WORKS</Link><Link href="/client">CLIENT DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
     <main className="container pricing-public">
       <section className="pricing-hero">
-        <div className="eyebrow">FREE → PLUS → PRO</div>
-        <h1>HOW DEEP DO YOU WANT<br/><span>YOUR COACH TO KNOW YOU?</span></h1>
-        <p>Every plan follows the same coaching journey. FREE finds the problem. PLUS explains the whole game around it. PRO remembers you across games and develops the player behind the results.</p>
+        <div className="eyebrow">START FREE · UPGRADE WHEN THE VALUE IS CLEAR</div>
+        <h1>FREE FINDS IT.<br/><span>PLUS EXPLAINS IT. PRO DEVELOPS IT.</span></h1>
+        <p>You do not need to pay to find out whether OP CLIMB is useful. FREE proves the coaching loop. PLUS gives you deeper game-by-game understanding. PRO turns those separate reviews into a coach that learns your development over time.</p>
       </section>
 
       <section className="pricing-story" aria-label="OP CLIMB coaching depth">
-        <div className="pricing-story-step"><span>FREE</span><strong>FIND THE PROBLEM</strong><small>Your games → one repeated mistake → one job for next game.</small></div>
+        <div className="pricing-story-step"><span>FREE</span><strong>PROVE IT HELPS</strong><small>Find the repeated mistake worth fixing first and take one clear job into your next game.</small></div>
         <i className="pricing-story-arrow">→</i>
-        <div className="pricing-story-step"><span>PLUS</span><strong>UNDERSTAND THE GAME</strong><small>Add the full draft, both win conditions and exactly what your role needs to do.</small></div>
+        <div className="pricing-story-step"><span>PLUS</span><strong>UNDERSTAND EVERY GAME</strong><small>See the full draft, both win conditions, your role and the deeper context behind the review.</small></div>
         <i className="pricing-story-arrow">→</i>
-        <div className="pricing-story-step is-pro"><span>PRO</span><strong>DEVELOP THE PLAYER</strong><small>Remember patterns, test transfer and move you onto the next lesson when the evidence says you are ready.</small></div>
+        <div className="pricing-story-step is-pro"><span>PRO</span><strong>BUILD YOUR PERSONAL COACH</strong><small>Remember patterns, test whether learning transfers and move your development forward only when the evidence says you are ready.</small></div>
       </section>
 
       <section className="pricing-grid-v2">
@@ -88,7 +88,7 @@ export default function Pricing(){
         <p className="muted" style={{maxWidth:920}}>PRO is where OP CLIMB stops treating every match as a separate review. It can remember recurring situations, test whether a learned decision survives a different champion or pressure pattern, connect different behaviours to a shared decision principle and advance your curriculum only when direct evidence supports it.</p>
       </section>
 
-      <section className="pricing-cta"><div className="eyebrow">NOT READY TO PAY?</div><h2>START FREE AND MAKE US EARN THE UPGRADE.</h2><div><Link href="/signup" className="btn primary">START FREE</Link><Link href="/demo" className="btn secondary">TRY THE DEMO</Link></div></section>
+      <section className="pricing-cta"><div className="eyebrow">NOT READY TO PAY?</div><h2>START FREE. UPGRADE ONLY WHEN YOU CAN SEE WHAT YOU ARE PAYING FOR.</h2><div><Link href="/signup" className="btn primary">START FREE</Link><Link href="/client" className="btn secondary">EXPLORE THE CLIENT</Link></div></section>
     </main>
     <PublicFooter/>
   </>;

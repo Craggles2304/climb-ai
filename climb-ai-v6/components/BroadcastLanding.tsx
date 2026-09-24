@@ -178,7 +178,7 @@ export function BroadcastLanding(){
 
   return <div className={styles.page}>
     <div className={styles.ticker} aria-label="Example climbs ticker">
-      <div className={styles.live}><i/>LIVE</div>
+      <div className={styles.live}>EXAMPLE CLIMBS</div>
       <div className={styles.track}>
         <span><b>Kai#EUW</b> Silver I → <span className={styles.up}>Gold IV</span> · fix: first reset</span>
         <span><b>moonlane#NA1</b> focus streak <span className={styles.up}>5 games</span> · 0 deaths pre-10</span>
@@ -196,12 +196,11 @@ export function BroadcastLanding(){
           <span>OP<span className={styles.mintText}>CLIMB</span></span>
         </Link>
         <div className={styles.navlinks}>
-          <a href="#report" className={styles['hide-sm']}>Sample report</a>
-          <a href="#squads" className={styles['hide-sm']}>Squads</a>
-          <a href="#pricing" className={styles['hide-sm']}>Pricing</a>
-          <Link href="/support" className={styles['hide-sm']}>Community</Link>
-          <a href="/client" className={styles.clientNav}><span className={styles['hide-sm']}>Explore the client</span><span className={styles['show-sm']}>Client demo</span></a>
-          <Link href="/login" className={styles['btn-ghost']}>Sign in</Link>
+          <a href="#how-it-works" className={styles['hide-sm']}>How it works</a>
+          <a href="#pricing" className={styles['hide-sm']}>Plans</a>
+          <a href="/client" className={styles.clientNav}><span className={styles['hide-sm']}>Client demo</span><span className={styles['show-sm']}>Demo</span></a>
+          <Link href="/login" className={styles['hide-sm']}>Sign in</Link>
+          <Link href="/signup" className={styles.navPrimary}>Start free</Link>
         </div>
       </nav>
 
@@ -217,14 +216,14 @@ export function BroadcastLanding(){
           </form>
           {error&&<div className={styles.error}>{error} Showing the sample report instead.</div>}
           <div className={styles.chips}><span>No card</span><span>No install to start</span><span>Result before sign-up</span></div>
-          <a className={styles.clientLink} href="/client">Or explore the full client, no account needed{' '}→</a>
+          <a className={styles.clientLink} href="/client">Want to see inside first? Explore the interactive client →</a>
         </div>
 
         <ScoutingCard result={result} busy={busy} step={step} demoName={demoName}/>
       </header>
     </div>
 
-    <section className={styles.section}>
+    <section className={styles.section} id="how-it-works">
       <div className={styles.wrap}>
         <div className={styles['sec-head']}>
           <div><div className={styles.eyebrow}>Your season arc</div><h2>It learns how you play.</h2></div>
@@ -273,33 +272,36 @@ export function BroadcastLanding(){
     <section className={styles.section} id="pricing">
       <div className={styles.wrap}>
         <div className={styles['sec-head']}>
-          <div><div className={styles.eyebrow}>Choose your path</div><h2>Start free. Climb faster.</h2></div>
-          <p>Every plan starts with your own games. Upgrade when you want the coach to remember you.</p>
+          <div><div className={styles.eyebrow}>Free → Plus → Pro</div><h2>Free finds it. Plus explains it. Pro develops it.</h2></div>
+          <p>Start without paying. Upgrade only when you want deeper game context or a coach that remembers your development across matches.</p>
         </div>
         <div className={styles.tiers}>
           <div className={styles.tier}>
-            <div className={styles.role}>Find the problem</div><h3>Free</h3><div className={styles.price}>£0</div>
-            <ul><li>Scan of your last 20 ranked games</li><li>Your #1 fix</li><li>One active focus, tracked</li></ul>
-            <a className={styles.go} href="#report">Analyse my games</a>
+            <div className={styles.role}>Find what to fix</div><h3>Free</h3><div className={styles.price}>£0</div>
+            <p className={styles.fit}><b>Choose Free if:</b> you want to prove OP CLIMB can find something useful before you spend anything.</p>
+            <ul><li>Scan your recent ranked games</li><li>Get your #1 next-game fix</li><li>Track one active focus</li><li>See whether that focus is improving</li></ul>
+            <a className={styles.go} href="#report">Try the free coach</a>
           </div>
           <div className={styles.tier+' '+styles.feat}>
-            <span className={styles.flag}>MOST PICKED</span><div className={styles.role}>Understand the game</div><h3>Plus</h3><div className={styles.price}>£9.99<small> / month</small></div>
-            <ul><li>Everything in Free</li><li>Full 5v5 read of every game</li><li>90 days of history</li><li>Deeper coaching context</li></ul>
-            <Link className={styles.go} href="/pricing">Start Plus</Link>
+            <span className={styles.flag}>GAME-BY-GAME COACHING</span><div className={styles.role}>Understand every game</div><h3>Plus</h3><div className={styles.price}>£9.99<small> / month</small></div>
+            <p className={styles.fit}><b>Choose Plus if:</b> you want to understand the whole match, not just the mistake OP CLIMB found.</p>
+            <ul><li>Everything in Free</li><li>Full 5v5 draft + win conditions</li><li>Your exact role in the game plan</li><li>Deeper fight, reset and economy context</li><li>90 days of history</li></ul>
+            <Link className={styles.go} href="/pricing">Compare Plus</Link>
           </div>
           <div className={styles.tier}>
-            <div className={styles.role}>Develop the player</div><h3>Pro</h3><div className={styles.price}>£19.99<small> / month</small></div>
-            <ul><li>Everything in Plus</li><li>Remembers you all season</li><li>Checks whether each fix sticks</li><li>Picks your next fix automatically</li></ul>
-            <Link className={styles.go} href="/pricing">Go Pro</Link>
+            <div className={styles.role}>Build your personal coach</div><h3>Pro</h3><div className={styles.price}>£19.99<small> / month</small></div>
+            <p className={styles.fit}><b>Choose Pro if:</b> you want OP CLIMB to learn you over time and decide what your development needs next.</p>
+            <ul><li>Everything in Plus</li><li>Decision Twin remembers recurring habits</li><li>Checks whether a fix really sticks</li><li>Tests skills in new champions and situations</li><li>Moves you to the next lesson when ready</li></ul>
+            <Link className={styles.go} href="/pricing">See how Pro develops you</Link>
           </div>
         </div>
-        <p className={styles.fine}>Cancel anytime · No fake rank guarantees</p>
+        <div className={styles.planFoot}><span>No card needed to start · Cancel paid plans anytime · No fake rank guarantees</span><Link href="/pricing">Compare every plan →</Link></div>
       </div>
     </section>
 
     <footer className={styles.footer}>
       <div className={styles.wrap}>
-        <p className={styles.note}>DESIGN CONCEPT · all names and stats shown as examples are sample data.</p>
+        <p className={styles.note}>SAMPLE DATA NOTICE · names, ranks and example climb results shown on this page are illustrative.</p>
         <p>OP CLIMB isn&apos;t endorsed by Riot Games and doesn&apos;t reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties.</p>
       </div>
     </footer>
