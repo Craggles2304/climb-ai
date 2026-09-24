@@ -21,13 +21,13 @@
       '.opf-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.opf-head span{font-size:7px;letter-spacing:.18em;color:#d6ff2f;font-weight:950;text-transform:uppercase}.opf-head small{font-size:6px;letter-spacing:.11em;color:#66747e;text-transform:uppercase}',
       '.opf-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}.opf-card{position:relative;min-width:0;border:1px solid rgba(255,255,255,.09);background:rgba(4,8,12,.68);padding:10px 11px}.opf-card.primary{border-color:rgba(214,255,47,.32)}.opf-card.objective{border-color:rgba(100,169,255,.26)}',
       '.opf-card span{display:block;font-size:6px;letter-spacing:.14em;color:#74818b;font-weight:950;text-transform:uppercase}.opf-card.primary span{color:#d6ff2f}.opf-card.objective span{color:#75b3ff}.opf-card strong{display:block;margin-top:5px;font-size:13px;line-height:1.2;color:#f2f6f8;text-transform:uppercase}.opf-card p{margin:5px 0 0;font-size:8px;line-height:1.35;color:#8f9ba4;text-transform:uppercase}',
-      '.opf-personal{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;border-top:1px solid rgba(255,255,255,.07);padding-top:8px}.opf-personal span{font-size:6px;letter-spacing:.15em;color:#d6ff2f;font-weight:950;text-transform:uppercase;white-space:nowrap}.opf-personal strong{font-size:9px;line-height:1.35;color:#e9eff2;text-transform:uppercase}',
+      '.opf-build{border-top:1px solid rgba(255,255,255,.07);padding-top:8px}.opf-build-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.opf-build-head span{font-size:6px;letter-spacing:.15em;color:#75b3ff;font-weight:950;text-transform:uppercase}.opf-build-head small{font-size:6px;letter-spacing:.1em;color:#66747e;text-transform:uppercase}.opf-build-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:7px}.opf-build-item{display:grid;grid-template-columns:30px minmax(0,1fr);gap:7px;align-items:center;border:1px solid rgba(255,255,255,.08);background:rgba(4,8,12,.6);padding:7px;min-width:0}.opf-build-item.draft{border-color:rgba(214,255,47,.28)}.opf-build-item img{width:30px;height:30px;object-fit:cover}.opf-build-item span{display:block;font-size:6px;letter-spacing:.1em;color:#70808a;text-transform:uppercase}.opf-build-item strong{display:block;margin-top:2px;font-size:8px;line-height:1.2;color:#edf2f4;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.opf-build-read{margin-top:6px;font-size:7px;line-height:1.35;color:#83919a;text-transform:uppercase}.opf-personal{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;border-top:1px solid rgba(255,255,255,.07);padding-top:8px}.opf-personal span{font-size:6px;letter-spacing:.15em;color:#d6ff2f;font-weight:950;text-transform:uppercase;white-space:nowrap}.opf-personal strong{font-size:9px;line-height:1.35;color:#e9eff2;text-transform:uppercase}',
       '#opDeepCoachDrawer{margin:10px 0 0;border:1px solid rgba(100,169,255,.18);background:rgba(4,8,12,.48)}#opDeepCoachDrawer>summary{cursor:pointer;list-style:none;padding:11px 12px;color:#91b9ff;font-size:7px;letter-spacing:.15em;font-weight:950;text-transform:uppercase}#opDeepCoachDrawer>summary::-webkit-details-marker{display:none}#opDeepCoachDrawer>summary:after{content:" +";float:right;color:#d6ff2f}#opDeepCoachDrawer[open]>summary:after{content:" −"}#opDeepCoachBody{padding:0 9px 9px;display:grid;gap:8px}',
       '#opRemFrozenPlaybook{margin-top:10px!important;padding:10px 11px!important;gap:7px!important}.rem5-playbook-head{margin-bottom:0!important}.rem5-playbook-title{font-size:7px!important}',
       '#opRemFrozenPlaybook>.rem5-trap,#opRemFrozenPlaybook>.rem10-strategy{display:none!important}',
       '#opRemFrozenPlaybook .rem5-coach-detail-body>.rem5-trap,#opRemFrozenPlaybook .rem5-coach-detail-body>.rem10-strategy{display:grid!important}',
       '#opRemFrozenPlaybook .rem5-coach-detail>summary{padding:9px 10px!important}',
-      '@media(max-width:900px){.opf-grid{grid-template-columns:1fr}.opf-personal{grid-template-columns:1fr}.opf-personal span{white-space:normal}}'
+      '@media(max-width:900px){.opf-grid,.opf-build-grid{grid-template-columns:1fr}.opf-personal{grid-template-columns:1fr}.opf-personal span{white-space:normal}}'
     ].join('');
     document.head.appendChild(style);
   }
@@ -43,6 +43,7 @@
       '<article class="opf-card"><span>YOUR POWER SPIKE</span><strong id="opfSpike">BUILDING SPIKE</strong><p id="opfSpikeWhy">THE POINT WHERE YOUR FIGHT GETS STRONGER.</p></article>',
       '<article class="opf-card objective"><span>OBJECTIVE MISSION</span><strong id="opfObjective">SET UP EARLY</strong><p id="opfObjectiveWhy">BE READY BEFORE THE FIGHT STARTS.</p></article>',
       '</div>',
+      '<div class="opf-build"><div class="opf-build-head"><span>BUILD FOR THIS GAME</span><small>DRAFT-FIT · CURRENT PATCH</small></div><div id="opfBuildGrid" class="opf-build-grid"></div><div id="opfBuildRead" class="opf-build-read"></div></div>',
       '<div class="opf-personal"><span>PERSONAL CLIMB MISSION</span><strong id="opfPersonal">EXECUTE THE FROZEN GAME PLAN.</strong></div>'
     ].join('');
     const path=hud.querySelector('.rem4-path-wrap');
@@ -128,6 +129,27 @@
     return existing?clip(upper(existing),135):'ONE GAME · ONE FOCUS · LET THE POST-GAME REVIEW SCORE IT.';
   }
 
+  function renderBuild(state,data){
+    const build=state?.teamPlan?.adaptiveBuild||state?.teamPlan?.rememberPlan?.adaptiveBuild||data?.adaptiveBuild||null;
+    const grid=$('opfBuildGrid'),read=$('opfBuildRead');if(!grid)return;
+    const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
+    grid.replaceChildren();
+    if(!items.length){
+      const empty=document.createElement('div');empty.className='opf-build-item';
+      empty.innerHTML='<div></div><div><span>BUILD</span><strong>WAITING FOR FULL DRAFT</strong></div>';
+      grid.appendChild(empty);if(read)read.textContent='BUILD UPDATES WHEN ENOUGH OF THE ENEMY TEAM IS KNOWN.';return;
+    }
+    items.forEach((item,index)=>{
+      const card=document.createElement('article');card.className='opf-build-item'+(item?.slot==='DRAFT'?' draft':'');card.title=clean(item?.why);
+      const img=document.createElement('img');img.alt='';img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
+      const copy=document.createElement('div');
+      const label=document.createElement('span');label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='BOOTS'?'BOOTS':upper(item?.slot||'ITEM');
+      const name=document.createElement('strong');name.textContent=upper(item?.name||'ITEM');
+      copy.append(label,name);card.append(img,copy);grid.appendChild(card);
+    });
+    if(read)read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
+  }
+
   function replaceVagueSpikeCopy(spike){
     const replacement=upper(spike?.head);
     if(!replacement)return;
@@ -147,6 +169,7 @@
     put('opfSpike',spike.head);put('opfSpikeWhy',spike.why);
     put('opfObjective',objective.head);put('opfObjectiveWhy',objective.why);
     put('opfPersonal',personalMission(state,data));
+    renderBuild(state,data);
     replaceVagueSpikeCopy(spike);
   }
 
