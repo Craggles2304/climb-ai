@@ -1,4 +1,4 @@
-export const CURRENT_LEARNING_MODEL_VERSION=1 as const;
+export const CURRENT_LEARNING_MODEL_VERSION=2 as const;
 
 export const REQUIRED_LEARNING_LAYERS=[
   'decisionTwinV2',
@@ -15,6 +15,7 @@ export const REQUIRED_LEARNING_LAYERS=[
   'learningVelocity',
   'adaptiveCoachingSession',
   'patchContext',
+  'roleAwareLearning',
 ] as const;
 
 export type LearningLayerKey=typeof REQUIRED_LEARNING_LAYERS[number];
