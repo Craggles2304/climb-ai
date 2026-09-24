@@ -497,6 +497,7 @@ function renderUpdate(next,phase){
 
   $('updateCopy').textContent=copy;
   $('updateVersion').textContent=version;
+  if($('companionVersionBadge'))$('companionVersionBadge').textContent=version;
   setHidden($('checkUpdate'),!['IDLE','CURRENT','ERROR'].includes(status));
   setHidden($('downloadUpdate'),status!=='AVAILABLE');
   setHidden($('installUpdate'),status!=='READY');
