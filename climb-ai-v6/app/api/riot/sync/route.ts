@@ -94,15 +94,19 @@ export async function POST(req:NextRequest){
         saved={persisted:true,inserted:0,skipped:0,reason:'Rank-only refresh.'};
       }
       if(supabase){
-        await supabase.from('riot_accounts').update({
+        const now=new Date().toISOString();
+        const accountUpdate:any={
           puuid:account.puuid,
           sync_status:'ready',
-          last_synced_at:new Date().toISOString(),
-          rank_tier:rank?.tier??null,
-          rank_division:rank?.division??null,
-          league_points:rank?.leaguePoints??null,
-          updated_at:new Date().toISOString(),
-        }).eq('id',linkedAccount.id).eq('user_id',user.id);
+          last_synced_at:now,
+          updated_at:now,
+        };
+        if(rank){
+          accountUpdate.rank_tier=rank.tier??null;
+          accountUpdate.rank_division=rank.division??null;
+          accountUpdate.league_points=rank.leaguePoints??null;
+        }
+        await supabase.from('riot_accounts').update(accountUpdate).eq('id',linkedAccount.id).eq('user_id',user.id);
       }
     }
 
