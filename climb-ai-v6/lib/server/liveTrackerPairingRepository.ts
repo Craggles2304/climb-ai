@@ -9,23 +9,34 @@ export async function createDesktopPairCode(userId:string,accountKey:string,devi
   const db=getSupabaseAdmin();
   if(!db)throw new Error('Supabase is required for secure tracker pairing.');
   const now=new Date().toISOString();
-  const tagline=riotProfile.tagline.replace(/^#/,'').trim().toUpperCase();
-  const region=riotProfile.region.trim().toUpperCase();
-  const gameName=riotProfile.gameName.trim();
+  const {data:selected,error:selectedError}=await db.from('riot_accounts')
+    .select('id,game_name,tagline,region,role,rank_tier,rank_division,league_points,champions,frustration')
+    .eq('user_id',userId).eq('id',accountKey).maybeSingle();
+  if(selectedError)throw new Error(selectedError.message);
+  if(!selected?.id)throw new Error('The selected Riot account is not available for this user.');
+
+  const tagline=String(selected.tagline||riotProfile.tagline).replace(/^#/,'').trim().toUpperCase();
+  const region=String(selected.region||riotProfile.region).trim().toUpperCase();
+  const gameName=String(selected.game_name||riotProfile.gameName).trim();
+  const storedRank=selected.rank_tier
+    ?`${selected.rank_tier}${selected.rank_division?` ${selected.rank_division}`:''}${typeof selected.league_points==='number'?` · ${selected.league_points} LP`:''}`
+    :null;
 
   const {error:profileError}=await db.from('profiles').upsert({
     id:userId,game_name:gameName,tagline,region,
-    role:riotProfile.role?.toUpperCase()||null,rank:riotProfile.rank||null,
-    champions:riotProfile.champions??[],frustration:riotProfile.frustration||null,updated_at:now,
+    role:String(selected.role||riotProfile.role||'').toUpperCase()||null,
+    rank:storedRank||riotProfile.rank||null,
+    champions:Array.isArray(selected.champions)?selected.champions:(riotProfile.champions??[]),
+    frustration:selected.frustration||riotProfile.frustration||null,updated_at:now,
   },{onConflict:'id'});
   if(profileError)throw new Error(profileError.message);
 
   const {error:clearError}=await db.from('riot_accounts').update({is_primary:false,updated_at:now}).eq('user_id',userId).eq('is_primary',true);
   if(clearError)throw new Error(clearError.message);
-  const {data:riotAccount,error:riotError}=await db.from('riot_accounts').upsert({
-    user_id:userId,game_name:gameName,tagline,region,label:'PRIMARY',is_primary:true,sync_status:'pairing',updated_at:now,
-  },{onConflict:'user_id,game_name,tagline,region'}).select('id,game_name,tagline,region').single();
-  if(riotError||!riotAccount)throw new Error(riotError?.message||'Riot account could not be saved.');
+  const {data:riotAccount,error:riotError}=await db.from('riot_accounts').update({
+    label:'PRIMARY',is_primary:true,sync_status:'pairing',updated_at:now,
+  }).eq('user_id',userId).eq('id',selected.id).select('id,game_name,tagline,region').single();
+  if(riotError||!riotAccount)throw new Error(riotError?.message||'Riot account could not be selected for pairing.');
 
   const code=makeCode();
   const expiresAt=new Date(Date.now()+PAIR_CODE_TTL_MS).toISOString();
