@@ -8,6 +8,8 @@ import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
 import {buildCompositionStrategy} from '@/lib/champions/compositionIntelligence';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
+import {matchupItemCatalogue} from '@/lib/combat/itemSource';
+import {buildAdaptiveItemPlan,type AdaptiveBuildPlayer} from '@/lib/adaptiveBuildPlanner';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {buildLiveMissionTips,nextRankTier,type LiveMissionTask} from '@/lib/liveMissionCoach';
@@ -102,9 +104,29 @@ export async function GET(req:NextRequest){
         :{...intelligentTeamBase,compositionRead:null};
     const botLane=buildPregameBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks,details,roster})
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
+
+    let adaptiveBuild=null;
+    if(enemyPicks.length>=3){
+      try{
+        const items=await matchupItemCatalogue(patch);
+        const toBuildPlayer=(pick:{name:string;role?:string|null}):AdaptiveBuildPlayer|null=>{
+          const detail=details.get(key(pick.name));
+          return detail?{champion:detail.name,role:pick.role??null,detail}:null;
+        };
+        const alliesForBuild=[
+          {champion:you.name,role,detail:you} as AdaptiveBuildPlayer,
+          ...allyPicks.filter(pick=>key(pick.name)!==key(you.name)).map(toBuildPlayer).filter((item):item is AdaptiveBuildPlayer=>Boolean(item)),
+        ];
+        const enemiesForBuild=enemyPicks.map(toBuildPlayer).filter((item):item is AdaptiveBuildPlayer=>Boolean(item));
+        adaptiveBuild=buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items});
+      }catch(error){
+        console.warn('[champion-plan] adaptive build unavailable',error);
+      }
+    }
+
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
-    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),coachLevel,missionTips,strategyAccess};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,coachLevel,missionTips,strategyAccess,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),adaptiveBuild,coachLevel,missionTips,strategyAccess};
+    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,adaptiveBuild,coachLevel,missionTips,strategyAccess,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
