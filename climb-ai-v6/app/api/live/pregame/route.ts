@@ -8,9 +8,9 @@ import {latestPregame,savePregameEnvelope} from '@/lib/server/pregameRepository'
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-const pickSchema=z.object({cellId:z.number().int().min(-1).max(20),championId:z.number().int().nonnegative(),championName:z.string().max(80).nullable(),role:z.string().max(40).nullable(),lockedIn:z.boolean()});
+const pickSchema=z.object({cellId:z.number().int().min(-1).max(20),championId:z.number().int().nonnegative(),championName:z.string().max(80).nullable(),role:z.string().max(40).nullable(),lockedIn:z.boolean(),selectionState:z.enum(['WAITING','HOVER','LOCKED']).optional()});
 const banSchema=z.object({championId:z.number().int().nonnegative(),championName:z.string().max(80).nullable()});
-const contextSchema=z.object({version:z.literal(1),capturedAt:z.string().datetime(),phase:z.string().max(80).nullable(),localPlayerCellId:z.number().int().min(-1).max(20),localChampionId:z.number().int().nonnegative(),localChampionName:z.string().max(80).nullable(),localRole:z.string().max(40).nullable(),localLockedIn:z.boolean(),allies:z.array(pickSchema).max(5),enemies:z.array(pickSchema).max(5),bans:z.object({allies:z.array(banSchema).max(10),enemies:z.array(banSchema).max(10)})});
+const contextSchema=z.object({version:z.literal(1),capturedAt:z.string().datetime(),phase:z.string().max(80).nullable(),localPlayerCellId:z.number().int().min(-1).max(20),localChampionId:z.number().int().nonnegative(),localChampionName:z.string().max(80).nullable(),localRole:z.string().max(40).nullable(),localLockedIn:z.boolean(),localSelectionState:z.enum(['WAITING','HOVER','LOCKED']).optional(),allies:z.array(pickSchema).max(5),enemies:z.array(pickSchema).max(5),bans:z.object({allies:z.array(banSchema).max(10),enemies:z.array(banSchema).max(10)})});
 const envelopeSchema=z.object({type:z.enum(['PREGAME','PREGAME_END']),clientPregameId:z.string().min(8).max(100),startedAt:z.string().datetime(),endedAt:z.string().datetime().optional(),context:contextSchema.optional()}).superRefine((value,ctx)=>{if(value.type==='PREGAME'&&!value.context)ctx.addIssue({code:z.ZodIssueCode.custom,path:['context'],message:'Context required.'})});
 
 export async function POST(req:NextRequest){
