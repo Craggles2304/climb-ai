@@ -44,10 +44,33 @@ export interface RoleAwareLearningSummary{
 }
 
 const GLOBAL_PATTERN_KEYS=new Set(['BANKING_LEAK','RED_STATE','CHAIN_DEATH','LEAD_THROW']);
+const GLOBAL_METRIC_KEYS=new Set([
+  'op_score',
+  'fight_selection','death_control','unspent_gold','red_state_fights','chain_deaths','thrown_advantage',
+  'underdog_conversion','fight_conversion','resource_conversion','lead_protection','power_spike_conversion',
+  'reset_quality','repeat_threat','opponent_adaptation','item_timing_diff','build_response',
+  'decision_fingerprint','historical_leak_rate','historical_recovery',
+]);
 
 export function canonicalLeagueRole(value:unknown):Role|null{
   const key=String(value??'').trim().toUpperCase();
   return MAP[key]??null;
+}
+
+export function globalLearningRows(rows:HistoryAnalysisRow[]):HistoryAnalysisRow[]{
+  return rows.map(row=>{
+    const analysis:any=row.analysis??{};
+    const metrics=Object.fromEntries(Object.entries(analysis.metrics??{}).filter(([key])=>GLOBAL_METRIC_KEYS.has(key)));
+    const leakSignals=(analysis.leakSignals??[]).filter((leak:any)=>GLOBAL_PATTERN_KEYS.has(String(leak?.key??'')));
+    const fingerprint={
+      ...(analysis.fingerprint??{}),
+      sequence:Array.isArray(analysis.fingerprint?.sequence)
+        ?analysis.fingerprint.sequence.filter((key:string)=>GLOBAL_PATTERN_KEYS.has(String(key)))
+        :[],
+    };
+    if(!GLOBAL_PATTERN_KEYS.has(String(fingerprint.primary??'')))fingerprint.primary=leakSignals[0]?.key??'BUILDING PROFILE';
+    return{...row,analysis:{...analysis,metrics,leakSignals,fingerprint}};
+  });
 }
 
 export function rowsForRole(rows:HistoryAnalysisRow[],role:Role){
