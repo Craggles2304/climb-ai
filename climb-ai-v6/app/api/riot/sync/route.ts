@@ -15,6 +15,7 @@ const schema=z.object({
   tagline:z.string().min(1).max(8),
   region:z.string().min(2).max(8),
   count:z.number().int().min(1).max(20).optional(),
+  rankOnly:z.boolean().optional(),
 });
 
 export async function POST(req:NextRequest){
@@ -67,7 +68,7 @@ export async function POST(req:NextRequest){
   try{
     const account=await riotService.getAccountByRiotId(cleanName,cleanTag,region);
     const rank=await riotService.getSummonerRank(account.puuid,region).catch(()=>null);
-    const ids=await riotService.getRecentMatches(account.puuid,region,{count:input.count??10,queue:420});
+    const ids=input.rankOnly?[]:await riotService.getRecentMatches(account.puuid,region,{count:input.count??10,queue:420});
 
     const ctx={
       riotAccountId:linkedAccount?.id||account.puuid,
@@ -84,9 +85,13 @@ export async function POST(req:NextRequest){
 
     let saved:SaveResult={persisted:false,inserted:0,skipped:synced.length,reason:'No signed-in linked account; results were not persisted.'};
     if(user&&linkedAccount){
-      saved=await saveMatches(user.id,synced);
-      if(!saved.persisted){
-        return NextResponse.json({ok:false,error:saved.reason||'Riot returned the match, but OP CLIMB could not save it.'},{status:500});
+      if(!input.rankOnly){
+        saved=await saveMatches(user.id,synced);
+        if(!saved.persisted){
+          return NextResponse.json({ok:false,error:saved.reason||'Riot returned the match, but OP CLIMB could not save it.'},{status:500});
+        }
+      }else{
+        saved={persisted:true,inserted:0,skipped:0,reason:'Rank-only refresh.'};
       }
       if(supabase){
         await supabase.from('riot_accounts').update({
