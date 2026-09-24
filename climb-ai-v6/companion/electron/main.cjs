@@ -33,7 +33,7 @@ function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync
 function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart)}}
 function paired(){return Boolean(currentConfig().token)}
 function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
-function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY')return'SUPPORT';return role}
+function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM'||role==='ADC')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE'||role==='MID')return'MID';if(role==='TOP')return'TOP';if(role==='JUNGLE')return'JUNGLE';return role}
 function needsRecordingPlanRecovery(){
   if(state.phase!=='RECORDING')return false;
   if(!state.teamPlan)return true;
