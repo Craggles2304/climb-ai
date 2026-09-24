@@ -10,6 +10,7 @@ const esports=fs.readFileSync(path.join(root,'companion','electron','remember-v5
 const liveRoster=fs.readFileSync(path.join(root,'companion','electron','live-roster.cjs'),'utf8');
 const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap.cjs'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
+const index=fs.readFileSync(path.join(root,'companion','electron','index.html'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
 const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
