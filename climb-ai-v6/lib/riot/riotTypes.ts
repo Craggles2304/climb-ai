@@ -51,6 +51,7 @@ export interface RiotMatchDto{
     /** Seconds when gameEndTimestamp is present, milliseconds on older records. */
     gameDuration:number;
     gameMode?:string;
+    gameVersion?:string;
     queueId?:number;
     participants:RiotParticipant[];
     teams?:{teamId:number;win:boolean;objectives?:Record<string,{first:boolean;kills:number}>}[];
