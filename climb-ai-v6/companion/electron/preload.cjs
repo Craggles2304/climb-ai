@@ -73,7 +73,7 @@ function installStrategyView(){
     </details>
     <div class="op-mission"><span>YOUR CLIMB MISSION</span><strong id="opMissionCue"></strong></div>
     <section id="opAdaptiveBuild" class="op-build hidden">
-      <div class="op-build-head"><span>BUILD FOR THIS GAME</span><small>DRAFT-FIT · CURRENT PATCH</small></div>
+      <div class="op-build-head"><span>ITEM PLAN</span><small>OPTIMAL BASELINE VS THIS GAME</small></div>
       <div id="opAdaptiveBuildGrid" class="op-build-grid"></div>
       <div id="opAdaptiveBuildRead" class="op-build-read"></div>
     </section>
@@ -186,26 +186,47 @@ function renderAdaptiveBuild(team){
   const grid=document.getElementById('opAdaptiveBuildGrid');
   const read=document.getElementById('opAdaptiveBuildRead');
   const build=team?.adaptiveBuild||team?.rememberPlan?.adaptiveBuild||null;
-  if(!root||!grid){return false}
-  const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
-  root.classList.toggle('hidden',items.length<2);
-  if(items.length<2)return false;
+  if(!root||!grid)return false;
+  const optimal=build?.optimal||null,recommended=build?.recommended||null;
+  const optimalItems=[...(Array.isArray(optimal?.items)?optimal.items:[]),optimal?.boots||null].filter(Boolean);
+  const recommendedItems=[...(Array.isArray(recommended?.items)?recommended.items:[]),recommended?.boots||null].filter(Boolean);
+  const fallback=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
+  const hasModern=optimalItems.length>=2&&recommendedItems.length>=2;
+  const visible=hasModern?recommendedItems:fallback;
+  root.classList.toggle('hidden',visible.length<2);
+  if(visible.length<2)return false;
   grid.replaceChildren();
-  items.forEach((item,index)=>{
-    const card=document.createElement('article');
-    card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'');
-    card.title=String(item?.why||'').trim();
-    const img=document.createElement('img');
-    img.alt='';
-    img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
-    const copy=document.createElement('div');
-    const label=document.createElement('span');
-    label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='BOOTS'?'BOOTS':String(item?.slot||'ITEM');
-    const name=document.createElement('strong');
-    name.textContent=String(item?.name||'ITEM').toUpperCase();
-    copy.append(label,name);card.append(img,copy);grid.appendChild(card);
-  });
-  if(read)read.textContent=String(build?.read||build?.rule||'').toUpperCase();
+
+  const renderLine=(label,items,accent)=>{
+    const line=document.createElement('div');
+    line.style.cssText='display:grid;grid-template-columns:110px repeat('+String(Math.max(1,items.length))+',minmax(0,1fr));gap:7px;align-items:stretch;margin-top:6px';
+    const head=document.createElement('div');
+    head.style.cssText='display:flex;align-items:center;padding:8px 9px;border:1px solid '+accent+';font-size:7px;letter-spacing:.14em;font-weight:950;color:#edf2f4;text-transform:uppercase;background:rgba(4,8,12,.62)';
+    head.textContent=label;line.appendChild(head);
+    items.forEach((item,index)=>{
+      const card=document.createElement('article');
+      card.className='op-build-card'+(label==='MY RECOMMENDATION'?' draft':'');
+      card.title=String(item?.why||'').trim();
+      const img=document.createElement('img');img.alt='';
+      img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
+      const copy=document.createElement('div');
+      const slot=document.createElement('span');
+      slot.textContent=item?.slot==='BOOTS'?'BOOTS':('ITEM '+String(index+1));
+      const name=document.createElement('strong');name.textContent=String(item?.name||'ITEM').toUpperCase();
+      copy.append(slot,name);card.append(img,copy);line.appendChild(card);
+    });
+    grid.appendChild(line);
+  };
+
+  if(hasModern){
+    renderLine('OPTIMAL CORE',optimalItems,'rgba(117,179,255,.28)');
+    renderLine('MY RECOMMENDATION',recommendedItems,'rgba(214,255,47,.34)');
+    const changes=Array.isArray(build?.changes)?build.changes.filter(Boolean).slice(0,2):[];
+    if(read)read.textContent=(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||'')).toUpperCase();
+  }else{
+    renderLine('RECOMMENDED',fallback,'rgba(214,255,47,.34)');
+    if(read)read.textContent=String(build?.read||build?.rule||'').toUpperCase();
+  }
   return true;
 }
 
