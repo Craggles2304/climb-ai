@@ -46,8 +46,8 @@ test('another supporting game strengthens the same mission instead of duplicatin
 test('three clean games after activation master the mission and refill the vacancy immediately',()=>{
   const adaptive:ILPTask&{adaptive:AdaptiveIlpMeta}={...task('op-pro-chain-death',96),title:'Break the second death',why:'Recovery leak.',gameRule:'Reset safely after death.',metric:'OP PRO Fix Ladder',target:'3 clean games',status:'EVIDENCE_BUILDING',adaptive:{version:1,managedBy:'POST_GAME_EVIDENCE',patternKey:'CHAIN_DEATH',confidence:80,recentSupportGames:2,recentWindow:3,recentOccurrences:2,totalSupportGames:2,cleanStreak:0,activatedAfter:'2026-08-31T10:00:00.000Z',lastEvidenceAt:'2026-08-30T10:00:00.000Z',lastAction:'PROMOTED'}};
   const result=adaptActiveFiveFromPostGameEvidence({tasks:[adaptive,task('a',80),task('b',79),task('c',78),task('d',77)],profile:profile([],3,g3),history:[row(g1,null),row(g2,null),row(g3,null)],accountId:'acct',role:'JUNGLE',now:g3});
-  assert.equal(result.tasks.find(t=>t.id==='op-pro-jungle-chain-death')?.status,'MASTERED');
-  assert.equal(result.tasks.find(t=>t.id==='op-pro-jungle-chain-death')?.progress,100);
+  assert.equal(result.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
+  assert.equal(result.tasks.find(t=>t.id==='op-pro-chain-death')?.progress,100);
   assert.equal(active(result.tasks).length,5);
   assert.ok(result.tasks.some(t=>t.id.includes('adaptive-fill')));
 });
@@ -56,10 +56,10 @@ test('mastered behaviour requires repeated recurrence before reopening',()=>{
   const mastered:ILPTask&{adaptive:AdaptiveIlpMeta}={...task('op-pro-chain-death',96),title:'Break the second death',status:'MASTERED',progress:100,adaptive:{version:1,managedBy:'POST_GAME_EVIDENCE',patternKey:'CHAIN_DEATH',confidence:80,recentSupportGames:0,recentWindow:3,recentOccurrences:0,totalSupportGames:2,cleanStreak:3,activatedAfter:'2026-08-20T10:00:00.000Z',lastEvidenceAt:'2026-08-19T10:00:00.000Z',lastAction:'MASTERED'}};
   const base=[mastered,task('a',80),task('b',79),task('c',78),task('d',77)];
   const one=adaptActiveFiveFromPostGameEvidence({tasks:base,profile:profile([fix({gamesSeen:1,occurrences:1})],1,g1),history:[row(g1,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g1});
-  assert.equal(one.tasks.find(t=>t.id==='op-pro-jungle-chain-death')?.status,'MASTERED');
+  assert.equal(one.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
   const two=adaptActiveFiveFromPostGameEvidence({tasks:one.tasks,profile:profile([fix({gamesSeen:2,occurrences:2})],2,g2),history:[row(g1,'CHAIN_DEATH'),row(g2,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g2});
-  assert.notEqual(two.tasks.find(t=>t.id==='op-pro-jungle-chain-death')?.status,'MASTERED');
-  assert.equal((two.tasks.find(t=>t.id==='op-pro-jungle-chain-death') as ILPTask&{adaptive?:AdaptiveIlpMeta})?.adaptive?.lastAction,'REOPENED');
+  assert.notEqual(two.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
+  assert.equal((two.tasks.find(t=>t.id==='op-pro-chain-death') as ILPTask&{adaptive?:AdaptiveIlpMeta})?.adaptive?.lastAction,'REOPENED');
   assert.equal(active(two.tasks).length,5);
 });
 
