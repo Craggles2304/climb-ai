@@ -32,10 +32,10 @@ export interface AdaptiveBuildPlan{
   swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];rule:string;boundary:string;
 }
 
-const CC=/\b(stun|root|snare|knock(?:back|up)?|suppress|fear|taunt|charm|silence|sleep|immobiliz|pull|airborne)\b/i;
+const CC=/\b(stuns?|roots?|snares?|knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation)|pulls?|airborne)\b/i;
 const HEAL=/\b(heal|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
 const SHIELD=/\b(shield|shielding)\b/i;
-const DASH=/\b(dash|blink|leap|charge|dives?|jump|teleport)\b/i;
+const DASH=/\b(dashes?|blinks?|leaps?|charges?|dives?|jumps?|teleports?)\b/i;
 const POKE=/\b(long range|long-range|poke|artillery|from range)\b/i;
 
 function clean(value:unknown){return String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
