@@ -237,3 +237,98 @@ body[data-op-area="hq"] .hq-command::after{
 body[data-op-area="hq"] .hq-behaviour:nth-child(3n+1){border-top:2px solid rgb(var(--op-a))}
 body[data-op-area="hq"] .hq-behaviour:nth-child(3n+2){border-top:2px solid rgb(var(--op-b))}
 body[data-op-area="hq"] .hq-behaviour:nth-child(3n){border-top:2px solid rgb(var(--op-c))}
+
+
+/* Active Five — plain-English coaching layer */
+.vf-track-plain{
+  margin:7px 0 10px;
+  max-width:820px;
+  color:#b8c6c9;
+  font-size:13px;
+  line-height:1.5;
+}
+.vf-track-plain span{
+  display:inline-block;
+  margin-right:8px;
+  color:rgb(var(--op-a));
+  font:600 9px/1.4 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+  white-space:nowrap;
+}
+.vf-focus-plain{
+  margin:14px 0 12px;
+  max-width:780px;
+  padding:13px 15px;
+  border-left:3px solid rgb(var(--op-a));
+  background:linear-gradient(90deg,rgba(var(--op-a),.085),rgba(var(--op-b),.025),transparent);
+}
+.vf-focus-plain span{
+  display:block;
+  margin-bottom:5px;
+  color:rgb(var(--op-a));
+  font:600 9px/1.4 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.12em;
+}
+.vf-focus-plain p{
+  margin:0;
+  color:#d7e0e1;
+  font-size:14px;
+  line-height:1.55;
+}
+.vf-simple-rule{
+  margin:15px 0 10px;
+  padding:15px 17px;
+  border:1px solid rgba(var(--op-a),.23);
+  background:linear-gradient(135deg,rgba(var(--op-a),.085),rgba(8,13,16,.72));
+}
+.vf-simple-rule span{
+  display:block;
+  margin-bottom:6px;
+  color:rgb(var(--op-a));
+  font:600 9px/1.4 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.12em;
+}
+.vf-simple-rule b{
+  display:block;
+  max-width:900px;
+  color:#f0f5f4;
+  font-size:14px;
+  line-height:1.5;
+}
+.vf-technical-rule{
+  margin:9px 0 14px;
+  border-top:1px solid rgba(255,255,255,.07);
+}
+.vf-technical-rule summary{
+  padding:10px 0 4px!important;
+  color:#829397;
+  font:600 9px/1.4 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;
+  cursor:pointer;
+}
+.vf-technical-rule p{
+  margin:7px 0 0;
+  max-width:900px;
+  color:#9bacb0;
+  font-size:12px;
+  line-height:1.55;
+}
+.vf-technical-rule-hero{
+  max-width:820px;
+  border-top:0;
+  margin-top:-2px;
+}
+.vf-track-pass span{
+  white-space:normal;
+}
+.vf-section-head .muted{
+  max-width:760px;
+  margin-top:7px;
+  font-size:13px;
+  line-height:1.45;
+}
+@media(max-width:760px){
+  .vf-track-plain{font-size:12px}
+  .vf-track-plain span{display:block;margin:0 0 3px}
+  .vf-focus-plain{padding:12px 13px}
+}
