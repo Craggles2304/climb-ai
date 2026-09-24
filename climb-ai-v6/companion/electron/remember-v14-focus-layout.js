@@ -133,6 +133,12 @@
     const build=state?.teamPlan?.adaptiveBuild||state?.teamPlan?.rememberPlan?.adaptiveBuild||data?.adaptiveBuild||null;
     const grid=$('opfBuildGrid'),read=$('opfBuildRead');if(!grid)return;
     const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
+    const signature=items.map(item=>String(item?.id||'')+':'+String(item?.slot||'')).join('|')+'#'+String(build?.read||'');
+    if(grid.dataset.signature===signature){
+      if(read&&upper(read.textContent)!==upper(build?.read||build?.rule||'DRAFT-FIT BUILD'))read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
+      return;
+    }
+    grid.dataset.signature=signature;
     grid.replaceChildren();
     if(!items.length){
       const empty=document.createElement('div');empty.className='opf-build-item';
