@@ -492,7 +492,7 @@ function renderUpdate(next,phase){
     AVAILABLE:`${latest||'A new version'} is ready to download.`,
     DOWNLOADING:`Downloading ${latest||'update'} · ${Math.round(Number(update.progress)||0)}%`,
     READY:busy?`${latest||'Update'} downloaded. Finish the current League session before restarting.`:`${latest||'Update'} downloaded and ready.`,
-    INSTALLING:'Restarting into the new version…',
+    INSTALLING:'Closing the Companion and installing the new version…',
     ERROR:update.error||'The update check failed. Your current Companion will keep working.',
   }[status]||`${version} · Automatic update checks are enabled.`;
 
