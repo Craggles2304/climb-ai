@@ -18,3 +18,185 @@
 .site-back{color:var(--mint);font-weight:600}
 .site-back:hover{text-decoration:underline}
 @media(max-width:760px){.site-cta{display:none}}
+
+
+/* SITE PARITY — keep /client visually identical to the live OP CLIMB product shell */
+::selection{background:rgba(182,246,107,.28);color:#fff}
+
+/* Exact production shell geometry */
+.app-shell{grid-template-columns:224px minmax(0,1fr);background:var(--bg)}
+.sidebar{
+  padding:28px 16px 16px;
+  background:#0d1418;
+  border-right:1px solid var(--line);
+  backdrop-filter:none;
+}
+.workspace{background:var(--bg)}
+.topbar{
+  position:sticky;top:0;z-index:25;
+  height:72px;min-height:72px;
+  padding:0 32px;
+  background:rgba(13,20,24,.85);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(10px);
+}
+main{max-width:1530px;padding:31px 32px 40px}
+.footer{background:#0d1418;border-top:1px solid var(--line)}
+
+/* Same deliberately square product language used by the authenticated site */
+.panel,.panel-padding,.btn,.tag,.game-label,.nav-link,.sidebar-plan,.sidebar-help,
+.tier-selector select,.demo-badge,.metric,.loop-card,.memory-card,.rank-card,
+.home-plan-strip,.access-banner,.tabs,.tab,.match-banner,.tactic,.personal-focus,
+.event,.evidence-stat,.habit,.memory-event,.plan-card,.plan-faq,.billing-toggle,
+.billing-toggle button,.dialog-item,.toast,dialog,.icon-button,.pin-btn,
+.focus-surface,.match-row,.challenge-card,.squad-card,.stat-card,.path-card,
+.review-card,.coach-card,.plan-intro,.memory-outcomes>*,.rank-emblem{
+  border-radius:0!important;
+  box-shadow:none!important;
+}
+.panel{background:var(--panel);border-color:var(--line)}
+.panel-padding{background:var(--panel)}
+.icon-button{border:0}
+.icon-button:hover{background:#27353b}
+
+/* Production navigation */
+.brand{margin:0 5px 32px;font:800 29px/.9 var(--display);letter-spacing:.035em}
+.brand-mark{border-color:var(--mint);color:var(--mint);border-radius:0}
+.brand-mark>span{background:#0d1418}
+.game-label{
+  background:#151d21;border:1px solid var(--line);
+  padding:11px 9px;margin-bottom:27px;
+  color:#b7c4c7;
+}
+.nav-caption{font-size:12px;color:var(--dim)}
+.nav-link{margin:2px 0;padding:11px 13px;background:transparent;color:var(--muted)}
+.nav-link:hover{background:#182328;color:#fff}
+.nav-link.active{
+  background:linear-gradient(90deg,rgba(182,246,107,.13),rgba(182,246,107,.02));
+  color:var(--mint);
+}
+.nav-link.active:before{left:-16px;top:6px;bottom:6px;width:3px;background:var(--mint)}
+.sidebar-plan{
+  padding:15px;
+  background:linear-gradient(135deg,#223025,#121b1e);
+  border:1px solid #3a4b39;
+}
+.sidebar-plan .eyebrow{color:var(--dim)}
+.mini-profile{border-color:var(--line)}
+
+/* Production topbar */
+.breadcrumb{font-size:13px;color:var(--dim)}
+.breadcrumb strong{font-weight:500;color:var(--text);text-transform:uppercase}
+.breadcrumb .divider{color:#465256}
+.demo-badge{
+  font:11px var(--mono);
+  color:var(--gold);
+  border:1px solid #715c3b;
+  background:rgba(63,51,32,.2);
+  padding:4px 8px;
+}
+.tier-selector select{background:#172127;border:1px solid var(--line);color:var(--text)}
+.notification-button i{background:var(--mint)}
+
+/* Same button contract as opclimb.com */
+.btn{
+  min-height:42px;padding:10px 17px;
+  background:var(--panel2);
+  border:1px solid #3b494f;
+  color:var(--text);
+  font-family:var(--body);
+  font-size:14px;font-weight:600;
+  transition:background .18s,border-color .18s,transform .18s;
+}
+.btn:hover{border-color:#8caa97;background:#22312c;transform:translateY(-1px)}
+.btn.primary{background:var(--mint);border-color:var(--mint);color:#12200b}
+.btn.primary:hover{background:#c7ff8a;border-color:#c7ff8a}
+.btn.gold{color:var(--gold);background:rgba(232,192,134,.07);border-color:rgba(176,138,82,.4)}
+.btn:disabled{opacity:.55;transform:none}
+
+/* Typography parity */
+h1,h2,.mission-title,.plan-price,.rank-main h3,.focus-surface h2{
+  font-family:var(--display);
+  text-transform:uppercase;
+  letter-spacing:.015em;
+  font-weight:700;
+}
+.page-head{margin-bottom:24px}
+.page-head h1{font-size:clamp(36px,3.1vw,47px);line-height:1}
+.page-head p{font-family:var(--body);font-size:14px;letter-spacing:0;color:var(--muted);margin-top:9px}
+.eyebrow,.tag,.demo-badge,.tier-selector,.nav-caption,.nav-extra{
+  font-family:var(--mono);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+.eyebrow{font-size:12px;color:var(--muted)}
+.eyebrow.accent{color:var(--mint)}
+
+/* Cards and data surfaces — same flat ground, accents only communicate meaning */
+.metric,.loop-card,.memory-card,.rank-card,.plan-card,.event,.habit,.review-card,.coach-card{
+  border-color:var(--line);
+  box-shadow:none;
+}
+.metric{background:var(--panel)}
+.loop-card{background:linear-gradient(140deg,#1b2928,#121b1f)}
+.loop-card:hover{border-color:var(--mint)}
+.memory-card{background:radial-gradient(circle at 100% 0%,rgba(145,110,67,.18),transparent 50%),#161c1e}
+.rank-card{background:radial-gradient(ellipse at 50% 30%,rgba(102,87,58,.18),transparent 65%),var(--panel)}
+.progress-track{height:5px;background:#223036}
+.progress-track span{background:var(--mint)}
+.rank-card .progress-track span{background:var(--gold)}
+
+/* Keep hero art, but use the same command-card treatment as the live product */
+.mission{
+  border:1px solid #587554;
+  background:#19262a;
+  box-shadow:none;
+}
+.mission:before{height:3px;background:var(--mint)}
+.mission:after{
+  background:
+    linear-gradient(90deg,rgba(15,27,27,.96) 0%,rgba(17,30,34,.86) 40%,rgba(13,24,39,.44) 68%,rgba(17,23,39,.08)),
+    linear-gradient(0deg,rgba(16,28,33,.79),transparent 60%);
+}
+.mission h2 em{color:var(--mint)}
+.mission .eyebrow{color:var(--mint)}
+
+/* Tier language matches the public pricing ladder */
+.plan-card.free{border-color:var(--line)}
+.plan-card.plus,.plan-card.recommended{border-color:#7db254;background:linear-gradient(145deg,#233822,#141f20)}
+.plan-card.pro{border-color:#957340;background:linear-gradient(145deg,#3a3020,#171e21)}
+.plan-card.pro .eyebrow,.plan-card.pro .plan-price,.tag.gold{color:var(--gold)}
+.tag{background:#233036;color:var(--muted);border:1px solid #425057}
+.tag:not(.gold):not(.gray):not(.purple):not(.red){background:#26352b;color:var(--mint);border-color:#42623b}
+
+/* Dialog / toast should look like product UI, not browser-demo chrome */
+dialog{background:var(--panel);border:1px solid var(--line);color:var(--text)}
+dialog::backdrop{background:rgba(4,8,10,.78)}
+.toast{background:#26352b;border:1px solid #42623b;color:#e4f7da}
+
+/* Responsive parity with the live authenticated shell */
+@media(max-width:1250px){
+  .app-shell{grid-template-columns:205px minmax(0,1fr)}
+  main{padding:27px 23px 35px}
+  .topbar{padding:0 23px}
+}
+@media(max-width:900px){
+  body{padding-bottom:75px}
+  .app-shell{display:block}
+  .sidebar{display:none}
+  .topbar{
+    height:60px;min-height:60px;
+    padding:0 16px;
+    background:rgba(13,20,24,.95);
+  }
+  main{padding:22px 16px 96px}
+  .page-head{align-items:flex-start}
+  .page-head h1{font-size:38px}
+  .mobile-nav{background:#0d1418;border-top:1px solid var(--line);backdrop-filter:none}
+  .mobile-nav a{font-family:var(--body);font-size:12px;color:var(--muted)}
+  .mobile-nav a.active{color:var(--mint);border-top:2px solid var(--mint)}
+}
+@media(max-width:620px){
+  .topbar{min-height:60px}
+  .panel-padding,.plan-card,dialog{padding:18px}
+}
