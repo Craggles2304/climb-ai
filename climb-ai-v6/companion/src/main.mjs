@@ -14,10 +14,11 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=15_000;
-const RUNTIME_VERSION='2026.09.16.2';
+const RUNTIME_VERSION='2026.09.24.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
+const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 
 if(!TOKEN){
   console.error('OVERPOWERED Companion: OP_TRACKER_TOKEN is missing. Pair this PC from the Live Companion page first.');
@@ -45,10 +46,14 @@ let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
 const championNames=new Map();
 
+function emitTrackerState(next,detail){
+  console.log(`${TRACKER_STATE_PREFIX}${JSON.stringify({state:next,detail:String(detail||''),runtimeVersion:RUNTIME_VERSION})}`);
+}
 function logState(next,message){
   if(state===next)return;
   state=next;
   console.log(message);
+  emitTrackerState(next,message);
 }
 
 function localGameData(){
@@ -263,12 +268,14 @@ async function postEnvelope(envelope){
 async function postStatus(force=false){
   if(!force&&Date.now()-lastStatusUploadAt<HEARTBEAT_MS)return;
   const heartbeatState=session?'RECORDING':pregame?'CHAMP_SELECT':lastLcuDetected?'WAITING':'LCU_UNAVAILABLE';
+  const heartbeatDetail=session?'Match telemetry is recording.':lastLcuDetail;
+  emitTrackerState(heartbeatState,heartbeatDetail);
   const result=await postJson('/api/live/status',{
     state:heartbeatState,
     runtimeVersion:RUNTIME_VERSION,
     lcuDetected:lastLcuDetected||Boolean(session),
     champSelectDetected:Boolean(pregame)||lastChampSelectDetected,
-    detail:session?'Match telemetry is recording.':lastLcuDetail,
+    detail:heartbeatDetail,
   });
   if(result.ok)lastStatusUploadAt=Date.now();
 }
