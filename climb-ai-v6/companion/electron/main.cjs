@@ -31,7 +31,7 @@ function configFile(){return path.join(configDir(),'companion.json')}
 function readConfig(){try{return JSON.parse(readFileSync(configFile(),'utf8'))}catch{return{webUrl:DEFAULT_WEB,tokenCipher:'',autoStart:false}}}
 function decryptToken(cfg){if(!cfg?.tokenCipher||!safeStorage.isEncryptionAvailable())return'';try{return safeStorage.decryptString(Buffer.from(cfg.tokenCipher,'base64'))}catch{return''}}
 function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync(configFile(),JSON.stringify(next,null,2),'utf8')}
-function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart)}}
+function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),lastReviewSessionId:String(raw.lastReviewSessionId||'')}}
 function paired(){return Boolean(currentConfig().token)}
 function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
 function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM'||role==='ADC')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE'||role==='MID')return'MID';if(role==='TOP')return'TOP';if(role==='JUNGLE')return'JUNGLE';return role}
@@ -136,6 +136,33 @@ async function pollLiveCoach(){
 function stopPostGameReviewPoll(){if(reviewPollTimer){clearTimeout(reviewPollTimer);reviewPollTimer=null}}
 function schedulePostGameReviewPoll(delay=1800){stopPostGameReviewPoll();reviewPollTimer=setTimeout(()=>{reviewPollTimer=null;void pollPostGameReview()},delay)}
 function startPostGameReviewPoll(){reviewPollAttempts=0;stopPostGameReviewPoll();void pollPostGameReview()}
+function markReviewShown(sessionId){
+  const id=String(sessionId||'').trim();if(!id)return;
+  const cfg=readConfig();cfg.lastReviewSessionId=id;writeConfig(cfg);
+}
+async function recoverLatestCompletedReview(){
+  if(reviewPollInFlight||state.phase!=='WAITING')return;
+  const cfg=currentConfig();if(!cfg.token)return;
+  reviewPollInFlight=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
+  try{
+    const response=await fetch(`${cfg.webUrl}/api/live/companion-review`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
+    if(response.status===202)return;
+    const body=await response.json().catch(()=>({}));
+    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
+    const review=body?.review;
+    const sessionId=String(review?.sessionId||'').trim();
+    if(!response.ok||!body?.ready||!review||!sessionId||sessionId===cfg.lastReviewSessionId)return;
+    const endedAt=Date.parse(String(review?.endedAt||''));
+    const age=Number.isFinite(endedAt)?Date.now()-endedAt:Number.POSITIVE_INFINITY;
+    if(age<0||age>8*60*60_000)return;
+    markReviewShown(sessionId);
+    setState({phase:'REVIEW',detail:'Recovered your latest completed match review.',postGameReview:review});
+    createWindow(true);
+  }catch{}
+  finally{clearTimeout(timeout);reviewPollInFlight=false}
+}
+
 async function pollPostGameReview(){
   if(reviewPollInFlight)return;
   const cfg=currentConfig();if(!cfg.token)return;
@@ -149,6 +176,7 @@ async function pollPostGameReview(){
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
     if(!response.ok||!body?.ready||!body?.review){schedulePostGameReviewPoll(2500);return}
     stopPostGameReviewPoll();
+    markReviewShown(body.review?.sessionId);
     setState({phase:'REVIEW',detail:'Your key good points and critical points are ready.',postGameReview:body.review});
     createWindow(true);
   }catch{schedulePostGameReviewPoll(2500)}
@@ -293,6 +321,7 @@ function startTracker(){
   const runtime=trackerPath();if(!existsSync(runtime))return setState({phase:'ERROR',detail:'Tracker runtime is missing. Reinstall OP CLIMB Companion.'});
   tracker=spawn(process.execPath,[runtime],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',OP_WEB_URL:cfg.webUrl,OP_TRACKER_TOKEN:cfg.token},windowsHide:true,stdio:['ignore','pipe','pipe']});
   setState({phase:'WAITING',detail:'Companion is running. Waiting for League.',trackerRunning:true});
+  setTimeout(()=>{if(state.phase==='WAITING')void recoverLatestCompletedReview()},4500);
   bindTrackerStream(tracker.stdout,'info');
   bindTrackerStream(tracker.stderr,'error');
   tracker.on('error',err=>{addLog(`Tracker failed to start: ${err.message}`,'error');setState({phase:'ERROR',detail:'Tracker could not start.',trackerRunning:false})});
