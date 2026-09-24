@@ -33,3 +33,15 @@ test('tracker stdout and stderr are line-buffered so split chunks cannot lose st
   assert.ok(desktop.includes("bindTrackerStream(tracker.stdout,'info')"));
   assert.ok(desktop.includes("bindTrackerStream(tracker.stderr,'error')"));
 });
+
+
+const packageJson=JSON.parse(fs.readFileSync('companion/package.json','utf8'));
+
+test('Windows tray uses the packaged OP CLIMB icon instead of relying on runtime SVG',()=>{
+  assert.ok(desktop.includes("path.join(process.resourcesPath,'icon.ico')"));
+  assert.ok(desktop.includes("path.join(__dirname,'..','build','icon.ico')"));
+  assert.ok(desktop.includes('nativeImage.createFromPath(iconPath)'));
+  const iconResource=(packageJson.build.extraResources||[]).find(resource=>resource.from==='build/icon.ico');
+  assert.ok(iconResource);
+  assert.equal(iconResource.to,'icon.ico');
+});
