@@ -14,7 +14,7 @@ function row(role:string,champion:string,leaks:Array<{key:string;label:string;co
   return{
     champion,
     role,
-    createdAt:new Date(2026,8,20+Math.random()).toISOString(),
+    createdAt:role==='BOTTOM'?'2026-09-20T12:00:00.000Z':role==='MIDDLE'?'2026-09-21T12:00:00.000Z':'2026-09-22T12:00:00.000Z',
     analysis:{
       version:1,
       evidenceSources:[],
