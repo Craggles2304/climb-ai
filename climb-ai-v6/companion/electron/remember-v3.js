@@ -37,7 +37,7 @@ body.op-remember-live #status,body.op-remember-live #matchup,body.op-remember-li
     section.id='opRememberHud';section.className='card hidden';section.setAttribute('aria-live','polite');
     section.innerHTML=`
       <div id="opRememberFlash" class="rem4-flash">PLAN LOCKED</div>
-      <div class="rem4-top"><div><div class="rem4-kicker">OP CLIMB // COACH BOARD</div><h2 id="opRememberTitle" class="rem4-title">YOUR WIN CONDITION</h2></div><div class="rem4-live">LIVE · RECORDING</div></div>
+      <div class="rem4-top"><div><div class="rem4-kicker">OP CLIMB // LIVE MATCH ROOM</div><h2 id="opRememberTitle" class="rem4-title">YOUR WIN CONDITION</h2></div><div id="opRemLiveState" class="rem4-live">LIVE · MATCH ROOM</div></div>
       <div class="rem4-body">
         <section class="rem4-draft">
           <div class="rem4-side"><div class="rem4-side-label"><span>YOUR TEAM</span><span id="opRemOurShape">TEAM PLAN</span></div><div id="opRemOurTeam" class="rem4-team"></div></div>
@@ -256,7 +256,7 @@ body.op-remember-live #status,body.op-remember-live #matchup,body.op-remember-li
   function render(state){
     const section=install();const phase=String(state?.phase||'');const champion=championFor(state);const livePlan=planSnapshot(state);
     if(phase==='CHAMP_SELECT'&&livePlan)save(livePlan,champion);
-    const plan=livePlan||load(champion)||fallbackPlan(state);const visible=phase==='RECORDING';section.classList.toggle('hidden',!visible);document.body.classList.toggle('op-remember-live',visible);if(!visible){previousPhase=phase;return}
+    const plan=livePlan||load(champion)||fallbackPlan(state);const visible=phase==='RECORDING'||Date.now()<liveRosterActiveUntil;section.classList.toggle('hidden',!visible);document.body.classList.toggle('op-remember-live',visible);document.body.classList.toggle('op-live-roster-detected',Date.now()<liveRosterActiveUntil);if(!visible){previousPhase=phase;return}
 
     const match=matchupFor(state);const role=normalRole(plan?.role||match.role);const resource=plan?.resourceTarget||resourceFallback(role);const withName=pickSpecificPlayWith(state,plan,role,match.you);const focus=pickFightTarget(state,plan,match);const threat=pickMainThreat(state,plan,focus);const call=matchCall(state,plan);const answer=threatAnswer(role,threat);const ours=roster(state,'ourTeam');const theirs=roster(state,'theirTeam');const carryMap=localCarryMap(ours,theirs,match.you,threat);
 
@@ -277,5 +277,14 @@ body.op-remember-live #status,body.op-remember-live #matchup,body.op-remember-li
     if(previousPhase&&previousPhase!=='RECORDING')flashLock();previousPhase=phase;
   }
 
-  install();window.opCompanion?.getState?.().then(render).catch(()=>{});window.opCompanion?.onState?.(render);
+  function onLiveRoster(event){
+    const players=safe(event?.detail?.players);
+    if(players.length<2)return;
+    liveRosterActiveUntil=Date.now()+12_000;
+    clearTimeout(liveRosterExpiryTimer);
+    liveRosterExpiryTimer=setTimeout(()=>{if(Date.now()>=liveRosterActiveUntil&&lastRenderedState)render(lastRenderedState)},12_500);
+    if(lastRenderedState)render(lastRenderedState);
+  }
+
+  install();window.addEventListener('op-climb-live-roster',onLiveRoster);window.opCompanion?.getState?.().then(render).catch(()=>{});window.opCompanion?.onState?.(render);
 })();
