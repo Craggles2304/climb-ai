@@ -220,7 +220,7 @@ function parseTrackerLine(line,kind){
   if(line.startsWith(TRACKER_STATE_PREFIX)){try{applyTrackerState(JSON.parse(line.slice(TRACKER_STATE_PREFIX.length)))}catch{}return}
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
-  if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Lock your champion to build your briefing.'});
+  if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.'});
   if(lower.includes('match recording closed')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
   if(lower.includes('recording')||lower.includes('match telemetry'))return setState({phase:'RECORDING',detail:'Match detected. Recording quietly in the background.'});
   if(lower.includes('review')&&lower.includes('post')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
