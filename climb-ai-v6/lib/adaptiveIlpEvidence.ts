@@ -113,7 +113,7 @@ export function adaptActiveFiveFromPostGameEvidence(input:AdaptiveIlpInput):Adap
   for(const fix of rankedFixes(input.profile.fixLadder,history)){
     const evidence=patternEvidence(fix.key,history);
     if(!promotionReady(fix,evidence)||represented(tasks,fix.key))continue;
-    const candidate=createAdaptiveTask(input.accountId,fix,evidence,input.profile.latestAnalysisAt,now);
+    const candidate=createAdaptiveTask(input.accountId,fix,evidence,input.profile.latestAnalysisAt,now,normaliseRole(input.role));
     const live=tasks.filter(isLive);
     if(live.length<ACTIVE_LIMIT){
       tasks.push(candidate);changes.push(`${fix.title} promoted after repeating across multiple games.`);continue;
@@ -199,12 +199,12 @@ function reviseManagedTask(task:AdaptiveTask,fix:ProHistoryFix,evidence:PatternE
   };
 }
 
-function createAdaptiveTask(accountId:string,fix:ProHistoryFix,evidence:PatternEvidence,activatedAfter:string|null,now:string):AdaptiveTask{
+function createAdaptiveTask(accountId:string,fix:ProHistoryFix,evidence:PatternEvidence,activatedAfter:string|null,now:string,role:Role|null):AdaptiveTask{
   const confidence=patternConfidence(fix,evidence);
   return{
-    id:`op-pro-${fix.key.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,accountId,title:fix.title,category:categoryForFix(fix),why:fix.why,gameRule:fix.rule,
+    id:`op-pro-${(role??'global').toLowerCase()}-${fix.key.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,accountId,title:fix.title,category:categoryForFix(fix),why:fix.why,gameRule:fix.rule,
     metric:'OP PRO Fix Ladder',target:fix.mastery,progress:0,status:'EVIDENCE_BUILDING',source:'SYSTEM',evidence:evidenceLines(fix,evidence,confidence),
-    priority:adaptivePriority(fix,confidence),successfulGames:0,gamesObserved:0,masteryRequired:MASTERY_CLEAN_GAMES,
+    priority:adaptivePriority(fix,confidence),successfulGames:0,gamesObserved:0,masteryRequired:MASTERY_CLEAN_GAMES,roleScope:role??'GLOBAL',roleEvidence:role?[role]:[],
     lastUpdatedReason:`Promoted only after repeated post-game evidence. ${MASTERY_CLEAN_GAMES} future clean games are required for mastery.`,
     adaptive:{version:1,managedBy:'POST_GAME_EVIDENCE',patternKey:fix.key,confidence,...evidenceForMeta(evidence),cleanStreak:0,activatedAfter:activatedAfter??null,lastAction:'PROMOTED'},
     history:[{at:now,type:'PROMOTED',note:`Promoted after ${evidence.recentSupportGames}/${evidence.recentWindow} recent games showed ${fix.key}; confidence ${confidence}%.`}],
@@ -261,8 +261,8 @@ function refillActiveFive(tasks:AdaptiveTask[],accountId:string,role:Role|null,n
     if(needed<=0)break;
     if(Array.isArray(candidate.roles)&&!candidate.roles.includes(role))continue;
     const signature=`${norm(candidate.title)}|${norm(candidate.metric)}`;if(representedKeys.has(signature))continue;
-    const id=`system-${key}-adaptive-fill`;if(next.some(task=>task.id===id))continue;
-    const task:AdaptiveTask={id,accountId,title:String(candidate.title),category:candidate.category,why:String(candidate.why),gameRule:String(candidate.gameRule),metric:String(candidate.metric),target:String(candidate.target),progress:0,status:'ACTIVE',source:'SYSTEM',evidence:['SYSTEM: Active Five vacancy refill. Evidence will confirm, revise or replace this baseline over future games.'],priority:Number(candidate.priority??50),successfulGames:0,gamesObserved:0,masteryRequired:Number(candidate.masteryRequired??3),lastUpdatedReason:'Added as a role-safe baseline because an Active Five vacancy remained after post-game adaptation.',history:[{at:now,type:'PROMOTED',note:'Role-safe baseline filled an Active Five vacancy.'}]};
+    const id=`system-${role.toLowerCase()}-${key}-adaptive-fill`;if(next.some(task=>task.id===id))continue;
+    const task:AdaptiveTask={id,accountId,title:String(candidate.title),category:candidate.category,why:String(candidate.why),gameRule:String(candidate.gameRule),metric:String(candidate.metric),target:String(candidate.target),progress:0,status:'ACTIVE',source:'SYSTEM',evidence:['SYSTEM: Active Five vacancy refill. Evidence will confirm, revise or replace this baseline over future games.'],priority:Number(candidate.priority??50),successfulGames:0,gamesObserved:0,masteryRequired:Number(candidate.masteryRequired??3),roleScope:role,roleEvidence:[role],lastUpdatedReason:'Added as a role-safe baseline because an Active Five vacancy remained after post-game adaptation.',history:[{at:now,type:'PROMOTED',note:'Role-safe baseline filled an Active Five vacancy.'}]};
     next.push(task);representedKeys.add(signature);needed--;changes.push(`${task.title} added to keep five active missions.`)
   }
   return next;
