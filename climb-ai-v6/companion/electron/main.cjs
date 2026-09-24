@@ -238,7 +238,8 @@ async function pollPostGameReview(){
   finally{clearTimeout(timeout);reviewPollInFlight=false}
 }
 
-function applyTrackerState(raw,source='LOCAL'){
+function applyTrackerState(raw){
+  const source=arguments.length>1?arguments[1]:'LOCAL';
   const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim(),origin=String(source||'LOCAL').toUpperCase();
   if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
   if(next==='CHAMP_SELECT'){
