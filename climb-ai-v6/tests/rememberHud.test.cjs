@@ -10,6 +10,7 @@ const esports=fs.readFileSync(path.join(root,'companion','electron','remember-v5
 const liveRoster=fs.readFileSync(path.join(root,'companion','electron','live-roster.cjs'),'utf8');
 const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap.cjs'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
+const index=fs.readFileSync(path.join(root,'companion','electron','index.html'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
 const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
@@ -459,4 +460,20 @@ test('manual plan selections capture game seconds only for post-game recognition
   assert.ok(!esports.includes('nearestPoint('));
   assert.ok(!esports.includes('goldDiff'));
   assert.ok(!esports.includes('killDiff'));
+});
+
+
+test('installed Companion actually loads the full Match OS chain',()=>{
+  assert.ok(index.includes('<script src="review-v2.js"></script>'),'index.html must load the Match OS loader');
+  assert.ok(loader.includes("load('remember-v3.js')"));
+  assert.ok(loader.includes("load('remember-v3-matchup.js')"));
+  assert.ok(loader.includes("load('remember-v5-esports.js')"));
+  assert.ok(loader.includes("load('remember-v6-match-os.js')"));
+  assert.ok(loader.includes("load('remember-v7-read-checkpoints.js')"));
+  assert.ok(loader.includes("load('remember-v9-player-coaching-identity.js')"));
+  assert.ok(hud.includes('YOUR TEAM'));
+  assert.ok(hud.includes('THEIR TEAM'));
+  assert.ok(hud.includes('YOUR JOB'));
+  assert.ok(hud.includes('MAIN THREAT'));
+  assert.ok(hud.includes('YOUR WIN CONDITION PATH'));
 });
