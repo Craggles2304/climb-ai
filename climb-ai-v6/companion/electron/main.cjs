@@ -92,7 +92,11 @@ async function pollChampionPlan(){
     const body=await response.json().catch(()=>({}));
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
     if(body?.draft)setState({draft:body.draft});
-    if(!response.ok||!body?.ready||!body?.plan||!body?.champion)return;
+    if(response.ok&&!body?.ready){
+      if(state.phase==='CHAMP_SELECT')setState({draft:body?.draft||state.draft,matchup:null,teamPlan:null});
+      return;
+    }
+    if(!response.ok||!body?.plan||!body?.champion)return;
     if(!canPollChampionPlan()&&state.phase!=='RECORDING')return;
     const champion=String(body.champion).trim(),role=String(body.role||'').trim();
     const teamPlan=body.teamPlan||null;
