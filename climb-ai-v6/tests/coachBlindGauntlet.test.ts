@@ -69,6 +69,22 @@ const EXPERT_CONCEPTS=[
 
 const CONDITIONAL=/\b(if|when|after|before|until|once|only when|as soon as|unless|while)\b/gi;
 
+const IRON_BANNED_WORDING=[
+  'access','tempo','priority','rotation','resource','trade-off','opportunity cost',
+  'threshold','sequence','sequencing','front edge','first contact','information state',
+  'option value','dps','cooldown','cc','peel','kite','flank','contest','quadrant',
+  'positioning','pressure','frontline','engage',
+];
+
+const SILVER_BANNED_WORDING=[
+  'opportunity cost','resource trade-off','decision threshold','information state','option value',
+];
+
+function bannedWording(value:string,list:string[]){
+  const lower=value.toLowerCase();
+  return list.filter(term=>new RegExp('(?:^|[^a-z0-9])'+esc(term)+'(?:$|[^a-z0-9])','i').test(lower));
+}
+
 function text(plan:ReturnType<typeof buildRankAwareDraftPlan>){
   return [
     plan.headline,plan.why,plan.theirPlan,plan.threatAnswer,plan.fightTrigger,plan.objectiveSetup,
@@ -171,6 +187,20 @@ test('Iron never receives expert concepts or branch overload',()=>{
       const concepts=expertConcepts(text(plan));
       assert.deepEqual(concepts,[],draft.name+' '+role+' Iron leaked expert concepts: '+concepts.join(', '));
       assert.ok(conditionalCount(decisions)<=3,draft.name+' '+role+' Iron has too many decision branches: '+conditionalCount(decisions));
+    }
+  }
+});
+
+test('wording difficulty scales with rank instead of exposing coaching jargon to low Elo',()=>{
+  for(const draft of DRAFTS){
+    for(const role of ROLES){
+      const player=draft.ours.find(item=>item.role===role)!;
+      const iron=buildRankAwareDraftPlan({champion:player.champion,role,ours:[...draft.ours],enemies:[...draft.enemies],rank:'IRON'});
+      const silver=buildRankAwareDraftPlan({champion:player.champion,role,ours:[...draft.ours],enemies:[...draft.enemies],rank:'SILVER'});
+      const ironHits=bannedWording(text(iron),IRON_BANNED_WORDING);
+      const silverHits=bannedWording(text(silver),SILVER_BANNED_WORDING);
+      assert.deepEqual(ironHits,[],draft.name+' '+role+' Iron wording is too advanced: '+ironHits.join(', '));
+      assert.deepEqual(silverHits,[],draft.name+' '+role+' Silver wording is too advanced: '+silverHits.join(', '));
     }
   }
 });
