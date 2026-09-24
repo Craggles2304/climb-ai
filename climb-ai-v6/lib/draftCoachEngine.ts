@@ -275,10 +275,10 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
   // These layers are deliberately cumulative: higher-ranked players keep the
   // lower-level rule, then receive one additional decision variable to manage.
   if(depth>=4){
-    plan.objectiveSetup=clip(plan.objectiveSetup+' BASIC MACRO: FIX THE NEAREST SAFE WAVE BEFORE MOVING.',300);
+    plan.objectiveSetup=clip(plan.objectiveSetup+' BASIC MACRO: FIX THE NEAREST SAFE WAVE, THEN MOVE.',300);
   }
   if(depth>=5){
-    plan.lanePlan.wave=clip(plan.lanePlan.wave+' TEMPO SEQUENCE: FINISH THE WAVE ACTION BEFORE TAKING THE NEXT MAP ACTION.',260);
+    plan.lanePlan.wave=clip(plan.lanePlan.wave+' TEMPO SEQUENCE: FINISH THE WAVE ACTION, THEN TAKE THE NEXT MAP ACTION.',260);
   }
   if(depth>=6){
     plan.why=clip(plan.why+' OPPORTUNITY COST: GIVE LOW-VALUE SPACE RATHER THAN LOSE HP OR POSITION BEFORE THE REAL WINDOW.',340);
