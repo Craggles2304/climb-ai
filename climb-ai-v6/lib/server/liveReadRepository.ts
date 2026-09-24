@@ -63,13 +63,16 @@ export async function latestLiveRead(userId:string,accountKey:string){
 
   let proAnalysis=(summary?.proAnalysis??null) as unknown;
   let historyProfile:unknown=null;
+  let matchId:string|null=null;
   if(complete){
-    const [storedAnalysis,profile]=await Promise.all([
+    const [storedAnalysis,profile,matchRow]=await Promise.all([
       proAnalysis?Promise.resolve(null):getProMatchAnalysisBySession(session.id).catch(()=>null),
       getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null),
+      onceMore(()=>db.from('matches').select('id').eq('live_session_id',session.id).maybeSingle()).catch(()=>null),
     ]);
     if(!proAnalysis&&storedAnalysis)proAnalysis=storedAnalysis;
     historyProfile=profile;
+    matchId=(matchRow as any)?.data?.id??null;
   }
 
   return{
@@ -83,5 +86,6 @@ export async function latestLiveRead(userId:string,accountKey:string){
     summary,
     proAnalysis,
     historyProfile,
+    matchId,
   };
 }

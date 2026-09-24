@@ -1,5 +1,6 @@
 'use client';
 import {useCallback,useEffect,useMemo,useRef,useState} from 'react';
+import Link from 'next/link';
 import {useAccount} from './AccountContext';
 import {useLearningPlan} from './LearningPlanContext';
 import {FightDecisionReview,type FightReview} from './FightDecisionReview';
@@ -10,7 +11,7 @@ import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 
-type Review={sessionId:string;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
+type Review={sessionId:string;matchId?:string|null;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
 type Pick={championId:number;championName:string|null;role:string|null;lockedIn:boolean};
 type Ban={championId:number;championName:string|null};
 type Pregame={linkedSessionId:string|null;status:'CHAMP_SELECT'|'ENDED';context:{localChampionName:string|null;localRole:string|null;allies:Pick[];enemies:Pick[];bans:{allies:Ban[];enemies:Ban[]}}};
@@ -72,6 +73,7 @@ export function LiveFightReviewMount(){
       <div className="eyebrow">ONE THING NEXT GAME</div>
       <h2 style={{margin:'6px 0 8px'}}>{nextTitle}</h2>
       <p style={{margin:0,fontSize:15,lineHeight:1.55}}>{nextRule}</p>
+      {review.matchId&&<div className="hero-actions" style={{marginTop:16}}><Link className="btn primary" href={`/analyse/${encodeURIComponent(review.matchId)}`}>OPEN FULL MATCH REVIEW →</Link></div>}
     </div>
 
     {detail.depth>=4&&<details className="glass card op-quiet-details">

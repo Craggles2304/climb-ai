@@ -1,6 +1,6 @@
 'use client';
 
-import {useState} from 'react';
+import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
@@ -12,6 +12,7 @@ import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {TurningPoints} from '@/components/TurningPoints';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import type {Match} from '@/lib/types';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -22,16 +23,45 @@ export default function Analysis(){
   const {active,hydrated}=useAccount();
   const {tasks,addTask}=useLearningPlan();
   const [tracked,setTracked]=useState(false);
+  const [serverMatch,setServerMatch]=useState<Match|null>(null);
+  const [serverLoading,setServerLoading]=useState(false);
+  const [serverCheckedId,setServerCheckedId]=useState('');
   const id=String(params.match||'');
   const matches=matchesFor(active.id);
-  const match=matches.find(m=>m.id===id);
+  const cachedMatch=matches.find(m=>m.id===id);
+  const match=cachedMatch??serverMatch??undefined;
   const detail=coachingLevelFor(active.rank);
   const embeddedPro=match?.proAnalysis;
   const {analysis:fetchedPro,loading:fetchingPro}=useProMatch(embeddedPro?undefined:match?.id);
   const proAnalysis=embeddedPro??fetchedPro??undefined;
   const proLoading=!embeddedPro&&fetchingPro;
 
+  useEffect(()=>{setServerMatch(null);setServerCheckedId('')},[id,active.id]);
+
+  useEffect(()=>{
+    if(!hydrated||!id||cachedMatch||serverCheckedId===id)return;
+    const controller=new AbortController();
+    setServerLoading(true);
+    void fetch('/api/analyse',{
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body:JSON.stringify({matchId:id}),
+      signal:controller.signal,
+    }).then(async response=>{
+      const body=await response.json().catch(()=>null);
+      if(controller.signal.aborted)return;
+      if(response.ok&&body?.match&&body.match.riotAccountId===active.id)setServerMatch(body.match as Match);
+    }).catch(()=>{}).finally(()=>{
+      if(controller.signal.aborted)return;
+      setServerCheckedId(id);
+      setServerLoading(false);
+    });
+    return()=>controller.abort();
+  },[hydrated,id,cachedMatch,serverCheckedId,active.id]);
+
   if(!hydrated)return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading your evidence…</h2></section></AppShell>;
+
+  if(!cachedMatch&&(serverLoading||serverCheckedId!==id))return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading the saved match…</h2><p className="muted">Opening the server copy directly so a newly completed Companion game cannot be blocked by stale browser state.</p></section></AppShell>;
 
   if(!match)return <AppShell><PageHead title="Match not found" subtitle="This review is not attached to the active Riot account."/><section className="glass card"><p className="muted">Switch back to the account that played this game or open a match from Analyse.</p><Link className="btn primary" href="/analyse">OPEN ANALYSE</Link></section></AppShell>;
 
