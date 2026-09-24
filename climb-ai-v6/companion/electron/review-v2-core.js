@@ -698,7 +698,7 @@
     const review=state?.postGameReview||null;
     const visible=String(state?.phase||'')==='REVIEW'&&Boolean(review);
     const section=install();section.classList.toggle('hidden',!visible);
-    const old=$('simplePostgameReview');if(old)old.classList.toggle('op-superseded',visible);
+    const old=$('simplePostgameReview');if(old)old.classList.remove('op-superseded');
     if(!visible)return;
 
     const match=review.match||{};

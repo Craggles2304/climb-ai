@@ -4,6 +4,7 @@ let updateState=null;
 let diagnosticsOpen=false;
 let settingsOpen=false;
 let pregameExpanded=false;
+let coachReviewEvidenceOpen=false;
 let activeCoachLevel={tier:'SILVER',depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
 
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
@@ -16,7 +17,7 @@ function phaseTitle(phase){
     STARTING:'Starting Companion',
     WAITING:'Ready for League',
     CHAMP_SELECT:'Your game plan',
-    RECORDING:'Game recording',
+    RECORDING:'Focus locked. Play.',
     UPLOADING:'Building your review',
     REVIEW:'Your game review',
     RESTARTING:'Restarting Companion',
@@ -34,7 +35,7 @@ function phaseCopy(state){
   if(phase==='STARTING')return'Starting quietly in the background.';
   if(phase==='WAITING')return"You're connected. Open League and play normally — OP CLIMB will take it from here.";
   if(phase==='CHAMP_SELECT')return'Reading champion select and building a short plan for this game.';
-  if(phase==='RECORDING')return'Play normally. OP CLIMB is recording quietly. Keep the three cues short, then get your eyes back on League.';
+  if(phase==='RECORDING')return'No live shotcalling. OP CLIMB is recording quietly and will coach you after the game.';
   if(phase==='UPLOADING')return'Game finished. OP CLIMB is turning the recording into your review.';
   if(phase==='REVIEW')return'Your review is ready.';
   if(phase==='RESTARTING')return'Restarting the tracker. This should only take a moment.';
@@ -64,8 +65,17 @@ function render(state){
   const coach=current.postGameReview?.coachLevel||current.teamPlan?.coachLevel;
   setCoachLevel(coach);
 
+  document.body.classList.toggle('op-mode-match-room',phase==='CHAMP_SELECT');
+  document.body.classList.toggle('op-mode-quiet',phase==='RECORDING');
+  document.body.classList.toggle('op-mode-coach-review',phase==='REVIEW');
+  if(phase!=='REVIEW'){
+    coachReviewEvidenceOpen=false;
+    document.body.classList.remove('op-review-evidence-open');
+  }
+
   setHidden($('setup'),paired);
   renderPregame(current.matchup,current.teamPlan,paired&&phase==='CHAMP_SELECT');
+  renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
   renderUpdate(updateState,phase);
 
@@ -76,8 +86,9 @@ function render(state){
   }
 
   const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup);
+  const quietVisible=phase==='RECORDING';
   const reviewVisible=phase==='REVIEW'&&Boolean(current.postGameReview);
-  setHidden($('status'),pregameVisible||reviewVisible);
+  setHidden($('status'),pregameVisible||quietVisible||reviewVisible);
 
   $('statusTitle').textContent=phaseTitle(phase);
   $('statusCopy').textContent=phaseCopy(current);
@@ -128,6 +139,40 @@ function syncSettingsVisibility(){
     toggle.style.display=paired&&canOpen&&!updateNeedsAction?'':'none';
     toggle.textContent=settingsOpen?'HIDE SETTINGS':'SETTINGS';
   }
+}
+
+
+function renderQuietMode(state,visible){
+  const section=ensureQuietMode();
+  setHidden(section,!visible);
+  if(!visible)return;
+  const team=state?.teamPlan||null;
+  const matchup=state?.matchup||null;
+  const mission=safeArray(team?.missionTips)[0]||null;
+  const role=String(matchup?.role||matchup?.plan?.role||'').toUpperCase();
+  const champion=String(matchup?.champion||matchup?.plan?.you?.name||'').trim();
+  const identity=[champion,role].filter(Boolean).join(' · ');
+  const focus=mission?.cue||mission?.action||team?.yourJob||'Play normally. Stay with the plan you locked before the game.';
+  $('quietIdentity').textContent=identity||'MATCH IN PROGRESS';
+  $('quietFocus').textContent=String(focus);
+}
+
+function ensureQuietMode(){
+  let section=$('quietMode');
+  if(section)return section;
+  section=document.createElement('section');
+  section.id='quietMode';
+  section.className='card quiet-mode hidden';
+  section.setAttribute('aria-live','polite');
+  section.innerHTML=`
+    <div class="quiet-mode-top">
+      <div><div class="eyebrow">QUIET MODE · RECORDING</div><h2>FOCUS LOCKED. PLAY.</h2><p id="quietIdentity"></p></div>
+      <span class="quiet-live"><i></i> RECORDING</span>
+    </div>
+    <div class="quiet-focus"><span>YOUR ONE LOCKED FOCUS</span><strong id="quietFocus">Play normally. OP CLIMB will coach the evidence after the game.</strong></div>
+    <p class="quiet-boundary">No reactive shotcalling. No live performance grading. No extra lesson mid-game. OP CLIMB records permitted evidence quietly and saves the coaching for afterwards.</p>`;
+  $('status').after(section);
+  return section;
 }
 
 function renderPregame(matchup,teamPlan,visible){
@@ -271,6 +316,7 @@ function renderPostGameReview(review,phase){
   renderReviewList('simpleCritical',review.critical,'!');
   $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
   $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current Active Five cue and build more evidence.';
+  syncCoachReviewEvidence();
 }
 
 function ensureReviewSection(){
@@ -281,17 +327,19 @@ function ensureReviewSection(){
   section.className='card hidden';
   section.style.cssText='margin-top:14px;padding:22px';
   section.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:14px;align-items:flex-start;flex-wrap:wrap">
-      <div><div class="eyebrow" id="simpleReviewTag">POST-GAME</div><h2 style="font-size:clamp(28px,5vw,44px);margin:5px 0 4px;letter-spacing:-.04em">GOOD. FIX. NEXT.</h2><p id="simpleReviewMatch" style="margin:0;opacity:.68"></p></div>
+    <div class="coach-review-head">
+      <div><div class="eyebrow" id="simpleReviewTag">POST-GAME</div><h2>COACH REVIEW</h2><p id="simpleReviewMatch"></p></div>
       <div class="pill good">REVIEW READY</div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;margin-top:18px">
-      <div style="border:1px solid rgba(214,255,47,.22);border-radius:16px;padding:16px"><div class="eyebrow">WHAT WORKED</div><div id="simpleGood" style="display:grid;gap:11px;margin-top:10px"></div></div>
-      <div style="border:1px solid rgba(255,110,90,.26);border-radius:16px;padding:16px"><div class="eyebrow">FIX THIS</div><div id="simpleCritical" style="display:grid;gap:11px;margin-top:10px"></div></div>
+    <p class="coach-review-intro">One thing that held. One thing to fix. One rule to carry into the next game.</p>
+    <div class="coach-review-grid">
+      <article class="coach-review-card good"><span>WHAT HELD</span><div id="simpleGood"></div></article>
+      <article class="coach-review-card fix"><span>HIGHEST-IMPACT FIX</span><div id="simpleCritical"></div></article>
     </div>
-    <div style="margin-top:14px;border:1px solid rgba(67,140,255,.3);border-radius:16px;padding:17px;background:rgba(67,140,255,.06)"><div class="eyebrow">ONE THING NEXT GAME</div><h3 id="simpleNextTitle" style="margin:6px 0"></h3><p id="simpleNextRule" style="margin:0;line-height:1.55"></p></div>
-    <div style="display:flex;justify-content:flex-end;margin-top:14px"><button id="simpleOpenClimb" class="ghost">OPEN FULL REVIEW</button></div>`;
+    <article class="coach-review-next"><span>ONE THING NEXT GAME</span><h3 id="simpleNextTitle"></h3><p id="simpleNextRule"></p></article>
+    <div class="coach-review-actions"><button id="simpleReviewEvidence" class="ghost">OPEN COACH EVIDENCE</button><button id="simpleOpenClimb" class="ghost">OPEN OP CLIMB</button></div>`;
   $('status').after(section);
+  $('simpleReviewEvidence').addEventListener('click',()=>{coachReviewEvidenceOpen=!coachReviewEvidenceOpen;syncCoachReviewEvidence()});
   $('simpleOpenClimb').addEventListener('click',()=>window.opCompanion.openClimb());
   return section;
 }
@@ -299,7 +347,7 @@ function ensureReviewSection(){
 function renderReviewList(id,items,mark){
   const root=$(id);if(!root)return;
   root.replaceChildren();
-  const cap=clamp(Number(activeCoachLevel.reviewPoints)||1,1,3);
+  const cap=1;
   const values=safeArray(items).slice(0,cap);
   const source=values.length?values:[{title:mark==='✓'?'No clear positive signal':'No critical leak confirmed',detail:mark==='✓'?'OP CLIMB will not invent praise when the evidence is weak.':'Keep the same focus and build more evidence.'}];
   source.forEach(item=>{
@@ -314,6 +362,13 @@ function renderReviewList(id,items,mark){
     }
     row.append(icon,copy);root.appendChild(row);
   });
+}
+
+
+function syncCoachReviewEvidence(){
+  document.body.classList.toggle('op-review-evidence-open',coachReviewEvidenceOpen);
+  const button=$('simpleReviewEvidence');
+  if(button)button.textContent=coachReviewEvidenceOpen?'HIDE COACH EVIDENCE':'OPEN COACH EVIDENCE';
 }
 
 function renderUpdate(next,phase){

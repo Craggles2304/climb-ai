@@ -283,3 +283,101 @@ footer{border-top-color:var(--line)!important;color:var(--dim)!important}
   .status-bottom{align-items:flex-start!important}
 }
 @media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+
+
+/* Companion information hierarchy — Match Room → Quiet Mode → Coach Review */
+#opMissionReminders{
+  position:relative!important;
+  overflow:hidden!important;
+  margin-top:0!important;
+  margin-bottom:14px!important;
+  padding:22px 24px!important;
+  background:#11191e!important;
+  border:1px solid #587554!important;
+  border-left:1px solid #587554!important;
+}
+#opMissionReminders:before{
+  content:'';position:absolute;left:0;bottom:0;width:42%;height:3px;background:var(--mint);
+}
+#opMissionReminders .op-head{margin-bottom:16px!important}
+#opMissionReminders .op-kicker{color:var(--mint)!important;font-family:var(--mono)!important;font-size:8px!important;letter-spacing:.18em!important}
+#opMissionReminders .op-head h3{font-family:var(--display)!important;font-size:clamp(28px,4vw,44px)!important;line-height:1!important;letter-spacing:.015em!important;margin-top:6px!important}
+#opMissionReminders .op-rank{border:1px solid #42623b!important;background:#26352b!important;color:var(--mint)!important;border-radius:0!important}
+#opMissionReminders .op-chip{background:#172127!important;border:1px solid var(--line)!important;color:var(--muted)!important;border-radius:0!important}
+#opMissionReminders .op-chip b{color:var(--white)!important}
+#opMissionReminders .op-chip.role{border-color:#42623b!important;color:var(--mint)!important}
+#opMissionReminders .op-paid-lock,#opMissionReminders .op-winhero,#opMissionReminders .op-job,
+#opMissionReminders .op-step,#opMissionReminders .op-danger,#opMissionReminders .op-deep,
+#opMissionReminders .op-role-step,#opMissionReminders .op-mission{
+  border-radius:0!important;box-shadow:none!important;
+}
+#opMissionReminders .op-winhero{border-color:#42623b!important;border-left:3px solid var(--mint)!important;background:rgba(182,246,107,.045)!important}
+#opMissionReminders .op-winhero span,#opMissionReminders .op-mission span{color:var(--mint)!important}
+#opMissionReminders .op-job{border-color:rgba(86,217,184,.26)!important;background:rgba(86,217,184,.04)!important}
+#opMissionReminders .op-job span{color:var(--teal)!important}
+#opMissionReminders .op-step,#opMissionReminders .op-role-step{background:#0d1418!important;border-color:var(--line)!important}
+#opMissionReminders .op-step:before,#opMissionReminders .op-role-step:before{background:var(--mint)!important}
+#opMissionReminders .op-step:nth-child(2):before,#opMissionReminders .op-step:nth-child(3):before{background:var(--teal)!important}
+#opMissionReminders .op-danger{border-color:rgba(249,149,148,.26)!important;background:rgba(249,149,148,.04)!important}
+#opMissionReminders .op-danger span{color:var(--red)!important}
+#opMissionReminders .op-deep{border-color:var(--line)!important;background:#0d1418!important}
+#opMissionReminders .op-deep summary{color:var(--teal)!important}
+#opMissionReminders .op-deep-card{background:#11191e!important;border-color:var(--line)!important;border-radius:0!important}
+#opMissionReminders .op-mission{border-color:#42623b!important;background:rgba(182,246,107,.035)!important}
+#opMissionReminders .op-foot{color:var(--dim)!important;font-family:var(--mono)!important}
+
+/* Live game: the Companion becomes intentionally almost empty. */
+body.op-mode-quiet .esports-brand{opacity:.58!important}
+body.op-mode-quiet .brand-signal{display:none!important}
+.quiet-mode{
+  min-height:310px;
+  display:flex;flex-direction:column;justify-content:center;
+  padding:34px!important;
+  background:#0d1418!important;
+  border:1px solid var(--line)!important;
+}
+.quiet-mode.hidden{display:none!important}
+.quiet-mode-top{display:flex;align-items:flex-start;justify-content:space-between;gap:20px}
+.quiet-mode h2{font-family:var(--display)!important;font-size:clamp(38px,6vw,68px)!important;line-height:.9!important;margin:8px 0 9px!important;color:var(--white)!important}
+.quiet-mode-top p{margin:0!important;color:var(--dim)!important;font-family:var(--mono)!important;font-size:10px!important;letter-spacing:.08em!important;text-transform:uppercase!important}
+.quiet-live{display:inline-flex;align-items:center;gap:7px;border:1px solid #42623b;background:#26352b;color:var(--mint);padding:7px 9px;font:500 9px var(--mono);letter-spacing:.12em}
+.quiet-live i{width:6px;height:6px;border-radius:50%;background:var(--mint)}
+.quiet-focus{margin-top:34px;padding:18px 20px;border-left:3px solid var(--mint);background:rgba(182,246,107,.035)}
+.quiet-focus span{display:block;color:var(--mint);font:500 9px var(--mono);letter-spacing:.13em}
+.quiet-focus strong{display:block;margin-top:8px;font-size:18px;line-height:1.4;color:var(--white)}
+.quiet-boundary{max-width:760px;margin:18px 0 0!important;color:var(--muted)!important;font-size:12px!important;line-height:1.55!important}
+
+/* Post-game: the player sees the coaching decision first; engines stay behind one click. */
+#simplePostgameReview{
+  padding:24px!important;
+  background:#11191e!important;
+  border:1px solid var(--line)!important;
+  border-top:2px solid var(--mint)!important;
+}
+#simplePostgameReview.hidden{display:none!important}
+.coach-review-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+.coach-review-head h2{font-family:var(--display)!important;font-size:clamp(34px,5vw,54px)!important;line-height:.95!important;margin:6px 0 6px!important}
+.coach-review-head p{margin:0!important;color:var(--dim)!important;font-family:var(--mono)!important;font-size:10px!important;letter-spacing:.06em!important;text-transform:uppercase!important}
+.coach-review-intro{max-width:680px;margin:14px 0 0!important;color:var(--muted)!important;font-size:13px!important}
+.coach-review-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:20px}
+.coach-review-card{padding:18px;background:#0d1418;border:1px solid var(--line)}
+.coach-review-card>span,.coach-review-next>span{display:block;font:500 9px var(--mono);letter-spacing:.13em;text-transform:uppercase}
+.coach-review-card.good{border-top:2px solid var(--mint)}.coach-review-card.good>span{color:var(--mint)}
+.coach-review-card.fix{border-top:2px solid var(--red)}.coach-review-card.fix>span{color:var(--red)}
+.coach-review-card #simpleGood,.coach-review-card #simpleCritical{margin-top:11px!important}
+.coach-review-next{margin-top:12px;padding:20px;border:1px solid #42623b;background:rgba(182,246,107,.04)}
+.coach-review-next>span{color:var(--mint)}
+.coach-review-next h3{font-family:var(--display)!important;font-size:26px!important;line-height:1!important;text-transform:uppercase!important;margin:7px 0 6px!important}
+.coach-review-next p{margin:0!important;color:var(--muted)!important;line-height:1.5!important}
+.coach-review-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
+body:not(.op-review-evidence-open) #opPostGame332{display:none!important}
+body.op-review-evidence-open #simplePostgameReview{border-bottom-color:#42623b!important}
+body.op-review-evidence-open #opPostGame332{margin-top:10px!important}
+
+@media(max-width:760px){
+  #opMissionReminders{padding:18px!important}
+  .quiet-mode{min-height:260px;padding:24px!important}
+  .quiet-mode-top{display:grid}
+  .coach-review-grid{grid-template-columns:1fr}
+  .coach-review-actions button{flex:1}
+}

@@ -35,7 +35,7 @@ function installStrategyView(){
   section.setAttribute('aria-live','polite');
   section.innerHTML=`
     <div class="op-head">
-      <div><div class="op-kicker">LOCKED FROM CHAMP SELECT</div><h3 id="opStrategyHeading">HOW WE WIN THIS GAME</h3></div>
+      <div><div class="op-kicker">MATCH ROOM · LOCKED FROM CHAMP SELECT</div><h3 id="opStrategyHeading">HOW WE WIN THIS GAME</h3></div>
       <span id="opMissionRank" class="op-rank">COACH</span>
     </div>
     <div class="op-draft">
@@ -72,7 +72,7 @@ function installStrategyView(){
       <div class="op-deep-rule"><b>DENY THEIR PLAN · </b><span id="opDeepRule"></span></div>
     </details>
     <div class="op-mission"><span>YOUR CLIMB MISSION</span><strong id="opMissionCue"></strong></div>
-    <div class="op-foot">READ IT ONCE · PLAY THE PLAN · REVIEW IT AFTER THE GAME</div>`;
+    <div class="op-foot">READ IT ONCE · CLOSE THE COMPANION · PLAY THE PLAN · REVIEW IT AFTER THE GAME</div>`;
   const status=document.getElementById('status');
   if(status)status.insertAdjacentElement('afterend',section);else document.querySelector('main')?.appendChild(section);
 
@@ -184,7 +184,7 @@ function renderMissionReminders(state){
   const team=state?.teamPlan||null;
   const matchup=state?.matchup?.plan||null;
   const mission=Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
-  const visible=(phase==='CHAMP_SELECT'||phase==='RECORDING')&&Boolean(team||matchup||mission);
+  const visible=phase==='CHAMP_SELECT'&&Boolean(team||matchup||mission);
   section.classList.toggle('hidden',!visible);
   if(!visible)return;
 
