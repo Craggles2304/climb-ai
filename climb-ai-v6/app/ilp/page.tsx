@@ -22,21 +22,22 @@ function Pips({passes,required}:{passes:number;required:number}){
   </div>;
 }
 
-function TrackCard({task,index,mounted,matches,pauseTask,depth}:{task:ILPTask;index:number;mounted:boolean;matches:ReturnType<typeof matchesFor>;pauseTask:(id:string)=>void;depth:number}){
+function TrackCard({task,position,mounted,matches,pauseTask,depth}:{task:ILPTask;position:number;mounted:boolean;matches:ReturnType<typeof matchesFor>;pauseTask:(id:string)=>void;depth:number}){
   const req=task.masteryRequired||3;
   const done=task.successfulGames||0;
   const plain=plainLanguageFocus(task);
-  return <details {...revealProps(mounted,index,'vf-track')}>
+  const remaining=Math.max(0,req-done);
+  return <details {...revealProps(mounted,position-1,'vf-track vf-track-support')}>
     <summary>
-      <div className="vf-track-index">0{index+1}</div>
+      <div className="vf-track-index"><span>0{position}</span><small>WATCHING</small></div>
       <div className="vf-track-main">
-        <div className="vf-track-topline"><span>{clean(task.category)}</span><b>{task.source==='COACH'?'COACH':'GAME DATA'}</b></div>
+        <div className="vf-track-topline"><span>{clean(task.category)}</span><b>{task.source==='COACH'?'COACH PICK':'FROM YOUR GAMES'}</b></div>
         <h3>{task.title}</h3>
-        <p className="vf-track-plain"><span>IN SIMPLE TERMS</span>{plain.meaning}</p>
-        <div className="vf-track-meter"><AnimatedBar value={task.progress} delay={index*60}/><strong>{task.progress}%</strong></div>
-        <div className="vf-track-pass"><Pips passes={done} required={req}/><span>{done}/{req} GAMES WHERE YOU DID THIS</span></div>
+        <p className="vf-track-plain">{plain.meaning}</p>
+        <div className="vf-track-meter"><AnimatedBar value={task.progress} delay={(position-1)*60}/><strong>{task.progress}%</strong></div>
+        <div className="vf-track-pass"><Pips passes={done} required={req}/><span>{done}/{req} successful games · {remaining>0?`${remaining} to go`:'ready to master'}</span></div>
       </div>
-      <div className="vf-track-open">+</div>
+      <div className="vf-track-open"><span>DETAILS</span>+</div>
     </summary>
     <div className="vf-track-detail">
       <IlpExplainability task={task}/>
@@ -77,7 +78,7 @@ export default function PlayerDevelopmentCentre(){
 
   return <AppShell>
     <TrackView event="ilp_view"/>
-    <PageHead title="My Active Five" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} Coach`} action={<button className="btn secondary" onClick={refresh}>CHECK NEW GAMES</button>}/>
+    <PageHead title="Your Development Plan" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} Coach`} action={<button className="btn secondary" onClick={refresh}>CHECK NEW GAMES</button>}/>
 
     <section className="vf-ilp-hero">
       <div className="vf-focus">
@@ -93,23 +94,25 @@ export default function PlayerDevelopmentCentre(){
           <div className="vf-focus-actions"><Link className="btn primary" href="/live">PLAY + TRACK</Link><Link className="btn secondary" href="/coach">ASK {detail.tier} COACH</Link></div>
         </>}
       </div>
-      <div className="vf-ilp-score"><AnimatedRing value={momentum} label="PROGRESS"/><div className="vf-score-caption">{passes}/{required} good games banked</div></div>
+      <div className="vf-ilp-score"><div className="vf-score-eyebrow">YOUR PLAN AT A GLANCE</div><AnimatedRing value={momentum} label="PROGRESS"/><div className="vf-score-caption">{passes}/{required} successful habit checks</div><div className="vf-score-note">You only play with one main focus. The rest are tracked quietly.</div></div>
     </section>
 
     <div className="vf-stat-strip">
-      <div><span>ACTIVE</span><b>{activeTasks.length}/5</b></div>
-      <div><span>MASTERED</span><b>{mastered.length}</b></div>
-      <div><span>PROGRESS</span><b>{Math.round(avgProgress)}%</b></div>
-      <div><span>COACH</span><b>{detail.tier}</b></div>
+      <div><span>MAIN FOCUS</span><b>1</b><small>what you think about in game</small></div>
+      <div><span>WATCHING</span><b>{Math.max(0,activeTasks.length-1)}</b><small>tracked in the background</small></div>
+      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits that have stuck</small></div>
+      <div><span>PLAN PROGRESS</span><b>{Math.round(avgProgress)}%</b><small>across your current plan</small></div>
     </div>
 
     {changes.length>0&&<details className="glass card vf-adapted" open><summary>ACTIVE FIVE UPDATED · {changes.length} CHANGE{changes.length===1?'':'S'}</summary><div>{changes.map(c=><p key={c}>{c}</p>)}</div></details>}
 
-    <section className="vf-section-head"><div><div className="eyebrow">YOUR ACTIVE FIVE</div><h2>Five things. #1 matters most.</h2><p className="muted">Each one is a habit OP CLIMB wants you to improve. The plain-English meaning is always shown; coach terminology is optional.</p></div>{detail.depth>=4&&<Link href="/progress">HISTORY →</Link>}</section>
+    {activeTasks.length>1&&<>
+      <section className="vf-section-head"><div><div className="eyebrow">OTHER HABITS WE&apos;RE WATCHING</div><h2>Focus on #1. We’ll track the rest.</h2><p className="muted">You do not need to remember five instructions in game. These stay in the background until one becomes important enough to replace your main focus.</p></div>{detail.depth>=4&&<Link href="/progress">SEE FULL HISTORY →</Link>}</section>
 
-    <div className="vf-track-list">
-      {activeTasks.map((task,index)=><TrackCard key={task.id} task={task} index={index} mounted={mounted} matches={accountMatches} pauseTask={pauseTask} depth={detail.depth}/>) }
-    </div>
+      <div className="vf-track-list vf-track-support-grid">
+        {activeTasks.slice(1).map((task,index)=><TrackCard key={task.id} task={task} position={index+2} mounted={mounted} matches={accountMatches} pauseTask={pauseTask} depth={detail.depth}/>)}
+      </div>
+    </>}
 
     {detail.depth>=3&&<details className="glass card vf-how">
       <summary>HOW ACTIVE FIVE WORKS</summary>
