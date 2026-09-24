@@ -19,7 +19,7 @@ test('Restart & Update has a watchdog instead of hanging forever',()=>{
   assert.ok(bootstrap.includes("status:'ERROR'"));
 });
 
-test('Companion and web release manifest agree on 0.7.57',()=>{
-  assert.equal(pkg.version,'0.7.57');
-  assert.ok(manifest.includes("companionVersion:'0.7.57'"));
+test('Companion and web release manifest agree on 0.7.58',()=>{
+  assert.equal(pkg.version,'0.7.58');
+  assert.ok(manifest.includes("companionVersion:'0.7.58'"));
 });
