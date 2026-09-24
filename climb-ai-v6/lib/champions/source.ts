@@ -1,6 +1,7 @@
 import 'server-only';
 import {ChampionDetail,ChampionListEntry} from './ddragon';
 import {isCompletedItem,dedupeByName} from '../riot/items';
+import {ensurePatchIntelligence} from '../server/lolPatchIntelligenceRepository';
 
 /**
  * Data Dragon access for the champion features.
@@ -29,7 +30,9 @@ async function ddragon<T>(url:string):Promise<T>{
 export async function latestPatch():Promise<string>{
   const versions=await ddragon<string[]>('https://ddragon.leagueoflegends.com/api/versions.json');
   if(!versions.length)throw new Error('Data Dragon returned no versions.');
-  return versions[0];
+  const version=versions[0];
+  await ensurePatchIntelligence(version).catch(err=>console.warn('[patch-intelligence] snapshot sync failed',err));
+  return version;
 }
 
 const base=(patch:string)=>`https://ddragon.leagueoflegends.com/cdn/${patch}/data/en_US`;
