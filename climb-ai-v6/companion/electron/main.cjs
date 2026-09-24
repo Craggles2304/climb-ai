@@ -8,8 +8,8 @@ const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,liveCoachTimer=null,reviewPollTimer=null;
-let championPlanInFlight=false,liveCoachInFlight=false,reviewPollInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
+let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,liveCoachTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
+let championPlanInFlight=false,liveCoachInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null};
 
@@ -238,11 +238,15 @@ async function pollPostGameReview(){
   finally{clearTimeout(timeout);reviewPollInFlight=false}
 }
 
-function applyTrackerState(raw){
-  const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim();
+function applyTrackerState(raw,source='LOCAL'){
+  const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim(),origin=String(source||'LOCAL').toUpperCase();
   if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
-  if(next==='CHAMP_SELECT')return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
+  if(next==='CHAMP_SELECT'){
+    if(origin==='SERVER'&&state.phase==='RECORDING')return;
+    return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
+  }
   if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
+    if(origin==='SERVER'&&state.phase==='CHAMP_SELECT')return;
     if(state.phase==='RECORDING'){
       setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});
       startPostGameReviewPoll();return;
@@ -251,6 +255,34 @@ function applyTrackerState(raw){
     return setState({phase:'WAITING',detail:detail||'Connected. Waiting for League.'});
   }
   if(next==='ERROR'&&state.phase!=='RECORDING')setState({phase:'ERROR',detail:detail||'Tracker reported a local detection problem.'});
+}
+
+function stopTrackerStatusReconcile(){
+  if(trackerStatusTimer){clearTimeout(trackerStatusTimer);trackerStatusTimer=null}
+}
+function scheduleTrackerStatusReconcile(delay=3500){
+  stopTrackerStatusReconcile();
+  if(quitting||!paired()||!tracker||tracker.killed)return;
+  trackerStatusTimer=setTimeout(()=>{trackerStatusTimer=null;void reconcileTrackerStatus()},delay);
+}
+async function reconcileTrackerStatus(){
+  if(trackerStatusInFlight||quitting||!paired()||!tracker||tracker.killed)return;
+  const cfg=currentConfig();if(!cfg.token)return;
+  trackerStatusInFlight=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),4500);
+  try{
+    const response=await fetch(`${cfg.webUrl}/api/live/status`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal,cache:'no-store'});
+    const body=await response.json().catch(()=>({}));
+    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
+    const remote=body?.status?.tracker_status;
+    const updatedAt=Date.parse(String(body?.status?.tracker_status_updated_at||''));
+    const age=Number.isFinite(updatedAt)?Date.now()-updatedAt:Number.POSITIVE_INFINITY;
+    if(response.ok&&remote&&age>=0&&age<=45_000)applyTrackerState(remote,'SERVER');
+  }catch{}
+  finally{
+    clearTimeout(timeout);trackerStatusInFlight=false;
+    scheduleTrackerStatusReconcile();
+  }
 }
 function parseTrackerLine(line,kind){
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
@@ -367,7 +399,7 @@ function bindTrackerStream(stream,kind){
   stream.on('end',()=>{if(buffer.trim())addLog(buffer,kind);buffer=''});
 }
 function stopTracker(){
-  stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
+  stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
 }
 function startTracker(){
@@ -376,6 +408,7 @@ function startTracker(){
   const runtime=trackerPath();if(!existsSync(runtime))return setState({phase:'ERROR',detail:'Tracker runtime is missing. Reinstall OP CLIMB Companion.'});
   tracker=spawn(process.execPath,[runtime],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',OP_WEB_URL:cfg.webUrl,OP_TRACKER_TOKEN:cfg.token},windowsHide:true,stdio:['ignore','pipe','pipe']});
   setState({phase:'WAITING',detail:'Companion is running. Waiting for League.',trackerRunning:true});
+  scheduleTrackerStatusReconcile(900);
   setTimeout(()=>{if(state.phase==='WAITING')void recoverLatestCompletedReview()},4500);
   bindTrackerStream(tracker.stdout,'info');
   bindTrackerStream(tracker.stderr,'error');
