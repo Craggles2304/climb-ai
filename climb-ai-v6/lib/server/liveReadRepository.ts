@@ -68,7 +68,7 @@ export async function latestLiveRead(userId:string,accountKey:string){
     const [storedAnalysis,profile,matchRow]=await Promise.all([
       proAnalysis?Promise.resolve(null):getProMatchAnalysisBySession(session.id).catch(()=>null),
       getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null),
-      db.from('matches').select('id').eq('live_session_id',session.id).maybeSingle().catch(()=>null),
+      onceMore(()=>db.from('matches').select('id').eq('live_session_id',session.id).maybeSingle()).catch(()=>null),
     ]);
     if(!proAnalysis&&storedAnalysis)proAnalysis=storedAnalysis;
     historyProfile=profile;
