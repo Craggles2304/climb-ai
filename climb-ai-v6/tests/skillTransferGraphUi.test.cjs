@@ -26,7 +26,7 @@ test('Stage 16 persists and exposes the Skill Transfer Graph',()=>{
 
 test('Draft Coach freezes a graph-selected Skill Bridge',()=>{
   assert.ok(draft.includes('selectSkillBridgePrime'));
-  assert.ok(draft.includes('skillTransferGraph:proModel?context.skillTransferGraph:null'));
+  assert.ok(draft.includes('skillTransferGraph:proModel?coachingContext.skillTransferGraph:null'));
   assert.ok(draft.includes('skillBridgePrime'));
   assert.ok(draft.includes('SKILL TRANSFER GRAPH: '));
   assert.ok(remember.includes('_skillTransferGraph=response?.skillTransferGraph||null'));
