@@ -115,9 +115,9 @@ export async function GET(req:NextRequest){
         };
         const alliesForBuild=[
           {champion:you.name,role,detail:you} as AdaptiveBuildPlayer,
-          ...allyPicks.filter(pick=>key(pick.name)!==key(you.name)).map(toBuildPlayer).filter((item):item is AdaptiveBuildPlayer=>Boolean(item)),
+          ...allyPicks.filter((pick:{name:string;role?:string|null})=>key(pick.name)!==key(you.name)).map(toBuildPlayer).filter((item:AdaptiveBuildPlayer|null):item is AdaptiveBuildPlayer=>Boolean(item)),
         ];
-        const enemiesForBuild=enemyPicks.map(toBuildPlayer).filter((item):item is AdaptiveBuildPlayer=>Boolean(item));
+        const enemiesForBuild=enemyPicks.map(toBuildPlayer).filter((item:AdaptiveBuildPlayer|null):item is AdaptiveBuildPlayer=>Boolean(item));
         adaptiveBuild=buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items});
       }catch(error){
         console.warn('[champion-plan] adaptive build unavailable',error);
