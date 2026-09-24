@@ -356,7 +356,7 @@ test('Progress, API and learning snapshot expose one evidence-gated Curriculum',
   assert.ok(repo.includes("select('recent_change')"));
   assert.ok(repo.includes('buildSkillTransferGraph({rows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer,generatedAt:now})'));
   assert.ok(repo.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum,skillTransferGraph)'));
-  assert.ok(repo.includes('scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,patchContext,generatedAt:now'));
+  assert.ok(repo.includes('scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,patchContext,roleAwareLearning,generatedAt:now'));
   assert.ok(draft.includes("select('learning_identity,recent_change')"));
   assert.ok(draft.includes('buildSkillTransferGraph({rows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer})'));
   assert.ok(draft.includes('buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,undefined,previousCurriculum,skillTransferGraph)'));
