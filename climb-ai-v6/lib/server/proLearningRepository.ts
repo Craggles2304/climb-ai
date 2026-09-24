@@ -91,17 +91,8 @@ function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,p
     previous:(previous?.recentChange?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null,
     learningPolicy:learningVelocity.policy,generatedAt:now,
   });
-  const learningJourney=buildLearningJourney(globalRows,now);
+  const learningJourney=buildLearningJourney(rows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
-  const roleAwareLearning=buildRoleAwareLearningSummary(rows,now);
-  const previousRoleProfiles=((learningResult.data?.role_profiles&&typeof learningResult.data.role_profiles==='object')?learningResult.data.role_profiles:{}) as Record<string,any>;
-  const roleProfiles:Record<string,any>={};
-  for(const role of LEAGUE_ROLES){
-    const roleRows=rowsForRole(rows,role);
-    if(!roleRows.length)continue;
-    const rolePatchContext=buildLearningPatchContext(roleRows,patchChanges);
-    roleProfiles[role]=buildRoleLearningStack(role,roleRows,now,rolePatchContext,previousRoleProfiles[role]);
-  }
   const recentChange={
     decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,
     patchContext,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience,causalProfile,
@@ -155,8 +146,17 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const strongestCoachingResponse=decisionTwin.situationPatterns
     .filter(item=>item.coachedDecisions>0)
     .sort((a,b)=>b.coachedDecisions-a.coachedDecisions||(b.coachedExecutionRate??0)-(a.coachedExecutionRate??0))[0]??null;
-  const learningJourney=buildLearningJourney(rows,now);
+  const learningJourney=buildLearningJourney(globalRows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
+  const roleAwareLearning=buildRoleAwareLearningSummary(rows,now);
+  const previousRoleProfiles=((learningResult.data?.role_profiles&&typeof learningResult.data.role_profiles==='object')?learningResult.data.role_profiles:{}) as Record<string,any>;
+  const roleProfiles:Record<string,any>={};
+  for(const role of LEAGUE_ROLES){
+    const roleRows=rowsForRole(rows,role);
+    if(!roleRows.length)continue;
+    const rolePatchContext=buildLearningPatchContext(roleRows,patchChanges);
+    roleProfiles[role]=buildRoleLearningStack(role,roleRows,now,rolePatchContext,previousRoleProfiles[role]);
+  }
   const recentChange={improving,worsening,situationImproving,situationMastered,situationRegressing,strongestCoachingResponse,learningJourney,decisionTwinV2,scenarioMemory,decisionTransfer,skillTransferGraph,decisionPrincipleEngine,curriculum,patchContext,roleAwareLearning,generatedAt:now,coachTwin,autonomyProfile,interventionValue,careerExperience,causalProfile,playerCoachingIdentity,learningVelocity,adaptiveCoachingSession};
   const learningModelHealth=buildLearningModelHealth(recentChange,now);
   const {error:saveError}=await db.from('op_player_learning_profiles').upsert({
