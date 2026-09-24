@@ -898,12 +898,17 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     for(let i=0;i<5;i++){
       const p=list[i];
       const card=document.createElement('article');
-      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}`;
+      const localChampion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion).toLowerCase();
+      const isYou=Boolean(p&&rootId==='opRemOurTeam'&&clean(p.champion).toLowerCase()===localChampion);
+      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}${isYou?' you':''}`;
       if(p){
         const img=document.createElement('img');img.src=tile(p.champion);img.alt='';img.loading='eager';
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
-        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent=playerRole(p)||'ROLE';
-        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent=upper(p.champion);
+        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent=[playerRole(p)||'ROLE',Number(p.level)>0?'LV '+String(p.level):''].filter(Boolean).join(' · ');
+        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent=upper(p.champion)+(isYou?' · YOU':'');
+        const spells=Array.isArray(p.summonerSpells)?p.summonerSpells.filter(Boolean).join(' + '):'';
+        const items=Array.isArray(p.items)?p.items.map(item=>clean(item?.displayName)).filter(Boolean).slice(0,6).join(' · '):'';
+        card.title=[spells&&('SUMMONERS: '+spells),items&&('VISIBLE ITEMS: '+items)].filter(Boolean).join(' | ');
         copy.append(role,name);card.append(img,copy);
       }else{
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
