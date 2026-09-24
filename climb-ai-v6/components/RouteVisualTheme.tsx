@@ -5,6 +5,7 @@ import {usePathname} from 'next/navigation';
 
 function areaFor(pathname:string){
   if(pathname==='/')return'home';
+  if(pathname.startsWith('/dashboard'))return'hq';
   if(pathname.startsWith('/live')||pathname.startsWith('/session'))return'match';
   if(pathname.startsWith('/analyse')||pathname.startsWith('/advanced-statistics'))return'review';
   if(pathname.startsWith('/progress')||pathname.startsWith('/ilp')||pathname.startsWith('/missions'))return'climb';
