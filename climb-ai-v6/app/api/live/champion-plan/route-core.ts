@@ -50,7 +50,17 @@ export async function GET(req:NextRequest){
     }
     const champion=String(context?.localChampionName??'').trim();
     const role=String(context?.localRole??'').trim();
-    if(!Boolean(context?.localLockedIn)||!champion)return NextResponse.json({ok:true,ready:false},{status:202});
+    const locked=Boolean(context?.localLockedIn);
+    const draft=draftSnapshot(context);
+    if(!champion)return NextResponse.json({
+      ok:true,
+      ready:false,
+      stage:'WAITING_SELECTION',
+      draft,
+      locked:false,
+      provisional:true,
+      selectionState:String(context?.localSelectionState??'WAITING'),
+    });
 
     const [patch,playerRank,missionTasks,strategyAccess]=await Promise.all([
       latestPatch(),
@@ -106,7 +116,7 @@ export async function GET(req:NextRequest){
       ??pendingBotLanePlan({localChampion:you.name,localRole:role,allies:allyPicks,enemies:enemyPicks});
 
     let adaptiveBuild=null;
-    if(enemyPicks.length>=3){
+    if(locked&&enemyPicks.length>=3){
       try{
         const items=await matchupItemCatalogue(patch);
         const toBuildPlayer=(pick:{name:string;role?:string|null}):AdaptiveBuildPlayer|null=>{
@@ -126,7 +136,26 @@ export async function GET(req:NextRequest){
 
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
     const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),adaptiveBuild,coachLevel,missionTips,strategyAccess};
-    return NextResponse.json({ok:true,ready:true,champion:you.name,role:plan.role,plan,teamPlan,adaptiveBuild,coachLevel,missionTips,strategyAccess,live:trackerState==='RECORDING',liveSnapshotAt:null,pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,recoveredFromEndedPregame});
+    return NextResponse.json({
+      ok:true,
+      ready:true,
+      champion:you.name,
+      role:plan.role,
+      plan,
+      teamPlan,
+      adaptiveBuild,
+      coachLevel,
+      missionTips,
+      strategyAccess,
+      draft,
+      locked,
+      provisional:!locked,
+      selectionState:String(context?.localSelectionState??(locked?'LOCKED':'HOVER')),
+      live:trackerState==='RECORDING',
+      liveSnapshotAt:null,
+      pregameUpdatedAt:recoveredAt??data?.pregame_updated_at??null,
+      recoveredFromEndedPregame,
+    });
   }catch(err){
     const {title,body}=humanError(err);
     return NextResponse.json({ok:false,error:`${title} ${body}`},{status:502});
@@ -263,5 +292,33 @@ function pendingBotLanePlan(input:{localChampion:string;localRole?:string|null;a
     note:`Bot-lane desk is live now; ${known}/4 roles resolved. It will upgrade automatically as champ select reveals enough information.`,
   };
 }
+function draftSnapshot(context:any){
+  const compact=(pick:any)=>({
+    cellId:Number(pick?.cellId??-1),
+    championId:Number(pick?.championId??0),
+    championName:String(pick?.championName??'').trim()||null,
+    role:String(pick?.role??'').trim()||null,
+    lockedIn:Boolean(pick?.lockedIn),
+    selectionState:String(pick?.selectionState??(pick?.lockedIn?'LOCKED':pick?.championName?'HOVER':'WAITING')),
+  });
+  const ban=(entry:any)=>({
+    championId:Number(entry?.championId??0),
+    championName:String(entry?.championName??'').trim()||null,
+  });
+  return{
+    phase:String(context?.phase??'CHAMP_SELECT'),
+    localChampionName:String(context?.localChampionName??'').trim()||null,
+    localRole:String(context?.localRole??'').trim()||null,
+    localLockedIn:Boolean(context?.localLockedIn),
+    localSelectionState:String(context?.localSelectionState??(context?.localLockedIn?'LOCKED':context?.localChampionName?'HOVER':'WAITING')),
+    allies:Array.isArray(context?.allies)?context.allies.map(compact).slice(0,5):[],
+    enemies:Array.isArray(context?.enemies)?context.enemies.map(compact).slice(0,5):[],
+    bans:{
+      allies:Array.isArray(context?.bans?.allies)?context.bans.allies.map(ban).slice(0,10):[],
+      enemies:Array.isArray(context?.bans?.enemies)?context.bans.enemies.map(ban).slice(0,10):[],
+    },
+  };
+}
+
 function normalizeRole(value?:string|null){const role=String(value??'').trim().toUpperCase();if(role==='BOTTOM')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE')return'MID';return role}
 function key(value:string){return value.trim().toLowerCase().replace(/[^a-z0-9]/g,'')}
