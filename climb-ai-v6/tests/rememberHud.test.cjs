@@ -62,7 +62,8 @@ test('live roster can promote WAITING into the Match Room without reactive shotc
   assert.ok(esports.includes("const rosterLive=Date.now()-lastRosterSeenAt<12_000"));
   assert.ok(esports.includes("document.body.classList.add('op-remember-live','op-live-roster-detected')"));
   assert.ok(brand.includes('body.op-remember-live .quiet-mode{display:none!important}'));
-  assert.ok(core.includes('must not turn current telemetry into new tactical calls while the game is being played'));
+  assert.ok(core.includes('snapshot:null'));
+  assert.ok(core.includes('liveSnapshotAt:null'));
 });
 
 test('in-game Match Room exposes the useful frozen plan before deep engine detail',()=>{
