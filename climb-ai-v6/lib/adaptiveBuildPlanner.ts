@@ -175,7 +175,7 @@ export function buildAdaptiveItemPlan(input:{
       offense+=ad*(1.05+attackBias*.45)+ap*(.8+magicBias*.45)+as*attackBias*45+crit*attackBias*55+lifesteal*45;
     }
 
-    const durabilityNeed=tank?1.25:support?.85:melee?.5:.22;
+    const durabilityNeed=tank?1.25:support?0.85:melee?0.5:0.22;
     defense+=hp*.035*durabilityNeed+armor*.8*durabilityNeed+mr*.9*durabilityNeed;
     if(support&&flags.includes('HEAL_SHIELD_POWER'))utility+=28;
     if(support&&has(text,'ally','team','heal','shield','aura'))utility+=10;
@@ -190,8 +190,8 @@ export function buildAdaptiveItemPlan(input:{
     if(profile.hardCc>=2&&flags.includes('TENACITY'))context+=20+profile.hardCc*3;
     if((profile.divers+profile.assassins)>=2&&(flags.includes('STASIS')||flags.includes('REVIVE')||flags.includes('LIFELINE')||flags.includes('SPELL_SHIELD')))context+=32+(profile.divers+profile.assassins)*3;
     if(profile.poke>=2&&(flags.includes('SUSTAIN')||lifesteal>0))context+=18+profile.poke*3;
-    if(profile.physical>=3&&armor>0)context+=armor*((tank||support)?.7:.32);
-    if(profile.magic>=3&&mr>0)context+=mr*((tank||support)?.78:.36);
+    if(profile.physical>=3&&armor>0)context+=armor*((tank||support)?0.7:0.32);
+    if(profile.magic>=3&&mr>0)context+=mr*((tank||support)?0.78:0.36);
     if((role==='TOP'||role==='JUNGLE'||role==='SUPPORT')&&allyFrontline===0&&(hp>0||armor>0||mr>0))context+=20;
     if(isBoots){
       if(profile.physical>=3&&armor>0)context+=28;
