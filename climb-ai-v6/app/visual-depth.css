@@ -1,0 +1,216 @@
+/* OP CLIMB — site-wide route-aware visual depth */
+body[data-op-area]{
+  --op-a:182,246,107;
+  --op-b:86,217,184;
+  --op-c:232,192,134;
+  --op-area-label:'CLIMB';
+  --accent:#b6f66b;
+  --accent-rgb:182,246,107;
+  --accent-2:#56d9b8;
+  --accent-2-rgb:86,217,184;
+  position:relative;
+  isolation:isolate;
+}
+body[data-op-area="match"]{--op-a:86,217,184;--op-b:232,192,134;--op-c:249,149,148;--accent:#56d9b8;--accent-rgb:86,217,184;--accent-2:#e8c086;--accent-2-rgb:232,192,134;--op-area-label:'MATCH ROOM'}
+body[data-op-area="review"]{--op-a:249,149,148;--op-b:232,192,134;--op-c:86,217,184;--accent:#f99594;--accent-rgb:249,149,148;--accent-2:#e8c086;--accent-2-rgb:232,192,134;--op-area-label:'REVIEW'}
+body[data-op-area="climb"]{--op-a:182,246,107;--op-b:86,217,184;--op-c:183,164,239;--accent:#b6f66b;--accent-rgb:182,246,107;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'MY CLIMB'}
+body[data-op-area="coach"]{--op-a:183,164,239;--op-b:86,217,184;--op-c:182,246,107;--accent:#b7a4ef;--accent-rgb:183,164,239;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'COACH MEMORY'}
+body[data-op-area="lab"]{--op-a:86,217,184;--op-b:183,164,239;--op-c:232,192,134;--accent:#56d9b8;--accent-rgb:86,217,184;--accent-2:#b7a4ef;--accent-2-rgb:183,164,239;--op-area-label:'LAB'}
+body[data-op-area="plans"]{--op-a:232,192,134;--op-b:182,246,107;--op-c:183,164,239;--accent:#e8c086;--accent-rgb:232,192,134;--accent-2:#b6f66b;--accent-2-rgb:182,246,107;--op-area-label:'PLANS'}
+body[data-op-area="tft"]{--op-a:183,164,239;--op-b:86,217,184;--op-c:232,192,134;--accent:#b7a4ef;--accent-rgb:183,164,239;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'TFT LAB'}
+body[data-op-area="admin"]{--op-a:249,149,148;--op-b:232,192,134;--op-c:183,164,239;--accent:#f99594;--accent-rgb:249,149,148;--accent-2:#e8c086;--accent-2-rgb:232,192,134;--op-area-label:'OPS'}
+body[data-op-area="auth"]{--op-a:183,164,239;--op-b:182,246,107;--op-c:86,217,184;--accent:#b7a4ef;--accent-rgb:183,164,239;--accent-2:#b6f66b;--accent-2-rgb:182,246,107;--op-area-label:'JOIN THE CLIMB'}
+body[data-op-area="system"]{--op-a:126,178,194;--op-b:86,217,184;--op-c:182,246,107;--accent:#7eb2c2;--accent-rgb:126,178,194;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'PLAYER SYSTEM'}
+body[data-op-area="public"]{--op-a:86,217,184;--op-b:182,246,107;--op-c:232,192,134;--accent:#56d9b8;--accent-rgb:86,217,184;--accent-2:#b6f66b;--accent-2-rgb:182,246,107;--op-area-label:'OP CLIMB'}
+
+body[data-op-area]::before,
+body[data-op-area]::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-2;
+}
+body[data-op-area]::before{
+  background:
+    radial-gradient(800px 500px at 78% -5%,rgba(var(--op-a),.115),transparent 66%),
+    radial-gradient(680px 460px at 2% 42%,rgba(var(--op-b),.07),transparent 68%),
+    radial-gradient(640px 500px at 92% 88%,rgba(var(--op-c),.055),transparent 70%),
+    linear-gradient(180deg,#090e11 0%,#080d10 48%,#090e11 100%);
+}
+body[data-op-area]::after{
+  opacity:.22;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(115deg,transparent 0 48%,rgba(var(--op-a),.045) 49% 50%,transparent 51%);
+  background-size:52px 52px,52px 52px,340px 340px;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 74%);
+  mask-image:linear-gradient(180deg,#000 0%,transparent 74%);
+}
+
+body[data-op-area] .app-main,
+body[data-op-area] main.container{
+  position:relative;
+}
+body[data-op-area] .app-main::before{
+  content:var(--op-area-label);
+  position:absolute;
+  right:34px;
+  top:12px;
+  z-index:0;
+  pointer-events:none;
+  color:rgba(var(--op-a),.035);
+  font:800 clamp(56px,8vw,118px)/.82 var(--font-display,'Barlow Condensed',sans-serif);
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  white-space:nowrap;
+}
+body[data-op-area] .app-main>*{position:relative;z-index:1}
+
+body[data-op-area] .page-head{
+  position:relative;
+  padding:18px 20px 18px 24px;
+  border-left:3px solid rgb(var(--op-a));
+  border-bottom:1px solid rgba(var(--op-a),.12);
+  background:
+    linear-gradient(90deg,rgba(var(--op-a),.09),rgba(var(--op-b),.025) 45%,transparent 76%);
+  overflow:hidden;
+}
+body[data-op-area] .page-head::after{
+  content:'';
+  position:absolute;
+  right:-38px;
+  top:-72px;
+  width:210px;
+  height:210px;
+  border:1px solid rgba(var(--op-a),.12);
+  transform:rotate(35deg);
+  box-shadow:0 0 0 28px rgba(var(--op-a),.018),0 0 0 56px rgba(var(--op-b),.012);
+}
+body[data-op-area] .page-head h1{
+  text-shadow:0 12px 50px rgba(var(--op-a),.12);
+}
+
+body[data-op-area] .glass,
+body[data-op-area] .card{
+  border-color:rgba(255,255,255,.095);
+}
+body[data-op-area] .glass.card{
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(145deg,rgba(var(--op-a),.035),transparent 34%),
+    rgba(17,25,30,.82);
+  box-shadow:0 18px 50px rgba(0,0,0,.18);
+}
+body[data-op-area] .glass.card::before{
+  content:'';
+  position:absolute;
+  left:0;top:0;right:0;
+  height:2px;
+  background:linear-gradient(90deg,rgba(var(--op-a),.9),rgba(var(--op-b),.4),transparent 72%);
+  opacity:.62;
+}
+body[data-op-area] .glass.card:hover{
+  border-color:rgba(var(--op-a),.27);
+  box-shadow:0 20px 60px rgba(0,0,0,.23),0 0 0 1px rgba(var(--op-a),.035) inset;
+}
+
+body[data-op-area] .v7-section,
+body[data-op-area] .dash-section{
+  position:relative;
+  padding:20px 0;
+}
+body[data-op-area] .v7-section:nth-of-type(even)::before,
+body[data-op-area] .dash-section:nth-of-type(even)::before{
+  content:'';
+  position:absolute;
+  inset:0 -22px;
+  z-index:-1;
+  border-block:1px solid rgba(var(--op-b),.07);
+  background:
+    linear-gradient(90deg,rgba(var(--op-b),.03),transparent 38%,rgba(var(--op-a),.02));
+}
+body[data-op-area] .eyebrow{color:rgb(var(--op-a))}
+body[data-op-area] .text-link,
+body[data-op-area] .v7-link{color:rgb(var(--op-a))}
+body[data-op-area] .progress>i,
+body[data-op-area] .progress-track>span{
+  background:linear-gradient(90deg,rgb(var(--op-a)),rgb(var(--op-b)));
+  box-shadow:0 0 16px rgba(var(--op-a),.16);
+}
+body[data-op-area] .btn.primary{
+  background:rgb(var(--op-a));
+  border-color:rgb(var(--op-a));
+  color:#0b1112;
+  box-shadow:0 10px 30px rgba(var(--op-a),.09);
+}
+body[data-op-area] .btn.primary:hover{filter:brightness(1.08)}
+body[data-op-area] .op-tier-pro{border-color:rgba(var(--op-c),.32);color:rgb(var(--op-c))}
+
+body[data-op-area="coach"] .vf-coach-hero,
+body[data-op-area="match"] .live-hero,
+body[data-op-area="match"] .match-room,
+body[data-op-area="review"] .analysis-hero,
+body[data-op-area="climb"] .vf-progress-hero{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 88% 12%,rgba(var(--op-a),.15),transparent 30%),
+    linear-gradient(135deg,rgba(var(--op-a),.075),rgba(var(--op-b),.03) 48%,rgba(8,13,16,.88));
+  border-color:rgba(var(--op-a),.22);
+}
+body[data-op-area="coach"] .vf-coach-hero::after,
+body[data-op-area="climb"] .vf-progress-hero::after{
+  content:'';
+  position:absolute;
+  width:340px;height:340px;
+  right:-170px;bottom:-220px;
+  border:1px solid rgba(var(--op-a),.18);
+  border-radius:50%;
+  box-shadow:0 0 0 32px rgba(var(--op-a),.025),0 0 0 70px rgba(var(--op-b),.018);
+}
+
+body[data-op-area="plans"] .pricing-public::before,
+body[data-op-area="public"] main.container::before,
+body[data-op-area="auth"] main.container::before{
+  content:var(--op-area-label);
+  position:absolute;
+  top:18px;right:0;
+  color:rgba(var(--op-a),.045);
+  font:800 clamp(58px,9vw,126px)/.8 var(--font-display,'Barlow Condensed',sans-serif);
+  letter-spacing:.03em;
+  pointer-events:none;
+}
+body[data-op-area="plans"] .pricing-card-v2{
+  position:relative;
+  overflow:hidden;
+}
+body[data-op-area="plans"] .pricing-card-v2::after{
+  content:'';
+  position:absolute;
+  width:150px;height:150px;
+  right:-72px;bottom:-78px;
+  border:1px solid rgba(var(--op-a),.13);
+  transform:rotate(35deg);
+}
+
+body[data-op-area="auth"] .glass.card,
+body[data-op-area="system"] .glass.card{
+  background:
+    radial-gradient(circle at 100% 0%,rgba(var(--op-a),.08),transparent 36%),
+    rgba(17,25,30,.9);
+}
+body[data-op-area="lab"] .glass.card:nth-of-type(3n+1){--op-a:86,217,184}
+body[data-op-area="lab"] .glass.card:nth-of-type(3n+2){--op-a:183,164,239}
+body[data-op-area="lab"] .glass.card:nth-of-type(3n){--op-a:232,192,134}
+
+@media(max-width:900px){
+  body[data-op-area] .app-main::before{font-size:64px;right:16px;top:8px}
+  body[data-op-area] .page-head{padding:15px 16px 15px 18px}
+  body[data-op-area] .page-head::after{opacity:.5}
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-op-area] *{scroll-behavior:auto}
+}
