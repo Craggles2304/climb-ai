@@ -242,10 +242,8 @@ function applyTrackerState(raw){
   const source=arguments.length>1?arguments[1]:'LOCAL';
   const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim(),origin=String(source||'LOCAL').toUpperCase();
   if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
-  if(next==='CHAMP_SELECT'){
-    if(origin==='SERVER'&&state.phase==='RECORDING')return;
-    return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
-  }
+  if(next==='CHAMP_SELECT'&&origin==='SERVER'&&state.phase==='RECORDING')return;
+  if(next==='CHAMP_SELECT')return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
   if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
     if(origin==='SERVER'&&state.phase==='CHAMP_SELECT')return;
     if(state.phase==='RECORDING'){
