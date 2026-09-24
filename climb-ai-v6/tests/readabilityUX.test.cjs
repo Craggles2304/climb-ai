@@ -32,3 +32,26 @@ test('dashboard is a visual coaching HQ instead of repeated generic cards',()=>{
   assert.ok(css.includes(".hq-match-card"));
   assert.ok(css.includes(".hq-focus-visual"));
 });
+
+
+test('dashboard cannot regress to the legacy giant flex focus panel',()=>{
+  assert.ok(css.includes('.hq-command-v2{'));
+  assert.ok(css.includes('display:grid!important'));
+  assert.ok(css.includes('min-height:0!important'));
+  assert.ok(css.includes('padding:0!important'));
+  assert.ok(dashboard.includes('hq-focus-champ-art'));
+  assert.ok(dashboard.includes('hq-match-art'));
+});
+
+test('coach is a readable workspace rather than neon chat bubbles across the whole screen',()=>{
+  const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
+  assert.ok(coach.includes('vf-coach-workspace'));
+  assert.ok(coach.includes('vf-coach-context'));
+  assert.ok(coach.includes('vf-coach-rail'));
+  assert.ok(coach.includes('vf-coach-answer-copy'));
+  assert.ok(css.includes('.vf-message.user'));
+  assert.ok(css.includes('border-right:3px solid #b6f66b'));
+  assert.ok(css.includes('.vf-message.ai'));
+  assert.ok(css.includes('font-size:15px'));
+  assert.ok(!coach.includes('collapseAt='));
+});
