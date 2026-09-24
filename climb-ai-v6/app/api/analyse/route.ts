@@ -5,13 +5,11 @@ import type {Match,Role} from '@/lib/types';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 const schema=z.object({matchId:z.string().min(1)});
 
-function roleOf(value:unknown):Role{
-  const role=String(value||'ADC').toUpperCase();
-  return ['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(role)?role as Role:'ADC';
-}
+function roleOf(value:unknown):Role{return canonicalLeagueRole(value)??'ADC'}
 
 function firstNumber(...values:unknown[]){
   for(const value of values){
