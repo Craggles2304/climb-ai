@@ -23,7 +23,7 @@ import {buildDecisionPrincipleEngine,type DecisionPrincipleEngine} from '@/lib/c
 import {buildLearningPatchContext} from '@/lib/patchIntelligence';
 import {patchChangesForHistory} from './lolPatchIntelligenceRepository';
 import {CURRENT_LEARNING_MODEL_VERSION,buildLearningModelHealth,learningModelNeedsRebuild,type LearningModelHealth} from '@/lib/learningModelVersion';
-import {LEAGUE_ROLES,buildRoleAwareLearningSummary,canonicalLeagueRole,rowsForRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {LEAGUE_ROLES,buildRoleAwareLearningSummary,canonicalLeagueRole,globalLearningRows,rowsForRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis;patch?:string|null;gameVersion?:string|null;patchContext?:Record<string,unknown>}
 
@@ -91,7 +91,7 @@ function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,p
     previous:(previous?.recentChange?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null,
     learningPolicy:learningVelocity.policy,generatedAt:now,
   });
-  const learningJourney=buildLearningJourney(rows,now);
+  const learningJourney=buildLearningJourney(globalRows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
   const roleAwareLearning=buildRoleAwareLearningSummary(rows,now);
   const previousRoleProfiles=((learningResult.data?.role_profiles&&typeof learningResult.data.role_profiles==='object')?learningResult.data.role_profiles:{}) as Record<string,any>;
@@ -127,23 +127,26 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
   const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
   const previousLearningVelocity=((learningResult.data?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
-  const profile=buildProLearningProfile(rows),now=new Date().toISOString();
+  const now=new Date().toISOString();
+  const globalRows=globalLearningRows(rows);
+  const rawProfile=buildProLearningProfile(rows);
+  const profile=buildProLearningProfile(globalRows);
   const patchChanges=await patchChangesForHistory(rows).catch(err=>{console.warn('[patch-intelligence] learning change lookup failed',err);return[]});
   const patchContext=buildLearningPatchContext(rows,patchChanges);
-  const decisionTwin=buildDecisionTwin(rows,now);
-  const decisionTwinV2=buildDecisionTwinV2(rows,now,patchContext);
-  const scenarioMemory=buildScenarioMemory(rows,now);
-  const decisionTransfer=buildDecisionTransfer(rows,scenarioMemory,now);
-  const skillTransferGraph=buildSkillTransferGraph({rows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer,generatedAt:now});
-  const decisionPrincipleEngine=buildDecisionPrincipleEngine({rows,skillGraph:skillTransferGraph,generatedAt:now});
+  const decisionTwin=buildDecisionTwin(globalRows,now);
+  const decisionTwinV2=buildDecisionTwinV2(globalRows,now,patchContext);
+  const scenarioMemory=buildScenarioMemory(globalRows,now);
+  const decisionTransfer=buildDecisionTransfer(globalRows,scenarioMemory,now);
+  const skillTransferGraph=buildSkillTransferGraph({rows:globalRows,twin:decisionTwinV2,memory:scenarioMemory,transfer:decisionTransfer,generatedAt:now});
+  const decisionPrincipleEngine=buildDecisionPrincipleEngine({rows:globalRows,skillGraph:skillTransferGraph,generatedAt:now});
   const curriculum=buildClimbCurriculum(decisionTwinV2,scenarioMemory,decisionTransfer,now,previousCurriculum,skillTransferGraph);
-  const coachTwin=buildClimbCoachTwin(rows,now);
-  const autonomyProfile=buildClimbAutonomyProfile(rows,now);
-  const interventionValue=buildClimbInterventionValueProfile(rows,now);
-  const causalProfile=buildDecisionCausalProfile(rows,now);
-  const playerCoachingIdentity=buildPlayerCoachingIdentity({rows,twin:decisionTwinV2,curriculum,coachTwin,causalProfile,autonomyProfile,interventionValue,previous:previousPlayerCoachingIdentity,generatedAt:now});
-  const learningVelocity=buildLearningVelocityProfile({rows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity,generatedAt:now});
-  const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy,generatedAt:now});
+  const coachTwin=buildClimbCoachTwin(globalRows,now);
+  const autonomyProfile=buildClimbAutonomyProfile(globalRows,now);
+  const interventionValue=buildClimbInterventionValueProfile(globalRows,now);
+  const causalProfile=buildDecisionCausalProfile(globalRows,now);
+  const playerCoachingIdentity=buildPlayerCoachingIdentity({rows:globalRows,twin:decisionTwinV2,curriculum,coachTwin,causalProfile,autonomyProfile,interventionValue,previous:previousPlayerCoachingIdentity,generatedAt:now});
+  const learningVelocity=buildLearningVelocityProfile({rows:globalRows,coachTwin,interventionValue,identity:playerCoachingIdentity,curriculum,previous:previousLearningVelocity,generatedAt:now});
+  const adaptiveCoachingSession=buildAdaptiveCoachingSession({rows:globalRows,identity:playerCoachingIdentity,curriculum,previous:previousAdaptiveCoachingSession,learningPolicy:learningVelocity.policy,generatedAt:now});
   const improving=decisionTwin.behaviours.filter(item=>item.trend==='IMPROVING'&&item.applicableGames>=3).sort((a,b)=>(b.recentScore??0)-(a.recentScore??0))[0]??null;
   const worsening=decisionTwin.behaviours.filter(item=>item.trend==='WORSENING'&&item.applicableGames>=3).sort((a,b)=>(a.recentScore??100)-(b.recentScore??100))[0]??null;
   const situationImproving=decisionTwin.situationPatterns.find(item=>item.state==='IMPROVING')??null;
@@ -163,7 +166,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
     fingerprint:profile.fingerprint,
     metric_rollups:profile.metricRollups,
     fix_ladder:profile.fixLadder,
-    champion_profiles:profile.championProfiles,
+    champion_profiles:rawProfile.championProfiles,
     learning_identity:decisionTwin,
     mastered_behaviours:decisionTwin.mastered,
     current_focus:decisionTwin.currentLimiter??{},
