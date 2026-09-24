@@ -200,3 +200,182 @@ dialog::backdrop{background:rgba(4,8,10,.78)}
   .topbar{min-height:60px}
   .panel-padding,.plan-card,dialog{padding:18px}
 }
+
+
+/* Site-wide client visual-depth pass */
+body[data-client-view]{
+  --scene-a:182,246,107;
+  --scene-b:86,217,184;
+  --scene-c:232,192,134;
+  --scene-label:'OVERVIEW';
+  position:relative;
+  isolation:isolate;
+}
+body[data-client-view="match-room"]{--scene-a:86,217,184;--scene-b:232,192,134;--scene-c:249,149,148;--scene-label:'MATCH ROOM'}
+body[data-client-view="climb"]{--scene-a:182,246,107;--scene-b:86,217,184;--scene-c:183,164,239;--scene-label:'MY CLIMB'}
+body[data-client-view="coach-memory"]{--scene-a:183,164,239;--scene-b:86,217,184;--scene-c:232,192,134;--scene-label:'COACH MEMORY'}
+body[data-client-view="squad"]{--scene-a:232,192,134;--scene-b:182,246,107;--scene-c:86,217,184;--scene-label:'SQUAD ARENA'}
+body[data-client-view="plans"]{--scene-a:232,192,134;--scene-b:183,164,239;--scene-c:182,246,107;--scene-label:'PLANS'}
+
+body[data-client-view]::before,
+body[data-client-view]::after{
+  content:'';
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  z-index:-2;
+}
+body[data-client-view]::before{
+  background:
+    radial-gradient(760px 500px at 78% 0%,rgba(var(--scene-a),.12),transparent 65%),
+    radial-gradient(650px 430px at 0% 48%,rgba(var(--scene-b),.07),transparent 70%),
+    radial-gradient(600px 420px at 96% 90%,rgba(var(--scene-c),.055),transparent 70%),
+    #090e11;
+}
+body[data-client-view]::after{
+  opacity:.24;
+  background-image:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(118deg,transparent 0 48%,rgba(var(--scene-a),.045) 49% 50%,transparent 51%);
+  background-size:50px 50px,50px 50px,320px 320px;
+  -webkit-mask-image:linear-gradient(180deg,#000 0%,transparent 74%);
+  mask-image:linear-gradient(180deg,#000 0%,transparent 74%);
+}
+body[data-client-view] main{
+  position:relative;
+}
+body[data-client-view] main::before{
+  content:var(--scene-label);
+  position:absolute;
+  right:28px;
+  top:5px;
+  pointer-events:none;
+  color:rgba(var(--scene-a),.04);
+  font:800 clamp(62px,8vw,120px)/.82 var(--display);
+  letter-spacing:.045em;
+  z-index:0;
+}
+body[data-client-view] main>*{position:relative;z-index:1}
+
+body[data-client-view] .page-head{
+  position:relative;
+  padding:17px 19px 17px 22px;
+  border-left:3px solid rgb(var(--scene-a));
+  border-bottom:1px solid rgba(var(--scene-a),.12);
+  background:linear-gradient(90deg,rgba(var(--scene-a),.085),rgba(var(--scene-b),.025) 46%,transparent 76%);
+  overflow:hidden;
+}
+body[data-client-view] .page-head::after{
+  content:'';
+  position:absolute;
+  width:180px;height:180px;
+  right:-68px;top:-92px;
+  border:1px solid rgba(var(--scene-a),.14);
+  transform:rotate(35deg);
+  box-shadow:0 0 0 28px rgba(var(--scene-a),.02),0 0 0 56px rgba(var(--scene-b),.012);
+}
+
+body[data-client-view] .panel,
+body[data-client-view] .plan-card,
+body[data-client-view] .tactic,
+body[data-client-view] .outcome,
+body[data-client-view] .event,
+body[data-client-view] .loop-card{
+  position:relative;
+  overflow:hidden;
+  box-shadow:0 17px 48px #0003;
+}
+body[data-client-view] .panel::before,
+body[data-client-view] .plan-card::before,
+body[data-client-view] .tactic::before,
+body[data-client-view] .outcome::before{
+  content:'';
+  position:absolute;
+  left:0;right:0;top:0;
+  height:2px;
+  background:linear-gradient(90deg,rgba(var(--scene-a),.9),rgba(var(--scene-b),.38),transparent 72%);
+  opacity:.65;
+}
+body[data-client-view] .panel:hover,
+body[data-client-view] .tactic:hover,
+body[data-client-view] .loop-card:hover{
+  border-color:rgba(var(--scene-a),.3);
+}
+
+body[data-client-view="overview"] .mission,
+body[data-client-view="match-room"] .focus-surface,
+body[data-client-view="climb"] .climb-grid>.panel:first-child,
+body[data-client-view="coach-memory"] .memory-card,
+body[data-client-view="squad"] .challenge,
+body[data-client-view="plans"] .plan-card.pro{
+  position:relative;
+  overflow:hidden;
+  background:
+    radial-gradient(circle at 88% 10%,rgba(var(--scene-a),.15),transparent 28%),
+    linear-gradient(145deg,rgba(var(--scene-a),.06),rgba(var(--scene-b),.025) 46%,#11191e);
+  border-color:rgba(var(--scene-a),.24);
+}
+body[data-client-view="overview"] .mission::after,
+body[data-client-view="match-room"] .focus-surface::after,
+body[data-client-view="coach-memory"] .memory-card::after,
+body[data-client-view="squad"] .challenge::after{
+  content:'';
+  position:absolute;
+  pointer-events:none;
+  width:300px;height:300px;
+  right:-160px;bottom:-190px;
+  border-radius:50%;
+  border:1px solid rgba(var(--scene-a),.16);
+  box-shadow:0 0 0 34px rgba(var(--scene-a),.022),0 0 0 70px rgba(var(--scene-b),.015);
+}
+
+body[data-client-view="match-room"] .tactic:nth-child(1){border-top:2px solid rgb(var(--scene-a))}
+body[data-client-view="match-room"] .tactic:nth-child(2){border-top:2px solid rgb(var(--scene-b))}
+body[data-client-view="match-room"] .tactic:nth-child(3){border-top:2px solid rgb(var(--scene-c))}
+body[data-client-view="match-room"] .timeline .event:nth-child(1){border-top-color:rgb(var(--scene-a))}
+body[data-client-view="match-room"] .timeline .event:nth-child(2){border-top-color:rgb(var(--scene-c))}
+body[data-client-view="match-room"] .timeline .event:nth-child(3){border-top-color:rgb(var(--scene-b))}
+
+body[data-client-view="climb"] .chart{
+  filter:drop-shadow(0 10px 24px rgba(var(--scene-a),.08));
+}
+body[data-client-view="climb"] .habit:nth-child(3n+1) .habit-index{border-color:rgba(var(--scene-a),.5);color:rgb(var(--scene-a))}
+body[data-client-view="climb"] .habit:nth-child(3n+2) .habit-index{border-color:rgba(var(--scene-b),.5);color:rgb(var(--scene-b))}
+body[data-client-view="climb"] .habit:nth-child(3n) .habit-index{border-color:rgba(var(--scene-c),.5);color:rgb(var(--scene-c))}
+
+body[data-client-view="coach-memory"] .memory-event:nth-child(odd)>span{color:rgb(var(--scene-a))}
+body[data-client-view="coach-memory"] .memory-event:nth-child(even)>span{color:rgb(var(--scene-b))}
+body[data-client-view="coach-memory"] .memory-event>div{border-left-color:rgba(var(--scene-a),.36)}
+body[data-client-view="coach-memory"] .outcome:nth-child(1){border-top:2px solid rgb(var(--scene-a))}
+body[data-client-view="coach-memory"] .outcome:nth-child(2){border-top:2px solid rgb(var(--scene-b))}
+body[data-client-view="coach-memory"] .outcome:nth-child(3){border-top:2px solid rgb(var(--scene-c))}
+
+body[data-client-view="squad"] .leaderboard-row.you{
+  background:linear-gradient(90deg,rgba(var(--scene-a),.09),transparent);
+  box-shadow:inset 3px 0 rgb(var(--scene-a));
+}
+body[data-client-view="squad"] .challenge-progress span.on{background:linear-gradient(90deg,rgb(var(--scene-a)),rgb(var(--scene-b)))}
+
+body[data-client-view="plans"] .plan-card.free{border-top:2px solid #8da0a6}
+body[data-client-view="plans"] .plan-card.plus{border-top:2px solid var(--mint)}
+body[data-client-view="plans"] .plan-card.pro{border-top:2px solid var(--gold)}
+body[data-client-view="plans"] .plan-card::after{
+  content:'';
+  position:absolute;
+  width:145px;height:145px;
+  right:-75px;bottom:-82px;
+  border:1px solid rgba(var(--scene-a),.13);
+  transform:rotate(33deg);
+}
+
+body[data-client-tier="pro"] .sidebar-plan{
+  border-color:#8b7148;
+  background:linear-gradient(135deg,#3b3020,#171b1d);
+}
+body[data-client-tier="pro"] .sidebar-plan strong span{color:var(--gold);border-color:#8b7148}
+body[data-client-tier="free"] .sidebar-plan{filter:saturate(.65)}
+@media(max-width:760px){
+  body[data-client-view] main::before{font-size:68px;right:12px;top:8px}
+  body[data-client-view] .page-head{padding:15px 16px 15px 18px}
+}

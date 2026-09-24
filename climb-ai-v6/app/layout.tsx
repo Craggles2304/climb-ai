@@ -12,12 +12,14 @@ import './ilp-explainability.css';
 import './ux-journey.css';
 import './public-personal.css';
 import './client-system.css';
+import './visual-depth.css';
 import type {Metadata} from 'next';
 import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';
 import {LearningPlanProvider} from '@/components/LearningPlanContext';
 import {SubscriptionProvider} from '@/components/SubscriptionContext';
+import {RouteVisualTheme} from '@/components/RouteVisualTheme';
 
 const display=Barlow_Condensed({subsets:['latin'],weight:['600','700','800'],style:['normal','italic'],variable:'--font-display',display:'swap'});
 const body=DM_Sans({subsets:['latin'],weight:['400','500','600','700'],variable:'--font-body',display:'swap'});
@@ -38,4 +40,4 @@ export const metadata:Metadata={
   manifest:'/manifest.webmanifest',
 };
 
-export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body className={display.variable+' '+body.variable+' '+mono.variable}><SessionProvider><SubscriptionProvider><AccountProvider><LearningPlanProvider>{children}</LearningPlanProvider></AccountProvider></SubscriptionProvider></SessionProvider></body></html>}
+export default function RootLayout({children}:{children:React.ReactNode}){return <html lang="en"><body className={display.variable+' '+body.variable+' '+mono.variable}><RouteVisualTheme/><SessionProvider><SubscriptionProvider><AccountProvider><LearningPlanProvider>{children}</LearningPlanProvider></AccountProvider></SubscriptionProvider></SessionProvider></body></html>}
