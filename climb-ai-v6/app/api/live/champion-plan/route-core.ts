@@ -37,6 +37,29 @@ export async function GET(req:NextRequest){
     let recoveredFromEndedPregame=false;
     let recoveredAt:string|null=null;
     const trackerState=String((data?.tracker_status as any)?.state??'').trim().toUpperCase();
+
+    // The canonical draft row is written before/alongside the lightweight device mirror.
+    // If the mirror is stale or missed a write, prefer the newest active draft row so the
+    // desktop cannot sit on SELECTING / 0 ENEMIES while the server already has the draft.
+    if(trackerState==='CHAMP_SELECT'||!context){
+      const {data:active,error:activeError}=await db.from('live_pregame_contexts')
+        .select('context,last_seen_at')
+        .eq('device_id',device.id)
+        .is('ended_at',null)
+        .order('last_seen_at',{ascending:false})
+        .limit(1)
+        .maybeSingle();
+      if(activeError)throw new Error(activeError.message);
+      const activeAt=active?.last_seen_at?new Date(active.last_seen_at).getTime():NaN;
+      const mirrorAt=data?.pregame_updated_at?new Date(data.pregame_updated_at).getTime():NaN;
+      const activeHasSelection=Boolean((active?.context as any)?.localChampionName)||Array.isArray((active?.context as any)?.allies)&&((active?.context as any)?.allies?.length??0)>0;
+      const mirrorHasSelection=Boolean(context?.localChampionName)||Array.isArray(context?.allies)&&(context?.allies?.length??0)>0;
+      if(active?.context&&(activeHasSelection&&!mirrorHasSelection||!context||(Number.isFinite(activeAt)&&(!Number.isFinite(mirrorAt)||activeAt>=mirrorAt)))){
+        context=active.context as any;
+        recoveredAt=active.last_seen_at??null;
+      }
+    }
+
     if(!context&&trackerState==='RECORDING'){
       const {data:recent,error:recentError}=await db.from('live_pregame_contexts').select('context,ended_at,last_seen_at').eq('device_id',device.id).not('ended_at','is',null).order('ended_at',{ascending:false}).limit(1).maybeSingle();
       if(recentError)throw new Error(recentError.message);
