@@ -36,6 +36,8 @@ export default function Analysis(){
   const proAnalysis=embeddedPro??fetchedPro??undefined;
   const proLoading=!embeddedPro&&fetchingPro;
 
+  useEffect(()=>{setServerMatch(null);setServerCheckedId('')},[id,active.id]);
+
   useEffect(()=>{
     if(!hydrated||!id||cachedMatch||serverCheckedId===id)return;
     const controller=new AbortController();
@@ -48,14 +50,14 @@ export default function Analysis(){
     }).then(async response=>{
       const body=await response.json().catch(()=>null);
       if(controller.signal.aborted)return;
-      if(response.ok&&body?.match)setServerMatch(body.match as Match);
+      if(response.ok&&body?.match&&body.match.riotAccountId===active.id)setServerMatch(body.match as Match);
     }).catch(()=>{}).finally(()=>{
       if(controller.signal.aborted)return;
       setServerCheckedId(id);
       setServerLoading(false);
     });
     return()=>controller.abort();
-  },[hydrated,id,cachedMatch,serverCheckedId]);
+  },[hydrated,id,cachedMatch,serverCheckedId,active.id]);
 
   if(!hydrated)return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading your evidence…</h2></section></AppShell>;
 
