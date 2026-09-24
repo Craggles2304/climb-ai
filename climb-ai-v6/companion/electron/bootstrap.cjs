@@ -5,6 +5,7 @@ const CHECK_INTERVAL_MS=15*60*1000;
 const BUSY_PHASES=new Set(['CHAMP_SELECT','RECORDING','UPLOADING']);
 const WEB=(process.env.OP_WEB_URL||'https://opclimb.com').replace(/\/$/,'');
 let checkTimer=null;
+let installWatchdog=null;
 let updateState={
   status:'IDLE',
   currentVersion:app.getVersion(),
@@ -55,10 +56,26 @@ async function downloadUpdate(){
 }
 
 function installUpdate(phase){
+  if(updateState.status==='INSTALLING')return {ok:true};
   if(updateState.status!=='READY')return {ok:false,error:'The update has not finished downloading yet.'};
   if(installBlocked(phase))return {ok:false,error:'Finish the current League session before restarting to update.'};
   setUpdateState({status:'INSTALLING',error:null});
-  setImmediate(()=>autoUpdater.quitAndInstall(false,true));
+  setTimeout(()=>{
+    try{
+      // Silent NSIS install avoids the assisted installer being hidden behind the Companion.
+      // Force-run the new build afterwards so the player lands back in the Companion automatically.
+      autoUpdater.quitAndInstall(true,true);
+      installWatchdog=setTimeout(()=>{
+        // If Electron/Windows failed to close us after the updater was launched, force the normal
+        // quit path first (which also honours autoInstallOnAppQuit), then hard-exit as a final unlock.
+        setUpdateState({status:'ERROR',error:'The update is downloaded, but Windows did not close the Companion. The app will now close so the installer can finish.'});
+        try{app.quit()}catch{}
+        setTimeout(()=>{try{app.exit(0)}catch{}},1500);
+      },3500);
+    }catch(err){
+      setUpdateState({status:'ERROR',error:err?.message||'Could not restart into the downloaded update.'});
+    }
+  },150);
   return {ok:true};
 }
 
@@ -154,7 +171,10 @@ app.whenReady().then(()=>{
   setTimeout(()=>void checkForUpdate(),12_000);
   checkTimer=setInterval(()=>void checkForUpdate(),CHECK_INTERVAL_MS);
 });
-app.on('before-quit',()=>{if(checkTimer){clearInterval(checkTimer);checkTimer=null}});
+app.on('will-quit',()=>{
+  if(checkTimer){clearInterval(checkTimer);checkTimer=null}
+  if(installWatchdog){clearTimeout(installWatchdog);installWatchdog=null}
+});
 
 require('./live-roster.cjs');
 require('./main.cjs');
