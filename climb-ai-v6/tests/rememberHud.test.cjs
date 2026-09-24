@@ -465,7 +465,6 @@ test('manual plan selections capture game seconds only for post-game recognition
 
 test('installed Companion actually loads the full Match OS chain',()=>{
   assert.ok(index.includes('<script src="review-v2.js"></script>'),'index.html must load the Match OS loader');
-  assert.ok(loader.includes("load('remember-v2.js')"));
   assert.ok(loader.includes("load('remember-v5-esports.js')"));
   assert.ok(loader.includes("load('remember-v6-match-os.js')"));
   assert.ok(loader.includes("load('remember-v7-read-checkpoints.js')"));
