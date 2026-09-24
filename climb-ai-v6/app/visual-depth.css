@@ -1013,3 +1013,356 @@ body[data-op-area="hq"] .v7-section-head .muted{
   body[data-op-area="hq"] .hq-match-grid{grid-template-columns:1fr}
   body[data-op-area="hq"] .hq-command-copy{padding:28px 22px}
 }
+
+
+/* 2026-09 esports route scene pass — every workspace should feel like a different room */
+.op-route-scene{
+  width:calc(100% - 64px);
+  max-width:1466px;
+  min-height:278px;
+  margin:28px auto 0;
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(310px,.65fr);
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.11);
+  border-left:4px solid rgb(var(--op-a));
+  background:
+    radial-gradient(760px 360px at 14% 105%,rgba(var(--op-b),.12),transparent 68%),
+    radial-gradient(520px 320px at 82% 0%,rgba(var(--op-a),.16),transparent 66%),
+    linear-gradient(120deg,#11191e 0%,#0d1418 52%,#080d10 100%);
+  box-shadow:0 28px 85px rgba(0,0,0,.3);
+  isolation:isolate;
+}
+.op-route-scene::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  pointer-events:none;
+  background:
+    linear-gradient(rgba(255,255,255,.028) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.028) 1px,transparent 1px),
+    linear-gradient(118deg,transparent 0 45%,rgba(var(--op-a),.075) 46% 47%,transparent 48%);
+  background-size:46px 46px,46px 46px,420px 420px;
+  opacity:.36;
+  -webkit-mask-image:linear-gradient(90deg,#000 0%,rgba(0,0,0,.72) 54%,transparent 92%);
+  mask-image:linear-gradient(90deg,#000 0%,rgba(0,0,0,.72) 54%,transparent 92%);
+}
+.op-route-scene-copy{
+  padding:38px 24px 32px 42px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  min-width:0;
+}
+.op-scene-kicker{
+  display:flex;
+  align-items:center;
+  gap:11px;
+  color:#9aacb0;
+  font:600 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.13em;
+  text-transform:uppercase;
+}
+.op-scene-kicker span{
+  padding:5px 7px;
+  border:1px solid rgba(var(--op-a),.34);
+  color:rgb(var(--op-a));
+  background:rgba(var(--op-a),.055);
+}
+.op-scene-kicker i{
+  width:34px;
+  height:1px;
+  background:linear-gradient(90deg,rgb(var(--op-a)),transparent);
+}
+.op-scene-title{
+  max-width:15ch;
+  margin-top:17px;
+  color:#f2f8f7;
+  font:800 clamp(48px,5.3vw,78px)/.88 var(--font-display,'Barlow Condensed',sans-serif);
+  letter-spacing:-.035em;
+  text-transform:uppercase;
+  text-wrap:balance;
+  text-shadow:0 20px 55px rgba(var(--op-a),.13);
+}
+.op-route-scene-copy>p{
+  max-width:760px;
+  margin:17px 0 0;
+  color:#bfccce;
+  font-size:15px;
+  line-height:1.58;
+}
+.op-scene-signals{
+  display:flex;
+  flex-wrap:wrap;
+  gap:0;
+  margin-top:25px;
+  border:1px solid rgba(255,255,255,.09);
+  width:max-content;
+  max-width:100%;
+}
+.op-scene-signals span{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-height:34px;
+  padding:7px 12px;
+  border-right:1px solid rgba(255,255,255,.09);
+  color:#aebbbc;
+  background:rgba(6,11,14,.56);
+  font:600 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+  white-space:nowrap;
+}
+.op-scene-signals span:last-child{border-right:0}
+.op-scene-signals b{
+  color:rgb(var(--op-a));
+  font-weight:700;
+}
+
+.op-scene-visual{
+  position:relative;
+  overflow:hidden;
+  min-height:278px;
+  border-left:1px solid rgba(255,255,255,.08);
+  background:
+    radial-gradient(circle at 58% 42%,rgba(var(--op-a),.14),transparent 24%),
+    linear-gradient(145deg,rgba(var(--op-b),.035),rgba(0,0,0,.23));
+}
+.op-scene-visual::after{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:
+    linear-gradient(90deg,transparent 0 48%,rgba(255,255,255,.035) 49% 50%,transparent 51%),
+    linear-gradient(0deg,transparent 0 48%,rgba(255,255,255,.035) 49% 50%,transparent 51%);
+  background-size:72px 72px;
+  opacity:.28;
+}
+.op-scene-watermark{
+  position:absolute;
+  z-index:1;
+  right:-8px;
+  bottom:-5px;
+  color:rgba(255,255,255,.045);
+  font:800 78px/.8 var(--font-display,'Barlow Condensed',sans-serif);
+  letter-spacing:.04em;
+  text-transform:uppercase;
+  transform:skew(-7deg);
+}
+.op-scene-radar{
+  position:absolute;
+  z-index:2;
+  width:176px;
+  height:176px;
+  left:50%;
+  top:45%;
+  transform:translate(-50%,-50%);
+  border:1px solid rgba(var(--op-a),.3);
+  border-radius:50%!important;
+  box-shadow:
+    0 0 0 24px rgba(var(--op-a),.035),
+    0 0 0 52px rgba(var(--op-b),.024),
+    0 0 70px rgba(var(--op-a),.10);
+}
+.op-scene-radar::before,
+.op-scene-radar::after{
+  content:'';
+  position:absolute;
+  left:50%;top:50%;
+  background:rgba(var(--op-a),.25);
+  transform:translate(-50%,-50%);
+}
+.op-scene-radar::before{width:1px;height:220px}
+.op-scene-radar::after{height:1px;width:220px}
+.op-scene-radar i{
+  position:absolute;
+  width:7px;height:7px;
+  border-radius:50%!important;
+  background:rgb(var(--op-a));
+  box-shadow:0 0 18px rgba(var(--op-a),.75);
+}
+.op-scene-radar i:nth-child(1){left:31px;top:41px}
+.op-scene-radar i:nth-child(2){right:37px;top:67px;background:rgb(var(--op-b))}
+.op-scene-radar i:nth-child(3){left:79px;bottom:27px;background:rgb(var(--op-c))}
+.op-scene-radar b{
+  position:absolute;
+  left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  color:#eef5f4;
+  font:800 30px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.op-scene-bars{
+  position:absolute;
+  z-index:3;
+  left:20px;
+  right:20px;
+  bottom:20px;
+  height:42px;
+  display:flex;
+  align-items:flex-end;
+  gap:5px;
+  opacity:.72;
+}
+.op-scene-bars i{
+  flex:1;
+  height:22%;
+  background:linear-gradient(180deg,rgba(var(--op-a),.95),rgba(var(--op-b),.25));
+  transform-origin:bottom;
+  animation:opScenePulse 3.2s ease-in-out infinite alternate;
+}
+.op-scene-bars i:nth-child(2){height:62%;animation-delay:-.7s}
+.op-scene-bars i:nth-child(3){height:38%;animation-delay:-1.4s}
+.op-scene-bars i:nth-child(4){height:82%;animation-delay:-2.1s}
+.op-scene-bars i:nth-child(5){height:50%;animation-delay:-.35s}
+.op-scene-bars i:nth-child(6){height:70%;animation-delay:-1.1s}
+.op-scene-scanline{
+  position:absolute;
+  z-index:4;
+  left:0;right:0;top:-18%;
+  height:2px;
+  background:linear-gradient(90deg,transparent,rgb(var(--op-a)),transparent);
+  box-shadow:0 0 24px rgba(var(--op-a),.35);
+  opacity:.46;
+  animation:opSceneScan 5.6s linear infinite;
+}
+
+/* A little real League texture where it adds value, without turning every route into the same splash page. */
+.op-route-scene[data-scene="hq"] .op-scene-visual::before,
+.op-route-scene[data-scene="review"] .op-scene-visual::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:0;
+  background:
+    linear-gradient(90deg,#091014 0%,rgba(9,16,20,.56) 38%,rgba(9,16,20,.82) 100%),
+    linear-gradient(0deg,rgba(9,14,17,.96),transparent 60%),
+    url('/assets/jinx-splash.jpg') 66% 24%/cover no-repeat;
+  opacity:.54;
+  filter:saturate(.72) contrast(1.07);
+}
+.op-route-scene[data-scene="review"] .op-scene-visual::before{
+  background-position:82% 28%;
+  filter:saturate(.38) contrast(1.12);
+  opacity:.42;
+}
+.op-route-scene[data-scene="coach"]{
+  background:
+    radial-gradient(700px 360px at 8% 100%,rgba(86,217,184,.09),transparent 68%),
+    radial-gradient(540px 340px at 86% 0%,rgba(183,164,239,.18),transparent 68%),
+    linear-gradient(120deg,#12181f,#0d1218 58%,#090d12);
+}
+.op-route-scene[data-scene="climb"]{
+  background:
+    radial-gradient(740px 350px at 8% 110%,rgba(86,217,184,.11),transparent 68%),
+    radial-gradient(520px 300px at 82% 0%,rgba(182,246,107,.17),transparent 68%),
+    linear-gradient(120deg,#101a18,#0d1418 56%,#080d10);
+}
+.op-route-scene[data-scene="match"]{
+  background:
+    radial-gradient(650px 350px at 8% 105%,rgba(232,192,134,.10),transparent 68%),
+    radial-gradient(560px 330px at 83% 0%,rgba(86,217,184,.18),transparent 68%),
+    linear-gradient(120deg,#0d191b,#0b1418 58%,#080d10);
+}
+.op-route-scene[data-scene="lab"]{
+  background:
+    radial-gradient(650px 350px at 7% 105%,rgba(183,164,239,.11),transparent 68%),
+    radial-gradient(540px 330px at 86% 0%,rgba(86,217,184,.18),transparent 68%),
+    linear-gradient(120deg,#0c181b,#0e141b 58%,#090d11);
+}
+.op-route-scene[data-scene="plans"]{
+  background:
+    radial-gradient(650px 350px at 8% 105%,rgba(182,246,107,.09),transparent 68%),
+    radial-gradient(560px 330px at 84% 0%,rgba(232,192,134,.20),transparent 68%),
+    linear-gradient(120deg,#18170f,#121518 58%,#090d10);
+}
+.op-route-scene[data-scene="system"]{
+  background:
+    radial-gradient(650px 350px at 8% 105%,rgba(86,217,184,.08),transparent 68%),
+    radial-gradient(560px 330px at 84% 0%,rgba(126,178,194,.18),transparent 68%),
+    linear-gradient(120deg,#10171b,#0e1418 58%,#090d10);
+}
+
+/* Once the scene has established the page, the old page heading becomes a useful utility row rather than another hero. */
+.op-route-scene + .op-screen-frame{padding-top:20px}
+.op-route-scene + .op-screen-frame .page-head{
+  min-height:58px;
+  margin-bottom:20px!important;
+  padding:10px 14px 10px 16px!important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  border-left:2px solid rgba(var(--op-a),.55);
+  border-bottom:1px solid rgba(255,255,255,.07);
+  background:rgba(8,13,16,.42);
+}
+.op-route-scene + .op-screen-frame .page-head::after{display:none}
+.op-route-scene + .op-screen-frame .page-head h1{
+  margin:0!important;
+  font-size:clamp(24px,2.2vw,32px)!important;
+  letter-spacing:-.015em!important;
+  text-shadow:none;
+}
+.op-route-scene + .op-screen-frame .page-head .muted{
+  margin-top:3px!important;
+  font-size:12px!important;
+  color:#8fa0a4!important;
+}
+.op-route-scene + .op-screen-frame .page-head .btn{min-height:36px}
+
+/* Cards now behave like broadcast modules instead of identical boxes. */
+body[data-op-area] .op-screen-frame .glass.card,
+body[data-op-area] .op-screen-frame .hq-behaviour{
+  transition:transform .18s ease,border-color .18s ease,background .18s ease;
+}
+body[data-op-area] .op-screen-frame .glass.card:hover,
+body[data-op-area] .op-screen-frame .hq-behaviour:hover{
+  transform:translateY(-2px);
+}
+body[data-op-area] .op-screen-frame .glass.card:nth-of-type(4n+1){border-top-color:rgba(var(--op-a),.34)}
+body[data-op-area] .op-screen-frame .glass.card:nth-of-type(4n+2){border-top-color:rgba(var(--op-b),.30)}
+body[data-op-area] .op-screen-frame .glass.card:nth-of-type(4n+3){border-top-color:rgba(var(--op-c),.30)}
+
+@keyframes opScenePulse{
+  from{transform:scaleY(.72);opacity:.46}
+  to{transform:scaleY(1.06);opacity:.9}
+}
+@keyframes opSceneScan{
+  from{transform:translateY(0)}
+  to{transform:translateY(360px)}
+}
+
+@media(max-width:1100px){
+  .op-route-scene{grid-template-columns:minmax(0,1fr) 280px}
+  .op-scene-title{font-size:clamp(46px,6vw,68px)}
+}
+@media(max-width:820px){
+  .op-route-scene{
+    width:calc(100% - 28px);
+    grid-template-columns:1fr;
+    margin-top:14px;
+    min-height:0;
+  }
+  .op-route-scene-copy{padding:28px 22px 24px}
+  .op-scene-title{font-size:clamp(43px,11vw,60px)}
+  .op-scene-visual{min-height:150px;border-left:0;border-top:1px solid rgba(255,255,255,.08)}
+  .op-scene-radar{width:110px;height:110px}
+  .op-scene-radar::before{height:150px}
+  .op-scene-radar::after{width:150px}
+  .op-scene-watermark{font-size:54px}
+  .op-route-scene + .op-screen-frame{padding-top:16px}
+  .op-route-scene + .op-screen-frame .page-head{align-items:flex-start}
+}
+@media(max-width:560px){
+  .op-scene-signals{width:100%;display:grid;grid-template-columns:1fr}
+  .op-scene-signals span{border-right:0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .op-scene-signals span:last-child{border-bottom:0}
+  .op-route-scene-copy>p{font-size:14px}
+}
+@media(prefers-reduced-motion:reduce){
+  .op-scene-bars i,.op-scene-scanline{animation:none!important}
+  body[data-op-area] .op-screen-frame .glass.card:hover,
+  body[data-op-area] .op-screen-frame .hq-behaviour:hover{transform:none}
+}
