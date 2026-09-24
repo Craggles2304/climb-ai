@@ -200,6 +200,7 @@ export function BroadcastLanding(){
           <a href="#squads" className={styles['hide-sm']}>Squads</a>
           <a href="#pricing" className={styles['hide-sm']}>Pricing</a>
           <Link href="/support" className={styles['hide-sm']}>Community</Link>
+          <a href="/client" className={styles.clientNav}><span className={styles['hide-sm']}>Explore the client</span><span className={styles['show-sm']}>Client demo</span></a>
           <Link href="/login" className={styles['btn-ghost']}>Sign in</Link>
         </div>
       </nav>
@@ -216,6 +217,7 @@ export function BroadcastLanding(){
           </form>
           {error&&<div className={styles.error}>{error} Showing the sample report instead.</div>}
           <div className={styles.chips}><span>No card</span><span>No install to start</span><span>Result before sign-up</span></div>
+          <a className={styles.clientLink} href="/client">Or explore the full client, no account needed{' '}→</a>
         </div>
 
         <ScoutingCard result={result} busy={busy} step={step} demoName={demoName}/>

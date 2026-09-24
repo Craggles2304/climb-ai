@@ -47,6 +47,8 @@
 .navlinks a:hover{color:var(--ink)}
 .btn-ghost{display:inline-flex;align-items:center;min-height:38px;border:1px solid #3b494f;background:var(--panel-2);padding:8px 15px;color:var(--ink)!important;font-weight:600;transition:border-color .18s,background .18s}
 .btn-ghost:hover{border-color:#8caa97;background:#22312c}
+.navlinks .clientNav{color:var(--mint);font-weight:600;white-space:nowrap}
+.navlinks .clientNav:hover{color:#c7ff8a;text-decoration:underline}
 
 /* hero */
 .hero{position:relative;display:grid;grid-template-columns:1.05fr .95fr;gap:48px;align-items:center;padding-block:52px 76px}
@@ -81,6 +83,8 @@
 .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px}
 .chips span{font:12px var(--mono);text-transform:uppercase;letter-spacing:.02em;padding:3px 7px;background:#233036;border:1px solid #425057;color:var(--muted)}
 .error{margin-top:10px;color:var(--bad);font-family:var(--mono);font-size:12px}
+.page .clientLink{display:inline-block;margin-top:18px;color:var(--mint);font-weight:600;font-size:15px;text-decoration:none}
+.page .clientLink:hover{text-decoration:underline}
 
 /* scouting card */
 .scout{position:relative;background:var(--panel);border:1px solid var(--line);padding:22px;overflow:hidden}
@@ -197,7 +201,9 @@
 @media(max-width:820px){
   .split{grid-template-columns:1fr}
 }
-@media(max-width:760px){.navlinks .hide-sm{display:none}}
+.show-sm{display:none}
+@media(max-width:760px){.navlinks .hide-sm{display:none}.navlinks .show-sm{display:inline}}
+@media(max-width:420px){.navlinks{gap:14px}.logo{font-size:25px;gap:10px}}
 @media(max-width:560px){
   .arc{grid-template-columns:1fr}
   .lockin{grid-template-columns:1fr 84px}

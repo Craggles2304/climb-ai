@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090e11">
+  <meta name="description" content="OP Climb: one focus, every game, lasting improvement. Explore a personal League of Legends coaching client.">
+  <title>OP Climb — Your personal League coach</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,700;0,800;1,700&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cpath fill='%239dff42' d='M32 3 59 19v26L32 61 5 45V19z'/%3E%3Cpath fill='%23070813' d='m32 15 14 17-14 17-14-17z'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/client/styles.css">
+  <script defer src="/client/app.js"></script>
+</head>
+<body>
+  <noscript><p style="padding:24px">OP Climb’s interactive preview needs JavaScript. Enable it to explore the match room, coaching memory and plans.</p></noscript>
+  <a class="skip" href="#content">Skip to content</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Primary navigation">
+      <a class="brand" href="#overview" aria-label="OP Climb home"><span class="brand-mark">OP<span>↗</span></span><span>OP<span class="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span></a>
+      <div class="game-label"><span class="game-rune">L</span> LEAGUE OF LEGENDS</div>
+      <p class="nav-caption">YOUR WORKSPACE</p>
+      <nav id="desktop-nav"></nav>
+      <div class="sidebar-bottom">
+        <div class="sidebar-plan"><span class="eyebrow">YOUR COACHING PLAN</span><strong id="sidebar-tier">PLUS <span>DEMO</span></strong><p id="sidebar-next">Next unlock: a coach that remembers.</p><button class="btn btn-small" data-route="plans">Explore your unlocks <span>↗</span></button></div>
+        <button class="sidebar-help" data-action="tour"><span data-icon="compass"></span> Take a quick tour</button>
+        <div class="mini-profile"><span class="player-avatar">K</span><span><strong>Kai#EUW</strong><small>Example player · ADC</small></span><button class="icon-button" data-action="profile" aria-label="Example player details"><span data-icon="settings"></span></button></div>
+      </div>
+    </aside>
+    <div class="workspace">
+      <header class="topbar"><a class="mobile-brand" href="#overview">OP<span>CLIMB</span></a><div class="breadcrumb"><span data-icon="grid"></span><span>Player workspace</span><span class="divider">/</span><strong id="view-name">Overview</strong></div><div class="topbar-right"><a class="btn primary btn-small site-cta" href="/#report">Analyse my games</a><span class="demo-badge">INTERACTIVE DEMO</span><label class="tier-selector">Preview as <select id="tier-preview" aria-label="Preview membership tier"><option value="free">Free</option><option value="plus" selected>Plus</option><option value="pro">Pro</option></select></label><button class="icon-button notification-button" data-action="notifications" aria-label="Read two coaching updates"><span data-icon="bell"></span><i></i></button></div></header>
+      <main id="content" tabindex="-1"></main>
+      <footer class="footer"><span>OP CLIMB <b>ONE FOCUS. EVERY GAME. LASTING IMPROVEMENT.</b></span><p>Interactive design concept. Player data, coaching and challenges are examples. No Riot connection, live analysis or checkout is active.</p><p>OP Climb is not endorsed by Riot Games. League of Legends and champion artwork © Riot Games.</p><p><a class="site-back" href="/">← Back to opclimb.com</a></p></footer>
+    </div>
+  </div>
+  <nav class="mobile-nav" aria-label="Mobile navigation" id="mobile-nav"></nav>
+  <dialog id="detail-dialog" aria-labelledby="dialog-title"><button class="dialog-close icon-button" aria-label="Close dialog" data-action="close"><span data-icon="x"></span></button><div id="dialog-content"><h2 id="dialog-title">OP Climb details</h2></div></dialog>
+  <div class="toast" role="status" aria-live="polite" id="toast"></div>
+</body>
+</html>
