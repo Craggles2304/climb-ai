@@ -8,6 +8,7 @@ import {
   type DecisionTwinState,
 } from './decisionTwin';
 import type {HistoryAnalysisRow,ProTrend} from './riot/proHistory';
+import type {LearningPatchContext} from './patchIntelligence';
 
 export type DecisionArchetypeKind='RISK'|'STRENGTH';
 export type DecisionContextState='BUILDING'|'RISK'|'IMPROVING'|'MASTERED'|'REGRESSING';
@@ -129,6 +130,7 @@ export interface DecisionTwinV2Profile{
   targetTwin:DecisionTwinTarget;
   riskLedger:DecisionTwinRiskLedger;
   challenge:DecisionTwinChallenge|null;
+  patchContext?:LearningPatchContext;
 }
 
 const ARCHETYPE:Record<DecisionBehaviourKey,{risk:string;strength:string;explanation:string;rule:string}>={
@@ -490,7 +492,7 @@ function buildRiskLedger(rows:HistoryAnalysisRow[]):DecisionTwinRiskLedger{
   };
 }
 
-export function buildDecisionTwinV2(rows:HistoryAnalysisRow[],generatedAt=new Date().toISOString()):DecisionTwinV2Profile{
+export function buildDecisionTwinV2(rows:HistoryAnalysisRow[],generatedAt=new Date().toISOString(),patchContext?:LearningPatchContext):DecisionTwinV2Profile{
   const ordered=[...rows].filter(row=>row.analysis?.version===1).sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt)).slice(-50);
   const twin=buildDecisionTwin(ordered,generatedAt);
   const archetypes=buildArchetypes(twin);
@@ -502,13 +504,16 @@ export function buildDecisionTwinV2(rows:HistoryAnalysisRow[],generatedAt=new Da
   const headline=identityStatus==='BUILDING'
     ?'BUILDING YOUR DECISION IDENTITY'
     :primary?.label??strongest?.label??'BUILDING YOUR DECISION IDENTITY';
-  const summary=identityStatus==='BUILDING'
+  const identitySummary=identityStatus==='BUILDING'
     ?'OP CLIMB will not name a player identity from too little evidence. Complete more fully tracked games.'
     :primary&&strongest
       ?`${primary.label} is the clearest current risk identity; ${strongest.label} is the strongest verified counterweight.`
       :primary
         ?`${primary.label} is the clearest current risk identity. It stays provisional until more comparable evidence arrives.`
         :`${strongest?.label??'A verified strength'} is currently the clearest established decision identity.`;
+  const summary=patchContext&&patchContext.status==='CROSS_PATCH'
+    ?identitySummary+' Patch-aware mode is active: Riot balance changes are treated as context, so cross-patch movement is not labelled as pure player improvement or regression.'
+    :identitySummary;
 
   return{
     version:2,
@@ -522,5 +527,6 @@ export function buildDecisionTwinV2(rows:HistoryAnalysisRow[],generatedAt=new Da
     targetTwin:buildTargetTwin(activeFive,twin),
     riskLedger:buildRiskLedger(ordered),
     challenge:buildChallenge(ordered,twin),
+    patchContext,
   };
 }

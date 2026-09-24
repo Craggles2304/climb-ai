@@ -24,16 +24,38 @@ async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveRe
   if(!db)return{persisted:false,inserted:0,skipped:matches.length,reason:'Supabase is not configured.'};
   if(!matches.length)return{persisted:true,inserted:0,skipped:0};
 
-  const {data:existing,error:readError}=await db.from('matches').select('external_match_id').eq('user_id',userId).in('external_match_id',matches.map(m=>m.id));
+  const {data:existing,error:readError}=await db.from('matches').select('id,external_match_id,patch,game_version').eq('user_id',userId).in('external_match_id',matches.map(m=>m.id));
   if(readError)return failed(matches.length,readError);
-  const seen=new Set((existing||[]).map(r=>r.external_match_id as string));
+  const existingByExternal=new Map((existing||[]).map(r=>[r.external_match_id as string,r]));
+  const seen=new Set(existingByExternal.keys());
+  const touchedAccounts=new Set<string>();
+  for(const m of matches){
+    const stored=existingByExternal.get(m.id);
+    if(!stored||!m.patch)continue;
+    if(stored.patch===m.patch&&stored.game_version===(m.gameVersion??null))continue;
+    const observedAt=new Date().toISOString();
+    const update=await db.from('matches').update({
+      patch:m.patch,game_version:m.gameVersion??null,patch_source:m.patchSource??'MATCH_V5',patch_observed_at:observedAt,
+    }).eq('id',stored.id);
+    if(update.error)console.warn('[match-sync] patch backfill failed',update.error.message);
+    else{
+      const analysisUpdate=await db.from('op_match_analysis').update({patch:m.patch,game_version:m.gameVersion??null}).eq('match_id',stored.id);
+      if(analysisUpdate.error)console.warn('[match-sync] analysis patch backfill failed',analysisUpdate.error.message);
+      if(m.riotAccountId)touchedAccounts.add(m.riotAccountId);
+    }
+  }
   const fresh=matches.filter(m=>!seen.has(m.id));
-  if(!fresh.length)return{persisted:true,inserted:0,skipped:matches.length};
+
+  if(!fresh.length){
+    for(const accountId of touchedAccounts){try{await rebuildProLearningProfile(userId,accountId)}catch(err){console.warn('[match-sync] patch-aware history rebuild failed',err)}}
+    return{persisted:true,inserted:0,skipped:matches.length};
+  }
 
   const {data:rows,error:insertError}=await db.from('matches').insert(fresh.map(m=>({
     user_id:userId,external_match_id:m.id,riot_account_id:m.riotAccountId||null,
     champion:m.champion,role:m.role,result:m.result,kills:m.kills,deaths:m.deaths,assists:m.assists,
     duration_seconds:m.durationSeconds,rank:m.rank,source:m.source,occurred_at:m.createdAt,
+    patch:m.patch??null,game_version:m.gameVersion??null,patch_source:m.patchSource??'UNKNOWN',patch_observed_at:m.patch?new Date().toISOString():null,
   }))).select('id,external_match_id');
   if(insertError)return failed(matches.length,insertError);
 
@@ -58,13 +80,12 @@ async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveRe
   const {error:metricsError}=await db.from('match_metrics').insert(metricRows);
   if(metricsError)return{persisted:false,inserted:fresh.length,skipped:0,reason:`Matches saved but metrics failed: ${metricsError.message}`};
 
-  const touchedAccounts=new Set<string>();
   for(const m of fresh){
     const detail=syncedById.get(m.id);
     const matchId=idByExternal.get(m.id);
     if(detail?.proAnalysis&&matchId){
       try{
-        await persistProMatchAnalysis({userId,riotAccountId:m.riotAccountId||null,sessionId:null,matchId,externalMatchId:m.id,champion:m.champion,role:m.role,analysis:detail.proAnalysis});
+        await persistProMatchAnalysis({userId,riotAccountId:m.riotAccountId||null,sessionId:null,matchId,externalMatchId:m.id,champion:m.champion,role:m.role,analysis:detail.proAnalysis,patch:m.patch??null,gameVersion:m.gameVersion??null});
         if(m.riotAccountId)touchedAccounts.add(m.riotAccountId);
       }catch(err){console.warn('[match-sync] PRO analysis persistence failed',err)}
     }

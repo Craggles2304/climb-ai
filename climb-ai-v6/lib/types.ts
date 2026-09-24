@@ -12,7 +12,7 @@ export interface MatchMetrics{
   deathsPre10?:number;deaths10to20?:number;deathsPost20?:number;soloDeaths?:number;teamfightDeaths?:number;
   firstItemMinute?:number;secondItemMinute?:number;thirdItemMinute?:number;levelAt15?:number;wardsPlaced?:number;controlWards?:number;
 }
-export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'|'live_tracker'; createdAt:string;
+export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'|'live_tracker'; createdAt:string; patch?:string|null; gameVersion?:string|null; patchSource?:'MATCH_V5'|'DATA_DRAGON_CURRENT_AT_RECORDING'|'UNKNOWN';
   moments?:KeyMoment[]; proAnalysis?:ProMatchAnalysis }
 export type IssueCategory='FARMING'|'POSITIONING'|'DEATHS'|'LANING'|'TRADING'|'WAVE_MANAGEMENT'|'TEMPO'|'OBJECTIVES'|'VISION'|'TEAMFIGHTING'|'TARGET_SELECTION'|'RECALL_TIMING'|'RESOURCE_COLLECTION'|'MAP_AWARENESS'|'CHAMPION_MASTERY'|'ITEMISATION'|'MATCHUPS'|'CONSISTENCY';
 export interface Signal{category:IssueCategory;severity:number;confidence:number;facts:string[];inference:string;suggestion:string}
