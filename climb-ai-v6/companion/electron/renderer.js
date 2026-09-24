@@ -74,7 +74,7 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
-  renderPregame(current.matchup,current.teamPlan,paired&&phase==='CHAMP_SELECT');
+  renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
   renderUpdate(updateState,phase);
@@ -85,7 +85,7 @@ function render(state){
     return;
   }
 
-  const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup);
+  const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup||current.draft);
   const quietVisible=phase==='RECORDING';
   const reviewVisible=phase==='REVIEW'&&Boolean(current.postGameReview);
   setHidden($('status'),pregameVisible||quietVisible||reviewVisible);
@@ -175,17 +175,19 @@ function ensureQuietMode(){
   return section;
 }
 
-function renderPregame(matchup,teamPlan,visible){
+function renderPregame(matchup,teamPlan,draft,visible){
   const box=$('matchup');
   if(!box)return;
   setHidden(box,!visible);
   if(!visible)return;
 
   setCoachLevel(teamPlan?.coachLevel);
+  renderDraftBoard(draft,matchup);
+
   const loading=matchup?.status==='LOADING';
   const failed=matchup?.status==='ERROR';
   const ready=matchup?.status==='READY'&&matchup?.plan;
-  setHidden($('matchupLoading'),!loading);
+  setHidden($('matchupLoading'),true);
   setHidden($('matchupError'),!failed);
   setHidden($('matchupReady'),true);
 
@@ -195,20 +197,124 @@ function renderPregame(matchup,teamPlan,visible){
   if(!ready)return;
 
   const plan=matchup.plan||{};
-  const hasOpponent=Boolean(matchup.opponent&&matchup.source!=='CHAMPION_LOCK');
+  const source=String(matchup?.source||'');
+  const provisional=Boolean(matchup?.provisional||source==='CHAMPION_HOVER');
+  const hasOpponent=Boolean(matchup.opponent&&['CHAMP_SELECT','IN_GAME'].includes(source));
   const you=plan.you?.name||matchup.champion||'Your champion';
   const them=hasOpponent?(plan.them?.name||matchup.opponent):'Opponent pending';
   const role=String(plan.role||'').toUpperCase();
   const rules=safeArray(plan.rules).length?safeArray(plan.rules):safeArray(plan.winCondition);
   const ruleCap=clamp(Number(activeCoachLevel.visiblePoints)||2,1,5);
 
-  $('simplePregameTier').textContent=`${activeCoachLevel.tier} COACH`;
-  $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:`${you} game plan`;
-  $('simplePregameSummary').textContent=plan.laneEdge?.summary||'Keep the plan simple and play the first clean advantage.';
+  $('simplePregameTier').textContent=`${activeCoachLevel.tier} COACH · ${provisional?'PREVIEW':'LOCKED'}`;
+  $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:provisional?`${you} preview`:`${you} game plan`;
+  $('simplePregameSummary').textContent=provisional
+    ?'Preview only — change your hover freely. OP CLIMB will freeze and enrich the final plan when you lock in.'
+    :(plan.laneEdge?.summary||'Keep the plan simple and play the first clean advantage.');
   $('simplePregameJob').textContent=teamPlan?.yourJob||fallbackJob(role);
   $('simplePregameLead').textContent=leadPathFor(activeCoachLevel.depth);
+  const pill=$('simplePregamePill');
+  if(pill){
+    pill.textContent=provisional?'PREVIEW':'PLAN LOCKED';
+    pill.classList.toggle('good',!provisional);
+  }
   renderSimpleRules(rules.slice(0,ruleCap));
   renderPregameExtra(plan,teamPlan);
+}
+
+function renderDraftBoard(draft,matchup){
+  const board=ensureDraftBoard();
+  if(!board)return;
+  const hasDraft=Boolean(draft);
+  setHidden(board,!hasDraft);
+  if(!hasDraft)return;
+
+  const role=roleLabel(draft.localRole);
+  const champion=String(draft.localChampionName||'').trim();
+  const locked=Boolean(draft.localLockedIn);
+  const state=locked?'LOCKED':champion?'HOVERING':'CHOOSING';
+  const title=champion
+    ?`${champion} · ${state}`
+    :role&&role!=='—'
+      ?`${role} · CHOOSE YOUR CHAMPION`
+      :'DRAFT IN PROGRESS';
+  $('draftBoardTitle').textContent=title;
+  $('draftBoardRole').textContent=role;
+  $('draftBoardPick').textContent=champion||'NO CHAMPION SELECTED';
+  $('draftBoardState').textContent=state;
+  $('draftBoardState').classList.toggle('good',locked);
+  const enemySeen=safeArray(draft.enemies).filter(p=>p?.championName).length;
+  $('draftBoardSeen').textContent=`${enemySeen}/5 ENEMIES SEEN`;
+  $('draftBoardHint').textContent=locked
+    ?'Your pick is locked. OP CLIMB is finalising the matchup, team plan and item recommendation as the remaining draft appears.'
+    :champion
+      ?'Preview is live now. Change your hover freely — the plan will follow you. Locking only freezes the final version.'
+      :'OP CLIMB is already reading role, picks and bans. Hover a champion when you are ready and the preview will appear automatically.';
+  renderDraftSide('draftOurPicks',safeArray(draft.allies),draft.localPlayerCellId,true);
+  renderDraftSide('draftTheirPicks',safeArray(draft.enemies),draft.localPlayerCellId,false);
+  renderDraftBans('draftOurBans',safeArray(draft?.bans?.allies));
+  renderDraftBans('draftTheirBans',safeArray(draft?.bans?.enemies));
+}
+
+function renderDraftSide(id,picks,localCell,ours){
+  const root=$(id);if(!root)return;
+  root.replaceChildren();
+  const values=picks.length?picks:Array.from({length:5},()=>null);
+  values.slice(0,5).forEach((pick,index)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.018)';
+    const role=document.createElement('span');
+    role.textContent=roleLabel(pick?.role);role.style.cssText='font-size:9px;font-weight:900;opacity:.55';
+    const name=document.createElement('strong');
+    name.textContent=pick?.championName||((ours&&Number(pick?.cellId)===Number(localCell))?'YOU · SELECTING':'SELECTING…');
+    name.style.cssText='white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
+    const state=document.createElement('span');
+    const selection=String(pick?.selectionState||pick?.lockedIn?'LOCKED':pick?.championName?'HOVER':'WAITING');
+    state.textContent=pick?.lockedIn?'LOCKED':pick?.championName?(ours?'HOVER':'SEEN'):'';
+    state.style.cssText='font-size:8px;font-weight:900;color:'+(pick?.lockedIn?'#d6ff2f':'#7f93a0');
+    row.append(role,name,state);root.appendChild(row);
+  });
+}
+
+function renderDraftBans(id,bans){
+  const root=$(id);if(!root)return;
+  root.replaceChildren();
+  const named=bans.map(b=>String(b?.championName||'').trim()).filter(Boolean);
+  if(!named.length){const empty=document.createElement('span');empty.textContent='NONE YET';empty.style.opacity='.45';root.appendChild(empty);return}
+  named.slice(0,5).forEach(name=>{const chip=document.createElement('span');chip.textContent=name;chip.style.cssText='padding:5px 7px;border:1px solid rgba(255,95,95,.18);border-radius:999px;font-size:8px;font-weight:850;color:#d8b0b0';root.appendChild(chip)});
+}
+
+function ensureDraftBoard(){
+  let board=$('draftBoard');
+  if(board)return board;
+  const box=$('matchup');
+  if(!box)return null;
+  board=document.createElement('section');
+  board.id='draftBoard';
+  board.className='hidden';
+  board.style.cssText='display:grid;gap:12px;margin-bottom:12px;padding:16px;border:1px solid rgba(214,255,47,.2);background:linear-gradient(135deg,rgba(214,255,47,.035),rgba(4,8,12,.72));border-radius:16px';
+  board.innerHTML=`
+    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+      <div><div class="eyebrow">CHAMP SELECT · LIVE DRAFT</div><h2 id="draftBoardTitle" style="margin:5px 0 0;font-size:clamp(24px,4vw,36px)">DRAFT IN PROGRESS</h2></div>
+      <span id="draftBoardState" class="pill">CHOOSING</span>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">YOUR ROLE</span><strong id="draftBoardRole" style="display:block;margin-top:4px">—</strong></div>
+      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">YOUR PICK</span><strong id="draftBoardPick" style="display:block;margin-top:4px">SELECTING</strong></div>
+      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">DRAFT READ</span><strong id="draftBoardSeen" style="display:block;margin-top:4px">0/5 ENEMIES SEEN</strong></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><div class="eyebrow" style="margin-bottom:7px">YOUR TEAM</div><div id="draftOurPicks" style="display:grid;gap:6px"></div></div>
+      <div><div class="eyebrow" style="margin-bottom:7px">THEIR TEAM</div><div id="draftTheirPicks" style="display:grid;gap:6px"></div></div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px">
+      <div><div class="eyebrow">OUR BANS</div><div id="draftOurBans" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div></div>
+      <div><div class="eyebrow">THEIR BANS</div><div id="draftTheirBans" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div></div>
+    </div>
+    <p id="draftBoardHint" style="margin:0;font-size:11px;line-height:1.5;opacity:.68"></p>`;
+  const simple=$('simplePregame');
+  if(simple)box.insertBefore(board,simple);else box.prepend(board);
+  return board;
 }
 
 function ensureSimplePregame(){
@@ -221,7 +327,7 @@ function ensureSimplePregame(){
   section.innerHTML=`
     <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
       <div><div class="eyebrow" id="simplePregameTier">COACH</div><h2 id="simplePregameTitle" style="font-size:clamp(28px,5vw,44px);margin:6px 0 8px;letter-spacing:-.04em"></h2><p id="simplePregameSummary" style="margin:0;opacity:.72;line-height:1.5;max-width:720px"></p></div>
-      <span class="pill good">GAME PLAN</span>
+      <span id="simplePregamePill" class="pill good">GAME PLAN</span>
     </div>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px">
       <article style="border:1px solid rgba(214,255,47,.24);border-radius:16px;padding:17px"><div class="eyebrow">YOUR JOB</div><strong id="simplePregameJob" style="display:block;font-size:18px;line-height:1.35;margin-top:7px"></strong></article>

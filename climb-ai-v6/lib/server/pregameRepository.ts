@@ -2,9 +2,9 @@ import 'server-only';
 import {getSupabaseAdmin} from './supabaseAdmin';
 import type {TrackerDevice} from './liveTrackerRepository';
 
-export type PregamePick={cellId:number;championId:number;championName:string|null;role:string|null;lockedIn:boolean};
+export type PregamePick={cellId:number;championId:number;championName:string|null;role:string|null;lockedIn:boolean;selectionState?:'WAITING'|'HOVER'|'LOCKED'};
 export type PregameBan={championId:number;championName:string|null};
-export interface PregameContext{version:1;capturedAt:string;phase:string|null;localPlayerCellId:number;localChampionId:number;localChampionName:string|null;localRole:string|null;localLockedIn:boolean;allies:PregamePick[];enemies:PregamePick[];bans:{allies:PregameBan[];enemies:PregameBan[]}};
+export interface PregameContext{version:1;capturedAt:string;phase:string|null;localPlayerCellId:number;localChampionId:number;localChampionName:string|null;localRole:string|null;localLockedIn:boolean;localSelectionState?:'WAITING'|'HOVER'|'LOCKED';allies:PregamePick[];enemies:PregamePick[];bans:{allies:PregameBan[];enemies:PregameBan[]}};
 export interface PregameEnvelope{type:'PREGAME'|'PREGAME_END';clientPregameId:string;startedAt:string;endedAt?:string;context?:PregameContext}
 
 export async function savePregameEnvelope(device:TrackerDevice,envelope:PregameEnvelope){
