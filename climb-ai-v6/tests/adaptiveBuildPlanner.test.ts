@@ -100,3 +100,40 @@ test('adaptive build is a current-draft recommendation, not a fixed champion bui
   assert.equal(tankPlan.role,'ADC');
   assert.equal(healPlan.role,'ADC');
 });
+
+
+test('optimal baseline stays stable while recommendation changes for the draft',()=>{
+  const tankPlan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:Array.from({length:5},(_,i)=>enemy(champion('TankOpt'+i,['Tank'],3,4,175,'Very durable frontliner with high health and armor.'),'TOP')),items,
+  });
+  const ccPlan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:Array.from({length:5},(_,i)=>enemy(champion('CCOpt'+i,['Mage'],2,8,525,'Stuns and roots the target.'),'MID')),items,
+  });
+  assert.deepEqual(tankPlan.optimal.items.map(i=>i.name),ccPlan.optimal.items.map(i=>i.name));
+  assert.notDeepEqual(tankPlan.recommended.items.map(i=>i.name),ccPlan.recommended.items.map(i=>i.name));
+  assert.ok(tankPlan.changes.length>=1);
+  assert.ok(ccPlan.changes.length>=1);
+});
+
+test('airborne-only enemy control does not force a cleanse item',()=>{
+  const airbornePlan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:Array.from({length:5},(_,i)=>enemy(champion('Air'+i,['Tank'],3,4,175,'Knocks up enemies and sends them airborne.'),'TOP')),items,
+  });
+  assert.equal(airbornePlan.enemyProfile.cleanseableCc,0);
+  assert.ok(airbornePlan.enemyProfile.airborne>=5);
+  assert.ok(!airbornePlan.recommended.items.some(i=>i.flags.includes('CLEANSE')),JSON.stringify(airbornePlan.recommended));
+});
+
+test('build output explains optimal versus recommended rather than presenting one generic line',()=>{
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:Array.from({length:5},(_,i)=>enemy(champion('Threat'+i,['Mage'],2,8,525,'Stuns the target.'),'MID')),items,
+  });
+  assert.equal(plan.optimal.label,'OPTIMAL');
+  assert.equal(plan.recommended.label,'RECOMMENDED');
+  assert.match(plan.optimal.summary,/baseline/i);
+  assert.match(plan.recommended.summary,/exact enemy draft/i);
+});

@@ -43,7 +43,7 @@
       '<article class="opf-card"><span>YOUR POWER SPIKE</span><strong id="opfSpike">BUILDING SPIKE</strong><p id="opfSpikeWhy">THE POINT WHERE YOUR FIGHT GETS STRONGER.</p></article>',
       '<article class="opf-card objective"><span>OBJECTIVE MISSION</span><strong id="opfObjective">SET UP EARLY</strong><p id="opfObjectiveWhy">BE READY BEFORE THE FIGHT STARTS.</p></article>',
       '</div>',
-      '<div class="opf-build"><div class="opf-build-head"><span>BUILD FOR THIS GAME</span><small>DRAFT-FIT · CURRENT PATCH</small></div><div id="opfBuildGrid" class="opf-build-grid"></div><div id="opfBuildRead" class="opf-build-read"></div></div>',
+      '<div class="opf-build"><div class="opf-build-head"><span>ITEM PLAN</span><small>OPTIMAL VS THIS GAME</small></div><div id="opfBuildGrid" class="opf-build-grid"></div><div id="opfBuildRead" class="opf-build-read"></div></div>',
       '<div class="opf-personal"><span>PERSONAL CLIMB MISSION</span><strong id="opfPersonal">EXECUTE THE FROZEN GAME PLAN.</strong></div>'
     ].join('');
     const path=hud.querySelector('.rem4-path-wrap');
@@ -132,28 +132,45 @@
   function renderBuild(state,data){
     const build=state?.teamPlan?.adaptiveBuild||state?.teamPlan?.rememberPlan?.adaptiveBuild||data?.adaptiveBuild||null;
     const grid=$('opfBuildGrid'),read=$('opfBuildRead');if(!grid)return;
-    const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
-    const signature=items.map(item=>String(item?.id||'')+':'+String(item?.slot||'')).join('|')+'#'+String(build?.read||'');
-    if(grid.dataset.signature===signature){
-      if(read&&upper(read.textContent)!==upper(build?.read||build?.rule||'DRAFT-FIT BUILD'))read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
-      return;
-    }
-    grid.dataset.signature=signature;
-    grid.replaceChildren();
-    if(!items.length){
-      const empty=document.createElement('div');empty.className='opf-build-item';
-      empty.innerHTML='<div></div><div><span>BUILD</span><strong>WAITING FOR FULL DRAFT</strong></div>';
-      grid.appendChild(empty);if(read)read.textContent='BUILD UPDATES WHEN ENOUGH OF THE ENEMY TEAM IS KNOWN.';return;
-    }
-    items.forEach((item,index)=>{
-      const card=document.createElement('article');card.className='opf-build-item'+(item?.slot==='DRAFT'?' draft':'');card.title=clean(item?.why);
+    const optimal=build?.optimal||null,recommended=build?.recommended||null;
+    const optimalItems=[...(Array.isArray(optimal?.items)?optimal.items:[]),optimal?.boots||null].filter(Boolean);
+    const recommendedItems=[...(Array.isArray(recommended?.items)?recommended.items:[]),recommended?.boots||null].filter(Boolean);
+    const fallback=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
+    const items=optimalItems.length&&recommendedItems.length?[...optimalItems,...recommendedItems]:fallback;
+    const signature=items.map(item=>String(item?.id||'')+':'+String(item?.slot||'')).join('|')+'#'+String((build?.changes||[]).join('|'));
+    if(grid.dataset.signature===signature)return;
+    grid.dataset.signature=signature;grid.replaceChildren();
+
+    const makeCard=(item,index,recommendedLine)=>{
+      const card=document.createElement('article');card.className='opf-build-item'+(recommendedLine?' draft':'');card.title=clean(item?.why);
       const img=document.createElement('img');img.alt='';img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
       const copy=document.createElement('div');
-      const label=document.createElement('span');label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='BOOTS'?'BOOTS':upper(item?.slot||'ITEM');
+      const label=document.createElement('span');label.textContent=item?.slot==='BOOTS'?'BOOTS':('ITEM '+String(index+1));
       const name=document.createElement('strong');name.textContent=upper(item?.name||'ITEM');
-      copy.append(label,name);card.append(img,copy);grid.appendChild(card);
-    });
-    if(read)read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
+      copy.append(label,name);card.append(img,copy);return card;
+    };
+    const makeLine=(label,source,recommendedLine)=>{
+      const line=document.createElement('div');line.style.cssText='grid-column:1/-1;display:grid;grid-template-columns:115px repeat('+String(Math.max(1,source.length))+',minmax(0,1fr));gap:6px';
+      const head=document.createElement('div');head.style.cssText='display:flex;align-items:center;padding:7px 8px;border:1px solid '+(recommendedLine?'rgba(214,255,47,.32)':'rgba(117,179,255,.25)')+';font-size:6px;letter-spacing:.12em;font-weight:950;color:#edf2f4;text-transform:uppercase;background:rgba(4,8,12,.62)';head.textContent=label;line.appendChild(head);
+      source.forEach((item,index)=>line.appendChild(makeCard(item,index,recommendedLine)));grid.appendChild(line);
+    };
+
+    if(optimalItems.length&&recommendedItems.length){
+      makeLine('OPTIMAL CORE',optimalItems,false);
+      makeLine('MY RECOMMENDATION',recommendedItems,true);
+      const changes=Array.isArray(build?.changes)?build.changes.filter(Boolean).slice(0,2):[];
+      if(read){
+        const sources=Array.isArray(build?.evidence?.sources)?build.evidence.sources.filter(source=>source?.usable).map(source=>source.source):[];
+        const sourceLine=sources.length>=2?('SOURCES · '+sources.join(' + ')+' · '):'INTERNAL BUILD ENGINE · ';
+        read.textContent=upper(sourceLine+(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||'')));
+      }
+    }else if(fallback.length){
+      makeLine('RECOMMENDED',fallback,true);
+      if(read)read.textContent=upper(build?.read||build?.rule||'DRAFT-FIT BUILD');
+    }else{
+      const empty=document.createElement('div');empty.className='opf-build-item';empty.innerHTML='<div></div><div><span>BUILD</span><strong>WAITING FOR FULL DRAFT</strong></div>';grid.appendChild(empty);
+      if(read)read.textContent='BUILD UPDATES WHEN ENOUGH OF THE ENEMY TEAM IS KNOWN.';
+    }
   }
 
   function replaceVagueSpikeCopy(spike){

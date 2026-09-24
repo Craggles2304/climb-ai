@@ -10,6 +10,7 @@ import {buildCompositionStrategy} from '@/lib/champions/compositionIntelligence'
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {buildAdaptiveItemPlan,type AdaptiveBuildPlayer} from '@/lib/adaptiveBuildPlanner';
+import {trustedBuildConsensus} from '@/lib/server/trustedBuildSources';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {buildLiveMissionTips,nextRankTier,type LiveMissionTask} from '@/lib/liveMissionCoach';
@@ -109,6 +110,16 @@ export async function GET(req:NextRequest){
     if(enemyPicks.length>=3){
       try{
         const items=await matchupItemCatalogue(patch);
+        const metaConsensus=await trustedBuildConsensus({
+          patch,
+          champion:you.name,
+          role,
+          itemNames:Object.values(items)
+            .filter((item:any)=>!Array.isArray(item?.tags)||!item.tags.includes('Boots'))
+            .filter((item:any)=>(item?.gold?.total??0)>=2200)
+            .map((item:any)=>String(item?.name??'').trim())
+            .filter(Boolean),
+        });
         const toBuildPlayer=(pick:{name:string;role?:string|null}):AdaptiveBuildPlayer|null=>{
           const detail=details.get(key(pick.name));
           return detail?{champion:detail.name,role:pick.role??null,detail}:null;
@@ -118,7 +129,7 @@ export async function GET(req:NextRequest){
           ...allyPicks.filter((pick:{name:string;role?:string|null})=>key(pick.name)!==key(you.name)).map(toBuildPlayer).filter((item:AdaptiveBuildPlayer|null):item is AdaptiveBuildPlayer=>Boolean(item)),
         ];
         const enemiesForBuild=enemyPicks.map(toBuildPlayer).filter((item:AdaptiveBuildPlayer|null):item is AdaptiveBuildPlayer=>Boolean(item));
-        adaptiveBuild=buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items});
+        adaptiveBuild=buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items,metaConsensus});
       }catch(error){
         console.warn('[champion-plan] adaptive build unavailable',error);
       }
