@@ -4,6 +4,7 @@ import type {DataDragonItemFull} from './champions/source';
 import {parseItemStats} from './champions/dps';
 import {bestBuild,toBuildItems} from './champions/build';
 import {isCompletedItem} from './riot/items';
+import {consensusScoreForItem,type TrustedBuildConsensus} from './buildConsensus';
 
 export type AdaptiveBuildRole='TOP'|'JUNGLE'|'MID'|'ADC'|'SUPPORT'|'UNKNOWN';
 
@@ -37,6 +38,7 @@ export interface AdaptiveBuildPlan{
   draftItem:AdaptiveBuildItem|null;finish:AdaptiveBuildItem|null;boots:AdaptiveBuildItem|null;
   swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];
   optimal:AdaptiveBuildLine;recommended:AdaptiveBuildLine;changes:string[];
+  evidence:TrustedBuildConsensus|null;
   rule:string;boundary:string;
 }
 
@@ -144,6 +146,7 @@ function reasonFor(read:ItemRead,profile:AdaptiveEnemyProfile,role:AdaptiveBuild
 export function buildAdaptiveItemPlan(input:{
   patch:string;you:ChampionDetail;role?:string|null;allies:AdaptiveBuildPlayer[];enemies:AdaptiveBuildPlayer[];
   items:Record<string,DataDragonItemFull>;
+  metaConsensus?:TrustedBuildConsensus|null;
 }):AdaptiveBuildPlan{
   const role=normRole(input.role);
   const you=input.you;
@@ -194,6 +197,8 @@ export function buildAdaptiveItemPlan(input:{
     if(role==='JUNGLE'&&has(text,'monster','jungle'))utility+=8;
     if(ms>0)utility+=Math.min(10,ms*.12);
     if(damageSeed.has(id))offense+=15;
+    const metaScore=consensusScoreForItem(input.metaConsensus,item.name);
+    if(metaScore>0)offense+=metaScore*24;
 
     if(profile.tanks>=2&&(flags.includes('ANTI_TANK')||flags.includes('MAGIC_PEN')))context+=30+profile.tanks*5;
     if(profile.healing>=2&&flags.includes('ANTI_HEAL'))context+=34+profile.healing*5;
@@ -306,7 +311,8 @@ export function buildAdaptiveItemPlan(input:{
     optimal:{label:'OPTIMAL',items:optimalItems,boots:optimalBoots,summary:'Champion + role baseline before enemy-draft adjustments.'},
     recommended:{label:'RECOMMENDED',items:recommendedItems,boots:recommendedBoots,summary:'OP CLIMB recommendation for this exact enemy draft.'},
     changes,
-    rule:'OPTIMAL IS THE CHAMPION + ROLE BASELINE. RECOMMENDED STARTS THERE AND ONLY CHANGES SLOTS WHEN THE ENEMY DRAFT CREATES A STRONG ENOUGH REASON.',
+    evidence:input.metaConsensus??null,
+    rule:'OPTIMAL IS A CURRENT-PATCH SOURCE CONSENSUS + CHAMPION/ROLE ENGINE BASELINE. RECOMMENDED STARTS THERE AND ONLY CHANGES SLOTS WHEN THE ENEMY DRAFT CREATES A STRONG ENOUGH REASON.',
     boundary:'CURRENT-PATCH RIOT STATIC ITEM/CHAMPION DATA + OP CLIMB BUILD SEARCH. OPTIMAL IS AN ENGINE BASELINE, NOT A CLAIM OF GLOBAL WIN-RATE BEST. RECOMMENDED IS DRAFT-FIT AND SHOULD BE RE-CHECKED IF THE LIVE GAME DEVELOPS DIFFERENTLY.',
   };
 }
