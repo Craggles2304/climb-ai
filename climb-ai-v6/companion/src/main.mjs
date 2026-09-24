@@ -163,18 +163,41 @@ async function normalizePregame(data){
   const myTeam=Array.isArray(data?.myTeam)?data.myTeam:[];
   const theirTeam=Array.isArray(data?.theirTeam)?data.theirTeam:[];
   const actions=(Array.isArray(data?.actions)?data.actions:[]).flatMap(row=>Array.isArray(row)?row:[]);
+  const pickActions=actions.filter(action=>text(action?.type).toLowerCase()==='pick');
   const allyBans=Array.isArray(data?.bans?.myTeamBans)?data.bans.myTeamBans:[];
   const enemyBans=Array.isArray(data?.bans?.theirTeamBans)?data.bans.theirTeamBans:[];
-  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0)).concat(allyBans.map(v=>int(v,0)),enemyBans.map(v=>int(v,0))).filter(v=>v>0);
+  const actionChampionIds=pickActions.map(action=>int(action?.championId,0)).filter(v=>v>0);
+  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0))
+    .concat(actionChampionIds,allyBans.map(v=>int(v,0)),enemyBans.map(v=>int(v,0)))
+    .filter(v=>v>0);
   await Promise.all([...new Set(ids)].map(id=>championName(id)));
-  const locked=cellId=>actions.some(action=>text(action?.type).toLowerCase()==='pick'&&int(action?.actorCellId,-1)===cellId&&Boolean(action?.completed));
-  const mapPick=raw=>{
-    const cellId=int(raw?.cellId,-1),championId=int(raw?.championId,0);
-    return{cellId,championId,championName:championNames.get(championId)||null,role:champSelectRole(raw)||null,lockedIn:locked(cellId)};
+
+  const latestPickAction=cellId=>[...pickActions].reverse().find(action=>int(action?.actorCellId,-1)===cellId&&int(action?.championId,0)>0)||null;
+  const locked=cellId=>pickActions.some(action=>int(action?.actorCellId,-1)===cellId&&Boolean(action?.completed));
+  const selectedChampionId=(raw,allowHover)=>{
+    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId,0);
+    if(rawChampionId>0)return rawChampionId;
+    const action=latestPickAction(cellId);
+    if(!action)return 0;
+    if(Boolean(action?.completed)||allowHover)return int(action?.championId,0);
+    return 0;
   };
+  const mapPick=(raw,allowHover)=>{
+    const cellId=int(raw?.cellId,-1),championId=selectedChampionId(raw,allowHover),isLocked=locked(cellId);
+    return{
+      cellId,
+      championId,
+      championName:championNames.get(championId)||null,
+      role:champSelectRole(raw)||null,
+      lockedIn:isLocked,
+      selectionState:isLocked?'LOCKED':championId>0?'HOVER':'WAITING',
+    };
+  };
+
   const localCell=int(data?.localPlayerCellId,-1);
   const localRaw=myTeam.find(p=>int(p?.cellId,-1)===localCell)||null;
-  const localChampionId=int(localRaw?.championId,0);
+  const localChampionId=localRaw?selectedChampionId(localRaw,true):0;
+  const localLockedIn=localCell>=0?locked(localCell):false;
   return{
     version:1,
     capturedAt:new Date().toISOString(),
@@ -183,9 +206,10 @@ async function normalizePregame(data){
     localChampionId,
     localChampionName:championNames.get(localChampionId)||null,
     localRole:champSelectRole(localRaw)||null,
-    localLockedIn:localCell>=0?locked(localCell):false,
-    allies:myTeam.map(mapPick).slice(0,5),
-    enemies:theirTeam.map(mapPick).slice(0,5),
+    localLockedIn,
+    localSelectionState:localLockedIn?'LOCKED':localChampionId>0?'HOVER':'WAITING',
+    allies:myTeam.map(raw=>mapPick(raw,true)).slice(0,5),
+    enemies:theirTeam.map(raw=>mapPick(raw,false)).slice(0,5),
     bans:{
       allies:allyBans.map(id=>({championId:int(id,0),championName:championNames.get(int(id,0))||null})).filter(b=>b.championId>0).slice(0,10),
       enemies:enemyBans.map(id=>({championId:int(id,0),championName:championNames.get(int(id,0))||null})).filter(b=>b.championId>0).slice(0,10),
@@ -239,6 +263,14 @@ function emitLiveMatchup(snapshot){
   let opponent=myRole?enemies.find(player=>canonicalRole(player.position)===myRole):null;
   if(!opponent&&enemies.length===1)opponent=enemies[0];
   if(opponent?.championName)emitMatchupContext({champion,opponent:opponent.championName,role:myRole,source:'IN_GAME'});
+}
+
+function pregameDetail(context){
+  const champion=text(context?.localChampionName),role=canonicalRole(context?.localRole);
+  const roleCopy=role?role+' · ':'';
+  if(context?.localLockedIn&&champion)return roleCopy+champion+' LOCKED · FINALISING THE PLAN AS THE DRAFT FILLS IN.';
+  if(champion)return roleCopy+champion+' PREVIEW · CHANGE YOUR HOVER FREELY; LOCKING WILL FREEZE THE FINAL PLAN.';
+  return roleCopy+'DRAFT DETECTED · READING PICKS AND BANS. HOVER A CHAMPION FOR AN INSTANT PREVIEW.';
 }
 
 async function postJson(path,payload){
@@ -317,14 +349,15 @@ async function pollPregame(){
     emitPregameMatchup(context);
     const signature=JSON.stringify({...context,capturedAt:null});
     const heartbeat=Date.now()-lastPregameUploadAt>=15_000;
+    const detail=pregameDetail(context);
+    lastLcuDetail=detail;
     if(signature!==lastPregameSignature||heartbeat){
       const result=await postJson('/api/live/pregame',{type:'PREGAME',clientPregameId:pregame.id,startedAt:pregame.startedAt,context});
       if(result.ok){lastPregameSignature=signature;lastPregameUploadAt=Date.now()}
       else if(result.retryable)console.warn(`OVERPOWERED Companion: champ-select upload deferred — ${result.detail}. Detection continues locally.`);
+      emitTrackerState('CHAMP_SELECT',detail);
     }
-    const pick=context.localChampionName||'your champion';
-    const role=context.localRole?` · ${context.localRole}`:'';
-    logState('CHAMP_SELECT',`OVERPOWERED Companion: champ select detected — ${pick}${role}${context.localLockedIn?' locked in':''}. Draft context will be saved for post-game learning.`);
+    logState('CHAMP_SELECT',`OVERPOWERED Companion: ${detail}`);
   }catch(err){
     if(err?.status===404){lastLcuDetected=true;lastChampSelectDetected=false;lastLcuDetail='League Client connected; waiting for champ select.'}
     else{lastLcuDetected=false;lastChampSelectDetected=false;lastLcuDetail=err?.message||'League Client local connection unavailable.'}
