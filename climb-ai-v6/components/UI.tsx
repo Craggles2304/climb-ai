@@ -1,13 +1,15 @@
 import Link from 'next/link';
 import {Match,Mission} from '@/lib/types';
 
-/** Broadcast wordmark shared by public and authenticated product chrome. */
+/** Skewed OP tile — the client brand mark. */
+export function OpMark(){return <span className="op-mark" aria-hidden="true">OP<span>↗</span></span>}
+
+/** Client wordmark shared by public and authenticated product chrome. */
 export function Wordmark({size='md',priority=false}:{size?:'sm'|'md';priority?:boolean}){
   void priority;
-  return <span className="broadcast-wordmark" aria-label="OP CLIMB">
-    <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 29 16 16 30 3 16Z" fill="none" stroke="#E3B34C" strokeWidth="2"/><path d="M16 9 22 16 16 23 10 16Z" fill="#35D6E8"/></svg>
-    <span>OP<b>CLIMB</b></span>
-    {size==='md'&&<small>PLAYER DEVELOPMENT</small>}
+  return <span className={'op-wordmark '+size} aria-label="OP CLIMB">
+    <OpMark/>
+    <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
   </span>;
 }
 

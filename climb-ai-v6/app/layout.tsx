@@ -11,17 +11,17 @@ import './public-launch.css';
 import './ilp-explainability.css';
 import './ux-journey.css';
 import './public-personal.css';
-import './broadcast-system.css';
+import './client-system.css';
 import type {Metadata} from 'next';
-import {Oswald,Barlow,JetBrains_Mono} from 'next/font/google';
+import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
 import {AccountProvider} from '@/components/AccountContext';
 import {LearningPlanProvider} from '@/components/LearningPlanContext';
 import {SubscriptionProvider} from '@/components/SubscriptionContext';
 
-const display=Oswald({subsets:['latin'],weight:['600','700'],variable:'--font-display',display:'swap'});
-const body=Barlow({subsets:['latin'],weight:['400','500','600'],variable:'--font-body',display:'swap'});
-const mono=JetBrains_Mono({subsets:['latin'],weight:['400','600'],variable:'--font-mono',display:'swap'});
+const display=Barlow_Condensed({subsets:['latin'],weight:['600','700','800'],style:['normal','italic'],variable:'--font-display',display:'swap'});
+const body=DM_Sans({subsets:['latin'],weight:['400','500','600','700'],variable:'--font-body',display:'swap'});
+const mono=IBM_Plex_Mono({subsets:['latin'],weight:['400','500'],variable:'--font-mono',display:'swap'});
 
 const SITE='https://opclimb.com';
 const description='OP CLIMB turns your League of Legends matches into a personal coaching plan: one repeated leak, one next-game rule, and proof across future games.';

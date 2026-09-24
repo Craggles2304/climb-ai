@@ -215,19 +215,19 @@ function clock(seconds:number){const s=Math.max(0,Math.floor(seconds));return`${
 
 function RoleRoamRule({role}:{role:string}){return <div style={roleRule}><div className="eyebrow">YOUR ROTATION RULE{role?` · ${roleLabel(role)}`:''}</div><div style={{fontSize:13,lineHeight:1.5,marginTop:5}}>{roamRule({} as TimingRow,role)}</div></div>}
 function roleLabel(role:string){if(role.includes('BOTTOM')||role.includes('ADC'))return'ADC';if(role.includes('MIDDLE')||role.includes('MID'))return'MID';if(role.includes('UTILITY')||role.includes('SUPPORT'))return'SUPPORT';return role||'ROLE'}
-function StatusPill({status}:{status:TimingRow['status']}){const text=status==='COSTLY'?'OBJECTIVE RISK':status==='RESET'?'RESET LEAK':status==='GOOD'?'GOOD TEMPO':'NEUTRAL';return <span style={{...statusPill,borderColor:status==='GOOD'?'rgba(214,255,47,.28)':status==='NEUTRAL'?'rgba(255,255,255,.12)':'rgba(255,105,105,.3)'}}>{text}</span>}
+function StatusPill({status}:{status:TimingRow['status']}){const text=status==='COSTLY'?'OBJECTIVE RISK':status==='RESET'?'RESET LEAK':status==='GOOD'?'GOOD TEMPO':'NEUTRAL';return <span style={{...statusPill,borderColor:status==='GOOD'?'rgba(182,246,107,.28)':status==='NEUTRAL'?'rgba(255,255,255,.12)':'rgba(255,105,105,.3)'}}>{text}</span>}
 function Mini({label,value,sub}:{label:string;value:string;sub:string}){return <div style={mini}><div className="eyebrow">{label}</div><strong style={{fontSize:25,display:'block',marginTop:4}}>{value}</strong><div className="muted" style={{fontSize:10,marginTop:3}}>{sub}</div></div>}
 function Block({label,text}:{label:string;text:string}){return <div style={block}><div className="eyebrow">{label}</div><div style={{fontSize:12,lineHeight:1.5,marginTop:5}}>{text}</div></div>}
 
-const proxyPill:React.CSSProperties={padding:'7px 10px',borderRadius:999,border:'1px solid rgba(67,156,255,.28)',fontSize:9,fontWeight:900,letterSpacing:'.08em'};
+const proxyPill:React.CSSProperties={padding:'7px 10px',borderRadius:999,border:'1px solid rgba(86,217,184,.28)',fontSize:9,fontWeight:900,letterSpacing:'.08em'};
 const summaryGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:8};
 const mini:React.CSSProperties={padding:12,border:'1px solid rgba(255,255,255,.08)',borderRadius:12,background:'rgba(255,255,255,.018)'};
-const protocolShell:React.CSSProperties={padding:'12px 13px',border:'1px solid rgba(67,156,255,.18)',borderRadius:13,background:'rgba(67,156,255,.025)'};
+const protocolShell:React.CSSProperties={padding:'12px 13px',border:'1px solid rgba(86,217,184,.18)',borderRadius:13,background:'rgba(86,217,184,.025)'};
 const summaryStyle:React.CSSProperties={cursor:'pointer',fontSize:11,fontWeight:900,letterSpacing:'.06em'};
 const countdownGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:8};
 const timerStep:React.CSSProperties={padding:13,border:'1px solid rgba(255,255,255,.08)',borderRadius:12,background:'rgba(255,255,255,.012)'};
 const coachPoint:React.CSSProperties={padding:'8px 9px',border:'1px solid rgba(255,255,255,.06)',borderRadius:9,background:'rgba(255,255,255,.012)'};
-const roleRule:React.CSSProperties={padding:12,border:'1px solid rgba(214,255,47,.14)',borderRadius:11,background:'rgba(214,255,47,.025)'};
+const roleRule:React.CSSProperties={padding:12,border:'1px solid rgba(182,246,107,.14)',borderRadius:11,background:'rgba(182,246,107,.025)'};
 const rowShell:React.CSSProperties={border:'1px solid rgba(255,255,255,.08)',borderRadius:13,overflow:'hidden',background:'rgba(255,255,255,.018)'};
 const rowButton:React.CSSProperties={width:'100%',display:'grid',gridTemplateColumns:'72px minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'11px 13px',border:0,background:'transparent',color:'inherit',textAlign:'left',cursor:'pointer'};
 const statusPill:React.CSSProperties={padding:'3px 6px',borderRadius:999,border:'1px solid rgba(255,255,255,.1)',fontSize:8,fontWeight:900,letterSpacing:'.06em'};

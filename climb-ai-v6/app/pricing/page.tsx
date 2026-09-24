@@ -53,7 +53,7 @@ export default function Pricing(){
           const position=positioning[plan];
           const current=tier===plan;
           const included=TIER_RANK[tier]>TIER_RANK[plan];
-          return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro ':'')+(current?'is-current':'')} key={plan}>
+          return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro ':plan==='PLUS'?'is-plus ':'')+(current?'is-current':'')} key={plan}>
             <div className="pricing-card-top"><span>{plan}</span>{current&&<b>CURRENT</b>}</div>
             <strong className="pricing-price">{copy.price}</strong>
             <div className="pricing-purpose">{position.purpose}</div>

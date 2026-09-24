@@ -15,7 +15,7 @@ import {Match,Role} from '@/lib/types';
  */
 
 export const LANE_COLOR='#C2703C';   // copper
-export const POST15_COLOR='#35D6E8'; // brand blue
+export const POST15_COLOR='#56d9b8'; // brand teal
 const TARGET=6.0;
 
 interface Point{game:string;lane:number;post15:number;result:string;champion:string}

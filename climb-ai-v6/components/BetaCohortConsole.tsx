@@ -40,7 +40,7 @@ export function BetaCohortConsole({snapshot}:{snapshot:{invites:Invite[];testers
   const copy=async()=>{if(inviteUrl)await navigator.clipboard.writeText(inviteUrl)};
 
   return <>
-    <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.22)'}}>
+    <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(182,246,107,.22)'}}>
       <div className="eyebrow">STAGE 7 · CONTROLLED FOUNDING BETA</div>
       <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
         <div><h2 style={{margin:'8px 0'}}>Invite deliberately. Learn from every tester.</h2><p className="muted" style={{maxWidth:850}}>Founding Beta is capped at {snapshot.cap} active + pending places. Invite links are one-time, expire automatically and can be locked to one email.</p></div>

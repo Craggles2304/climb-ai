@@ -45,7 +45,7 @@ export function BetaExperimentConsole({
     finally{setBusy(false)}
   };
 
-  return <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(83,161,255,.2)'}}>
+  return <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(86,217,184,.2)'}}>
     <div className="eyebrow">STAGE 6 · RELEASE EXPERIMENT</div>
     {active?<>
       <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-start',flexWrap:'wrap'}}>

@@ -33,7 +33,7 @@ export function CompactFixLadder({fights,historyProfile}:{fights:FightReview[];h
     </div>
 
     <div style={stageRail} aria-label="Fix Ladder progression">
-      {STAGES.map((stage,index)=>{const stageFix=sourceFixes.find(f=>f.stage===stage);const isActive=active?.stage===stage;const available=Boolean(stageFix&&visible.includes(stageFix));return <div key={stage} style={{...stageCell,opacity:isActive?1:available?.72:.36,borderColor:isActive?'rgba(214,255,47,.55)':'rgba(255,255,255,.08)'}}><span style={{fontSize:9,fontWeight:950,letterSpacing:'.1em'}}>{String(index+1).padStart(2,'0')}</span><b style={{fontSize:10}}>{stage}</b><small style={{fontSize:9}}>{isActive?'ACTIVE':available?'READY':stageFix?'LOCKED':'LATER'}</small></div>})}
+      {STAGES.map((stage,index)=>{const stageFix=sourceFixes.find(f=>f.stage===stage);const isActive=active?.stage===stage;const available=Boolean(stageFix&&visible.includes(stageFix));return <div key={stage} style={{...stageCell,opacity:isActive?1:available?.72:.36,borderColor:isActive?'rgba(182,246,107,.55)':'rgba(255,255,255,.08)'}}><span style={{fontSize:9,fontWeight:950,letterSpacing:'.1em'}}>{String(index+1).padStart(2,'0')}</span><b style={{fontSize:10}}>{stage}</b><small style={{fontSize:9}}>{isActive?'ACTIVE':available?'READY':stageFix?'LOCKED':'LATER'}</small></div>})}
     </div>
 
     {active?<div style={activeShell}>
@@ -176,27 +176,27 @@ function buildMatchFixes(fights:FightReview[]):MatchFix[]{
 function severity(n:number):Severity{return n>=4?'CRITICAL LEAK':n>=3?'MAJOR LEAK':n>=2?'ACTIVE LEAK':'POLISH'}
 function clock(seconds:number){const s=Math.max(0,Math.floor(seconds));return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
 
-const tierPill:React.CSSProperties={padding:'7px 10px',borderRadius:999,border:'1px solid rgba(214,255,47,.3)',fontSize:10,fontWeight:950,letterSpacing:'.08em'};
+const tierPill:React.CSSProperties={padding:'7px 10px',borderRadius:999,border:'1px solid rgba(182,246,107,.3)',fontSize:10,fontWeight:950,letterSpacing:'.08em'};
 const stageRail:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(5,minmax(0,1fr))',gap:6};
 const stageCell:React.CSSProperties={display:'grid',gap:3,padding:'9px 8px',border:'1px solid rgba(255,255,255,.08)',borderRadius:11,minWidth:0};
-const activeShell:React.CSSProperties={border:'1px solid rgba(214,255,47,.28)',borderRadius:16,overflow:'hidden',background:'rgba(214,255,47,.025)'};
+const activeShell:React.CSSProperties={border:'1px solid rgba(182,246,107,.28)',borderRadius:16,overflow:'hidden',background:'rgba(182,246,107,.025)'};
 const activeButton:React.CSSProperties={width:'100%',display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:14,alignItems:'center',padding:'16px',border:0,background:'transparent',color:'inherit',textAlign:'left',cursor:'pointer'};
-const ruleBar:React.CSSProperties={display:'grid',gap:4,padding:'11px 16px',borderTop:'1px solid rgba(214,255,47,.15)',background:'rgba(214,255,47,.035)',fontSize:12};
+const ruleBar:React.CSSProperties={display:'grid',gap:4,padding:'11px 16px',borderTop:'1px solid rgba(182,246,107,.15)',background:'rgba(182,246,107,.035)',fontSize:12};
 const severityPill:React.CSSProperties={padding:'4px 7px',borderRadius:999,border:'1px solid rgba(255,120,120,.3)',fontSize:8,fontWeight:950,letterSpacing:'.07em'};
-const persistentPill:React.CSSProperties={padding:'4px 7px',borderRadius:999,border:'1px solid rgba(214,255,47,.22)',fontSize:8,fontWeight:900,letterSpacing:'.06em'};
+const persistentPill:React.CSSProperties={padding:'4px 7px',borderRadius:999,border:'1px solid rgba(182,246,107,.22)',fontSize:8,fontWeight:900,letterSpacing:'.06em'};
 const rowShell:React.CSSProperties={border:'1px solid rgba(255,255,255,.08)',borderRadius:13,overflow:'hidden',background:'rgba(255,255,255,.018)'};
 const rowButton:React.CSSProperties={width:'100%',display:'grid',gridTemplateColumns:'38px minmax(0,1fr) auto',gap:10,alignItems:'center',padding:'11px 13px',border:0,background:'transparent',color:'inherit',textAlign:'left',cursor:'pointer'};
 const miniSeverity:React.CSSProperties={padding:'3px 6px',borderRadius:999,border:'1px solid rgba(255,255,255,.1)',fontSize:8,fontWeight:800};
 const detailBody:React.CSSProperties={padding:'14px',borderTop:'1px solid rgba(255,255,255,.07)',display:'grid',gap:10};
 const detailGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(240px,1fr))',gap:8};
 const miniBlock:React.CSSProperties={padding:'12px',border:'1px solid rgba(255,255,255,.07)',borderRadius:11,background:'rgba(255,255,255,.012)'};
-const protocolShell:React.CSSProperties={padding:'12px',border:'1px solid rgba(214,255,47,.14)',borderRadius:12,background:'rgba(214,255,47,.018)'};
+const protocolShell:React.CSSProperties={padding:'12px',border:'1px solid rgba(182,246,107,.14)',borderRadius:12,background:'rgba(182,246,107,.018)'};
 const protocolGrid:React.CSSProperties={display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:8,marginTop:9};
 const stepCard:React.CSSProperties={display:'grid',gridTemplateColumns:'28px minmax(0,1fr)',gap:9,padding:'10px',border:'1px solid rgba(255,255,255,.07)',borderRadius:10};
-const stepNumber:React.CSSProperties={display:'grid',placeItems:'center',width:26,height:26,borderRadius:999,border:'1px solid rgba(214,255,47,.3)',fontWeight:950,fontSize:11};
+const stepNumber:React.CSSProperties={display:'grid',placeItems:'center',width:26,height:26,borderRadius:999,border:'1px solid rgba(182,246,107,.3)',fontWeight:950,fontSize:11};
 const stepText:React.CSSProperties={fontSize:11,lineHeight:1.5,margin:'4px 0 0',opacity:.82};
 const avoidRow:React.CSSProperties={display:'grid',gridTemplateColumns:'16px minmax(0,1fr)',gap:7,fontSize:11,lineHeight:1.4};
-const coachNote:React.CSSProperties={marginTop:9,padding:'8px 9px',borderLeft:'2px solid rgba(214,255,47,.55)',fontSize:10,fontWeight:900,lineHeight:1.4};
+const coachNote:React.CSSProperties={marginTop:9,padding:'8px 9px',borderLeft:'2px solid rgba(182,246,107,.55)',fontSize:10,fontWeight:900,lineHeight:1.4};
 const masteryShell:React.CSSProperties={display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap',padding:'11px 12px',border:'1px solid rgba(255,255,255,.07)',borderRadius:11};
 const evidenceRow:React.CSSProperties={display:'grid',gridTemplateColumns:'52px minmax(110px,.6fr) minmax(180px,1.4fr)',gap:9,alignItems:'center',padding:'8px 9px',border:'1px solid rgba(255,255,255,.065)',borderRadius:9,fontSize:10};
 const detailsShell:React.CSSProperties={padding:'10px 12px',border:'1px solid rgba(255,255,255,.07)',borderRadius:12};

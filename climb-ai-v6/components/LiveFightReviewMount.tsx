@@ -68,7 +68,7 @@ export function LiveFightReviewMount(){
       <PointCard title="FIX" mark="!" points={critical} showDetail={detail.depth>=2}/>
     </div>
 
-    <div className="glass card" style={{padding:20,borderColor:'rgba(67,140,255,.34)'}}>
+    <div className="glass card" style={{padding:20,borderColor:'rgba(182,246,107,.34)'}}>
       <div className="eyebrow">ONE THING NEXT GAME</div>
       <h2 style={{margin:'6px 0 8px'}}>{nextTitle}</h2>
       <p style={{margin:0,fontSize:15,lineHeight:1.55}}>{nextRule}</p>

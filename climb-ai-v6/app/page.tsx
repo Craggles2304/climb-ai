@@ -10,9 +10,6 @@ export const metadata:Metadata={
 
 export default function Landing(){
   return <>
-    <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous"/>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800;900&family=Barlow:wght@400;500;600&family=JetBrains+Mono:wght@400;600&display=swap"/>
     <TrackView event="landing_view"/>
     <BroadcastLanding/>
   </>;

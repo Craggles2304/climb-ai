@@ -4,6 +4,7 @@ import {FormEvent,useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {track} from '@/lib/analytics';
 import styles from './BroadcastLanding.module.css';
+import {OpMark} from './UI';
 
 type Insight={label:string;value:string;detail:string;tone:'GOOD'|'WATCH'|'NEUTRAL'};
 type PreviewReport={
@@ -81,7 +82,7 @@ function ScoutingCard({result,busy,step,demoName}:{result:PreviewResponse|null;b
       </div>
       <div className={styles.rank}>
         <div>{report?.rank||'GOLD IV'}<br/><span>{report?(report.gamesAnalyzed+' GAMES'):'47 LP'}</span></div>
-        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 34 12v16L20 37 6 28V12Z" fill="#2A2210" stroke="#E3B34C" strokeWidth="2"/><path d="M20 11 27 20 20 29 13 20Z" fill="#E3B34C"/></svg>
+        <svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 3 34 12v16L20 37 6 28V12Z" fill="#2a2519" stroke="#e8c086" strokeWidth="2"/><path d="M20 11 27 20 20 29 13 20Z" fill="#e8c086"/></svg>
       </div>
     </div>
 
@@ -91,14 +92,14 @@ function ScoutingCard({result,busy,step,demoName}:{result:PreviewResponse|null;b
         <div className={styles.v}>{stat.value}</div>
         <div className={stat.tone==='GOOD'?styles.good:stat.tone==='WATCH'?styles.bad:styles.neutral}>{stat.detail}</div>
         <div className={styles.bar}>
-          <i style={{'--w':stat.width,'--c':stat.tone==='GOOD'?'var(--good)':stat.tone==='WATCH'?'var(--bad)':'var(--cyan)'} as React.CSSProperties}/>
+          <i style={{'--w':stat.width,'--c':stat.tone==='GOOD'?'var(--good)':stat.tone==='WATCH'?'var(--bad)':'var(--teal)'} as React.CSSProperties}/>
           <u style={{'--m':stat.marker} as React.CSSProperties}/>
         </div>
       </div>)}
     </div>
 
     <div className={styles.fix}>
-      <div className={styles.tag}>◆ Your #1 fix this week</div>
+      <div className={styles.tag}>Your #1 fix this week</div>
       <strong>{report?.focus.title||'Protect the first reset'}</strong>
       <p>{report?.focus.detail||'When lane gets shaky before your first back, keep your HP and the wave instead of forcing another trade. The sample shows how OP CLIMB turns one pattern into one job for the next game.'}</p>
     </div>
@@ -191,8 +192,8 @@ export function BroadcastLanding(){
     <div className={styles.wrap}>
       <nav className={styles.nav}>
         <Link className={styles.logo} href="/">
-          <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 2 29 16 16 30 3 16Z" fill="none" stroke="#E3B34C" strokeWidth="2"/><path d="M16 9 22 16 16 23 10 16Z" fill="#35D6E8"/></svg>
-          OP<span>CLIMB</span>
+          <OpMark/>
+          <span>OP<span className={styles.mintText}>CLIMB</span></span>
         </Link>
         <div className={styles.navlinks}>
           <a href="#report" className={styles['hide-sm']}>Sample report</a>
@@ -206,7 +207,7 @@ export function BroadcastLanding(){
       <header className={styles.hero} id="report">
         <div>
           <div className={styles.eyebrow}>Season 2026 · Split 3 is live</div>
-          <h1>Your games.<span className={styles.gold}>Your coach.</span></h1>
+          <h1>Your games.<em className={styles.gold}>Your coach.</em></h1>
           <p className={styles.lede}>Enter your Riot ID. We read your last 20 ranked games, find the one decision pattern worth fixing first, and turn it into a focused coaching plan.</p>
           <form className={styles.lockin} onSubmit={submit}>
             <input value={riotId} onChange={e=>setRiotId(e.target.value)} placeholder="Name#TAG" autoComplete="off" aria-label="Riot ID"/>

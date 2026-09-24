@@ -51,7 +51,7 @@ export default function Progress(){
 
     {detail.depth>=3&&<section className="vf-progress-chart">
       <div className="vf-chart-head"><div><div className="eyebrow">ECONOMY TREND · {detail.tier}</div><h2>Are you keeping your game together after lane?</h2></div><div className="vf-chart-legend">{detail.depth>=4&&<span><i className="full"/>FULL</span>}<span><i className="post"/>POST-15</span></div></div>
-      <div style={{height:330}}><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><CartesianGrid stroke="rgba(255,255,255,.045)" vertical={false}/><XAxis dataKey="game" stroke="#66707b" tickLine={false}/><YAxis domain={[3,8]} stroke="#66707b" tickLine={false}/>{detail.depth>=5&&<Tooltip contentStyle={{background:'#0d1117',border:'1px solid rgba(255,255,255,.08)',borderRadius:12}}/>}{detail.depth>=4&&<Line type="monotone" dataKey="full" stroke="#53a1ff" strokeWidth={3} dot={false}/>}<Line type="monotone" dataKey="post" stroke="#d6ff2f" strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></div>
+      <div style={{height:330}}><ResponsiveContainer width="100%" height="100%"><LineChart data={data}><CartesianGrid stroke="rgba(255,255,255,.045)" vertical={false}/><XAxis dataKey="game" stroke="#66707b" tickLine={false}/><YAxis domain={[3,8]} stroke="#66707b" tickLine={false}/>{detail.depth>=5&&<Tooltip contentStyle={{background:'#0d1117',border:'1px solid rgba(255,255,255,.08)',borderRadius:12}}/>}{detail.depth>=4&&<Line type="monotone" dataKey="full" stroke="#56d9b8" strokeWidth={3} dot={false}/>}<Line type="monotone" dataKey="post" stroke="#b6f66b" strokeWidth={3} dot={false}/></LineChart></ResponsiveContainer></div>
     </section>}
 
     <section className="vf-progress-verdict">

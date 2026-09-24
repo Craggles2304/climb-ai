@@ -53,7 +53,7 @@ export default async function Admin(){
 
   <BetaCohortConsole snapshot={cohort}/>
 
-  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.24)'}}>
+  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(182,246,107,.24)'}}>
     <div className="eyebrow">STAGE 6 · FOUNDING BETA OPERATIONS</div>
     <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
       <div><h2 style={{margin:'8px 0'}}>Stop guessing what to fix next.</h2><p className="muted" style={{maxWidth:860}}>Every beta profile is mapped to the first broken point in the real coaching loop. The queue below prioritises rescue work; the experiment ledger freezes the baseline and build before a product change is judged.</p></div>
@@ -90,7 +90,7 @@ export default async function Admin(){
     <div style={{overflowX:'auto',marginTop:16}}><table className="table"><thead><tr><th>Player</th><th>State</th><th>Surface</th><th>Last activity</th><th>Build</th><th>Next action</th></tr></thead><tbody>{ops.rescueQueue.length?ops.rescueQueue.map(player=><tr key={player.id}><td><b>{player.label}</b></td><td>{player.state.replaceAll('_',' ')}</td><td>{player.surface}</td><td>{player.hoursSinceActivity===null?'NO EVENT':`${player.hoursSinceActivity}h ago`}</td><td>{player.latestBuild||'LEGACY'}</td><td style={{minWidth:320}}>{player.nextAction}</td></tr>):<tr><td colSpan={6}>No player currently needs rescue.</td></tr>}</tbody></table></div>
   </section>
 
-  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(214,255,47,.18)'}}>
+  <section className="glass card" style={{marginBottom:18,border:'1px solid rgba(182,246,107,.18)'}}>
     <div className="eyebrow">STAGE 5 · FOUNDING BETA VALIDATION</div>
     <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
       <div><h2 style={{margin:'8px 0'}}>Is the whole coaching loop working for real players?</h2><p className="muted" style={{maxWidth:820}}>This scorecard only uses observed beta behaviour: first value, Companion adoption, tracked games, deliberate sessions, Career usage, usefulness feedback and eligible retention cohorts.</p></div>

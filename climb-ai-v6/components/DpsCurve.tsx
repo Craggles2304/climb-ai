@@ -15,7 +15,7 @@ import type {DpsPoint} from '@/lib/champions/dps';
  */
 
 export const BASE_COLOR='#C2703C';   // copper
-export const ITEM_COLOR='#35D6E8';   // brand blue
+export const ITEM_COLOR='#56d9b8';   // brand teal
 
 interface Row{level:number;base:number;withItem?:number}
 

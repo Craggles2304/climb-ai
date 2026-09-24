@@ -38,7 +38,7 @@ export function BetaInviteClaim({token}:{token:string}){
     <p className="muted" style={{fontSize:16,lineHeight:1.65}}>Founding Beta is the real-player validation phase. Your matches, friction reports and coaching feedback help decide what OP CLIMB fixes before the cohort expands.</p>
 
     {signedIn===null&&<p className="muted">CHECKING YOUR ACCOUNT…</p>}
-    {tester?.status==='ACTIVE'&&<div style={{marginTop:22,padding:18,border:'1px solid rgba(214,255,47,.28)'}}>
+    {tester?.status==='ACTIVE'&&<div style={{marginTop:22,padding:18,border:'1px solid rgba(182,246,107,.28)'}}>
       <span className="label">BETA ACCESS ACTIVE</span>
       <h2 style={{margin:'7px 0'}}>Cohort {tester.cohort}</h2>
       <p className="muted">Your account is now part of the controlled Founding Beta.</p>

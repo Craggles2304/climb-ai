@@ -106,7 +106,7 @@ export default function AdvancedStatistics(){
       </div>
     </section>
 
-    <section className="glass card" style={{marginTop:18,border:'1px solid rgba(214,255,47,.18)'}}>
+    <section className="glass card" style={{marginTop:18,border:'1px solid rgba(182,246,107,.18)'}}>
       <div className="eyebrow">KEEP THE MAIN LOOP SIMPLE</div>
       <h2>Stats explain. Coaching changes behaviour.</h2>
       <p className="muted">When you are done looking deeper, go back to the one thing you are fixing and take it into your next game.</p>
