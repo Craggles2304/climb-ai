@@ -1,5 +1,6 @@
 import {Match,MatchMetrics,Role,MatchResult} from '../types';
 import {RiotMatchDto,RiotTimelineDto,RiotParticipant,RiotTimelineFrame,RiotTimelineEvent,RiotParticipantFrame} from './riotTypes';
+import {canonicalLeaguePatch} from '../patchIntelligence';
 
 /**
  * Turns a Riot MATCH-V5 match (+ its timeline) into this app's internal Match model.
@@ -237,5 +238,8 @@ function buildMatch(
     items,
     source:'riot',
     createdAt:occurredAt?new Date(occurredAt).toISOString():new Date(0).toISOString(),
+    patch:canonicalLeaguePatch(dto.info.gameVersion),
+    gameVersion:dto.info.gameVersion??null,
+    patchSource:dto.info.gameVersion?'MATCH_V5':'UNKNOWN',
   };
 }
