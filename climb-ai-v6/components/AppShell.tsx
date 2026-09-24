@@ -21,6 +21,21 @@ const primary=[
   ['Companion','/live','●','Connect League'],
 ] as const;
 const mobile=[['Home','/dashboard'],['Coach','/coach'],['Games','/analyse'],['Progress','/ilp']] as const;
+
+type RouteScene={code:string;kicker:string;title:string;copy:string;signals:[string,string,string];tone:string;watermark:string};
+const routeScene=(path:string):RouteScene|null=>{
+  if(path==='/dashboard')return{code:'HQ // 01',kicker:'PLAYER DEVELOPMENT HQ',title:'NEXT GAME. ONE JOB.',copy:'Your current focus, the evidence behind it and the next rep worth playing — without digging through a stat wall.',signals:['ONE ACTIVE FOCUS','EVIDENCE RUNNING','NEXT REP READY'],tone:'hq',watermark:'CLIMB'};
+  if(path==='/coach')return{code:'COACH // 02',kicker:'COACH MEMORY',title:'ASK LESS. REMEMBER MORE.',copy:'Your coach carries the thread across games, so every answer starts from the player you are becoming rather than from zero.',signals:['PLAYER MEMORY','RANK AWARE','DECISION FIRST'],tone:'coach',watermark:'COACH'};
+  if(path==='/analyse'||path.startsWith('/analyse/'))return{code:'REVIEW // 03',kicker:'MATCH REVIEW',title:'WATCH THE DECISION. NOT THE KDA.',copy:'Turn the last game into a small number of moments that explain what held, what broke and what deserves the next rep.',signals:['MATCH EVIDENCE','DECISION REVIEW','NEXT FIX'],tone:'review',watermark:'REVIEW'};
+  if(path==='/ilp')return{code:'CLIMB // 04',kicker:'PLAYER DEVELOPMENT',title:'BUILD A PLAYER. NOT A STATLINE.',copy:'One active behaviour, four background signals and a development path that only moves when repeated evidence earns it.',signals:['ACTIVE FIVE','MASTERY REPS','ADAPTIVE PATH'],tone:'climb',watermark:'GROW'};
+  if(path==='/progress')return{code:'CAREER // 05',kicker:'CAREER PROGRESSION',title:'PROVE THE CHANGE.',copy:'See whether the habits are actually moving across games, situations and patches — not just whether one match looked better.',signals:['TREND','TRANSFER','CAREER MAP'],tone:'climb',watermark:'PROGRESS'};
+  if(path==='/session')return{code:'MATCH // 06',kicker:'NEXT GAME',title:'LOCK THE MISSION. PLAY.',copy:'Carry one useful rule into the game, let the Companion record the evidence, then review whether the behaviour held.',signals:['MISSION LOCKED','COMPANION READY','REVIEW AFTER'],tone:'match',watermark:'QUEUE'};
+  if(path==='/advanced-statistics')return{code:'LAB // 07',kicker:'ADVANCED DATA ROOM',title:'OPEN THE DATA. KEEP THE DECISION.',copy:'The deeper numbers are here when you need them — without letting analytics replace the actual coaching question.',signals:['DEEP METRICS','CONTEXT FIRST','OPTIONAL LAYER'],tone:'lab',watermark:'DATA'};
+  if(path==='/matchups'||path.startsWith('/matchup-lab')||path.startsWith('/champions')||path==='/missions')return{code:'LAB // 08',kicker:'MATCH INTELLIGENCE LAB',title:'DRAFT. TEST. UNDERSTAND.',copy:'Explore matchup shapes, champion plans and decision models without turning the product into a spreadsheet.',signals:['MATCHUP MODEL','DRAFT READ','SCENARIO TEST'],tone:'lab',watermark:'LAB'};
+  if(path==='/billing'||path==='/pricing')return{code:'PLANS // 09',kicker:'COACHING DEPTH',title:'PAY FOR DEPTH. NOT NOISE.',copy:'Free proves the value. Plus explains the game. Pro builds the long-term player model and learning system.',signals:['FREE · FIND','PLUS · EXPLAIN','PRO · DEVELOP'],tone:'plans',watermark:'PRO'};
+  if(path==='/account'||path==='/settings'||path==='/uploads')return{code:'SYSTEM // 10',kicker:'PLAYER SYSTEM',title:'KEEP THE SETUP CLEAN.',copy:'Riot identity, tracking, uploads and account controls live here so the coaching surfaces stay focused on playing better.',signals:['RIOT LINK','TRACKING','ACCOUNT'],tone:'system',watermark:'SYSTEM'};
+  return null;
+};
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'YOUR CLIMB';
   if(path==='/session')return'NEXT GAME';
@@ -67,6 +82,7 @@ export function AppShell({children}:{children:React.ReactNode}){
   const live=path==='/live';
   const title=routeTitle(path);
   const coaching=coachingLevelFor(active.rank);
+  const scene=routeScene(path);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<7;
   const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||path.startsWith('/champions')||path==='/missions'||path==='/uploads';
@@ -112,6 +128,20 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-hud-player"><div><small>PLAYER</small><strong>{active.gameName}{active.tagline}</strong></div><div><small>RANK</small><strong>{active.rank}</strong></div><div><small>ROLE</small><strong>{active.role}</strong></div><span className={'op-hud-state '+(live?'live':'')}><i/>{live?'MATCH MODE':'READY'}</span></div>
       </header>
       <div className="op-energy-rail"><i/><span>ONE FOCUS. ONE GAME AT A TIME.</span></div>
+      {!live&&scene&&<section className="op-route-scene" data-scene={scene.tone}>
+        <div className="op-route-scene-copy">
+          <div className="op-scene-kicker"><span>{scene.code}</span><i/>{scene.kicker}</div>
+          <div className="op-scene-title">{scene.title}</div>
+          <p>{scene.copy}</p>
+          <div className="op-scene-signals">{scene.signals.map((signal,index)=><span key={signal}><b>{String(index+1).padStart(2,'0')}</b>{signal}</span>)}</div>
+        </div>
+        <div className="op-scene-visual" aria-hidden="true">
+          <span className="op-scene-watermark">{scene.watermark}</span>
+          <div className="op-scene-radar"><i/><i/><i/><b>OP</b></div>
+          <div className="op-scene-bars"><i/><i/><i/><i/><i/><i/></div>
+          <div className="op-scene-scanline"/>
+        </div>
+      </section>}
       <div className="op-screen-frame">{live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:children}</div>
     </main>
 
