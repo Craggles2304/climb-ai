@@ -66,7 +66,16 @@ export async function ensurePatchIntelligence(dataDragonVersion:string){
     .eq('patch',patch).maybeSingle();
   if(existingError)throw new Error(existingError.message);
 
-  if(existing?.ingested_at&&Number(existing.champion_count)>0&&Number(existing.item_count)>0){
+  const ingestedAt=existing?.ingested_at?Date.parse(String(existing.ingested_at)):0;
+  const snapshotFresh=Boolean(
+    existing?.ingested_at
+    &&existing.data_dragon_version===dataDragonVersion
+    &&Number(existing.champion_count)>0
+    &&Number(existing.item_count)>0
+    &&Number.isFinite(ingestedAt)
+    &&Date.now()-ingestedAt<READY_TTL_MS
+  );
+  if(snapshotFresh){
     await db.from('lol_patches').update({is_current:false}).neq('patch',patch).eq('is_current',true);
     await db.from('lol_patches').update({is_current:true,last_seen_at:new Date().toISOString()}).eq('patch',patch);
     readyCache={version:dataDragonVersion,expires:Date.now()+READY_TTL_MS};
@@ -94,9 +103,10 @@ export async function ensurePatchIntelligence(dataDragonVersion:string){
   const previousPatch=previousCurrent?.patch?String(previousCurrent.patch):null;
 
   let previousEntities:any[]=[];
-  if(previousPatch){
+  const comparisonPatch=previousPatch??(existing?.ingested_at?patch:null);
+  if(comparisonPatch){
     const previous=await db.from('lol_patch_entities')
-      .select('entity_type,entity_id,entity_name,fingerprint,payload').eq('patch',previousPatch).limit(1000);
+      .select('entity_type,entity_id,entity_name,fingerprint,payload').eq('patch',comparisonPatch).limit(1000);
     if(previous.error)throw new Error(previous.error.message);
     previousEntities=previous.data??[];
   }
@@ -119,7 +129,7 @@ export async function ensurePatchIntelligence(dataDragonVersion:string){
     if(!row.changed_from_previous)continue;
     const before=previousMap.get(row.entity_type+'|'+row.entity_id);
     changes.push({
-      patch,previous_patch:previousPatch,entity_type:row.entity_type,entity_id:row.entity_id,entity_name:row.entity_name,
+      patch,previous_patch:previousPatch??comparisonPatch,entity_type:row.entity_type,entity_id:row.entity_id,entity_name:row.entity_name,
       change_type:before?'MODIFIED':'ADDED',before_fingerprint:before?.fingerprint??null,after_fingerprint:row.fingerprint,
       changed_fields:row.change_summary.fields??[],
     });
@@ -128,7 +138,7 @@ export async function ensurePatchIntelligence(dataDragonVersion:string){
     const key=before.entity_type+'|'+before.entity_id;
     if(currentKeys.has(key))continue;
     changes.push({
-      patch,previous_patch:previousPatch,entity_type:before.entity_type,entity_id:before.entity_id,entity_name:before.entity_name,
+      patch,previous_patch:previousPatch??comparisonPatch,entity_type:before.entity_type,entity_id:before.entity_id,entity_name:before.entity_name,
       change_type:'REMOVED',before_fingerprint:before.fingerprint,after_fingerprint:null,changed_fields:[],
     });
   }
