@@ -1366,3 +1366,556 @@ body[data-op-area] .op-screen-frame .glass.card:nth-of-type(4n+3){border-top-col
   body[data-op-area] .op-screen-frame .glass.card:hover,
   body[data-op-area] .op-screen-frame .hq-behaviour:hover{transform:none}
 }
+
+
+/* 2026-09 layout correction — content first, no dead dashboard/chat space */
+.op-route-scene{
+  min-height:220px;
+}
+.op-route-scene-copy{
+  padding:30px 24px 26px 36px;
+}
+.op-scene-title{
+  font-size:clamp(44px,4.7vw,66px);
+}
+.op-scene-visual{
+  min-height:220px;
+}
+.op-scene-radar{
+  width:148px;
+  height:148px;
+}
+.op-scene-watermark{
+  font-size:66px;
+}
+
+/* Dashboard — explicitly beat the legacy .hq-command !important rules. */
+body[data-op-area="hq"] .hq-command-v2{
+  display:grid!important;
+  grid-template-columns:minmax(0,1.28fr) minmax(330px,.72fr)!important;
+  flex-direction:initial!important;
+  justify-content:stretch!important;
+  min-height:0!important;
+  padding:0!important;
+  gap:0!important;
+  align-items:stretch!important;
+}
+body[data-op-area="hq"] .hq-command-v2::after{
+  display:none!important;
+}
+body[data-op-area="hq"] .hq-command-copy{
+  padding:30px 34px 30px 36px!important;
+  min-width:0;
+}
+body[data-op-area="hq"] .hq-command-v2 h2{
+  margin:12px 0 12px!important;
+  max-width:17ch!important;
+  font-size:clamp(42px,4.5vw,62px)!important;
+  line-height:.94!important;
+}
+body[data-op-area="hq"] .hq-focus-meaning{
+  max-width:760px!important;
+  margin:0 0 16px!important;
+  font-size:15px!important;
+  line-height:1.58!important;
+}
+body[data-op-area="hq"] .hq-main-rule{
+  margin-top:16px!important;
+}
+body[data-op-area="hq"] .hq-focus-visual{
+  min-height:390px!important;
+  padding:0!important;
+  position:relative;
+  overflow:hidden;
+  display:block!important;
+  border-left:1px solid rgba(255,255,255,.09);
+  background:#0c1418!important;
+}
+body[data-op-area="hq"] .hq-focus-champ-art{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:54% 22%;
+  opacity:.42;
+  filter:saturate(.74) contrast(1.08);
+}
+body[data-op-area="hq"] .hq-focus-visual::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:1;
+  background:
+    linear-gradient(90deg,#0c1418 0%,rgba(12,20,24,.62) 38%,rgba(12,20,24,.30)),
+    linear-gradient(0deg,#0c1418 0%,rgba(12,20,24,.28) 52%,rgba(12,20,24,.62) 100%);
+}
+body[data-op-area="hq"] .hq-focus-visual-content{
+  position:relative;
+  z-index:2;
+  min-height:390px;
+  padding:28px;
+  display:grid;
+  align-content:center;
+  justify-items:center;
+  gap:15px;
+  text-align:center;
+}
+body[data-op-area="hq"] .hq-focus-number strong{
+  font-size:50px!important;
+}
+body[data-op-area="hq"] .hq-focus-visual-content>p{
+  max-width:230px;
+  margin:0;
+  color:#c0cbcd;
+  font-size:13px;
+  line-height:1.45;
+}
+body[data-op-area="hq"] .hq-coach-detail{
+  background:rgba(7,12,14,.58);
+  padding:12px 12px 0;
+  border:1px solid rgba(255,255,255,.08);
+}
+body[data-op-area="hq"] .hq-watch-section{
+  margin-top:34px!important;
+}
+body[data-op-area="hq"] .hq-recent-section{
+  margin-top:42px!important;
+}
+body[data-op-area="hq"] .hq-match-card{
+  min-height:270px!important;
+  padding:0!important;
+  isolation:isolate;
+}
+body[data-op-area="hq"] .hq-match-art{
+  position:absolute;
+  inset:0;
+  width:100%;
+  height:100%;
+  object-fit:cover;
+  object-position:62% 24%;
+  opacity:.42;
+  filter:saturate(.70) contrast(1.08);
+  z-index:-2;
+}
+body[data-op-area="hq"] .hq-match-card::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  background:
+    linear-gradient(90deg,#0d1519 0%,rgba(13,21,25,.88) 45%,rgba(13,21,25,.28) 100%),
+    linear-gradient(0deg,#0b1216 0%,transparent 60%);
+}
+body[data-op-area="hq"] .hq-match-card-content{
+  min-height:270px;
+  padding:22px;
+  display:flex;
+  flex-direction:column;
+  position:relative;
+  z-index:2;
+}
+body[data-op-area="hq"] .hq-match-watermark{
+  z-index:1!important;
+  color:#ffffff10!important;
+}
+body[data-op-area="hq"] .hq-match-champ{
+  margin-top:40px!important;
+  font-size:38px!important;
+}
+body[data-op-area="hq"] .hq-match-kda b{
+  font-size:30px!important;
+}
+body[data-op-area="hq"] .hq-upgrade-bottom{
+  margin-top:46px;
+  opacity:.92;
+}
+body[data-op-area="hq"] .hq-upgrade-bottom .tier-unlock-card,
+body[data-op-area="hq"] .hq-upgrade-bottom .glass.card{
+  min-height:0!important;
+}
+
+/* Coach — turn the page into a real coaching workspace instead of a raw chat log. */
+body[data-op-area="coach"] .op-screen-frame{
+  max-width:1500px!important;
+}
+body[data-op-area="coach"] .vf-coach-context{
+  display:grid;
+  grid-template-columns:minmax(0,1.35fr) minmax(360px,.65fr);
+  gap:16px;
+  margin-bottom:16px;
+}
+body[data-op-area="coach"] .vf-coach-focus-card{
+  min-height:250px;
+  padding:30px 32px;
+  position:relative;
+  overflow:hidden;
+  border:1px solid rgba(var(--op-a),.24);
+  border-left:4px solid rgb(var(--op-a));
+  background:
+    radial-gradient(480px 260px at 88% 4%,rgba(var(--op-a),.13),transparent 68%),
+    linear-gradient(145deg,#131921,#0d1418);
+}
+body[data-op-area="coach"] .vf-coach-focus-card::after{
+  content:'01';
+  position:absolute;
+  right:20px;
+  bottom:-18px;
+  color:rgba(var(--op-a),.06);
+  font:800 116px/.8 var(--font-display,'Barlow Condensed',sans-serif);
+}
+body[data-op-area="coach"] .vf-coach-focus-card h1{
+  max-width:15ch;
+  margin:8px 0 12px;
+  font-size:clamp(40px,4.5vw,62px);
+  line-height:.94!important;
+}
+body[data-op-area="coach"] .vf-coach-focus-card>p{
+  max-width:780px;
+  margin:0;
+  color:#c3ced0;
+  font-size:15px;
+  line-height:1.6;
+}
+body[data-op-area="coach"] .vf-coach-focus-actions{
+  display:flex;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:22px;
+}
+body[data-op-area="coach"] .vf-coach-context-stats{
+  display:grid;
+  grid-template-columns:1fr;
+  gap:1px;
+  border:1px solid rgba(255,255,255,.1);
+  background:rgba(255,255,255,.1);
+}
+body[data-op-area="coach"] .vf-coach-context-stats>div{
+  min-height:82px;
+  padding:15px 18px;
+  display:grid;
+  grid-template-columns:1fr auto;
+  grid-template-rows:auto auto;
+  align-content:center;
+  background:
+    linear-gradient(110deg,rgba(var(--op-a),.045),transparent 60%),
+    #11191e;
+}
+body[data-op-area="coach"] .vf-coach-context-stats span{
+  color:#89979b;
+  font:600 9px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.11em;
+}
+body[data-op-area="coach"] .vf-coach-context-stats b{
+  grid-row:1 / 3;
+  grid-column:2;
+  align-self:center;
+  color:rgb(var(--op-a));
+  font:800 34px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+body[data-op-area="coach"] .vf-coach-context-stats small{
+  color:#a8b4b6;
+  font-size:12px;
+}
+body[data-op-area="coach"] .vf-coach-prompts{
+  display:grid!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:16px 0 18px!important;
+}
+body[data-op-area="coach"] .vf-coach-prompts button{
+  min-height:88px!important;
+  padding:15px 16px!important;
+  gap:13px!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:linear-gradient(145deg,rgba(255,255,255,.028),rgba(255,255,255,.012))!important;
+}
+body[data-op-area="coach"] .vf-coach-prompts button:hover{
+  border-color:rgba(var(--op-a),.34)!important;
+  background:rgba(var(--op-a),.055)!important;
+}
+body[data-op-area="coach"] .vf-coach-prompts button>span{
+  width:42px!important;
+  height:42px!important;
+  flex:none;
+  color:rgb(var(--op-a))!important;
+  background:rgba(var(--op-a),.09)!important;
+  font-size:19px!important;
+}
+body[data-op-area="coach"] .vf-coach-prompts b{
+  font-size:12px!important;
+}
+body[data-op-area="coach"] .vf-coach-prompts small{
+  margin-top:5px!important;
+  color:#a0adb0!important;
+  font-size:12px!important;
+  line-height:1.35!important;
+}
+body[data-op-area="coach"] .vf-coach-workspace{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 300px;
+  gap:16px;
+  align-items:start;
+}
+body[data-op-area="coach"] .vf-coach-console{
+  min-width:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.11)!important;
+  background:#0d1418!important;
+  box-shadow:0 24px 70px rgba(0,0,0,.22);
+}
+body[data-op-area="coach"] .vf-chat-head{
+  min-height:74px;
+  padding:15px 18px!important;
+  align-items:center!important;
+  background:
+    linear-gradient(90deg,rgba(var(--op-a),.07),transparent 48%),
+    #11191e;
+}
+body[data-op-area="coach"] .vf-chat-head b{
+  display:block;
+  margin-top:3px;
+  color:#e7efee;
+  font-size:14px!important;
+  line-height:1.35;
+}
+body[data-op-area="coach"] .vf-chat-head-actions{
+  display:flex;
+  gap:12px;
+  align-items:center;
+  flex-wrap:wrap;
+  justify-content:flex-end;
+}
+body[data-op-area="coach"] .vf-chat-head-actions>span{
+  color:#829296;
+  font:600 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+body[data-op-area="coach"] .vf-chat-head-actions .btn{
+  min-height:34px;
+  padding:6px 10px;
+  font-size:11px;
+}
+body[data-op-area="coach"] .vf-chat-list{
+  display:flex!important;
+  flex-direction:column;
+  gap:22px!important;
+  max-height:700px!important;
+  min-height:440px;
+  overflow:auto;
+  padding:24px 26px 28px!important;
+  scroll-padding-block:24px;
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    #0b1115;
+  background-size:100% 48px;
+}
+body[data-op-area="coach"] .vf-message-stack{
+  display:grid;
+  gap:10px;
+}
+body[data-op-area="coach"] .vf-message-row{
+  display:flex;
+  width:100%;
+}
+body[data-op-area="coach"] .vf-message-row.ai{justify-content:flex-start}
+body[data-op-area="coach"] .vf-message-row.user{justify-content:flex-end}
+body[data-op-area="coach"] .vf-message{
+  border-radius:0!important;
+  white-space:normal!important;
+}
+body[data-op-area="coach"] .vf-message.user{
+  max-width:min(720px,72%)!important;
+  padding:13px 16px 13px 18px!important;
+  border:1px solid rgba(182,246,107,.23)!important;
+  border-right:3px solid #b6f66b!important;
+  background:linear-gradient(90deg,#132018,#18251b)!important;
+  color:#edf4f2!important;
+  box-shadow:none!important;
+}
+body[data-op-area="coach"] .vf-message-who{
+  display:block;
+  margin-bottom:5px;
+  color:#b6f66b;
+  font:700 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.12em;
+}
+body[data-op-area="coach"] .vf-message.user p{
+  margin:0;
+  font-size:14px;
+  line-height:1.5;
+}
+body[data-op-area="coach"] .vf-message.ai{
+  width:min(940px,90%)!important;
+  max-width:940px!important;
+  padding:20px 22px 21px!important;
+  border:1px solid rgba(255,255,255,.105)!important;
+  border-left:3px solid rgb(var(--op-a))!important;
+  background:
+    radial-gradient(360px 200px at 0% 0%,rgba(var(--op-a),.06),transparent 70%),
+    #121a1f!important;
+  color:#dce5e5;
+  box-shadow:0 14px 36px rgba(0,0,0,.16);
+}
+body[data-op-area="coach"] .vf-message.ai.is-loading{
+  opacity:.72;
+}
+body[data-op-area="coach"] .vf-message-ai-head{
+  display:flex;
+  gap:9px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:11px;
+}
+body[data-op-area="coach"] .vf-message-ai-head>span:first-child{
+  color:rgb(var(--op-a));
+  font:700 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.11em;
+}
+body[data-op-area="coach"] .vf-grounding-tag{
+  padding:4px 6px;
+  border:1px solid rgba(var(--op-b),.25);
+  background:rgba(var(--op-b),.06);
+  color:rgb(var(--op-b));
+  font:600 9px/1.1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+body[data-op-area="coach"] .vf-coach-answer-copy{
+  display:grid;
+  gap:10px;
+}
+body[data-op-area="coach"] .vf-coach-answer-copy p{
+  margin:0;
+  color:#cbd6d7;
+  font-size:15px;
+  line-height:1.62;
+}
+body[data-op-area="coach"] .vf-coach-answer-copy p.lead{
+  color:#f0f5f4;
+  font-size:16px;
+  line-height:1.58;
+}
+body[data-op-area="coach"] .vf-coach-insight{
+  padding:12px 14px!important;
+  border-left:3px solid rgb(var(--op-b));
+  background:rgba(var(--op-b),.045);
+}
+body[data-op-area="coach"] .vf-coach-insight>span{
+  display:block;
+  margin-bottom:5px;
+  color:rgb(var(--op-b));
+  font:700 9px/1.1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+}
+body[data-op-area="coach"] .vf-coach-proposal{
+  width:min(940px,90%)!important;
+  max-width:940px!important;
+  margin:0!important;
+  padding:16px 18px!important;
+  border-radius:0!important;
+  border-color:rgba(182,246,107,.22)!important;
+  background:rgba(182,246,107,.035)!important;
+}
+body[data-op-area="coach"] .vf-coach-proposal h3{
+  font-size:22px!important;
+}
+body[data-op-area="coach"] .vf-coach-proposal p{
+  color:#b4c0c2!important;
+  font-size:13px!important;
+  line-height:1.48;
+}
+body[data-op-area="coach"] .vf-coach-input{
+  min-height:70px;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  padding:10px!important;
+  gap:9px;
+  background:#11191e!important;
+}
+body[data-op-area="coach"] .vf-coach-input input{
+  min-width:0;
+  min-height:48px;
+  padding:11px 13px!important;
+  border:1px solid rgba(255,255,255,.1)!important;
+  background:#0a1114!important;
+  color:#eef5f4!important;
+  font-size:14px;
+}
+body[data-op-area="coach"] .vf-coach-input button{
+  min-width:128px;
+  min-height:48px;
+  padding:0 17px!important;
+  border:1px solid rgb(var(--op-a))!important;
+  background:rgb(var(--op-a))!important;
+  color:#101414!important;
+  font-size:12px!important;
+  font-weight:800!important;
+}
+body[data-op-area="coach"] .vf-coach-rail{
+  display:grid;
+  gap:10px;
+  position:sticky;
+  top:88px;
+}
+body[data-op-area="coach"] .vf-coach-rail-block{
+  min-height:150px;
+  padding:18px;
+  border:1px solid rgba(255,255,255,.1);
+  border-top:2px solid rgba(var(--op-b),.55);
+  background:#11191e;
+}
+body[data-op-area="coach"] .vf-coach-rail-block.accent{
+  border-top-color:rgb(var(--op-a));
+  background:
+    radial-gradient(220px 140px at 100% 0%,rgba(var(--op-a),.10),transparent 70%),
+    #11191e;
+}
+body[data-op-area="coach"] .vf-coach-rail-block>span{
+  color:#859498;
+  font:600 9px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.11em;
+}
+body[data-op-area="coach"] .vf-coach-rail-block strong{
+  display:block;
+  margin-top:10px;
+  color:#eef5f4;
+  font:700 27px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+body[data-op-area="coach"] .vf-coach-rail-block p{
+  margin:9px 0 0;
+  color:#9eacae;
+  font-size:12px;
+  line-height:1.5;
+}
+
+@media(max-width:1120px){
+  body[data-op-area="hq"] .hq-command-v2{grid-template-columns:1fr!important}
+  body[data-op-area="hq"] .hq-focus-visual{min-height:300px!important;border-left:0;border-top:1px solid rgba(255,255,255,.09)}
+  body[data-op-area="hq"] .hq-focus-visual-content{min-height:300px}
+  body[data-op-area="coach"] .vf-coach-context{grid-template-columns:1fr}
+  body[data-op-area="coach"] .vf-coach-context-stats{grid-template-columns:repeat(3,1fr)}
+  body[data-op-area="coach"] .vf-coach-context-stats>div{grid-template-columns:1fr;grid-template-rows:auto auto auto}
+  body[data-op-area="coach"] .vf-coach-context-stats b{grid-row:auto;grid-column:auto;justify-self:start;margin-top:5px}
+  body[data-op-area="coach"] .vf-coach-workspace{grid-template-columns:1fr}
+  body[data-op-area="coach"] .vf-coach-rail{position:static;grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:820px){
+  .op-route-scene{min-height:0}
+  .op-scene-visual{min-height:130px}
+  body[data-op-area="coach"] .vf-coach-prompts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body[data-op-area="coach"] .vf-coach-context-stats{grid-template-columns:1fr}
+  body[data-op-area="coach"] .vf-chat-list{min-height:360px;padding:18px!important}
+  body[data-op-area="coach"] .vf-message.user{max-width:88%!important}
+  body[data-op-area="coach"] .vf-message.ai{width:96%!important;max-width:96%!important}
+  body[data-op-area="coach"] .vf-coach-rail{grid-template-columns:1fr}
+}
+@media(max-width:560px){
+  body[data-op-area="coach"] .vf-coach-focus-card{padding:24px 20px}
+  body[data-op-area="coach"] .vf-coach-focus-card h1{font-size:40px}
+  body[data-op-area="coach"] .vf-coach-prompts{grid-template-columns:1fr!important}
+  body[data-op-area="coach"] .vf-chat-head{align-items:flex-start!important;flex-direction:column}
+  body[data-op-area="coach"] .vf-chat-head-actions{justify-content:flex-start}
+  body[data-op-area="coach"] .vf-coach-input{grid-template-columns:1fr!important}
+  body[data-op-area="coach"] .vf-coach-input button{min-height:44px}
+  body[data-op-area="coach"] .vf-message.user{max-width:94%!important}
+}
