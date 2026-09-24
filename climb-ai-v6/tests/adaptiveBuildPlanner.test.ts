@@ -44,7 +44,7 @@ const ally=(name:string)=>({champion:name,role:'TOP',detail:champion(name,['Figh
 const enemy=(detail:ChampionDetail,role:string)=>({champion:detail.name,role,detail});
 
 test('same ADC gets an anti-tank draft item into a tank-heavy enemy team',()=>{
-  const tanks=['Ornn','Sion','Maokai'].map(name=>champion(name,['Tank'],3,4,175,'Knocks up and stuns enemies.'));
+  const tanks=['TankA','TankB','TankC'].map(name=>champion(name,['Tank'],3,4,175,'Very durable frontliner with high health and armor.'));
   const plan=buildAdaptiveItemPlan({
     patch:'test',you:aphelios,role:'ADC',allies:[{champion:'Aphelios',role:'ADC',detail:aphelios},ally('Garen')],
     enemies:[
