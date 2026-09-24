@@ -68,6 +68,10 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
   const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(session.id),readCheckpointsForSession(session.id)]);
   let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
+  let recoveredMatchId=await findMatchIdForSession(session.id);
+  if(session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId){
+    recoveredMatchId=await persistLiveMatchWithRetry({...session,user_id:userId},normalized,strength,proAnalysis).catch(err=>{console.warn('[live-review] missing match self-heal failed',err);return null});
+  }
   if(normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
     const base=buildLiveProAnalysis(normalized,strength);
     proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan,readCheckpoints})};
@@ -126,7 +130,7 @@ async function finalizeSession(sessionId:string){
   const storedSummary={...summary,proAnalysis,decisionGraph:proAnalysis?.decisionGraph??null,lockedPlanAvailable:Boolean(lockedPlan),riotEnrichment:{status:riotEnabled()?'PENDING':'DISABLED'}};
   const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);if(!snapshots.length)return;
 
-  const reviewResult=await Promise.allSettled([persistReviewEvents(session,summary),persistLiveMatch(session,snapshots,summary,proAnalysis),verifyObservedRiotIdentity(session.riot_account_id,snapshots[snapshots.length-1])]);
+  const reviewResult=await Promise.allSettled([persistReviewEvents(session,summary),persistLiveMatchWithRetry(session,snapshots,summary,proAnalysis),verifyObservedRiotIdentity(session.riot_account_id,snapshots[snapshots.length-1])]);
   for(const result of reviewResult)if(result.status==='rejected')console.warn('[live-finalize] secondary persistence failed',result.reason);
   const matchResult=reviewResult[1];
   const matchId=matchResult.status==='fulfilled'?matchResult.value:null;
@@ -146,6 +150,16 @@ async function persistLiveMatch(session:any,snapshots:LiveTelemetrySnapshot[],su
   const minutes=Math.max(final.gameTime/60,1/60);
   const {error:metricError}=await db.from('match_metrics').upsert({match_id:matchId,user_id:session.user_id,cs:me.scores.creepScore,cs_per_min:Math.round((me.scores.creepScore/minutes)*100)/100,vision_score:me.scores.wardScore,raw:{source:'LIVE_TRACKER',currentGold:final.active.currentGold,summary,proAnalysis}},{onConflict:'match_id'});if(metricError)throw new Error(metricError.message);
   return matchId??null;
+}
+
+async function persistLiveMatchWithRetry(session:any,snapshots:LiveTelemetrySnapshot[],summary:StrengthTimeline,proAnalysis:ProMatchAnalysis|null):Promise<string|null>{
+  let lastError:unknown=null;
+  for(const delay of [0,250,800]){
+    if(delay)await new Promise(resolve=>setTimeout(resolve,delay));
+    try{return await persistLiveMatch(session,snapshots,summary,proAnalysis)}
+    catch(err){lastError=err;console.warn('[live-match] persistence attempt failed',err)}
+  }
+  throw(lastError instanceof Error?lastError:new Error('Live match could not be saved after retries.'));
 }
 
 async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnapshot[],strength:StrengthTimeline,livePro:ProMatchAnalysis):Promise<ProMatchAnalysis|null>{
