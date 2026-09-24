@@ -9,6 +9,7 @@ const matchup=fs.readFileSync(path.join(root,'companion','electron','remember-v3
 const esports=fs.readFileSync(path.join(root,'companion','electron','remember-v5-esports.js'),'utf8');
 const liveRoster=fs.readFileSync(path.join(root,'companion','electron','live-roster.cjs'),'utf8');
 const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap.cjs'),'utf8');
+const brand=fs.readFileSync(path.join(root,'companion','electron','brand-sync.css'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const route=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route.ts'),'utf8');
 const core=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
@@ -27,9 +28,11 @@ test('recording UI is a concise esports coach board instead of a text wall',()=>
     assert.ok(hud.includes(label),`missing ${label}`);
   }
   assert.ok(hud.includes('5 / 10 / 15 MIN SELF-CHECK'));
-  assert.ok(hud.includes("const visible=phase==='RECORDING'"));
+  assert.ok(hud.includes("phase==='RECORDING'||Date.now()<liveRosterActiveUntil"));
   assert.ok(hud.includes('op-remember-live'));
-  assert.ok(hud.includes('LIVE · RECORDING'));
+  assert.ok(hud.includes('LIVE · MATCH ROOM'));
+  assert.ok(hud.includes('EARLY POWER'));
+  assert.ok(hud.includes('MAJOR POWER'));
   assert.ok(hud.includes('PLAN LOCKED'));
   assert.ok(loader.includes("load('remember-v3.js')"));
   assert.ok(loader.includes("load('remember-v3-matchup.js')"));
@@ -46,7 +49,34 @@ test('live board fills the app and receives the actual in-game roster',()=>{
   assert.ok(liveRoster.includes("PATH='/liveclientdata/allgamedata'"));
   assert.ok(liveRoster.includes("new CustomEvent('op-climb-live-roster'"));
   assert.ok(bootstrap.includes("require('./live-roster.cjs')"));
+  assert.ok(hud.includes("window.addEventListener('op-climb-live-roster',onLiveRoster)"));
+  assert.ok(esports.includes("document.body.classList.add('op-remember-live','op-live-roster-detected')"));
+  assert.ok(esports.includes("set('opRemLiveState'"));
+  assert.ok(esports.includes('lastRosterSeenAt=Date.now()'));
+  assert.ok(brand.includes('body.op-remember-live .quiet-mode{display:none!important}'));
 });
+
+test('live roster can promote WAITING into the Match Room without reactive shotcalling',()=>{
+  assert.ok(hud.includes("phase==='RECORDING'||Date.now()<liveRosterActiveUntil"));
+  assert.ok(hud.includes("liveRosterActiveUntil=Date.now()+12_000"));
+  assert.ok(esports.includes("const rosterLive=Date.now()-lastRosterSeenAt<12_000"));
+  assert.ok(esports.includes("document.body.classList.add('op-remember-live','op-live-roster-detected')"));
+  assert.ok(brand.includes('body.op-remember-live .quiet-mode{display:none!important}'));
+  assert.ok(core.includes('snapshot:null'));
+  assert.ok(core.includes('liveSnapshotAt:null'));
+});
+
+test('in-game Match Room exposes the useful frozen plan before deep engine detail',()=>{
+  for(const label of ['YOUR TEAM','THEIR TEAM','YOUR JOB','MAIN THREAT','WHO CARRIES?','YOUR ROLE','PLAY AROUND','FIGHT / FARM','FIGHT WHEN','DON’T','CLIMB MISSION','EARLY POWER','MAJOR POWER']){
+    assert.ok(hud.includes(label),`missing Match Room label ${label}`);
+  }
+  assert.ok(esports.includes("role.textContent=[playerRole(p)||'ROLE',Number(p.level)>0?'LV '+String(p.level):''].filter(Boolean).join(' · ')"));
+  assert.ok(esports.includes("name.textContent=upper(p.champion)+(isYou?' · YOU':'')"));
+  for(const hidden of ['#opRemPersonalTrap','#opRemStrategy','#opRemCausalRoute','#opRemExperiment','#opRemIntent']){
+    assert.ok(brand.includes(hidden),`deep engine should be hidden from first glance: ${hidden}`);
+  }
+});
+
 
 test('their full draft survives champ select and renders on the live board',()=>{
   assert.ok(route.includes('draftTeams:{'));

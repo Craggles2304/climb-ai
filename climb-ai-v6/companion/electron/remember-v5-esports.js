@@ -36,6 +36,7 @@
   let selectedContingency='PLAN_A';
   let lastCoachMeta={source:'local',quality:null,failure:null};
   let skippedIntentProbeId='';
+  let lastRosterSeenAt=0;
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -897,12 +898,17 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     for(let i=0;i<5;i++){
       const p=list[i];
       const card=document.createElement('article');
-      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}`;
+      const localChampion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion).toLowerCase();
+      const isYou=Boolean(p&&rootId==='opRemOurTeam'&&clean(p.champion).toLowerCase()===localChampion);
+      card.className=`rem4-pick${p&&dangerNames.includes(clean(p.champion).toLowerCase())?' threat':''}${isYou?' you':''}`;
       if(p){
         const img=document.createElement('img');img.src=tile(p.champion);img.alt='';img.loading='eager';
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
-        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent=playerRole(p)||'ROLE';
-        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent=upper(p.champion);
+        const role=document.createElement('span');role.className='rem4-pick-role';role.textContent=[playerRole(p)||'ROLE',Number(p.level)>0?'LV '+String(p.level):''].filter(Boolean).join(' · ');
+        const name=document.createElement('b');name.className='rem4-pick-name';name.textContent=upper(p.champion)+(isYou?' · YOU':'');
+        const spells=Array.isArray(p.summonerSpells)?p.summonerSpells.filter(Boolean).join(' + '):'';
+        const items=Array.isArray(p.items)?p.items.map(item=>clean(item?.displayName)).filter(Boolean).slice(0,6).join(' · '):'';
+        card.title=[spells&&('SUMMONERS: '+spells),items&&('VISIBLE ITEMS: '+items)].filter(Boolean).join(' | ');
         copy.append(role,name);card.append(img,copy);
       }else{
         const copy=document.createElement('div');copy.className='rem4-pick-copy';
@@ -1080,11 +1086,19 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
 
   function applyRoster(payload){
     lastRoster=payload;
-    if(!lastState||String(lastState?.phase||'')!=='RECORDING')return;
+    lastRosterSeenAt=Date.now();
+    if(!lastState)return;
     const players=Array.isArray(payload?.players)?payload.players:[];
     if(players.length<2)return;
-    const champion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion);
-    const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer));
+    const activeLive=players.find(p=>clean(p.summonerName)===clean(payload?.activePlayer))||null;
+    const champion=clean(lastState?.matchup?.champion||lastState?.matchup?.plan?.you?.name||lastState?.teamPlan?.rememberPlan?.champion)||clean(activeLive?.champion);
+    const me=players.find(p=>clean(p.champion).toLowerCase()===champion.toLowerCase())||activeLive;
+    const hud=$('opRememberHud');
+    if(hud)hud.classList.remove('hidden');
+    document.body.classList.add('op-remember-live','op-live-roster-detected');
+    const seconds=Math.max(0,Math.floor(Number(payload?.gameTime)||0));
+    const clock=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0');
+    set('opRemLiveState',`LIVE · ${clock}`);
     if(!me?.team)return;
     const stateRole=normRole(lastState?.matchup?.role||lastState?.matchup?.plan?.role||lastState?.teamPlan?.rememberPlan?.role);
     const championPrior=STRONG_ADC_PRIOR.has(champion)?'ADC':'';
@@ -1116,7 +1130,8 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     lastState=state;
     installVisualLayer();
     const champion=clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.teamPlan?.rememberPlan?.champion);
-    if(String(state?.phase||'')!=='RECORDING'||(previousChampion&&champion&&previousChampion!==champion)){
+    const rosterLive=Date.now()-lastRosterSeenAt<12_000;
+    if((String(state?.phase||'')!=='RECORDING'&&!rosterLive)||(previousChampion&&champion&&previousChampion!==champion)){
       lastCoachSignature='';
       lastCoach=null;
       lastCoachAttemptSignature='';
