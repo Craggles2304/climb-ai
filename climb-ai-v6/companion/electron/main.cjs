@@ -7,6 +7,7 @@ const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
+const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,liveCoachTimer=null,reviewPollTimer=null;
 let championPlanInFlight=false,liveCoachInFlight=false,reviewPollInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
@@ -62,7 +63,7 @@ function setState(patch){
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
-  if(clean.startsWith(MATCHUP_PREFIX)){parseTrackerLine(clean,kind);return}
+  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)){parseTrackerLine(clean,kind);return}
   recentLogs.push({at:new Date().toISOString(),kind,line:clean});
   if(recentLogs.length>200)recentLogs=recentLogs.slice(-200);
   setState({lastLog:clean});parseTrackerLine(clean,kind);
@@ -154,8 +155,23 @@ async function pollPostGameReview(){
   finally{clearTimeout(timeout);reviewPollInFlight=false}
 }
 
+function applyTrackerState(raw){
+  const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim();
+  if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
+  if(next==='CHAMP_SELECT')return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Lock your champion to build your briefing.'});
+  if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
+    if(state.phase==='RECORDING'){
+      setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});
+      startPostGameReviewPoll();return;
+    }
+    if(state.phase==='UPLOADING'||state.phase==='REVIEW')return;
+    return setState({phase:'WAITING',detail:detail||'Connected. Waiting for League.'});
+  }
+  if(next==='ERROR'&&state.phase!=='RECORDING')setState({phase:'ERROR',detail:detail||'Tracker reported a local detection problem.'});
+}
 function parseTrackerLine(line,kind){
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
+  if(line.startsWith(TRACKER_STATE_PREFIX)){try{applyTrackerState(JSON.parse(line.slice(TRACKER_STATE_PREFIX.length)))}catch{}return}
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
   if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Lock your champion to build your briefing.'});
@@ -255,6 +271,18 @@ async function answerIntentProbe(context){
 }
 
 function trackerPath(){return app.isPackaged?path.join(process.resourcesPath,'tracker','main.mjs'):path.join(__dirname,'..','src','main.mjs')}
+function bindTrackerStream(stream,kind){
+  if(!stream)return;
+  let buffer='';
+  stream.setEncoding('utf8');
+  stream.on('data',chunk=>{
+    buffer+=String(chunk);
+    const lines=buffer.split(/\r?\n/);
+    buffer=lines.pop()||'';
+    lines.forEach(line=>addLog(line,kind));
+  });
+  stream.on('end',()=>{if(buffer.trim())addLog(buffer,kind);buffer=''});
+}
 function stopTracker(){
   stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
@@ -265,8 +293,8 @@ function startTracker(){
   const runtime=trackerPath();if(!existsSync(runtime))return setState({phase:'ERROR',detail:'Tracker runtime is missing. Reinstall OP CLIMB Companion.'});
   tracker=spawn(process.execPath,[runtime],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',OP_WEB_URL:cfg.webUrl,OP_TRACKER_TOKEN:cfg.token},windowsHide:true,stdio:['ignore','pipe','pipe']});
   setState({phase:'WAITING',detail:'Companion is running. Waiting for League.',trackerRunning:true});
-  tracker.stdout.on('data',chunk=>String(chunk).split(/\r?\n/).forEach(line=>addLog(line,'info')));
-  tracker.stderr.on('data',chunk=>String(chunk).split(/\r?\n/).forEach(line=>addLog(line,'error')));
+  bindTrackerStream(tracker.stdout,'info');
+  bindTrackerStream(tracker.stderr,'error');
   tracker.on('error',err=>{addLog(`Tracker failed to start: ${err.message}`,'error');setState({phase:'ERROR',detail:'Tracker could not start.',trackerRunning:false})});
   tracker.on('exit',(code,signal)=>{
     tracker=null;setState({trackerRunning:false});
