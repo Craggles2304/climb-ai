@@ -99,7 +99,7 @@ jobs:
       - name: Live tracker regressions
         run: node --import tsx --test tests/liveGame.test.ts tests/liveStrength.test.ts
       - name: Core and auth regressions
-        run: node --import tsx --test tests/analytics.test.ts tests/auth.test.ts tests/build.test.ts
+        run: node --import tsx --test tests/analytics.test.ts tests/auth.test.ts tests/build.test.ts && node --test tests/accountRankSwitch.test.cjs
       - name: Champion and combo regressions
         run: node --import tsx --test tests/championMechanics.test.ts tests/championRegistry.test.ts tests/champions.test.ts tests/combos.test.ts tests/confidence.test.ts tests/compositionIntelligence.test.ts tests/rememberPlan.test.ts
       - name: Coach rank win-condition benchmarks
