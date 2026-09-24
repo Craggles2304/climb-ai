@@ -142,7 +142,7 @@
     installStyle();ensureFocus();compactFrozenPlaybook();collectDeepSections();
     const data=stored()||{};
     const farm=farmTarget(state,data),spike=powerSpike(state,data),objective=objectiveMission(state,data);
-    const put=(id,value)=>{const node=$(id);if(node&&clean(value))node.textContent=upper(value)};
+    const put=(id,value)=>{const node=$(id);const next=upper(value);if(node&&next&&upper(node.textContent)!==next)node.textContent=next};
     put('opfFarm',farm.head);put('opfFarmWhy',farm.why);
     put('opfSpike',spike.head);put('opfSpikeWhy',spike.why);
     put('opfObjective',objective.head);put('opfObjectiveWhy',objective.why);
