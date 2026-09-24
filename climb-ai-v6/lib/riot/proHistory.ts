@@ -58,6 +58,8 @@ export interface HistoryAnalysisRow{
   champion:string;
   role:string|null;
   createdAt:string;
+  patch?:string|null;
+  gameVersion?:string|null;
   analysis:ProMatchAnalysis;
 }
 
