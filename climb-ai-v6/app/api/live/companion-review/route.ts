@@ -58,6 +58,7 @@ export async function GET(req:NextRequest){
     ok:true,ready:true,
     review:{
       sessionId:latest.sessionId,
+      endedAt:latest.endedAt??latest.lastSeenAt??null,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
       rankChange,
