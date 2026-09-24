@@ -23,13 +23,21 @@ export interface AdaptiveBuildItem{
 }
 export interface AdaptiveEnemyProfile{
   physical:number;magic:number;mixed:number;tanks:number;divers:number;assassins:number;
-  hardCc:number;healing:number;shielding:number;poke:number;ranged:number;
+  hardCc:number;cleanseableCc:number;airborne:number;healing:number;shielding:number;poke:number;ranged:number;
+}
+export interface AdaptiveBuildLine{
+  label:'OPTIMAL'|'RECOMMENDED';
+  items:AdaptiveBuildItem[];
+  boots:AdaptiveBuildItem|null;
+  summary:string;
 }
 export interface AdaptiveBuildPlan{
   version:1;patch:string;champion:string;role:AdaptiveBuildRole;confidence:'HIGH'|'MEDIUM';
   enemyProfile:AdaptiveEnemyProfile;read:string;core:AdaptiveBuildItem[];
   draftItem:AdaptiveBuildItem|null;finish:AdaptiveBuildItem|null;boots:AdaptiveBuildItem|null;
-  swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];rule:string;boundary:string;
+  swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];
+  optimal:AdaptiveBuildLine;recommended:AdaptiveBuildLine;changes:string[];
+  rule:string;boundary:string;
 }
 
 const CC=/\b(stuns?|roots?|snares?|knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation)|pulls?|airborne)\b/i;
@@ -37,6 +45,8 @@ const HEAL=/\b(heal|healing|restore(?:s|d)? health|regenerat|health restoration|
 const SHIELD=/\b(shield|shielding)\b/i;
 const DASH=/\b(dashes?|blinks?|leaps?|charges?|dives?|jumps?|teleports?)\b/i;
 const POKE=/\b(long range|long-range|poke|artillery|from range)\b/i;
+const AIRBORNE=/\b(knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)|airborne|pulls?)\b/i;
+const CLEANSEABLE=/\b(stuns?|roots?|snares?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation))\b/i;
 
 function clean(value:unknown){return String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
 function normRole(value?:string|null):AdaptiveBuildRole{
@@ -65,7 +75,7 @@ function has(text:string,...terms:string[]){return terms.some(term=>text.include
 function round(n:number){return Math.round(n*10)/10}
 
 function enemyProfile(enemies:AdaptiveBuildPlayer[]):AdaptiveEnemyProfile{
-  const out:AdaptiveEnemyProfile={physical:0,magic:0,mixed:0,tanks:0,divers:0,assassins:0,hardCc:0,healing:0,shielding:0,poke:0,ranged:0};
+  const out:AdaptiveEnemyProfile={physical:0,magic:0,mixed:0,tanks:0,divers:0,assassins:0,hardCc:0,cleanseableCc:0,airborne:0,healing:0,shielding:0,poke:0,ranged:0};
   for(const enemy of enemies){
     const detail=enemy.detail;
     const type=damageType(detail.info);
@@ -77,6 +87,8 @@ function enemyProfile(enemies:AdaptiveBuildPlayer[]):AdaptiveEnemyProfile{
     if(tags.includes('Assassin'))out.assassins++;
     if(tags.includes('Assassin')||(tags.includes('Fighter')&&range<400)||DASH.test(text))out.divers++;
     if(CC.test(text))out.hardCc++;
+    if(CLEANSEABLE.test(text))out.cleanseableCc++;
+    if(AIRBORNE.test(text))out.airborne++;
     if(HEAL.test(text))out.healing++;
     if(SHIELD.test(text))out.shielding++;
     if(range>=500)out.ranged++;
@@ -115,7 +127,7 @@ function flagsFor(text:string){
 }
 function reasonFor(read:ItemRead,profile:AdaptiveEnemyProfile,role:AdaptiveBuildRole,you:ChampionDetail,allyFrontline:number){
   const flags=new Set(read.flags);
-  if(flags.has('CLEANSE')&&profile.hardCc>=2)return String(profile.hardCc)+' enemy CC kits: gives you a way out when one catch would end your fight.';
+  if(flags.has('CLEANSE')&&profile.cleanseableCc>=2)return String(profile.cleanseableCc)+' enemy kits have cleanseable CC: this can save a fight when a stun/root/sleep is what catches you.';
   if(flags.has('ANTI_HEAL')&&profile.healing>=2)return String(profile.healing)+' enemy kits have meaningful healing: this is the anti-heal slot.';
   if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)return String(profile.shielding)+' enemy kits create shields: this helps your damage reach health instead.';
   if(flags.has('ANTI_TANK')&&profile.tanks>=2)return String(profile.tanks)+' enemy frontliners/tanks: prioritises damage that keeps working into high durability.';
@@ -186,7 +198,7 @@ export function buildAdaptiveItemPlan(input:{
     if(profile.tanks>=2&&(flags.includes('ANTI_TANK')||flags.includes('MAGIC_PEN')))context+=30+profile.tanks*5;
     if(profile.healing>=2&&flags.includes('ANTI_HEAL'))context+=34+profile.healing*5;
     if(profile.shielding>=2&&flags.includes('ANTI_SHIELD'))context+=28+profile.shielding*4;
-    if(profile.hardCc>=2&&flags.includes('CLEANSE'))context+=42+profile.hardCc*4;
+    if(profile.cleanseableCc>=2&&flags.includes('CLEANSE'))context+=42+profile.cleanseableCc*5;
     if(profile.hardCc>=2&&flags.includes('TENACITY'))context+=20+profile.hardCc*3;
     if((profile.divers+profile.assassins)>=2&&(flags.includes('STASIS')||flags.includes('REVIVE')||flags.includes('LIFELINE')||flags.includes('SPELL_SHIELD')))context+=32+(profile.divers+profile.assassins)*3;
     if(profile.poke>=2&&(flags.includes('SUSTAIN')||lifesteal>0))context+=18+profile.poke*3;
@@ -196,7 +208,7 @@ export function buildAdaptiveItemPlan(input:{
     if(isBoots){
       if(profile.physical>=3&&armor>0)context+=28;
       if(profile.magic>=2&&mr>0)context+=22;
-      if(profile.hardCc>=2&&flags.includes('TENACITY'))context+=35;
+      if(profile.cleanseableCc>=2&&flags.includes('TENACITY'))context+=35;
       if(marksman&&as>0&&profile.hardCc<2&&(profile.divers+profile.assassins)<2)context+=20;
     }
 
@@ -206,6 +218,9 @@ export function buildAdaptiveItemPlan(input:{
   }
 
   const nonBoots=reads.filter(item=>!item.isBoots);
+  const baseScore=(item:ItemRead)=>item.offense+item.defense+item.utility;
+  const contextScore=(item:ItemRead)=>baseScore(item)+item.context;
+
   const coreEligible=nonBoots.filter(item=>{
     if(marksman)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT');
     if(tank)return item.hp>0||item.armor>0||item.mr>0;
@@ -213,7 +228,8 @@ export function buildAdaptiveItemPlan(input:{
     if(mage)return item.ap>0||item.flags.includes('MAGIC_PEN');
     return item.ad>0||item.ap>0||item.hp>0;
   });
-  const coreRanked=[...coreEligible].sort((a,b)=>(b.offense+b.defense+b.utility+b.context*.35)-(a.offense+a.defense+a.utility+a.context*.35)||b.score-a.score);
+  const optimalRanked=[...coreEligible].sort((a,b)=>baseScore(b)-baseScore(a)||b.score-a.score);
+  const coreRanked=[...coreEligible].sort((a,b)=>contextScore(b)-contextScore(a)||b.score-a.score);
   const chosen=new Set<number>();
   const coreReads:ItemRead[]=[];
   for(const read of coreRanked){
@@ -229,6 +245,24 @@ export function buildAdaptiveItemPlan(input:{
   if(finishRead)chosen.add(finishRead.id);
   const bootRead=reads.filter(item=>item.isBoots).sort((a,b)=>b.score-a.score)[0]??null;
 
+  const optimalBootRead=reads.filter(item=>item.isBoots).sort((a,b)=>baseScore(b)-baseScore(a)||b.score-a.score)[0]??null;
+  const optimalReads:ItemRead[]=[];
+  for(const read of optimalRanked){
+    if(optimalReads.some(item=>item.id===read.id))continue;
+    optimalReads.push(read);
+    if(optimalReads.length===4)break;
+  }
+
+  const techCandidate=techRanked.find(item=>item.context>=30)??null;
+  const recommendedReads:ItemRead[]=[];
+  for(const read of optimalReads.slice(0,2))recommendedReads.push(read);
+  if(techCandidate&&!recommendedReads.some(item=>item.id===techCandidate.id))recommendedReads.push(techCandidate);
+  for(const read of [...coreRanked,...optimalReads]){
+    if(recommendedReads.some(item=>item.id===read.id))continue;
+    recommendedReads.push(read);
+    if(recommendedReads.length===4)break;
+  }
+
   const itemOut=(read:ItemRead|null,slot:AdaptiveBuildItem['slot']):AdaptiveBuildItem|null=>read?{
     id:read.id,name:read.item.name,gold:read.item.gold?.total??0,slot,score:round(read.score),
     why:reasonFor(read,profile,role,you,allyFrontline),flags:read.flags,
@@ -239,6 +273,19 @@ export function buildAdaptiveItemPlan(input:{
   const boots=itemOut(bootRead,'BOOTS');
   const swaps=techRanked.filter(item=>!chosen.has(item.id)).slice(0,3).map(read=>itemOut(read,'SWAP')!).filter(Boolean);
   const order=[...core,...(draftItem?[draftItem]:[]),...(finish?[finish]:[])];
+  const optimalItems=optimalReads.map(read=>itemOut(read,'CORE')!).filter(Boolean);
+  const recommendedItems=recommendedReads.map((read,index)=>itemOut(read,index<2?'CORE':read.id===techCandidate?.id?'DRAFT':'FINISH')!).filter(Boolean);
+  const optimalBoots=itemOut(optimalBootRead,'BOOTS');
+  const recommendedBoots=boots;
+  const changes:string[]=[];
+  if(techCandidate&&!optimalReads.some(item=>item.id===techCandidate.id)){
+    changes.push('MOVE IN '+techCandidate.item.name.toUpperCase()+' — '+reasonFor(techCandidate,profile,role,you,allyFrontline));
+  }
+  if(recommendedBoots&&optimalBoots&&recommendedBoots.id!==optimalBoots.id){
+    const read=reads.find(item=>item.id===recommendedBoots.id)||null;
+    changes.push('CHANGE BOOTS TO '+recommendedBoots.name.toUpperCase()+(read?' — '+reasonFor(read,profile,role,you,allyFrontline):''));
+  }
+  if(!changes.length)changes.push('NO FORCED SWAP — THE NORMAL CORE ALREADY FITS THIS DRAFT.');
 
   const readParts=[
     profile.tanks>=2?String(profile.tanks)+' durable frontliners':null,
@@ -254,7 +301,10 @@ export function buildAdaptiveItemPlan(input:{
     enemyProfile:profile,
     read:readParts.join(' · ')||'Draft still forming',
     core,draftItem,finish,boots,swaps,order,
-    rule:'CORE ITEMS FIT YOUR CHAMPION + ROLE. DRAFT ITEM AND BOOTS CHANGE WITH THE ENEMY COMP. SWAPS ARE CONDITIONS, NOT A SECOND GENERIC BUILD.',
-    boundary:'DRAFT-FIT RECOMMENDATION FROM CURRENT-PATCH RIOT STATIC ITEM/CHAMPION DATA. IT DOES NOT CLAIM ITEM WIN RATE OR KNOW FUTURE ENEMY PURCHASES. RE-CHECK THE TECH SLOT IF THE ACTUAL GAME DEVELOPS DIFFERENTLY.',
+    optimal:{label:'OPTIMAL',items:optimalItems,boots:optimalBoots,summary:'Champion + role baseline before enemy-draft adjustments.'},
+    recommended:{label:'RECOMMENDED',items:recommendedItems,boots:recommendedBoots,summary:'OP CLIMB recommendation for this exact enemy draft.'},
+    changes,
+    rule:'OPTIMAL IS THE CHAMPION + ROLE BASELINE. RECOMMENDED STARTS THERE AND ONLY CHANGES SLOTS WHEN THE ENEMY DRAFT CREATES A STRONG ENOUGH REASON.',
+    boundary:'CURRENT-PATCH RIOT STATIC ITEM/CHAMPION DATA + OP CLIMB BUILD SEARCH. OPTIMAL IS AN ENGINE BASELINE, NOT A CLAIM OF GLOBAL WIN-RATE BEST. RECOMMENDED IS DRAFT-FIT AND SHOULD BE RE-CHECKED IF THE LIVE GAME DEVELOPS DIFFERENTLY.',
   };
 }
