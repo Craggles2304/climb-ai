@@ -22,7 +22,7 @@ if(!singleInstance){app.quit();process.exit(0)}
 app.setName(APP_NAME);app.setAppUserModelId('com.opclimb.companion');
 
 function appIcon(){
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="16" fill="#0b0f0c"/><path d="M14 43V21h8v22h-8Zm14 0V14h8v29h-8Zm14 0V27h8v16h-8Z" fill="#d6ff2f"/></svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" fill="#090e11"/><path d="M9 9h46v46H9z" fill="none" stroke="#b6f66b" stroke-width="2"/><path d="M17 43V24h7v19h-7Zm12 0V17h7v26h-7Zm12 0V29h7v14h-7Z" fill="#b6f66b"/></svg>`;
   return nativeImage.createFromDataURL(`data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`);
 }
 function configDir(){return app.getPath('userData')}
