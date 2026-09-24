@@ -270,6 +270,31 @@ function normalizeRankPresentation(plan:CoachEnginePlan,depth:number,champion:st
       if(extra)plan.theirPlan=clip(plan.theirPlan+' '+extra+' SUPPLIES THE NEXT LAYER.',190);
     }
   }
+
+  // Rank depth must change the decision contract, not merely the amount of prose.
+  // These layers are deliberately cumulative: higher-ranked players keep the
+  // lower-level rule, then receive one additional decision variable to manage.
+  if(depth>=4){
+    plan.objectiveSetup=clip(plan.objectiveSetup+' BASIC MACRO: FIX THE NEAREST SAFE WAVE BEFORE MOVING.',300);
+  }
+  if(depth>=5){
+    plan.lanePlan.wave=clip(plan.lanePlan.wave+' TEMPO SEQUENCE: FINISH THE WAVE ACTION BEFORE TAKING THE NEXT MAP ACTION.',260);
+  }
+  if(depth>=6){
+    plan.why=clip(plan.why+' OPPORTUNITY COST: GIVE LOW-VALUE SPACE RATHER THAN LOSE HP OR POSITION BEFORE THE REAL WINDOW.',340);
+  }
+  if(depth>=7){
+    plan.never=clip(plan.never+' DECISION THRESHOLD: DO NOT COMMIT THE NEXT RESOURCE UNTIL THE SECOND ACCESS TOOL IS SHOWN.',300);
+  }
+  if(depth>=8){
+    plan.threatAnswer=clip(plan.threatAnswer+' RESOURCE TRADE-OFF: IF '+threat+' STILL HAS ACCESS, KEEP ONE RESPONSE FOR THE ACCESS CHAIN.',320);
+  }
+  if(depth>=9){
+    plan.ifBehind=clip(plan.ifBehind+' MAP TRADE: IF YOUR ENTRY IS LOST, TAKE THE OPPOSITE SAFE RESOURCE INSTEAD OF HALF-CONTESTING.',300);
+  }
+  if(depth>=10){
+    plan.objectiveSetup=clip(plan.objectiveSetup+' INFORMATION STATE: WHEN '+threat+' IS UNSHOWN, PRESERVE OPTION VALUE; SHIFT ONLY AFTER THEIR ACCESS IS LOCATED.',380);
+  }
   return plan;
 }
 
