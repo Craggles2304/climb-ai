@@ -18,6 +18,12 @@ import {IlpExplainability} from '@/components/IlpExplainability';
 import {TierUpgradePrompt} from '@/components/TierUpgradePrompt';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 
+const CHAMPION_ASSET_IDS:Record<string,string>={
+  Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
+};
+const championAsset=(name:string)=>CHAMPION_ASSET_IDS[name]||name.replace(/[^A-Za-z0-9]/g,'');
+const championSplash=(name?:string)=>name?`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championAsset(name)}_0.jpg`:'';
+
 export default function Home(){
   const {active,isEmpty,profile}=useAccount();
   const matches=matchesFor(active.id);
@@ -53,8 +59,6 @@ export default function Home(){
 
   return <AppShell>
     <TrackView event="dashboard_view"/>
-    <PageHead title="Your Climb" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+active.role}/>
-
     <div className="v7-stack">
       {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
 
@@ -89,15 +93,17 @@ export default function Home(){
         </div>
 
         <aside className="hq-focus-visual">
-          <div className="hq-focus-number"><small>CURRENT PRIORITY</small><strong>#1</strong></div>
-          <AnimatedRing value={leadTask?.progress||0} label="FOCUS PROGRESS"/>
-          <div className="hq-focus-reps"><b>{goodGames}/{needed}</b><span>successful games</span></div>
-          <p>One focus in game. Everything else stays in the background.</p>
-          {leadTask&&<details className="hq-coach-detail"><summary>SHOW COACH DETAIL</summary><IlpExplainability task={leadTask} compact/></details>}
+          {last?.champion&&<img className="hq-focus-champ-art" src={championSplash(last.champion)} alt="" aria-hidden="true"/>}
+          <div className="hq-focus-visual-content">
+            <div className="hq-focus-number"><small>CURRENT PRIORITY</small><strong>#1</strong></div>
+            <AnimatedRing value={leadTask?.progress||0} label="FOCUS PROGRESS"/>
+            <div className="hq-focus-reps"><b>{goodGames}/{needed}</b><span>successful games</span></div>
+            <p>One focus in game. Everything else stays in the background.</p>
+            {leadTask&&<details className="hq-coach-detail"><summary>SHOW COACH DETAIL</summary><IlpExplainability task={leadTask} compact/></details>}
+          </div>
         </aside>
       </section>
 
-      <TierUpgradePrompt/>
     </div>
 
     {activeTasks.length>1&&<section className="v7-section hq-watch-section">
@@ -107,7 +113,9 @@ export default function Home(){
 
     <section className="v7-section hq-recent-section">
       <div className="v7-section-head"><div><div className="eyebrow">RECENT GAMES</div><h2>Your last games, without the stat-wall.</h2><p className="muted">Open a game when you want the full review. Here you only need the result, your KDA and the next step.</p></div><Link className="v7-link" href="/analyse">ALL GAMES →</Link></div>
-      {recent.length?<div className="hq-match-grid">{recent.map((match,index)=><Link href={'/analyse/'+encodeURIComponent(match.id)} key={match.id} className="hq-match-card" data-result={match.result}><span className="hq-match-watermark">{match.champion}</span><div className="hq-match-top"><span>GAME 0{index+1}</span><strong>{match.result}</strong></div><div className="hq-match-champ">{match.champion}</div><div className="hq-match-kda"><b>{match.kills}</b><span>/</span><b>{match.deaths}</b><span>/</span><b>{match.assists}</b><small>K / D / A</small></div><div className="hq-match-open">OPEN COACH REVIEW →</div></Link>)}</div>:<div className="glass card hq-empty-match"><b>No tracked games yet.</b><p className="muted">Play with the Companion or add a game and this page starts becoming personal.</p><Link className="btn primary" href="/session">START NEXT GAME</Link></div>}
+      {recent.length?<div className="hq-match-grid">{recent.map((match,index)=><Link href={'/analyse/'+encodeURIComponent(match.id)} key={match.id} className="hq-match-card" data-result={match.result}><img className="hq-match-art" src={championSplash(match.champion)} alt="" aria-hidden="true"/><span className="hq-match-watermark">{match.champion}</span><div className="hq-match-card-content"><div className="hq-match-top"><span>GAME 0{index+1}</span><strong>{match.result}</strong></div><div className="hq-match-champ">{match.champion}</div><div className="hq-match-kda"><b>{match.kills}</b><span>/</span><b>{match.deaths}</b><span>/</span><b>{match.assists}</b><small>K / D / A</small></div><div className="hq-match-open">OPEN COACH REVIEW →</div></div></Link>)}</div>:<div className="glass card hq-empty-match"><b>No tracked games yet.</b><p className="muted">Play with the Companion or add a game and this page starts becoming personal.</p><Link className="btn primary" href="/session">START NEXT GAME</Link></div>}
     </section>
+
+    <div className="hq-upgrade-bottom"><TierUpgradePrompt/></div>
   </AppShell>;
 }
