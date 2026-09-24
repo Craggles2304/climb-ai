@@ -95,6 +95,8 @@ export async function POST(req:Request){
     const report=analyseMatch(match,recent);
 
     return NextResponse.json({
+      match,
+      proAnalysis:proAnalysis??null,
       report,
       evidence:{source:proAnalysis?'pro':'scoreboard-fallback',sources:proRow?.evidence_sources??[]},
     });
