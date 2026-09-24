@@ -4,6 +4,8 @@ const fs=require('node:fs');
 
 const runtime=fs.readFileSync('companion/src/main.mjs','utf8');
 const desktop=fs.readFileSync('companion/electron/main.cjs','utf8');
+const statusRoute=fs.readFileSync('app/api/live/status/route.ts','utf8');
+const championPlanRoute=fs.readFileSync('app/api/live/champion-plan/route-core.ts','utf8');
 
 test('tracker publishes structured state transitions and recurring heartbeats',()=>{
   assert.ok(runtime.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
@@ -58,4 +60,26 @@ test('Companion updater auto-downloads and checks frequently enough for active b
 test('running Companion version is always visible in the header',()=>{
   assert.ok(indexHtml.includes('id="companionVersionBadge"'));
   assert.ok(desktop.includes("app.setAppUserModelId('com.opclimb.companion')"));
+});
+
+
+test('desktop reconciles live phase from the server heartbeat when local IPC goes stale',()=>{
+  assert.ok(desktop.includes('async function reconcileTrackerStatus()'));
+  assert.ok(desktop.includes("/api/live/status"));
+  assert.ok(desktop.includes("applyTrackerState(remote,'SERVER')"));
+  assert.ok(desktop.includes('age<=45_000'));
+  assert.ok(desktop.includes('scheduleTrackerStatusReconcile(900)'));
+});
+
+test('server exposes tracker status to the paired Companion token',()=>{
+  assert.ok(statusRoute.includes('const token=bearerToken(req)'));
+  assert.ok(statusRoute.includes('authenticateTrackerToken(token)'));
+  assert.ok(statusRoute.includes(".eq('id',device.id)"));
+});
+
+test('champion plan recovers from canonical live draft when the device mirror is stale',()=>{
+  assert.ok(championPlanRoute.includes("trackerState==='CHAMP_SELECT'||!context"));
+  assert.ok(championPlanRoute.includes("db.from('live_pregame_contexts')"));
+  assert.ok(championPlanRoute.includes(".is('ended_at',null)"));
+  assert.ok(championPlanRoute.includes('activeHasSelection&&!mirrorHasSelection'));
 });
