@@ -253,10 +253,12 @@ export function buildAdaptiveItemPlan(input:{
     if(optimalReads.length===4)break;
   }
 
-  const techCandidate=techRanked.find(item=>item.context>=30)??null;
+  const optimalCoreIds=new Set(optimalReads.slice(0,2).map(item=>item.id));
+  const techCandidate=[...nonBoots].filter(item=>!optimalCoreIds.has(item.id)).sort((a,b)=>b.context-a.context||contextScore(b)-contextScore(a))[0]??null;
+  const meaningfulTech=techCandidate&&techCandidate.context>=30?techCandidate:null;
   const recommendedReads:ItemRead[]=[];
   for(const read of optimalReads.slice(0,2))recommendedReads.push(read);
-  if(techCandidate&&!recommendedReads.some(item=>item.id===techCandidate.id))recommendedReads.push(techCandidate);
+  if(meaningfulTech&&!recommendedReads.some(item=>item.id===meaningfulTech.id))recommendedReads.push(meaningfulTech);
   for(const read of [...coreRanked,...optimalReads]){
     if(recommendedReads.some(item=>item.id===read.id))continue;
     recommendedReads.push(read);
@@ -274,12 +276,12 @@ export function buildAdaptiveItemPlan(input:{
   const swaps=techRanked.filter(item=>!chosen.has(item.id)).slice(0,3).map(read=>itemOut(read,'SWAP')!).filter(Boolean);
   const order=[...core,...(draftItem?[draftItem]:[]),...(finish?[finish]:[])];
   const optimalItems=optimalReads.map(read=>itemOut(read,'CORE')!).filter(Boolean);
-  const recommendedItems=recommendedReads.map((read,index)=>itemOut(read,index<2?'CORE':read.id===techCandidate?.id?'DRAFT':'FINISH')!).filter(Boolean);
+  const recommendedItems=recommendedReads.map((read,index)=>itemOut(read,index<2?'CORE':read.id===meaningfulTech?.id?'DRAFT':'FINISH')!).filter(Boolean);
   const optimalBoots=itemOut(optimalBootRead,'BOOTS');
   const recommendedBoots=boots;
   const changes:string[]=[];
-  if(techCandidate&&!optimalReads.some(item=>item.id===techCandidate.id)){
-    changes.push('MOVE IN '+techCandidate.item.name.toUpperCase()+' — '+reasonFor(techCandidate,profile,role,you,allyFrontline));
+  if(meaningfulTech&&!optimalReads.some(item=>item.id===meaningfulTech.id)){
+    changes.push('MOVE IN '+meaningfulTech.item.name.toUpperCase()+' — '+reasonFor(meaningfulTech,profile,role,you,allyFrontline));
   }
   if(recommendedBoots&&optimalBoots&&recommendedBoots.id!==optimalBoots.id){
     const read=reads.find(item=>item.id===recommendedBoots.id)||null;
