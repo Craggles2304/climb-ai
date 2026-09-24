@@ -241,7 +241,16 @@ function languageForDepth(value:string,depth:number){
       .replace(/\bCONTESTING\b/gi,'FIGHTING FOR')
       .replace(/\bCONTEST\b/gi,'FIGHT FOR')
       .replace(/\bQUADRANT\b/gi,'JUNGLE SIDE')
-      .replace(/\bCOLLAPSE\b/gi,'MOVE TO THE FIGHT');
+      .replace(/\bCOLLAPSE\b/gi,'MOVE TO THE FIGHT')
+      .replace(/\bRESOURCE\b/gi,'SPELL OR ESCAPE')
+      .replace(/\bRESET\b/gi,'RECALL OR BACK OFF')
+      .replace(/\bENTRY\b/gi,'WAY IN')
+      .replace(/\bFRONTLINE\b/gi,'TEAMMATES IN FRONT')
+      .replace(/\bENGAGE\b/gi,'GO IN')
+      .replace(/\bPRESSURE\b/gi,'MAKE THEM REACT')
+      .replace(/\bSPIKE\b/gi,'STRONG ITEM POINT')
+      .replace(/\bLAYER\b/gi,'USE TOGETHER')
+      .replace(/\bCONVERT\b/gi,'TAKE SOMETHING AFTER');
   }
   return out;
 }
