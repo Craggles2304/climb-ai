@@ -222,7 +222,11 @@ function renderAdaptiveBuild(team){
     renderLine('OPTIMAL CORE',optimalItems,'rgba(117,179,255,.28)');
     renderLine('MY RECOMMENDATION',recommendedItems,'rgba(214,255,47,.34)');
     const changes=Array.isArray(build?.changes)?build.changes.filter(Boolean).slice(0,2):[];
-    if(read)read.textContent=(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||'')).toUpperCase();
+    if(read){
+      const sources=Array.isArray(build?.evidence?.sources)?build.evidence.sources.filter(source=>source?.usable).map(source=>source.source):[];
+      const sourceLine=sources.length>=2?('SOURCES · '+sources.join(' + ')+' · '):'INTERNAL BUILD ENGINE · ';
+      read.textContent=(sourceLine+(changes.length?('WHY I CHANGED IT · '+changes.join(' · ')):(build?.read||recommended?.summary||''))).toUpperCase();
+    }
   }else{
     renderLine('RECOMMENDED',fallback,'rgba(214,255,47,.34)');
     if(read)read.textContent=String(build?.read||build?.rule||'').toUpperCase();
