@@ -38,7 +38,7 @@ function configFile(){return path.join(configDir(),'companion.json')}
 function readConfig(){try{return JSON.parse(readFileSync(configFile(),'utf8'))}catch{return{webUrl:DEFAULT_WEB,tokenCipher:'',autoStart:false}}}
 function decryptToken(cfg){if(!cfg?.tokenCipher||!safeStorage.isEncryptionAvailable())return'';try{return safeStorage.decryptString(Buffer.from(cfg.tokenCipher,'base64'))}catch{return''}}
 function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync(configFile(),JSON.stringify(next,null,2),'utf8')}
-function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),lastReviewSessionId:String(raw.lastReviewSessionId||'')}}
+function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
 function paired(){return Boolean(currentConfig().token)}
 function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
 function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM'||role==='ADC')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE'||role==='MID')return'MID';if(role==='TOP')return'TOP';if(role==='JUNGLE')return'JUNGLE';return role}
@@ -154,9 +154,51 @@ async function pollLiveCoach(){
 function stopPostGameReviewPoll(){if(reviewPollTimer){clearTimeout(reviewPollTimer);reviewPollTimer=null}}
 function schedulePostGameReviewPoll(delay=1800){stopPostGameReviewPoll();reviewPollTimer=setTimeout(()=>{reviewPollTimer=null;void pollPostGameReview()},delay)}
 function startPostGameReviewPoll(){reviewPollAttempts=0;stopPostGameReviewPoll();void pollPostGameReview()}
-function markReviewShown(sessionId){
+function markReviewRendered(sessionId){
   const id=String(sessionId||'').trim();if(!id)return;
-  const cfg=readConfig();cfg.lastReviewSessionId=id;writeConfig(cfg);
+  const cfg=readConfig();
+  cfg.lastReviewSessionId=id;
+  cfg.lastReviewRenderedSessionId=id;
+  cfg.lastReviewRenderedAt=new Date().toISOString();
+  writeConfig(cfg);
+}
+async function confirmReviewRendered(sessionId){
+  const id=String(sessionId||'').trim();if(!id)return false;
+  for(let attempt=0;attempt<8;attempt+=1){
+    const win=createWindow(true);
+    if(!win||win.isDestroyed())return false;
+    if(win.webContents.isLoadingMainFrame()){
+      await new Promise(resolve=>{
+        let settled=false;
+        const finish=()=>{if(settled)return;settled=true;clearTimeout(timer);win.webContents.removeListener('did-finish-load',finish);resolve()};
+        const timer=setTimeout(finish,1200);
+        win.webContents.once('did-finish-load',finish);
+      });
+    }
+    try{win.webContents.send('companion:state',publicState())}catch{}
+    try{
+      const rendered=await win.webContents.executeJavaScript(
+        `(()=>{const section=document.getElementById('simplePostgameReview');return Boolean(section&&!section.classList.contains('hidden')&&String(window.__opRenderedReviewSessionId||'')===${JSON.stringify(id)});})()`,
+        true,
+      );
+      if(rendered)return true;
+    }catch{}
+    await new Promise(resolve=>setTimeout(resolve,350));
+  }
+  return false;
+}
+async function presentPostGameReview(review,detail){
+  const sessionId=String(review?.sessionId||'').trim();if(!sessionId)return false;
+  stopPostGameReviewPoll();
+  setState({phase:'REVIEW',detail,postGameReview:review});
+  createWindow(true);
+  const rendered=await confirmReviewRendered(sessionId);
+  if(rendered){
+    markReviewRendered(sessionId);
+    return true;
+  }
+  setState({detail:'Your review is ready, but the Companion did not confirm that the review card rendered. Re-open Companion and it will recover this review again.'});
+  return false;
 }
 async function recoverLatestCompletedReview(){
   if(reviewPollInFlight||state.phase!=='WAITING')return;
@@ -170,13 +212,11 @@ async function recoverLatestCompletedReview(){
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
     const review=body?.review;
     const sessionId=String(review?.sessionId||'').trim();
-    if(!response.ok||!body?.ready||!review||!sessionId||sessionId===cfg.lastReviewSessionId)return;
+    if(!response.ok||!body?.ready||!review||!sessionId||sessionId===cfg.lastReviewRenderedSessionId)return;
     const endedAt=Date.parse(String(review?.endedAt||''));
     const age=Number.isFinite(endedAt)?Date.now()-endedAt:Number.POSITIVE_INFINITY;
     if(age<0||age>8*60*60_000)return;
-    markReviewShown(sessionId);
-    setState({phase:'REVIEW',detail:'Recovered your latest completed match review.',postGameReview:review});
-    createWindow(true);
+    await presentPostGameReview(review,'Recovered your latest completed match review.');
   }catch{}
   finally{clearTimeout(timeout);reviewPollInFlight=false}
 }
@@ -193,10 +233,7 @@ async function pollPostGameReview(){
     const body=await response.json().catch(()=>({}));
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
     if(!response.ok||!body?.ready||!body?.review){schedulePostGameReviewPoll(2500);return}
-    stopPostGameReviewPoll();
-    markReviewShown(body.review?.sessionId);
-    setState({phase:'REVIEW',detail:'Your key good points and critical points are ready.',postGameReview:body.review});
-    createWindow(true);
+    await presentPostGameReview(body.review,'Your key good points and critical points are ready.');
   }catch{schedulePostGameReviewPoll(2500)}
   finally{clearTimeout(timeout);reviewPollInFlight=false}
 }

@@ -423,6 +423,7 @@ function renderPostGameReview(review,phase){
   $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
   $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current Active Five cue and build more evidence.';
   syncCoachReviewEvidence();
+  window.__opRenderedReviewSessionId=String(review.sessionId||'');
 }
 
 function ensureReviewSection(){
@@ -497,6 +498,7 @@ function renderUpdate(next,phase){
 
   $('updateCopy').textContent=copy;
   $('updateVersion').textContent=version;
+  if($('companionVersionBadge'))$('companionVersionBadge').textContent=version;
   setHidden($('checkUpdate'),!['IDLE','CURRENT','ERROR'].includes(status));
   setHidden($('downloadUpdate'),status!=='AVAILABLE');
   setHidden($('installUpdate'),status!=='READY');

@@ -8,15 +8,22 @@ const route=fs.readFileSync('app/api/live/companion-review/route.ts','utf8');
 test('Companion can recover a recent unseen review even if RECORDING was missed',()=>{
   assert.ok(desktop.includes('async function recoverLatestCompletedReview()'));
   assert.ok(desktop.includes("if(reviewPollInFlight||state.phase!=='WAITING')return"));
-  assert.ok(desktop.includes("sessionId===cfg.lastReviewSessionId"));
+  assert.ok(desktop.includes("sessionId===cfg.lastReviewRenderedSessionId"));
   assert.ok(desktop.includes('age>8*60*60_000'));
-  assert.ok(desktop.includes("detail:'Recovered your latest completed match review.'"));
+  assert.ok(desktop.includes("await presentPostGameReview(review,'Recovered your latest completed match review.')"));
 });
 
-test('normal post-game flow marks a review as shown to avoid reopening it forever',()=>{
-  assert.ok(desktop.includes('function markReviewShown(sessionId)'));
-  assert.ok(desktop.includes('cfg.lastReviewSessionId=id'));
-  assert.ok(desktop.includes('markReviewShown(body.review?.sessionId)'));
+test('post-game review is only acknowledged after the review card actually renders',()=>{
+  assert.ok(desktop.includes('function markReviewRendered(sessionId)'));
+  assert.ok(desktop.includes('cfg.lastReviewRenderedSessionId=id'));
+  assert.ok(desktop.includes("window.__opRenderedReviewSessionId"));
+  assert.ok(desktop.includes('await confirmReviewRendered(sessionId)'));
+  assert.ok(desktop.includes('markReviewRendered(sessionId)'));
+});
+
+test('a review fetched by an older Companion can be recovered once by the rendered-receipt build',()=>{
+  assert.ok(desktop.includes("lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')"));
+  assert.ok(desktop.includes("sessionId===cfg.lastReviewRenderedSessionId"));
 });
 
 test('paired Companion performs a one-shot missed-review recovery after startup',()=>{

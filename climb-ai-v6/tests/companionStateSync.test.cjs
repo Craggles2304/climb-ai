@@ -45,3 +45,17 @@ test('Windows tray uses the packaged OP CLIMB icon instead of relying on runtime
   assert.ok(iconResource);
   assert.equal(iconResource.to,'icon.ico');
 });
+
+
+const bootstrap=fs.readFileSync('companion/electron/bootstrap.cjs','utf8');
+const indexHtml=fs.readFileSync('companion/electron/index.html','utf8');
+
+test('Companion updater auto-downloads and checks frequently enough for active beta testing',()=>{
+  assert.ok(bootstrap.includes('const CHECK_INTERVAL_MS=15*60*1000'));
+  assert.ok(bootstrap.includes('autoUpdater.autoDownload=true'));
+});
+
+test('running Companion version is always visible in the header',()=>{
+  assert.ok(indexHtml.includes('id="companionVersionBadge"'));
+  assert.ok(desktop.includes("app.setAppUserModelId('com.opclimb.companion')"));
+});

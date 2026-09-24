@@ -1,7 +1,7 @@
 const {app,ipcMain,BrowserWindow}=require('electron');
 const {autoUpdater}=require('electron-updater');
 
-const CHECK_INTERVAL_MS=4*60*60*1000;
+const CHECK_INTERVAL_MS=15*60*1000;
 const BUSY_PHASES=new Set(['CHAMP_SELECT','RECORDING','UPLOADING']);
 const WEB=(process.env.OP_WEB_URL||'https://opclimb.com').replace(/\/$/,'');
 let checkTimer=null;
@@ -63,7 +63,7 @@ function installUpdate(phase){
 }
 
 function configureUpdater(){
-  autoUpdater.autoDownload=false;
+  autoUpdater.autoDownload=true;
   autoUpdater.autoInstallOnAppQuit=true;
   autoUpdater.allowDowngrade=false;
 
