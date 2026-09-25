@@ -67,12 +67,12 @@ function confidenceFor(total:number,a:number,b:number):Confidence{
   return 'LOW';
 }
 
-export function priceLeak(matches:Match[],metric:string):LeakPrice{
+export function priceLeak(matches:Match[],metric:string,rankOverride?:string|null):LeakPrice{
   const spec=METRIC_SPECS[metric];
   if(!spec){
     return unavailable(metric,null,'This behaviour is not scored against a match metric yet.');
   }
-  const rank=matches.find(match=>match.rank)?.rank||'SILVER';
+  const rank=rankOverride||matches.find(match=>match.rank)?.rank||'SILVER';
   const benchmark=missionBenchmark(metric,rank);
   if(!benchmark)return unavailable(metric,spec,'This behaviour has no rank-aware proof bar yet.');
 
@@ -140,9 +140,9 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
 }
 
 /** Prices every metric the plan tracks and returns them worst-gap first. */
-export function rankLeaks(matches:Match[],metrics:string[]):LeakPrice[]{
+export function rankLeaks(matches:Match[],metrics:string[],rankOverride?:string|null):LeakPrice[]{
   return metrics
-    .map(m=>priceLeak(matches,m))
+    .map(m=>priceLeak(matches,m,rankOverride))
     .sort((a,b)=>(b.gapPoints??-999)-(a.gapPoints??-999));
 }
 
