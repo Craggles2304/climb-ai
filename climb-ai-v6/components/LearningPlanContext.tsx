@@ -29,7 +29,7 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
   if(live.length>ACTIVE_PLAN_SIZE){
     const ordered=orderTasks(live,roleMatches).map(item=>item.task);
     const keep=new Set(ordered.slice(0,ACTIVE_PLAN_SIZE).map(task=>task.id));
-    next=next.map(task=>isLive(task)&&!keep.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically to keep the ${role} development plan capped at two active missions.`,history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Retired from the ${role} two-mission plan during cleanup.`}].slice(-12)}:task);
+    next=next.map(task=>isLive(task)&&!keep.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically to keep the ${role} development plan capped at three active missions.`,history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Retired from the ${role} three-mission plan during cleanup.`}].slice(-12)}:task);
   }
   const filled=ensureFiveActive(next,roleMatches,accountId,role,rank).tasks.map(task=>stampRole(task,role));
   return[...foreign,...filled];
