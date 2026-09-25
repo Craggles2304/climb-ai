@@ -12,6 +12,8 @@ import {LiveFightReviewMount} from './LiveFightReviewMount';
 import {LiveCommandCenter} from './LiveCommandCenter';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {BetaReporter} from './BetaReporter';
+import {useLearningPlan} from './LearningPlanContext';
+import {accountProgress} from '@/lib/accountXp';
 
 const primary=[
   ['Home','/dashboard','⌂','Your next action'],
@@ -81,6 +83,8 @@ function SidebarTierStep({tier}:{tier:'FREE'|'PLUS'|'PRO'}){
 export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
   const {tier}=useSubscription();
+  const {tasks,allTasks}=useLearningPlan();
+  const xp=accountProgress(allTasks[active.id]??tasks);
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -98,6 +102,11 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-player-kicker"><span>YOU</span><i/></div>
         <select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline} · {a.region}</option>)}</select>
         <div className="op-account-meta"><strong>{active.rank}</strong><span>{active.role} · {coaching.tier} COACH</span></div>
+        <div className="op-account-xp">
+          <div><span>CLIMB LV {xp.level}</span><b>{xp.xp.toLocaleString()} XP</b></div>
+          <i><em style={{width:xp.levelProgress+'%'}}/></i>
+          <small>{xp.title} · {Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP TO LV {xp.level+1}</small>
+        </div>
       </div>
 
       <nav className="op-nav" aria-label="Main navigation">
