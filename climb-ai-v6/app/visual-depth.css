@@ -2415,3 +2415,35 @@ body[data-op-area="hq"] .hq-mission-why p{
   .mc-enemy-slot{min-height:0;grid-template-columns:36px 44px minmax(0,1fr);grid-template-rows:auto}
   .mc-enemy-slot img,.mc-enemy-slot>i{width:44px;height:44px}
 }
+
+
+/* My Main Champ — synchronized simulator */
+.mc-sim-live{
+  margin:8px 0 0!important;
+  color:#77878b!important;
+  font:700 8px/1.3 var(--font-mono,'IBM Plex Mono',monospace)!important;
+  letter-spacing:.09em;
+}
+.mc-sim-live b{color:rgb(var(--op-a));font-weight:900}
+.mc-sim-note b{color:rgb(var(--op-a))}
+.mc-preset>.btn{margin-top:12px;min-height:34px;padding:7px 10px;font-size:8px}
+.mc-active-build{
+  display:flex;gap:6px;flex-wrap:wrap;
+  margin:0 0 10px;padding:9px;
+  border:1px solid rgba(var(--op-a),.12);
+  background:rgba(var(--op-a),.025);
+}
+.mc-active-build span{
+  display:flex;align-items:center;gap:7px;
+  min-height:34px;padding:5px 8px 5px 5px;
+  border:1px solid rgba(255,255,255,.08);
+  background:#0b1317;color:#b9c5c7;
+  font-size:9px;font-weight:700;
+}
+.mc-active-build span>b{
+  width:18px;height:18px;display:grid;place-items:center;
+  color:rgb(var(--op-a));
+  border:1px solid rgba(var(--op-a),.18);
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+}
+.mc-active-build img{width:24px;height:24px;object-fit:cover;border:1px solid rgba(255,255,255,.1)}
