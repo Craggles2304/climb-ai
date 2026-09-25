@@ -1,5 +1,6 @@
 import {Match} from './types';
-import {METRIC_SPECS,MetricSpec,clears,thresholdLabel} from './metrics';
+import {METRIC_SPECS,MetricSpec} from './metrics';
+import {benchmarkBarText,benchmarkPass,missionBenchmark} from './rankMissionBenchmarks';
 
 /**
  * Cost of leak — what a behaviour is actually costing this player.
@@ -53,6 +54,8 @@ export interface LeakPrice{
   fact:string;
   inference:string|null;
   suggestion:string|null;
+  bar:string;
+  rank:string;
 }
 
 const rate=(wins:number,games:number)=>games?wins/games:0;
@@ -69,12 +72,15 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
   if(!spec){
     return unavailable(metric,null,'This behaviour is not scored against a match metric yet.');
   }
+  const rank=matches.find(match=>match.rank)?.rank||'SILVER';
+  const benchmark=missionBenchmark(metric,rank);
+  if(!benchmark)return unavailable(metric,spec,'This behaviour has no rank-aware proof bar yet.');
 
   const usable=matches.filter(m=>typeof m.metrics[spec.key]==='number');
   const cleared:Match[]=[];
   const missed:Match[]=[];
   for(const m of usable){
-    (clears(spec,m.metrics[spec.key] as number)?cleared:missed).push(m);
+    (benchmarkPass(metric,m.metrics[spec.key] as number,m.rank||rank)?cleared:missed).push(m);
   }
 
   const wins=(xs:Match[])=>xs.filter(m=>m.result==='WIN').length;
@@ -97,6 +103,8 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
       fact:`${usable.length} of the ${MIN_TOTAL} games needed to price this leak.`,
       inference:null,
       suggestion:`Play ${needed} more ranked ${needed===1?'game':'games'} and this becomes a number.`,
+      bar:benchmark.barText,
+      rank:benchmark.rank,
     };
   }
 
@@ -106,7 +114,7 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
     ?Math.round(missedSide.games*(clearedSide.winRate-missedSide.winRate))
     :null;
 
-  const bar=thresholdLabel(spec);
+  const bar=benchmarkBarText(metric,rank);
   const fact=`In your last ${usable.length} games, you won ${clearedSide.wins} of ${clearedSide.games} when you held ${bar}, and ${missedSide.wins} of ${missedSide.games} when you did not.`;
 
   // Only claim a gap when one points the right way; a negative or flat split is
@@ -127,7 +135,7 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
     metric,spec,status:'READY',sample:usable.length,
     cleared:clearedSide,missed:missedSide,
     gapPoints,estimatedWinsLost,confidence,gamesNeeded:0,
-    fact,inference,suggestion,
+    fact,inference,suggestion,bar,rank:benchmark.rank,
   };
 }
 
@@ -144,6 +152,6 @@ function unavailable(metric:string,spec:MetricSpec|null,why:string,cleared?:Side
     metric,spec:spec||METRIC_SPECS.post15CsPerMin,status:'METRIC_UNAVAILABLE',sample:0,
     cleared:cleared||empty,missed:missed||empty,
     gapPoints:null,estimatedWinsLost:null,confidence:null,gamesNeeded:MIN_TOTAL,
-    fact:why,inference:null,suggestion:null,
+    fact:why,inference:null,suggestion:null,bar:'mission bar',rank:'UNKNOWN',
   };
 }
