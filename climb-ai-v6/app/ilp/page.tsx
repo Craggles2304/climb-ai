@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
-import {AnimatedBar,AnimatedRing} from '@/components/Motion';
+import {AnimatedBar} from '@/components/Motion';
 import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
@@ -51,9 +51,9 @@ export default function PlayerDevelopmentCentre(){
         <b>{activeTasks.length}/2 ACTIVE</b>
         <small>{matches.length} {active.role.toLowerCase()} games feeding this plan</small>
       </div>
-      <div className="ip-ring"><AnimatedRing value={planProgress} label="PLAN"/></div>
-      <div><span>BANKED REPS</span><b>{banked}/{required||6}</b><small>clean evidence toward mastery</small></div>
-      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits OP CLIMB has retired</small></div>
+      <div><span>CLEAN REPS</span><b>{banked}/{required||6}</b><small>evidence banked</small></div>
+      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits retired</small></div>
+      <div><span>PLAN</span><b>{planProgress}%</b><small>mission progress</small></div>
     </section>
 
     {changes.length>0&&<section className="ip-update">
@@ -62,7 +62,7 @@ export default function PlayerDevelopmentCentre(){
     </section>}
 
     <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>2 missions</small></button>
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{activeTasks.length} missions</small></button>
       <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
       <button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>
     </nav>
@@ -114,7 +114,7 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
       <em>{clean(task.category)}</em>
     </div>
     <h2>{task.title}</h2>
-    <p className="ip-meaning">{plain.meaning}</p>
+    <p className="ip-meaning">{firstSentence(plain.meaning)}</p>
 
     <div className="ip-rule">
       <span>TAKE INTO YOUR NEXT GAME</span>
@@ -139,6 +139,11 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
       <button className="btn secondary" type="button" onClick={event=>{event.preventDefault();pauseTask(task.id)}}>PAUSE MISSION</button>
     </details>
   </article>;
+}
+
+function firstSentence(value:string){
+  const sentence=value.trim().match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
+  return sentence||value.trim();
 }
 
 function EvidenceCard({task,index}:{task:ILPTask;index:number}){
