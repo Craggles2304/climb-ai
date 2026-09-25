@@ -75,7 +75,7 @@ export function bestRawDamageBuild(
     score:winner.score,
     evaluated,
     note:abilityData
-      ?'Optimised for a 3-second raw-damage window: calculable spell damage plus sustained basic attacks. Item passives, target resistances and conditional mechanics are not invented.'
+      ?'Optimised for a 3-second raw-damage window using legally available ability ranks at the selected champion level, calculable spell damage and sustained basic attacks. Item passives, target resistances and conditional mechanics are not invented.'
       :'Ability formulas are unavailable, so this falls back to sustained basic-attack damage.',
   };
 }
@@ -91,12 +91,15 @@ export function rawDamageSnapshot(
     ?abilityDamageRows(abilityData,buildAbilityContext(base,level,stats))
     :[];
 
+  const ranks=damageMaxRanks(rows,level);
   const bestBySlot=new Map<string,number>();
   for(const row of rows){
-    const best=Math.max(0,...row.ranks.map(rank=>rank.value??0));
-    if(best<=0)continue;
+    const rank=ranks.get(row.slot)??0;
+    if(rank<=0)continue;
+    const value=row.ranks[Math.min(rank,row.ranks.length)-1]?.value??0;
+    if(value<=0)continue;
     const current=bestBySlot.get(row.slot)??0;
-    if(best>current)bestBySlot.set(row.slot,best);
+    if(value>current)bestBySlot.set(row.slot,value);
   }
   const comboDamage=[...bestBySlot.values()].reduce((sum,value)=>sum+value,0);
   const threeSecondDamage=round(comboDamage+combat.dps*3);
@@ -107,6 +110,50 @@ export function rawDamageSnapshot(
     threeSecondDamage,
     score:threeSecondDamage,
   };
+}
+
+function damageMaxRanks(
+  rows:ReturnType<typeof abilityDamageRows>,
+  level:number,
+):Map<string,number>{
+  const bySlot=new Map<string,number[]>();
+  for(const row of rows){
+    if(!['Q','W','E','R'].includes(row.slot))continue;
+    const values=row.ranks.map(rank=>rank.value??0);
+    const existing=bySlot.get(row.slot);
+    if(!existing){
+      bySlot.set(row.slot,values);
+      continue;
+    }
+    const maxLength=Math.max(existing.length,values.length);
+    bySlot.set(row.slot,Array.from({length:maxLength},(_,i)=>Math.max(existing[i]??0,values[i]??0)));
+  }
+
+  const ranks=new Map<string,number>([['Q',0],['W',0],['E',0],['R',0]]);
+  const ultRanks=[6,11,16].filter(gate=>level>=gate).length;
+  if(bySlot.has('R'))ranks.set('R',Math.min(ultRanks,bySlot.get('R')!.length));
+
+  let points=Math.max(0,level-(ranks.get('R')??0));
+  const basicCap=Math.min(5,Math.ceil(level/2));
+  while(points>0){
+    let bestSlot:string|null=null;
+    let bestGain=-Infinity;
+    for(const slot of ['Q','W','E']){
+      const values=bySlot.get(slot);
+      if(!values?.length)continue;
+      const current=ranks.get(slot)??0;
+      const cap=Math.min(basicCap,values.length);
+      if(current>=cap)continue;
+      const before=current>0?(values[current-1]??0):0;
+      const after=values[current]??before;
+      const gain=after-before;
+      if(gain>bestGain){bestGain=gain;bestSlot=slot}
+    }
+    if(!bestSlot)break;
+    ranks.set(bestSlot,(ranks.get(bestSlot)??0)+1);
+    points--;
+  }
+  return ranks;
 }
 
 function affectsPossibleDamage(item:BuildItem){
