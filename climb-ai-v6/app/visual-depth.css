@@ -2043,6 +2043,14 @@ body[data-op-area="hq"] .hq-mission-card{
     linear-gradient(145deg,#11191e,#0c1317);
   box-shadow:0 18px 54px rgba(0,0,0,.18);
 }
+body[data-op-area="hq"] .hq-mission-card.is-core{
+  grid-column:1/-1;
+  min-height:300px;
+  border-color:rgba(var(--op-a),.26);
+  background:
+    radial-gradient(560px 260px at 100% 0%,rgba(182,246,107,.12),transparent 70%),
+    linear-gradient(145deg,#111a1e,#0b1216);
+}
 body[data-op-area="hq"] .hq-mission-card.teal{
   background:
     radial-gradient(340px 220px at 100% 0%,rgba(86,217,184,.09),transparent 68%),
@@ -3545,7 +3553,7 @@ body[data-op-area="hq"] .hq-mission-why p{
 }
 
 
-/* ILP V2 — two-mission development plan */
+/* ILP V5 — core + two support development plan */
 .ip-head{
   display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:12px
 }
@@ -3625,7 +3633,8 @@ body[data-op-area="hq"] .hq-mission-why p{
   background:rgba(9,15,19,.72);display:flex;flex-direction:column
 }
 .ip-mission.primary{
-  border-color:rgba(var(--op-a),.20);
+  grid-column:1/-1;
+  border-color:rgba(var(--op-a),.28);
   background:radial-gradient(360px 180px at 100% 0%,rgba(var(--op-a),.07),transparent 72%),rgba(9,15,19,.78)
 }
 .ip-mission.secondary{
@@ -4163,4 +4172,10 @@ body[data-op-area="hq"] .hq-mission-why p{
   .op-progress-toast{right:14px;bottom:76px}
   .ar-mission-update-head{align-items:flex-start;flex-direction:column}
   .ar-mission-update-grid{grid-template-columns:1fr}
+}
+
+/* Three-mission hierarchy */
+@media(max-width:760px){
+  .ip-mission.primary,
+  body[data-op-area="hq"] .hq-mission-card.is-core{grid-column:auto}
 }
