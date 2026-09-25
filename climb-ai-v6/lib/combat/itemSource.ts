@@ -14,7 +14,7 @@ export async function matchupItemCatalogue(patch:string):Promise<Record<string,D
   const payload=await res.json() as {data:Record<string,DataDragonItemFull>};
   const filtered:Record<string,DataDragonItemFull>={};
   for(const [id,item] of Object.entries(payload.data)){
-    if(item.maps?.['11']===false)continue;
+    if(item.maps?.['11']!==true)continue;
     const tags=item.tags??[];
     if(tags.includes('Consumable')||tags.includes('Trinket'))continue;
     if((item.gold?.total??0)<=0)continue;
