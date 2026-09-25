@@ -8,8 +8,8 @@ const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,liveCoachTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
-let championPlanInFlight=false,liveCoachInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
+let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
+let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null};
 
@@ -57,13 +57,11 @@ function setState(patch){
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(enteringChampSelect){
-    stopLiveCoachPoll();matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
+    matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
   }else if(enteringRecording){
     if(needsRecordingPlanRecovery())startChampionPlanPoll();else stopChampionPlanPoll();
-    startLiveCoachPoll();
   }else{
     if(previousPhase==='CHAMP_SELECT'&&state.phase!=='CHAMP_SELECT'&&!needsRecordingPlanRecovery())stopChampionPlanPoll();
-    if(previousPhase==='RECORDING'&&state.phase!=='RECORDING')stopLiveCoachPoll();
   }
   updateTray();
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
@@ -122,32 +120,6 @@ async function pollChampionPlan(){
       const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
       scheduleChampionPlanPoll(botMissing?1200:(state.matchup?.status==='READY'?3000:1500));
     }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(2200);
-  }
-}
-
-function stopLiveCoachPoll(){if(liveCoachTimer){clearTimeout(liveCoachTimer);liveCoachTimer=null}}
-function scheduleLiveCoachPoll(delay=6500){
-  stopLiveCoachPoll();if(state.phase!=='RECORDING')return;
-  liveCoachTimer=setTimeout(()=>{liveCoachTimer=null;void pollLiveCoach()},delay);
-}
-function startLiveCoachPoll(){stopLiveCoachPoll();if(state.phase==='RECORDING')void pollLiveCoach()}
-async function pollLiveCoach(){
-  if(liveCoachInFlight||state.phase!=='RECORDING')return;
-  const cfg=currentConfig();if(!cfg.token)return;
-  liveCoachInFlight=true;
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),6500);
-  try{
-    const response=await fetch(`${cfg.webUrl}/api/live/coaching-tips`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
-    const body=await response.json().catch(()=>({}));
-    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
-    if(response.ok&&body?.ready&&Array.isArray(body.tips)){
-      const teamPlan={...(state.teamPlan||{}),coachLevel:body.coachLevel||state.teamPlan?.coachLevel||null,missionTips:body.tips};
-      setState({teamPlan});
-    }
-  }catch{}
-  finally{
-    clearTimeout(timeout);liveCoachInFlight=false;
-    if(state.phase==='RECORDING')scheduleLiveCoachPoll(6500);
   }
 }
 
@@ -398,7 +370,7 @@ function bindTrackerStream(stream,kind){
   stream.on('end',()=>{if(buffer.trim())addLog(buffer,kind);buffer=''});
 }
 function stopTracker(){
-  stopChampionPlanPoll();stopLiveCoachPoll();stopPostGameReviewPoll();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
+  stopChampionPlanPoll();stopPostGameReviewPoll();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
 }
 function startTracker(){
