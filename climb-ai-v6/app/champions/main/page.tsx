@@ -86,8 +86,7 @@ export default function MainChampionPage(){
   const [names,setNames]=useState<string[]>([]);
   const [loading,setLoading]=useState(false);
   const [buildItems,setBuildItems]=useState<BuildItem[]>([]);
-  const [presetBuild,setPresetBuild]=useState<BuildItem[]>([]);
-  const [presetKey,setPresetKey]=useState(0);
+  const [buildSource,setBuildSource]=useState('CUSTOM');
   const [enemyDraft,setEnemyDraft]=useState<string[]>(['','','','','']);
   const [draftData,setDraftData]=useState<DraftPayload|null>(null);
   const [draftLoading,setDraftLoading]=useState(false);
@@ -123,7 +122,6 @@ export default function MainChampionPage(){
     if(!main){setData(null);return}
     let live=true;
     setLoading(true);
-    setBuildItems([]);
     setDraftData(null);
     const params=new URLSearchParams({champion:main,level:String(level)});
     fetch('/api/champions/main?'+params)
@@ -137,6 +135,12 @@ export default function MainChampionPage(){
       .finally(()=>{if(live)setLoading(false)});
     return()=>{live=false};
   },[main,level]);
+
+  useEffect(()=>{
+    setBuildItems([]);
+    setBuildSource('CUSTOM');
+    setDraftData(null);
+  },[main]);
 
   const championMatches=useMemo(
     ()=>main?matches.filter(match=>match.champion.toLowerCase()===main.toLowerCase()):[],
@@ -179,9 +183,17 @@ export default function MainChampionPage(){
     return abilityDamageRows(data.abilityData,context);
   },[data,buildItems,level]);
 
-  const loadPreset=(items:BuildItem[])=>{
-    setPresetBuild(items);
-    setPresetKey(key=>key+1);
+  const loadBuild=(items:BuildItem[],source:string)=>{
+    setBuildItems(items.slice(0,6));
+    setBuildSource(source);
+    window.requestAnimationFrame(()=>{
+      document.getElementById('build-simulator')?.scrollIntoView({behavior:'smooth',block:'start'});
+    });
+  };
+
+  const editBuild=(items:BuildItem[])=>{
+    setBuildItems(items);
+    setBuildSource('CUSTOM');
   };
 
   const calculateDraft=async()=>{
@@ -319,7 +331,7 @@ export default function MainChampionPage(){
               <em><small>COMBO</small><strong>{Math.round(data.build.maxRawDamage.comboDamage)}</strong></em>
               <em><small>AUTO DPS</small><strong>{Math.round(data.build.maxRawDamage.autoDps)}</strong></em>
             </div>
-            <button className="btn primary" type="button" onClick={()=>loadPreset(data.build!.maxRawDamage!.items)}>LOAD MAX DAMAGE</button>
+            <button className="btn primary" type="button" onClick={()=>loadBuild(data.build!.maxRawDamage!.items,'MAX DAMAGE')}>IMPORT TO SIMULATOR ↓</button>
             <small>{data.build.maxRawDamage.note}</small>
           </div>:null}
         </div>
@@ -370,7 +382,7 @@ export default function MainChampionPage(){
             <div><span>AUTO DPS</span><b>{Math.round(draftData.damage.autoDps)}</b></div>
           </div>}
           <div className="mc-draft-result-actions">
-            <button className="btn primary" type="button" onClick={()=>loadPreset(draftData.recommended as BuildItem[])}>LOAD VS DRAFT BUILD</button>
+            <button className="btn primary" type="button" onClick={()=>loadBuild(draftData.recommended as BuildItem[],'VS ENEMY DRAFT')}>IMPORT TO SIMULATOR ↓</button>
             <small>{draftData.rule}</small>
           </div>
           {draftData.swaps?.length?<div className="mc-draft-swaps"><span>IF THE GAME CHANGES</span>{draftData.swaps.slice(0,3).map(item=><div key={item.id}><b>{item.name}</b><small>{item.why}</small></div>)}</div>:null}
@@ -386,16 +398,19 @@ export default function MainChampionPage(){
         maxRawDamage={data.build.maxRawDamage}
         bySize={data.build.bySize}
         budget={data.build.budget}
-        onBuildChange={setBuildItems}
-        presetBuild={presetBuild}
-        presetKey={presetKey}
+        selectedItems={buildItems}
+        onBuildChange={editBuild}
+        onImportMaxDamage={data.build.maxRawDamage?.items.length?()=>loadBuild(data.build!.maxRawDamage!.items,'MAX DAMAGE'):undefined}
+        buildSource={buildSource}
       />}
 
       <section className="mc-damage-section">
         <div className="mc-section-head">
-          <div><div className="eyebrow">ABILITY DAMAGE · CURRENT BUILD</div><h2>What your abilities hit for.</h2><p>Raw damage before the target&apos;s armour or magic resistance. Change an item above and this table recalculates.</p></div>
+          <div><div className="eyebrow">ABILITY DAMAGE · {buildSource}</div><h2>What your abilities hit for with this exact build.</h2><p>Raw damage before the target&apos;s armour or magic resistance. Add, remove or import an item above and every supported ability recalculates immediately.</p></div>
           <div className="mc-formula-source"><span>FORMULAS</span><b>{data.abilityData?'STRUCTURED DATA':'UNAVAILABLE'}</b>{data.abilityData?.patchLastChanged&&<small>Last formula change: {data.abilityData.patchLastChanged}</small>}</div>
         </div>
+
+        {buildItems.length>0&&<div className="mc-active-build">{buildItems.map((item,index)=><span key={item.id}><b>{index+1}</b>{item.icon?<img src={item.icon} alt="" aria-hidden="true"/>:null}{item.name}</span>)}</div>}
 
         {abilityRows.length?<div className="mc-damage-table-wrap"><table className="mc-damage-table">
           <thead><tr><th>ABILITY</th><th>DAMAGE</th>{Array.from({length:maxRanks(abilityRows)},(_,index)=><th key={index}>RANK {index+1}</th>)}</tr></thead>
