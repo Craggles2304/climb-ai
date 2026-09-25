@@ -1,323 +1,324 @@
 'use client';
+
 import {useEffect,useMemo,useState} from 'react';
-import dynamic from 'next/dynamic';
 import {AppShell} from '@/components/AppShell';
-import {PageHead} from '@/components/UI';
-import {getMainChampion,setMainChampion,MAIN_CHAMPION_EVENT} from '@/lib/mainChampion';
-import {addStats,emptyStats,dpsCurve,type ItemValue,type DpsPoint,type CombatProfile} from '@/lib/champions/dps';
-import type {MatchupRanking,MatchupScore} from '@/lib/champions/ranking';
-import type {ChampionStatBlock} from '@/lib/champions/ddragon';
-import type {BestBuild,BuildItem} from '@/lib/champions/build';
-import type {SkillOrder} from '@/lib/champions/skillOrder';
 import {ChampionBuilder} from '@/components/ChampionBuilder';
-import {MaxDpsTable,SkillOrderTable} from '@/components/MaxDpsTables';
+import {useAccount,matchesFor} from '@/components/AccountContext';
+import {getBrowserClient} from '@/lib/supabase/client';
+import {getMainChampion,setMainChampion,MAIN_CHAMPION_EVENT} from '@/lib/mainChampion';
+import {buildStats,type BestBuild,type BuildItem} from '@/lib/champions/build';
+import {
+  abilityDamageRows,
+  buildAbilityContext,
+  type ChampionAbilityDataset,
+  type AbilityDamageCell,
+} from '@/lib/champions/abilityDamage';
+import type {ChampionStatBlock} from '@/lib/champions/ddragon';
 
-/** Recharts is heavy, so it stays out of the shared bundle. */
-const DpsCurve=dynamic(()=>import('@/components/DpsCurve').then(m=>m.DpsCurve),{
-  ssr:false,
-  loading:()=><div className="glass card" style={{marginTop:16}}><p className="muted">Drawing the damage curve…</p></div>,
-});
+const CHAMPION_ASSET_IDS:Record<string,string>={
+  Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
+};
+const championAsset=(name:string)=>CHAMPION_ASSET_IDS[name]||name.replace(/[^A-Za-z0-9]/g,'');
+const championSplash=(name?:string)=>name?`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championAsset(name)}_0.jpg`:'';
+const plain=(value?:string)=>String(value||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
 
-/**
- * The main-champion page: damage curve, what every item is worth, and every
- * matchup ranked with the reasoning behind each score.
- *
- * It is gated behind picking a main on purpose. All of this is one champion's
- * stat line in depth, which is useful to someone who plays that champion and
- * noise to everyone else.
- */
-
-type Payload={
-  ok:boolean;error?:string;patch?:string;level?:number;
-  champion?:{id:string;name:string;title:string;tags:string[];attackRange:number;
-    info:{attack:number;defense:number;magic:number;difficulty:number};autoAttackReliant:boolean;
-    stats:ChampionStatBlock};
-  dps?:{curve:DpsPoint[];atLevel:CombatProfile};
-  items?:{best:ItemValue[];worst:ItemValue[];all:ItemValue[];damageItemCount:number;totalCount:number};
-  build?:{catalogue:BuildItem[];maxDps:BestBuild;bySize:BestBuild[];budget:number|null};
-  skillOrder?:SkillOrder;
-  ranking?:MatchupRanking|null;
-  names?:string[];
+type Spell={
+  slot:'Q'|'W'|'E'|'R'|'?';
+  id:string;
+  name:string;
+  maxrank:number;
+  description:string;
+  tooltip:string;
+  cooldown:number[];
+  cost:number[];
+  range:number[];
+  image?:{full?:string}|null;
 };
 
-const LANE_TAGS=['Marksman','Mage','Fighter','Tank','Assassin','Support'];
+type Payload={
+  ok:boolean;
+  error?:string;
+  patch?:string;
+  names?:string[];
+  level?:number;
+  champion?:{
+    id:string;
+    name:string;
+    title:string;
+    tags:string[];
+    attackRange:number;
+    info:{attack:number;defense:number;magic:number;difficulty:number};
+    autoAttackReliant:boolean;
+    stats:ChampionStatBlock;
+    passive:{name:string;description:string;image?:{full?:string}};
+    spells:Spell[];
+  };
+  abilityData?:ChampionAbilityDataset|null;
+  build?:{catalogue:BuildItem[];maxDps:BestBuild;bySize:BestBuild[];budget:number|null};
+};
 
-export default function MainChampion(){
-  const [main,setMain]=useState<string|null>(null);
-  const [ready,setReady]=useState(false);
+export default function MainChampionPage(){
+  const {active,authenticated,refresh}=useAccount();
+  const matches=matchesFor(active.id);
+  const [main,setMain]=useState('');
   const [draft,setDraft]=useState('');
   const [level,setLevel]=useState(11);
-  const [tags,setTags]=useState<string[]>([]);
-  const [budget,setBudget]=useState<number|''>('');
   const [data,setData]=useState<Payload|null>(null);
+  const [names,setNames]=useState<string[]>([]);
   const [loading,setLoading]=useState(false);
-  const [compare,setCompare]=useState<ItemValue|null>(null);
-  const [tab,setTab]=useState<'strong'|'weak'|'all'>('strong');
-  const [open,setOpen]=useState<string|null>(null);
+  const [buildItems,setBuildItems]=useState<BuildItem[]>([]);
+  const [saveState,setSaveState]=useState<'idle'|'saving'|'saved'|'error'>('idle');
 
-  // localStorage is only readable on the client, so the picker must not flash
-  // before we know whether a main is already set.
   useEffect(()=>{
-    setMain(getMainChampion());
-    setReady(true);
-    const onChange=()=>setMain(getMainChampion());
+    const initial=getMainChampion()||active.champions?.[0]||'';
+    if(initial){
+      setMain(initial);
+      setDraft(initial);
+      if(!getMainChampion())setMainChampion(initial);
+    }
+    const onChange=()=>{
+      const next=getMainChampion()||'';
+      setMain(next);
+      setDraft(next);
+      setBuildItems([]);
+    };
     window.addEventListener(MAIN_CHAMPION_EVENT,onChange);
-    return ()=>window.removeEventListener(MAIN_CHAMPION_EVENT,onChange);
+    return()=>window.removeEventListener(MAIN_CHAMPION_EVENT,onChange);
+  },[active.id,active.champions]);
+
+  useEffect(()=>{
+    let live=true;
+    fetch('/api/champions/main')
+      .then(response=>response.json())
+      .then((body:Payload)=>{if(live&&body.ok)setNames(body.names||[])})
+      .catch(()=>{});
+    return()=>{live=false};
   },[]);
 
   useEffect(()=>{
-    if(!main)return;
+    if(!main){setData(null);return}
     let live=true;
     setLoading(true);
+    setBuildItems([]);
     const params=new URLSearchParams({champion:main,level:String(level)});
-    if(tags.length)params.set('tags',tags.join(','));
-    if(budget!=='')params.set('budget',String(budget));
-    fetch(`/api/champions/main?${params}`)
-      .then(r=>r.json())
-      .then(d=>{if(live){setData(d);setCompare(null)}})
-      .catch(()=>{if(live)setData({ok:false,error:'Could not reach champion data.'})})
+    fetch('/api/champions/main?'+params)
+      .then(response=>response.json())
+      .then((body:Payload)=>{
+        if(!live)return;
+        setData(body);
+        if(body.names?.length)setNames(body.names);
+      })
+      .catch(()=>{if(live)setData({ok:false,error:'Could not load champion data.'})})
       .finally(()=>{if(live)setLoading(false)});
-    return ()=>{live=false};
-  },[main,level,tags,budget]);
+    return()=>{live=false};
+  },[main,level]);
 
-  // Recomputed client-side so picking a different item to compare is instant
-  // rather than a round trip.
-  const withItemCurve=useMemo(()=>{
-    if(!compare||!data?.champion?.stats)return undefined;
-    return dpsCurve(data.champion.stats,addStats(emptyStats(),compare.stats));
-  },[compare,data]);
+  const championMatches=useMemo(
+    ()=>main?matches.filter(match=>match.champion.toLowerCase()===main.toLowerCase()):[],
+    [matches,main],
+  );
+  const personal=useMemo(()=>{
+    if(!championMatches.length)return{games:0,winRate:0,kda:0,csPerMin:0};
+    const wins=championMatches.filter(match=>match.result==='WIN').length;
+    const kills=championMatches.reduce((sum,match)=>sum+match.kills,0);
+    const deaths=championMatches.reduce((sum,match)=>sum+match.deaths,0);
+    const assists=championMatches.reduce((sum,match)=>sum+match.assists,0);
+    const csPerMin=championMatches.reduce((sum,match)=>sum+(match.metrics.csPerMin||0),0)/championMatches.length;
+    return{
+      games:championMatches.length,
+      winRate:Math.round(wins/championMatches.length*100),
+      kda:Math.round(((kills+assists)/Math.max(1,deaths))*10)/10,
+      csPerMin:Math.round(csPerMin*10)/10,
+    };
+  },[championMatches]);
 
-  if(!ready)return <AppShell><PageHead title="Main champion" subtitle="Loading."/></AppShell>;
+  const recentBuilds=useMemo(()=>{
+    const seen=new Set<string>();
+    const builds:string[][]=[];
+    for(const match of championMatches){
+      const items=(match.items||[]).filter(Boolean);
+      if(!items.length)continue;
+      const key=items.join('|');
+      if(seen.has(key))continue;
+      seen.add(key);
+      builds.push(items);
+      if(builds.length===3)break;
+    }
+    return builds;
+  },[championMatches]);
 
-  if(!main)
-    return <AppShell>
-      <PageHead title="Pick your main"
-        subtitle="This page goes deep on one champion: damage, items and every matchup."/>
-      <div className="glass card form">
-        <div className="field">
-          <label>Which champion do you main?</label>
-          <input className="input" value={draft} placeholder="e.g. Caitlyn"
-            onChange={e=>setDraft(e.target.value)}
-            onKeyDown={e=>{if(e.key==='Enter'&&draft.trim())setMainChampion(draft.trim())}}/>
-        </div>
-        <button className="btn primary" disabled={!draft.trim()}
-          onClick={()=>setMainChampion(draft.trim())}>SET AS MY MAIN</button>
-        <p className="muted" style={{marginTop:14,fontSize:13}}>
-          You can change this any time. It is stored in this browser only.
-        </p>
-      </div>
-    </AppShell>;
+  const abilityRows=useMemo(()=>{
+    if(!data?.champion||!data.abilityData)return[];
+    const bonuses=buildStats(buildItems);
+    const context=buildAbilityContext(data.champion.stats,level,bonuses);
+    return abilityDamageRows(data.abilityData,context);
+  },[data,buildItems,level]);
 
-  const c=data?.champion;
-  const ranking=data?.ranking;
-  const shown=tab==='strong'?ranking?.strongest:tab==='weak'?ranking?.weakest:ranking?.all;
+  const chooseMain=async()=>{
+    const value=draft.trim();
+    if(!value)return;
+    const canonical=names.find(name=>name.toLowerCase()===value.toLowerCase())||value;
+    setSaveState('saving');
+    setMainChampion(canonical);
+    setMain(canonical);
+    setDraft(canonical);
+    try{
+      if(authenticated){
+        const client=await getBrowserClient();
+        if(client){
+          const {data:userData}=await client.auth.getUser();
+          const user=userData.user;
+          if(user){
+            const champions=[canonical,...(active.champions||[]).filter(name=>name.toLowerCase()!==canonical.toLowerCase())].slice(0,8);
+            await Promise.all([
+              client.from('profiles').update({champions,updated_at:new Date().toISOString()}).eq('id',user.id),
+              client.from('riot_accounts').update({champions,updated_at:new Date().toISOString()}).eq('id',active.id).eq('user_id',user.id),
+            ]);
+            await refresh();
+          }
+        }
+      }
+      setSaveState('saved');
+      window.setTimeout(()=>setSaveState('idle'),1600);
+    }catch{
+      setSaveState('error');
+    }
+  };
+
+  const champion=data?.champion;
+  const patch=data?.patch||'';
+  const spellIcon=(spell:Spell)=>patch&&spell.image?.full
+    ?`https://ddragon.leagueoflegends.com/cdn/${patch}/img/spell/${spell.image.full}`
+    :'';
+  const passiveIcon=champion&&patch&&champion.passive.image?.full
+    ?`https://ddragon.leagueoflegends.com/cdn/${patch}/img/passive/${champion.passive.image.full}`
+    :'';
 
   return <AppShell>
-    <PageHead
-      title={c?c.name.toUpperCase():main.toUpperCase()}
-      subtitle={c?`${c.title} · ${c.tags.join(' / ')} · your main`:'Loading champion data…'}
-      action={<button className="btn secondary" onClick={()=>setMainChampion('')}>CHANGE MAIN</button>}/>
+    <section className="mc-picker-bar">
+      <div>
+        <span>MY MAIN CHAMPION</span>
+        <strong>{main||'Not chosen yet'}</strong>
+      </div>
+      <div className="mc-picker-control">
+        <input className="input" list="main-champion-list" value={draft} placeholder="Search a champion…"
+          onChange={event=>setDraft(event.target.value)}
+          onKeyDown={event=>{if(event.key==='Enter')void chooseMain()}}/>
+        <datalist id="main-champion-list">{names.map(name=><option key={name} value={name}/>)}</datalist>
+        <button className="btn primary" type="button" disabled={!draft.trim()||saveState==='saving'} onClick={()=>void chooseMain()}>
+          {saveState==='saving'?'SAVING…':saveState==='saved'?'SAVED ✓':'SET MAIN'}
+        </button>
+      </div>
+      {saveState==='error'&&<small className="danger">Saved on this device, but cloud sync failed.</small>}
+    </section>
 
-    <div className="glass card form" style={{maxWidth:'none'}}>
-      <div className="grid three">
-        <div className="field"><label>Champion</label>
-          <input className="input" list="all-champions" value={main}
-            onChange={e=>setMainChampion(e.target.value)}/>
-          <datalist id="all-champions">
-            {(data?.names??[]).map(n=><option key={n} value={n}/>)}
-          </datalist>
-        </div>
-        <div className="field"><label>Level</label>
-          <select className="input" value={level} onChange={e=>setLevel(Number(e.target.value))}>
-            {[1,2,3,6,9,11,13,16,18].map(l=><option key={l} value={l}>Level {l}</option>)}
-          </select>
-        </div>
-        <div className="field"><label>Gold budget (optional)</label>
-          <input className="input" type="number" min={0} step={500} value={budget}
-            placeholder="No limit"
-            onChange={e=>setBudget(e.target.value===''?'':Math.max(0,Number(e.target.value)))}/>
-        </div>
-        <div className="field" style={{gridColumn:'span 2'}}>
-          <label>Only compare against</label>
-          <div className="tag-row">
-            {LANE_TAGS.map(t=>
-              <button key={t} type="button"
-                className={`tag-chip${tags.includes(t)?' active':''}`}
-                onClick={()=>setTags(tags.includes(t)?tags.filter(x=>x!==t):[...tags,t])}>
-                {t}
-              </button>)}
-            {tags.length>0&&
-              <button type="button" className="tag-chip clear" onClick={()=>setTags([])}>Clear</button>}
+    {!main&&<section className="mc-empty">
+      <div className="eyebrow">START HERE</div>
+      <h1>Pick the champion you actually want to master.</h1>
+      <p>Once selected, this page becomes your permanent champion workspace: your results, abilities, builds and damage simulator.</p>
+    </section>}
+
+    {main&&<>{loading&&!champion&&<section className="mc-loading"><span>LOADING {main.toUpperCase()}…</span></section>}
+
+    {data&&!data.ok&&<section className="glass card"><h2>Champion data did not load.</h2><p className="muted">{data.error}</p></section>}
+
+    {champion&&data?.ok&&<>
+      <section className="mc-hero">
+        <img className="mc-hero-art" src={championSplash(champion.name)} alt="" aria-hidden="true"/>
+        <div className="mc-hero-shade"/>
+        <div className="mc-hero-content">
+          <div className="mc-hero-kicker"><span>YOUR MAIN</span><i/>RIOT PATCH {patch}</div>
+          <div className="mc-hero-copy">
+            <div><h1>{champion.name}</h1><p>{champion.title} · {champion.tags.join(' / ')}</p></div>
+            <label className="mc-level"><span>SIMULATOR LEVEL</span><select value={level} onChange={event=>setLevel(Number(event.target.value))}>
+              {[1,3,6,9,11,13,16,18].map(value=><option key={value} value={value}>LEVEL {value}</option>)}
+            </select></label>
+          </div>
+          <div className="mc-player-stats">
+            <div><span>YOUR GAMES</span><b>{personal.games||'—'}</b></div>
+            <div><span>WIN RATE</span><b>{personal.games?personal.winRate+'%':'—'}</b></div>
+            <div><span>KDA</span><b>{personal.games?personal.kda:'—'}</b></div>
+            <div><span>CS / MIN</span><b>{personal.games?personal.csPerMin:'—'}</b></div>
           </div>
         </div>
-      </div>
-    </div>
+      </section>
 
-    {loading&&!data?.ok&&
-      <div className="glass card" style={{marginTop:16}}><p className="muted">Reading champion data…</p></div>}
+      <section className="mc-section">
+        <div className="mc-section-head"><div><div className="eyebrow">YOUR KIT</div><h2>Know exactly what every button does.</h2></div><span className="mc-patch-chip">CURRENT DATA · {patch}</span></div>
+        <div className="mc-ability-grid">
+          <AbilityCard slot="P" name={champion.passive.name} icon={passiveIcon} text={champion.passive.description}/>
+          {champion.spells.map(spell=><AbilityCard key={spell.id} slot={spell.slot} name={spell.name} icon={spellIcon(spell)}
+            text={spell.description||spell.tooltip} cooldown={spell.cooldown} cost={spell.cost}/>)}
+        </div>
+      </section>
 
-    {data&&!data.ok&&
-      <div className="glass card" style={{marginTop:16}}>
-        <h2>Could not load {main}.</h2>
-        <p className="muted">{data.error}</p>
-        <button className="btn secondary" style={{marginTop:12}} onClick={()=>setMainChampion('')}>PICK A DIFFERENT CHAMPION</button>
-      </div>}
+      <section className="mc-section">
+        <div className="mc-section-head"><div><div className="eyebrow">BUILDS</div><h2>Your real games + a damage baseline.</h2></div></div>
+        <div className="mc-build-presets">
+          {recentBuilds.length>0?recentBuilds.map((items,index)=><div className="mc-preset" key={items.join('|')+index}>
+            <span>{index===0?'YOUR LATEST BUILD':'RECENT BUILD '+(index+1)}</span>
+            <div>{items.map((item,itemIndex)=><b key={item+'-'+itemIndex}>{item}</b>)}</div>
+          </div>):<div className="mc-preset empty"><span>YOUR BUILDS</span><p>Play tracked games on {champion.name} and your actual completed builds will appear here.</p></div>}
+          {data.build?.bySize?.[2]?.items?.length?<div className="mc-preset damage">
+            <span>3-ITEM DAMAGE BASELINE</span>
+            <div>{data.build.bySize[2].items.map(item=><b key={item.id}>{item.name}</b>)}</div>
+            <small>Highest basic-attack DPS found at this level. Not a universal recommended build.</small>
+          </div>:null}
+        </div>
+      </section>
 
-    {data?.ok&&c&&data.dps&&<>
-      {!c.autoAttackReliant&&
-        <div className="glass card data-note" style={{marginTop:16}}>
-          <div className="eyebrow">READ THIS FIRST</div>
-          <p className="muted">
-            Riot rates {c.name}&rsquo;s damage as mostly magic ({c.info.magic}/10 magic
-            against {c.info.attack}/10 attack). The damage numbers below are auto-attacks
-            only, so for {c.name} they describe a minority of what you actually do. An
-            item showing no damage gain here is <b>not</b> a bad item on {c.name} —
-            Riot stopped publishing ability coefficients, so ability damage cannot be
-            calculated by anyone from this data.
-          </p>
+      {data.build&&<ChampionBuilder
+        champion={champion.name}
+        stats={champion.stats}
+        level={level}
+        catalogue={data.build.catalogue}
+        maxDps={data.build.maxDps}
+        bySize={data.build.bySize}
+        budget={data.build.budget}
+        onBuildChange={setBuildItems}
+      />}
+
+      <section className="mc-damage-section">
+        <div className="mc-section-head">
+          <div><div className="eyebrow">ABILITY DAMAGE · CURRENT BUILD</div><h2>What your abilities hit for.</h2><p>Raw damage before the target&apos;s armour or magic resistance. Change an item above and this table recalculates.</p></div>
+          <div className="mc-formula-source"><span>FORMULAS</span><b>{data.abilityData?'STRUCTURED DATA':'UNAVAILABLE'}</b>{data.abilityData?.patchLastChanged&&<small>Last formula change: {data.abilityData.patchLastChanged}</small>}</div>
+        </div>
+
+        {abilityRows.length?<div className="mc-damage-table-wrap"><table className="mc-damage-table">
+          <thead><tr><th>ABILITY</th><th>DAMAGE</th>{Array.from({length:maxRanks(abilityRows)},(_,index)=><th key={index}>RANK {index+1}</th>)}</tr></thead>
+          <tbody>{abilityRows.map(row=><tr key={row.id}>
+            <td><span className="mc-slot">{row.slot}</span><div><b>{row.ability}</b><small>{row.damageType||'DAMAGE'}</small></div></td>
+            <td><span>{row.attribute}</span></td>
+            {Array.from({length:maxRanks(abilityRows)},(_,index)=>{
+              const cell=row.ranks[index];
+              return <td key={index}>{cell?<DamageValue cell={cell}/>:<span className="mc-na">—</span>}</td>;
+            })}
+          </tr>)}</tbody>
+        </table></div>:<div className="mc-no-formulas">
+          <b>Ability formula data is not available for this champion yet.</b>
+          <p>The build simulator still uses current Riot item and champion stats. Optimus will not invent spell damage when the formula source cannot support it.</p>
         </div>}
-
-      <div className="grid four" style={{marginTop:16}}>
-        <div className="glass card"><div className="label">DPS AT {level}</div><div className="metric">{data.dps.atLevel.dps}</div></div>
-        <div className="glass card"><div className="label">ATTACK DAMAGE</div><div className="metric">{data.dps.atLevel.attackDamage}</div></div>
-        <div className="glass card"><div className="label">ATTACK SPEED</div><div className="metric">{data.dps.atLevel.attackSpeed.toFixed(2)}</div></div>
-        <div className="glass card"><div className="label">ATTACK RANGE</div><div className="metric">{c.attackRange}</div></div>
-      </div>
-
-      <DpsCurve base={data.dps.curve} withItem={withItemCurve} itemName={compare?.name}/>
-
-      {data.build&&
-        <ChampionBuilder
-          champion={c.name} stats={c.stats} level={level}
-          catalogue={data.build.catalogue} maxDps={data.build.maxDps} bySize={data.build.bySize}
-          budget={data.build.budget}/>}
-
-      {data.build&&
-        <MaxDpsTable
-          champion={c.name} level={level}
-          maxDps={data.build.maxDps} bySize={data.build.bySize}
-          budget={data.build.budget}/>}
-
-      {data.skillOrder&&<SkillOrderTable order={data.skillOrder}/>}
-
-      {data.items&&<>
-        <div className="glass card" style={{marginTop:16}}>
-          <div className="eyebrow">ITEMS · MOST AUTO-ATTACK DAMAGE PER 1000 GOLD</div>
-          <h2>Best value damage on {c.name}</h2>
-          <p className="muted">
-            {data.items.damageItemCount} of {data.items.totalCount} completed items add
-            auto-attack damage on {c.name}, measured at level {level} with nothing else built.
-          </p>
-          <div style={{overflowX:'auto',marginTop:14}}>
-            <table className="table">
-              <thead><tr><th>Item</th><th>Cost</th><th>DPS added</th><th>Per 1000g</th><th>Effective HP</th></tr></thead>
-              <tbody>{data.items.best.map(v=>
-                <tr key={v.id} className={`item-row${compare?.id===v.id?' active':''}`}
-                  onClick={()=>setCompare(compare?.id===v.id?null:v)}>
-                  <td>{v.name}</td><td>{v.gold}g</td><td>+{v.dpsGain}</td>
-                  <td><b>{v.dpsPerThousandGold}</b></td><td>{v.ehpGain>0?`+${v.ehpGain}`:'—'}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="glass card" style={{marginTop:16}}>
-          <div className="eyebrow">ITEMS · LEAST AUTO-ATTACK DAMAGE PER 1000 GOLD</div>
-          <h2>Weakest value for damage</h2>
-          <p className="muted">
-            These still add damage, just least per gold. Items that add none at all are
-            excluded from this ranking rather than placed last on a scale they do not belong to.
-          </p>
-          <div style={{overflowX:'auto',marginTop:14}}>
-            <table className="table">
-              <thead><tr><th>Item</th><th>Cost</th><th>DPS added</th><th>Per 1000g</th><th>Note</th></tr></thead>
-              <tbody>{data.items.worst.map(v=>
-                <tr key={v.id}>
-                  <td>{v.name}</td><td>{v.gold}g</td><td>+{v.dpsGain}</td>
-                  <td><b>{v.dpsPerThousandGold}</b></td>
-                  <td className="muted" style={{fontSize:12}}>{v.note??'—'}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        <div className="glass card" style={{marginTop:16}}>
-          <div className="eyebrow">EVERY COMPLETED ITEM · {data.items.totalCount} ON THE RIFT</div>
-          <div style={{overflowX:'auto',marginTop:14,maxHeight:460}}>
-            <table className="table">
-              <thead><tr><th>Item</th><th>Cost</th><th>DPS</th><th>Effective HP</th><th>AP</th><th>Note</th></tr></thead>
-              <tbody>{data.items.all.map(v=>
-                <tr key={v.id}>
-                  <td>{v.name}</td><td>{v.gold}g</td>
-                  <td>{v.dpsGain>0?`+${v.dpsGain}`:'—'}</td>
-                  <td>{v.ehpGain>0?`+${v.ehpGain}`:'—'}</td>
-                  <td>{v.abilityPowerGain>0?`+${v.abilityPowerGain}`:'—'}</td>
-                  <td className="muted" style={{fontSize:12}}>{v.note??''}</td>
-                </tr>)}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </>}
-
-      {ranking&&<>
-        <div className="glass card" style={{marginTop:16}}>
-          <div className="section-row">
-            <div>
-              <div className="eyebrow">MATCHUPS · STAT LINE AT LEVEL {level}</div>
-              <h2 style={{margin:'6px 0 0'}}>{ranking.all.length} matchups ranked</h2>
-            </div>
-            <div className="tag-row">
-              {([['strong','Biggest edge'],['weak','Smallest edge'],['all','All']] as const).map(([k,label])=>
-                <button key={k} type="button" className={`tag-chip${tab===k?' active':''}`}
-                  onClick={()=>setTab(k)}>{label}</button>)}
-            </div>
-          </div>
-          <p className="muted" style={{marginTop:10}}>{ranking.summary}</p>
-
-          <div className="matchup-rank-list">
-            {(shown??[]).map(m=>
-              <MatchupRow key={m.opponentId} m={m}
-                open={open===m.opponentId}
-                onToggle={()=>setOpen(open===m.opponentId?null:m.opponentId)}/>)}
-          </div>
-        </div>
-
-        <div className="glass card data-note" style={{marginTop:16}}>
-          <div className="eyebrow">WHAT THIS RANKING CANNOT SEE</div>
-          <ul className="riot-tips">{ranking.blindSpots.map(b=><li key={b}>{b}</li>)}</ul>
-          <p className="muted">Champion and item data from patch {data.patch}.</p>
-        </div>
-      </>}
-    </>}
+        {abilityRows.length>0&&<p className="mc-damage-note"><b>* VARIABLE</b> means part of that damage depends on a target, stack, mark, distance or another live-game condition. Optimus shows the calculable portion and does not guess the rest.</p>}
+      </section>
+    </>}</>}
   </AppShell>;
 }
 
-function MatchupRow({m,open,onToggle}:{m:MatchupScore;open:boolean;onToggle:()=>void}){
-  const cls=m.edge==='YOU'?'edge-you':m.edge==='THEM'?'edge-them':'edge-even';
-  return <div className="matchup-rank">
-    <button type="button" className="matchup-rank-head" onClick={onToggle}>
-      <span className={`rank-score ${cls}`}>{m.score>0?'+':''}{m.score}</span>
-      <span className="rank-name">{m.opponentName}<small>{m.opponentTags.join(' / ')}</small></span>
-      <span className="rank-toggle">{open?'HIDE':'WHY'}</span>
-    </button>
-    {open&&
-      <div className="matchup-rank-body">
-        {m.contributions.map(c=>
-          <div className="rank-contribution" key={c.key}>
-            <div className="rank-contribution-head">
-              <span className="label">{c.label}</span>
-              <span className={`edge-tag ${c.edge==='YOU'?'edge-you':c.edge==='THEM'?'edge-them':'edge-even'}`}>
-                {c.points>0?'+':''}{c.points}
-              </span>
-            </div>
-            <div className="matchup-fact-values">
-              <span><b>You</b> {c.you}</span><span><b>Them</b> {c.them}</span>
-            </div>
-            <p className="muted">{c.note}</p>
-          </div>)}
-      </div>}
-  </div>;
+function AbilityCard({slot,name,icon,text,cooldown,cost}:{slot:string;name:string;icon:string;text?:string;cooldown?:number[];cost?:number[]}){
+  const cooldownText=(cooldown||[]).filter((value,index,array)=>Number.isFinite(value)&&array.indexOf(value)===index).join(' / ');
+  const costText=(cost||[]).filter((value,index,array)=>Number.isFinite(value)&&array.indexOf(value)===index).join(' / ');
+  return <article className="mc-ability-card">
+    <div className="mc-ability-head">{icon?<img src={icon} alt="" aria-hidden="true"/>:<span className="mc-ability-fallback">{slot}</span>}<div><span>{slot}</span><h3>{name}</h3></div></div>
+    <p>{plain(text)||'Ability details are not available in the current champion feed.'}</p>
+    {(cooldownText||costText)&&<div className="mc-ability-meta">{cooldownText&&<span>CD <b>{cooldownText}s</b></span>}{costText&&<span>COST <b>{costText}</b></span>}</div>}
+  </article>;
+}
+
+function DamageValue({cell}:{cell:AbilityDamageCell}){
+  if(cell.value===null)return <span className="mc-variable">VAR*</span>;
+  return <span className={cell.exact?'mc-damage-value':'mc-damage-value variable'}>{Math.round(cell.value*10)/10}{cell.exact?'':'*'}</span>;
+}
+
+function maxRanks(rows:Array<{ranks:AbilityDamageCell[]}>){
+  return Math.max(1,...rows.map(row=>row.ranks.length));
 }
