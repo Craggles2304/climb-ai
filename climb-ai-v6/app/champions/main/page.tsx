@@ -301,6 +301,24 @@ export default function MainChampionPage(){
     setCombo([]);
   },[main]);
 
+  useEffect(()=>{
+    if(!targetName)return;
+    let live=true;
+    const params=new URLSearchParams({champion:targetName,level:String(level)});
+    fetch('/api/champions/main/target?'+params)
+      .then(response=>response.json())
+      .then((body:TargetPayload)=>{
+        if(!live||!body.ok||!body.target)return;
+        setTargetStats({
+          hp:body.target.hp,
+          armor:body.target.armor,
+          magicResist:body.target.magicResist,
+        });
+      })
+      .catch(()=>{});
+    return()=>{live=false};
+  },[targetName,level]);
+
   const championMatches=useMemo(
     ()=>main?matches.filter(match=>match.champion.toLowerCase()===main.toLowerCase()):[],
     [matches,main],
