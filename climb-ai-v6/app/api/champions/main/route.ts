@@ -9,6 +9,7 @@ import {championDetail,championRoster,itemCatalogue,latestPatch,resolveChampionI
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
 import {championAbilityDataset} from '@/lib/champions/merakiAbilitySource';
+import {bestRawDamageBuild} from '@/lib/champions/rawDamageBuild';
 
 export const runtime='nodejs';
 export const revalidate=3600;
@@ -114,6 +115,7 @@ export async function GET(req:NextRequest){
       build:{
         catalogue,
         maxDps:bestBuild(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
+        maxRawDamage:bestRawDamageBuild(detail.stats,level,catalogue,abilityData,MAX_BUILD_SIZE),
         bySize:maxDpsBySize(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
         budget:budget??null,
       },
