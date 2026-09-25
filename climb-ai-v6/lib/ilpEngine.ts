@@ -45,7 +45,11 @@ case'clipReview':return{progress:task.progress,passed:task.progress>=100,note:ta
 function matchPass(task:ILPTask,match:Match):boolean|null{const pro=proMetric(task,match);if(pro)return(pro.score as number)>=missionTargetNumber(task.target);const m=match.metrics;switch(task.metric){case'laneCsPerMin':return typeof m.laneCsPerMin==='number'?m.laneCsPerMin>=6.5:null;case'post15CsPerMin':return typeof m.post15CsPerMin==='number'?m.post15CsPerMin>=6:null;case'csPerMin':return typeof m.csPerMin==='number'?m.csPerMin>=6:null;case'deathsPost20':return typeof m.deathsPost20==='number'?m.deathsPost20<=2:null;case'deaths':return match.deaths<=4;case'secondItemMinute':return typeof m.secondItemMinute==='number'?m.secondItemMinute<=23:null;case'objectiveParticipation':return typeof m.objectiveParticipation==='number'?m.objectiveParticipation>=.7:null;case'damageShare':return typeof m.damageShare==='number'?m.damageShare>=.25:null;case'killParticipation':return typeof m.killParticipation==='number'?m.killParticipation>=.65:null;case'visionScore':return typeof m.visionScore==='number'?m.visionScore>=40:null;case'deathsPre10':return typeof m.deathsPre10==='number'?m.deathsPre10===0:null;case'csAt10':return typeof m.csAt10==='number'?m.csAt10>=65:null;case'csAt15':return typeof m.csAt15==='number'?m.csAt15>=100:null;default:return null}}
 
 function automaticAttempts(task:ILPTask,matches:Match[]){
-  const existing=new Map((task.missionHistory??[]).map(attempt=>[attempt.matchId,attempt]));
+  const existing=new Map(
+    (task.missionHistory??[])
+      .filter(attempt=>attempt.source==='TRACKED'||attempt.adherence==='TRACKED')
+      .map(attempt=>[attempt.matchId,attempt])
+  );
   const startEvent=(task.history??[]).find(event=>event.type==='PROMOTED'||event.type==='COACH_EDIT');
   const startedAt=startEvent?.at?Date.parse(startEvent.at):Number.NEGATIVE_INFINITY;
   for(const match of matches){
