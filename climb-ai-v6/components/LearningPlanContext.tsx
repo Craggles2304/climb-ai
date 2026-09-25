@@ -6,7 +6,6 @@ import {useAccount,matchesFor} from './AccountContext';
 import {firstPlan,PROFILE_ACCOUNT_ID} from '@/lib/profile';
 import {ACTIVE_PLAN_SIZE,adaptAndRefill,createCoachTask,ensureFiveActive,isGameMeasurableTask,rankTasks,reviseTaskFromCoach} from '@/lib/ilpEngine';
 import {orderTasks,OrderedTask,orderingNote} from '@/lib/planOrder';
-import {upsertMissionAttempt} from '@/lib/missionLoop';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
