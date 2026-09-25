@@ -3163,7 +3163,7 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ar-latest-top>span.win{color:#b6f66b;border-color:rgba(182,246,107,.22);background:rgba(182,246,107,.05)}
 .ar-latest-top>span.loss{color:#ff8179;border-color:rgba(255,129,121,.22);background:rgba(255,129,121,.05)}
 .ar-latest-top small{color:#829095;font:700 9px/1.3 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.06em}
-.ar-latest-main{align-items:end}
+.ar-latest-main{align-items:flex-end}
 .ar-latest-main h2{
   margin:6px 0 4px;
   font:900 clamp(38px,6vw,72px)/.88 var(--font-display,'Barlow Condensed',sans-serif);
@@ -3245,7 +3245,7 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ar-trend-strip em.down{color:#e18d87}
 .ar-controls{
   display:flex;
-  align-items:end;
+  align-items:flex-end;
   gap:12px;
   margin:20px 0 10px;
   padding:12px;
@@ -3290,7 +3290,7 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ar-queue-head{
   display:flex;
   justify-content:space-between;
-  align-items:end;
+  align-items:flex-end;
   gap:14px;
   margin:20px 0 9px;
 }
