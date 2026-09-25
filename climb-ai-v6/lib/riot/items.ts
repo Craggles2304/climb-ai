@@ -31,7 +31,7 @@ export function isCompletedItem(item:DataDragonItem):boolean{
   const buildsIntoNothing=!item.into||item.into.length===0;
   const builtFromComponents=Array.isArray(item.from)&&item.from.length>0;
   const legendaryCost=(item.gold?.total??0)>=MIN_COMPLETED_GOLD;
-  const onRift=item.maps?.['11']!==false;
+  const onRift=item.maps?.['11']===true;
   const consumable=(item.tags||[]).some(t=>t==='Consumable'||t==='Trinket');
   return buildsIntoNothing&&builtFromComponents&&legendaryCost&&onRift&&!consumable;
 }
