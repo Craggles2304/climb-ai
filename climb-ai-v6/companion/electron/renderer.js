@@ -17,7 +17,7 @@ function phaseTitle(phase){
     STARTING:'Starting Companion',
     WAITING:'Ready for League',
     CHAMP_SELECT:'Your game plan',
-    RECORDING:'Focus locked. Play.',
+    RECORDING:'Tracking match',
     UPLOADING:'Building your review',
     REVIEW:'Your game review',
     RESTARTING:'Restarting Companion',
@@ -146,15 +146,12 @@ function renderQuietMode(state,visible){
   const section=ensureQuietMode();
   setHidden(section,!visible);
   if(!visible)return;
-  const team=state?.teamPlan||null;
   const matchup=state?.matchup||null;
-  const mission=safeArray(team?.missionTips)[0]||null;
   const role=String(matchup?.role||matchup?.plan?.role||'').toUpperCase();
   const champion=String(matchup?.champion||matchup?.plan?.you?.name||'').trim();
   const identity=[champion,role].filter(Boolean).join(' · ');
-  const focus=mission?.cue||mission?.action||team?.yourJob||'Play normally. Stay with the plan you locked before the game.';
   $('quietIdentity').textContent=identity||'MATCH IN PROGRESS';
-  $('quietFocus').textContent=String(focus);
+  $('quietFocus').textContent='No live instructions. OP CLIMB is recording the match so your missions can be scored after the game.';
 }
 
 function ensureQuietMode(){
@@ -166,11 +163,11 @@ function ensureQuietMode(){
   section.setAttribute('aria-live','polite');
   section.innerHTML=`
     <div class="quiet-mode-top">
-      <div><div class="eyebrow">QUIET MODE · RECORDING</div><h2>FOCUS LOCKED. PLAY.</h2><p id="quietIdentity"></p></div>
+      <div><div class="eyebrow">TRACKING ONLY · RECORDING</div><h2>MATCH IN PROGRESS</h2><p id="quietIdentity"></p></div>
       <span class="quiet-live"><i></i> RECORDING</span>
     </div>
-    <div class="quiet-focus"><span>YOUR ONE LOCKED FOCUS</span><strong id="quietFocus">Play normally. OP CLIMB will coach the evidence after the game.</strong></div>
-    <p class="quiet-boundary">No reactive shotcalling. No live performance grading. No extra lesson mid-game. OP CLIMB records permitted evidence quietly and saves the coaching for afterwards.</p>`;
+    <div class="quiet-focus"><span>WHAT OP CLIMB IS DOING</span><strong id="quietFocus">No live instructions. OP CLIMB is recording the match so your missions can be scored after the game.</strong></div>
+    <p class="quiet-boundary">Tracking only. No reactive shotcalling, no live performance grading and no new tactical advice during the match. Coaching resumes after the game.</p>`;
   $('status').after(section);
   return section;
 }
