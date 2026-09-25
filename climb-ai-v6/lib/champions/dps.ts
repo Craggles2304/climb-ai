@@ -8,15 +8,11 @@ import {ChampionStatBlock,LevelStats,statsAtLevel} from './ddragon';
  * are all published per champion and per item, so "this item adds 41 DPS on
  * Caitlyn at level 11" is a calculation, not an estimate.
  *
- * WHAT THIS CANNOT DO
- * Ability damage. Riot removed the coefficients from Data Dragon — across all
- * 173 champions, 0 of 692 spells still carry `datavalues` or `vars`, and the
- * tooltips reference named placeholders (`{{ bladedamage }}`) that resolve to
- * nothing. So no ability damage is shown anywhere, rather than guessed.
- *
- * The consequence matters and is surfaced in the UI: for an ability-based
- * champion these numbers describe a minority of their damage, and an AP item
- * contributing nothing to auto-attack DPS is NOT evidence it is a bad item.
+ * ABILITY DAMAGE
+ * Riot no longer publishes reliable spell coefficients in Data Dragon, so this
+ * module stays focused on basic attacks. The main-champion simulator resolves
+ * ability formulas through the separate structured ability-data adapter instead
+ * of pretending these auto-attack numbers describe an entire kit.
  */
 
 /* --- Game rules, not Data Dragon values. Update these per patch. --------- */
@@ -164,6 +160,7 @@ export interface DataDragonItemLike{
   name:string;
   gold?:{total?:number};
   stats?:Record<string,number>;
+  image?:{full?:string};
 }
 
 /**
