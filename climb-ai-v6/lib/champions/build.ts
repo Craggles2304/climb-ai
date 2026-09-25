@@ -26,7 +26,7 @@ import {
 export const BEAM_WIDTH=250;
 export const MAX_BUILD_SIZE=6;
 
-export interface BuildItem{id:number;name:string;gold:number;stats:ItemStats}
+export interface BuildItem{id:number;name:string;gold:number;stats:ItemStats;icon?:string}
 
 export interface BuildStep{
   name:string;
@@ -52,12 +52,15 @@ export function buildStats(items:BuildItem[]):ItemStats{
   return items.reduce((total,i)=>addStats(total,i.stats),emptyStats());
 }
 
-export function toBuildItems(items:Record<string,DataDragonItemLike>):BuildItem[]{
+export function toBuildItems(items:Record<string,DataDragonItemLike>,patch?:string):BuildItem[]{
   return Object.entries(items).map(([id,item])=>({
     id:Number(id),
     name:item.name,
     gold:item.gold?.total??0,
     stats:parseItemStats(item.stats),
+    icon:patch&&item.image?.full
+      ?`https://ddragon.leagueoflegends.com/cdn/${patch}/img/item/${item.image.full}`
+      :undefined,
   }));
 }
 
