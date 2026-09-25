@@ -1,12 +1,13 @@
 'use client';
-import {useEffect,useMemo,useState} from 'react';
+import {useMemo,useState} from 'react';
 import {combatProfile} from '@/lib/champions/dps';
 import {buildStats,MAX_BUILD_SIZE,type BestBuild,type BuildItem} from '@/lib/champions/build';
 import type {RawDamageBuild} from '@/lib/champions/rawDamageBuild';
 import {statsAtLevel,type ChampionStatBlock} from '@/lib/champions/ddragon';
 
 export function ChampionBuilder({
-  champion,stats,level,catalogue,maxDps,maxRawDamage,budget,onBuildChange,presetBuild,presetKey,
+  champion,stats,level,catalogue,maxDps,maxRawDamage,budget,
+  selectedItems,onBuildChange,onImportMaxDamage,buildSource,
 }:{
   champion:string;
   stats:ChampionStatBlock;
@@ -16,29 +17,20 @@ export function ChampionBuilder({
   maxRawDamage?:RawDamageBuild;
   bySize:BestBuild[];
   budget:number|null;
-  onBuildChange?:(items:BuildItem[])=>void;
-  presetBuild?:BuildItem[];
-  presetKey?:number;
+  selectedItems:BuildItem[];
+  onBuildChange:(items:BuildItem[])=>void;
+  onImportMaxDamage?:()=>void;
+  buildSource?:string;
 }){
-  const [picked,setPicked]=useState<BuildItem[]>([]);
   const [query,setQuery]=useState('');
+  const picked=selectedItems.slice(0,MAX_BUILD_SIZE);
   const bonuses=useMemo(()=>buildStats(picked),[picked]);
   const current=useMemo(()=>combatProfile(stats,level,bonuses),[stats,level,bonuses]);
   const levelStats=useMemo(()=>statsAtLevel(stats,level),[stats,level]);
   const gold=picked.reduce((sum,item)=>sum+item.gold,0);
   const full=picked.length>=MAX_BUILD_SIZE;
 
-  useEffect(()=>{
-    if(presetKey===undefined)return;
-    const next=presetBuild??[];
-    setPicked(next);
-    onBuildChange?.(next);
-  },[presetKey,presetBuild,onBuildChange]);
-
-  const update=(next:BuildItem[])=>{
-    setPicked(next);
-    onBuildChange?.(next);
-  };
+  const update=(next:BuildItem[])=>onBuildChange(next.slice(0,MAX_BUILD_SIZE));
   const add=(item:BuildItem)=>{
     if(full||picked.some(p=>p.id===item.id))return;
     update([...picked,item]);
@@ -56,11 +48,16 @@ export function ChampionBuilder({
       .slice(0,36);
   },[catalogue,picked,query]);
 
-  return <section className="mc-simulator">
+  return <section className="mc-simulator" id="build-simulator">
     <div className="mc-section-head">
-      <div><div className="eyebrow">BUILD SIMULATOR</div><h2>Change the build. Watch the numbers move.</h2></div>
+      <div>
+        <div className="eyebrow">BUILD SIMULATOR</div>
+        <h2>Change an item. Every damage number below changes.</h2>
+        <p className="mc-sim-live">LIVE BUILD <b>{buildSource||'CUSTOM'}</b> · {picked.length}/{MAX_BUILD_SIZE} ITEMS</p>
+      </div>
       <div className="mc-sim-actions">
-        {maxRawDamage?.items.length?<button className="btn secondary" type="button" onClick={()=>update(maxRawDamage.items)}>LOAD MAX DAMAGE</button>
+        {maxRawDamage?.items.length&&onImportMaxDamage
+          ?<button className="btn secondary" type="button" onClick={onImportMaxDamage}>IMPORT MAX DAMAGE</button>
           :maxDps.items.length>0&&<button className="btn secondary" type="button" onClick={()=>update(maxDps.items)}>LOAD AUTO DPS BUILD</button>}
         {picked.length>0&&<button className="btn secondary" type="button" onClick={()=>update([])}>CLEAR</button>}
       </div>
@@ -104,7 +101,7 @@ export function ChampionBuilder({
       <Stat label="MANA" value={Math.round(levelStats.mana+bonuses.mana)}/>
       <Stat label="AUTO DPS" value={current.dps}/>
     </div>
-    <p className="mc-sim-note">These stats use {champion}&apos;s level {level} base stats plus the items above. The ability table below uses the same build instantly.</p>
+    <p className="mc-sim-note"><b>SYNCHRONISED:</b> this exact item loadout powers the ability-damage table directly below. Add, remove or import an item and the spell numbers recalculate immediately.</p>
   </section>;
 }
 
