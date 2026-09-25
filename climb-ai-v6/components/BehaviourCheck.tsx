@@ -30,7 +30,7 @@ export function BehaviourCheck({matchId,behaviour,clearedBar,taskId,onResult}:{
 
   const answer=async(adherence:Adherence)=>{
     const v=judgeRep(adherence,clearedBar);
-    const attempt:ILPMissionAttempt={matchId,at:new Date().toISOString(),adherence,clearedBar,outcome:v.outcome,banksPass:v.banksPass};
+    const attempt:ILPMissionAttempt={matchId,at:new Date().toISOString(),adherence,clearedBar,outcome:v.outcome,banksPass:v.banksPass,source:'REVIEWED'};
     setVerdict(v);
     try{window.localStorage.setItem(key(matchId,taskId),adherence)}catch{/* ignore */}
     onResult?.(attempt);
