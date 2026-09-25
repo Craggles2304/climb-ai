@@ -74,6 +74,30 @@ type PopularBuildPayload={
   note?:string;
 };
 
+type CounterRow={
+  opponentId:number;
+  opponent:string;
+  championId:string;
+  games:number;
+  yourWinRate:number;
+  edge:number;
+  difficulty:'VERY HARD'|'HARD'|'EVEN'|'FAVOURED'|'VERY FAVOURED';
+};
+type CounterPayload={
+  ok:boolean;
+  error?:string;
+  source?:'LOLALYTICS';
+  sourceUrl?:string;
+  patch?:string;
+  region?:string;
+  tier?:string;
+  lane?:string;
+  confidence?:'HIGH'|'MEDIUM';
+  analysed?:number;
+  rows?:CounterRow[];
+  note?:string;
+};
+
 type DraftPayload={
   ok:boolean;
   error?:string;
@@ -106,6 +130,9 @@ export default function MainChampionPage(){
   const [draftLoading,setDraftLoading]=useState(false);
   const [popularBuild,setPopularBuild]=useState<PopularBuildPayload|null>(null);
   const [popularLoading,setPopularLoading]=useState(false);
+  const [counterData,setCounterData]=useState<CounterPayload|null>(null);
+  const [counterLoading,setCounterLoading]=useState(false);
+  const [counterView,setCounterView]=useState<'HARD'|'ALL'|'FAVOURED'>('HARD');
   const [saveState,setSaveState]=useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(()=>{
@@ -168,6 +195,26 @@ export default function MainChampionPage(){
       .then((body:PopularBuildPayload)=>{if(live)setPopularBuild(body)})
       .catch(()=>{if(live)setPopularBuild({ok:false,error:'Popularity data is unavailable right now.'})})
       .finally(()=>{if(live)setPopularLoading(false)});
+    return()=>{live=false};
+  },[main,active.role,active.rank,active.region]);
+
+  useEffect(()=>{
+    if(!main)return;
+    let live=true;
+    setCounterLoading(true);
+    setCounterData(null);
+    setCounterView('HARD');
+    const params=new URLSearchParams({
+      champion:main,
+      role:active.role||'MID',
+      rank:active.rank||'',
+      region:active.region||'EUW',
+    });
+    fetch('/api/champions/main/counters?'+params)
+      .then(response=>response.json())
+      .then((body:CounterPayload)=>{if(live)setCounterData(body)})
+      .catch(()=>{if(live)setCounterData({ok:false,error:'Counter data is unavailable right now.'})})
+      .finally(()=>{if(live)setCounterLoading(false)});
     return()=>{live=false};
   },[main,active.role,active.rank,active.region]);
 
@@ -292,6 +339,13 @@ export default function MainChampionPage(){
       setSaveState('error');
     }
   };
+
+  const counterRows=useMemo(()=>{
+    const rows=counterData?.rows??[];
+    if(counterView==='HARD')return rows.slice(0,10);
+    if(counterView==='FAVOURED')return [...rows].reverse().slice(0,10);
+    return rows;
+  },[counterData?.rows,counterView]);
 
   const champion=data?.champion;
   const patch=data?.patch||'';
@@ -482,6 +536,48 @@ export default function MainChampionPage(){
           <p>The build simulator still uses current Riot item and champion stats. Optimus will not invent spell damage when the formula source cannot support it.</p>
         </div>}
         {abilityRows.length>0&&<p className="mc-damage-note"><b>* VARIABLE</b> means part of that damage depends on a target, stack, mark, distance or another live-game condition. Optimus shows the calculable portion and does not guess the rest.</p>}
+      </section>
+
+      <section className="mc-counter-section">
+        <div className="mc-section-head">
+          <div>
+            <div className="eyebrow">COUNTER TABLE</div>
+            <h2>Who actually gives {champion.name} the hardest lane?</h2>
+            <p>Current ranked matchup data for your role, rank and region. Lower win rate means a harder matchup for your main.</p>
+          </div>
+          {counterData?.ok&&<div className="mc-counter-scope">
+            <span>{counterData.source}</span>
+            <b>PATCH {counterData.patch}</b>
+            <small>{counterData.region} · {counterData.tier} · {counterData.lane}</small>
+          </div>}
+        </div>
+
+        <div className="mc-counter-tabs">
+          <button className={counterView==='HARD'?'active':''} onClick={()=>setCounterView('HARD')} type="button">HARDEST 10</button>
+          <button className={counterView==='ALL'?'active':''} onClick={()=>setCounterView('ALL')} type="button">ALL MATCHUPS</button>
+          <button className={counterView==='FAVOURED'?'active':''} onClick={()=>setCounterView('FAVOURED')} type="button">BEST 10</button>
+        </div>
+
+        {counterLoading?<div className="mc-counter-loading">LOADING CURRENT MATCHUPS…</div>:
+        counterData?.ok&&counterRows.length?<div className="mc-counter-table-wrap"><table className="mc-counter-table">
+          <thead><tr><th>#</th><th>OPPONENT</th><th>YOUR WIN RATE</th><th>EDGE</th><th>SAMPLE</th><th>DIFFICULTY</th></tr></thead>
+          <tbody>{counterRows.map((row,index)=><tr key={row.opponentId}>
+            <td>{String(index+1).padStart(2,'0')}</td>
+            <td><div className="mc-counter-champ">
+              {patch&&<img src={`https://ddragon.leagueoflegends.com/cdn/${patch}/img/champion/${row.championId}.png`} alt="" aria-hidden="true"/>}
+              <div><b>{row.opponent}</b><small>{champion.name} vs {row.opponent}</small></div>
+            </div></td>
+            <td><strong className={row.yourWinRate<49?'bad':row.yourWinRate>51?'good':'even'}>{row.yourWinRate.toFixed(1)}%</strong></td>
+            <td><span className={row.edge<0?'mc-counter-edge bad':row.edge>0?'mc-counter-edge good':'mc-counter-edge'}>{row.edge>0?'+':''}{row.edge.toFixed(1)}%</span></td>
+            <td><span className="mc-counter-games">{row.games.toLocaleString()} games</span></td>
+            <td><span className={'mc-counter-difficulty '+row.difficulty.toLowerCase().replaceAll(' ','-')}>{row.difficulty}</span></td>
+          </tr>)}</tbody>
+        </table></div>:<div className="mc-no-formulas"><b>Counter data is unavailable right now.</b><p>{counterData?.error||'There is not enough current matchup data for this champion and role.'}</p></div>}
+
+        {counterData?.ok&&<div className="mc-counter-foot">
+          <span>{counterData.confidence} CONFIDENCE</span>
+          <p>{counterData.note}</p>
+        </div>}
       </section>
     </>}</>}
   </AppShell>;
