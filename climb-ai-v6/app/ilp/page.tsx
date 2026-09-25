@@ -11,6 +11,8 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import type {ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
+import {awarenessMissions} from '@/lib/awarenessMissions';
+import type {Role} from '@/lib/types';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -80,7 +82,7 @@ export default function PlayerDevelopmentCentre(){
 
     {tab==='CURRENT'&&<div className="ip-panel">
       {activeTasks.length?<div className="ip-mission-grid">
-        {activeTasks.map((task,index)=><MissionCard key={task.id} task={task} index={index} pauseTask={pauseTask}/>)}
+        {activeTasks.map((task,index)=><MissionCard key={task.id} task={task} index={index} role={active.role} pauseTask={pauseTask}/>) }
       </div>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
         <h2>Play a tracked game.</h2>
@@ -116,9 +118,10 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 }
 
-function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask:(id:string)=>void}){
+function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role:Role;pauseTask:(id:string)=>void}){
   const plain=plainLanguageFocus(task);
   const summary=missionSummary(task);
+  const sideMissions=awarenessMissions(task,role);
   return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
     <div className="ip-mission-top">
       <span>MISSION 0{index+1}</span>
@@ -139,6 +142,20 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
       <div><span>HOW YOU PASS</span><b>{plain.success}</b></div>
       <div><span>WHERE YOU'RE AT</span><b>{stageLabel(summary.stage)}</b></div>
     </div>
+
+    {sideMissions.length>0&&<div className="ip-sidequests">
+      <div className="ip-sidequests-head">
+        <div><span>SIDE MISSIONS</span><b>Keep these in your head too.</b></div>
+        <em>AWARENESS ONLY · NOT SCORED</em>
+      </div>
+      <div className="ip-sidequest-list">
+        {sideMissions.map((side,sideIndex)=><article key={side.id}>
+          <span>SIDE 0{sideIndex+1}</span>
+          <div><b>{side.name}</b><p>{side.meaning}</p><small>{side.cue}</small></div>
+        </article>)}
+      </div>
+      <footer>No XP · No pass/fail · Does not affect mastery</footer>
+    </div>}
 
     <div className="ip-progress">
       <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
