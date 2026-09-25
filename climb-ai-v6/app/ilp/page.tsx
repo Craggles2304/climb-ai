@@ -113,17 +113,20 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
       <span>MISSION 0{index+1}</span>
       <em>{clean(task.category)}</em>
     </div>
-    <h2>{task.title}</h2>
-    <p className="ip-meaning">{firstSentence(plain.meaning)}</p>
+    <h2>{plain.name}</h2>
+    <div className="ip-layman">
+      <span>WHAT THIS MEANS</span>
+      <p>{plain.meaning}</p>
+    </div>
 
     <div className="ip-rule">
-      <span>TAKE INTO YOUR NEXT GAME</span>
+      <span>YOUR JOB NEXT GAME</span>
       <b>{plain.nextGame}</b>
     </div>
 
     <div className="ip-target">
-      <div><span>PROOF BAR</span><b>{task.target}</b></div>
-      <div><span>STAGE</span><b>{summary.stage}</b></div>
+      <div><span>HOW YOU PASS</span><b>{plain.success}</b></div>
+      <div><span>WHERE YOU'RE AT</span><b>{stageLabel(summary.stage)}</b></div>
     </div>
 
     <div className="ip-progress">
@@ -133,22 +136,22 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
     </div>
 
     <details className="ip-mission-details">
-      <summary>WHY THIS MISSION? <span>OPEN THE FULL COACHING READ</span></summary>
+      <summary>BREAK IT DOWN <span>WHY · WHAT · HOW YOU PASS</span></summary>
       <div className="ip-mission-brief">
         <section>
           <span>01 · WHY THIS ONE</span>
-          <h3>The pattern OP CLIMB wants to change</h3>
-          <p>{task.why||plain.meaning}</p>
+          <h3>Why it matters</h3>
+          <p>{plain.why}</p>
         </section>
         <section>
           <span>02 · WHAT TO DO</span>
-          <h3>Your decision rule next game</h3>
+          <h3>Remember one thing</h3>
           <p>{plain.nextGame}</p>
         </section>
         <section>
-          <span>03 · WHAT SUCCESS LOOKS LIKE</span>
-          <h3>{task.target}</h3>
-          <p>Do this cleanly in {summary.required} relevant games. Each reviewed pass banks one rep; misses stay as evidence and do not erase earlier clean reps.</p>
+          <span>03 · HOW YOU PASS</span>
+          <h3>{plain.success}</h3>
+          <p>Each clean game banks one rep. Get {summary.required} clean reps and meet the tracking target to move this mission toward mastery.</p>
         </section>
         <section>
           <span>04 · WHY IT IS STILL ACTIVE</span>
@@ -162,9 +165,12 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
   </article>;
 }
 
-function firstSentence(value:string){
-  const sentence=value.trim().match(/^.*?[.!?](?:\s|$)/)?.[0]?.trim();
-  return sentence||value.trim();
+function stageLabel(stage:string){
+  if(stage==='DISCOVER')return'NEW';
+  if(stage==='PRACTISE')return'PRACTISING';
+  if(stage==='REPEAT')return'REPEATING';
+  if(stage==='MASTERED')return'MASTERED';
+  return clean(stage);
 }
 
 function EvidenceCard({task,index}:{task:ILPTask;index:number}){
@@ -172,7 +178,7 @@ function EvidenceCard({task,index}:{task:ILPTask;index:number}){
   const recent=(task.missionHistory??[]).slice(-4).reverse();
   return <article className="ip-evidence-card">
     <div className="ip-evidence-head">
-      <div><span>MISSION 0{index+1}</span><h2>{task.title}</h2></div>
+      <div><span>MISSION 0{index+1}</span><h2>{plainLanguageFocus(task).name}</h2></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
@@ -194,7 +200,7 @@ function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}
   return <article className="ip-archive">
     <div className="ip-archive-head"><span>{title}</span><b>{tasks.length}</b></div>
     {tasks.length?<div>{tasks.map(task=><details key={task.id}>
-      <summary><b>{task.title}</b><span>{clean(task.category)}</span></summary>
+      <summary><b>{plainLanguageFocus(task).name}</b><span>{clean(task.category)}</span></summary>
       <p>{task.lastUpdatedReason||task.evidence.at(-1)||'No additional evidence note.'}</p>
       {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
     </details>)}</div>:<p className="muted">{empty}</p>}
