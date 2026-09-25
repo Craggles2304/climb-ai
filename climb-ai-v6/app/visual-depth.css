@@ -2447,3 +2447,39 @@ body[data-op-area="hq"] .hq-mission-why p{
   font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
 }
 .mc-active-build img{width:24px;height:24px;object-fit:cover;border:1px solid rgba(255,255,255,.1)}
+
+
+/* My Main Champ — popular build */
+.mc-popular-build{
+  position:relative;
+  overflow:hidden;
+  border-color:rgba(255,207,90,.22);
+  background:
+    radial-gradient(300px 180px at 100% 0%,rgba(255,207,90,.08),transparent 70%),
+    #11191e;
+}
+.mc-popular-build:before{
+  content:'';
+  position:absolute;
+  inset:0 0 auto;
+  height:2px;
+  background:linear-gradient(90deg,#ffd76a,rgb(var(--op-a)));
+}
+.mc-popular-build>span{color:#ffd76a}
+.mc-popular-meta{
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px!important;
+  margin:10px 0 0!important;
+  padding:8px 9px;
+  border:1px solid rgba(255,215,106,.11);
+  background:rgba(255,215,106,.025);
+}
+.mc-popular-meta b{color:#ffd76a;font:800 9px/1 var(--font-mono,'IBM Plex Mono',monospace)}
+.mc-popular-meta small{margin:0!important;color:#78878b!important;font:700 7px/1.2 var(--font-mono,'IBM Plex Mono',monospace)!important;letter-spacing:.07em;text-align:right}
+.mc-preset.popular.loading{border-style:dashed;min-height:135px}
+@media(max-width:560px){
+  .mc-popular-meta{align-items:flex-start;flex-direction:column}
+  .mc-popular-meta small{text-align:left}
+}
