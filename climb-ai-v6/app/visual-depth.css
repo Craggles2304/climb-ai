@@ -3816,3 +3816,75 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ip-mission h2{max-width:none;font-size:36px}
   .ip-mission-details summary>span{display:none}
 }
+
+
+/* Account XP + ILP rewards */
+.op-account-xp{
+  margin-top:10px;
+  padding-top:10px;
+  border-top:1px solid rgba(255,255,255,.06);
+}
+.op-account-xp>div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:8px;
+}
+.op-account-xp span,.op-account-xp small{
+  color:#78878c;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.op-account-xp b{
+  color:rgb(var(--op-a));
+  font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+}
+.op-account-xp>i{
+  display:block;
+  height:5px;
+  margin-top:7px;
+  overflow:hidden;
+  border-radius:999px;
+  background:rgba(255,255,255,.07);
+}
+.op-account-xp>i>em{
+  display:block;
+  height:100%;
+  border-radius:999px;
+  background:linear-gradient(90deg,rgb(var(--op-a)),rgb(var(--op-b)));
+  box-shadow:0 0 12px rgba(var(--op-a),.20);
+}
+.op-account-xp small{
+  display:block;
+  margin-top:6px;
+  font-size:6px;
+  color:#5f6e73;
+}
+.ip-xp-reward{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-top:12px;
+  padding:9px 11px;
+  border:1px solid rgba(var(--op-a),.12);
+  border-radius:9px;
+  background:rgba(var(--op-a),.025);
+}
+.ip-xp-reward span{
+  color:#738287;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.ip-xp-reward b{
+  color:rgb(var(--op-a));
+  font:900 13px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.ip-xp-reward small{
+  margin-left:auto;
+  color:#66757a;
+  font-size:7px;
+}
+@media(max-width:680px){
+  .ip-xp-reward{align-items:flex-start;flex-direction:column}
+  .ip-xp-reward small{margin-left:0}
+}
