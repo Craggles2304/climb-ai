@@ -15,10 +15,11 @@ type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
 
 export default function PlayerDevelopmentCentre(){
-  const {active}=useAccount();
+  const {active,refresh:refreshAccount}=useAccount();
   const {tasks,refreshFromMatches,pauseTask}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
+  const [checking,setChecking]=useState(false);
 
   const activeTasks=useMemo(
     ()=>tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,2),
@@ -33,7 +34,15 @@ export default function PlayerDevelopmentCentre(){
     :0;
   const banked=activeTasks.reduce((sum,task)=>sum+missionSummary(task).confirmed,0);
   const required=activeTasks.reduce((sum,task)=>sum+missionSummary(task).required,0);
-  const refresh=()=>setChanges(refreshFromMatches());
+  const refresh=async()=>{
+    setChecking(true);
+    try{
+      await refreshAccount();
+      setChanges(['Latest match data fetched. New evidence will be applied to your two missions automatically.']);
+    }finally{
+      setChecking(false);
+    }
+  };
 
   return <AppShell>
     <section className="ip-head">
@@ -42,7 +51,7 @@ export default function PlayerDevelopmentCentre(){
         <h1>Two things. Until they stick.</h1>
         <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b></p>
       </div>
-      <button className="btn secondary" type="button" onClick={refresh}>CHECK NEW GAMES</button>
+      <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
     </section>
 
     <section className="ip-summary">
