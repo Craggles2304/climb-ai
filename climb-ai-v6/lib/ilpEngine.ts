@@ -62,7 +62,7 @@ function automaticAttempts(task:ILPTask,matches:Match[]){
       source:'TRACKED',
     });
   }
-  return [...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at)).slice(-12);
+  return [...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
 }
 
 export const candidateTasks:Record<string,Candidate>={
