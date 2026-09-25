@@ -12,6 +12,9 @@ import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
 import {getMainChampion,setMainChampion} from '@/lib/mainChampion';
 import type {Match,Role} from '@/lib/types';
+import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
+import {missionSummary} from '@/lib/missionLoop';
+import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -147,8 +150,7 @@ export default function Home(){
     return{games:championMatches.length,winRate:Math.round(wins/championMatches.length*100),kda:round1((kills+assists)/Math.max(1,deaths)),csPerMin:round1(cspm)};
   },[championMatches]);
 
-  const missionSamples=(championMatches.length>=3?championMatches:matches).slice(0,5);
-  const missions=useMemo(()=>buildGameMissions(missionSamples,active.role,mainChampion||'your main'),[missionSamples,active.role,mainChampion]);
+  const planMissions=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
 
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
@@ -182,17 +184,20 @@ export default function Home(){
 
     <section className="v7-section hq-game-missions">
       <div className="v7-section-head hq-mission-head">
-        <div><div className="eyebrow">NEXT GAME</div><h2>Two missions. Both reachable.</h2><p className="muted">Optimus uses your recent games to set the target. No vague “play better” goals and no impossible stat chasing.</p></div>
+        <div><div className="eyebrow">NEXT GAME · {missionRankBand(active.rank)} TARGETS</div><h2>One core. Two support.</h2><p className="muted">Your Core mission is the main job. Support missions keep developing in the background, and every proof bar scales with your current rank.</p></div>
       </div>
-      <div className="hq-mission-grid">
-        {missions.map((mission,index)=><article key={mission.id} className={`hq-mission-card ${mission.tone}`}>
-          <div className="hq-mission-top"><span>MISSION 0{index+1}</span><b>MEASURABLE</b></div>
-          <h3>{mission.title}</h3>
-          <div className="hq-mission-target"><strong>{mission.target}</strong><span>{mission.unit}</span></div>
-          <div className="hq-mission-proof"><span>{mission.baseline}</span><span>{mission.last}</span></div>
-          <div className="hq-mission-why"><span>WHY THIS?</span><p>{mission.reason}</p></div>
-        </article>)}
-      </div>
+      {planMissions.length?<div className="hq-mission-grid">
+        {planMissions.map((task,index)=>{
+          const plain=plainLanguageFocus(task),summary=missionSummary(task);
+          return <article key={task.id} className={`hq-mission-card ${index===0?'lime':'teal'} ${index===0?'is-core':''}`}>
+            <div className="hq-mission-top"><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><b>{index===0?'MAIN FOCUS':'MEASURABLE'}</b></div>
+            <h3>{plain.name}</h3>
+            <div className="hq-mission-target"><strong>{task.progress}%</strong><span>{plain.success}</span></div>
+            <div className="hq-mission-proof"><span>{summary.confirmed}/{summary.required} PROVEN REPS</span><span>{missionRankBand(active.rank)} BAR</span></div>
+            <div className="hq-mission-why"><span>{index===0?'WHY THIS IS CORE':'WHY THIS SUPPORTS YOU'}</span><p>{plain.why}</p></div>
+          </article>;
+        })}
+      </div>:<div className="glass card"><div className="eyebrow">PLAN BUILDING</div><h3>Play a tracked game.</h3><p className="muted">OP CLIMB will only create missions when your actual match data contains something it can measure.</p></div>}
     </section>
   </AppShell>;
 }
