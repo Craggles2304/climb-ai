@@ -13,7 +13,14 @@ import {LiveCommandCenter} from './LiveCommandCenter';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {BetaReporter} from './BetaReporter';
 import {useLearningPlan} from './LearningPlanContext';
-import {accountProgress} from '@/lib/accountXp';
+import {accountProgress,type AccountProgress} from '@/lib/accountXp';
+
+type ProgressionPayload={
+  ok:boolean;
+  progress:AccountProgress;
+  recent:Array<{id:number;accountId:string|null;missionId:string|null;matchId:string|null;kind:'MISSION_REP'|'MISSION_MASTERED';xp:number;title:string;role:string|null;createdAt:string}>;
+  sync:{accountId:string|null;status:string;lastSyncedAt:string|null;latestMatchAt:string|null;latestMatchId:string|null;latestMatchChampion:string|null;latestMatchRole:string|null};
+};
 
 const primary=[
   ['Home','/dashboard','⌂','Your next action'],
@@ -84,7 +91,10 @@ export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
   const {tier}=useSubscription();
   const {tasks,allTasks}=useLearningPlan();
-  const xp=accountProgress(allTasks[active.id]??tasks);
+  const fallbackXp=accountProgress(allTasks[active.id]??tasks);
+  const [progression,setProgression]=useState<ProgressionPayload|null>(null);
+  const [progressToast,setProgressToast]=useState<{title:string;body:string;kind:'XP'|'LEVEL'}|null>(null);
+  const xp=progression?.progress??fallbackXp;
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -94,6 +104,47 @@ export function AppShell({children}:{children:React.ReactNode}){
   const gatedLab=path.startsWith('/matchup-lab')&&coaching.depth<7;
   const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||(path.startsWith('/champions')&&path!=='/champions/main')||path==='/missions'||path==='/uploads';
   useEffect(()=>setAdvancedOpen(false),[path]);
+  useEffect(()=>{
+    let stopped=false,busy=false;
+    const pull=async()=>{
+      if(stopped||busy||document.visibilityState!=='visible')return;
+      busy=true;
+      try{
+        const response=await fetch('/api/progression?accountId='+encodeURIComponent(active.id),{cache:'no-store'});
+        const body=await response.json() as ProgressionPayload;
+        if(!response.ok||!body?.ok||stopped)return;
+        setProgression(body);
+        const levelKey='op:progression:last-level';
+        const txKey='op:progression:last-tx';
+        const previousLevel=Number(localStorage.getItem(levelKey)||'0');
+        const newest=body.recent?.[0];
+        const previousTx=Number(localStorage.getItem(txKey)||'0');
+        if(previousLevel>0&&body.progress.level>previousLevel){
+          setProgressToast({kind:'LEVEL',title:'CLIMB LEVEL '+body.progress.level,body:body.progress.title+' unlocked · '+body.progress.xp.toLocaleString()+' XP'});
+        }else if(previousTx>0&&newest&&newest.id>previousTx){
+          setProgressToast({
+            kind:'XP',
+            title:newest.kind==='MISSION_MASTERED'?'MISSION MASTERED · +'+newest.xp+' XP':'PROVEN REP · +'+newest.xp+' XP',
+            body:newest.title,
+          });
+        }
+        localStorage.setItem(levelKey,String(body.progress.level));
+        if(newest)localStorage.setItem(txKey,String(newest.id));
+      }catch{}finally{busy=false}
+    };
+    const onFocus=()=>void pull();
+    const onVisible=()=>{if(document.visibilityState==='visible')void pull()};
+    void pull();
+    const timer=window.setInterval(()=>void pull(),15_000);
+    window.addEventListener('focus',onFocus);
+    document.addEventListener('visibilitychange',onVisible);
+    return()=>{stopped=true;window.clearInterval(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible)};
+  },[active.id]);
+  useEffect(()=>{
+    if(!progressToast)return;
+    const timer=window.setTimeout(()=>setProgressToast(null),5200);
+    return()=>window.clearTimeout(timer);
+  },[progressToast]);
 
   return <div className={'app-layout op-shell '+(live?'is-live':'')}>
     <aside className="sidebar op-sidebar">
@@ -107,6 +158,7 @@ export function AppShell({children}:{children:React.ReactNode}){
           <i><em style={{width:xp.levelProgress+'%'}}/></i>
           <small>{xp.title} · {Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP TO LV {xp.level+1}</small>
         </div>
+        <SyncHealth sync={progression?.sync??null}/>
       </div>
 
       <nav className="op-nav" aria-label="Main navigation">
@@ -158,6 +210,34 @@ export function AppShell({children}:{children:React.ReactNode}){
     </main>
 
     <nav className="mobile-nav"><div>{mobile.map(([name,href])=><Link className={isPrimaryActive(path,href)?'active':''} key={href} href={href}>{name}</Link>)}</div></nav>
+    {progressToast&&<div className={'op-progress-toast '+(progressToast.kind==='LEVEL'?'is-level':'')} role="status">
+      <span>{progressToast.kind==='LEVEL'?'LEVEL UP':'PROGRESSION UPDATED'}</span>
+      <b>{progressToast.title}</b>
+      <small>{progressToast.body}</small>
+    </div>}
     <BetaReporter/>
   </div>;
+}
+
+
+function SyncHealth({sync}:{sync:ProgressionPayload['sync']|null}){
+  if(!sync)return <div className="op-sync-health"><i/><span>SYNC CHECKING…</span></div>;
+  const status=String(sync.status||'').toLowerCase();
+  const processing=/sync|process|enrich|pending/.test(status)&&!/ready|complete/.test(status);
+  const stamp=sync.lastSyncedAt||sync.latestMatchAt;
+  return <div className={'op-sync-health '+(processing?'is-processing':'is-ready')}>
+    <i/>
+    <span>{processing?'GAME DATA · PROCESSING':stamp?'LAST GAME SYNCED · '+relativeTime(stamp)+' ✓':'WAITING FOR FIRST GAME'}</span>
+  </div>;
+}
+
+function relativeTime(value:string){
+  const ms=Date.now()-Date.parse(value);
+  if(!Number.isFinite(ms)||ms<0)return'JUST NOW';
+  const minutes=Math.floor(ms/60_000);
+  if(minutes<1)return'JUST NOW';
+  if(minutes<60)return minutes+'M AGO';
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return hours+'H AGO';
+  return Math.floor(hours/24)+'D AGO';
 }
