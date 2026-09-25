@@ -241,7 +241,7 @@ export async function rebuildAllLearningProfiles(){
 export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
   if(!riotAccountId)return null;
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
-  await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] repeated-evidence Active Five sync failed',err));
+  await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] repeated-evidence two-mission plan sync failed',err));
   return built.profile;
 }
 
@@ -345,13 +345,13 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
     const rows=tasks.map(task=>({user_id:userId,riot_account_id:riotAccountId,id:task.id,payload:{...task,accountId:riotAccountId},updated_at:now}));
     const {error:upsertError}=await db.from('ilp_tasks').upsert(rows,{onConflict:'user_id,riot_account_id,id'});if(upsertError)throw new Error(upsertError.message);
   }
-  if(changes.length)console.info('[pro-ilp] role-aware Active Five adapted',changes);
+  if(changes.length)console.info('[pro-ilp] role-aware two-mission plan adapted',changes);
   return ilpSyncSnapshot(tasks,profile,changes,false,latestEvidenceRole??preferredRole);
 }
 
 function ilpSyncSnapshot(tasks:ILPTask[],profile:ProLearningProfile,changes:string[],reused:boolean,role:Role|null=null):PostGameIlpSyncResult{
   const active=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'&&taskAppliesToRole(task,role)).sort((a,b)=>Number(b.priority??50)-Number(a.priority??50));
-  const activeFive=active.slice(0,5).map(toPostGameMission);
+  const activeFive=active.slice(0,2).map(toPostGameMission);
   return{
     status:'COMPLETE',
     source:'POST_GAME_EVIDENCE',
