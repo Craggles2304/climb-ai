@@ -30,10 +30,12 @@ export const MIN_COMPLETED_GOLD=1600;
  */
 export function isFinishedBoot(item:DataDragonItem):boolean{
   const tags=item.tags||[];
-  const final=!item.into||item.into.length===0;
   const onRift=item.maps?.['11']===true;
   const purchasable=item.gold?.purchasable!==false&&item.inStore!==false;
-  return tags.includes('Boots')&&final&&onRift&&purchasable&&(item.gold?.total??0)>=800;
+  // Standard tier-2 boots can now build into late-game upgrades. They are
+  // still the boots players actually purchase, so do not require `into=[]`.
+  // The gold floor excludes the 300g base Boots component.
+  return tags.includes('Boots')&&onRift&&purchasable&&(item.gold?.total??0)>=800;
 }
 
 export function isCompletedItem(item:DataDragonItem):boolean{
