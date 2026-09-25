@@ -44,6 +44,44 @@ type Spell={
   image?:{full?:string}|null;
 };
 
+type ChampionTab='OVERVIEW'|'BUILDS'|'DAMAGE'|'MATCHUPS'|'COMBOS'|'MASTERY';
+
+type SkillOrderPayload={
+  shorthand:string;
+  basis:string;
+  sequence:Array<{level:number;slot:'Q'|'W'|'E'|'R';name:string;rankAfter:number}>;
+};
+
+type ProfilePayload={
+  resource:string;
+  difficulty:number;
+  rangeClass:string;
+  damageType:string;
+  spikes:Array<{level:number;kind:string;title:string;fact:string;inference?:string}>;
+  percentiles:Array<{stat:string;value:number;percentile:number}>;
+  scaling:Array<{stat:string;earlyPercentile:number;latePercentile:number;shift:number;verdict:string;fact:string}>;
+};
+
+type MetaPayload={
+  ok:boolean;
+  error?:string;
+  source?:'OP.GG';
+  patch?:string;
+  role?:string;
+  runePage?:{pickRate:number|null;winRate:number|null;perks:Array<{id:number;name:string;icon:string}>}|null;
+  summoners?:Array<{id:number;name:string;icon:string}>;
+  starters?:Array<{id:number;name:string;icon?:string}>;
+  skillPriority?:string[];
+  skillSequence?:string[];
+  summary?:{winRate:number|null;pickRate:number|null;banRate:number|null;games:number|null};
+};
+
+type TargetPayload={
+  ok:boolean;
+  error?:string;
+  target?:{id:string;name:string;level:number;hp:number;armor:number;magicResist:number};
+};
+
 type Payload={
   ok:boolean;
   error?:string;
@@ -63,6 +101,8 @@ type Payload={
     spells:Spell[];
   };
   abilityData?:ChampionAbilityDataset|null;
+  profile?:ProfilePayload;
+  skillOrder?:SkillOrderPayload;
   build?:{catalogue:BuildItem[];maxDps:BestBuild;maxRawDamage?:RawDamageBuild;bySize:BestBuild[];budget:number|null};
 };
 
