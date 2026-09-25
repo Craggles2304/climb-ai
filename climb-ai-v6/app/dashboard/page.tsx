@@ -15,6 +15,7 @@ import type {Match,Role} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
+import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -190,7 +191,7 @@ export default function Home(){
         {planMissions.map((task,index)=>{
           const plain=plainLanguageFocus(task),summary=missionSummary(task);
           return <article key={task.id} className={`hq-mission-card ${index===0?'lime':'teal'} ${index===0?'is-core':''}`}>
-            <div className="hq-mission-top"><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><b>{index===0?'MAIN FOCUS':'MEASURABLE'}</b></div>
+            <div className="hq-mission-top"><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><MissionMeasurementBadge metric={task.metric} compact/></div>
             <h3>{plain.name}</h3>
             <div className="hq-mission-target"><strong>{task.progress}%</strong><span>{plain.success}</span></div>
             <div className="hq-mission-proof"><span>{summary.confirmed}/{summary.required} PROVEN REPS</span><span>{missionRankBand(active.rank)} BAR</span></div>
