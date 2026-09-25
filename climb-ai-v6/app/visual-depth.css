@@ -4179,3 +4179,76 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ip-mission.primary,
   body[data-op-area="hq"] .hq-mission-card.is-core{grid-column:auto}
 }
+
+
+/* Mission measurement source badges */
+.mission-source-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  width:max-content;
+  max-width:100%;
+  padding:6px 8px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:999px;
+  background:rgba(0,0,0,.18);
+  color:#829196;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.075em;
+  white-space:nowrap;
+}
+.mission-source-badge>i{
+  width:6px;
+  height:6px;
+  flex:0 0 6px;
+  border-radius:50%;
+  background:#77868b;
+}
+.mission-source-badge.is-live{
+  color:#aee37a;
+  border-color:rgba(174,227,122,.18);
+  background:rgba(174,227,122,.035);
+}
+.mission-source-badge.is-live>i{
+  background:#aee37a;
+  box-shadow:0 0 9px rgba(174,227,122,.28);
+}
+.mission-source-badge.is-riot{
+  color:#7ec9ff;
+  border-color:rgba(126,201,255,.18);
+  background:rgba(126,201,255,.035);
+}
+.mission-source-badge.is-riot>i{
+  background:#7ec9ff;
+  box-shadow:0 0 9px rgba(126,201,255,.25);
+}
+.mission-source-badge.is-decision{
+  color:#d3a9ff;
+  border-color:rgba(211,169,255,.18);
+  background:rgba(211,169,255,.035);
+}
+.mission-source-badge.is-decision>i{
+  background:#d3a9ff;
+  box-shadow:0 0 9px rgba(211,169,255,.25);
+}
+.mission-source-badge.is-compact{
+  padding:5px 7px;
+  font-size:6px;
+}
+.ip-mission-meta{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.ar-mission-update-grid article .mission-source-badge{
+  grid-column:1/-1;
+}
+.op-live-mission .mission-source-badge{
+  margin-top:2px;
+}
+@media(max-width:620px){
+  .mission-source-badge{white-space:normal;line-height:1.2}
+  .ip-mission-meta{justify-content:flex-start}
+}
