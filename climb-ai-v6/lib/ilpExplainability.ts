@@ -56,15 +56,15 @@ function copyFor(action:IlpExplainAction,task:ILPTask,evidenceManaged:boolean){
     reason:task.lastUpdatedReason||'OP CLIMB needs repeated match evidence before it changes this mission automatically.',
   };
   switch(action){
-    case'PROMOTED':return{label:'MISSION ADDED',headline:'Repeated evidence earned this a place in your Active Five.',reason:task.lastUpdatedReason||'The same behaviour appeared often enough across multiple games to become an active development priority.'};
+    case'PROMOTED':return{label:'MISSION ADDED',headline:'Repeated evidence earned this one of your two active mission slots.',reason:task.lastUpdatedReason||'The same behaviour appeared often enough across multiple games to become an active development priority.'};
     case'STRENGTHENED':return{label:'MISSION STRENGTHENED',headline:'More games are confirming this is a real pattern.',reason:task.lastUpdatedReason||'The same behaviour has repeated again, so confidence in this mission has increased.'};
     case'REVISED':return{label:'MISSION REVISED',headline:'The mission changed because the evidence became more specific.',reason:task.lastUpdatedReason||'Repeated match evidence refined the behaviour OP CLIMB wants you to fix.'};
     case'MASTERED':return{label:'MISSION MASTERED',headline:'You proved the behaviour changed across consecutive clean games.',reason:task.lastUpdatedReason||'The pattern stayed absent for the required run of clean games.'};
     case'REOPENED':return{label:'MISSION REOPENED',headline:'The old pattern returned often enough to matter again.',reason:task.lastUpdatedReason||'A repeated recurrence—not one relapse—brought this mission back into the plan.'};
-    case'REFILLED':return{label:'ACTIVE FIVE REFILLED',headline:'A new mission filled an open Active Five slot.',reason:task.lastUpdatedReason||'A mastered or paused mission created space and OP CLIMB filled it with the next role-safe priority.'};
+    case'REFILLED':return{label:'PLAN SLOT FILLED',headline:'A new mission filled an open development-plan slot.',reason:task.lastUpdatedReason||'A mastered or paused mission created space and OP CLIMB filled it with the next role-safe priority.'};
     case'WATCH':return task.status==='MASTERED'
       ?{label:'STAYING MASTERED',headline:'There is not enough repeated evidence to reopen this mission.',reason:task.lastUpdatedReason||'A one-off relapse is recorded, but it is not enough to undo mastery.'}
-      :{label:'MISSION HELD',headline:'The latest game informed the plan but did not justify a rewrite.',reason:task.lastUpdatedReason||'OP CLIMB is waiting for repeated evidence before changing your Active Five.'};
+      :{label:'MISSION HELD',headline:'The latest game informed the plan but did not justify a rewrite.',reason:task.lastUpdatedReason||'OP CLIMB is waiting for repeated evidence before changing your two active missions.'};
     default:return{label:'EVIDENCE UPDATED',headline:'Your latest games updated the evidence behind this mission.',reason:task.lastUpdatedReason||'OP CLIMB is tracking whether this behaviour repeats or clears.'};
   }
 }
