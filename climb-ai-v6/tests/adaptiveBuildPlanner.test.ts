@@ -100,3 +100,25 @@ test('adaptive build is a current-draft recommendation, not a fixed champion bui
   assert.equal(tankPlan.role,'ADC');
   assert.equal(healPlan.role,'ADC');
 });
+
+
+test('mage draft tech stays inside AP-compatible item pool',()=>{
+  const ahri=champion('Ahri',['Mage','Assassin'],3,9,550,'Dashes and charms the target.');
+  const mageItems:Record<string,DataDragonItemFull>={
+    ...items,
+    '30001':item('Large AP',3400,{FlatMagicDamageMod:130},'Large ability power.',['SpellDamage']),
+    '30002':item('AP Stasis',3200,{FlatMagicDamageMod:105,FlatArmorMod:50},'Stasis active.',['SpellDamage','Armor']),
+    '30003':item('Wrong AD Cleanse',3200,{FlatPhysicalDamageMod:60,FlatSpellBlockMod:35},'Remove all crowd control.',['Damage']),
+    '30004':item('Wrong Tank Tech',2800,{FlatHPPoolMod:600},'Maximum health anti tank wording.',['Health']),
+    '30005':item('AP Pen',3000,{FlatMagicDamageMod:85},'Magic penetration.',['SpellDamage']),
+  };
+  const enemies=Array.from({length:5},(_,i)=>enemy(champion('Enemy'+i,i<2?['Tank']:['Fighter'],7,4,175,'Stuns and dashes.'),'TOP'));
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:ahri,role:'MID',allies:[{champion:'Ahri',role:'MID',detail:ahri}],enemies,items:mageItems,
+  });
+  const selected=[...plan.core,...(plan.draftItem?[plan.draftItem]:[]),...(plan.finish?[plan.finish]:[]),...plan.swaps];
+  assert.ok(selected.length>0);
+  assert.ok(!selected.some(value=>value.name==='Wrong AD Cleanse'),JSON.stringify(selected));
+  assert.ok(!selected.some(value=>value.name==='Wrong Tank Tech'),JSON.stringify(selected));
+  assert.ok(selected.some(value=>/AP|Large AP/.test(value.name)),JSON.stringify(selected));
+});
