@@ -167,7 +167,10 @@ export default function MainChampionPage(){
   const [main,setMain]=useState('');
   const [draft,setDraft]=useState('');
   const [level,setLevel]=useState(11);
+  const [activeTab,setActiveTab]=useState<ChampionTab>('OVERVIEW');
   const [data,setData]=useState<Payload|null>(null);
+  const [meta,setMeta]=useState<MetaPayload|null>(null);
+  const [metaLoading,setMetaLoading]=useState(false);
   const [names,setNames]=useState<string[]>([]);
   const [loading,setLoading]=useState(false);
   const [buildItems,setBuildItems]=useState<BuildItem[]>([]);
@@ -180,6 +183,11 @@ export default function MainChampionPage(){
   const [counterData,setCounterData]=useState<CounterPayload|null>(null);
   const [counterLoading,setCounterLoading]=useState(false);
   const [counterView,setCounterView]=useState<'HARD'|'ALL'|'FAVOURED'>('HARD');
+  const [targetDraft,setTargetDraft]=useState('');
+  const [targetName,setTargetName]=useState('');
+  const [targetLoading,setTargetLoading]=useState(false);
+  const [targetStats,setTargetStats]=useState<TargetStats|null>(null);
+  const [combo,setCombo]=useState<string[]>([]);
   const [saveState,setSaveState]=useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(()=>{
