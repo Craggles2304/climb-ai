@@ -82,6 +82,7 @@ function buildLedgerRows(userId:string,rows:TaskRow[]){
 
     for(const attempt of task.missionHistory??[]){
       if(!attempt?.banksPass||!attempt.matchId)continue;
+      if(attempt.source!=='TRACKED'&&attempt.adherence!=='TRACKED')continue;
       ledger.push({
         user_id:userId,
         riot_account_id:accountId||null,
