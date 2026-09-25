@@ -2483,3 +2483,59 @@ body[data-op-area="hq"] .hq-mission-why p{
   .mc-popular-meta{align-items:flex-start;flex-direction:column}
   .mc-popular-meta small{text-align:left}
 }
+
+
+/* Live Companion — tracking only */
+.op-live-mission-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:10px;
+  margin-top:14px;
+}
+.op-live-mission{
+  min-height:150px;
+  padding:18px!important;
+  display:grid;
+  align-content:start;
+  gap:8px;
+  border-color:rgba(var(--op-a),.16)!important;
+  background:
+    radial-gradient(240px 140px at 100% 0%,rgba(var(--op-a),.055),transparent 70%),
+    rgba(10,16,20,.72)!important;
+}
+.op-live-mission>span{
+  color:#7d8d91;
+  font:700 8px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.12em;
+}
+.op-live-mission>b{
+  color:#edf4f3;
+  font:800 24px/.98 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+.op-live-mission>small{
+  color:#9caaad;
+  font:700 9px/1.35 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.06em;
+}
+.op-live-mission>em{
+  margin-top:6px;
+  color:rgb(var(--op-a));
+  font:800 8px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  font-style:normal;
+  letter-spacing:.1em;
+}
+.op-live-status.is-stale{
+  border-color:rgba(255,190,82,.30)!important;
+  background:
+    radial-gradient(380px 180px at 100% 0%,rgba(255,190,82,.08),transparent 72%),
+    rgba(18,18,15,.82)!important;
+}
+.op-live-status.is-stale .op-live-status-pill{
+  color:#ffc76a!important;
+  border-color:rgba(255,199,106,.28)!important;
+  background:rgba(255,199,106,.055)!important;
+}
+@media(max-width:720px){
+  .op-live-mission-grid{grid-template-columns:1fr}
+}
