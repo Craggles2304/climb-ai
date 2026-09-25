@@ -20,7 +20,7 @@ export interface Mission{ id:string; riotAccountId:string; category:IssueCategor
 export interface AnalysisReport{matchId:string;performance:number;good:string[];primary:Signal;mission:Mission;summary:string}
 
 export type ILPStatus='ACTIVE'|'EVIDENCE_BUILDING'|'MASTERED'|'PAUSED';
-export type ILPMissionAdherence='YES'|'PARTLY'|'NO';
+export type ILPMissionAdherence='YES'|'PARTLY'|'NO'|'TRACKED';
 export type ILPMissionOutcome='CONFIRMED'|'UNREWARDED'|'UNEARNED'|'NO_REP';
 export interface ILPMissionAttempt{
   matchId:string;
@@ -29,6 +29,7 @@ export interface ILPMissionAttempt{
   clearedBar:boolean;
   outcome:ILPMissionOutcome;
   banksPass:boolean;
+  source?:'TRACKED'|'REVIEWED';
 }
 export type ILPHistoryEvent='PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';
 export interface ILPHistoryEntry{at:string;type:ILPHistoryEvent;note:string}
