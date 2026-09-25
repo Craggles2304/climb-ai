@@ -70,10 +70,10 @@ export async function popularBuild(input:PopularBuildInput):Promise<PopularBuild
       tier:displayTier(filters.tier),
       lane:lane.toUpperCase(),
       items:parsed.items,
-      confidence:exact&&parsed.items.length>=5?'HIGH':'MEDIUM',
+      confidence:exact&&parsed.items.length>=5&&parsed.picks>=25?'HIGH':'MEDIUM',
       matches:parsed.picks,
       winRate:parsed.picks>0?Math.round(parsed.wins/parsed.picks*1000)/10:null,
-      note:`Most-played complete build path from ${parsed.picks.toLocaleString()} Lolalytics games · ${filterText}.`,
+      note:`Most-played 3-item core from ${parsed.picks.toLocaleString()} Lolalytics games, extended with the most common later items · ${filterText}.`,
     };
   }
 
@@ -126,22 +126,30 @@ function parseBuildSet(
   const sets=(raw as {itemSets?:Record<string,unknown>}).itemSets;
   if(!sets||typeof sets!=='object')return null;
 
-  const buildEntry=firstEntry(sets.itemSet5)
+  const coreEntry=firstEntry(sets.itemSet3)
     ??firstEntry(sets.itemSet4)
-    ??firstEntry(sets.itemSet3);
-  if(!buildEntry)return null;
+    ??firstEntry(sets.itemSet5);
+  if(!coreEntry)return null;
 
-  const path=itemIds(buildEntry);
-  if(!path.length)return null;
+  let legendaryPath=itemIds(coreEntry).slice(0,3);
+  if(!legendaryPath.length)return null;
 
-  const bootCandidates=entries(sets.itemBootSet1)
-    .slice(0,8)
-    .flatMap(itemIds);
+  const fourth=popularExtension(sets.itemSet4,legendaryPath);
+  if(fourth)legendaryPath=[...legendaryPath,fourth.id];
+
+  const fifth=popularExtension(sets.itemSet5,legendaryPath);
+  if(fifth)legendaryPath=[...legendaryPath,fifth.id];
+
+  const bootCandidates=[
+    ...entries(sets.itemBootSet1),
+    ...entries(sets.itemBootSet2),
+    ...entries(sets.itemBootSet3),
+  ].slice(0,24).flatMap(itemIds);
   const bootId=bootCandidates.find(id=>isBoot(catalogue.find(item=>item.id===id)));
 
-  const ordered=bootId&&path.length
-    ?[path[0],bootId,...path.slice(1)]
-    :path;
+  const ordered=bootId&&legendaryPath.length
+    ?[legendaryPath[0],bootId,...legendaryPath.slice(1)]
+    :legendaryPath;
 
   const byId=new Map(catalogue.map(item=>[item.id,item]));
   const items:BuildItem[]=[];
@@ -154,8 +162,8 @@ function parseBuildSet(
     if(items.length===6)break;
   }
 
-  const picks=Number(buildEntry[1])||0;
-  const wins=Number(buildEntry[2])||0;
+  const picks=Number(coreEntry[1])||0;
+  const wins=Number(coreEntry[2])||0;
   return items.length?{items,picks,wins}:null;
 }
 
@@ -165,6 +173,23 @@ function entries(value:unknown):ItemSetEntry[]{
 
 function firstEntry(value:unknown):ItemSetEntry|null{
   return entries(value)[0]??null;
+}
+
+function popularExtension(value:unknown,current:number[]):{id:number;picks:number}|null{
+  const rows=entries(value);
+  let fallback:{id:number;picks:number}|null=null;
+  for(const row of rows){
+    const ids=itemIds(row);
+    const picks=Number(row[1])||0;
+    const exact=current.every((id,index)=>ids[index]===id);
+    const candidate=ids.find(id=>!current.includes(id));
+    if(candidate!==undefined&&!fallback)fallback={id:candidate,picks};
+    if(exact&&ids.length>current.length){
+      const id=ids[current.length];
+      if(Number.isFinite(id))return{id,picks};
+    }
+  }
+  return fallback;
 }
 
 function itemIds(entry:ItemSetEntry):number[]{
