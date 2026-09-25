@@ -31,22 +31,29 @@ export function accountProgress(tasks:ILPTask[]):AccountProgress{
   const provenReps=unique.reduce((sum,task)=>sum+provenRepsForTask(task),0);
   const masteredMissions=unique.filter(task=>task.status==='MASTERED').length;
   const xp=unique.reduce((sum,task)=>sum+xpForTask(task),0);
+  return progressFromXp(xp,{masteredMissions,provenReps});
+}
 
+export function progressFromXp(
+  xp:number,
+  counts:{masteredMissions?:number;provenReps?:number}={},
+):AccountProgress{
+  const total=Math.max(0,Math.round(Number(xp)||0));
   let level=1;
-  while(xp>=xpToReachLevel(level+1)&&level<100)level+=1;
+  while(total>=xpToReachLevel(level+1)&&level<100)level+=1;
   const levelStartXp=xpToReachLevel(level);
   const nextLevelXp=xpToReachLevel(level+1);
   const span=Math.max(1,nextLevelXp-levelStartXp);
-  const levelProgress=Math.max(0,Math.min(100,Math.round((xp-levelStartXp)/span*100)));
+  const levelProgress=Math.max(0,Math.min(100,Math.round((total-levelStartXp)/span*100)));
 
   return{
-    xp,
+    xp:total,
     level,
     levelStartXp,
     nextLevelXp,
     levelProgress,
-    masteredMissions,
-    provenReps,
+    masteredMissions:Math.max(0,Math.round(counts.masteredMissions??0)),
+    provenReps:Math.max(0,Math.round(counts.provenReps??0)),
     title:levelTitle(level),
   };
 }
