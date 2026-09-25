@@ -34,12 +34,12 @@ export async function GET(req:NextRequest){
       Object.entries(raw).filter(([,item])=>isCompletedItem(item)||isFinishedBoot(item))
     );
     const catalogue=toBuildItems(source,patch);
-    const result=await popularBuild({...parsed.data,patch,catalogue});
-    if(result)return NextResponse.json({ok:true,...result});
-
     const id=await resolveChampionId(parsed.data.champion,patch);
     if(!id)return NextResponse.json({ok:false,error:'Champion not found.',patch},{status:404});
     const detail=await championDetail(id,patch);
+
+    const result=await popularBuild({...parsed.data,championKey:detail.key,patch,catalogue});
+    if(result)return NextResponse.json({ok:true,...result});
     const riot=riotRecommended(detail as unknown as RiotChampionRecommended,catalogue,patch);
     if(riot)return NextResponse.json({ok:true,...riot});
 
