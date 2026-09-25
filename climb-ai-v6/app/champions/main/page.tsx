@@ -811,6 +811,83 @@ export default function MainChampionPage(){
           <p>{counterData.note}</p>
         </div>}
       </section>
+      </div>}
+
+      {activeTab==='COMBOS'&&<div className="mc-tab-panel">
+        <section className="mc-combo-lab">
+          <div className="mc-section-head">
+            <div><div className="eyebrow">COMBO LAB</div><h2>Build the sequence. See the damage.</h2><p>Uses your current items, selected level and the target loaded in Damage Lab.</p></div>
+            <span className="mc-patch-chip">{buildSource}</span>
+          </div>
+
+          {!targetStats?<div className="mc-combo-empty">
+            <b>LOAD A TARGET FIRST</b>
+            <span>Damage Lab gives the combo something real to hit.</span>
+            <button className="btn primary" type="button" onClick={()=>setActiveTab('DAMAGE')}>OPEN DAMAGE LAB →</button>
+          </div>:<>
+            <div className="mc-combo-target"><span>TARGET</span><b>{targetName||'CUSTOM TARGET'} · {Math.round(targetStats.hp)} HP · {Math.round(targetStats.armor)} ARMOR · {Math.round(targetStats.magicResist)} MR</b></div>
+            <div className="mc-combo-buttons">
+              {(['Q','W','E','R'] as const).map(slot=>{
+                const hit=currentDamage[slot];
+                return <button key={slot} type="button" disabled={!hit} onClick={()=>setCombo(current=>current.length<10?[...current,slot]:current)}>
+                  <b>{slot}</b>
+                  <span>RANK {currentRanks[slot]||0}</span>
+                  <small>{hit?Math.round(mitigate(hit.raw,hit.damageType,targetStats))+' dmg':'Unavailable'}</small>
+                </button>;
+              })}
+            </div>
+
+            <div className="mc-combo-sequence">
+              <span>SEQUENCE</span>
+              <div>{combo.length?combo.map((slot,index)=><b key={index}>{slot}</b>):<i>Tap abilities above</i>}</div>
+              <div className="mc-combo-actions">
+                <button type="button" onClick={()=>setCombo(current=>current.slice(0,-1))} disabled={!combo.length}>UNDO</button>
+                <button type="button" onClick={()=>setCombo([])} disabled={!combo.length}>CLEAR</button>
+              </div>
+            </div>
+
+            <div className="mc-combo-result">
+              <div><span>RAW</span><b>{comboResult?Math.round(comboResult.raw):0}</b></div>
+              <div><span>VS TARGET</span><b>{comboResult?Math.round(comboResult.postMitigation):0}</b></div>
+              <div><span>HP REMOVED</span><b>{comboResult?Math.round(comboResult.percentHp)+'%':'0%'}</b></div>
+            </div>
+            <p className="mc-combo-note">This adds the calculable hit from each selected ability. Conditional marks, executes, multi-hits and target-specific mechanics stay flagged rather than guessed.</p>
+          </>}
+        </section>
+      </div>}
+
+      {activeTab==='MASTERY'&&<div className="mc-tab-panel">
+        <section className="mc-mastery">
+          <div className="mc-section-head">
+            <div><div className="eyebrow">MY {champion.name.toUpperCase()} MASTERY</div><h2>Your champion development, not the global average.</h2></div>
+          </div>
+
+          <div className="mc-mastery-stats">
+            <div><span>GAMES</span><b>{personal.games||'—'}</b></div>
+            <div><span>WIN RATE</span><b>{personal.games?personal.winRate+'%':'—'}</b></div>
+            <div><span>KDA</span><b>{personal.games?personal.kda:'—'}</b></div>
+            <div><span>CS / MIN</span><b>{personal.games?personal.csPerMin:'—'}</b></div>
+          </div>
+
+          <div className="mc-trend-grid">
+            <article><span>LAST 5 · WIN RATE</span><b>{personalTrend.recent.games?personalTrend.recent.winRate+'%':'—'}</b><small>{trendText(personalTrend.recent.winRate,personalTrend.previous.winRate,'%')}</small></article>
+            <article><span>LAST 5 · CS/MIN</span><b>{personalTrend.recent.games?personalTrend.recent.cs:'—'}</b><small>{trendText(personalTrend.recent.cs,personalTrend.previous.cs,'')}</small></article>
+            <article><span>LAST 5 · DEATHS</span><b>{personalTrend.recent.games?personalTrend.recent.deaths:'—'}</b><small>{trendText(personalTrend.previous.deaths,personalTrend.recent.deaths,' better')}</small></article>
+            <article><span>EARLY-DEATH GAMES</span><b>{personalTrend.recent.games?personalTrend.recent.earlyDeaths+'/'+personalTrend.recent.games:'—'}</b><small>Deaths before 10:00</small></article>
+          </div>
+
+          <div className="mc-mastery-columns">
+            <article>
+              <div className="eyebrow">RECENT GAMES</div>
+              <div className="mc-recent-results">{championMatches.slice(0,5).map(game=><div key={game.id}><b className={game.result==='WIN'?'good':'bad'}>{game.result}</b><span>{game.kills}/{game.deaths}/{game.assists}</span><small>{game.metrics.csPerMin?.toFixed?.(1)||game.metrics.csPerMin} CS/MIN</small></div>)}</div>
+            </article>
+            <article>
+              <div className="eyebrow">YOUR MATCHUP HISTORY</div>
+              <div className="mc-personal-matchups">{personalMatchups.length?personalMatchups.map(row=><div key={row.opponent}><b>{row.opponent}</b><span>{row.wins}/{row.games} wins</span><small>{Math.round(row.deaths/row.games*10)/10} avg deaths</small></div>):<p className="muted">Play tracked games on {champion.name} to build your personal matchup history.</p>}</div>
+            </article>
+          </div>
+        </section>
+      </div>}
     </>}</>}
   </AppShell>;
 }
