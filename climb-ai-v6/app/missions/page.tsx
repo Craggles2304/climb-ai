@@ -8,6 +8,7 @@ import {missionEvidence,missionSummary} from '@/lib/missionLoop';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
+import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 
 export default function Missions(){
   const {active}=useAccount();
@@ -31,11 +32,11 @@ export default function Missions(){
     {activeThree.length===0?<section className="glass card"><div className="eyebrow">WAITING FOR PLAN</div><h2>No active missions yet.</h2><p className="muted">Track a game and OP CLIMB will build your first evidence-backed priorities.</p></section>:
     <div style={{display:'grid',gap:16}}>{activeThree.map((task,index)=>{
       const summary=missionSummary(task);
-      const evidence=missionEvidence(task,last);
+      const evidence=missionEvidence(task,last,active.rank);
       return <section key={task.id} className="glass card" style={{borderColor:index===0?'rgba(182,246,107,.34)':'var(--border)',padding:22}}>
         <div style={{display:'flex',justifyContent:'space-between',gap:16,alignItems:'flex-start',flexWrap:'wrap'}}>
           <div style={{minWidth:0,flex:'1 1 520px'}}>
-            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><span className="eyebrow">{index===0?'CORE MISSION':'SUPPORT 0'+index}{detail.depth>=3?` · ${task.category.replaceAll('_',' ')}`:''}</span>{detail.depth>=4&&<span className={`op-tier ${index===0?'op-tier-pro':'op-tier-plus'}`}>{summary.stage}</span>}</div>
+            <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}><span className="eyebrow">{index===0?'CORE MISSION':'SUPPORT 0'+index}{detail.depth>=3?` · ${task.category.replaceAll('_',' ')}`:''}</span><MissionMeasurementBadge metric={task.metric} compact/>{detail.depth>=4&&<span className={`op-tier ${index===0?'op-tier-pro':'op-tier-plus'}`}>{summary.stage}</span>}</div>
             <h2 style={{fontSize:'clamp(25px,3vw,38px)',lineHeight:1.03,letterSpacing:'-.04em',margin:'10px 0'}}>{plainLanguageFocus(task).name}</h2>
             <p style={{fontSize:16,lineHeight:1.55,margin:'0 0 12px'}}><b>PLAIN ENGLISH:</b> {plainLanguageFocus(task).meaning}</p>
             {detail.depth>=2&&<p className="muted" style={{lineHeight:1.55,margin:0}}>{task.why}</p>}
