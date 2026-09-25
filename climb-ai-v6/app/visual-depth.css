@@ -3674,9 +3674,18 @@ body[data-op-area="hq"] .hq-mission-why p{
   margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)
 }
 .ip-mission-details summary{
-  cursor:pointer;color:#829095;font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em
+  cursor:pointer;color:#b9c5c7;font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;list-style:none
 }
-.ip-mission-details>p{color:#7c8b90;font-size:10px;line-height:1.5}
+.ip-mission-details summary::-webkit-details-marker{display:none}
+.ip-mission-details summary::before{content:'+';color:rgb(var(--op-a));font-size:14px}
+.ip-mission-details[open] summary::before{content:'−'}
+.ip-mission-details summary span{margin-left:auto;color:#647378;font-size:7px}
+.ip-mission-brief{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:13px}
+.ip-mission-brief section{padding:12px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(0,0,0,.15)}
+.ip-mission-brief section>span{color:rgb(var(--op-a));font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em}
+.ip-mission-brief h3{margin:7px 0 5px;color:#e5eceb;font-size:12px;line-height:1.3}
+.ip-mission-brief p{margin:0;color:#91a0a4;font-size:10px;line-height:1.5}
 .ip-mission-details>.btn{margin-top:8px}
 .ip-next{
   margin-top:10px;padding:18px 20px;border:1px solid rgba(255,255,255,.075);border-radius:15px;
@@ -3750,4 +3759,6 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ip-summary{grid-template-columns:1fr 1fr}
   .ip-summary-main{grid-column:auto}
   .ip-target{grid-template-columns:1fr}
+  .ip-mission-brief{grid-template-columns:1fr}
+  .ip-mission-details summary span{display:none}
 }
