@@ -4,7 +4,8 @@ import {buildAdaptiveItemPlan} from '@/lib/adaptiveBuildPlanner';
 import {buildStats,toBuildItems,type BuildItem} from '@/lib/champions/build';
 import {championAbilityDataset} from '@/lib/champions/merakiAbilitySource';
 import {rawDamageSnapshot} from '@/lib/champions/rawDamageBuild';
-import {championDetail,championRoster,itemCatalogue,latestPatch,resolveChampionId} from '@/lib/champions/source';
+import {championDetail,championRoster,latestPatch,resolveChampionId} from '@/lib/champions/source';
+import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {damageType} from '@/lib/champions/ddragon';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 
@@ -46,7 +47,7 @@ export async function GET(req:NextRequest){
 
     const [you,items,abilityData,...enemyDetails]=await Promise.all([
       championDetail(myId,patch),
-      itemCatalogue(patch),
+      matchupItemCatalogue(patch),
       championAbilityDataset(myId),
       ...enemyIds.map(id=>championDetail(id!,patch)),
     ]);
