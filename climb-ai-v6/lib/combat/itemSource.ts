@@ -18,6 +18,7 @@ export async function matchupItemCatalogue(patch:string):Promise<Record<string,D
     const tags=item.tags??[];
     if(tags.includes('Consumable')||tags.includes('Trinket'))continue;
     if((item.gold?.total??0)<=0)continue;
+    if(item.gold?.purchasable===false||item.inStore===false)continue;
     filtered[id]=item;
   }
   const items=dedupeByName(filtered);
