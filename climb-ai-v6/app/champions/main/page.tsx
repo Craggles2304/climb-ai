@@ -22,6 +22,7 @@ const CHAMPION_ASSET_IDS:Record<string,string>={
 const championAsset=(name:string)=>CHAMPION_ASSET_IDS[name]||name.replace(/[^A-Za-z0-9]/g,'');
 const championSplash=(name?:string)=>name?`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championAsset(name)}_0.jpg`:'';
 const plain=(value?:string)=>String(value||'').replace(/<[^>]+>/g,' ').replace(/&nbsp;/g,' ').replace(/\s+/g,' ').trim();
+const canonicalChampion=(value:string,names:string[])=>names.find(name=>name.toLowerCase()===value.trim().toLowerCase())||'';
 
 type Spell={
   slot:'Q'|'W'|'E'|'R'|'?';
@@ -333,7 +334,7 @@ export default function MainChampionPage(){
         <div className="mc-enemy-draft">
           {enemyDraft.map((value,index)=><label key={index} className={'mc-enemy-slot'+(value?' filled':'')}>
             <span>ENEMY {index+1}</span>
-            {value&&patch?<img src={`https://ddragon.leagueoflegends.com/cdn/${patch}/img/champion/${championAsset(value)}.png`} alt="" aria-hidden="true"/>:<i>{index+1}</i>}
+            {canonicalChampion(value,names)&&patch?<img src={`https://ddragon.leagueoflegends.com/cdn/${patch}/img/champion/${championAsset(canonicalChampion(value,names))}.png`} alt="" aria-hidden="true"/>:<i>{index+1}</i>}
             <input list="enemy-champion-list" value={value} placeholder="Select champion"
               onChange={event=>{
                 const next=[...enemyDraft];
