@@ -35,11 +35,6 @@ export async function bootstrapActivation(input:Input):Promise<Result>{
     const canonicalTag=String(riotAccount.tagLine||requestedTag).replace(/^#/,'').trim().toUpperCase();
     const now=new Date().toISOString();
 
-    const existingResult=await db.from('riot_accounts')
-      .select('id,game_name,tagline,region,is_primary,role,champions')
-      .eq('user_id',user.id);
-    if(existingResult.error)throw new Error(existingResult.error.message);
-    const existing=existingResult.data||[];
     let linked=(existing as any[]).find(row=>
       String(row.game_name||'').toLowerCase()===canonicalName.toLowerCase()&&
       String(row.tagline||'').replace(/^#/,'').toUpperCase()===canonicalTag&&
