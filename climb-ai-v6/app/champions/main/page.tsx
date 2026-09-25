@@ -895,11 +895,13 @@ export default function MainChampionPage(){
 function AbilityCard({slot,name,icon,text,cooldown,cost}:{slot:string;name:string;icon:string;text?:string;cooldown?:number[];cost?:number[]}){
   const cooldownText=(cooldown||[]).filter((value,index,array)=>Number.isFinite(value)&&array.indexOf(value)===index).join(' / ');
   const costText=(cost||[]).filter((value,index,array)=>Number.isFinite(value)&&array.indexOf(value)===index).join(' / ');
-  return <article className="mc-ability-card">
-    <div className="mc-ability-head">{icon?<img src={icon} alt="" aria-hidden="true"/>:<span className="mc-ability-fallback">{slot}</span>}<div><span>{slot}</span><h3>{name}</h3></div></div>
-    <p>{plain(text)||'Ability details are not available in the current champion feed.'}</p>
-    {(cooldownText||costText)&&<div className="mc-ability-meta">{cooldownText&&<span>CD <b>{cooldownText}s</b></span>}{costText&&<span>COST <b>{costText}</b></span>}</div>}
-  </article>;
+  return <details className="mc-ability-card">
+    <summary className="mc-ability-head">{icon?<img src={icon} alt="" aria-hidden="true"/>:<span className="mc-ability-fallback">{slot}</span>}<div><span>{slot}</span><h3>{name}</h3></div><i>+</i></summary>
+    <div className="mc-ability-body">
+      <p>{plain(text)||'Ability details are not available in the current champion feed.'}</p>
+      {(cooldownText||costText)&&<div className="mc-ability-meta">{cooldownText&&<span>CD <b>{cooldownText}s</b></span>}{costText&&<span>COST <b>{costText}</b></span>}</div>}
+    </div>
+  </details>;
 }
 
 function DamageValue({cell}:{cell:AbilityDamageCell}){
@@ -909,4 +911,11 @@ function DamageValue({cell}:{cell:AbilityDamageCell}){
 
 function maxRanks(rows:Array<{ranks:AbilityDamageCell[]}>){
   return Math.max(1,...rows.map(row=>row.ranks.length));
+}
+
+function trendText(current:number,previous:number,suffix:string){
+  if(!previous)return 'Building baseline';
+  const diff=Math.round((current-previous)*10)/10;
+  if(Math.abs(diff)<0.1)return 'No change vs previous 5';
+  return `${diff>0?'+':''}${diff}${suffix} vs previous 5`;
 }
