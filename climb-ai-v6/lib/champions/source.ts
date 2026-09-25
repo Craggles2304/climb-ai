@@ -75,13 +75,14 @@ export async function itemCatalogue(patch?:string):Promise<Record<string,DataDra
 
 export interface DataDragonItemFull{
   name:string;
-  gold?:{total?:number};
+  gold?:{total?:number;purchasable?:boolean};
   stats?:Record<string,number>;
   image?:{full?:string};
   into?:string[];
   from?:string[];
   maps?:Record<string,boolean>;
   tags?:string[];
+  inStore?:boolean;
 }
 
 export async function championDetail(id:string,patch?:string):Promise<ChampionDetail>{
