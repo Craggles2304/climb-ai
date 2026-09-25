@@ -64,7 +64,7 @@ function copyFor(action:IlpExplainAction,task:ILPTask,evidenceManaged:boolean){
     case'REFILLED':return{label:'PLAN SLOT FILLED',headline:'A new mission filled an open development-plan slot.',reason:task.lastUpdatedReason||'A mastered or paused mission created space and OP CLIMB filled it with the next role-safe priority.'};
     case'WATCH':return task.status==='MASTERED'
       ?{label:'STAYING MASTERED',headline:'There is not enough repeated evidence to reopen this mission.',reason:task.lastUpdatedReason||'A one-off relapse is recorded, but it is not enough to undo mastery.'}
-      :{label:'MISSION HELD',headline:'The latest game informed the plan but did not justify a rewrite.',reason:task.lastUpdatedReason||'OP CLIMB is waiting for repeated evidence before changing your two active missions.'};
+      :{label:'MISSION HELD',headline:'The latest game informed the plan but did not justify a rewrite.',reason:task.lastUpdatedReason||'OP CLIMB is waiting for repeated evidence before changing your three active missions.'};
     default:return{label:'EVIDENCE UPDATED',headline:'Your latest games updated the evidence behind this mission.',reason:task.lastUpdatedReason||'OP CLIMB is tracking whether this behaviour repeats or clears.'};
   }
 }
