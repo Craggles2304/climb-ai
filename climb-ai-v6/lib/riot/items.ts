@@ -9,8 +9,9 @@ export interface DataDragonItem{
   into?:string[];
   from?:string[];
   depth?:number;
-  gold?:{total?:number};
+  gold?:{total?:number;purchasable?:boolean};
   maps?:Record<string,boolean>;
+  inStore?:boolean;
   tags?:string[];
 }
 
@@ -33,7 +34,8 @@ export function isCompletedItem(item:DataDragonItem):boolean{
   const legendaryCost=(item.gold?.total??0)>=MIN_COMPLETED_GOLD;
   const onRift=item.maps?.['11']===true;
   const consumable=(item.tags||[]).some(t=>t==='Consumable'||t==='Trinket');
-  return buildsIntoNothing&&builtFromComponents&&legendaryCost&&onRift&&!consumable;
+  const purchasable=item.gold?.purchasable!==false&&item.inStore!==false;
+  return buildsIntoNothing&&builtFromComponents&&legendaryCost&&onRift&&purchasable&&!consumable;
 }
 
 /** Completed item ids from a Data Dragon item.json payload. */
