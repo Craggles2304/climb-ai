@@ -10,13 +10,14 @@ import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import type {ILPTask} from '@/lib/types';
+import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
 
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
-  const {tasks,refreshFromMatches,pauseTask}=useLearningPlan();
+  const {tasks,allTasks,refreshFromMatches,pauseTask}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
@@ -28,6 +29,7 @@ export default function PlayerDevelopmentCentre(){
   const mastered=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
   const paused=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
   const matches=matchesFor(active.id).filter(match=>match.role===active.role);
+  const xp=accountProgress(allTasks[active.id]??tasks);
 
   const planProgress=activeTasks.length
     ?Math.round(activeTasks.reduce((sum,task)=>sum+task.progress,0)/activeTasks.length)
@@ -61,8 +63,8 @@ export default function PlayerDevelopmentCentre(){
         <small>{matches.length} {active.role.toLowerCase()} games feeding this plan</small>
       </div>
       <div><span>PROVEN REPS</span><b>{banked}/{required||6}</b><small>tracked or reviewed evidence</small></div>
-      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits retired</small></div>
-      <div><span>PLAN</span><b>{planProgress}%</b><small>mission progress</small></div>
+      <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
+      <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
     </section>
 
     {changes.length>0&&<section className="ip-update">
@@ -141,10 +143,11 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
     <div className="ip-progress">
       <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
       <Pips passes={summary.confirmed} required={summary.required}/>
-      <small>{summary.confirmed}/{summary.required} proven reps · {summary.proofMode==='TRACKED'?'updated from match data':'reviewed behaviour'} · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
+      <small>{summary.confirmed}/{summary.required} proven reps · +{XP_PER_PROVEN_REP} XP each · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
     </div>
 
     <details className="ip-mission-details">
+      <div className="ip-xp-reward"><span>MISSION REWARD</span><b>+{XP_PER_MISSION_MASTERY} XP</b><small>awarded when this mission is mastered</small></div>
       <summary>BREAK IT DOWN <span>WHY · WHAT · HOW YOU PASS</span></summary>
       <div className="ip-mission-brief">
         <section>
