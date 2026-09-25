@@ -8,6 +8,7 @@ import {skillOrder} from '@/lib/champions/skillOrder';
 import {championDetail,championRoster,itemCatalogue,latestPatch,resolveChampionId} from '@/lib/champions/source';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
+import {championAbilityDataset} from '@/lib/champions/merakiAbilitySource';
 
 export const runtime='nodejs';
 export const revalidate=3600;
@@ -23,7 +24,7 @@ export const revalidate=3600;
  */
 
 const schema=z.object({
-  champion:z.string().min(1).max(32),
+  champion:z.string().min(1).max(32).optional(),
   level:z.coerce.number().int().min(1).max(18).optional(),
   /** Comma-separated Riot tags, to narrow opponents to a plausible lane. */
   tags:z.string().max(120).optional(),
@@ -47,19 +48,21 @@ export async function GET(req:NextRequest){
 
   try{
     const patch=await latestPatch();
-    const [roster,id]=await Promise.all([
-      championRoster(patch),
-      resolveChampionId(champion,patch),
-    ]);
+    const roster=await championRoster(patch);
+    const names=Object.values(roster).map(c=>c.name).sort();
+    if(!champion)return NextResponse.json({ok:true,patch,names});
+
+    const id=await resolveChampionId(champion,patch);
     if(!id)
       return NextResponse.json({ok:false,error:`No champion called "${champion}".`},{status:404});
 
-    const [detail,items]=await Promise.all([
+    const [detail,items,abilityData]=await Promise.all([
       championDetail(id,patch),
       itemCatalogue(patch),
+      championAbilityDataset(id),
     ]);
 
-    const catalogue=toBuildItems(items);
+    const catalogue=toBuildItems(items,patch);
     const values=rankItems(detail.stats,level,items);
     const damageItems=byDamagePerGold(values);
     const ranking=rankMatchups(roster,id,{
@@ -79,10 +82,22 @@ export async function GET(req:NextRequest){
         id:detail.id,name:detail.name,title:detail.title,
         tags:detail.tags,attackRange:detail.stats.attackrange,
         info:detail.info,autoAttackReliant,
-        // Sent so the page can redraw the curve for any item the player picks
-        // without a round trip for each one.
         stats:detail.stats,
+        passive:detail.passive,
+        spells:detail.spells.map((spell,index)=>({
+          slot:(['Q','W','E','R'] as const)[index]??'?',
+          id:spell.id,
+          name:spell.name,
+          maxrank:spell.maxrank,
+          description:spell.description??'',
+          tooltip:spell.tooltip??'',
+          cooldown:spell.cooldown??[],
+          cost:spell.cost??[],
+          range:spell.range??[],
+          image:spell.image??null,
+        })),
       },
+      abilityData,
       profile:{...championProfile(detail,roster),atLevel:undefined},
       dps:{
         curve:dpsCurve(detail.stats),
@@ -104,7 +119,7 @@ export async function GET(req:NextRequest){
       },
       skillOrder:skillOrder(detail),
       ranking,
-      names:Object.values(roster).map(c=>c.name).sort(),
+      names,
     });
   }catch(err){
     const {title,body}=humanError(err);
