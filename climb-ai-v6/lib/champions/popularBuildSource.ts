@@ -80,16 +80,28 @@ export async function popularBuild(input:PopularBuildInput):Promise<PopularBuild
   const apiVersion=await overviewVersion(patchKey);
   const url=`https://stats2.u.gg/lol/1.5/overview/${patchKey}/ranked_solo_5x5/${encodeURIComponent(input.championKey)}/${encodeURIComponent(apiVersion)}.json`;
   const raw=await fetchJson(url);
-  if(!raw||typeof raw!=='object')return null;
+  if(!raw||typeof raw!=='object'){
+    console.warn('[popular-build] UGG overview unavailable',{url,patchKey,apiVersion,championKey:input.championKey});
+    return null;
+  }
 
   const region=regionFor(input.region);
   const rank=rankFor(input.rank);
   const role=roleFor(input.role);
   const selected=selectOverview(raw as JsonObject,region,rank,role);
-  if(!selected)return null;
+  if(!selected){
+    console.warn('[popular-build] no matching UGG filter node',{topKeys:Object.keys(raw as JsonObject).slice(0,20),region,rank,role});
+    return null;
+  }
 
   const parsed=parseOverview(selected.node,input.catalogue);
-  if(!parsed||parsed.items.length<3)return null;
+  if(!parsed||parsed.items.length<3){
+    console.warn('[popular-build] UGG overview shape/item mapping failed',{
+      region:selected.region,rank:selected.rank,role:selected.role,
+      nodePreview:Array.isArray(selected.node)?selected.node.slice(0,2):typeof selected.node,
+    });
+    return null;
+  }
 
   const exact=selected.region.id===region.id&&selected.rank.id===rank.id&&
     (selected.role.id===role.id||role.id===AUTO_ROLE.id);
@@ -129,7 +141,10 @@ async function fetchJson(url:string):Promise<unknown|null>{
       headers:{'Accept':'application/json'},
       next:{revalidate:60*60*2},
     });
-    if(!response.ok)return null;
+    if(!response.ok){
+      console.warn('[popular-build] UGG HTTP failure',{status:response.status,url});
+      return null;
+    }
     return await response.json();
   }catch{
     return null;
