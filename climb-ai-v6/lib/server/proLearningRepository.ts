@@ -24,6 +24,7 @@ import {buildLearningPatchContext} from '@/lib/patchIntelligence';
 import {patchChangesForHistory} from './lolPatchIntelligenceRepository';
 import {CURRENT_LEARNING_MODEL_VERSION,buildLearningModelHealth,learningModelNeedsRebuild,type LearningModelHealth} from '@/lib/learningModelVersion';
 import {LEAGUE_ROLES,buildRoleAwareLearningSummary,canonicalLeagueRole,globalLearningRows,rowsForRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {benchmarkTargetText} from '@/lib/rankMissionBenchmarks';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis;patch?:string|null;gameVersion?:string|null;patchContext?:Record<string,unknown>}
 
@@ -318,14 +319,20 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for post-game ILP sync.');
   const [storedResult,accountResult]=await Promise.all([
     db.from('ilp_tasks').select('id,payload').eq('user_id',userId).eq('riot_account_id',riotAccountId),
-    db.from('riot_accounts').select('role').eq('id',riotAccountId).eq('user_id',userId).maybeSingle(),
+    db.from('riot_accounts').select('role,rank_tier,rank_division').eq('id',riotAccountId).eq('user_id',userId).maybeSingle(),
   ]);
   if(storedResult.error)throw new Error(storedResult.error.message);
   if(accountResult.error)throw new Error(accountResult.error.message);
   const latestEvidenceRole=[...history].reverse().map(row=>canonicalLeagueRole(row.role)).find((role):role is Role=>Boolean(role))??null;
   const preferredRole=canonicalLeagueRole(accountResult.data?.role)??latestEvidenceRole??'ADC';
+  const rankLabel=accountResult.data?.rank_tier
+    ?String(accountResult.data.rank_tier)+(accountResult.data.rank_division?' '+String(accountResult.data.rank_division):'')
+    :history.at(-1)?.analysis?.rank||'SILVER';
   let tasks:ILPTask[]=(storedResult.data??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
-  tasks=tasks.map(task=>stampLegacyTaskScope(task,preferredRole));
+  tasks=tasks.map(task=>{
+    const stamped=stampLegacyTaskScope(task,preferredRole);
+    return{...stamped,target:benchmarkTargetText(stamped.metric,rankLabel,stamped.target)};
+  });
   const changes:string[]=[];
 
   for(const role of LEAGUE_ROLES){
