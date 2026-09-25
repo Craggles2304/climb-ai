@@ -3981,3 +3981,46 @@ body[data-op-area="hq"] .hq-mission-why p{
     flex-direction:column;
   }
 }
+
+
+/* Session awareness side missions */
+.cs-sidequests{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:11px;
+  background:rgba(0,0,0,.12);
+}
+.cs-sidequests>.eyebrow{
+  margin-bottom:8px;
+  color:#7c8b90;
+}
+.cs-sidequests>div:not(.eyebrow){
+  display:grid;
+  grid-template-columns:28px minmax(0,1fr);
+  gap:8px;
+  align-items:start;
+  padding:7px 0;
+  border-top:1px solid rgba(255,255,255,.045);
+}
+.cs-sidequests>div:not(.eyebrow):first-of-type{
+  border-top:0;
+}
+.cs-sidequests>div>span{
+  color:rgb(var(--op-b));
+  font:800 7px/1.4 var(--font-mono,'IBM Plex Mono',monospace);
+}
+.cs-sidequests p{
+  margin:0;
+  display:grid;
+  gap:3px;
+}
+.cs-sidequests b{
+  color:#dce4e3;
+  font-size:10px;
+}
+.cs-sidequests small{
+  color:#77868b;
+  font-size:8px;
+  line-height:1.4;
+}
