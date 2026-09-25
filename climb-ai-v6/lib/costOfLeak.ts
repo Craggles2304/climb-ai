@@ -80,7 +80,7 @@ export function priceLeak(matches:Match[],metric:string):LeakPrice{
   const cleared:Match[]=[];
   const missed:Match[]=[];
   for(const m of usable){
-    (benchmarkPass(metric,m.metrics[spec.key] as number,m.rank||rank)?cleared:missed).push(m);
+    (benchmarkPass(metric,m.metrics[spec.key] as number,rank)?cleared:missed).push(m);
   }
 
   const wins=(xs:Match[])=>xs.filter(m=>m.result==='WIN').length;
