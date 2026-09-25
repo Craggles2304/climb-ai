@@ -13,6 +13,7 @@ import type {ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
+import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
@@ -126,7 +127,7 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
     <div className="ip-mission-top">
       <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
-      <em>{clean(task.category)}</em>
+      <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{clean(task.category)}</em></div>
     </div>
     <h2>{plain.name}</h2>
     <div className="ip-layman">
@@ -208,7 +209,7 @@ function EvidenceCard({task,index}:{task:ILPTask;index:number}){
   const recent=(task.missionHistory??[]).slice(-4).reverse();
   return <article className="ip-evidence-card">
     <div className="ip-evidence-head">
-      <div><span>MISSION 0{index+1}</span><h2>{plainLanguageFocus(task).name}</h2></div>
+      <div><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
