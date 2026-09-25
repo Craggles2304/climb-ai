@@ -63,7 +63,7 @@ type DraftBuildItem=BuildItem&{label:string;why:string};
 type PopularBuildPayload={
   ok:boolean;
   error?:string;
-  source?:'U.GG'|'LOLALYTICS';
+  source?:'U.GG'|'LOLALYTICS'|'RIOT';
   sourceUrl?:string;
   patch?:string;
   region?:string;
