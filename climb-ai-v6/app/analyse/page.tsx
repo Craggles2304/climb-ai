@@ -9,7 +9,7 @@ import {buildReview} from '@/lib/review';
 import type {Match} from '@/lib/types';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
-  Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'Twisted Fate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
+  Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
 };
 const championAsset=(name:string)=>CHAMPION_ASSET_IDS[name]||name.replace(/[^A-Za-z0-9]/g,'');
 const championSplash=(name:string)=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championAsset(name)}_0.jpg`;
@@ -108,10 +108,10 @@ export default function AnalyseHub(){
       </section>
 
       <section className="ar-trend-strip">
-        <TrendCard label="LAST 5" value={recent.length?winRate+'%':'—'} sub="win rate" delta={previous.length?winRate-previousWinRate:null} invert={false}/>
-        <TrendCard label="CS / MIN" value={recent.length?cs.toFixed(1):'—'} sub="last 5 average" delta={previous.length?cs-prevCs:null} invert={false}/>
-        <TrendCard label="DEATHS" value={recent.length?deaths.toFixed(1):'—'} sub="last 5 average" delta={previous.length?prevDeaths-deaths:null} invert={false}/>
-        <TrendCard label="CLEAN EARLY GAMES" value={recent.length?`${cleanEarly}/${recent.length}`:'—'} sub="0 deaths before 10" delta={null} invert={false}/>
+        <TrendCard label="LAST 5" value={recent.length?winRate+'%':'—'} sub="win rate" delta={previous.length?winRate-previousWinRate:null}/>
+        <TrendCard label="CS / MIN" value={recent.length?cs.toFixed(1):'—'} sub="last 5 average" delta={previous.length?cs-prevCs:null}/>
+        <TrendCard label="DEATHS" value={recent.length?deaths.toFixed(1):'—'} sub="last 5 average" delta={previous.length?prevDeaths-deaths:null}/>
+        <TrendCard label="CLEAN EARLY GAMES" value={recent.length?`${cleanEarly}/${recent.length}`:'—'} sub="0 deaths before 10" delta={null}/>
       </section>
 
       <section className="ar-controls">
@@ -142,7 +142,7 @@ export default function AnalyseHub(){
   </AppShell>;
 }
 
-function TrendCard({label,value,sub,delta}:{label:string;value:string;sub:string;delta:number|null;invert:boolean}){
+function TrendCard({label,value,sub,delta}:{label:string;value:string;sub:string;delta:number|null}){
   const meaningful=delta!==null&&Math.abs(delta)>=0.05;
   return <article>
     <span>{label}</span>
