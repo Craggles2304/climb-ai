@@ -4024,3 +4024,143 @@ body[data-op-area="hq"] .hq-mission-why p{
   font-size:8px;
   line-height:1.4;
 }
+
+
+/* Progression sync + post-game mission feedback */
+.op-sync-health{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-top:8px;
+  color:#6d7b80;
+  font:800 6px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.op-sync-health>i{
+  width:6px;
+  height:6px;
+  border-radius:50%;
+  background:#68757a;
+}
+.op-sync-health.is-ready{color:#8fbf70}
+.op-sync-health.is-ready>i{
+  background:#9edb72;
+  box-shadow:0 0 10px rgba(158,219,114,.25);
+}
+.op-sync-health.is-processing{color:#d2a767}
+.op-sync-health.is-processing>i{
+  background:#e3b66d;
+  box-shadow:0 0 10px rgba(227,182,109,.22);
+  animation:opSyncPulse 1.2s ease-in-out infinite;
+}
+@keyframes opSyncPulse{50%{opacity:.35;transform:scale(.78)}}
+
+.op-progress-toast{
+  position:fixed;
+  right:22px;
+  bottom:22px;
+  z-index:120;
+  width:min(360px,calc(100vw - 28px));
+  display:grid;
+  gap:5px;
+  padding:15px 16px;
+  border:1px solid rgba(var(--op-a),.28);
+  border-radius:14px;
+  background:
+    radial-gradient(240px 120px at 100% 0%,rgba(var(--op-a),.10),transparent 70%),
+    rgba(7,13,17,.96);
+  box-shadow:0 18px 60px rgba(0,0,0,.36);
+  backdrop-filter:blur(18px);
+  animation:opProgressIn .25s ease both;
+}
+.op-progress-toast.is-level{
+  border-color:rgba(var(--op-b),.34);
+  background:
+    radial-gradient(260px 130px at 100% 0%,rgba(var(--op-b),.12),transparent 70%),
+    rgba(7,13,17,.97);
+}
+.op-progress-toast span{
+  color:rgb(var(--op-a));
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.11em;
+}
+.op-progress-toast.is-level span{color:rgb(var(--op-b))}
+.op-progress-toast b{
+  color:#f0f5f4;
+  font:900 22px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+.op-progress-toast small{color:#93a1a5;font-size:9px}
+@keyframes opProgressIn{
+  from{opacity:0;transform:translateY(12px) scale(.98)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+.ar-mission-update{
+  margin:0 0 12px;
+  padding:14px;
+  border:1px solid rgba(var(--op-a),.16);
+  border-radius:15px;
+  background:
+    radial-gradient(360px 160px at 100% 0%,rgba(var(--op-a),.06),transparent 72%),
+    rgba(8,14,18,.72);
+}
+.ar-mission-update-head{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:12px;
+  margin-bottom:10px;
+}
+.ar-mission-update-head h2{
+  margin:5px 0 0;
+  font:900 26px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+.ar-mission-update-head>a{
+  color:rgb(var(--op-a));
+  font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  text-decoration:none;
+  letter-spacing:.07em;
+}
+.ar-mission-update-grid{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.ar-mission-update-grid article{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:5px 10px;
+  padding:11px;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:10px;
+  background:rgba(0,0,0,.12);
+}
+.ar-mission-update-grid span{
+  grid-column:1/-1;
+  color:#75848a;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;
+}
+.ar-mission-update-grid b{
+  color:#e2e9e8;
+  font:900 16px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+.ar-mission-update-grid strong{
+  justify-self:end;
+  font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+}
+.ar-mission-update-grid strong.good{color:#aee37a}
+.ar-mission-update-grid strong.watch{color:#d7a66f}
+.ar-mission-update-grid small{
+  grid-column:1/-1;
+  color:#77868b;
+  font-size:8px;
+}
+@media(max-width:680px){
+  .op-progress-toast{right:14px;bottom:76px}
+  .ar-mission-update-head{align-items:flex-start;flex-direction:column}
+  .ar-mission-update-grid{grid-template-columns:1fr}
+}
