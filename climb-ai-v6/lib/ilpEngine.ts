@@ -1,7 +1,7 @@
 import {ILPTask,Match,IssueCategory,Role} from '@/lib/types';
 import type {CoachingMetricKey} from '@/lib/subscription';
 import {masteryMetricThreshold,missionTargetNumber} from '@/lib/proMissionMastery';
-import {benchmarkProgress,benchmarkTargetText,missionBenchmark} from '@/lib/rankMissionBenchmarks';
+import {benchmarkPass,benchmarkProgress,benchmarkTargetText,missionBenchmark} from '@/lib/rankMissionBenchmarks';
 import {gradeMissionGame} from '@/lib/missionGrading';
 
 type Eval={progress:number;passed:boolean;note:string;hasEvidence:boolean};
