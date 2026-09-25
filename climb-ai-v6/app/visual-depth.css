@@ -3389,3 +3389,157 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ar-game-row{grid-template-columns:minmax(0,1fr) 28px}
   .ar-row-kda{display:none}
 }
+
+
+/* Analyse V5 — role sections */
+.ar-role-switcher{
+  display:grid;
+  grid-template-columns:repeat(6,minmax(0,1fr));
+  gap:7px;
+  margin:0 0 12px;
+}
+.ar-role-switcher button{
+  min-height:72px;
+  display:grid;
+  align-content:center;
+  justify-items:start;
+  gap:3px;
+  padding:11px 12px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:13px;
+  background:rgba(9,15,19,.68);
+  color:#7d8c91;
+  cursor:pointer;
+  transition:border-color .15s ease,background .15s ease,transform .15s ease;
+}
+.ar-role-switcher button:hover:not(:disabled){
+  transform:translateY(-1px);
+  border-color:rgba(var(--op-a),.18);
+}
+.ar-role-switcher button.active{
+  border-color:rgba(var(--op-a),.28);
+  background:linear-gradient(145deg,rgba(var(--op-a),.12),rgba(var(--op-a),.035));
+  box-shadow:inset 0 -2px 0 rgb(var(--op-a));
+}
+.ar-role-switcher button:disabled{opacity:.32;cursor:not-allowed}
+.ar-role-switcher span{
+  color:#8c9a9e;
+  font:800 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+}
+.ar-role-switcher b{
+  color:#eef4f3;
+  font:900 22px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.ar-role-switcher small{
+  color:#65747a;
+  font:700 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.ar-role-switcher button.active span,.ar-role-switcher button.active small{color:rgb(var(--op-a))}
+.ar-role-overview{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:7px;
+  margin-top:10px;
+}
+.ar-role-overview button{
+  min-height:92px;
+  padding:13px;
+  display:grid;
+  align-content:center;
+  justify-items:start;
+  gap:4px;
+  border:1px solid rgba(255,255,255,.07);
+  border-radius:12px;
+  background:rgba(10,16,20,.72);
+  color:#d9e1e0;
+  cursor:pointer;
+}
+.ar-role-overview button:hover{border-color:rgba(var(--op-a),.20);background:rgba(var(--op-a),.035)}
+.ar-role-overview span{
+  color:rgb(var(--op-a));
+  font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+}
+.ar-role-overview b{
+  font:900 18px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.ar-role-overview small{
+  max-width:100%;
+  color:#6f7e83;
+  font-size:8px;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.ar-current-scope{
+  min-width:150px;
+  display:grid;
+  gap:4px;
+}
+.ar-current-scope span{
+  color:#718086;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;
+}
+.ar-current-scope b{
+  color:#e2e9e8;
+  font:900 16px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;
+}
+.ar-role-sections{display:grid;gap:14px}
+.ar-role-section{
+  padding:12px;
+  border:1px solid rgba(255,255,255,.075);
+  border-radius:17px;
+  background:rgba(8,14,18,.54);
+}
+.ar-role-section-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:3px 3px 11px;
+}
+.ar-role-section-head>div{
+  display:flex;
+  align-items:baseline;
+  gap:9px;
+  flex-wrap:wrap;
+}
+.ar-role-section-head span{
+  color:rgb(var(--op-a));
+  font:900 20px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.ar-role-section-head b{
+  color:#dce4e3;
+  font:800 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.ar-role-section-head small{
+  color:#6f7e83;
+  font:700 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+}
+.ar-role-section-head button,.ar-role-more{
+  border:0;
+  background:transparent;
+  color:rgb(var(--op-a));
+  cursor:pointer;
+  font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.07em;
+}
+.ar-role-more{
+  width:100%;
+  padding:11px 5px 2px;
+  text-align:center;
+}
+@media(max-width:900px){
+  .ar-role-switcher{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .ar-role-overview{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+  .ar-role-switcher{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ar-role-overview{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ar-role-section-head{align-items:flex-start;flex-direction:column}
+}
