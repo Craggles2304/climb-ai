@@ -2,7 +2,6 @@ import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
 import {latestPatch,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
-import {isCompletedItem,isFinishedBoot} from '@/lib/riot/items';
 import {toBuildItems} from '@/lib/champions/build';
 import {championMeta} from '@/lib/champions/metaSource';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
@@ -34,10 +33,7 @@ export async function GET(req:NextRequest){
       championDetail(id,patch),
       matchupItemCatalogue(patch),
     ]);
-    const source=Object.fromEntries(
-      Object.entries(rawItems).filter(([,item])=>isCompletedItem(item)||isFinishedBoot(item))
-    );
-    const catalogue=toBuildItems(source,patch);
+    const catalogue=toBuildItems(rawItems,patch);
 
     const meta=await championMeta({
       champion:detail.name,
