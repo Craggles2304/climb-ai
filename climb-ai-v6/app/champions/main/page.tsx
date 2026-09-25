@@ -141,6 +141,7 @@ type CounterPayload={
   lane?:string;
   confidence?:'HIGH'|'MEDIUM';
   analysed?:number;
+  stats?:{winRate:number|null;pickRate:number|null;banRate:number|null};
   rows?:CounterRow[];
   note?:string;
 };
@@ -623,9 +624,9 @@ export default function MainChampionPage(){
           <article className="mc-overview-card meta">
             <div className="eyebrow">META SNAPSHOT</div>
             <div className="mc-meta-mini">
-              <div><span>WIN RATE</span><b>{meta?.summary?.winRate!=null?meta.summary.winRate+'%':'—'}</b></div>
-              <div><span>PICK RATE</span><b>{meta?.summary?.pickRate!=null?meta.summary.pickRate+'%':'—'}</b></div>
-              <div><span>BAN RATE</span><b>{meta?.summary?.banRate!=null?meta.summary.banRate+'%':'—'}</b></div>
+              <div><span>WIN RATE</span><b>{counterData?.stats?.winRate!=null?counterData.stats.winRate+'%':meta?.summary?.winRate!=null?meta.summary.winRate+'%':'—'}</b></div>
+              <div><span>PICK RATE</span><b>{counterData?.stats?.pickRate!=null?counterData.stats.pickRate+'%':meta?.summary?.pickRate!=null?meta.summary.pickRate+'%':'—'}</b></div>
+              <div><span>BAN RATE</span><b>{counterData?.stats?.banRate!=null?counterData.stats.banRate+'%':meta?.summary?.banRate!=null?meta.summary.banRate+'%':'—'}</b></div>
               <div><span>PATCH</span><b>{patch}</b></div>
             </div>
           </article>
