@@ -1,6 +1,7 @@
 import {ILPTask,Match,IssueCategory,Role} from '@/lib/types';
 import type {CoachingMetricKey} from '@/lib/subscription';
 import {masteryMetricThreshold,missionTargetNumber} from '@/lib/proMissionMastery';
+import {benchmarkPass,benchmarkProgress,benchmarkTargetText,missionBenchmark} from '@/lib/rankMissionBenchmarks';
 
 type Eval={progress:number;passed:boolean;note:string;hasEvidence:boolean};
 type Candidate=Omit<ILPTask,'id'|'accountId'|'progress'|'status'|'source'|'evidence'> & {roles?:Role[]};
@@ -9,7 +10,7 @@ const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const clamp=(n:number)=>Math.max(0,Math.min(100,Math.round(n)));
 const active=(t:ILPTask)=>t.status!=='MASTERED'&&t.status!=='PAUSED';
 const PRO_META=new Set<CoachingMetricKey>(['op_score','decision_fingerprint','champion_identity','historical_leak_rate']);
-export const ACTIVE_PLAN_SIZE=2;
+export const ACTIVE_PLAN_SIZE=3;
 const BASE_GAME_METRICS=new Set([
   'laneCsPerMin','post15CsPerMin','csPerMin','deathsPost20','deaths',
   'secondItemMinute','objectiveParticipation','damageShare','killParticipation','visionScore',
@@ -27,7 +28,27 @@ export function isGameMeasurableTask(task:Pick<ILPTask,'metric'|'id'|'evidence'|
 
 function proMetric(task:ILPTask,match:Match){const metric=match.proAnalysis?.metrics?.[task.metric as CoachingMetricKey];return metric&&metric.status!=='UNAVAILABLE'&&metric.status!=='BUILDING'&&typeof metric.score==='number'?metric:null}
 function evaluatePro(task:ILPTask,matches:Match[]):Eval|null{const measured=matches.slice(0,5).map(match=>proMetric(task,match)).filter((metric):metric is NonNullable<ReturnType<typeof proMetric>>=>Boolean(metric));if(!measured.length)return null;const score=avg(measured.map(metric=>metric.score as number)),target=missionTargetNumber(task.target),latest=measured[0];return{progress:clamp(score),passed:score>=target,note:`PRO ${latest.label}: ${score.toFixed(0)}/100 across ${measured.length} evidence-backed game${measured.length===1?'':'s'}; target ${target}.`,hasEvidence:true}}
-function evaluateMetric(task:ILPTask,matches:Match[]):Eval{const recent=matches.slice(0,5),pro=evaluatePro(task,recent);if(pro)return pro;const vals=(key:keyof Match['metrics'])=>recent.map(m=>m.metrics[key]).filter((v):v is number=>typeof v==='number'&&Number.isFinite(v));const direct=(key:keyof Match['metrics'])=>vals(key);switch(task.metric){
+function evaluateMetric(task:ILPTask,matches:Match[],rank?:string|null):Eval{
+  const recent=matches.slice(0,5),pro=evaluatePro(task,recent);
+  if(pro)return pro;
+  const vals=(key:keyof Match['metrics'])=>recent.map(m=>m.metrics[key]).filter((v):v is number=>typeof v==='number'&&Number.isFinite(v));
+  const direct=(key:keyof Match['metrics'])=>vals(key);
+  const effectiveRank=rank||recent[0]?.rank;
+  const benchmark=missionBenchmark(task.metric,effectiveRank);
+  if(benchmark){
+    const xs=task.metric==='deaths'
+      ?recent.map(match=>match.deaths).filter(value=>Number.isFinite(value))
+      :direct(task.metric as keyof Match['metrics']);
+    if(!xs.length)return{progress:task.progress,passed:false,note:benchmark.rank+' mission evidence is not available yet.',hasEvidence:false};
+    const value=avg(xs);
+    return{
+      progress:benchmarkProgress(task.metric,value,effectiveRank)??task.progress,
+      passed:benchmarkPass(task.metric,value,effectiveRank)??false,
+      note:benchmark.rank+' target · '+formatBenchmarkValue(task.metric,value)+' · '+benchmark.targetText.replace(/^.*? target · /,''),
+      hasEvidence:true,
+    };
+  }
+  switch(task.metric){
 case'laneCsPerMin':{const xs=direct('laneCsPerMin');if(!xs.length)return{progress:task.progress,passed:false,note:'Lane CS evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/6.5*100),passed:a>=6.5,note:`Recent lane farm: ${a.toFixed(1)} CS/min.`,hasEvidence:true}}
 case'post15CsPerMin':{const xs=direct('post15CsPerMin');if(!xs.length)return{progress:task.progress,passed:false,note:'Post-15 farm evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/6*100),passed:a>=6,note:`Recent post-15 farm: ${a.toFixed(1)} CS/min.`,hasEvidence:true}}
 case'csPerMin':{const xs=direct('csPerMin');if(!xs.length)return{progress:task.progress,passed:false,note:'Farm evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/6.5*100),passed:a>=6.5,note:`Recent total farm: ${a.toFixed(1)} CS/min.`,hasEvidence:true}}
@@ -42,9 +63,18 @@ case'damageShare':{const xs=direct('damageShare');if(!xs.length)return{progress:
 case'killParticipation':{const xs=direct('killParticipation');if(!xs.length)return{progress:task.progress,passed:false,note:'Kill-participation evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/.68*100),passed:a>=.65,note:`Recent kill participation: ${Math.round(a*100)}%.`,hasEvidence:true}}
 case'visionScore':{const xs=direct('visionScore');if(!xs.length)return{progress:task.progress,passed:false,note:'Vision evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/45*100),passed:a>=40,note:`Recent vision score: ${a.toFixed(0)} per game.`,hasEvidence:true}}
 case'clipReview':return{progress:task.progress,passed:task.progress>=100,note:task.progress>=100?'Required clip review completed.':'Needs one reviewed gameplay clip.',hasEvidence:task.progress>0};case'objectivePreparation':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed objective-setup decisions or companion telemetry.',hasEvidence:task.progress>0};case'mapCheck':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed map-check evidence.',hasEvidence:task.progress>0};default:return{progress:task.progress,passed:false,note:'This task needs manual review or richer telemetry.',hasEvidence:false}}}
-function matchPass(task:ILPTask,match:Match):boolean|null{const pro=proMetric(task,match);if(pro)return(pro.score as number)>=missionTargetNumber(task.target);const m=match.metrics;switch(task.metric){case'laneCsPerMin':return typeof m.laneCsPerMin==='number'?m.laneCsPerMin>=6.5:null;case'post15CsPerMin':return typeof m.post15CsPerMin==='number'?m.post15CsPerMin>=6:null;case'csPerMin':return typeof m.csPerMin==='number'?m.csPerMin>=6:null;case'deathsPost20':return typeof m.deathsPost20==='number'?m.deathsPost20<=2:null;case'deaths':return match.deaths<=4;case'secondItemMinute':return typeof m.secondItemMinute==='number'?m.secondItemMinute<=23:null;case'objectiveParticipation':return typeof m.objectiveParticipation==='number'?m.objectiveParticipation>=.7:null;case'damageShare':return typeof m.damageShare==='number'?m.damageShare>=.25:null;case'killParticipation':return typeof m.killParticipation==='number'?m.killParticipation>=.65:null;case'visionScore':return typeof m.visionScore==='number'?m.visionScore>=40:null;case'deathsPre10':return typeof m.deathsPre10==='number'?m.deathsPre10===0:null;case'csAt10':return typeof m.csAt10==='number'?m.csAt10>=65:null;case'csAt15':return typeof m.csAt15==='number'?m.csAt15>=100:null;default:return null}}
+function matchPass(task:ILPTask,match:Match,rank?:string|null):boolean|null{
+  const pro=proMetric(task,match);
+  if(pro)return(pro.score as number)>=missionTargetNumber(task.target);
+  const m=match.metrics;
+  const benchmark=missionBenchmark(task.metric,rank||match.rank);
+  if(benchmark){
+    const value=task.metric==='deaths'?match.deaths:m[task.metric as keyof Match['metrics']];
+    return typeof value==='number'&&Number.isFinite(value)?benchmarkPass(task.metric,value,rank||match.rank):null;
+  }
+  switch(task.metric){case'laneCsPerMin':return typeof m.laneCsPerMin==='number'?m.laneCsPerMin>=6.5:null;case'post15CsPerMin':return typeof m.post15CsPerMin==='number'?m.post15CsPerMin>=6:null;case'csPerMin':return typeof m.csPerMin==='number'?m.csPerMin>=6:null;case'deathsPost20':return typeof m.deathsPost20==='number'?m.deathsPost20<=2:null;case'deaths':return match.deaths<=4;case'secondItemMinute':return typeof m.secondItemMinute==='number'?m.secondItemMinute<=23:null;case'objectiveParticipation':return typeof m.objectiveParticipation==='number'?m.objectiveParticipation>=.7:null;case'damageShare':return typeof m.damageShare==='number'?m.damageShare>=.25:null;case'killParticipation':return typeof m.killParticipation==='number'?m.killParticipation>=.65:null;case'visionScore':return typeof m.visionScore==='number'?m.visionScore>=40:null;case'deathsPre10':return typeof m.deathsPre10==='number'?m.deathsPre10===0:null;case'csAt10':return typeof m.csAt10==='number'?m.csAt10>=65:null;case'csAt15':return typeof m.csAt15==='number'?m.csAt15>=100:null;default:return null}}
 
-function automaticAttempts(task:ILPTask,matches:Match[]){
+function automaticAttempts(task:ILPTask,matches:Match[],rank?:string|null){
   const existing=new Map(
     (task.missionHistory??[])
       .filter(attempt=>attempt.source==='TRACKED'||attempt.adherence==='TRACKED')
@@ -54,7 +84,7 @@ function automaticAttempts(task:ILPTask,matches:Match[]){
   const startedAt=startEvent?.at?Date.parse(startEvent.at):Number.NEGATIVE_INFINITY;
   for(const match of matches){
     if(Date.parse(match.createdAt)<startedAt||existing.has(match.id))continue;
-    const pass=matchPass(task,match);
+    const pass=matchPass(task,match,rank);
     if(pass===null)continue;
     existing.set(match.id,{
       matchId:match.id,
@@ -69,9 +99,19 @@ function automaticAttempts(task:ILPTask,matches:Match[]){
   return [...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
 }
 
+function formatBenchmarkValue(metric:string,value:number){
+  if(metric==='objectiveParticipation'||metric==='damageShare'||metric==='killParticipation')return Math.round(value*100)+'%';
+  if(metric==='secondItemMinute'){
+    const minutes=Math.floor(value),seconds=Math.round((value-minutes)*60);
+    return minutes+':'+String(seconds).padStart(2,'0');
+  }
+  if(metric==='laneCsPerMin'||metric==='post15CsPerMin'||metric==='csPerMin')return value.toFixed(1)+' CS/min';
+  return Number.isInteger(value)?String(value):value.toFixed(1);
+}
+
 export const candidateTasks:Record<string,Candidate>={
 adc_teamfight_entry:{roles:['ADC'],title:'Survive the first threat cycle',category:'TEAMFIGHTING',why:'ADC damage only matters while you remain able to auto attack.',gameRule:'Before entering sustained DPS range, identify the primary engage or assassin threat and wait until it is committed, blocked or covered by peel.',metric:'deathsPost20',target:'≤2 post-20 deaths in 3 of 5 games',priority:92,masteryRequired:3},
-adc_lane_economy:{roles:['ADC','MID','TOP'],title:'Leave lane at 6.5+ CS/min',category:'LANING',why:'A stable lane economy creates reliable item timings without needing kills.',gameRule:'Protect high-value waves and do not trade HP for low-value poke when the next wave cannot be safely collected.',metric:'laneCsPerMin',target:'6.5+ lane CS/min across 3 games',priority:78,masteryRequired:3},
+adc_lane_economy:{roles:['ADC','MID','TOP'],title:'Own your lane farm',category:'LANING',why:'A stable lane economy creates reliable item timings without needing kills.',gameRule:'Protect high-value waves and do not trade HP for low-value poke when the next wave cannot be safely collected.',metric:'laneCsPerMin',target:'6.5+ lane CS/min across 3 games',priority:78,masteryRequired:3},
 post_lane_farm:{roles:['ADC','MID','TOP'],title:'Keep collecting after lane',category:'RESOURCE_COLLECTION',why:'Lost post-lane gold delays the item timings that create reliable fights.',gameRule:'After every recall past 15:00, check objective timer → safest wave → then decide whether to group.',metric:'post15CsPerMin',target:'6.0+ post-15 CS/min across 3 relevant games',priority:84,masteryRequired:3},
 item_timing:{roles:['ADC','MID','TOP'],title:'Protect your second-item timing',category:'RECALL_TIMING',why:'Poor recalls and missed waves often show up as a delayed second item.',gameRule:'Before recalling, identify the purchase you are completing and the wave you can safely collect next.',metric:'secondItemMinute',target:'Second item by 23:00 in 3 of 5 relevant games',priority:76,masteryRequired:3},
 damage_conversion:{roles:['ADC','MID','TOP'],title:'Convert safety into useful damage',category:'TEAMFIGHTING',why:'Surviving is only valuable if it creates meaningful damage uptime.',gameRule:'After the first threat cycle is spent, step forward with your frontline and hit the closest safe target continuously.',metric:'damageShare',target:'25%+ damage share in 3 of 5 games',priority:72,masteryRequired:3},
@@ -90,22 +130,24 @@ function candidateForRole(role:Role,matches:Match[]){
     return evaluateMetric(probe,matches.slice(0,5)).hasEvidence;
   });
 }
-function candidateScore(candidate:Candidate,matches:Match[]){const probe:ILPTask={id:'probe',accountId:'probe',...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches),priority=candidate.priority||50;return e.hasEvidence?priority+(100-e.progress)*.72:priority*.45}
-function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[],role:Role):ILPTask{const probe:ILPTask={id:`system-${role.toLowerCase()}-${key}-${Date.now()}`,accountId,...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],roleScope:role,roleEvidence:[role]},e=evaluateMetric(probe,matches);return{...probe,progress:e.hasEvidence?e.progress:0,metricProgress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Baseline hypothesis — waiting for enough match evidence to confirm or replace it.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Promoted into the active plan while evidence is still building.',history:[{at:new Date().toISOString(),type:'PROMOTED',note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Promoted as a role baseline while evidence builds.'}]}}
+function candidateScore(candidate:Candidate,matches:Match[],rank?:string|null){const probe:ILPTask={id:'probe',accountId:'probe',...candidate,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};const e=evaluateMetric(probe,matches,rank),priority=candidate.priority||50;return e.hasEvidence?priority+(100-e.progress)*.72:priority*.45}
+function instantiateCandidate(accountId:string,key:string,candidate:Candidate,matches:Match[],role:Role,rank?:string|null):ILPTask{const target=benchmarkTargetText(candidate.metric,rank||matches[0]?.rank,candidate.target);const probe:ILPTask={id:`system-${role.toLowerCase()}-${key}-${Date.now()}`,accountId,...candidate,target,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],roleScope:role,roleEvidence:[role]},e=evaluateMetric(probe,matches,rank);return{...probe,progress:e.hasEvidence?e.progress:0,metricProgress:e.hasEvidence?e.progress:0,status:e.hasEvidence&&e.progress>=55?'EVIDENCE_BUILDING':'ACTIVE',evidence:[e.hasEvidence?`AUTO: ${e.note}`:'SYSTEM: Waiting for measurable match evidence.'],successfulGames:0,gamesObserved:e.hasEvidence?Math.min(5,matches.length):0,masteryRequired:candidate.masteryRequired||3,lastUpdatedReason:e.hasEvidence?e.note:'Waiting for measurable match evidence.',history:[{at:new Date().toISOString(),type:'PROMOTED',note:e.hasEvidence?`Promoted from current evidence. ${e.note}`:'Created only after a measurable metric became available.'}]}}
 function categoryForMetric(key:string):IssueCategory{return key.includes('reset')||key.includes('gold')?'RECALL_TIMING':key.includes('objective')?'OBJECTIVES':key.includes('fight')?'TEAMFIGHTING':key.includes('death')||key.includes('survival')?'DEATHS':key.includes('farm')||key==='cs_curve'?'RESOURCE_COLLECTION':key.includes('item')||key.includes('build')?'ITEMISATION':key.includes('threat')||key.includes('adaptation')?'MATCHUPS':key.includes('lead')||key.includes('advantage')?'TEMPO':'CONSISTENCY'}
 function recurringProEvidence(matches:Match[],used:Set<string>):ProEvidence[]{const recent=matches.slice(0,5),byMetric=new Map<CoachingMetricKey,{label:string;scores:number[];summary:string;detail?:string}>();for(const match of recent){for(const metric of Object.values(match.proAnalysis?.metrics??{})){if(!metric||typeof metric.score!=='number'||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||PRO_META.has(metric.key)||used.has(metric.key))continue;const row=byMetric.get(metric.key)??{label:metric.label,scores:[],summary:metric.summary,detail:metric.evidence[0]?.detail};row.scores.push(metric.score);if(!row.detail)row.detail=metric.evidence[0]?.detail;byMetric.set(metric.key,row)}}return[...byMetric.entries()].map(([key,row])=>({key,label:row.label,score:avg(row.scores),summary:row.summary,detail:row.detail,games:row.scores.length,weakGames:row.scores.filter(score=>score<60).length})).filter(e=>e.games>=2&&e.weakGames>=2).sort((a,b)=>a.score-b.score||b.games-a.games)}
 function proCandidate(accountId:string,matches:Match[],used:Set<string>,role:Role):ILPTask|null{const evidence=recurringProEvidence(matches,used)[0];if(!evidence)return null;const target=Math.min(100,Math.round(evidence.score+10));return{id:`pro-${role.toLowerCase()}-${evidence.key}-${Date.now()}`,accountId,title:`Improve ${evidence.label}`,category:categoryForMetric(evidence.key),why:evidence.summary,gameRule:evidence.detail||`In the next game, deliberately improve ${evidence.label.toLowerCase()} while protecting the rest of your game.`,metric:evidence.key,target:`${target}+ PRO evidence score across 3 games`,progress:clamp(evidence.score),metricProgress:clamp(evidence.score),status:evidence.score>=55?'EVIDENCE_BUILDING':'ACTIVE',source:'SYSTEM',evidence:[`PRO: recurring issue in ${evidence.weakGames}/${evidence.games} recent evidence-backed games. ${evidence.summary}`],roleScope:role,roleEvidence:[role],priority:95,successfulGames:0,gamesObserved:evidence.games,masteryRequired:3,lastUpdatedReason:`Promoted from recurring PRO evidence: ${evidence.score.toFixed(0)}/100 across ${evidence.games} games.`,history:[{at:new Date().toISOString(),type:'PROMOTED',note:`Recurring PRO evidence promoted ${evidence.label}: ${evidence.weakGames}/${evidence.games} weak games, average ${evidence.score.toFixed(0)}/100.`}]}}
-export function ensureFiveActive(tasks:ILPTask[],matches:Match[],accountId:string,role:Role):{tasks:ILPTask[];changes:string[]}{const next=[...tasks],changes:string[]=[];const live=()=>next.filter(active),usedTitles=new Set(next.map(t=>t.title.toLowerCase())),usedMetrics=new Set(live().map(t=>t.metric));while(live().length<ACTIVE_PLAN_SIZE){const task=proCandidate(accountId,matches,usedMetrics,role);if(!task)break;next.push(task);usedMetrics.add(task.metric);usedTitles.add(task.title.toLowerCase());changes.push(`${task.title} promoted from recurring PRO evidence into the active plan.`)}const candidates=candidateForRole(role,matches).filter(([,candidate])=>!usedTitles.has(candidate.title.toLowerCase())&&!usedMetrics.has(candidate.metric)).sort((a,b)=>candidateScore(b[1],matches)-candidateScore(a[1],matches));while(live().length<ACTIVE_PLAN_SIZE&&candidates.length){const[key,candidate]=candidates.shift()!,task=instantiateCandidate(accountId,key,candidate,matches,role);next.push(task);usedTitles.add(task.title.toLowerCase());usedMetrics.add(task.metric);changes.push(`${task.title} promoted into the active plan.`)}return{tasks:next,changes}}
-export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];changes:string[]}{
+export function ensureFiveActive(tasks:ILPTask[],matches:Match[],accountId:string,role:Role,rank?:string|null):{tasks:ILPTask[];changes:string[]}{const next=[...tasks],changes:string[]=[];const live=()=>next.filter(active),usedTitles=new Set(next.map(t=>t.title.toLowerCase())),usedMetrics=new Set(live().map(t=>t.metric));while(live().length<ACTIVE_PLAN_SIZE){const task=proCandidate(accountId,matches,usedMetrics,role);if(!task)break;next.push(task);usedMetrics.add(task.metric);usedTitles.add(task.title.toLowerCase());changes.push(`${task.title} promoted from recurring PRO evidence into the active plan.`)}const candidates=candidateForRole(role,matches).filter(([,candidate])=>!usedTitles.has(candidate.title.toLowerCase())&&!usedMetrics.has(candidate.metric)).sort((a,b)=>candidateScore(b[1],matches,rank)-candidateScore(a[1],matches,rank));while(live().length<ACTIVE_PLAN_SIZE&&candidates.length){const[key,candidate]=candidates.shift()!,task=instantiateCandidate(accountId,key,candidate,matches,role,rank);next.push(task);usedTitles.add(task.title.toLowerCase());usedMetrics.add(task.metric);changes.push(`${task.title} promoted into the active plan.`)}return{tasks:next,changes}}
+export function adaptILP(tasks:ILPTask[],matches:Match[],rank?:string|null):{tasks:ILPTask[];changes:string[]}{
   if(!matches.length)return{tasks,changes:[]};
   const changes:string[]=[];
   const recent=matches.slice(0,5);
   const next=tasks.map(t=>{
     if(t.status==='MASTERED'||t.status==='PAUSED')return t;
-    const e=evaluateMetric(t,recent);
+    const target=benchmarkTargetText(t.metric,rank||recent[0]?.rank,t.target);
+    const rankedTask=target===t.target?t:{...t,target};
+    const e=evaluateMetric(rankedTask,recent,rank);
     if(!e.hasEvidence)return{...t,lastUpdatedReason:e.note};
 
-    const attempts=automaticAttempts(t,matches);
+    const attempts=automaticAttempts(rankedTask,matches,rank);
     const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
     const masteryRequired=t.masteryRequired||3;
     const missionProgress=clamp(confirmed/masteryRequired*100);
@@ -113,14 +155,14 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
     const progress=attempts.length?clamp(metricProgress*.7+missionProgress*.3):metricProgress;
     const successfulGames=confirmed;
     const gamesObserved=attempts.length;
-    const threshold=masteryMetricThreshold(t,recent);
+    const threshold=masteryMetricThreshold(rankedTask,recent);
     const mastered=confirmed>=masteryRequired&&metricProgress>=threshold;
     const status=mastered?'MASTERED' as const:progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
 
     if(mastered)changes.push(`${t.title} reached its ${threshold}+ mastery target and left the active plan.`);
     const missionNote=` Tracked evidence: ${confirmed}/${masteryRequired} proven reps from ${gamesObserved} game${gamesObserved===1?'':'s'}.`;
     return{
-      ...t,
+      ...rankedTask,
       progress,
       metricProgress,
       missionProgress,
@@ -136,7 +178,7 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
   });
   return{tasks:next,changes};
 }
-export function adaptAndRefill(tasks:ILPTask[],matches:Match[],accountId:string,role:Role){const adapted=adaptILP(tasks,matches),refilled=ensureFiveActive(adapted.tasks,matches,accountId,role);return{tasks:refilled.tasks,changes:[...adapted.changes,...refilled.changes]}}
+export function adaptAndRefill(tasks:ILPTask[],matches:Match[],accountId:string,role:Role,rank?:string|null){const adapted=adaptILP(tasks,matches,rank),refilled=ensureFiveActive(adapted.tasks,matches,accountId,role,rank);return{tasks:refilled.tasks,changes:[...adapted.changes,...refilled.changes]}}
 export function rankTasks(tasks:ILPTask[]){return[...tasks].sort((a,b)=>(b.priority||50)-(a.priority||50))}
 export function createCoachTask(accountId:string,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{id:`coach-${Date.now()}`,accountId,...input,progress:0,metricProgress:0,status:'ACTIVE',source:'COACH',evidence:['Added from Coach conversation'],priority:input.priority||75,successfulGames:0,gamesObserved:0,masteryRequired:3,lastUpdatedReason:'Coach added this task.',history:[{at:new Date().toISOString(),type:'COACH_EDIT',note:'Added by Coach.'}]}}
 export function reviseTaskFromCoach(task:ILPTask,input:{title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;priority?:number}):ILPTask{return{...task,...input,source:'COACH',priority:Math.max(task.priority||50,input.priority||75),lastUpdatedReason:'Coach revised this mission from the current conversation.',evidence:[...task.evidence.filter(x=>!x.startsWith('COACH:')),'COACH: Mission wording and cue updated from the latest coaching conversation.'],history:[...(task.history||[]),{at:new Date().toISOString(),type:'COACH_EDIT',note:`Coach revised mission: ${input.title}`}].slice(-12)}}
