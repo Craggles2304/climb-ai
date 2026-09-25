@@ -28,6 +28,14 @@ export const MIN_COMPLETED_GOLD=1600;
  * purchases for most ADCs and mages. Depth is not a reliable proxy for
  * "finished"; the `into`/`from` relationship is.
  */
+export function isFinishedBoot(item:DataDragonItem):boolean{
+  const tags=item.tags||[];
+  const final=!item.into||item.into.length===0;
+  const onRift=item.maps?.['11']===true;
+  const purchasable=item.gold?.purchasable!==false&&item.inStore!==false;
+  return tags.includes('Boots')&&final&&onRift&&purchasable&&(item.gold?.total??0)>=800;
+}
+
 export function isCompletedItem(item:DataDragonItem):boolean{
   const buildsIntoNothing=!item.into||item.into.length===0;
   const builtFromComponents=Array.isArray(item.from)&&item.from.length>0;
