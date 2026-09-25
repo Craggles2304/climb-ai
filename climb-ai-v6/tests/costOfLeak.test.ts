@@ -31,7 +31,7 @@ test('splits the player games by the bar and states the fact plainly',()=>{
   assert.equal(r.sample,23);
   assert.deepEqual({games:r.cleared.games,wins:r.cleared.wins},{games:11,wins:8});
   assert.deepEqual({games:r.missed.games,wins:r.missed.wins},{games:12,wins:3});
-  assert.match(r.fact,/won 8 of 11 when you held 6\.0\+ post-15 CS\/min/);
+  assert.match(r.fact,/won 8 of 11 when you held 5\.0\+ post-15 CS\/min/);
   assert.match(r.fact,/3 of 12 when you did not/);
 });
 
