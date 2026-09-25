@@ -48,7 +48,7 @@ export function missionSummary(task:ILPTask){
     ?history.filter(a=>a.banksPass).length
     :Math.min(required,Math.max(0,task.successfulGames??0));
   const attempted=hasReviewedBehaviour
-    ?history.filter(a=>a.adherence==='YES'||a.adherence==='PARTLY').length
+    ?history.filter(a=>a.adherence==='YES'||a.adherence==='PARTLY'||a.adherence==='TRACKED').length
     :Math.max(0,task.gamesObserved??0);
   const reviewed=hasReviewedBehaviour?history.length:Math.max(0,task.gamesObserved??0);
   return{
