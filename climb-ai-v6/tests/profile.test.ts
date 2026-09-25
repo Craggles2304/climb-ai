@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {seedFor,firstPlan,PlayerProfile,PROFILE_ACCOUNT_ID} from '../lib/profile';
 import {METRIC_SPECS} from '../lib/metrics';
 import {priceLeak} from '../lib/costOfLeak';
+import {missionBenchmark} from '../lib/rankMissionBenchmarks';
 
 const FRUSTRATIONS=[
   'I die too much','My CS is poor','I win lane but lose games',
@@ -43,12 +44,15 @@ test('a seeded metric can be priced once games exist',()=>{
   // feed each seeded metric real values and check it reaches the sample gate
   // rather than falling out as an unknown key.
   for(const f of FRUSTRATIONS){
-    const spec=METRIC_SPECS[seedFor(f).metric];
+    const metric=seedFor(f).metric;
+    const spec=METRIC_SPECS[metric];
+    const benchmark=missionBenchmark(metric,'Gold IV');
+    assert.ok(benchmark);
     const games=Array.from({length:4},(_,i)=>({
       id:`m${i}`,riotAccountId:'a',champion:'X',role:'ADC' as const,
       result:(i%2?'WIN':'LOSS') as 'WIN'|'LOSS',kills:1,deaths:1,assists:1,
       durationSeconds:1900,rank:'Gold IV',
-      metrics:{cs:1,csPerMin:1,deaths:1,[spec.key]:spec.threshold},
+      metrics:{cs:1,csPerMin:1,deaths:1,[spec.key]:benchmark!.target},
       source:'demo' as const,createdAt:'2026-09-01T00:00:00.000Z',
     }));
     const priced=priceLeak(games,seedFor(f).metric);
