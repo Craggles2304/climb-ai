@@ -60,6 +60,20 @@ type Payload={
 };
 
 type DraftBuildItem=BuildItem&{label:string;why:string};
+type PopularBuildPayload={
+  ok:boolean;
+  error?:string;
+  source?:'U.GG'|'LOLALYTICS';
+  sourceUrl?:string;
+  patch?:string;
+  region?:string;
+  tier?:string;
+  lane?:string;
+  confidence?:'HIGH'|'MEDIUM';
+  items?:BuildItem[];
+  note?:string;
+};
+
 type DraftPayload={
   ok:boolean;
   error?:string;
@@ -90,6 +104,8 @@ export default function MainChampionPage(){
   const [enemyDraft,setEnemyDraft]=useState<string[]>(['','','','','']);
   const [draftData,setDraftData]=useState<DraftPayload|null>(null);
   const [draftLoading,setDraftLoading]=useState(false);
+  const [popularBuild,setPopularBuild]=useState<PopularBuildPayload|null>(null);
+  const [popularLoading,setPopularLoading]=useState(false);
   const [saveState,setSaveState]=useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(()=>{
@@ -135,6 +151,25 @@ export default function MainChampionPage(){
       .finally(()=>{if(live)setLoading(false)});
     return()=>{live=false};
   },[main,level]);
+
+  useEffect(()=>{
+    if(!main)return;
+    let live=true;
+    setPopularLoading(true);
+    setPopularBuild(null);
+    const params=new URLSearchParams({
+      champion:main,
+      role:active.role||'MID',
+      rank:active.rank||'',
+      region:active.region||'EUW',
+    });
+    fetch('/api/champions/main/popular?'+params)
+      .then(response=>response.json())
+      .then((body:PopularBuildPayload)=>{if(live)setPopularBuild(body)})
+      .catch(()=>{if(live)setPopularBuild({ok:false,error:'Popularity data is unavailable right now.'})})
+      .finally(()=>{if(live)setPopularLoading(false)});
+    return()=>{live=false};
+  },[main,active.role,active.rank,active.region]);
 
   useEffect(()=>{
     setBuildItems([]);
@@ -333,6 +368,16 @@ export default function MainChampionPage(){
             <div>{build.names.map((item,itemIndex)=><b key={item+'-'+itemIndex}>{item}</b>)}</div>
             {build.items.length>0&&<button className="btn secondary" type="button" onClick={()=>loadBuild(build.items,index===0?'LATEST GAME BUILD':'RECENT GAME BUILD')}>IMPORT TO SIMULATOR ↓</button>}
           </div>):<div className="mc-preset empty"><span>YOUR BUILDS</span><p>Play tracked games on {champion.name} and your actual completed builds will appear here.</p></div>}
+          {popularLoading?<div className="mc-preset popular loading"><span>MOST POPULAR BUILD</span><p>Loading current build data…</p></div>:popularBuild?.ok&&popularBuild.items?.length?<div className="mc-preset popular mc-popular-build">
+            <span>MOST POPULAR BUILD</span>
+            <div className="mc-popular-meta">
+              <b>{popularBuild.source}</b>
+              <small>PATCH {popularBuild.patch} · {popularBuild.region} · {popularBuild.tier} · {popularBuild.lane}</small>
+            </div>
+            <div>{popularBuild.items.map(item=><b key={item.id}>{item.name}</b>)}</div>
+            <button className="btn primary" type="button" onClick={()=>loadBuild(popularBuild.items as BuildItem[],'MOST POPULAR')}>IMPORT TO SIMULATOR ↓</button>
+            <small>{popularBuild.note}</small>
+          </div>:null}
           {data.build?.maxRawDamage?.items?.length?<div className="mc-preset damage mc-max-damage">
             <span>MAX DAMAGE BUILD · LEVEL {level}</span>
             <div>{data.build.maxRawDamage.items.map(item=><b key={item.id}>{item.name}</b>)}</div>
