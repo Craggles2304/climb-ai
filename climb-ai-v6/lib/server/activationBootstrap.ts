@@ -15,9 +15,21 @@ const validRole=(value:unknown,fallback:Role):Role=>{
   return ['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(role)?role as Role:fallback;
 };
 
+function rankFromStored(account:any,matchRank:unknown){
+  const direct=String(matchRank||'').trim();
+  if(direct)return direct;
+  if(account?.rank_tier){
+    const division=account.rank_division?` ${account.rank_division}`:'';
+    const lp=typeof account.league_points==='number'?` · ${account.league_points} LP`:'';
+    return`${account.rank_tier}${division}${lp}`;
+  }
+  return'UNRANKED';
+}
+
 export async function bootstrapActivation(input:Input):Promise<Result>{
-  if(!riotEnabled())return{status:503,body:{ok:false,code:'RIOT_DISABLED',error:'Automatic Riot import is unavailable right now. Use the manual match path and OP CLIMB can still build a first grade.'}};
-  if(!isSupportedRegion(input.region))return{status:400,body:{ok:false,error:`Region not supported. Choose one of: ${SUPPORTED_REGIONS.join(', ')}.`}};
+  if(!isSupportedRegion(input.region)){
+    return{status:400,body:{ok:false,error:`Region not supported. Choose one of: ${SUPPORTED_REGIONS.join(', ')}.`}};
+  }
 
   const user=await getCurrentUser();
   if(!user)return{status:401,body:{ok:false,error:'Your sign-in session expired. Sign in again and OP CLIMB will return you to activation.'}};
@@ -27,6 +39,89 @@ export async function bootstrapActivation(input:Input):Promise<Result>{
   const region=input.region.toUpperCase();
   const requestedName=input.gameName.trim();
   const requestedTag=input.tagline.replace(/^#/,'').trim().toUpperCase();
+
+  const existingResult=await db.from('riot_accounts')
+    .select('id,game_name,tagline,region,is_primary,role,champions,rank_tier,rank_division,league_points,puuid')
+    .eq('user_id',user.id);
+  if(existingResult.error){
+    console.error('[activation-bootstrap] existing account lookup failed',existingResult.error);
+    return{status:502,body:{ok:false,code:'ACCOUNT_LOOKUP_FAILED',error:'OP CLIMB could not check your existing linked account.'}};
+  }
+
+  const existing=existingResult.data||[];
+  const linkedExisting=(existing as any[]).find(row=>
+    String(row.game_name||'').toLowerCase()===requestedName.toLowerCase()&&
+    String(row.tagline||'').replace(/^#/,'').toUpperCase()===requestedTag&&
+    String(row.region||'').toUpperCase()===region
+  )||null;
+
+  if(linkedExisting){
+    const stored=await db.from('matches')
+      .select('id,champion,role,rank,occurred_at,created_at')
+      .eq('user_id',user.id)
+      .eq('riot_account_id',linkedExisting.id)
+      .in('result',['WIN','LOSS'])
+      .order('occurred_at',{ascending:false})
+      .limit(1)
+      .maybeSingle();
+
+    if(stored.error){
+      console.error('[activation-bootstrap] existing match lookup failed',stored.error);
+      return{status:502,body:{ok:false,code:'MATCH_LOOKUP_FAILED',error:'OP CLIMB could not check your existing match history.'}};
+    }
+
+    if(stored.data){
+      const detectedRole=validRole(stored.data.role||linkedExisting.role,input.fallbackRole);
+      const champion=String(stored.data.champion||'').trim();
+      const previousChampions=Array.isArray(linkedExisting.champions)?linkedExisting.champions.map(String):[];
+      const champions=champion?[champion,...previousChampions.filter(value=>value!==champion)]:previousChampions;
+      const rankLabel=rankFromStored(linkedExisting,stored.data.rank);
+      const now=new Date().toISOString();
+
+      const accountUpdate=await db.from('riot_accounts').update({
+        role:detectedRole,
+        champions,
+        frustration:input.frustration,
+        updated_at:now,
+      }).eq('id',linkedExisting.id).eq('user_id',user.id);
+      if(accountUpdate.error)console.warn('[activation-bootstrap] existing account refresh failed',accountUpdate.error.message);
+
+      if(linkedExisting.is_primary){
+        const profile=await db.from('profiles').upsert({
+          id:user.id,
+          game_name:linkedExisting.game_name,
+          tagline:linkedExisting.tagline,
+          region,
+          role:detectedRole,
+          rank:rankLabel,
+          champions,
+          frustration:input.frustration,
+          updated_at:now,
+        },{onConflict:'id'});
+        if(profile.error)console.warn('[activation-bootstrap] existing profile refresh failed',profile.error.message);
+      }
+
+      return{status:200,body:{
+        ok:true,
+        account:{id:linkedExisting.id,gameName:linkedExisting.game_name,tagline:linkedExisting.tagline,region},
+        profile:{role:detectedRole,rank:rankLabel,champions},
+        matchImported:false,
+        reusedExisting:true,
+        matchId:stored.data.id,
+        syncStatus:'existing',
+      }};
+    }
+  }
+
+  if(!riotEnabled()){
+    return{status:503,body:{
+      ok:false,
+      code:'RIOT_DISABLED',
+      error:linkedExisting
+        ?'No finished game is stored for this linked account yet. Play one with the Companion or add one completed game to start.'
+        :'Automatic Riot import is unavailable right now. Connect the Companion or add one completed game to start.',
+    }};
+  }
 
   try{
     const riotAccount=await riotService.getAccountByRiotId(requestedName,requestedTag,region);
@@ -117,6 +212,7 @@ export async function bootstrapActivation(input:Input):Promise<Result>{
       account:{id:linked.id,gameName:canonicalName,tagline:canonicalTag,region},
       profile:{role:detectedRole,rank:rankLabel,champions},
       matchImported:Boolean(synced),
+      reusedExisting:false,
       matchId:synced?.match?.id??null,
       syncStatus,
     }};
