@@ -327,7 +327,7 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
   const preferredRole=canonicalLeagueRole(accountResult.data?.role)??latestEvidenceRole??'ADC';
   const rankLabel=accountResult.data?.rank_tier
     ?String(accountResult.data.rank_tier)+(accountResult.data.rank_division?' '+String(accountResult.data.rank_division):'')
-    :history.at(-1)?.analysis?.rank||'SILVER';
+    :'SILVER';
   let tasks:ILPTask[]=(storedResult.data??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
   tasks=tasks.map(task=>{
     const stamped=stampLegacyTaskScope(task,preferredRole);
