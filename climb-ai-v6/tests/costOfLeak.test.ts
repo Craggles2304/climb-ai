@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {priceLeak,rankLeaks,MIN_TOTAL,MIN_PER_SIDE} from '../lib/costOfLeak';
-import {METRIC_SPECS,clears} from '../lib/metrics';
+import {METRIC_SPECS} from '../lib/metrics';
+import {benchmarkPass,missionBenchmark} from '../lib/rankMissionBenchmarks';
 import {adaptILP} from '../lib/ilpEngine';
 import {Match,MatchMetrics,ILPTask} from '../lib/types';
 
@@ -89,7 +90,7 @@ test('handles an at-most metric, where clearing the bar means fewer',()=>{
   assert.equal(r.status,'READY');
   assert.equal(r.cleared.games,10);
   assert.equal(r.cleared.wins,7);
-  assert.match(r.fact,/2 or fewer post-20 deaths/);
+  assert.match(r.fact,/≤2 deaths after 20m/);
 });
 
 test('a gap pointing the wrong way is reported plainly, not spun',()=>{
@@ -135,17 +136,18 @@ test('rankLeaks orders by the size of the gap',()=>{
 // call a game a pass while the price tag counted it as a miss.
 test('thresholds agree with the pass conditions in ilpEngine',()=>{
   const cases:[string,number,number][]=[
-    // metric, value that should clear, value that should miss
-    ['post15CsPerMin',6.0,5.9],
+    // Gold IV rank-aware bar: metric, value that should clear, value that should miss
+    ['post15CsPerMin',5.0,4.9],
     ['deathsPost20',2,3],
-    ['secondItemMinute',23,24],
-    ['objectiveParticipation',0.7,0.6],
+    ['secondItemMinute',25,25.1],
+    ['objectiveParticipation',0.60,0.59],
   ];
   for(const [metric,pass,fail] of cases){
     const spec=METRIC_SPECS[metric];
     assert.ok(spec,`${metric} missing from METRIC_SPECS`);
-    assert.equal(clears(spec,pass),true,`${metric}: ${pass} should clear the bar`);
-    assert.equal(clears(spec,fail),false,`${metric}: ${fail} should miss the bar`);
+    assert.ok(missionBenchmark(metric,'Gold IV'),`${metric} missing rank benchmark`);
+    assert.equal(benchmarkPass(metric,pass,'Gold IV'),true,`${metric}: ${pass} should clear the Gold bar`);
+    assert.equal(benchmarkPass(metric,fail,'Gold IV'),false,`${metric}: ${fail} should miss the Gold bar`);
 
     const task:ILPTask={
       id:'t1',accountId:'acct-1',title:'t',category:'FARMING',why:'',gameRule:'',
