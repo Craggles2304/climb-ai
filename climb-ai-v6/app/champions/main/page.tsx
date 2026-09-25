@@ -237,6 +237,23 @@ export default function MainChampionPage(){
   useEffect(()=>{
     if(!main)return;
     let live=true;
+    setMetaLoading(true);
+    setMeta(null);
+    const params=new URLSearchParams({
+      champion:main,
+      role:active.role||'MID',
+    });
+    fetch('/api/champions/main/meta?'+params)
+      .then(response=>response.json())
+      .then((body:MetaPayload)=>{if(live)setMeta(body)})
+      .catch(()=>{if(live)setMeta({ok:false,error:'Champion setup data is unavailable right now.'})})
+      .finally(()=>{if(live)setMetaLoading(false)});
+    return()=>{live=false};
+  },[main,active.role]);
+
+  useEffect(()=>{
+    if(!main)return;
+    let live=true;
     setPopularLoading(true);
     setPopularBuild(null);
     const params=new URLSearchParams({
