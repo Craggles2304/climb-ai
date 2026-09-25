@@ -39,7 +39,7 @@ type PatternEvidence={
   lastEvidenceAt:string|null;
 };
 
-const ACTIVE_LIMIT=5;
+const ACTIVE_LIMIT=2;
 const MASTERY_CLEAN_GAMES=3;
 const RECENT_WINDOW=5;
 const clamp=(n:number)=>Math.max(0,Math.min(100,Math.round(n)));
@@ -109,7 +109,7 @@ export function adaptActiveFiveFromPostGameEvidence(input:AdaptiveIlpInput):Adap
   }
 
   // Promote repeated leaks only. A one-game spike can raise confidence on an
-  // existing mission, but it cannot displace another member of the Active Five.
+  // existing mission, but it cannot displace another member of the two-mission plan.
   for(const fix of rankedFixes(input.profile.fixLadder,history)){
     const evidence=patternEvidence(fix.key,history);
     if(!promotionReady(fix,evidence)||represented(tasks,fix.key))continue;
@@ -245,26 +245,33 @@ function capActiveFive(tasks:AdaptiveTask[],now:string,changes:string[]){
     return aProtected-bProtected||Number(a.priority??50)-Number(b.priority??50);
   });
   const pause=new Set(ordered.slice(0,live.length-ACTIVE_LIMIT).map(task=>task.id));
-  next=next.map(task=>pause.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically to keep the development plan at exactly five active missions.',history:[...(task.history??[]),{at:now,type:'PAUSED',note:'Active Five cap applied after evidence adaptation.'}].slice(-12)}:task);
-  if(pause.size)changes.push(`Active Five cap paused ${pause.size} lower-priority mission${pause.size===1?'':'s'}.`);
+  next=next.map(task=>pause.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically to keep the development plan at exactly two active missions.',history:[...(task.history??[]),{at:now,type:'PAUSED',note:'two-mission plan cap applied after evidence adaptation.'}].slice(-12)}:task);
+  if(pause.size)changes.push(`two-mission plan cap paused ${pause.size} lower-priority mission${pause.size===1?'':'s'}.`);
   return next;
 }
 
 function refillActiveFive(tasks:AdaptiveTask[],accountId:string,role:Role|null,now:string,changes:string[]){
   let next=[...tasks];
-  let needed=ACTIVE_LIMIT-next.filter(isLive).length;if(needed<=0)return next;
-  const resumable=next.filter(task=>task.status==='PAUSED'&&!pausedByPlayer(task)).sort((a,b)=>Number(b.priority??50)-Number(a.priority??50));
-  for(const task of resumable){if(needed<=0)break;next=next.map(row=>row.id===task.id?{...row,status:'ACTIVE' as const,lastUpdatedReason:'Returned automatically to keep five active development missions.',history:[...(row.history??[]),{at:now,type:'PROMOTED',note:'Returned to fill an Active Five vacancy.'}].slice(-12)}:row);needed--;changes.push(`${task.title} returned to fill an Active Five vacancy.`)}
-  if(needed<=0||!role)return next;
-  const representedKeys=new Set(next.map(task=>`${norm(task.title)}|${norm(task.metric)}`));
-  for(const [key,candidate] of Object.entries(candidateTasks as Record<string,any>)){
+  let needed=ACTIVE_LIMIT-next.filter(isLive).length;
+  if(needed<=0)return next;
+
+  const resumable=next
+    .filter(task=>task.status==='PAUSED'&&!pausedByPlayer(task)&&task.adaptive?.managedBy==='POST_GAME_EVIDENCE')
+    .sort((a,b)=>Number(b.priority??50)-Number(a.priority??50));
+  for(const task of resumable){
     if(needed<=0)break;
-    if(Array.isArray(candidate.roles)&&!candidate.roles.includes(role))continue;
-    const signature=`${norm(candidate.title)}|${norm(candidate.metric)}`;if(representedKeys.has(signature))continue;
-    const id=`system-${role.toLowerCase()}-${key}-adaptive-fill`;if(next.some(task=>task.id===id))continue;
-    const task:AdaptiveTask={id,accountId,title:String(candidate.title),category:candidate.category,why:String(candidate.why),gameRule:String(candidate.gameRule),metric:String(candidate.metric),target:String(candidate.target),progress:0,status:'ACTIVE',source:'SYSTEM',evidence:['SYSTEM: Active Five vacancy refill. Evidence will confirm, revise or replace this baseline over future games.'],priority:Number(candidate.priority??50),successfulGames:0,gamesObserved:0,masteryRequired:Number(candidate.masteryRequired??3),roleScope:role,roleEvidence:[role],lastUpdatedReason:'Added as a role-safe baseline because an Active Five vacancy remained after post-game adaptation.',history:[{at:now,type:'PROMOTED',note:'Role-safe baseline filled an Active Five vacancy.'}]};
-    next.push(task);representedKeys.add(signature);needed--;changes.push(`${task.title} added to keep five active missions.`)
+    next=next.map(row=>row.id===task.id?{
+      ...row,
+      status:'ACTIVE' as const,
+      lastUpdatedReason:'Returned because repeated post-game evidence still supports this measurable mission.',
+      history:[...(row.history??[]),{at:now,type:'PROMOTED',note:'Repeated evidence restored this mission to the two-mission plan.'}].slice(-12),
+    }:row);
+    needed--;
+    changes.push(`${task.title} returned from repeated measurable evidence.`);
   }
+
+  // Do not invent a baseline mission simply to fill a slot. Empty slots stay
+  // empty until a completed game supplies measurable evidence.
   return next;
 }
 function pausedByPlayer(task:ILPTask){if(/paused by player/i.test(task.lastUpdatedReason??''))return true;const last=[...(task.history??[])].reverse().find(entry=>String(entry.type).toUpperCase()==='PAUSED');return Boolean(last&&/by player/i.test(last.note))}
