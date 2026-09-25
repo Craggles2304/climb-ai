@@ -1,20 +1,24 @@
 'use client';
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import {combatProfile} from '@/lib/champions/dps';
 import {buildStats,MAX_BUILD_SIZE,type BestBuild,type BuildItem} from '@/lib/champions/build';
+import type {RawDamageBuild} from '@/lib/champions/rawDamageBuild';
 import {statsAtLevel,type ChampionStatBlock} from '@/lib/champions/ddragon';
 
 export function ChampionBuilder({
-  champion,stats,level,catalogue,maxDps,budget,onBuildChange,
+  champion,stats,level,catalogue,maxDps,maxRawDamage,budget,onBuildChange,presetBuild,presetKey,
 }:{
   champion:string;
   stats:ChampionStatBlock;
   level:number;
   catalogue:BuildItem[];
   maxDps:BestBuild;
+  maxRawDamage?:RawDamageBuild;
   bySize:BestBuild[];
   budget:number|null;
   onBuildChange?:(items:BuildItem[])=>void;
+  presetBuild?:BuildItem[];
+  presetKey?:number;
 }){
   const [picked,setPicked]=useState<BuildItem[]>([]);
   const [query,setQuery]=useState('');
@@ -23,6 +27,13 @@ export function ChampionBuilder({
   const levelStats=useMemo(()=>statsAtLevel(stats,level),[stats,level]);
   const gold=picked.reduce((sum,item)=>sum+item.gold,0);
   const full=picked.length>=MAX_BUILD_SIZE;
+
+  useEffect(()=>{
+    if(presetKey===undefined)return;
+    const next=presetBuild??[];
+    setPicked(next);
+    onBuildChange?.(next);
+  },[presetKey,presetBuild,onBuildChange]);
 
   const update=(next:BuildItem[])=>{
     setPicked(next);
@@ -49,7 +60,8 @@ export function ChampionBuilder({
     <div className="mc-section-head">
       <div><div className="eyebrow">BUILD SIMULATOR</div><h2>Change the build. Watch the numbers move.</h2></div>
       <div className="mc-sim-actions">
-        {maxDps.items.length>0&&<button className="btn secondary" type="button" onClick={()=>update(maxDps.items)}>LOAD DAMAGE BUILD</button>}
+        {maxRawDamage?.items.length?<button className="btn secondary" type="button" onClick={()=>update(maxRawDamage.items)}>LOAD MAX DAMAGE</button>
+          :maxDps.items.length>0&&<button className="btn secondary" type="button" onClick={()=>update(maxDps.items)}>LOAD AUTO DPS BUILD</button>}
         {picked.length>0&&<button className="btn secondary" type="button" onClick={()=>update([])}>CLEAR</button>}
       </div>
     </div>
