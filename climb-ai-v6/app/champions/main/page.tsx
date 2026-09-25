@@ -176,6 +176,15 @@ export default function MainChampionPage(){
     return builds;
   },[championMatches]);
 
+  const importableRecentBuilds=useMemo(()=>{
+    const catalogue=data?.build?.catalogue??[];
+    const byName=new Map(catalogue.map(item=>[item.name.toLowerCase(),item]));
+    return recentBuilds.map(names=>({
+      names,
+      items:names.map(name=>byName.get(name.toLowerCase())).filter((item):item is BuildItem=>Boolean(item)).slice(0,6),
+    }));
+  },[recentBuilds,data?.build?.catalogue]);
+
   const abilityRows=useMemo(()=>{
     if(!data?.champion||!data.abilityData)return[];
     const bonuses=buildStats(buildItems);
@@ -319,9 +328,10 @@ export default function MainChampionPage(){
       <section className="mc-section">
         <div className="mc-section-head"><div><div className="eyebrow">BUILDS</div><h2>Your real games + a damage baseline.</h2></div></div>
         <div className="mc-build-presets">
-          {recentBuilds.length>0?recentBuilds.map((items,index)=><div className="mc-preset" key={items.join('|')+index}>
+          {importableRecentBuilds.length>0?importableRecentBuilds.map((build,index)=><div className="mc-preset" key={build.names.join('|')+index}>
             <span>{index===0?'YOUR LATEST BUILD':'RECENT BUILD '+(index+1)}</span>
-            <div>{items.map((item,itemIndex)=><b key={item+'-'+itemIndex}>{item}</b>)}</div>
+            <div>{build.names.map((item,itemIndex)=><b key={item+'-'+itemIndex}>{item}</b>)}</div>
+            {build.items.length>0&&<button className="btn secondary" type="button" onClick={()=>loadBuild(build.items,index===0?'LATEST GAME BUILD':'RECENT GAME BUILD')}>IMPORT TO SIMULATOR ↓</button>}
           </div>):<div className="mc-preset empty"><span>YOUR BUILDS</span><p>Play tracked games on {champion.name} and your actual completed builds will appear here.</p></div>}
           {data.build?.maxRawDamage?.items?.length?<div className="mc-preset damage mc-max-damage">
             <span>MAX DAMAGE BUILD · LEVEL {level}</span>
