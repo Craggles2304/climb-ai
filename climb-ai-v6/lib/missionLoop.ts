@@ -14,8 +14,12 @@ export interface MissionEvidence{
 export function missionStage(task:ILPTask):MissionStage{
   if(task.status==='MASTERED')return'MASTERED';
   const history=task.missionHistory??[];
-  const confirmed=history.filter(a=>a.banksPass).length;
-  if(!history.length)return'DISCOVER';
+  const reviewed=history.length;
+  const confirmed=reviewed
+    ?history.filter(a=>a.banksPass).length
+    :Math.max(0,task.successfulGames??0);
+  const observed=reviewed||Math.max(0,task.gamesObserved??0);
+  if(!observed)return'DISCOVER';
   if(!confirmed)return'PRACTISE';
   return'REPEAT';
 }
@@ -38,17 +42,24 @@ export function missionEvidence(task:ILPTask,match:Match|undefined):MissionEvide
 
 export function missionSummary(task:ILPTask){
   const history=task.missionHistory??[];
-  const confirmed=history.filter(a=>a.banksPass).length;
-  const attempted=history.filter(a=>a.adherence==='YES'||a.adherence==='PARTLY').length;
   const required=task.masteryRequired||3;
+  const hasReviewedBehaviour=history.length>0;
+  const confirmed=hasReviewedBehaviour
+    ?history.filter(a=>a.banksPass).length
+    :Math.min(required,Math.max(0,task.successfulGames??0));
+  const attempted=hasReviewedBehaviour
+    ?history.filter(a=>a.adherence==='YES'||a.adherence==='PARTLY').length
+    :Math.max(0,task.gamesObserved??0);
+  const reviewed=hasReviewedBehaviour?history.length:Math.max(0,task.gamesObserved??0);
   return{
     stage:missionStage(task),
     confirmed,
     attempted,
-    reviewed:history.length,
+    reviewed,
     required,
     remaining:Math.max(0,required-confirmed),
     latest:history[history.length-1],
+    proofMode:hasReviewedBehaviour?'REVIEWED' as const:'TRACKED' as const,
   };
 }
 
