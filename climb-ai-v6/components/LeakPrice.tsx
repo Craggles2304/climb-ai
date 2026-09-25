@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import {LeakPrice as Price} from '@/lib/costOfLeak';
-import {thresholdLabel} from '@/lib/metrics';
 import {AnimatedBar,CountUp} from './Motion';
 import {FeedbackPrompt} from './FeedbackPrompt';
 
@@ -44,7 +43,7 @@ export function LeakPriceCard({price,ctaHref='/ilp',rankBand,role}:{price:Price;
   }
 
   const {cleared,missed,spec,gapPoints}=price;
-  const bar=thresholdLabel(spec);
+  const bar=price.bar;
   const clearedPct=Math.round(cleared.winRate*100);
   const missedPct=Math.round(missed.winRate*100);
   const positive=(gapPoints??0)>0;
