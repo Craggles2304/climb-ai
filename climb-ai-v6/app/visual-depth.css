@@ -3558,31 +3558,36 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ip-head p b{color:rgb(var(--op-a))}
 .ip-summary{
   display:grid;
-  grid-template-columns:1.25fr 110px repeat(2,minmax(0,1fr));
-  gap:7px;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:0;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.085);
+  border-radius:12px;
+  background:rgba(9,15,19,.74);
   margin-bottom:10px
 }
 .ip-summary>div{
-  min-height:106px;
-  padding:14px;
-  border:1px solid rgba(255,255,255,.075);
-  border-radius:14px;
-  background:rgba(9,15,19,.68);
+  min-height:78px;
+  padding:12px 16px;
+  border:0;
+  border-right:1px solid rgba(255,255,255,.07);
+  border-radius:0;
+  background:transparent;
   display:grid;align-content:center;gap:4px
 }
+.ip-summary>div:last-child{border-right:0}
 .ip-summary span{
   color:#728086;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em
 }
 .ip-summary b{
-  color:#edf3f2;font:900 26px/1 var(--font-display,'Barlow Condensed',sans-serif)
+  color:#edf3f2;font:900 24px/1 var(--font-display,'Barlow Condensed',sans-serif)
 }
 .ip-summary small{color:#6f7e83;font-size:8px}
 .ip-summary-main{
   background:linear-gradient(145deg,rgba(var(--op-a),.08),rgba(9,15,19,.78))!important;
-  border-color:rgba(var(--op-a),.16)!important
+  box-shadow:inset 3px 0 0 rgb(var(--op-a))
 }
 .ip-summary-main>b{color:rgb(var(--op-a))}
-.ip-ring{display:grid!important;place-items:center!important;padding:8px!important}
 .ip-update{
   display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
   margin:10px 0;padding:12px 14px;border:1px solid rgba(var(--op-a),.18);
@@ -3597,11 +3602,11 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ip-tabs{
   position:sticky;top:8px;z-index:18;
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
-  margin-top:12px;padding:7px;border:1px solid rgba(255,255,255,.08);
-  border-radius:15px;background:rgba(7,12,16,.92);backdrop-filter:blur(16px)
+  margin-top:10px;padding:4px;border:1px solid rgba(255,255,255,.08);
+  border-radius:11px;background:rgba(7,12,16,.92);backdrop-filter:blur(16px)
 }
 .ip-tabs button{
-  min-height:50px;padding:9px 11px;border:1px solid transparent;border-radius:10px;
+  min-height:38px;padding:7px 10px;border:1px solid transparent;border-radius:7px;
   background:transparent;color:#78888d;text-align:left;cursor:pointer
 }
 .ip-tabs button.active{
@@ -3610,13 +3615,13 @@ body[data-op-area="hq"] .hq-mission-why p{
   box-shadow:inset 0 -2px 0 rgb(var(--op-a))
 }
 .ip-tabs b{display:block;font:800 9px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em}
-.ip-tabs small{display:block;margin-top:5px;color:inherit;opacity:.65;font-size:8px}
-.ip-panel{padding-top:10px}
+.ip-tabs small{display:inline;margin-left:8px;color:inherit;opacity:.55;font-size:8px}
+.ip-panel{padding-top:8px}
 .ip-mission-grid{
   display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px
 }
 .ip-mission{
-  min-height:480px;padding:20px;border:1px solid rgba(255,255,255,.08);border-radius:18px;
+  min-height:0;padding:18px;border:1px solid rgba(255,255,255,.08);border-radius:16px;
   background:rgba(9,15,19,.72);display:flex;flex-direction:column
 }
 .ip-mission.primary{
@@ -3636,18 +3641,19 @@ body[data-op-area="hq"] .hq-mission-why p{
   color:#7d8b90;font:700 7px/1 var(--font-mono,'IBM Plex Mono',monospace);font-style:normal;letter-spacing:.07em
 }
 .ip-mission h2{
-  margin:16px 0 8px;font:900 clamp(30px,4vw,44px)/.92 var(--font-display,'Barlow Condensed',sans-serif);
-  text-transform:uppercase
+  margin:13px 0 7px;font:900 clamp(27px,3.1vw,38px)/.94 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;min-height:1.88em;display:-webkit-box;-webkit-box-orient:vertical;
+  -webkit-line-clamp:2;overflow:hidden;text-wrap:balance
 }
-.ip-meaning{margin:0;color:#91a0a4;font-size:12px;line-height:1.55}
+.ip-meaning{margin:0;color:#91a0a4;font-size:11px;line-height:1.45;min-height:2.9em}
 .ip-rule{
-  margin-top:18px;padding:14px;border:1px solid rgba(var(--op-a),.14);
+  margin-top:13px;padding:12px;border:1px solid rgba(var(--op-a),.14);
   border-radius:11px;background:rgba(var(--op-a),.035)
 }
 .ip-rule span,.ip-target span{
   display:block;color:#708086;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em
 }
-.ip-rule b{display:block;margin-top:7px;color:#e9efee;font-size:14px;line-height:1.45}
+.ip-rule b{display:block;margin-top:6px;color:#e9efee;font-size:13px;line-height:1.38}
 .ip-target{
   display:grid;grid-template-columns:1.5fr .7fr;gap:6px;margin-top:8px
 }
@@ -3655,7 +3661,7 @@ body[data-op-area="hq"] .hq-mission-why p{
   padding:11px;border:1px solid rgba(255,255,255,.065);border-radius:9px;background:rgba(0,0,0,.12)
 }
 .ip-target b{display:block;margin-top:5px;color:#cfd8d8;font-size:10px;line-height:1.35}
-.ip-progress{margin-top:auto;padding-top:18px}
+.ip-progress{margin-top:auto;padding-top:13px}
 .ip-progress>div:first-child{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
 .ip-progress>div:first-child>b{font:900 16px/1 var(--font-display,'Barlow Condensed',sans-serif)}
 .ip-pips{display:flex;gap:5px;margin-top:12px}
@@ -3665,7 +3671,7 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ip-pips i.on{background:rgb(var(--op-a));box-shadow:0 0 14px rgba(var(--op-a),.18)}
 .ip-progress small{display:block;margin-top:7px;color:#728186;font-size:8px}
 .ip-mission-details{
-  margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,.06)
+  margin-top:11px;padding-top:10px;border-top:1px solid rgba(255,255,255,.06)
 }
 .ip-mission-details summary{
   cursor:pointer;color:#829095;font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em
@@ -3726,14 +3732,14 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ip-empty h2{margin:8px 0;font-size:30px}
 .ip-empty p{color:#839196}
 @media(max-width:900px){
-  .ip-summary{grid-template-columns:1fr 100px 1fr}
-  .ip-summary>div:last-child{grid-column:span 3}
+  .ip-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .ip-summary>div:nth-child(2){border-right:0}
+  .ip-summary>div:nth-child(-n+2){border-bottom:1px solid rgba(255,255,255,.07)}
   .ip-mission-grid,.ip-evidence-grid,.ip-history-grid{grid-template-columns:1fr}
 }
 @media(max-width:680px){
   .ip-head{align-items:flex-start;flex-direction:column}
-  .ip-summary{grid-template-columns:1fr 90px}
-  .ip-summary>div:last-child{grid-column:auto}
+  .ip-summary{grid-template-columns:repeat(2,minmax(0,1fr))}
   .ip-tabs{position:static}
   .ip-tabs small{display:none}
   .ip-mission{min-height:0}
@@ -3742,7 +3748,6 @@ body[data-op-area="hq"] .hq-mission-why p{
 }
 @media(max-width:460px){
   .ip-summary{grid-template-columns:1fr 1fr}
-  .ip-summary-main{grid-column:span 2}
-  .ip-ring{display:none!important}
+  .ip-summary-main{grid-column:auto}
   .ip-target{grid-template-columns:1fr}
 }
