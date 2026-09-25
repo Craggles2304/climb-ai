@@ -206,7 +206,16 @@ export function buildAdaptiveItemPlan(input:{
   }
 
   const nonBoots=reads.filter(item=>!item.isBoots);
-  const coreEligible=nonBoots.filter(item=>{
+  const classCompatible=(item:ItemRead)=>{
+    if(tank)return item.hp>0||item.armor>0||item.mr>0;
+    if(support&&!tank)return item.ap>0||item.hp>0||item.mr>0||item.armor>0||item.flags.includes('HEAL_SHIELD_POWER')||item.utility>=10;
+    if(marksman)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT')||(magicBias>=.35&&item.ap>0);
+    if(mage)return item.ap>0||item.flags.includes('MAGIC_PEN');
+    if(attackBias>=.58)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT');
+    return item.ad>0||item.ap>0||item.as>0||item.crit>0;
+  };
+  const compatibleNonBoots=nonBoots.filter(classCompatible);
+  const coreEligible=compatibleNonBoots.filter(item=>{
     if(marksman)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT');
     if(tank)return item.hp>0||item.armor>0||item.mr>0;
     if(support&&!tank)return item.ap>0||item.hp>0||item.flags.includes('HEAL_SHIELD_POWER')||item.utility>=10;
@@ -222,10 +231,10 @@ export function buildAdaptiveItemPlan(input:{
     if(coreReads.length===2)break;
   }
 
-  const techRanked=nonBoots.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.context+b.score*.35)-(a.context+a.score*.35));
+  const techRanked=compatibleNonBoots.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.context+b.score*.35)-(a.context+a.score*.35));
   const draftRead=techRanked.find(item=>item.context>=22)??techRanked[0]??null;
   if(draftRead)chosen.add(draftRead.id);
-  const finishRead=nonBoots.filter(item=>!chosen.has(item.id)).sort((a,b)=>b.score-a.score)[0]??null;
+  const finishRead=compatibleNonBoots.filter(item=>!chosen.has(item.id)).sort((a,b)=>b.score-a.score)[0]??null;
   if(finishRead)chosen.add(finishRead.id);
   const bootRead=reads.filter(item=>item.isBoots).sort((a,b)=>b.score-a.score)[0]??null;
 
