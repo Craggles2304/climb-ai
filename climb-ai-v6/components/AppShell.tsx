@@ -15,16 +15,18 @@ import {BetaReporter} from './BetaReporter';
 
 const primary=[
   ['Home','/dashboard','⌂','Your next action'],
+  ['My Main Champ','/champions/main','◈','Build + abilities'],
   ['My Coach','/coach','✦','Ask + understand'],
   ['My Games','/analyse','◇','Reviews + evidence'],
   ['My Progress','/ilp','◎','Focus + development'],
   ['Companion','/live','●','Connect League'],
 ] as const;
-const mobile=[['Home','/dashboard'],['Coach','/coach'],['Games','/analyse'],['Progress','/ilp']] as const;
+const mobile=[['Home','/dashboard'],['Main','/champions/main'],['Coach','/coach'],['Games','/analyse'],['Progress','/ilp']] as const;
 
 type RouteScene={code:string;kicker:string;title:string;copy:string;signals:[string,string,string];tone:string;watermark:string};
 const routeScene=(path:string):RouteScene|null=>{
   if(path==='/dashboard')return{code:'HQ // 01',kicker:'PLAYER DEVELOPMENT HQ',title:'NEXT GAME. ONE JOB.',copy:'Your current focus, the evidence behind it and the next rep worth playing — without digging through a stat wall.',signals:['ONE ACTIVE FOCUS','EVIDENCE RUNNING','NEXT REP READY'],tone:'hq',watermark:'CLIMB'};
+  if(path==='/champions/main')return{code:'MAIN // 02',kicker:'YOUR CHAMPION LAB',title:'KNOW YOUR MAIN.',copy:'Your champion, your build and what the numbers actually become when you change the items.',signals:['YOUR MAIN','BUILD SIMULATOR','ABILITY DAMAGE'],tone:'lab',watermark:'MAIN'};
   if(path==='/coach')return{code:'COACH // 02',kicker:'COACH MEMORY',title:'ASK LESS. REMEMBER MORE.',copy:'Your coach carries the thread across games, so every answer starts from the player you are becoming rather than from zero.',signals:['PLAYER MEMORY','RANK AWARE','DECISION FIRST'],tone:'coach',watermark:'COACH'};
   if(path==='/analyse'||path.startsWith('/analyse/'))return{code:'REVIEW // 03',kicker:'MATCH REVIEW',title:'WATCH THE DECISION. NOT THE KDA.',copy:'Turn the last game into a small number of moments that explain what held, what broke and what deserves the next rep.',signals:['MATCH EVIDENCE','DECISION REVIEW','NEXT FIX'],tone:'review',watermark:'REVIEW'};
   if(path==='/ilp')return{code:'CLIMB // 04',kicker:'PLAYER DEVELOPMENT',title:'BUILD A PLAYER. NOT A STATLINE.',copy:'One active behaviour, four background signals and a development path that only moves when repeated evidence earns it.',signals:['ACTIVE FIVE','MASTERY REPS','ADAPTIVE PATH'],tone:'climb',watermark:'GROW'};
@@ -47,6 +49,7 @@ const routeTitle=(path:string)=>{
   if(path==='/progress')return'ADVANCED PROGRESS';
   if(path==='/matchups')return'MATCHUP ASSISTANT';
   if(path.startsWith('/matchup-lab'))return'ADVANCED MATCHUP';
+  if(path==='/champions/main')return'MY MAIN CHAMP';
   if(path.startsWith('/champions'))return'CHAMPIONS';
   if(path==='/missions')return'MISSION LAB';
   if(path==='/uploads')return'ADD A GAME';
@@ -84,8 +87,8 @@ export function AppShell({children}:{children:React.ReactNode}){
   const coaching=coachingLevelFor(active.rank);
   const scene=routeScene(path);
   const [advancedOpen,setAdvancedOpen]=useState(false);
-  const gatedLab=(path.startsWith('/matchup-lab')||path==='/champions/main')&&coaching.depth<7;
-  const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||path.startsWith('/champions')||path==='/missions'||path==='/uploads';
+  const gatedLab=path.startsWith('/matchup-lab')&&coaching.depth<7;
+  const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||(path.startsWith('/champions')&&path!=='/champions/main')||path==='/missions'||path==='/uploads';
   useEffect(()=>setAdvancedOpen(false),[path]);
 
   return <div className={'app-layout op-shell '+(live?'is-live':'')}>
