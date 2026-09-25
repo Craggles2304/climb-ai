@@ -707,6 +707,22 @@ export default function MainChampionPage(){
           {draftData.swaps?.length?<div className="mc-draft-swaps"><span>IF THE GAME CHANGES</span>{draftData.swaps.slice(0,3).map(item=><div key={item.id}><b>{item.name}</b><small>{item.why}</small></div>)}</div>:null}
         </div>:null}
       </section>
+      </div>}
+
+      {activeTab==='DAMAGE'&&<div className="mc-tab-panel">
+        <section className="mc-target-lab">
+          <div className="mc-section-head">
+            <div><div className="eyebrow">TARGET LAB</div><h2>See what the build actually does to a champion.</h2><p>Load a target, then adjust HP, armour or MR if you want to model their items.</p></div>
+          </div>
+          <div className="mc-target-controls">
+            <div className="field"><label>Target champion</label><input className="input" list="damage-target-list" value={targetDraft} placeholder="e.g. Yone" onChange={event=>setTargetDraft(event.target.value)}/><datalist id="damage-target-list">{names.filter(name=>name!==main).map(name=><option key={name} value={name}/>)}</datalist></div>
+            <button className="btn secondary" type="button" disabled={!canonicalChampion(targetDraft,names)||targetLoading} onClick={()=>void loadTarget()}>{targetLoading?'LOADING…':'LOAD TARGET'}</button>
+            {targetStats&&<div className="mc-target-stat"><span>HP</span><input type="number" value={Math.round(targetStats.hp)} onChange={event=>setTargetStats({...targetStats,hp:Number(event.target.value)||0})}/></div>}
+            {targetStats&&<div className="mc-target-stat"><span>ARMOR</span><input type="number" value={Math.round(targetStats.armor)} onChange={event=>setTargetStats({...targetStats,armor:Number(event.target.value)||0})}/></div>}
+            {targetStats&&<div className="mc-target-stat"><span>MR</span><input type="number" value={Math.round(targetStats.magicResist)} onChange={event=>setTargetStats({...targetStats,magicResist:Number(event.target.value)||0})}/></div>}
+          </div>
+          {targetName&&targetStats&&<div className="mc-target-loaded"><b>{targetName.toUpperCase()} · LEVEL {level}</b><span>Editable stats let you model defensive items without another screen.</span></div>}
+        </section>
 
       {data.build&&<ChampionBuilder
         champion={champion.name}
@@ -731,6 +747,10 @@ export default function MainChampionPage(){
 
         {buildItems.length>0&&<div className="mc-active-build">{buildItems.map((item,index)=><span key={item.id}><b>{index+1}</b>{item.icon?<img src={item.icon} alt="" aria-hidden="true"/>:null}{item.name}</span>)}</div>}
 
+        {targetStats&&targetAbilityRows.length>0&&<div className="mc-target-damage-grid">
+          {targetAbilityRows.map(row=><div key={row.slot}><span>{row.slot} · RANK {currentRanks[row.slot]||0}</span><b>{Math.round(row.post)}</b><small>{Math.round(row.raw)} raw{row.exact?'':' · variable*'}</small></div>)}
+        </div>}
+
         {abilityRows.length?<div className="mc-damage-table-wrap"><table className="mc-damage-table">
           <thead><tr><th>ABILITY</th><th>DAMAGE</th>{Array.from({length:maxRanks(abilityRows)},(_,index)=><th key={index}>RANK {index+1}</th>)}</tr></thead>
           <tbody>{abilityRows.map(row=><tr key={row.id}>
@@ -747,7 +767,9 @@ export default function MainChampionPage(){
         </div>}
         {abilityRows.length>0&&<p className="mc-damage-note"><b>* VARIABLE</b> means part of that damage depends on a target, stack, mark, distance or another live-game condition. Optimus shows the calculable portion and does not guess the rest.</p>}
       </section>
+      </div>}
 
+      {activeTab==='MATCHUPS'&&<div className="mc-tab-panel">
       <section className="mc-counter-section">
         <div className="mc-section-head">
           <div>
