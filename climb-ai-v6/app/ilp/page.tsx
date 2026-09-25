@@ -12,6 +12,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import type {ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 import {awarenessMissions} from '@/lib/awarenessMissions';
+import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import type {Role} from '@/lib/types';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
@@ -25,7 +26,7 @@ export default function PlayerDevelopmentCentre(){
   const [checking,setChecking]=useState(false);
 
   const activeTasks=useMemo(
-    ()=>tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,2),
+    ()=>tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3),
     [tasks],
   );
   const mastered=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
@@ -42,7 +43,7 @@ export default function PlayerDevelopmentCentre(){
     setChecking(true);
     try{
       await refreshAccount();
-      setChanges(['Latest match data fetched. New evidence will be applied to your two missions automatically.']);
+      setChanges(['Latest match data fetched. New evidence will be applied to your core mission and two support missions automatically.']);
     }finally{
       setChecking(false);
     }
@@ -52,7 +53,7 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-head">
       <div>
         <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
-        <h1>Two things. Until they stick.</h1>
+        <h1>One core. Two support.</h1>
         <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b></p>
       </div>
       <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
@@ -61,10 +62,10 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-summary">
       <div className="ip-summary-main">
         <span>CURRENT PLAN</span>
-        <b>{activeTasks.length}/2 ACTIVE</b>
-        <small>{matches.length} {active.role.toLowerCase()} games feeding this plan</small>
+        <b>{activeTasks.length}/3 ACTIVE</b>
+        <small>{matches.length} {active.role.toLowerCase()} games · {missionRankBand(active.rank)} targets</small>
       </div>
-      <div><span>PROVEN REPS</span><b>{banked}/{required||6}</b><small>tracked or reviewed evidence</small></div>
+      <div><span>PROVEN REPS</span><b>{banked}/{required||9}</b><small>tracked game evidence only</small></div>
       <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
       <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
     </section>
@@ -86,7 +87,7 @@ export default function PlayerDevelopmentCentre(){
       </div>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
         <h2>Play a tracked game.</h2>
-        <p>OP CLIMB needs real evidence before it chooses the two behaviours worth training.</p>
+        <p>OP CLIMB needs real evidence before it chooses your core behaviour and two support behaviours.</p>
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
@@ -124,7 +125,7 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   const sideMissions=awarenessMissions(task,role);
   return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
     <div className="ip-mission-top">
-      <span>MISSION 0{index+1}</span>
+      <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
       <em>{clean(task.category)}</em>
     </div>
     <h2>{plain.name}</h2>
