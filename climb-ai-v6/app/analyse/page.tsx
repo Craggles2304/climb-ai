@@ -6,7 +6,7 @@ import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
-import type {Match} from '@/lib/types';
+import type {Match,Role} from '@/lib/types';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -16,6 +16,7 @@ const championSplash=(name:string)=>`https://ddragon.leagueoflegends.com/cdn/img
 const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
 const issueLabel=(value:string)=>value.replaceAll('_',' ');
+const ROLE_ORDER:Role[]=['TOP','JUNGLE','MID','ADC','SUPPORT'];
 
 type ReviewPreview={
   report:ReturnType<typeof analyseMatch>;
@@ -29,25 +30,38 @@ export default function AnalyseHub(){
   const [championFilter,setChampionFilter]=useState('ALL');
   const [visibleCount,setVisibleCount]=useState(10);
 
-  const roles=useMemo(()=>['ALL',...Array.from(new Set(matches.map(match=>match.role)))],[matches]);
-  const champions=useMemo(()=>['ALL',...Array.from(new Set(matches.map(match=>match.champion)))],[matches]);
-  const filtered=useMemo(()=>matches.filter(match=>
-    (roleFilter==='ALL'||match.role===roleFilter)&&
-    (championFilter==='ALL'||match.champion===championFilter)
-  ),[matches,roleFilter,championFilter]);
+  const roleBase=useMemo(
+    ()=>matches.filter(match=>championFilter==='ALL'||match.champion===championFilter),
+    [matches,championFilter],
+  );
+  const roleCounts=useMemo(
+    ()=>Object.fromEntries(ROLE_ORDER.map(role=>[role,roleBase.filter(match=>match.role===role).length])) as Record<Role,number>,
+    [roleBase],
+  );
+  const champions=useMemo(()=>{
+    const pool=roleFilter==='ALL'?matches:matches.filter(match=>match.role===roleFilter);
+    return ['ALL',...Array.from(new Set(pool.map(match=>match.champion)))];
+  },[matches,roleFilter]);
+  const filtered=useMemo(()=>roleBase.filter(match=>roleFilter==='ALL'||match.role===roleFilter),[roleBase,roleFilter]);
 
   useEffect(()=>setVisibleCount(10),[roleFilter,championFilter]);
+  useEffect(()=>{
+    if(championFilter!=='ALL'&&!champions.includes(championFilter))setChampionFilter('ALL');
+  },[roleFilter,champions,championFilter]);
 
   const previews=useMemo(()=>{
     const map=new Map<string,ReviewPreview>();
-    for(let index=0;index<filtered.length;index++){
-      const match=filtered[index];
-      const older=filtered.slice(index+1,index+6);
-      const report=analyseMatch(match,older);
-      map.set(match.id,{report,review:buildReview(match,report)});
+    for(const role of ROLE_ORDER){
+      const roleMatches=roleBase.filter(match=>match.role===role);
+      for(let index=0;index<roleMatches.length;index++){
+        const match=roleMatches[index];
+        const older=roleMatches.slice(index+1,index+6);
+        const report=analyseMatch(match,older);
+        map.set(match.id,{report,review:buildReview(match,report)});
+      }
     }
     return map;
-  },[filtered]);
+  },[roleBase]);
 
   const recent=filtered.slice(0,5);
   const previous=filtered.slice(5,10);
@@ -61,6 +75,16 @@ export default function AnalyseHub(){
   const prevDeaths=avg(previous.map(match=>match.deaths));
   const cleanEarly=recent.filter(match=>match.metrics.deathsPre10===0).length;
   const shown=filtered.slice(0,visibleCount);
+  const roleSections=useMemo(()=>ROLE_ORDER.map(role=>{
+    const games=roleBase.filter(match=>match.role===role);
+    const sample=games.slice(0,5);
+    return{
+      role,
+      games,
+      winRate:sample.length?Math.round(sample.filter(match=>match.result==='WIN').length/sample.length*100):0,
+      champions:Array.from(new Set(games.map(match=>match.champion))).slice(0,3),
+    };
+  }).filter(section=>section.games.length>0),[roleBase]);
 
   return <AppShell>
     <section className="ar-toolbar">
@@ -69,6 +93,19 @@ export default function AnalyseHub(){
         <h1>Find the decision worth fixing.</h1>
       </div>
       <Link href="/uploads" className="btn secondary">ADD A GAME</Link>
+    </section>
+
+    <section className="ar-role-switcher" aria-label="Choose a role">
+      <button type="button" className={roleFilter==='ALL'?'active':''} onClick={()=>setRoleFilter('ALL')}>
+        <span>ALL</span><b>{roleBase.length}</b><small>ALL ROLES</small>
+      </button>
+      {ROLE_ORDER.map(role=><button
+        key={role}
+        type="button"
+        className={roleFilter===role?'active':''}
+        onClick={()=>setRoleFilter(role)}
+        disabled={roleCounts[role]===0}
+      ><span>{role}</span><b>{roleCounts[role]}</b><small>GAME{roleCounts[role]===1?'':'S'}</small></button>)}
     </section>
 
     {!latest?<section className="ar-empty">
@@ -107,37 +144,47 @@ export default function AnalyseHub(){
         </div>
       </section>
 
-      <section className="ar-trend-strip">
-        <TrendCard label="LAST 5" value={recent.length?winRate+'%':'—'} sub="win rate" delta={previous.length?winRate-previousWinRate:null}/>
+      {roleFilter!=='ALL'?<section className="ar-trend-strip">
+        <TrendCard label={roleFilter+' · LAST 5'} value={recent.length?winRate+'%':'—'} sub="win rate" delta={previous.length?winRate-previousWinRate:null}/>
         <TrendCard label="CS / MIN" value={recent.length?cs.toFixed(1):'—'} sub="last 5 average" delta={previous.length?cs-prevCs:null}/>
         <TrendCard label="DEATHS" value={recent.length?deaths.toFixed(1):'—'} sub="last 5 average" delta={previous.length?prevDeaths-deaths:null}/>
         <TrendCard label="CLEAN EARLY GAMES" value={recent.length?`${cleanEarly}/${recent.length}`:'—'} sub="0 deaths before 10" delta={null}/>
-      </section>
+      </section>:<section className="ar-role-overview">
+        {roleSections.map(section=><button key={section.role} type="button" onClick={()=>setRoleFilter(section.role)}>
+          <span>{section.role}</span>
+          <b>{section.games.length} GAME{section.games.length===1?'':'S'}</b>
+          <small>{section.winRate}% WR · {section.champions.join(' · ')}</small>
+        </button>)}
+      </section>}
 
       <section className="ar-controls">
-        <div className="ar-role-filter">
-          <span>ROLE</span>
-          <div>{roles.map(role=><button key={role} type="button" className={roleFilter===role?'active':''} onClick={()=>setRoleFilter(role)}>{role}</button>)}</div>
-        </div>
+        <div className="ar-current-scope"><span>VIEW</span><b>{roleFilter==='ALL'?'ALL ROLES':roleFilter+' GAMES'}</b></div>
         <label className="ar-champ-filter"><span>CHAMPION</span><select value={championFilter} onChange={event=>setChampionFilter(event.target.value)}>{champions.map(champion=><option key={champion}>{champion}</option>)}</select></label>
         {(roleFilter!=='ALL'||championFilter!=='ALL')&&<button className="ar-clear" type="button" onClick={()=>{setRoleFilter('ALL');setChampionFilter('ALL')}}>CLEAR FILTERS</button>}
       </section>
 
       <section className="ar-queue-head">
-        <div><div className="eyebrow">REVIEW QUEUE</div><h2>Your games, without the stat wall.</h2></div>
+        <div><div className="eyebrow">{roleFilter==='ALL'?'ROLE SECTIONS':'REVIEW QUEUE'}</div><h2>{roleFilter==='ALL'?'Every game kept in its role.':'Your '+roleFilter.toLowerCase()+' games.'}</h2></div>
         <span>{filtered.length} GAME{filtered.length===1?'':'S'}</span>
       </section>
 
-      <div className="ar-game-list">
-        {shown.map((match,index)=><ReviewRow
-          key={match.id}
-          match={match}
-          preview={previews.get(match.id)}
-          latest={index===0}
-        />)}
-      </div>
-
-      {visibleCount<filtered.length&&<div className="ar-more"><button className="btn secondary" type="button" onClick={()=>setVisibleCount(count=>count+10)}>SHOW 10 MORE</button></div>}
+      {roleFilter==='ALL'?<div className="ar-role-sections">
+        {roleSections.map(section=><section className="ar-role-section" key={section.role}>
+          <div className="ar-role-section-head">
+            <div><span>{section.role}</span><b>{section.games.length} GAME{section.games.length===1?'':'S'}</b><small>LAST 5 · {section.winRate}% WR</small></div>
+            <button type="button" onClick={()=>setRoleFilter(section.role)}>OPEN {section.role} →</button>
+          </div>
+          <div className="ar-game-list">
+            {section.games.slice(0,5).map((match,index)=><ReviewRow key={match.id} match={match} preview={previews.get(match.id)} latest={index===0}/>)}
+          </div>
+          {section.games.length>5&&<button className="ar-role-more" type="button" onClick={()=>setRoleFilter(section.role)}>VIEW ALL {section.games.length} {section.role} GAMES →</button>}
+        </section>)}
+      </div>:<>
+        <div className="ar-game-list">
+          {shown.map((match,index)=><ReviewRow key={match.id} match={match} preview={previews.get(match.id)} latest={index===0}/>)}
+        </div>
+        {visibleCount<filtered.length&&<div className="ar-more"><button className="btn secondary" type="button" onClick={()=>setVisibleCount(count=>count+10)}>SHOW 10 MORE</button></div>}
+      </>}
     </>}
   </AppShell>;
 }
