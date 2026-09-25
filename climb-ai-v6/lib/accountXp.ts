@@ -15,8 +15,8 @@ export interface AccountProgress{
 }
 
 export function provenRepsForTask(task:ILPTask){
-  const history=task.missionHistory??[];
-  if(history.length)return history.filter(rep=>rep.banksPass).length;
+  const tracked=(task.missionHistory??[]).filter(rep=>rep.source==='TRACKED'||rep.adherence==='TRACKED');
+  if(tracked.length)return tracked.filter(rep=>rep.banksPass).length;
   return Math.max(0,task.successfulGames??0);
 }
 
