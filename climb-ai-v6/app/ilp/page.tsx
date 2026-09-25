@@ -1,132 +1,182 @@
 'use client';
+
 import {useMemo,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
-import {PageHead} from '@/components/UI';
-import {AnimatedBar,AnimatedRing,useMounted,revealProps} from '@/components/Motion';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
-import {ILPTask} from '@/lib/types';
-import {LeakPriceInline} from '@/components/LeakPrice';
-import {priceLeak} from '@/lib/costOfLeak';
-import {TrackView} from '@/components/TrackView';
-import {coachingLevelFor} from '@/lib/coachingLevel';
+import {AnimatedBar,AnimatedRing} from '@/components/Motion';
 import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
+import {missionSummary} from '@/lib/missionLoop';
+import type {ILPTask} from '@/lib/types';
 
-const clean=(s:string)=>s.replaceAll('_',' ');
-
-function Pips({passes,required}:{passes:number;required:number}){
-  return <div className="vf-pips" aria-label={`${passes} of ${required} passes`}>
-    {Array.from({length:required},(_,i)=><i key={i} className={i<passes?'on':undefined}/>) }
-  </div>;
-}
-
-function TrackCard({task,position,mounted,matches,pauseTask,depth}:{task:ILPTask;position:number;mounted:boolean;matches:ReturnType<typeof matchesFor>;pauseTask:(id:string)=>void;depth:number}){
-  const req=task.masteryRequired||3;
-  const done=task.successfulGames||0;
-  const plain=plainLanguageFocus(task);
-  const remaining=Math.max(0,req-done);
-  return <details {...revealProps(mounted,position-1,'vf-track vf-track-support')}>
-    <summary>
-      <div className="vf-track-index"><span>0{position}</span><small>WATCHING</small></div>
-      <div className="vf-track-main">
-        <div className="vf-track-topline"><span>{clean(task.category)}</span><b>{task.source==='COACH'?'COACH PICK':'FROM YOUR GAMES'}</b></div>
-        <h3>{task.title}</h3>
-        <p className="vf-track-plain">{plain.meaning}</p>
-        <div className="vf-track-meter"><AnimatedBar value={task.progress} delay={(position-1)*60}/><strong>{task.progress}%</strong></div>
-        <div className="vf-track-pass"><Pips passes={done} required={req}/><span>{done}/{req} successful games · {remaining>0?`${remaining} to go`:'ready to master'}</span></div>
-      </div>
-      <div className="vf-track-open"><span>DETAILS</span>+</div>
-    </summary>
-    <div className="vf-track-detail">
-      <IlpExplainability task={task}/>
-      <div className="vf-simple-rule"><span>YOUR SIMPLE RULE NEXT GAME</span><b>{plain.nextGame}</b></div>
-      <details className="vf-technical-rule"><summary>COACH DETAIL · WHY WE CALL IT “{task.title}”</summary><p>{task.gameRule}</p></details>
-      <div className="vf-detail-grid">
-        <div><span>THIS COUNTS AS A GOOD GAME WHEN</span><p>{task.target}</p></div>
-        {depth>=3&&<div><span>WHY</span><p>{task.why}</p></div>}
-      </div>
-      <div className="vf-track-foot">
-        <div>
-          {depth>=4&&<><span className="muted">What the games are showing</span><p>{task.lastUpdatedReason||task.evidence[task.evidence.length-1]||'Waiting for match evidence.'}</p></>}
-          {depth>=5&&<LeakPriceInline price={priceLeak(matches,task.metric)}/>} 
-        </div>
-        <button className="btn secondary" onClick={e=>{e.preventDefault();pauseTask(task.id)}}>PAUSE</button>
-      </div>
-    </div>
-  </details>;
-}
+type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
+const clean=(value:string)=>value.replaceAll('_',' ');
 
 export default function PlayerDevelopmentCentre(){
-  const mounted=useMounted();
   const {active}=useAccount();
   const {tasks,refreshFromMatches,pauseTask}=useLearningPlan();
+  const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
-  const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);
-  const activeTasks=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,5);
-  const mastered=tasks.filter(t=>t.status==='MASTERED');
-  const paused=tasks.filter(t=>t.status==='PAUSED');
-  const passes=activeTasks.reduce((n,t)=>n+(t.successfulGames||0),0);
-  const required=activeTasks.reduce((n,t)=>n+(t.masteryRequired||3),0)||1;
-  const avgProgress=activeTasks.length?activeTasks.reduce((n,t)=>n+t.progress,0)/activeTasks.length:0;
-  const momentum=Math.round(Math.min(100,avgProgress*.7+(passes/required)*100*.3));
-  const directive=activeTasks[0];
-  const directivePlain=directive?plainLanguageFocus(directive):null;
-  const accountMatches=matchesFor(active.id);
+
+  const activeTasks=useMemo(
+    ()=>tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,2),
+    [tasks],
+  );
+  const mastered=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
+  const paused=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
+  const matches=matchesFor(active.id).filter(match=>match.role===active.role);
+
+  const planProgress=activeTasks.length
+    ?Math.round(activeTasks.reduce((sum,task)=>sum+task.progress,0)/activeTasks.length)
+    :0;
+  const banked=activeTasks.reduce((sum,task)=>sum+missionSummary(task).confirmed,0);
+  const required=activeTasks.reduce((sum,task)=>sum+missionSummary(task).required,0);
   const refresh=()=>setChanges(refreshFromMatches());
 
   return <AppShell>
-    <TrackView event="ilp_view"/>
-    <PageHead title="Your Development Plan" subtitle={`${active.gameName}${active.tagline} · ${active.rank} · ${detail.tier} Coach`} action={<button className="btn secondary" onClick={refresh}>CHECK NEW GAMES</button>}/>
-
-    <section className="vf-ilp-hero">
-      <div className="vf-focus">
-        <div className="eyebrow">#1 FOCUS · {detail.tier} DETAIL</div>
-        <div className="vf-focus-kicker">01 / {activeTasks.length||0}</div>
-        <h2>{directive?.title||'Play a tracked game to build your Active Five'}</h2>
-        {directive&&directivePlain&&<>
-          <div className="vf-focus-plain"><span>WHAT THIS ACTUALLY MEANS</span><p>{directivePlain.meaning}</p></div>
-          <div className="vf-command"><span>YOUR SIMPLE RULE NEXT GAME</span><b>{directivePlain.nextGame}</b></div>
-          <details className="vf-technical-rule vf-technical-rule-hero"><summary>SHOW COACH DETAIL</summary><p>{directive.gameRule}</p></details>
-          <IlpExplainability task={directive} compact/>
-          {detail.depth>=3&&<p className="muted" style={{margin:'10px 0 0'}}>{detail.summary}</p>}
-          <div className="vf-focus-actions"><Link className="btn primary" href="/live">PLAY + TRACK</Link><Link className="btn secondary" href="/coach">ASK {detail.tier} COACH</Link></div>
-        </>}
+    <section className="ip-head">
+      <div>
+        <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
+        <h1>Two things. Until they stick.</h1>
+        <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b></p>
       </div>
-      <div className="vf-ilp-score"><div className="vf-score-eyebrow">YOUR PLAN AT A GLANCE</div><AnimatedRing value={momentum} label="PROGRESS"/><div className="vf-score-caption">{passes}/{required} successful habit checks</div><div className="vf-score-note">You only play with one main focus. The rest are tracked quietly.</div></div>
+      <button className="btn secondary" type="button" onClick={refresh}>CHECK NEW GAMES</button>
     </section>
 
-    <div className="vf-stat-strip">
-      <div><span>MAIN FOCUS</span><b>1</b><small>what you think about in game</small></div>
-      <div><span>WATCHING</span><b>{Math.max(0,activeTasks.length-1)}</b><small>tracked in the background</small></div>
-      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits that have stuck</small></div>
-      <div><span>PLAN PROGRESS</span><b>{Math.round(avgProgress)}%</b><small>across your current plan</small></div>
+    <section className="ip-summary">
+      <div className="ip-summary-main">
+        <span>CURRENT PLAN</span>
+        <b>{activeTasks.length}/2 ACTIVE</b>
+        <small>{matches.length} {active.role.toLowerCase()} games feeding this plan</small>
+      </div>
+      <div className="ip-ring"><AnimatedRing value={planProgress} label="PLAN"/></div>
+      <div><span>BANKED REPS</span><b>{banked}/{required||6}</b><small>clean evidence toward mastery</small></div>
+      <div><span>MASTERED</span><b>{mastered.length}</b><small>habits OP CLIMB has retired</small></div>
+    </section>
+
+    {changes.length>0&&<section className="ip-update">
+      <div><span>PLAN UPDATED</span><b>{changes.length} CHANGE{changes.length===1?'':'S'}</b></div>
+      <details open><summary>WHAT CHANGED</summary>{changes.map(change=><p key={change}>{change}</p>)}</details>
+    </section>}
+
+    <nav className="ip-tabs" aria-label="Development plan sections">
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>2 missions</small></button>
+      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
+      <button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>
+    </nav>
+
+    {tab==='CURRENT'&&<div className="ip-panel">
+      {activeTasks.length?<div className="ip-mission-grid">
+        {activeTasks.map((task,index)=><MissionCard key={task.id} task={task} index={index} pauseTask={pauseTask}/>)}
+      </div>:<section className="ip-empty">
+        <div className="eyebrow">PLAN BUILDING</div>
+        <h2>Play a tracked game.</h2>
+        <p>OP CLIMB needs real evidence before it chooses the two behaviours worth training.</p>
+        <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
+      </section>}
+
+      {activeTasks.length>0&&<section className="ip-next">
+        <div>
+          <span>HOW THE PLAN MOVES</span>
+          <h2>Master one. Replace one.</h2>
+          <p>When repeated evidence proves a mission has stuck, it leaves the active plan and the next recurring limiter takes its place. One unusual game does not rewrite your plan.</p>
+        </div>
+        <div className="ip-next-actions">
+          <Link className="btn primary" href="/session">START 3-GAME BLOCK →</Link>
+          <Link className="btn secondary" href="/live">OPEN TRACKING</Link>
+        </div>
+      </section>}
+    </div>}
+
+    {tab==='EVIDENCE'&&<div className="ip-panel">
+      {activeTasks.length?<div className="ip-evidence-grid">
+        {activeTasks.map((task,index)=><EvidenceCard key={task.id} task={task} index={index}/>)}
+      </div>:<section className="ip-empty"><h2>No active evidence yet.</h2><p>Play tracked games to build the plan.</p></section>}
+    </div>}
+
+    {tab==='HISTORY'&&<div className="ip-panel">
+      <section className="ip-history-grid">
+        <Archive title="MASTERED" empty="Nothing mastered yet." tasks={mastered}/>
+        <Archive title="PAUSED" empty="No paused missions." tasks={paused}/>
+      </section>
+    </div>}
+  </AppShell>;
+}
+
+function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask:(id:string)=>void}){
+  const plain=plainLanguageFocus(task);
+  const summary=missionSummary(task);
+  return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
+    <div className="ip-mission-top">
+      <span>MISSION 0{index+1}</span>
+      <em>{clean(task.category)}</em>
+    </div>
+    <h2>{task.title}</h2>
+    <p className="ip-meaning">{plain.meaning}</p>
+
+    <div className="ip-rule">
+      <span>TAKE INTO YOUR NEXT GAME</span>
+      <b>{plain.nextGame}</b>
     </div>
 
-    {changes.length>0&&<details className="glass card vf-adapted" open><summary>ACTIVE FIVE UPDATED · {changes.length} CHANGE{changes.length===1?'':'S'}</summary><div>{changes.map(c=><p key={c}>{c}</p>)}</div></details>}
+    <div className="ip-target">
+      <div><span>PROOF BAR</span><b>{task.target}</b></div>
+      <div><span>STAGE</span><b>{summary.stage}</b></div>
+    </div>
 
-    {activeTasks.length>1&&<>
-      <section className="vf-section-head"><div><div className="eyebrow">OTHER HABITS WE&apos;RE WATCHING</div><h2>Focus on #1. We’ll track the rest.</h2><p className="muted">You do not need to remember five instructions in game. These stay in the background until one becomes important enough to replace your main focus.</p></div>{detail.depth>=4&&<Link href="/progress">SEE FULL HISTORY →</Link>}</section>
+    <div className="ip-progress">
+      <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
+      <Pips passes={summary.confirmed} required={summary.required}/>
+      <small>{summary.confirmed}/{summary.required} clean reps · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
+    </div>
 
-      <div className="vf-track-list vf-track-support-grid">
-        {activeTasks.slice(1).map((task,index)=><TrackCard key={task.id} task={task} position={index+2} mounted={mounted} matches={accountMatches} pauseTask={pauseTask} depth={detail.depth}/>)}
-      </div>
-    </>}
+    <details className="ip-mission-details">
+      <summary>WHY THIS MISSION?</summary>
+      <IlpExplainability task={task}/>
+      <p>{task.lastUpdatedReason||task.evidence.at(-1)||'Waiting for more evidence.'}</p>
+      <button className="btn secondary" type="button" onClick={event=>{event.preventDefault();pauseTask(task.id)}}>PAUSE MISSION</button>
+    </details>
+  </article>;
+}
 
-    {detail.depth>=3&&<details className="glass card vf-how">
-      <summary>HOW ACTIVE FIVE WORKS</summary>
-      <div className="vf-how-grid">
-        <div><b>01</b><span>PLAY</span><p>Play normally while OP CLIMB watches for this one habit.</p></div>
-        <div><b>02</b><span>DO IT</span><p>If you make the better decision, that game counts toward the goal.</p></div>
-        <div><b>03</b><span>MAKE IT A HABIT</span><p>Repeat the better decision across enough games and OP CLIMB marks it as learned.</p></div>
-        <div><b>04</b><span>MOVE ON</span><p>Once it sticks, a new priority takes its place so you are not fixing everything at once.</p></div>
-      </div>
-    </details>}
+function EvidenceCard({task,index}:{task:ILPTask;index:number}){
+  const summary=missionSummary(task);
+  const recent=(task.missionHistory??[]).slice(-4).reverse();
+  return <article className="ip-evidence-card">
+    <div className="ip-evidence-head">
+      <div><span>MISSION 0{index+1}</span><h2>{task.title}</h2></div>
+      <b>{summary.stage}</b>
+    </div>
+    <IlpExplainability task={task}/>
+    <div className="ip-evidence-reason">
+      <span>LATEST READ</span>
+      <p>{task.lastUpdatedReason||'Evidence is still building.'}</p>
+    </div>
+    {recent.length>0?<div className="ip-rep-list">
+      {recent.map(rep=><div key={rep.matchId}>
+        <span className={rep.banksPass?'good':'watch'}>{rep.banksPass?'BANKED':'REVIEWED'}</span>
+        <b>{clean(rep.outcome)}</b>
+        <small>{clean(rep.adherence)} adherence</small>
+      </div>)}
+    </div>:<div className="ip-no-reps">No reviewed mission reps yet.</div>}
+  </article>;
+}
 
-    {(mastered.length>0||paused.length>0)&&detail.depth>=4&&<section className="vf-archive-grid">
-      {mastered.length>0&&<details className="glass card"><summary>MASTERED · {mastered.length}</summary><div className="vf-mini-list">{mastered.map(t=><div key={t.id}><b>{t.title}</b><span>{t.lastUpdatedReason||'Mastered from repeated evidence.'}</span><IlpExplainability task={t} compact/></div>)}</div></details>}
-      {paused.length>0&&<details className="glass card"><summary>PAUSED · {paused.length}</summary><div className="vf-mini-list">{paused.map(t=><div key={t.id}><b>{t.title}</b><span>{t.lastUpdatedReason||'Paused.'}</span></div>)}</div></details>}
-    </section>}
-  </AppShell>;
+function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}){
+  return <article className="ip-archive">
+    <div className="ip-archive-head"><span>{title}</span><b>{tasks.length}</b></div>
+    {tasks.length?<div>{tasks.map(task=><details key={task.id}>
+      <summary><b>{task.title}</b><span>{clean(task.category)}</span></summary>
+      <p>{task.lastUpdatedReason||task.evidence.at(-1)||'No additional evidence note.'}</p>
+      {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
+    </details>)}</div>:<p className="muted">{empty}</p>}
+  </article>;
+}
+
+function Pips({passes,required}:{passes:number;required:number}){
+  return <div className="ip-pips" aria-label={passes+' of '+required+' clean reps'}>
+    {Array.from({length:required},(_,index)=><i key={index} className={index<passes?'on':''}/>)}
+  </div>;
 }
