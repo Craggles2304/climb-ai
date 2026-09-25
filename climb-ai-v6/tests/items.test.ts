@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {isCompletedItem,completedItemIdsFrom,dedupeByName,MIN_COMPLETED_GOLD} from '../lib/riot/items';
+import {isCompletedItem,isFinishedBoot,completedItemIdsFrom,dedupeByName,MIN_COMPLETED_GOLD} from '../lib/riot/items';
 
 /**
  * Shapes taken from real Data Dragon payloads. The depth-2 legendaries are the
@@ -88,4 +88,13 @@ test('leaves genuinely distinct items alone',()=>{
 test('does not drop entries whose id is not numeric',()=>{
   const items={'abc':{name:'Odd One'},'3031':{name:'Infinity Edge'}};
   assert.deepEqual(Object.keys(dedupeByName(items)).sort(),['3031','abc']);
+});
+
+
+test('recognises finished purchasable Rift boots for the build simulator',()=>{
+  const boots={into:[],from:['1001'],gold:{total:1100,purchasable:true},maps:{'11':true},tags:['Boots','Armor'],inStore:true};
+  assert.equal(isFinishedBoot(boots),true);
+  assert.equal(isCompletedItem(boots),false,'boots stay separate from legendary completed items');
+  assert.equal(isFinishedBoot({...boots,maps:{'11':false}}),false);
+  assert.equal(isFinishedBoot({...boots,gold:{total:1100,purchasable:false}}),false);
 });
