@@ -29,6 +29,7 @@ export interface ItemStats{
   attackSpeedRatio:number;
   critChance:number;
   health:number;
+  mana:number;
   armor:number;
   magicResist:number;
   lifestealRatio:number;
@@ -38,7 +39,7 @@ export interface ItemStats{
 
 const EMPTY:ItemStats={
   attackDamage:0,abilityPower:0,attackSpeedRatio:0,critChance:0,
-  health:0,armor:0,magicResist:0,lifestealRatio:0,
+  health:0,mana:0,armor:0,magicResist:0,lifestealRatio:0,
   flatMoveSpeed:0,percentMoveSpeed:0,
 };
 
@@ -52,6 +53,7 @@ export function parseItemStats(stats:Record<string,number>|undefined):ItemStats{
     attackSpeedRatio:n('PercentAttackSpeedMod'),
     critChance:n('FlatCritChanceMod'),
     health:n('FlatHPPoolMod'),
+    mana:n('FlatMPPoolMod'),
     armor:n('FlatArmorMod'),
     magicResist:n('FlatSpellBlockMod'),
     lifestealRatio:n('PercentLifeStealMod'),
@@ -66,6 +68,7 @@ export const addStats=(a:ItemStats,b:ItemStats):ItemStats=>({
   attackSpeedRatio:a.attackSpeedRatio+b.attackSpeedRatio,
   critChance:a.critChance+b.critChance,
   health:a.health+b.health,
+  mana:a.mana+b.mana,
   armor:a.armor+b.armor,
   magicResist:a.magicResist+b.magicResist,
   lifestealRatio:a.lifestealRatio+b.lifestealRatio,
