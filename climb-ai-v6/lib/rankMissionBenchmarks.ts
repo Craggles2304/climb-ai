@@ -9,6 +9,7 @@ export interface MissionBenchmark{
   target:number;
   direction:Direction;
   targetText:string;
+  barText:string;
 }
 
 const ORDER:MissionRankBand[]=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER'];
@@ -40,12 +41,14 @@ export function missionBenchmark(metric:string,rank?:string|null):MissionBenchma
   if(!spec)return null;
   const band=missionRankBand(rank);
   const target=spec.values[ORDER.indexOf(band)]!;
+  const barText=spec.format(target);
   return{
     rank:band,
     metric,
     target,
     direction:spec.direction,
-    targetText:band+' target · '+spec.format(target)+' · 3 proven games',
+    barText,
+    targetText:band+' target · '+barText+' · 3 proven games',
   };
 }
 
@@ -69,6 +72,10 @@ export function benchmarkProgress(metric:string,value:number,rank?:string|null){
 
 export function benchmarkTargetText(metric:string,rank?:string|null,fallback?:string){
   return missionBenchmark(metric,rank)?.targetText||fallback||'3 proven games';
+}
+
+export function benchmarkBarText(metric:string,rank?:string|null,fallback?:string){
+  return missionBenchmark(metric,rank)?.barText||fallback||'mission bar';
 }
 
 function clamp(value:number){return Math.max(0,Math.min(100,Math.round(value)))}
