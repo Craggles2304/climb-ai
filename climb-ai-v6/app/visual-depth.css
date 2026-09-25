@@ -3762,3 +3762,57 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ip-mission-brief{grid-template-columns:1fr}
   .ip-mission-details summary span{display:none}
 }
+
+
+/* ILP V3 — memorable mission language */
+.ip-mission h2{
+  max-width:15ch;
+  margin-bottom:12px;
+  font-size:clamp(34px,4.1vw,50px);
+}
+.ip-layman{
+  padding:12px 13px;
+  border:1px solid rgba(255,255,255,.065);
+  border-radius:10px;
+  background:rgba(255,255,255,.018);
+}
+.ip-layman>span{
+  display:block;
+  color:#718086;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+}
+.ip-layman>p{
+  margin:7px 0 0;
+  color:#b4bfc1;
+  font-size:12px;
+  line-height:1.5;
+}
+.ip-rule{
+  margin-top:8px;
+}
+.ip-rule>span,.ip-target span{
+  color:#829196;
+}
+.ip-rule>b{
+  font-size:13px;
+}
+.ip-target b{
+  font-size:9px;
+  line-height:1.45;
+}
+.ip-mission-details summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.ip-mission-details summary>span{
+  color:#5f6e73;
+  font-size:7px;
+  letter-spacing:.07em;
+}
+@media(max-width:680px){
+  .ip-mission h2{max-width:none;font-size:36px}
+  .ip-mission-details summary>span{display:none}
+}
