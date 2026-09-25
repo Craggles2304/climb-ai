@@ -1,7 +1,8 @@
 import {ILPTask,Match,IssueCategory,Role} from '@/lib/types';
 import type {CoachingMetricKey} from '@/lib/subscription';
 import {masteryMetricThreshold,missionTargetNumber} from '@/lib/proMissionMastery';
-import {benchmarkPass,benchmarkProgress,benchmarkTargetText,missionBenchmark} from '@/lib/rankMissionBenchmarks';
+import {benchmarkProgress,benchmarkTargetText,missionBenchmark} from '@/lib/rankMissionBenchmarks';
+import {gradeMissionGame} from '@/lib/missionGrading';
 
 type Eval={progress:number;passed:boolean;note:string;hasEvidence:boolean};
 type Candidate=Omit<ILPTask,'id'|'accountId'|'progress'|'status'|'source'|'evidence'> & {roles?:Role[]};
@@ -64,15 +65,9 @@ case'killParticipation':{const xs=direct('killParticipation');if(!xs.length)retu
 case'visionScore':{const xs=direct('visionScore');if(!xs.length)return{progress:task.progress,passed:false,note:'Vision evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/45*100),passed:a>=40,note:`Recent vision score: ${a.toFixed(0)} per game.`,hasEvidence:true}}
 case'clipReview':return{progress:task.progress,passed:task.progress>=100,note:task.progress>=100?'Required clip review completed.':'Needs one reviewed gameplay clip.',hasEvidence:task.progress>0};case'objectivePreparation':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed objective-setup decisions or companion telemetry.',hasEvidence:task.progress>0};case'mapCheck':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed map-check evidence.',hasEvidence:task.progress>0};default:return{progress:task.progress,passed:false,note:'This task needs manual review or richer telemetry.',hasEvidence:false}}}
 function matchPass(task:ILPTask,match:Match,rank?:string|null):boolean|null{
-  const pro=proMetric(task,match);
-  if(pro)return(pro.score as number)>=missionTargetNumber(task.target);
-  const m=match.metrics;
-  const benchmark=missionBenchmark(task.metric,rank||match.rank);
-  if(benchmark){
-    const value=task.metric==='deaths'?match.deaths:m[task.metric as keyof Match['metrics']];
-    return typeof value==='number'&&Number.isFinite(value)?benchmarkPass(task.metric,value,rank||match.rank):null;
-  }
-  switch(task.metric){case'laneCsPerMin':return typeof m.laneCsPerMin==='number'?m.laneCsPerMin>=6.5:null;case'post15CsPerMin':return typeof m.post15CsPerMin==='number'?m.post15CsPerMin>=6:null;case'csPerMin':return typeof m.csPerMin==='number'?m.csPerMin>=6:null;case'deathsPost20':return typeof m.deathsPost20==='number'?m.deathsPost20<=2:null;case'deaths':return match.deaths<=4;case'secondItemMinute':return typeof m.secondItemMinute==='number'?m.secondItemMinute<=23:null;case'objectiveParticipation':return typeof m.objectiveParticipation==='number'?m.objectiveParticipation>=.7:null;case'damageShare':return typeof m.damageShare==='number'?m.damageShare>=.25:null;case'killParticipation':return typeof m.killParticipation==='number'?m.killParticipation>=.65:null;case'visionScore':return typeof m.visionScore==='number'?m.visionScore>=40:null;case'deathsPre10':return typeof m.deathsPre10==='number'?m.deathsPre10===0:null;case'csAt10':return typeof m.csAt10==='number'?m.csAt10>=65:null;case'csAt15':return typeof m.csAt15==='number'?m.csAt15>=100:null;default:return null}}
+  const grade=gradeMissionGame(task,match,rank);
+  return grade.available?grade.passed:null;
+}
 
 function automaticAttempts(task:ILPTask,matches:Match[],rank?:string|null){
   const existing=new Map(
