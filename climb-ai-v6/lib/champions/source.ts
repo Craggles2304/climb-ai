@@ -77,6 +77,7 @@ export interface DataDragonItemFull{
   name:string;
   gold?:{total?:number};
   stats?:Record<string,number>;
+  image?:{full?:string};
   into?:string[];
   from?:string[];
   maps?:Record<string,boolean>;
