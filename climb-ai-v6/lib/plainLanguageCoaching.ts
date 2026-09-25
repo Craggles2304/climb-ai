@@ -258,7 +258,7 @@ export function plainLanguageFocus(task:Pick<ILPTask,'title'|'category'|'gameRul
     meaning:simplify(task.why)||'This is a repeated problem OP CLIMB wants you to fix one step at a time.',
     nextGame:simplify(task.gameRule)||'Take one clear decision into your next game and check afterwards whether you followed it.',
     success:plainTarget(task,'Show this behaviour cleanly in 3 relevant games.'),
-    why:simplify(task.why)||'OP CLIMB has seen this pattern often enough to make it one of your two current priorities.',
+    why:simplify(task.why)||'OP CLIMB has seen this pattern often enough to make it part of your current three-mission plan.',
   };
 }
 
