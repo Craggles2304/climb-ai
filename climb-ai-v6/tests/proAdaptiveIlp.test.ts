@@ -8,6 +8,7 @@ const task=(target='65+ PRO evidence score across 3 games'):ILPTask=>({id:'t',ac
 
 describe('adaptive PRO ILP',()=>{
  it('masters against the personalised PRO target rather than a hidden 85',()=>{const result=adaptILP([task()],[game('1',70),game('2',68),game('3',66)]);expect(result.tasks[0].status).toBe('MASTERED');expect(result.tasks[0].metricProgress).toBe(68)});
- it('does not promote a one-game PRO outlier into the active five',()=>{const result=ensureFiveActive([], [game('1',25),game('2',85),game('3',88)],'a','MID');expect(result.tasks.some(t=>t.metric==='reset_quality')).toBe(false)});
+ it('does not promote a one-game PRO outlier into the active plan',()=>{const result=ensureFiveActive([], [game('1',25),game('2',85),game('3',88)],'a','MID');expect(result.tasks.some(t=>t.metric==='reset_quality')).toBe(false)});
  it('promotes a recurring PRO weakness seen in at least two recent games',()=>{const result=ensureFiveActive([], [game('1',42),game('2',48),game('3',82)],'a','MID');const promoted=result.tasks.find(t=>t.metric==='reset_quality');expect(promoted).toBeTruthy();expect(promoted?.evidence.join(' ')).toContain('2/3')});
+ it('keeps the role plan capped at two active missions',()=>{const result=ensureFiveActive([], [game('1',42),game('2',48),game('3',82)],'a','MID');expect(result.tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED')).toHaveLength(2)});
 });
