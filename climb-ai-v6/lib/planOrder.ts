@@ -35,9 +35,9 @@ export interface OrderedTask{
   basis:OrderBasis;
 }
 
-export function orderTasks(tasks:ILPTask[],matches:Match[]):OrderedTask[]{
+export function orderTasks(tasks:ILPTask[],matches:Match[],rank?:string|null):OrderedTask[]{
   const priced=tasks.map(task=>{
-    const price=matches.length?priceLeak(matches,task.metric):null;
+    const price=matches.length?priceLeak(matches,task.metric,rank):null;
     const measured=
       price?.status==='READY'&&
       (price.gapPoints??0)>=MIN_MEANINGFUL_GAP;
@@ -59,8 +59,8 @@ export function orderTasks(tasks:ILPTask[],matches:Match[]):OrderedTask[]{
 }
 
 /** Convenience for callers that only need the ordered tasks. */
-export const orderedTaskList=(tasks:ILPTask[],matches:Match[]):ILPTask[]=>
-  orderTasks(tasks,matches).map(o=>o.task);
+export const orderedTaskList=(tasks:ILPTask[],matches:Match[],rank?:string|null):ILPTask[]=>
+  orderTasks(tasks,matches,rank).map(o=>o.task);
 
 /** One line explaining why the plan is in the order it is. */
 export function orderingNote(ordered:OrderedTask[]):string{
