@@ -73,8 +73,8 @@ export async function bootstrapActivation(input:Input):Promise<Result>{
     if(stored.data){
       const detectedRole=validRole(stored.data.role||linkedExisting.role,input.fallbackRole);
       const champion=String(stored.data.champion||'').trim();
-      const previousChampions=Array.isArray(linkedExisting.champions)?linkedExisting.champions.map(String):[];
-      const champions=champion?[champion,...previousChampions.filter(value=>value!==champion)]:previousChampions;
+      const previousChampions:string[]=Array.isArray(linkedExisting.champions)?linkedExisting.champions.map((value:unknown)=>String(value)):[];
+      const champions=champion?[champion,...previousChampions.filter((value:string)=>value!==champion)]:previousChampions;
       const rankLabel=rankFromStored(linkedExisting,stored.data.rank);
       const now=new Date().toISOString();
 
