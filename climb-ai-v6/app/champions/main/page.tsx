@@ -7,6 +7,7 @@ import {useAccount,matchesFor} from '@/components/AccountContext';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {getMainChampion,setMainChampion,MAIN_CHAMPION_EVENT} from '@/lib/mainChampion';
 import {buildStats,type BestBuild,type BuildItem} from '@/lib/champions/build';
+import type {RawDamageBuild} from '@/lib/champions/rawDamageBuild';
 import {
   abilityDamageRows,
   buildAbilityContext,
@@ -54,7 +55,24 @@ type Payload={
     spells:Spell[];
   };
   abilityData?:ChampionAbilityDataset|null;
-  build?:{catalogue:BuildItem[];maxDps:BestBuild;bySize:BestBuild[];budget:number|null};
+  build?:{catalogue:BuildItem[];maxDps:BestBuild;maxRawDamage?:RawDamageBuild;bySize:BestBuild[];budget:number|null};
+};
+
+type DraftBuildItem=BuildItem&{label:string;why:string};
+type DraftPayload={
+  ok:boolean;
+  error?:string;
+  patch?:string;
+  level?:number;
+  champion?:string;
+  confidence?:'HIGH'|'MEDIUM';
+  read?:string;
+  enemies?:Array<{id:string;name:string;tags:string[];damageType:string;attackRange:number}>;
+  recommended?:DraftBuildItem[];
+  swaps?:DraftBuildItem[];
+  damage?:{autoDps:number;comboDamage:number;threeSecondDamage:number;score:number};
+  rule?:string;
+  boundary?:string;
 };
 
 export default function MainChampionPage(){
@@ -67,6 +85,11 @@ export default function MainChampionPage(){
   const [names,setNames]=useState<string[]>([]);
   const [loading,setLoading]=useState(false);
   const [buildItems,setBuildItems]=useState<BuildItem[]>([]);
+  const [presetBuild,setPresetBuild]=useState<BuildItem[]>([]);
+  const [presetKey,setPresetKey]=useState(0);
+  const [enemyDraft,setEnemyDraft]=useState<string[]>(['','','','','']);
+  const [draftData,setDraftData]=useState<DraftPayload|null>(null);
+  const [draftLoading,setDraftLoading]=useState(false);
   const [saveState,setSaveState]=useState<'idle'|'saving'|'saved'|'error'>('idle');
 
   useEffect(()=>{
@@ -100,6 +123,7 @@ export default function MainChampionPage(){
     let live=true;
     setLoading(true);
     setBuildItems([]);
+    setDraftData(null);
     const params=new URLSearchParams({champion:main,level:String(level)});
     fetch('/api/champions/main?'+params)
       .then(response=>response.json())
@@ -153,6 +177,33 @@ export default function MainChampionPage(){
     const context=buildAbilityContext(data.champion.stats,level,bonuses);
     return abilityDamageRows(data.abilityData,context);
   },[data,buildItems,level]);
+
+  const loadPreset=(items:BuildItem[])=>{
+    setPresetBuild(items);
+    setPresetKey(key=>key+1);
+  };
+
+  const calculateDraft=async()=>{
+    const enemies=enemyDraft.map(value=>value.trim()).filter(Boolean);
+    if(!main||!enemies.length)return;
+    setDraftLoading(true);
+    setDraftData(null);
+    try{
+      const params=new URLSearchParams({
+        champion:main,
+        enemies:enemies.join(','),
+        role:active.role||'UNKNOWN',
+        level:String(level),
+      });
+      const response=await fetch('/api/champions/main/draft?'+params);
+      const body=await response.json() as DraftPayload;
+      setDraftData(body);
+    }catch{
+      setDraftData({ok:false,error:'Could not calculate a build for that draft.'});
+    }finally{
+      setDraftLoading(false);
+    }
+  };
 
   const chooseMain=async()=>{
     const value=draft.trim();
@@ -259,12 +310,70 @@ export default function MainChampionPage(){
             <span>{index===0?'YOUR LATEST BUILD':'RECENT BUILD '+(index+1)}</span>
             <div>{items.map((item,itemIndex)=><b key={item+'-'+itemIndex}>{item}</b>)}</div>
           </div>):<div className="mc-preset empty"><span>YOUR BUILDS</span><p>Play tracked games on {champion.name} and your actual completed builds will appear here.</p></div>}
-          {data.build?.bySize?.[2]?.items?.length?<div className="mc-preset damage">
-            <span>3-ITEM DAMAGE BASELINE</span>
-            <div>{data.build.bySize[2].items.map(item=><b key={item.id}>{item.name}</b>)}</div>
-            <small>Highest basic-attack DPS found at this level. Not a universal recommended build.</small>
+          {data.build?.maxRawDamage?.items?.length?<div className="mc-preset damage mc-max-damage">
+            <span>MAX DAMAGE BUILD · LEVEL {level}</span>
+            <div>{data.build.maxRawDamage.items.map(item=><b key={item.id}>{item.name}</b>)}</div>
+            <div className="mc-build-damage-metrics">
+              <em><small>3 SEC RAW</small><strong>{Math.round(data.build.maxRawDamage.threeSecondDamage)}</strong></em>
+              <em><small>COMBO</small><strong>{Math.round(data.build.maxRawDamage.comboDamage)}</strong></em>
+              <em><small>AUTO DPS</small><strong>{Math.round(data.build.maxRawDamage.autoDps)}</strong></em>
+            </div>
+            <button className="btn primary" type="button" onClick={()=>loadPreset(data.build!.maxRawDamage!.items)}>LOAD MAX DAMAGE</button>
+            <small>{data.build.maxRawDamage.note}</small>
           </div>:null}
         </div>
+      </section>
+
+      <section className="mc-draft-builder">
+        <div className="mc-section-head">
+          <div><div className="eyebrow">BUILD VS THEIR TEAM</div><h2>Draft the enemy. Optimus changes the build.</h2><p>Pick the enemy champions you can see. Add all five for the strongest read; the build reacts to tanks, dive, CC, healing, shields and damage profile.</p></div>
+          <span className="mc-patch-chip">{draftData?.confidence?draftData.confidence+' CONFIDENCE':'0 / 5 ENEMIES'}</span>
+        </div>
+
+        <div className="mc-enemy-draft">
+          {enemyDraft.map((value,index)=><label key={index} className={'mc-enemy-slot'+(value?' filled':'')}>
+            <span>ENEMY {index+1}</span>
+            {value&&patch?<img src={`https://ddragon.leagueoflegends.com/cdn/${patch}/img/champion/${championAsset(value)}.png`} alt="" aria-hidden="true"/>:<i>{index+1}</i>}
+            <input list="enemy-champion-list" value={value} placeholder="Select champion"
+              onChange={event=>{
+                const next=[...enemyDraft];
+                next[index]=event.target.value;
+                setEnemyDraft(next);
+                setDraftData(null);
+              }}/>
+          </label>)}
+          <datalist id="enemy-champion-list">{names.filter(name=>name!==main).map(name=><option key={name} value={name}/>)}</datalist>
+        </div>
+        <div className="mc-draft-actions">
+          <button className="btn primary" type="button" disabled={draftLoading||!enemyDraft.some(Boolean)} onClick={()=>void calculateDraft()}>
+            {draftLoading?'CALCULATING…':'BUILD VS THIS TEAM'}
+          </button>
+          {enemyDraft.some(Boolean)&&<button className="btn secondary" type="button" onClick={()=>{setEnemyDraft(['','','','','']);setDraftData(null)}}>CLEAR DRAFT</button>}
+        </div>
+
+        {draftData&&!draftData.ok&&<div className="mc-draft-error">{draftData.error}</div>}
+
+        {draftData?.ok&&draftData.recommended?.length?<div className="mc-draft-result">
+          <div className="mc-draft-read"><span>OPTIMUS READ</span><strong>{draftData.read}</strong></div>
+          <div className="mc-draft-build-row">
+            {draftData.recommended.map((item,index)=><article key={item.id}>
+              <span>{item.label||('SLOT '+(index+1))}</span>
+              {item.icon?<img src={item.icon} alt="" aria-hidden="true"/>:<b>{item.name.slice(0,2)}</b>}
+              <h3>{item.name}</h3>
+              <small>{item.why}</small>
+            </article>)}
+          </div>
+          {draftData.damage&&<div className="mc-draft-damage">
+            <div><span>3 SEC RAW</span><b>{Math.round(draftData.damage.threeSecondDamage)}</b></div>
+            <div><span>COMBO</span><b>{Math.round(draftData.damage.comboDamage)}</b></div>
+            <div><span>AUTO DPS</span><b>{Math.round(draftData.damage.autoDps)}</b></div>
+          </div>}
+          <div className="mc-draft-result-actions">
+            <button className="btn primary" type="button" onClick={()=>loadPreset(draftData.recommended as BuildItem[])}>LOAD VS DRAFT BUILD</button>
+            <small>{draftData.rule}</small>
+          </div>
+          {draftData.swaps?.length?<div className="mc-draft-swaps"><span>IF THE GAME CHANGES</span>{draftData.swaps.slice(0,3).map(item=><div key={item.id}><b>{item.name}</b><small>{item.why}</small></div>)}</div>:null}
+        </div>:null}
       </section>
 
       {data.build&&<ChampionBuilder
@@ -273,9 +382,12 @@ export default function MainChampionPage(){
         level={level}
         catalogue={data.build.catalogue}
         maxDps={data.build.maxDps}
+        maxRawDamage={data.build.maxRawDamage}
         bySize={data.build.bySize}
         budget={data.build.budget}
         onBuildChange={setBuildItems}
+        presetBuild={presetBuild}
+        presetKey={presetKey}
       />}
 
       <section className="mc-damage-section">
