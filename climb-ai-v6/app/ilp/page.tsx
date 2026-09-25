@@ -133,9 +133,30 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
     </div>
 
     <details className="ip-mission-details">
-      <summary>WHY THIS MISSION?</summary>
+      <summary>WHY THIS MISSION? <span>OPEN THE FULL COACHING READ</span></summary>
+      <div className="ip-mission-brief">
+        <section>
+          <span>01 · WHY THIS ONE</span>
+          <h3>The pattern OP CLIMB wants to change</h3>
+          <p>{task.why||plain.meaning}</p>
+        </section>
+        <section>
+          <span>02 · WHAT TO DO</span>
+          <h3>Your decision rule next game</h3>
+          <p>{plain.nextGame}</p>
+        </section>
+        <section>
+          <span>03 · WHAT SUCCESS LOOKS LIKE</span>
+          <h3>{task.target}</h3>
+          <p>Do this cleanly in {summary.required} relevant games. Each reviewed pass banks one rep; misses stay as evidence and do not erase earlier clean reps.</p>
+        </section>
+        <section>
+          <span>04 · WHY IT IS STILL ACTIVE</span>
+          <h3>{summary.remaining?`${summary.remaining} clean rep${summary.remaining===1?'':'s'} still needed`:'Ready for a mastery check'}</h3>
+          <p>{task.lastUpdatedReason||task.evidence.at(-1)||'OP CLIMB is waiting for enough reliable match evidence to judge the pattern.'}</p>
+        </section>
+      </div>
       <IlpExplainability task={task}/>
-      <p>{task.lastUpdatedReason||task.evidence.at(-1)||'Waiting for more evidence.'}</p>
       <button className="btn secondary" type="button" onClick={event=>{event.preventDefault();pauseTask(task.id)}}>PAUSE MISSION</button>
     </details>
   </article>;
