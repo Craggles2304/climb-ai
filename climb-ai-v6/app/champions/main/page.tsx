@@ -558,17 +558,74 @@ export default function MainChampionPage(){
         </div>
       </section>
 
-      <section className="mc-section">
-        <div className="mc-section-head"><div><div className="eyebrow">YOUR KIT</div><h2>Know exactly what every button does.</h2></div><span className="mc-patch-chip">CURRENT DATA · {patch}</span></div>
+      <nav className="mc-hq-tabs" aria-label="Champion HQ sections">
+        {([
+          ['OVERVIEW','OVERVIEW','Identity · setup · abilities'],
+          ['BUILDS','BUILDS','Popular · max · vs draft'],
+          ['DAMAGE','DAMAGE LAB','Items · targets · spell damage'],
+          ['MATCHUPS','MATCHUPS','Counters · favourable lanes'],
+          ['COMBOS','COMBOS','Build a combo · see damage'],
+          ['MASTERY','MY MASTERY','Your trends · your matchups'],
+        ] as Array<[ChampionTab,string,string]>).map(([key,label,sub])=><button
+          key={key}
+          type="button"
+          className={activeTab===key?'active':''}
+          onClick={()=>setActiveTab(key)}
+        ><b>{label}</b><small>{sub}</small></button>)}
+      </nav>
+
+      {activeTab==='OVERVIEW'&&<div className="mc-tab-panel">
+        <section className="mc-overview-grid">
+          <article className="mc-overview-card identity">
+            <div className="eyebrow">CHAMPION IDENTITY</div>
+            <h3>{champion.tags.join(' / ')}</h3>
+            <div className="mc-identity-chips">
+              <span>{data.profile?.damageType||'—'} DAMAGE</span>
+              <span>{data.profile?.rangeClass||'—'} RANGE</span>
+              <span>{data.profile?.resource||'NO RESOURCE DATA'}</span>
+              <span>DIFFICULTY {data.profile?.difficulty??champion.info.difficulty}/10</span>
+            </div>
+          </article>
+
+          <article className="mc-overview-card setup">
+            <div className="eyebrow">QUICK SETUP</div>
+            {metaLoading?<p className="muted">Loading current setup…</p>:meta?.ok?<>
+              <div className="mc-setup-row"><span>RUNES</span><div className="mc-icon-row">{meta.runePage?.perks.slice(0,6).map(perk=><span key={perk.id} title={perk.name}><img src={perk.icon} alt=""/><small>{perk.name}</small></span>)}</div></div>
+              <div className="mc-setup-row"><span>SUMMONERS</span><div className="mc-icon-row">{meta.summoners?.map(spell=><span key={spell.id} title={spell.name}><img src={spell.icon} alt=""/><small>{spell.name}</small></span>)}</div></div>
+              <div className="mc-setup-row"><span>START</span><div className="mc-icon-row">{meta.starters?.slice(0,3).map(item=><span key={item.id} title={item.name}>{item.icon?<img src={item.icon} alt=""/>:null}<small>{item.name}</small></span>)}</div></div>
+              <div className="mc-skill-priority"><span>SKILL PRIORITY</span><b>{meta.skillPriority?.length?meta.skillPriority.join(' → '):(data.skillOrder?.shorthand||'—')}</b></div>
+            </>:<p className="muted">Current setup data is unavailable. Riot ability data is still shown below.</p>}
+          </article>
+
+          <article className="mc-overview-card spikes">
+            <div className="eyebrow">POWER SPIKES</div>
+            <div className="mc-spike-list">{(data.profile?.spikes??[]).slice(0,4).map(spike=><div key={spike.level+'-'+spike.title}><b>LV {spike.level}</b><span>{spike.title.replace(/^Level \d+ — /,'')}</span></div>)}</div>
+          </article>
+
+          <article className="mc-overview-card meta">
+            <div className="eyebrow">META SNAPSHOT</div>
+            <div className="mc-meta-mini">
+              <div><span>WIN RATE</span><b>{meta?.summary?.winRate!=null?meta.summary.winRate+'%':'—'}</b></div>
+              <div><span>PICK RATE</span><b>{meta?.summary?.pickRate!=null?meta.summary.pickRate+'%':'—'}</b></div>
+              <div><span>BAN RATE</span><b>{meta?.summary?.banRate!=null?meta.summary.banRate+'%':'—'}</b></div>
+              <div><span>PATCH</span><b>{patch}</b></div>
+            </div>
+          </article>
+        </section>
+
+        <section className="mc-section">
+          <div className="mc-section-head"><div><div className="eyebrow">YOUR KIT</div><h2>Abilities — details only when you want them.</h2></div><span className="mc-patch-chip">CURRENT DATA · {patch}</span></div>
         <div className="mc-ability-grid">
           <AbilityCard slot="P" name={champion.passive.name} icon={passiveIcon} text={champion.passive.description}/>
           {champion.spells.map(spell=><AbilityCard key={spell.id} slot={spell.slot} name={spell.name} icon={spellIcon(spell)}
             text={spell.description||spell.tooltip} cooldown={spell.cooldown} cost={spell.cost}/>)}
         </div>
       </section>
+      </div>}
 
+      {activeTab==='BUILDS'&&<div className="mc-tab-panel">
       <section className="mc-section">
-        <div className="mc-section-head"><div><div className="eyebrow">BUILDS</div><h2>Your real games + a damage baseline.</h2></div></div>
+        <div className="mc-section-head"><div><div className="eyebrow">BUILDS</div><h2>Pick the build question you want answered.</h2></div></div>
         <div className="mc-build-presets">
           {importableRecentBuilds.length>0?importableRecentBuilds.map((build,index)=><div className="mc-preset" key={build.names.join('|')+index}>
             <span>{index===0?'YOUR LATEST BUILD':'RECENT BUILD '+(index+1)}</span>
