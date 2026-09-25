@@ -20,6 +20,7 @@ export interface CounterTableResult{
   lane:string;
   confidence:'HIGH'|'MEDIUM';
   analysed:number;
+  stats:{winRate:number|null;pickRate:number|null;banRate:number|null};
   rows:CounterRow[];
   note:string;
 }
@@ -95,9 +96,20 @@ export async function counterTable(input:CounterInput):Promise<CounterTableResul
     if(rows.length<6)continue;
 
     const exact=filters.tier===wantedTier&&filters.region===wantedRegion;
-    const analysed=Number((data as {stats?:{analysed?:number};analysed?:number}).stats?.analysed)
+    const statBlock=(data as {stats?:Record<string,unknown>}).stats??{};
+    const pct=(value:unknown)=>{
+      const n=Number(value);
+      if(!Number.isFinite(n))return null;
+      return Math.round((n<=1?n*100:n)*10)/10;
+    };
+    const analysed=Number(statBlock.analysed)
       ||Number((data as {analysed?:number}).analysed)
       ||rows.reduce((sum,row)=>sum+row.games,0);
+    const stats={
+      winRate:pct(statBlock.wr),
+      pickRate:pct(statBlock.pr),
+      banRate:pct(statBlock.br),
+    };
     const scope=`${filters.region.toUpperCase()} · ${displayTier(filters.tier)} · ${lane.toUpperCase()}`;
     return{
       source:'LOLALYTICS',
@@ -108,6 +120,7 @@ export async function counterTable(input:CounterInput):Promise<CounterTableResul
       lane:lane.toUpperCase(),
       confidence:exact&&rows.filter(row=>row.games>=50).length>=8?'HIGH':'MEDIUM',
       analysed,
+      stats,
       rows,
       note:`Counter table uses Lolalytics ranked matchup samples with at least ${MIN_GAMES} games per opponent · ${scope}.`,
     };
