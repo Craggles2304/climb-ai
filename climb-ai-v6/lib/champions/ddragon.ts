@@ -29,7 +29,9 @@ export interface ChampionListEntry{
 
 export interface ChampionSpell{
   id:string;name:string;maxrank:number;
+  description?:string;tooltip?:string;
   cooldown?:number[];cost?:number[];range?:number[];
+  image?:{full?:string};
   /** '-1' for a normal ability; a number for charge-based ones. */
   maxammo?:string;
 }
@@ -37,7 +39,7 @@ export interface ChampionSpell{
 /** A single champion's full file — adds spells, passive and Riot's own tips. */
 export interface ChampionDetail extends ChampionListEntry{
   spells:ChampionSpell[];
-  passive:{name:string;description:string};
+  passive:{name:string;description:string;image?:{full?:string}};
   allytips?:string[];
   enemytips?:string[];
 }
