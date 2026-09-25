@@ -92,8 +92,8 @@ test('does not drop entries whose id is not numeric',()=>{
 
 
 test('recognises finished purchasable Rift boots for the build simulator',()=>{
-  const boots={into:[],from:['1001'],gold:{total:1100,purchasable:true},maps:{'11':true},tags:['Boots','Armor'],inStore:true};
-  assert.equal(isFinishedBoot(boots),true);
+  const boots={into:['3174'],from:['1001'],gold:{total:1100,purchasable:true},maps:{'11':true},tags:['Boots','Armor'],inStore:true};
+  assert.equal(isFinishedBoot(boots),true,'tier-2 boots remain simulator items even when they upgrade later');
   assert.equal(isCompletedItem(boots),false,'boots stay separate from legendary completed items');
   assert.equal(isFinishedBoot({...boots,maps:{'11':false}}),false);
   assert.equal(isFinishedBoot({...boots,gold:{total:1100,purchasable:false}}),false);
