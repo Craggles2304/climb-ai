@@ -107,8 +107,7 @@ export function adaptILP(tasks:ILPTask[],matches:Match[]):{tasks:ILPTask[];chang
     const mastered=confirmed>=masteryRequired&&metricProgress>=threshold;
     const status=mastered?'MASTERED' as const:progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
 
-    const wasMastered=t.status==='MASTERED';
-    if(mastered&&!wasMastered)changes.push(`${t.title} reached its ${threshold}+ mastery target and left the active plan.`);
+    if(mastered)changes.push(`${t.title} reached its ${threshold}+ mastery target and left the active plan.`);
     const missionNote=` Tracked evidence: ${confirmed}/${masteryRequired} proven reps from ${gamesObserved} game${gamesObserved===1?'':'s'}.`;
     return{
       ...t,
