@@ -15,6 +15,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import type {Match} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
+import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -91,6 +92,7 @@ export default function Analysis(){
         return <article key={task.id}>
           <span>{attempt.banksPass?'PROVEN REP':'REVIEWED GAME'}</span>
           <b>{plain.name}</b>
+          <MissionMeasurementBadge metric={task.metric} compact/>
           <strong className={attempt.banksPass?'good':'watch'}>{mastered?'MASTERED ✓':attempt.banksPass?'PASS ✓':'NOT BANKED'}</strong>
           <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'rep banked')):'The metric did not clear the proof bar this game.'}</small>
         </article>;
