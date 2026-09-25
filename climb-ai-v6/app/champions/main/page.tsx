@@ -294,6 +294,11 @@ export default function MainChampionPage(){
     setBuildItems([]);
     setBuildSource('CUSTOM');
     setDraftData(null);
+    setActiveTab('OVERVIEW');
+    setTargetDraft('');
+    setTargetName('');
+    setTargetStats(null);
+    setCombo([]);
   },[main]);
 
   const championMatches=useMemo(
@@ -346,12 +351,88 @@ export default function MainChampionPage(){
     return abilityDamageRows(data.abilityData,context);
   },[data,buildItems,level]);
 
+  const skillSequence=useMemo(
+    ()=>meta?.skillSequence?.length
+      ?meta.skillSequence
+      :(data?.skillOrder?.sequence??[]).map(step=>step.slot),
+    [meta?.skillSequence,data?.skillOrder?.sequence],
+  );
+  const currentRanks=useMemo(()=>abilityRanksFromSequence(skillSequence,level),[skillSequence,level]);
+  const currentDamage=useMemo(()=>currentAbilityDamage(abilityRows,currentRanks),[abilityRows,currentRanks]);
+  const targetAbilityRows=useMemo(()=>{
+    if(!targetStats)return[];
+    return ['Q','W','E','R'].map(slot=>{
+      const ability=currentDamage[slot];
+      if(!ability)return null;
+      return{
+        slot,
+        raw:ability.raw,
+        post:mitigate(ability.raw,ability.damageType,targetStats),
+        exact:ability.exact,
+      };
+    }).filter(Boolean) as Array<{slot:string;raw:number;post:number;exact:boolean}>;
+  },[currentDamage,targetStats]);
+  const comboResult=useMemo(
+    ()=>targetStats?comboSnapshot(combo,currentDamage,targetStats):null,
+    [combo,currentDamage,targetStats],
+  );
+
+  const personalTrend=useMemo(()=>{
+    const sample=(games:typeof championMatches)=>{
+      if(!games.length)return{games:0,winRate:0,cs:0,deaths:0,earlyDeaths:0};
+      return{
+        games:games.length,
+        winRate:Math.round(games.filter(game=>game.result==='WIN').length/games.length*100),
+        cs:Math.round(games.reduce((sum,game)=>sum+(game.metrics.csPerMin||0),0)/games.length*10)/10,
+        deaths:Math.round(games.reduce((sum,game)=>sum+game.deaths,0)/games.length*10)/10,
+        earlyDeaths:games.filter(game=>(game.metrics.deathsPre10||0)>0).length,
+      };
+    };
+    return{recent:sample(championMatches.slice(0,5)),previous:sample(championMatches.slice(5,10))};
+  },[championMatches]);
+
+  const personalMatchups=useMemo(()=>{
+    const map=new Map<string,{opponent:string;games:number;wins:number;deaths:number}>();
+    for(const game of championMatches){
+      if(!game.opponent)continue;
+      const hit=map.get(game.opponent)||{opponent:game.opponent,games:0,wins:0,deaths:0};
+      hit.games+=1;
+      hit.wins+=game.result==='WIN'?1:0;
+      hit.deaths+=game.deaths;
+      map.set(game.opponent,hit);
+    }
+    return [...map.values()].sort((a,b)=>b.games-a.games||b.wins-a.wins).slice(0,8);
+  },[championMatches]);
+
   const loadBuild=(items:BuildItem[],source:string)=>{
     setBuildItems(items.slice(0,6));
     setBuildSource(source);
-    window.requestAnimationFrame(()=>{
+    setActiveTab('DAMAGE');
+    window.setTimeout(()=>{
       document.getElementById('build-simulator')?.scrollIntoView({behavior:'smooth',block:'start'});
-    });
+    },40);
+  };
+
+  const loadTarget=async()=>{
+    const canonical=canonicalChampion(targetDraft,names);
+    if(!canonical)return;
+    setTargetLoading(true);
+    try{
+      const params=new URLSearchParams({champion:canonical,level:String(level)});
+      const response=await fetch('/api/champions/main/target?'+params);
+      const body=await response.json() as TargetPayload;
+      if(body.ok&&body.target){
+        setTargetName(body.target.name);
+        setTargetDraft(body.target.name);
+        setTargetStats({
+          hp:body.target.hp,
+          armor:body.target.armor,
+          magicResist:body.target.magicResist,
+        });
+      }
+    }finally{
+      setTargetLoading(false);
+    }
   };
 
   const editBuild=(items:BuildItem[])=>{
