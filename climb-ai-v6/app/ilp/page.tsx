@@ -51,7 +51,7 @@ export default function PlayerDevelopmentCentre(){
         <b>{activeTasks.length}/2 ACTIVE</b>
         <small>{matches.length} {active.role.toLowerCase()} games feeding this plan</small>
       </div>
-      <div><span>CLEAN REPS</span><b>{banked}/{required||6}</b><small>evidence banked</small></div>
+      <div><span>PROVEN REPS</span><b>{banked}/{required||6}</b><small>tracked or reviewed evidence</small></div>
       <div><span>MASTERED</span><b>{mastered.length}</b><small>habits retired</small></div>
       <div><span>PLAN</span><b>{planProgress}%</b><small>mission progress</small></div>
     </section>
@@ -132,7 +132,7 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
     <div className="ip-progress">
       <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
       <Pips passes={summary.confirmed} required={summary.required}/>
-      <small>{summary.confirmed}/{summary.required} clean reps · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
+      <small>{summary.confirmed}/{summary.required} proven reps · {summary.proofMode==='TRACKED'?'updated from match data':'reviewed behaviour'} · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
     </div>
 
     <details className="ip-mission-details">
@@ -155,7 +155,7 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
         </section>
         <section>
           <span>04 · WHY IT IS STILL ACTIVE</span>
-          <h3>{summary.remaining?`${summary.remaining} clean rep${summary.remaining===1?'':'s'} still needed`:'Ready for a mastery check'}</h3>
+          <h3>{summary.remaining?`${summary.remaining} proven rep${summary.remaining===1?'':'s'} still needed`:'Ready for a mastery check'}</h3>
           <p>{task.lastUpdatedReason||task.evidence.at(-1)||'OP CLIMB is waiting for enough reliable match evidence to judge the pattern.'}</p>
         </section>
       </div>
