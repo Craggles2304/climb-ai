@@ -40,7 +40,7 @@ export function bestRawDamageBuild(
   const byId=new Map(catalogue.map(item=>[item.id,item]));
   let evaluated=0;
 
-  const start=evaluate(base,level,emptyStats(),abilityData);
+  const start=rawDamageSnapshot(base,level,emptyStats(),abilityData);
   let beam:State[]=[{ids:[],stats:emptyStats(),gold:0,...start}];
 
   for(let depth=0;depth<targetSize;depth++){
@@ -50,7 +50,7 @@ export function bestRawDamageBuild(
       for(const item of relevant){
         if(item.id<=highest)continue;
         const stats=addStats(state.stats,item.stats);
-        const result=evaluate(base,level,stats,abilityData);
+        const result=rawDamageSnapshot(base,level,stats,abilityData);
         evaluated++;
         next.push({
           ids:[...state.ids,item.id],
@@ -80,7 +80,7 @@ export function bestRawDamageBuild(
   };
 }
 
-function evaluate(
+export function rawDamageSnapshot(
   base:ChampionStatBlock,
   level:number,
   stats:ItemStats,
