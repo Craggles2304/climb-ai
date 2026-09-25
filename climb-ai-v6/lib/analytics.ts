@@ -11,7 +11,7 @@ export type AnalyticsEvent=
   |'public_demo_started'|'public_demo_completed'|'public_demo_failed'
   |'public_riot_preview_started'|'public_riot_preview_completed'|'public_riot_preview_failed'
   |'signup_started'|'signup_completed'|'riot_profile_added'
-  |'activation_started'|'first_match_added'|'op_grade_viewed'|'fix_ladder_viewed'
+  |'activation_started'|'activation_existing_history_found'|'first_match_added'|'op_grade_viewed'|'fix_ladder_viewed'
   |'activation_completed'|'development_hq_entered'
   |'match_uploaded'|'match_synced'|'analysis_started'|'analysis_completed'
   |'mission_started'|'mission_completed'|'coach_message_sent'|'pricing_viewed'
