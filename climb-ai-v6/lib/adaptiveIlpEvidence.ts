@@ -39,7 +39,7 @@ type PatternEvidence={
   lastEvidenceAt:string|null;
 };
 
-const ACTIVE_LIMIT=2;
+const ACTIVE_LIMIT=3;
 const MASTERY_CLEAN_GAMES=3;
 const RECENT_WINDOW=5;
 const clamp=(n:number)=>Math.max(0,Math.min(100,Math.round(n)));
@@ -109,7 +109,7 @@ export function adaptActiveFiveFromPostGameEvidence(input:AdaptiveIlpInput):Adap
   }
 
   // Promote repeated leaks only. A one-game spike can raise confidence on an
-  // existing mission, but it cannot displace another member of the two-mission plan.
+  // existing mission, but it cannot displace another member of the three-mission plan.
   for(const fix of rankedFixes(input.profile.fixLadder,history)){
     const evidence=patternEvidence(fix.key,history);
     if(!promotionReady(fix,evidence)||represented(tasks,fix.key))continue;
@@ -245,8 +245,8 @@ function capActiveFive(tasks:AdaptiveTask[],now:string,changes:string[]){
     return aProtected-bProtected||Number(a.priority??50)-Number(b.priority??50);
   });
   const pause=new Set(ordered.slice(0,live.length-ACTIVE_LIMIT).map(task=>task.id));
-  next=next.map(task=>pause.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically to keep the development plan at exactly two active missions.',history:[...(task.history??[]),{at:now,type:'PAUSED',note:'two-mission plan cap applied after evidence adaptation.'}].slice(-12)}:task);
-  if(pause.size)changes.push(`two-mission plan cap paused ${pause.size} lower-priority mission${pause.size===1?'':'s'}.`);
+  next=next.map(task=>pause.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically to keep the development plan at exactly three active missions.',history:[...(task.history??[]),{at:now,type:'PAUSED',note:'three-mission plan cap applied after evidence adaptation.'}].slice(-12)}:task);
+  if(pause.size)changes.push(`three-mission plan cap paused ${pause.size} lower-priority mission${pause.size===1?'':'s'}.`);
   return next;
 }
 
@@ -264,7 +264,7 @@ function refillActiveFive(tasks:AdaptiveTask[],accountId:string,role:Role|null,n
       ...row,
       status:'ACTIVE' as const,
       lastUpdatedReason:'Returned because repeated post-game evidence still supports this measurable mission.',
-      history:[...(row.history??[]),{at:now,type:'PROMOTED',note:'Repeated evidence restored this mission to the two-mission plan.'}].slice(-12),
+      history:[...(row.history??[]),{at:now,type:'PROMOTED',note:'Repeated evidence restored this mission to the three-mission plan.'}].slice(-12),
     }:row);
     needed--;
     changes.push(`${task.title} returned from repeated measurable evidence.`);
