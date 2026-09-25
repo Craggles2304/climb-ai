@@ -10,6 +10,8 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {humanError} from '@/lib/errors';
 import {championAbilityDataset} from '@/lib/champions/merakiAbilitySource';
 import {bestRawDamageBuild} from '@/lib/champions/rawDamageBuild';
+import {matchupItemCatalogue} from '@/lib/combat/itemSource';
+import {isCompletedItem,isFinishedBoot} from '@/lib/riot/items';
 
 export const runtime='nodejs';
 export const revalidate=3600;
@@ -57,13 +59,18 @@ export async function GET(req:NextRequest){
     if(!id)
       return NextResponse.json({ok:false,error:`No champion called "${champion}".`},{status:404});
 
-    const [detail,items,abilityData]=await Promise.all([
+    const [detail,items,abilityData,riftItems]=await Promise.all([
       championDetail(id,patch),
       itemCatalogue(patch),
       championAbilityDataset(id),
+      matchupItemCatalogue(patch),
     ]);
 
-    const catalogue=toBuildItems(items,patch);
+    const damageCatalogue=toBuildItems(items,patch);
+    const simulatorSource=Object.fromEntries(
+      Object.entries(riftItems).filter(([,item])=>isCompletedItem(item)||isFinishedBoot(item))
+    );
+    const catalogue=toBuildItems(simulatorSource,patch);
     const values=rankItems(detail.stats,level,items);
     const damageItems=byDamagePerGold(values);
     const ranking=rankMatchups(roster,id,{
@@ -114,9 +121,9 @@ export async function GET(req:NextRequest){
       },
       build:{
         catalogue,
-        maxDps:bestBuild(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
-        maxRawDamage:bestRawDamageBuild(detail.stats,level,catalogue,abilityData,MAX_BUILD_SIZE),
-        bySize:maxDpsBySize(detail.stats,level,catalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
+        maxDps:bestBuild(detail.stats,level,damageCatalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
+        maxRawDamage:bestRawDamageBuild(detail.stats,level,damageCatalogue,abilityData,MAX_BUILD_SIZE),
+        bySize:maxDpsBySize(detail.stats,level,damageCatalogue,MAX_BUILD_SIZE,BEAM_WIDTH,budget),
         budget:budget??null,
       },
       skillOrder:skillOrder(detail),
