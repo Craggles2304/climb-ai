@@ -5,15 +5,11 @@ import {ILPTask} from '@/lib/types';
 import {track} from '@/lib/analytics';
 
 /**
- * "You are in a game right now — here is your one rule."
+ * Tracking-only live status.
  *
- * This is the closest the web app can get to reaching the player at the moment
- * the behaviour actually happens, without an overlay. It is deliberately one
- * rule and nothing else: a player glancing at a second monitor at minute 16 can
- * read one line, not a dashboard.
- *
- * It never shows live in-game state (CS, gold, deaths). Riot's spectator data
- * does not contain it, and pretending otherwise would be a lie.
+ * OP CLIMB never turns current match state into tactical instructions. The
+ * dashboard may confirm that a pre-game mission is being measured, but all
+ * coaching judgement waits until the post-game review.
  */
 
 interface Props{
@@ -71,13 +67,13 @@ export function LiveGameCard({gameName,tagline,region,task}:Props){
 
     {task
       ? <>
-          <div className="eyebrow">YOUR ONE RULE</div>
-          <h2 className="livegame-rule">{task.gameRule}</h2>
-          <p className="livegame-pass">Counts as a pass: {task.target}</p>
+          <div className="eyebrow">MISSION BEING TRACKED</div>
+          <h2 className="livegame-rule">{task.title}</h2>
+          <p className="livegame-pass">Target locked before the game: {task.target}</p>
         </>
-      : <h2 className="livegame-rule">No active behaviour yet — analyse a game to get one.</h2>}
+      : <h2 className="livegame-rule">MATCH TRACKING ACTIVE</h2>}
 
-    <p className="livegame-phase">{game.phaseNote}</p>
+    <p className="livegame-phase">Tracking only · coaching unlocks after the match.</p>
 
     {!game.isRankedSolo&&<p className="livegame-note">
       This is {game.queue}. Your plan is measured on ranked solo/duo, so this game will not
