@@ -146,8 +146,8 @@ function MissionCard({task,index,pauseTask}:{task:ILPTask;index:number;pauseTask
       <small>{summary.confirmed}/{summary.required} proven reps · +{XP_PER_PROVEN_REP} XP each · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
     </div>
 
+    <div className="ip-xp-reward"><span>MISSION REWARD</span><b>+{XP_PER_MISSION_MASTERY} XP</b><small>when mastered · +{XP_PER_PROVEN_REP} XP per proven game</small></div>
     <details className="ip-mission-details">
-      <div className="ip-xp-reward"><span>MISSION REWARD</span><b>+{XP_PER_MISSION_MASTERY} XP</b><small>awarded when this mission is mastered</small></div>
       <summary>BREAK IT DOWN <span>WHY · WHAT · HOW YOU PASS</span></summary>
       <div className="ip-mission-brief">
         <section>
