@@ -119,7 +119,7 @@ function Metric({label,value,sub}:{label:string;value:string;sub:string}){
 
 function GameRow({game,index,stageKeys}:{game:Game;index:number;stageKeys:string[]}){
   const [open,setOpen]=useState(false);
-  const byKey=new Map(game.stages.map(stage=>[stage.key,stage]));
+  const byKey=new Map<string,Stage>(game.stages.map(stage=>[stage.key,stage] as const));
   return <article className={'vl-row is-'+game.overall.toLowerCase()}>
     <button className="vl-row-main" type="button" onClick={()=>setOpen(value=>!value)}>
       <div className="vl-game">
