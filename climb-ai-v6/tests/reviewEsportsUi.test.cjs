@@ -69,11 +69,11 @@ test('post-game review prefers the exact deep draft-coach plan and preserves pla
 });
 
 
-test('post-game review closes the loop into the server-authoritative Active Five',()=>{
+test('post-game review closes the loop into the server-authoritative three-mission plan',()=>{
   assert.ok(learningRepo.includes('rebuildProLearningProfileWithIlp'));
   assert.ok(learningRepo.includes('PostGameIlpSyncResult'));
   assert.ok(learningRepo.includes("source:'POST_GAME_EVIDENCE'"));
-  assert.ok(learningRepo.includes('active.slice(0,5)'));
+  assert.ok(learningRepo.includes('active.slice(0,3)'));
   assert.ok(liveRepo.includes('syncLearningPlanForSession'));
   assert.ok(liveRepo.includes('analysisSignature'));
   assert.ok(liveRepo.includes('learningPlanSync'));
@@ -83,15 +83,15 @@ test('post-game review closes the loop into the server-authoritative Active Five
 });
 
 test('Companion shows whether repeated evidence actually changed the development plan',()=>{
-  assert.ok(core.includes('YOUR ACTIVE FIVE'));
-  assert.ok(core.includes('ACTIVE FIVE UPDATED FROM REPEATED EVIDENCE'));
-  assert.ok(core.includes('ACTIVE FIVE CHECKED · NO MISSION REPLACED'));
+  assert.ok(core.includes('YOUR 3-MISSION PLAN'));
+  assert.ok(core.includes('3-MISSION PLAN UPDATED FROM REPEATED EVIDENCE'));
+  assert.ok(core.includes('3-MISSION PLAN CHECKED · NO MISSION REPLACED'));
   assert.ok(core.includes('One unusual game cannot replace or reopen a persistent development mission.'));
-  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,5)'));
+  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,3)'));
   assert.ok(core.includes('renderDevelopmentPlan(review)'));
 });
 
-test('open web plan refreshes the server-owned Active Five after returning to the app',()=>{
+test('open web plan refreshes the server-owned three-mission plan after returning to the app',()=>{
   assert.ok(learningContext.includes("window.addEventListener('focus',onFocus)"));
   assert.ok(learningContext.includes("document.addEventListener('visibilitychange',pull)"));
   assert.ok(learningContext.includes('refreshCloudNow()'));
