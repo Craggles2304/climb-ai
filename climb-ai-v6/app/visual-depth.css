@@ -4252,3 +4252,157 @@ body[data-op-area="hq"] .hq-mission-why p{
   .mission-source-badge{white-space:normal;line-height:1.2}
   .ip-mission-meta{justify-content:flex-start}
 }
+
+
+/* Validation Lab — real-game pipeline QA */
+.vl-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:12px
+}
+.vl-head h1{
+  margin:6px 0 4px;
+  font:900 clamp(34px,5vw,56px)/.92 var(--font-display,'Barlow Condensed',sans-serif);
+  text-transform:uppercase;letter-spacing:-.03em
+}
+.vl-head p{margin:0;max-width:720px;color:#87959a;font-size:12px;line-height:1.5}
+.vl-error{
+  margin-bottom:10px;padding:12px 14px;border:1px solid rgba(255,110,103,.22);
+  border-radius:11px;background:rgba(255,110,103,.05);color:#ef9c96;font-size:10px
+}
+.vl-progress{
+  display:grid;grid-template-columns:1.35fr repeat(3,minmax(0,1fr));gap:7px;margin-bottom:8px
+}
+.vl-progress>div,.vl-metric{
+  min-height:104px;padding:14px;border:1px solid rgba(255,255,255,.07);
+  border-radius:13px;background:rgba(9,15,19,.68);display:grid;align-content:center;gap:4px
+}
+.vl-progress span,.vl-metric span{
+  color:#728086;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.1em
+}
+.vl-progress b,.vl-metric b{
+  color:#edf3f2;font:900 28px/1 var(--font-display,'Barlow Condensed',sans-serif)
+}
+.vl-progress small,.vl-metric small{color:#69787d;font-size:8px}
+.vl-progress-main{
+  border-color:rgba(var(--op-a),.16)!important;
+  background:linear-gradient(145deg,rgba(var(--op-a),.07),rgba(9,15,19,.72))!important
+}
+.vl-progress-main>b{color:rgb(var(--op-a))!important;font-size:34px!important}
+.vl-progress-main>i{
+  display:block;height:6px;margin-top:7px;border-radius:999px;overflow:hidden;background:rgba(255,255,255,.06)
+}
+.vl-progress-main>i>em{
+  display:block;height:100%;border-radius:999px;background:linear-gradient(90deg,rgb(var(--op-a)),rgb(var(--op-b)))
+}
+.vl-coverage{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;margin-bottom:10px
+}
+.vl-coverage>div{
+  padding:11px 13px;border:1px solid rgba(255,255,255,.06);border-radius:11px;background:rgba(0,0,0,.11)
+}
+.vl-coverage span{
+  display:block;color:#75858a;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em
+}
+.vl-coverage b{display:block;margin-top:5px;color:#e5eceb;font:900 21px/1 var(--font-display,'Barlow Condensed',sans-serif)}
+.vl-coverage small{display:block;margin-top:3px;color:#66757a;font-size:7px}
+.vl-guide{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;margin:12px 0;
+  padding:14px 15px;border:1px solid rgba(var(--op-b),.13);border-radius:12px;background:rgba(var(--op-b),.025)
+}
+.vl-guide span{
+  color:rgb(var(--op-b));font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em
+}
+.vl-guide p{margin:5px 0 0;max-width:860px;color:#839196;font-size:10px;line-height:1.45}
+.vl-matrix{
+  overflow:auto;border:1px solid rgba(255,255,255,.075);border-radius:15px;background:rgba(8,14,18,.60)
+}
+.vl-matrix>header,.vl-row-main{
+  min-width:1120px;
+  display:grid;
+  grid-template-columns:210px repeat(10,minmax(78px,1fr));
+  gap:0;
+}
+.vl-matrix>header{
+  position:sticky;top:0;z-index:4;background:#0a1115;border-bottom:1px solid rgba(255,255,255,.07)
+}
+.vl-matrix>header>div{
+  padding:10px 8px;color:#65747a;font:800 6px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;text-align:center
+}
+.vl-matrix>header>div:first-child{text-align:left}
+.vl-row{border-bottom:1px solid rgba(255,255,255,.055)}
+.vl-row:last-child{border-bottom:0}
+.vl-row-main{
+  width:100%;border:0;background:transparent;color:inherit;cursor:pointer;text-align:left;padding:0
+}
+.vl-row-main:hover{background:rgba(var(--op-a),.022)}
+.vl-game{
+  min-width:0;padding:11px 12px;border-right:1px solid rgba(255,255,255,.045);display:grid;gap:2px
+}
+.vl-game>span{color:#718086;font:800 6px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.08em}
+.vl-game>b{color:#e3eae9;font:900 17px/1 var(--font-display,'Barlow Condensed',sans-serif);text-transform:uppercase}
+.vl-game>small{color:#6a797e;font-size:7px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vl-stage{
+  display:grid;place-items:center;align-content:center;gap:4px;padding:9px 5px;border-right:1px solid rgba(255,255,255,.035)
+}
+.vl-stage>i,.vl-detail-stages i,.vl-legend i{
+  width:9px;height:9px;border-radius:50%;background:#66757a
+}
+.vl-stage>i.pass,.vl-detail-stages i.pass,.vl-legend i.pass{background:#9edb72;box-shadow:0 0 10px rgba(158,219,114,.22)}
+.vl-stage>i.warn,.vl-detail-stages i.warn,.vl-legend i.warn{background:#e0ac65;box-shadow:0 0 10px rgba(224,172,101,.18)}
+.vl-stage>i.fail,.vl-detail-stages i.fail,.vl-legend i.fail{background:#e27770;box-shadow:0 0 10px rgba(226,119,112,.2)}
+.vl-stage>i.na,.vl-detail-stages i.na,.vl-legend i.na{background:#58666b}
+.vl-stage>small{
+  color:#718086;font:800 6px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.05em
+}
+.vl-row.is-pass{box-shadow:inset 3px 0 0 #9edb72}
+.vl-row.is-warn{box-shadow:inset 3px 0 0 #e0ac65}
+.vl-row.is-fail{box-shadow:inset 3px 0 0 #e27770}
+.vl-detail{
+  padding:12px 14px 14px;background:rgba(0,0,0,.13);border-top:1px solid rgba(255,255,255,.045)
+}
+.vl-detail-meta{
+  display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px
+}
+.vl-detail-meta>span{
+  padding:6px 8px;border:1px solid rgba(255,255,255,.055);border-radius:999px;color:#6f7e83;
+  font:700 6px/1 var(--font-mono,'IBM Plex Mono',monospace)
+}
+.vl-detail-meta b{color:#aeb9bb}
+.vl-detail-stages{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.vl-detail-stages>div{
+  display:grid;grid-template-columns:12px 120px 1fr;gap:7px;align-items:start;
+  padding:8px 9px;border:1px solid rgba(255,255,255,.045);border-radius:8px
+}
+.vl-detail-stages span{color:#c8d0d1;font-size:8px;font-weight:800}
+.vl-detail-stages p{margin:0;color:#718086;font-size:8px;line-height:1.4}
+.vl-mission-results{margin-top:10px;padding-top:10px;border-top:1px solid rgba(255,255,255,.055)}
+.vl-mission-results>.eyebrow{margin-bottom:6px}
+.vl-mission-results>div:not(.eyebrow){
+  display:grid;grid-template-columns:110px 1fr 80px 110px;gap:8px;align-items:center;
+  padding:7px 0;border-top:1px solid rgba(255,255,255,.04)
+}
+.vl-mission-results span{color:#76868b;font-size:7px}
+.vl-mission-results b{color:#dbe3e2;font-size:9px}
+.vl-mission-results strong{font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace)}
+.vl-mission-results strong.pass{color:#9edb72}.vl-mission-results strong.fail{color:#e27770}
+.vl-mission-results small{color:#6a797e;font-size:7px}
+.vl-empty{padding:30px}
+.vl-empty h2{margin:6px 0;font-size:28px}.vl-empty p{color:#7b898e}
+.vl-legend{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;padding:10px 12px;
+  border:1px solid rgba(255,255,255,.055);border-radius:10px;background:rgba(0,0,0,.08)
+}
+.vl-legend>span{display:flex;align-items:center;gap:5px;color:#75858a;font:800 6px/1 var(--font-mono,'IBM Plex Mono',monospace)}
+.vl-legend>p{margin:0 0 0 auto;color:#69787d;font-size:7px}
+@media(max-width:900px){
+  .vl-progress{grid-template-columns:1fr 1fr}
+  .vl-progress-main{grid-column:span 2}
+  .vl-detail-stages{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .vl-head,.vl-guide{align-items:flex-start;flex-direction:column}
+  .vl-coverage{grid-template-columns:1fr}
+  .vl-progress{grid-template-columns:1fr 1fr}
+  .vl-mission-results>div:not(.eyebrow){grid-template-columns:1fr 80px}
+  .vl-mission-results span,.vl-mission-results small{grid-column:1/-1}
+}
