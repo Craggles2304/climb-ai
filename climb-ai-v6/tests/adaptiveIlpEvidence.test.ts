@@ -12,17 +12,17 @@ function active(tasks:ILPTask[]){return tasks.filter(t=>t.status!=='MASTERED'&&t
 
 const g1='2026-09-01T10:00:00.000Z',g2='2026-09-02T10:00:00.000Z',g3='2026-09-03T10:00:00.000Z',g4='2026-09-04T10:00:00.000Z';
 
-test('one unusual bad game cannot rewrite a full Active Five',()=>{
-  const tasks=[task('a',40),task('b',50),task('c',60),task('d',70),task('e',80)];
+test('one unusual bad game cannot rewrite a full three-mission plan',()=>{
+  const tasks=[task('a',40),task('b',50),task('c',60)];
   const one=fix({gamesSeen:1,occurrences:1,severity:'CRITICAL'});
   const result=adaptActiveFiveFromPostGameEvidence({tasks,profile:profile([one],1,g1),history:[row(g1,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g1});
-  assert.equal(active(result.tasks).length,5);
+  assert.equal(active(result.tasks).length,3);
   assert.equal(result.tasks.some(t=>t.id.startsWith('op-pro-chain-death')),false);
   assert.deepEqual(new Set(active(result.tasks).map(t=>t.id)),new Set(tasks.map(t=>t.id)));
 });
 
 test('repeated evidence promotes a mission and protects Coach work from replacement',()=>{
-  const tasks=[task('coach',10,'COACH'),task('a',40),task('b',50),task('c',60),task('d',70)];
+  const tasks=[task('coach',10,'COACH'),task('a',40),task('b',50)];
   const history=[row(g1,'CHAIN_DEATH'),row(g2,null),row(g3,'CHAIN_DEATH')];
   const result=adaptActiveFiveFromPostGameEvidence({tasks,profile:profile([fix()],3,g3),history,accountId:'acct',role:'JUNGLE',now:g3});
   const adaptive=result.tasks.find(t=>t.id==='op-pro-jungle-chain-death') as (ILPTask&{adaptive?:AdaptiveIlpMeta})|undefined;
@@ -30,41 +30,41 @@ test('repeated evidence promotes a mission and protects Coach work from replacem
   assert.equal(adaptive?.adaptive?.recentSupportGames,2);
   assert.notEqual(result.tasks.find(t=>t.id==='coach')?.status,'PAUSED');
   assert.equal(result.tasks.find(t=>t.id==='a')?.status,'PAUSED');
-  assert.equal(active(result.tasks).length,5);
+  assert.equal(active(result.tasks).length,3);
 });
 
 test('another supporting game strengthens the same mission instead of duplicating it',()=>{
-  const base=adaptActiveFiveFromPostGameEvidence({tasks:[task('a',40),task('b',50),task('c',60),task('d',70),task('e',80)],profile:profile([fix()],3,g3),history:[row(g1,'CHAIN_DEATH'),row(g2,null),row(g3,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g3});
+  const base=adaptActiveFiveFromPostGameEvidence({tasks:[task('a',40),task('b',50),task('c',60)],profile:profile([fix()],3,g3),history:[row(g1,'CHAIN_DEATH'),row(g2,null),row(g3,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g3});
   const nextFix=fix({gamesSeen:3,occurrences:3,severity:'CRITICAL'});
   const next=adaptActiveFiveFromPostGameEvidence({tasks:base.tasks,profile:profile([nextFix],4,g4),history:[row(g1,'CHAIN_DEATH'),row(g2,null),row(g3,'CHAIN_DEATH'),row(g4,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g4});
   const adaptive=next.tasks.filter(t=>(t as ILPTask&{adaptive?:AdaptiveIlpMeta}).adaptive?.patternKey==='CHAIN_DEATH');
   assert.equal(adaptive.length,1);
   assert.equal((adaptive[0] as ILPTask&{adaptive?:AdaptiveIlpMeta}).adaptive?.lastAction,'STRENGTHENED');
-  assert.equal(active(next.tasks).length,5);
+  assert.equal(active(next.tasks).length,3);
 });
 
-test('three clean games after activation master the mission and refill the vacancy immediately',()=>{
+test('three clean games master the mission without inventing a replacement',()=>{
   const adaptive:ILPTask&{adaptive:AdaptiveIlpMeta}={...task('op-pro-chain-death',96),title:'Break the second death',why:'Recovery leak.',gameRule:'Reset safely after death.',metric:'OP PRO Fix Ladder',target:'3 clean games',status:'EVIDENCE_BUILDING',adaptive:{version:1,managedBy:'POST_GAME_EVIDENCE',patternKey:'CHAIN_DEATH',confidence:80,recentSupportGames:2,recentWindow:3,recentOccurrences:2,totalSupportGames:2,cleanStreak:0,activatedAfter:'2026-08-31T10:00:00.000Z',lastEvidenceAt:'2026-08-30T10:00:00.000Z',lastAction:'PROMOTED'}};
-  const result=adaptActiveFiveFromPostGameEvidence({tasks:[adaptive,task('a',80),task('b',79),task('c',78),task('d',77)],profile:profile([],3,g3),history:[row(g1,null),row(g2,null),row(g3,null)],accountId:'acct',role:'JUNGLE',now:g3});
+  const result=adaptActiveFiveFromPostGameEvidence({tasks:[adaptive,task('a',80),task('b',79)],profile:profile([],3,g3),history:[row(g1,null),row(g2,null),row(g3,null)],accountId:'acct',role:'JUNGLE',now:g3});
   assert.equal(result.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
   assert.equal(result.tasks.find(t=>t.id==='op-pro-chain-death')?.progress,100);
-  assert.equal(active(result.tasks).length,5);
-  assert.ok(result.tasks.some(t=>t.id.includes('adaptive-fill')));
+  assert.equal(active(result.tasks).length,2);
+  assert.equal(result.tasks.some(t=>t.id.includes('adaptive-fill')),false);
 });
 
 test('mastered behaviour requires repeated recurrence before reopening',()=>{
   const mastered:ILPTask&{adaptive:AdaptiveIlpMeta}={...task('op-pro-chain-death',96),title:'Break the second death',status:'MASTERED',progress:100,adaptive:{version:1,managedBy:'POST_GAME_EVIDENCE',patternKey:'CHAIN_DEATH',confidence:80,recentSupportGames:0,recentWindow:3,recentOccurrences:0,totalSupportGames:2,cleanStreak:3,activatedAfter:'2026-08-20T10:00:00.000Z',lastEvidenceAt:'2026-08-19T10:00:00.000Z',lastAction:'MASTERED'}};
-  const base=[mastered,task('a',80),task('b',79),task('c',78),task('d',77)];
+  const base=[mastered,task('a',80),task('b',79)];
   const one=adaptActiveFiveFromPostGameEvidence({tasks:base,profile:profile([fix({gamesSeen:1,occurrences:1})],1,g1),history:[row(g1,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g1});
   assert.equal(one.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
   const two=adaptActiveFiveFromPostGameEvidence({tasks:one.tasks,profile:profile([fix({gamesSeen:2,occurrences:2})],2,g2),history:[row(g1,'CHAIN_DEATH'),row(g2,'CHAIN_DEATH')],accountId:'acct',role:'JUNGLE',now:g2});
   assert.notEqual(two.tasks.find(t=>t.id==='op-pro-chain-death')?.status,'MASTERED');
   assert.equal((two.tasks.find(t=>t.id==='op-pro-chain-death') as ILPTask&{adaptive?:AdaptiveIlpMeta})?.adaptive?.lastAction,'REOPENED');
-  assert.equal(active(two.tasks).length,5);
+  assert.equal(active(two.tasks).length,3);
 });
 
-test('an empty authenticated plan is refilled to exactly five role-safe missions',()=>{
+test('an empty authenticated plan stays empty until measurable evidence exists',()=>{
   const result=adaptActiveFiveFromPostGameEvidence({tasks:[],profile:profile([],0,null),history:[],accountId:'acct',role:'JUNGLE',now:g1});
-  assert.equal(active(result.tasks).length,5);
-  assert.ok(active(result.tasks).every(t=>t.source==='SYSTEM'));
+  assert.equal(active(result.tasks).length,0);
+  assert.equal(result.tasks.some(t=>t.id.includes('adaptive-fill')),false);
 });
