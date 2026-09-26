@@ -3,6 +3,7 @@ import {createServerClient} from '@supabase/ssr';
 import type {SupabaseClient} from '@supabase/supabase-js';
 import {cookies} from 'next/headers';
 import {authConfigured} from '@/lib/auth/config';
+import {timedFetch} from './timedFetch';
 
 /**
  * Server Supabase client bound to the request's cookies, so a session set in the
@@ -17,6 +18,7 @@ export async function getServerClient():Promise<SupabaseClient|null>{
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global:{fetch:timedFetch(5_000)},
       cookies:{
         getAll:()=>store.getAll(),
         setAll:(list)=>{
