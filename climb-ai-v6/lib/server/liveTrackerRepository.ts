@@ -29,7 +29,12 @@ export async function createTrackerDevice(userId:string,accountKey:string,device
 
 export async function listTrackerDevices(userId:string){const db=getSupabaseAdmin();if(!db)return[];const {data,error}=await db.from('live_tracker_devices').select('id,account_key,riot_account_id,device_name,created_at,last_seen_at,revoked_at').eq('user_id',userId).is('revoked_at',null).order('created_at',{ascending:false});if(error)throw new Error(error.message);return data??[]}
 export async function revokeTrackerDevice(userId:string,deviceId:string){const db=getSupabaseAdmin();if(!db)return false;const {error}=await db.from('live_tracker_devices').update({revoked_at:new Date().toISOString()}).eq('id',deviceId).eq('user_id',userId);if(error)throw new Error(error.message);return true}
-export async function authenticateTrackerToken(token:string):Promise<TrackerDevice|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('live_tracker_devices').select('id,user_id,account_key,riot_account_id,device_name,revoked_at').eq('token_hash',hashTrackerToken(token)).is('revoked_at',null).maybeSingle();if(error||!data)return null;await db.from('live_tracker_devices').update({last_seen_at:new Date().toISOString()}).eq('id',data.id);return{id:data.id,userId:data.user_id,accountKey:data.account_key,riotAccountId:data.riot_account_id??null,deviceName:data.device_name}}
+export async function authenticateTrackerToken(token:string):Promise<TrackerDevice|null>{
+  // Emergency circuit breaker: keep Companion traffic off Supabase while the
+  // database connection pool recovers. Remove after database health is verified.
+  void token;
+  return null;
+  /*const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('live_tracker_devices').select('id,user_id,account_key,riot_account_id,device_name,revoked_at').eq('token_hash',hashTrackerToken(token)).is('revoked_at',null).maybeSingle();if(error||!data)return null;await db.from('live_tracker_devices').update({last_seen_at:new Date().toISOString()}).eq('id',data.id);return{id:data.id,userId:data.user_id,accountKey:data.account_key,riotAccountId:data.riot_account_id??null,deviceName:data.device_name}*/}
 
 export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
