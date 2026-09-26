@@ -1,7 +1,7 @@
 import {NextResponse} from 'next/server';
 import type {NextRequest} from 'next/server';
 import {createServerClient} from '@supabase/ssr';
-import {authConfigured,decideAccess,isUnreachable} from '@/lib/auth/config';
+import {authConfigured,decideAccess,isUnreachable,isProtected,isAdminRoute,isAuthPage} from '@/lib/auth/config';
 import {timedFetch} from '@/lib/supabase/timedFetch';
 
 /** Session refresh + route protection. */
@@ -9,6 +9,12 @@ export async function middleware(req:NextRequest){
   const path=req.nextUrl.pathname;
   const demoMode=process.env.NEXT_PUBLIC_DEMO_MODE==='true';
   const configured=authConfigured();
+  const routeNeedsAuthDecision=isProtected(path)||isAdminRoute(path)||isAuthPage(path);
+
+  // Public product pages must never depend on the auth/database provider being
+  // reachable. This keeps the homepage, pricing and demo available during an
+  // upstream Supabase incident and avoids routing-middleware timeouts.
+  if(!routeNeedsAuthDecision)return NextResponse.next({request:req});
 
   let response=NextResponse.next({request:req});
   let signedIn=false;
@@ -33,7 +39,10 @@ export async function middleware(req:NextRequest){
     );
 
     try{
-      const {data,error}=await supabase.auth.getUser();
+      const {data,error}=await Promise.race([
+        supabase.auth.getUser(),
+        new Promise<never>((_,reject)=>setTimeout(()=>reject(new Error('AUTH_LOOKUP_TIMEOUT')),1_800)),
+      ]);
       if(error&&isUnreachable(error)){
         authReachable=false;
       }else{
