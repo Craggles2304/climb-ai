@@ -29,12 +29,59 @@ export async function createTrackerDevice(userId:string,accountKey:string,device
 
 export async function listTrackerDevices(userId:string){const db=getSupabaseAdmin();if(!db)return[];const {data,error}=await db.from('live_tracker_devices').select('id,account_key,riot_account_id,device_name,created_at,last_seen_at,revoked_at').eq('user_id',userId).is('revoked_at',null).order('created_at',{ascending:false});if(error)throw new Error(error.message);return data??[]}
 export async function revokeTrackerDevice(userId:string,deviceId:string){const db=getSupabaseAdmin();if(!db)return false;const {error}=await db.from('live_tracker_devices').update({revoked_at:new Date().toISOString()}).eq('id',deviceId).eq('user_id',userId);if(error)throw new Error(error.message);return true}
+const TRACKER_DB_RECOVERY_MODE=true;
+const TRACKER_AUTH_CACHE_MS=60_000;
+const TRACKER_NEGATIVE_CACHE_MS=5_000;
+const TRACKER_LAST_SEEN_WRITE_MS=5*60_000;
+type TrackerAuthCacheEntry={device:TrackerDevice|null;expiresAt:number};
+const trackerAuthCache=new Map<string,TrackerAuthCacheEntry>();
+const trackerAuthInflight=new Map<string,Promise<TrackerDevice|null>>();
+
 export async function authenticateTrackerToken(token:string):Promise<TrackerDevice|null>{
-  // Emergency circuit breaker: keep Companion traffic off Supabase while the
-  // database connection pool recovers. Remove after database health is verified.
-  void token;
-  return null;
-  /*const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('live_tracker_devices').select('id,user_id,account_key,riot_account_id,device_name,revoked_at').eq('token_hash',hashTrackerToken(token)).is('revoked_at',null).maybeSingle();if(error||!data)return null;await db.from('live_tracker_devices').update({last_seen_at:new Date().toISOString()}).eq('id',data.id);return{id:data.id,userId:data.user_id,accountKey:data.account_key,riotAccountId:data.riot_account_id??null,deviceName:data.device_name}*/}
+  // Keep Companion traffic away from Supabase until the project passes a
+  // database health check. Flip this off only after SELECT 1 succeeds.
+  if(TRACKER_DB_RECOVERY_MODE)return null;
+
+  const tokenHash=hashTrackerToken(token),now=Date.now();
+  const cached=trackerAuthCache.get(tokenHash);
+  if(cached&&cached.expiresAt>now)return cached.device;
+  if(cached)trackerAuthCache.delete(tokenHash);
+
+  const inflight=trackerAuthInflight.get(tokenHash);
+  if(inflight)return inflight;
+
+  const lookup=(async()=>{
+    const db=getSupabaseAdmin();if(!db)return null;
+    const {data,error}=await db.from('live_tracker_devices')
+      .select('id,user_id,account_key,riot_account_id,device_name,revoked_at,last_seen_at')
+      .eq('token_hash',tokenHash).is('revoked_at',null).maybeSingle();
+
+    if(error||!data){
+      trackerAuthCache.set(tokenHash,{device:null,expiresAt:Date.now()+TRACKER_NEGATIVE_CACHE_MS});
+      return null;
+    }
+
+    const device:TrackerDevice={
+      id:data.id,userId:data.user_id,accountKey:data.account_key,
+      riotAccountId:data.riot_account_id??null,deviceName:data.device_name,
+    };
+    trackerAuthCache.set(tokenHash,{device,expiresAt:Date.now()+TRACKER_AUTH_CACHE_MS});
+
+    const lastSeenMs=data.last_seen_at?Date.parse(data.last_seen_at):0;
+    if(!Number.isFinite(lastSeenMs)||Date.now()-lastSeenMs>=TRACKER_LAST_SEEN_WRITE_MS){
+      void db.from('live_tracker_devices')
+        .update({last_seen_at:new Date().toISOString()})
+        .eq('id',data.id)
+        .then(({error:lastSeenError})=>{
+          if(lastSeenError)console.warn('[live-tracker] last_seen update failed',lastSeenError.message);
+        });
+    }
+    return device;
+  })().finally(()=>trackerAuthInflight.delete(tokenHash));
+
+  trackerAuthInflight.set(tokenHash,lookup);
+  return lookup;
+}
 
 export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
