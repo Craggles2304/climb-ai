@@ -1,6 +1,6 @@
 import 'server-only';
 
-import type {ILPTask,Match,Role} from '@/lib/types';
+import type {ILPTask,ILPMissionAttempt,Match,Role} from '@/lib/types';
 import {gradeMissionGame,missionMeasurementLabel,missionMeasurementSource} from '@/lib/missionGrading';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 
@@ -69,7 +69,7 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
   const metricMap=new Map<string,any>((metricsResult.data??[]).map((row:any)=>[String(row.match_id),row] as const));
   const analysisMap=new Map<string,any>((analysisResult.data??[]).map((row:any)=>[String(row.match_id),row] as const));
   const sessionMap=new Map<string,any>((sessionsResult.data??[]).map((row:any)=>[String(row.id),row] as const));
-  const tasks=(tasksResult.data??[]).map((row:any)=>row.payload as ILPTask);
+  const tasks:ILPTask[]=(tasksResult.data??[]).map((row:any)=>row.payload as ILPTask);
   const xpRows=xpResult.data??[];
   const snapshots=new Map<string,{count:number;max:number}>();
   for(const row of snapshotsResult.data??[]){
@@ -84,11 +84,11 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
     const session=liveSessionId?sessionMap.get(liveSessionId):null;
     const snap=liveSessionId?snapshots.get(liveSessionId):null;
     const mapped=toMatch(row,metric,analysisRow?.analysis);
-    const relevantAttempts=tasks.flatMap(task=>{
-      const attempt=(task.missionHistory??[]).find(rep=>rep.matchId===id);
+    const relevantAttempts:Array<{task:ILPTask;attempt:ILPMissionAttempt}>=tasks.flatMap((task:ILPTask)=>{
+      const attempt=(task.missionHistory??[]).find((rep:ILPMissionAttempt)=>rep.matchId===id);
       return attempt?[{task,attempt}]:[];
     });
-    const missionResults:ValidationMissionResult[]=relevantAttempts.map(({task,attempt})=>{
+    const missionResults:ValidationMissionResult[]=relevantAttempts.map(({task,attempt}:{task:ILPTask;attempt:ILPMissionAttempt})=>{
       const grade=gradeMissionGame(task,mapped,currentRank);
       const xpForMission=xpRows
         .filter((tx:any)=>String(tx.match_id)===id&&String(tx.mission_id||'')===task.id)
