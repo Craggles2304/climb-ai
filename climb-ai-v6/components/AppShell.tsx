@@ -41,7 +41,8 @@ const routeScene=(path:string):RouteScene|null=>{
   if(path==='/ilp')return{code:'CLIMB // 04',kicker:'PLAYER DEVELOPMENT',title:'BUILD A PLAYER. NOT A STATLINE.',copy:'One core mission. Two support missions. All rank-scaled and only moved by repeated match evidence.',signals:['CORE FOCUS','2 SUPPORT','RANK-SCALED'],tone:'climb',watermark:'GROW'};
   if(path==='/progress')return{code:'CAREER // 05',kicker:'CAREER PROGRESSION',title:'PROVE THE CHANGE.',copy:'See whether the habits are actually moving across games, situations and patches — not just whether one match looked better.',signals:['TREND','TRANSFER','CAREER MAP'],tone:'climb',watermark:'PROGRESS'};
   if(path==='/session')return{code:'MATCH // 06',kicker:'NEXT GAME',title:'LOCK THE MISSION. PLAY.',copy:'Carry one useful rule into the game, let the Companion record the evidence, then review whether the behaviour held.',signals:['MISSION LOCKED','COMPANION READY','REVIEW AFTER'],tone:'match',watermark:'QUEUE'};
-  if(path==='/advanced-statistics')return{code:'LAB // 07',kicker:'ADVANCED DATA ROOM',title:'OPEN THE DATA. KEEP THE DECISION.',copy:'The deeper numbers are here when you need them — without letting analytics replace the actual coaching question.',signals:['DEEP METRICS','CONTEXT FIRST','OPTIONAL LAYER'],tone:'lab',watermark:'DATA'};
+  if(path==='/validation')return{code:'QA // 07',kicker:'REAL-GAME VALIDATION',title:'TRUST THE LOOP.',copy:'Audit genuine Companion games from detection through telemetry, Riot enrichment, mission evidence and XP.',signals:['20 GAME RUN','3 EVIDENCE TYPES','PIPELINE AUDIT'],tone:'lab',watermark:'QA'};
+  if(path==='/advanced-statistics')return{code:'LAB // 08',kicker:'ADVANCED DATA ROOM',title:'OPEN THE DATA. KEEP THE DECISION.',copy:'The deeper numbers are here when you need them — without letting analytics replace the actual coaching question.',signals:['DEEP METRICS','CONTEXT FIRST','OPTIONAL LAYER'],tone:'lab',watermark:'DATA'};
   if(path==='/matchups'||path.startsWith('/matchup-lab')||path.startsWith('/champions')||path==='/missions')return{code:'LAB // 08',kicker:'MATCH INTELLIGENCE LAB',title:'DRAFT. TEST. UNDERSTAND.',copy:'Explore matchup shapes, champion plans and decision models without turning the product into a spreadsheet.',signals:['MATCHUP MODEL','DRAFT READ','SCENARIO TEST'],tone:'lab',watermark:'LAB'};
   if(path==='/billing'||path==='/pricing')return{code:'PLANS // 09',kicker:'COACHING DEPTH',title:'PAY FOR DEPTH. NOT NOISE.',copy:'Free proves the value. Plus explains the game. Pro builds the long-term player model and learning system.',signals:['FREE · FIND','PLUS · EXPLAIN','PRO · DEVELOP'],tone:'plans',watermark:'PRO'};
   if(path==='/account'||path==='/settings'||path==='/uploads')return{code:'SYSTEM // 10',kicker:'PLAYER SYSTEM',title:'KEEP THE SETUP CLEAN.',copy:'Riot identity, tracking, uploads and account controls live here so the coaching surfaces stay focused on playing better.',signals:['RIOT LINK','TRACKING','ACCOUNT'],tone:'system',watermark:'SYSTEM'};
@@ -54,6 +55,7 @@ const routeTitle=(path:string)=>{
   if(path==='/live')return'COMPANION';
   if(path==='/analyse'||path.startsWith('/analyse/'))return'MY GAMES';
   if(path==='/ilp')return'MY PROGRESS';
+  if(path==='/validation')return'VALIDATION LAB';
   if(path==='/advanced-statistics')return'ADVANCED';
   if(path==='/progress')return'ADVANCED PROGRESS';
   if(path==='/matchups')return'MATCHUP ASSISTANT';
@@ -102,7 +104,7 @@ export function AppShell({children}:{children:React.ReactNode}){
   const scene=routeScene(path);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=path.startsWith('/matchup-lab')&&coaching.depth<7;
-  const advancedRoute=path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||(path.startsWith('/champions')&&path!=='/champions/main')||path==='/missions'||path==='/uploads';
+  const advancedRoute=path==='/validation'||path==='/advanced-statistics'||path==='/progress'||path==='/matchups'||path.startsWith('/matchup-lab')||(path.startsWith('/champions')&&path!=='/champions/main')||path==='/missions'||path==='/uploads';
   useEffect(()=>setAdvancedOpen(false),[path]);
   useEffect(()=>{
     let stopped=false,busy=false;
@@ -171,7 +173,8 @@ export function AppShell({children}:{children:React.ReactNode}){
         </div>
         <div className="op-nav-group">
           <div className="op-nav-label"><span>OPTIONAL</span></div>
-          <Link className={advancedRoute?'active-nav':''} href="/advanced-statistics"><span className="op-nav-icon">▦</span><span>Advanced<small className="op-nav-hint">Extra numbers + tools</small></span>{advancedRoute&&<i/>}</Link>
+          <Link className={path==='/validation'?'active-nav':''} href="/validation"><span className="op-nav-icon">✓</span><span>Validation Lab<small className="op-nav-hint">Real-game QA</small></span>{path==='/validation'&&<i/>}</Link>
+          <Link className={advancedRoute&&path!=='/validation'?'active-nav':''} href="/advanced-statistics"><span className="op-nav-icon">▦</span><span>Advanced<small className="op-nav-hint">Extra numbers + tools</small></span>{advancedRoute&&path!=='/validation'&&<i/>}</Link>
         </div>
       </nav>
 
