@@ -66,9 +66,9 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
     if(result.error)throw new Error(result.error.message);
   }
 
-  const metricMap=new Map((metricsResult.data??[]).map((row:any)=>[String(row.match_id),row]));
-  const analysisMap=new Map((analysisResult.data??[]).map((row:any)=>[String(row.match_id),row]));
-  const sessionMap=new Map((sessionsResult.data??[]).map((row:any)=>[String(row.id),row]));
+  const metricMap=new Map<string,any>((metricsResult.data??[]).map((row:any)=>[String(row.match_id),row] as const));
+  const analysisMap=new Map<string,any>((analysisResult.data??[]).map((row:any)=>[String(row.match_id),row] as const));
+  const sessionMap=new Map<string,any>((sessionsResult.data??[]).map((row:any)=>[String(row.id),row] as const));
   const tasks=(tasksResult.data??[]).map((row:any)=>row.payload as ILPTask);
   const xpRows=xpResult.data??[];
   const snapshots=new Map<string,{count:number;max:number}>();
