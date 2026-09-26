@@ -166,7 +166,7 @@
         <section id="op332Transfer" class="op332-transfer"><div class="op332-transfer-head"><span>CLIMB PROFILE · SKILL TRANSFER</span><div id="op332TransferStatus" class="op332-transfer-status">CHECKING GENERALISATION</div></div><div class="op332-transfer-grid"><article class="op332-transfer-card"><b>TEST</b><strong id="op332TransferName"></strong><p id="op332TransferContext"></p></article><article class="op332-transfer-card"><b>RESULT</b><strong id="op332TransferResult"></strong><p id="op332TransferNote"></p></article><article class="op332-transfer-card"><b>MEANING</b><strong id="op332TransferMeaning"></strong><p>Transfer is evidence that the principle survived a different condition; it is not proof that every future matchup is solved.</p></article></div><small id="op332TransferBoundary" class="op332-transfer-proof"></small></section>
         <section id="op332Response" class="op332-response"><div class="op332-response-head"><div><span>COACHING RESPONSE · DID THE CUE TRANSFER?</span><div id="op332ResponseStatus" class="op332-response-status">CHECKING TRAINED BEHAVIOUR</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>PRE-GAME CUE</b><strong id="op332ResponseCue"></strong><p id="op332ResponseNote"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332ResponseRate"></strong><p id="op332ResponseStats"></p></article></div><small id="op332ResponseBoundary" class="op332-response-proof"></small></section>
         <section class="op332-counter"><div class="op332-counter-head"><div><span>BETTER DECISION · ALTERNATIVE LINE</span><small id="op332CounterMeta">EVIDENCE-BOUNDED · NO GUARANTEED OUTCOME</small></div></div><div id="op332CounterList" class="op332-counter-list"></div></section>
-        <section class="op332-development"><div class="op332-development-head"><div><span>YOUR ACTIVE FIVE</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy"></p><div id="op332DevList" class="op332-dev-list"></div></section>
+        <section class="op332-development"><div class="op332-development-head"><div><span>YOUR 3-MISSION PLAN</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy"></p><div id="op332DevList" class="op332-dev-list"></div></section>
       </div></details>
       <div class="op332-actions"><button id="op332Ready" type="button" style="border-color:rgba(214,255,47,.34);background:rgba(214,255,47,.07);color:#eaff89">NEW GAME · BACK TO READY</button><button id="op332Journey" type="button" style="border-color:rgba(67,140,255,.30);color:#8fbaff">VIEW LEARNING JOURNEY</button><button id="op332Open" type="button">OPEN FULL REVIEW</button></div>`;
     const status=$('status');if(status)status.insertAdjacentElement('afterend',section);else document.querySelector('main')?.appendChild(section);
@@ -572,7 +572,7 @@
     setText('op332MemoryContext',clean(memory?.situationTag)?clean(memory.situationTag).replace(/_/g,' ')+' · '+String(memory?.matchedMoments||0)+' verified comparable moment'+(Number(memory?.matchedMoments)===1?'':'s'):'No matching frozen memory was scheduled.');
     setText('op332MemoryResult',status==='EXECUTED'?'CLEAN REP':status==='MISSED'?'REPEAT REP':status==='MIXED'?'MIXED REP':status==='NOT_OBSERVED'?'NO SCORE':'NO REP');
     setText('op332MemoryNote',clean(memory?.note)||'No spaced-repetition result was available.');
-    setText('op332MemoryNext',status==='EXECUTED'?'SPACE THE NEXT REP — DO NOT CALL THIS MASTERED YET':status==='NOT_OBSERVED'?'KEEP THE SAME SCHEDULE — THE MEMORY WAS NOT TESTED':status==='NO_REP'?'USE THE NORMAL ACTIVE FIVE':'KEEP THIS MEMORY ACTIVE UNTIL REPEATED CLEAN EVIDENCE HOLDS');
+    setText('op332MemoryNext',status==='EXECUTED'?'SPACE THE NEXT REP — DO NOT CALL THIS MASTERED YET':status==='NOT_OBSERVED'?'KEEP THE SAME SCHEDULE — THE MEMORY WAS NOT TESTED':status==='NO_REP'?'USE THE NORMAL THREE-MISSION PLAN':'KEEP THIS MEMORY ACTIVE UNTIL REPEATED CLEAN EVIDENCE HOLDS');
     setText('op332MemoryBoundary',clean(memory?.boundary)||'ONE GAME CANNOT CREATE MASTERY · UNOBSERVED IS NEUTRAL.');
   }
 
@@ -676,15 +676,15 @@
     if(!plan?.synced){
       const partial=clean(plan?.status)==='SKIPPED_PARTIAL';
       setText('op332DevStatus',partial?'PARTIAL RECORDING · PLAN KEPT':'PLAN SYNC UNAVAILABLE · EXISTING MISSIONS KEPT');
-      setText('op332DevCopy',partial?'Partial recordings can inform the match review, but they do not rewrite your Active Five.':'Your existing development missions stay intact if the post-game evidence sync cannot be verified.');
+      setText('op332DevCopy',partial?'Partial recordings can inform the match review, but they do not rewrite your three-mission plan.':'Your existing development missions stay intact if the post-game evidence sync cannot be verified.');
       return;
     }
-    setText('op332DevStatus',plan.changed?'ACTIVE FIVE UPDATED FROM REPEATED EVIDENCE':'ACTIVE FIVE CHECKED · NO MISSION REPLACED');
+    setText('op332DevStatus',plan.changed?'3-MISSION PLAN UPDATED FROM REPEATED EVIDENCE':'3-MISSION PLAN CHECKED · NO MISSION REPLACED');
     const changes=safeArray(plan.changes).map(clean).filter(Boolean);
     setText('op332DevCopy',changes.length?changes.join(' · '):'This match has been checked against your learning history. One unusual game cannot replace or reopen a persistent development mission.');
-    safeArray(plan.activeFive).slice(0,5).forEach((mission,index)=>{
+    safeArray(plan.activeFive).slice(0,3).forEach((mission,index)=>{
       const card=document.createElement('article');card.className='op332-dev-card'+(index===0?' primary':'');
-      const number=document.createElement('small');number.textContent=(index===0?'PRIMARY · ':'')+'MISSION '+String(index+1).padStart(2,'0');
+      const number=document.createElement('small');number.textContent=index===0?'CORE MISSION':('SUPPORT 0'+index);
       const title=document.createElement('b');title.textContent=clean(mission?.title)||'Development mission';
       const progress=document.createElement('em');progress.textContent=Math.max(0,Math.min(100,Number(mission?.progress)||0))+'% · '+clean(mission?.status||'ACTIVE');
       card.append(number,title,progress);root.appendChild(card);
