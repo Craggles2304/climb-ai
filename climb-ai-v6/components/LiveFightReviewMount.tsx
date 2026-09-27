@@ -42,7 +42,7 @@ export function LiveFightReviewMount(){
   useEffect(()=>{
     loadedDraftFor.current='';setPregame(null);void refresh();
     const tick=()=>{if(document.visibilityState==='visible')void refresh()};
-    const id=window.setInterval(tick,20_000);
+    const id=window.setInterval(tick,60_000);
     document.addEventListener('visibilitychange',tick);
     return()=>{window.clearInterval(id);document.removeEventListener('visibilitychange',tick)};
   },[refresh,active.id]);
