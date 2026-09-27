@@ -7,6 +7,7 @@ const desktop=fs.readFileSync('companion/electron/main.cjs','utf8');
 const route=fs.readFileSync('app/api/live/telemetry/route.ts','utf8');
 const repoFile=fs.readFileSync('lib/server/liveTrackerRepository.ts','utf8');
 const readModel=fs.readFileSync('lib/server/liveReadRepository.ts','utf8');
+const progression=fs.readFileSync('app/api/progression/route.ts','utf8');
 
 test('full matches remain local-first until one compact FINAL bundle',()=>{
   assert.ok(tracker.includes("type:'FINAL'"));
@@ -29,4 +30,11 @@ test('player read checkpoints stay local during the match',()=>{
   assert.ok(desktop.includes('read-checkpoints.json'));
   assert.equal(desktop.includes('/api/live/read-checkpoint'),false);
   assert.ok(tracker.includes('readCheckpoints:readLocalReadCheckpoints()'));
+});
+
+
+test('deferred XP and mission persistence happens on the next progression refresh',()=>{
+  assert.ok(repoFile.includes('materializeDeferredLocalMatch'));
+  assert.ok(repoFile.includes("summary?.learningPlanSync?.status==='DEFERRED'"));
+  assert.ok(progression.includes('materializeDeferredLocalMatch(user.id,accountId)'));
 });
