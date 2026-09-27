@@ -13,7 +13,7 @@ import {canonicalLeaguePatch} from '@/lib/patchIntelligence';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
-export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[]}
+export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[];readCheckpoints?:Array<{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}>}
 
 export async function createTrackerDevice(userId:string,accountKey:string,deviceName:string,riotProfile:RiotProfileInput){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for secure tracker pairing.');
@@ -115,6 +115,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
       mode:'LOCAL_FIRST_V1',
       count:snapshots.length,
       keyframes:snapshots,
+      readCheckpoints:envelope.readCheckpoints??[],
       persistedAt:now,
     },
     riotEnrichment:{status:riotEnabled()?'DEFERRED':'DISABLED'},
@@ -176,7 +177,14 @@ export async function latestLiveReview(userId:string,accountKey:string){
     normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   }
   const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
-  const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(session.id),readCheckpointsForSession(session.id)]);
+  const embeddedReadCheckpoints=Array.isArray((session.summary as any)?.capture?.readCheckpoints)
+    ?(session.summary as any).capture.readCheckpoints
+    :[];
+  const [lockedPlan,storedReadCheckpoints]=await Promise.all([
+    linkedDecisionPlan(session.id),
+    embeddedReadCheckpoints.length?Promise.resolve([]):readCheckpointsForSession(session.id),
+  ]);
+  const readCheckpoints=embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
   let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
   let recoveredMatchId=await findMatchIdForSession(session.id);
   if(session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId){
