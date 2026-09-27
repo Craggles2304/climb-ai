@@ -25,7 +25,7 @@ async function onceMore<T>(run:()=>PromiseLike<T>):Promise<T>{
  * PRO analysis in live_telemetry_sessions.summary. Polling must therefore not
  * reload every historical snapshot or run Riot enrichment every few seconds.
  */
-export async function latestLiveRead(userId:string,accountKey:string){
+export async function latestLiveRead(userId:string,accountKey:string,options:{lean?:boolean}={}){
   const db=getSupabaseAdmin();
   if(!db)return null;
 
@@ -41,30 +41,38 @@ export async function latestLiveRead(userId:string,accountKey:string){
   const session=sessionResult.data;
   if(!session)return null;
 
-  const [latestResult,countResult]=await Promise.all([
-    onceMore(()=>db
-      .from('live_telemetry_snapshots')
-      .select('game_time,payload')
-      .eq('session_id',session.id)
-      .order('game_time',{ascending:false})
-      .limit(1)
-      .maybeSingle()),
-    onceMore(()=>db
-      .from('live_telemetry_snapshots')
-      .select('session_id',{count:'exact',head:true})
-      .eq('session_id',session.id)),
-  ]);
-  if(latestResult.error)throw new Error(latestResult.error.message);
-  if(countResult.error)throw new Error(countResult.error.message);
-
   const summary=(session.summary&&typeof session.summary==='object')?session.summary as Record<string,unknown>:null;
-  const latestSnapshot=(latestResult.data?.payload??null) as LiveTelemetrySnapshot|null;
+  const embedded=Array.isArray((summary as any)?.capture?.keyframes)
+    ?((summary as any).capture.keyframes as LiveTelemetrySnapshot[])
+    :[];
+
+  let latestSnapshot:LiveTelemetrySnapshot|null=embedded.length?embedded[embedded.length-1]:null;
+  let snapshotCount=embedded.length;
+  if(!embedded.length){
+    const [latestResult,countResult]=await Promise.all([
+      onceMore(()=>db
+        .from('live_telemetry_snapshots')
+        .select('game_time,payload')
+        .eq('session_id',session.id)
+        .order('game_time',{ascending:false})
+        .limit(1)
+        .maybeSingle()),
+      onceMore(()=>db
+        .from('live_telemetry_snapshots')
+        .select('session_id',{count:'exact',head:true})
+        .eq('session_id',session.id)),
+    ]);
+    if(latestResult.error)throw new Error(latestResult.error.message);
+    if(countResult.error)throw new Error(countResult.error.message);
+    latestSnapshot=(latestResult.data?.payload??null) as LiveTelemetrySnapshot|null;
+    snapshotCount=countResult.count??0;
+  }
   const complete=['COMPLETE','ABORTED'].includes(String(session.status));
 
   let proAnalysis=(summary?.proAnalysis??null) as unknown;
   let historyProfile:unknown=null;
   let matchId:string|null=null;
-  if(complete){
+  if(complete&&!options.lean){
     const [storedAnalysis,profile,matchRow]=await Promise.all([
       proAnalysis?Promise.resolve(null):getProMatchAnalysisBySession(session.id).catch(()=>null),
       getProLearningProfile(userId,session.riot_account_id??null).catch(()=>null),
@@ -81,7 +89,7 @@ export async function latestLiveRead(userId:string,accountKey:string){
     startedAt:session.started_at,
     endedAt:session.ended_at,
     lastSeenAt:session.last_seen_at,
-    snapshotCount:countResult.count??0,
+    snapshotCount,
     latestSnapshot,
     summary,
     proAnalysis,
