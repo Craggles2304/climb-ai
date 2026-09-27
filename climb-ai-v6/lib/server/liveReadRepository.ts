@@ -42,12 +42,13 @@ export async function latestLiveRead(userId:string,accountKey:string,options:{le
   if(!session)return null;
 
   const summary=(session.summary&&typeof session.summary==='object')?session.summary as Record<string,unknown>:null;
-  const embedded=Array.isArray((summary as any)?.capture?.keyframes)
-    ?((summary as any).capture.keyframes as LiveTelemetrySnapshot[])
-    :[];
+  const capture=(summary as any)?.capture;
+  const embedded=Array.isArray(capture?.keyframes)
+    ?(capture.keyframes as LiveTelemetrySnapshot[])
+    :(capture?.latestSnapshot?[capture.latestSnapshot as LiveTelemetrySnapshot]:[]);
 
   let latestSnapshot:LiveTelemetrySnapshot|null=embedded.length?embedded[embedded.length-1]:null;
-  let snapshotCount=embedded.length;
+  let snapshotCount=Number(capture?.count)||embedded.length;
   if(!embedded.length){
     const [latestResult,countResult]=await Promise.all([
       onceMore(()=>db
