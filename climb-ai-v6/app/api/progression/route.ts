@@ -2,6 +2,7 @@ import {NextRequest,NextResponse} from 'next/server';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {syncAndLoadProgression} from '@/lib/server/playerProgressionRepository';
+import {materializeDeferredLocalMatch} from '@/lib/server/liveTrackerRepository';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 
 export const runtime='nodejs';
@@ -17,6 +18,10 @@ export async function GET(req:NextRequest){
 
   const accountId=req.nextUrl.searchParams.get('accountId');
   try{
+    if(accountId){
+      await materializeDeferredLocalMatch(user.id,accountId)
+        .catch(error=>console.warn('[progression] deferred local match materialisation failed',error));
+    }
     const snapshot=await syncAndLoadProgression(db,user.id,accountId);
     return NextResponse.json({ok:true,...snapshot});
   }catch(error){

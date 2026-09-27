@@ -44,8 +44,8 @@ test('desktop renderer shows a live draft board instead of a repeated lock promp
   assert.ok(renderer.includes("Preview only — change your hover freely."));
 });
 
-test('web champ select follows draft changes quickly and labels hover state',()=>{
-  assert.ok(webDraft.includes('window.setInterval(tick,2_500)'));
+test('web champ select follows draft changes at a Nano-safe cadence and labels hover state',()=>{
+  assert.ok(webDraft.includes('window.setInterval(tick,15_000)'));
   assert.ok(webDraft.includes("c.localChampionName?'HOVERING':'CHOOSING'"));
   assert.ok(webDraft.includes('Champion preview is live now.'));
 });

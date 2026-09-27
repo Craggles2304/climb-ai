@@ -32,13 +32,15 @@ test('live checkpoints freeze player reads at 5 10 and 15 without revealing an a
   assert.ok(!live.includes('THEM_STRONGER'));
 });
 
-test('checkpoint reads persist locally and sync through the authenticated desktop bridge',()=>{
+test('checkpoint reads persist locally and travel only in the final match bundle',()=>{
   assert.ok(live.includes('readCheckpoints'));
   assert.ok(live.includes("source:'PLAYER_CHECKPOINT'"));
   assert.ok(live.includes('recordReadCheckpoint'));
   assert.ok(preload.includes("recordReadCheckpoint:(context)=>ipcRenderer.invoke('companion:read-checkpoint',context)"));
   assert.ok(main.includes("ipcMain.handle('companion:read-checkpoint'"));
-  assert.ok(main.includes('/api/live/read-checkpoint'));
+  assert.ok(main.includes('read-checkpoints.json'));
+  assert.ok(!main.includes('/api/live/read-checkpoint'));
+  assert.ok(repoFile.includes('readCheckpoints:envelope.readCheckpoints??[]'));
   assert.ok(route.includes('authenticateTrackerToken'));
   assert.ok(route.includes('recordLiveReadCheckpoint'));
   assert.ok(repoFile.includes("from('live_player_read_checkpoints')"));

@@ -8,16 +8,19 @@ const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
 const TOKEN=process.env.OP_TRACKER_TOKEN||process.env.CLIMB_TRACKER_TOKEN||'';
 const POLL_MS=Math.max(3000,Number(process.env.OP_POLL_MS||5000));
-const SNAPSHOT_UPLOAD_MS=Math.max(15_000,Number(process.env.OP_SNAPSHOT_UPLOAD_MS||30_000));
+const LOCAL_KEYFRAME_SECONDS=180;
+const MAX_LOCAL_KEYFRAMES=12;
 const END_AFTER_MISSES=3;
 const PREGAME_END_AFTER_MISSES=2;
 const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8000));
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=5*60_000;
-const RUNTIME_VERSION='2026.09.24.1';
+const RUNTIME_VERSION='2026.09.27.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
+const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
+const READ_CHECKPOINT_FILE=TRACKER_HOME?join(TRACKER_HOME,'read-checkpoints.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 
@@ -41,8 +44,7 @@ let uploadRetryTimer=null;
 let droppedSnapshots=0;
 let lcuCredentials=null;
 let lcuCheckedAt=0;
-let lastStatusUploadAt=0;
-let lastSnapshotUploadAt=0;
+let lastStatusSignature='';
 let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
@@ -300,18 +302,20 @@ async function postEnvelope(envelope){
 }
 
 async function postStatus(force=false){
-  if(!force&&Date.now()-lastStatusUploadAt<HEARTBEAT_MS)return;
   const heartbeatState=session?'RECORDING':pregame?'CHAMP_SELECT':lastLcuDetected?'WAITING':'LCU_UNAVAILABLE';
-  const heartbeatDetail=session?'Match telemetry is recording.':lastLcuDetail;
-  emitTrackerState(heartbeatState,heartbeatDetail);
-  const result=await postJson('/api/live/status',{
+  const heartbeatDetail=session?'Match telemetry is recording locally.':lastLcuDetail;
+  const payload={
     state:heartbeatState,
     runtimeVersion:RUNTIME_VERSION,
     lcuDetected:lastLcuDetected||Boolean(session),
     champSelectDetected:Boolean(pregame)||lastChampSelectDetected,
     detail:heartbeatDetail,
-  });
-  if(result.ok)lastStatusUploadAt=Date.now();
+  };
+  const signature=JSON.stringify(payload);
+  emitTrackerState(heartbeatState,heartbeatDetail);
+  if(!force&&signature===lastStatusSignature)return;
+  const result=await postJson('/api/live/status',payload);
+  if(result.ok)lastStatusSignature=signature;
 }
 
 function queueEnvelope(envelope){
@@ -328,8 +332,13 @@ async function flushUploadQueue(){
   uploadFlushing=true;
   try{
     while(uploadQueue.length){
-      const result=await postEnvelope(uploadQueue[0]);
-      if(result.ok){uploadQueue.shift();continue}
+      const current=uploadQueue[0];
+      const result=await postEnvelope(current);
+      if(result.ok){
+        uploadQueue.shift();
+        if(current?.type==='FINAL')clearPendingMatch();
+        continue;
+      }
       if(!result.retryable){uploadQueue.shift();continue}
       scheduleUploadRetry();return;
     }
@@ -437,7 +446,16 @@ function loadPersistedSession(snapshot){
     const lastGameTime=num(saved.lastGameTime,-1),sameTimeline=lastGameTime>=0&&snapshot.gameTime+30>=lastGameTime;
     const sameIdentity=!saved.riotId||!snapshot.active.riotId||saved.riotId===snapshot.active.riotId;
     if(!sameTimeline||!sameIdentity){clearPersistedSession();return null}
-    return{id:saved.id,startedAt:saved.startedAt,lastGameTime:Math.max(lastGameTime,snapshot.gameTime),misses:0};
+    return{
+      id:saved.id,
+      startedAt:saved.startedAt,
+      lastGameTime:Math.max(lastGameTime,snapshot.gameTime),
+      misses:0,
+      keyframes:Array.isArray(saved.keyframes)?saved.keyframes.slice(-MAX_LOCAL_KEYFRAMES):[],
+      lastKeyframeGameTime:num(saved.lastKeyframeGameTime,-999),
+      lastSignal:text(saved.lastSignal),
+      lastSnapshot:snapshot,
+    };
   }catch{return null}
 }
 
@@ -446,27 +464,111 @@ function persistSession(snapshot){
   try{
     writeFileSync(SESSION_FILE,JSON.stringify({
       id:session.id,startedAt:session.startedAt,lastGameTime:session.lastGameTime,riotId:snapshot?.active?.riotId||null,
-      championName:snapshot?.active?.championName||null,savedAt:new Date().toISOString(),
+      championName:snapshot?.active?.championName||null,
+      keyframes:session.keyframes??[],
+      lastKeyframeGameTime:session.lastKeyframeGameTime??-999,
+      lastSignal:session.lastSignal??'',
+      savedAt:new Date().toISOString(),
     }),'utf8');
   }catch{}
 }
 
 function clearPersistedSession(){if(!SESSION_FILE)return;try{unlinkSync(SESSION_FILE)}catch{}}
+function clearPendingMatch(){if(!PENDING_MATCH_FILE)return;try{unlinkSync(PENDING_MATCH_FILE)}catch{}}
+function clearLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE)return;try{unlinkSync(READ_CHECKPOINT_FILE)}catch{}}
+function readLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE||!existsSync(READ_CHECKPOINT_FILE))return[];try{const rows=JSON.parse(readFileSync(READ_CHECKPOINT_FILE,'utf8'));return Array.isArray(rows)?rows.slice(0,3):[]}catch{return[]}}
+function persistPendingMatch(envelope){if(!PENDING_MATCH_FILE)return;try{writeFileSync(PENDING_MATCH_FILE,JSON.stringify(envelope),'utf8')}catch{}}
+function restorePendingMatchUpload(){
+  if(!PENDING_MATCH_FILE||!existsSync(PENDING_MATCH_FILE))return;
+  try{
+    const envelope=JSON.parse(readFileSync(PENDING_MATCH_FILE,'utf8'));
+    if(envelope?.type==='FINAL'&&Array.isArray(envelope?.snapshots)&&envelope.snapshots.length)queueEnvelope(envelope);
+    else clearPendingMatch();
+  }catch{clearPendingMatch()}
+}
+function localPlayer(snapshot){
+  const players=Array.isArray(snapshot?.players)?snapshot.players:[];
+  return players.find(player=>snapshot?.active?.riotId&&player.riotId===snapshot.active.riotId)
+    ||players.find(player=>snapshot?.active?.summonerName&&player.summonerName===snapshot.active.summonerName)
+    ||players.find(player=>player.championName===snapshot?.active?.championName&&player.team===snapshot?.active?.team)
+    ||null;
+}
+function snapshotSignal(snapshot){
+  const me=localPlayer(snapshot);
+  const latestKill=[...(snapshot?.events??[])].reverse().find(event=>event?.name==='ChampionKill');
+  const eventKey=latestKill?.id??(latestKill?Math.round(num(latestKill.time,0)):'none');
+  return[
+    me?.scores?.kills??0,me?.scores?.deaths??0,me?.scores?.assists??0,
+    me?.isDead?1:0,me?.level??0,Math.floor(num(me?.itemGold,0)/900),eventKey,
+  ].join(':');
+}
+function thinKeyframes(frames){
+  const ordered=[...frames].filter(Boolean).sort((a,b)=>num(a?.gameTime,0)-num(b?.gameTime,0));
+  const deduped=ordered.filter((frame,index)=>index===0||Math.abs(num(frame?.gameTime,0)-num(ordered[index-1]?.gameTime,0))>=1);
+  if(deduped.length<=MAX_LOCAL_KEYFRAMES)return deduped;
+  const result=[];
+  for(let i=0;i<MAX_LOCAL_KEYFRAMES;i++){
+    const index=Math.round(i*(deduped.length-1)/(MAX_LOCAL_KEYFRAMES-1));
+    const frame=deduped[index];
+    if(frame&&!result.includes(frame))result.push(frame);
+  }
+  return result;
+}
+function recordLocalKeyframe(snapshot,force=false){
+  if(!session)return;
+  session.lastSnapshot=snapshot;
+  const signal=snapshotSignal(snapshot);
+  const elapsed=num(snapshot?.gameTime,0)-num(session.lastKeyframeGameTime,-999);
+  const changed=signal!==session.lastSignal;
+  if(force||!Array.isArray(session.keyframes)||session.keyframes.length===0||elapsed>=LOCAL_KEYFRAME_SECONDS||changed){
+    session.keyframes=thinKeyframes([...(session.keyframes??[]),snapshot]);
+    session.lastKeyframeGameTime=num(snapshot?.gameTime,0);
+    session.lastSignal=signal;
+  }
+}
+
 
 async function startSession(snapshot){
   if(pregame)await finishPregame('game started',true);
   const restored=loadPersistedSession(snapshot);
   if(restored){session=restored;logState('RECORDING',`OVERPOWERED Companion: resumed ${snapshot.active.championName||'League match'} after tracker restart.`);return}
-  session={id:randomUUID(),startedAt:new Date().toISOString(),lastGameTime:snapshot.gameTime,misses:0};
+  clearLocalReadCheckpoints();
+  session={
+    id:randomUUID(),
+    startedAt:new Date().toISOString(),
+    lastGameTime:snapshot.gameTime,
+    misses:0,
+    keyframes:[snapshot],
+    lastKeyframeGameTime:snapshot.gameTime,
+    lastSignal:snapshotSignal(snapshot),
+    lastSnapshot:snapshot,
+  };
   persistSession(snapshot);
   logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
 }
 
 async function finishSession(reason){
   if(!session)return;
-  const finished=session;session=null;lastSnapshotUploadAt=0;clearPersistedSession();
-  queueEnvelope({type:'END',clientSessionId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
-  logState('WAITING',`OVERPOWERED Companion: match recording closed (${reason}). Waiting for League.`);
+  const finished=session;
+  if(finished.lastSnapshot){
+    session=finished;
+    recordLocalKeyframe(finished.lastSnapshot,true);
+  }
+  const keyframes=thinKeyframes(finished.keyframes??[]);
+  const envelope={
+    type:'FINAL',
+    clientSessionId:finished.id,
+    startedAt:finished.startedAt,
+    endedAt:new Date().toISOString(),
+    snapshots:keyframes,
+    readCheckpoints:readLocalReadCheckpoints(),
+  };
+  persistPendingMatch(envelope);
+  clearLocalReadCheckpoints();
+  session=null;
+  clearPersistedSession();
+  queueEnvelope(envelope);
+  logState('WAITING',`OVERPOWERED Companion: match recording closed (${reason}). Compact review bundle queued.`);
 }
 
 async function tick(){
@@ -482,9 +584,10 @@ async function tick(){
   emitLiveMatchup(snapshot);
   if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
   if(!session)await startSession(snapshot);
-  session.misses=0;session.lastGameTime=snapshot.gameTime;persistSession(snapshot);
-  if(Date.now()-lastSnapshotUploadAt>=SNAPSHOT_UPLOAD_MS){queueEnvelope({type:'SNAPSHOT',clientSessionId:session.id,startedAt:session.startedAt,snapshot});lastSnapshotUploadAt=Date.now()}
-  logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
+  session.misses=0;session.lastGameTime=snapshot.gameTime;
+  recordLocalKeyframe(snapshot);
+  persistSession(snapshot);
+  logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} locally for post-game review.`);
 }
 
 async function loop(){
@@ -500,9 +603,9 @@ async function shutdown(){
   if(!running)return;
   running=false;
   if(uploadRetryTimer){clearTimeout(uploadRetryTimer);uploadRetryTimer=null}
-  await postStatus(true).catch(()=>{});
   await finishPregame('companion stopped',true);
   await finishSession('companion stopped');
+  await postStatus(true).catch(()=>{});
   const deadline=Date.now()+5000;
   while(uploadQueue.length&&Date.now()<deadline){await flushUploadQueue();if(uploadQueue.length)await new Promise(resolve=>setTimeout(resolve,250))}
   process.exit(0);
@@ -512,7 +615,8 @@ process.on('SIGINT',shutdown);
 process.on('SIGTERM',shutdown);
 process.on('uncaughtException',err=>console.error('OVERPOWERED Companion: recovered from unexpected error:',err));
 process.on('unhandledRejection',err=>console.error('OVERPOWERED Companion: recovered from rejected task:',err));
-console.log(`OVERPOWERED Companion ${RUNTIME_VERSION}: local champ-select matchup plan + silent match recorder.`);
+console.log(`OVERPOWERED Companion ${RUNTIME_VERSION}: local-first match recorder + compact post-game upload.`);
+restorePendingMatchUpload();
 void postStatus(true);
 loop().catch(err=>{console.error('OVERPOWERED Companion loop error:',err);setTimeout(()=>void loop(),1000)});
 
