@@ -417,6 +417,7 @@ function renderPostGameReview(review,phase){
   $('simpleReviewTag').textContent=`${activeCoachLevel.tier} COACH · ${review.partial?'PARTIAL':'POST-GAME'}`;
   renderReviewList('simpleGood',review.good,'✓');
   renderReviewList('simpleCritical',review.critical,'!');
+  renderMarkedMoments(review.markedMoments);
   $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
   $('simpleNextRule').textContent=review.nextFocus?.rule||'Keep your current Active Five cue and build more evidence.';
   syncCoachReviewEvidence();
@@ -440,12 +441,25 @@ function ensureReviewSection(){
       <article class="coach-review-card good"><span>WHAT HELD</span><div id="simpleGood"></div></article>
       <article class="coach-review-card fix"><span>HIGHEST-IMPACT FIX</span><div id="simpleCritical"></div></article>
     </div>
+    <article id="simpleMarkedMoments" class="coach-review-next hidden"><span>YOUR MARKED MOMENTS</span><div id="simpleMarkedList"></div></article>
     <article class="coach-review-next"><span>ONE THING NEXT GAME</span><h3 id="simpleNextTitle"></h3><p id="simpleNextRule"></p></article>
     <div class="coach-review-actions"><button id="simpleReviewEvidence" class="ghost">OPEN COACH EVIDENCE</button><button id="simpleOpenClimb" class="ghost">OPEN OP CLIMB</button></div>`;
   $('status').after(section);
   $('simpleReviewEvidence').addEventListener('click',()=>{coachReviewEvidenceOpen=!coachReviewEvidenceOpen;syncCoachReviewEvidence()});
   $('simpleOpenClimb').addEventListener('click',()=>window.opCompanion.openClimb());
   return section;
+}
+function renderMarkedMoments(moments){
+  const section=$('simpleMarkedMoments'),root=$('simpleMarkedList');
+  if(!section||!root)return;
+  const list=safeArray(moments).slice(0,8);
+  setHidden(section,!list.length);root.replaceChildren();
+  for(const moment of list){
+    const row=document.createElement('p');row.style.cssText='font-size:12px;line-height:1.5;margin:9px 0';
+    const seconds=moment.gameSeconds==null?NaN:Number(moment.gameSeconds);const minute=Number.isFinite(seconds)?`${String(Math.floor(seconds/60)).padStart(2,'0')}:${String(Math.floor(seconds%60)).padStart(2,'0')}`:new Date(moment.at).toLocaleTimeString();
+    const strong=document.createElement('strong');strong.textContent=minute+' · ';
+    row.append(strong,document.createTextNode(String(moment.evidence||'Marked for review.')));root.appendChild(row);
+  }
 }
 
 function renderReviewList(id,items,mark){
@@ -536,3 +550,4 @@ bind('installUpdate','click',async()=>{const result=await window.opCompanion.ins
 bind('showLogs','click',()=>{diagnosticsOpen=!diagnosticsOpen;setHidden($('logs'),!diagnosticsOpen);$('showLogs').textContent=diagnosticsOpen?'HIDE DIAGNOSTICS':'DIAGNOSTICS'});
 
 boot();
+
