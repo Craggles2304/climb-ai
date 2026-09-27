@@ -45,10 +45,11 @@ function normalizedRole(value){const role=String(value||'').trim().toUpperCase()
 function needsRecordingPlanRecovery(){
   if(state.phase!=='RECORDING')return false;
   if(!state.teamPlan)return true;
+  if(!state.teamPlan?.adaptiveBuild)return true;
   const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
   return (role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
 }
-function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'}
+function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'||needsRecordingPlanRecovery()}
 
 function setState(patch){
   const previousPhase=state.phase;
@@ -59,7 +60,7 @@ function setState(patch){
   if(enteringChampSelect){
     matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
   }else if(enteringRecording){
-    stopChampionPlanPoll();
+    if(needsRecordingPlanRecovery())startChampionPlanPoll();else stopChampionPlanPoll();
   }else{
     if(previousPhase==='CHAMP_SELECT'&&state.phase!=='CHAMP_SELECT'&&!needsRecordingPlanRecovery())stopChampionPlanPoll();
   }
