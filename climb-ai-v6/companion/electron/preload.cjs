@@ -19,6 +19,7 @@ contextBridge.exposeInMainWorld('opCompanion',{
   toggleClickThrough:()=>ipcRenderer.invoke('companion:toggle-click-through'),
   openWindow:()=>ipcRenderer.invoke('companion:open-window'),
   onState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:state',listener);return()=>ipcRenderer.removeListener('companion:state',listener)},
+  onMomentResult:(handler)=>{const listener=(_event,result)=>handler(result);ipcRenderer.on('companion:moment-result',listener);return()=>ipcRenderer.removeListener('companion:moment-result',listener)},
   onUpdateState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:update-state',listener);return()=>ipcRenderer.removeListener('companion:update-state',listener)}
 });
 

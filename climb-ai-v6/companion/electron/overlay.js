@@ -74,10 +74,16 @@ function render(state){
     $('offlineText').textContent=one(current.detail||'Open League. OP CLIMB will detect champ select automatically.',160);
   }
 }
-async function flashMarked(){
-  const toast=$('markToast');toast?.classList.remove('hidden');setTimeout(()=>toast?.classList.add('hidden'),1600);
+let toastTimer=null;
+function showMomentResult(result){
+  const toast=$('markToast');if(!toast)return;
+  if(toastTimer)clearTimeout(toastTimer);
+  toast.textContent=result?.ok?'MOMENT MARKED ✓':result?.error||'Moment could not be marked.';
+  toast.classList.remove('hidden');
+  toastTimer=setTimeout(()=>toast.classList.add('hidden'),result?.ok?1600:2500);
 }
-$('markBtn')?.addEventListener('click',async()=>{const r=await window.opCompanion.markMoment();if(r?.ok)flashMarked();else{const toast=$('markToast');toast.textContent=r?.error||'Moment could not be marked.';toast.classList.remove('hidden');setTimeout(()=>{toast.classList.add('hidden');toast.textContent='MOMENT MARKED ✓'},2500)}});
+$('markBtn')?.addEventListener('click',async()=>showMomentResult(await window.opCompanion.markMoment()));
+window.opCompanion.onMomentResult(showMomentResult);
 $('openBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
 $('reviewBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
 $('repairBtn')?.addEventListener('click',async()=>{await window.opCompanion.restart();});
