@@ -16,11 +16,12 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=5*60_000;
-const RUNTIME_VERSION='2026.09.27.1';
+const RUNTIME_VERSION='2026.09.27.2';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
 const READ_CHECKPOINT_FILE=TRACKER_HOME?join(TRACKER_HOME,'read-checkpoints.json'):null;
+const MARKED_MOMENTS_FILE=TRACKER_HOME?join(TRACKER_HOME,'marked-moments.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 
@@ -476,6 +477,8 @@ function persistSession(snapshot){
 function clearPersistedSession(){if(!SESSION_FILE)return;try{unlinkSync(SESSION_FILE)}catch{}}
 function clearPendingMatch(){if(!PENDING_MATCH_FILE)return;try{unlinkSync(PENDING_MATCH_FILE)}catch{}}
 function clearLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE)return;try{unlinkSync(READ_CHECKPOINT_FILE)}catch{}}
+function clearLocalMarkedMoments(){if(!MARKED_MOMENTS_FILE)return;try{unlinkSync(MARKED_MOMENTS_FILE)}catch{}}
+function readLocalMarkedMoments(sessionId){if(!MARKED_MOMENTS_FILE||!existsSync(MARKED_MOMENTS_FILE))return[];try{const rows=JSON.parse(readFileSync(MARKED_MOMENTS_FILE,'utf8'));return Array.isArray(rows)?rows.filter(row=>!sessionId||String(row?.clientSessionId||'')===String(sessionId)).slice(-12):[]}catch{return[]}}
 function readLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE||!existsSync(READ_CHECKPOINT_FILE))return[];try{const rows=JSON.parse(readFileSync(READ_CHECKPOINT_FILE,'utf8'));return Array.isArray(rows)?rows.slice(0,3):[]}catch{return[]}}
 function persistPendingMatch(envelope){if(!PENDING_MATCH_FILE)return;try{writeFileSync(PENDING_MATCH_FILE,JSON.stringify(envelope),'utf8')}catch{}}
 function restorePendingMatchUpload(){
@@ -533,6 +536,7 @@ async function startSession(snapshot){
   const restored=loadPersistedSession(snapshot);
   if(restored){session=restored;logState('RECORDING',`OVERPOWERED Companion: resumed ${snapshot.active.championName||'League match'} after tracker restart.`);return}
   clearLocalReadCheckpoints();
+  clearLocalMarkedMoments();
   session={
     id:randomUUID(),
     startedAt:new Date().toISOString(),
@@ -562,9 +566,11 @@ async function finishSession(reason){
     endedAt:new Date().toISOString(),
     snapshots:keyframes,
     readCheckpoints:readLocalReadCheckpoints(),
+    markedMoments:readLocalMarkedMoments(finished.id),
   };
   persistPendingMatch(envelope);
   clearLocalReadCheckpoints();
+  clearLocalMarkedMoments();
   session=null;
   clearPersistedSession();
   queueEnvelope(envelope);
