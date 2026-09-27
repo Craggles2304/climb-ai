@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>OP CLIMB HUD</title>
+  <link rel="stylesheet" href="./overlay.css">
+</head>
+<body>
+  <main id="hud" class="hud">
+    <header class="dragbar">
+      <div class="brand"><span class="mark">OP↗</span><div><b>OP CLIMB</b><small id="stateLabel">READY</small></div></div>
+      <div class="window-actions no-drag">
+        <button id="compactBtn" title="Compact mode">−</button>
+        <button id="clickBtn" title="Toggle click-through">◎</button>
+        <button id="openBtn" title="Open Companion">↗</button>
+      </div>
+    </header>
+
+    <section id="statusCard" class="status-card">
+      <div class="signal"><i id="healthDot"></i><span id="healthText">COMPANION READY</span></div>
+      <div id="statusDetail" class="status-detail">Waiting for League.</div>
+    </section>
+
+    <section id="pregame" class="panel hidden">
+      <div class="eyebrow">NEXT GAME BRIEF · LOCKS AT CHAMP SELECT</div>
+      <h1 id="championTitle">YOUR GAME PLAN</h1>
+      <div id="draftRead" class="draft-read"></div>
+
+      <article class="mission">
+        <span>YOUR CLIMB MISSION</span>
+        <strong id="missionCue">Play the current development focus.</strong>
+      </article>
+
+      <article class="win">
+        <span>WIN CONDITION</span>
+        <strong id="winCondition">Build the first clean advantage, then convert it.</strong>
+      </article>
+
+      <article class="danger">
+        <span>WATCH FOR</span>
+        <strong id="dangerCue">Do not give the enemy their cleanest engage.</strong>
+      </article>
+
+      <section id="buildSection" class="build">
+        <div class="build-head"><span>LOCKED BUILD PATHS</span><small id="patchLabel">CURRENT PATCH</small></div>
+        <div id="buildRead" class="build-read"></div>
+        <div id="buildPaths" class="build-paths"></div>
+      </section>
+    </section>
+
+    <section id="ingame" class="panel hidden">
+      <div class="eyebrow">IN GAME · PLAN LOCKED</div>
+      <h1 id="ingameChampion">PLAY YOUR PLAN</h1>
+      <article class="mission"><span>MISSION</span><strong id="ingameMission"></strong></article>
+      <article class="mini"><span>REMEMBER</span><strong id="ingameReminder"></strong></article>
+      <section id="ingameBuild" class="build compact-build">
+        <div class="build-head"><span>BUILD PATHS</span><small>STATIC FROM CHAMP SELECT</small></div>
+        <div id="ingamePaths" class="build-paths"></div>
+      </section>
+      <button id="markBtn" class="mark-btn no-drag">MARK THIS MOMENT <kbd>CTRL</kbd><kbd>SHIFT</kbd><kbd>M</kbd></button>
+    </section>
+
+    <section id="review" class="panel hidden">
+      <div class="eyebrow">REVIEW READY</div>
+      <h1>YOUR GAME IS READY</h1>
+      <p id="reviewText">Open the full Companion for your coaching review.</p>
+      <button id="reviewBtn" class="primary no-drag">OPEN REVIEW</button>
+    </section>
+
+    <section id="offline" class="panel hidden">
+      <div class="eyebrow">COMPANION</div>
+      <h1 id="offlineTitle">READY FOR LEAGUE</h1>
+      <p id="offlineText">Open League. OP CLIMB will detect champ select automatically.</p>
+      <div class="diagnostics">
+        <div><span>PAIRING</span><b id="diagPair">OK</b></div>
+        <div><span>TRACKER</span><b id="diagTracker">READY</b></div>
+        <div><span>RECORDING</span><b>LOCAL-FIRST</b></div>
+        <div><span>DATABASE DURING MATCH</span><b>NOT REQUIRED</b></div>
+      </div>
+    </section>
+
+    <footer>
+      <span id="footerText">CTRL+SHIFT+O toggles click-through</span>
+      <span id="markToast" class="toast hidden">MOMENT MARKED ✓</span>
+    </footer>
+  </main>
+  <script src="./overlay.js"></script>
+</body>
+</html>
