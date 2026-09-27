@@ -114,7 +114,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     capture:{
       mode:'LOCAL_FIRST_V1',
       count:snapshots.length,
-      keyframes:snapshots,
+      latestSnapshot:snapshots[snapshots.length-1]??null,
       readCheckpoints:envelope.readCheckpoints??[],
       persistedAt:now,
     },
@@ -167,16 +167,19 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error)throw new Error(error.message);if(!session)return null;
-  const embedded=Array.isArray((session.summary as any)?.capture?.keyframes)
-    ?((session.summary as any).capture.keyframes as LiveTelemetrySnapshot[])
-    :[];
+  const capture=(session.summary as any)?.capture;
+  const embedded=Array.isArray(capture?.keyframes)
+    ?(capture.keyframes as LiveTelemetrySnapshot[])
+    :(capture?.latestSnapshot?[capture.latestSnapshot as LiveTelemetrySnapshot]:[]);
   let normalized=embedded;
   if(!normalized.length){
     const {data:snapshots,error:snapshotError}=await db.from('live_telemetry_snapshots').select('game_time,payload').eq('session_id',session.id).order('game_time',{ascending:true});
     if(snapshotError)throw new Error(snapshotError.message);
     normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   }
-  const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
+  const strength=(session.summary as any)?.points
+    ?(session.summary as StrengthTimeline)
+    :(normalized.length?buildStrengthTimeline(normalized):null);
   const embeddedReadCheckpoints=Array.isArray((session.summary as any)?.capture?.readCheckpoints)
     ?(session.summary as any).capture.readCheckpoints
     :[];
@@ -185,7 +188,7 @@ export async function latestLiveReview(userId:string,accountKey:string){
     embeddedReadCheckpoints.length?Promise.resolve([]):readCheckpointsForSession(session.id),
   ]);
   const readCheckpoints=embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
-  let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
+  let proAnalysis:ProMatchAnalysis|null=((session.summary as any)?.proAnalysis as ProMatchAnalysis|null)??await getProMatchAnalysisBySession(session.id).catch(()=>null);
   let recoveredMatchId=await findMatchIdForSession(session.id);
   if(session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId){
     recoveredMatchId=await persistLiveMatchWithRetry({...session,user_id:userId},normalized,strength,proAnalysis).catch(err=>{console.warn('[live-review] missing match self-heal failed',err);return null});
