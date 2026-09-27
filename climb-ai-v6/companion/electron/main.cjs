@@ -436,6 +436,7 @@ function markedMomentsFile(){return path.join(trackerHome(),'marked-moments.json
 function markMoment(){
   if(state.phase!=='RECORDING')return{ok:false,error:'A League match is not currently recording.'};
   let session={};try{session=JSON.parse(readFileSync(activeSessionFile(),'utf8'))}catch{}
+  if(!session?.id||!Number.isFinite(Number(session.lastGameTime)))return{ok:false,error:'The local match clock is not ready yet. Try again in a moment.'};
   const row={
     at:new Date().toISOString(),
     clientSessionId:String(session?.id||''),

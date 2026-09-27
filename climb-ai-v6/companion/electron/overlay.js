@@ -77,7 +77,7 @@ function render(state){
 async function flashMarked(){
   const toast=$('markToast');toast?.classList.remove('hidden');setTimeout(()=>toast?.classList.add('hidden'),1600);
 }
-$('markBtn')?.addEventListener('click',async()=>{const r=await window.opCompanion.markMoment();if(r?.ok)flashMarked()});
+$('markBtn')?.addEventListener('click',async()=>{const r=await window.opCompanion.markMoment();if(r?.ok)flashMarked();else{const toast=$('markToast');toast.textContent=r?.error||'Moment could not be marked.';toast.classList.remove('hidden');setTimeout(()=>{toast.classList.add('hidden');toast.textContent='MOMENT MARKED ✓'},2500)}});
 $('openBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
 $('reviewBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
 $('repairBtn')?.addEventListener('click',async()=>{await window.opCompanion.restart();});
