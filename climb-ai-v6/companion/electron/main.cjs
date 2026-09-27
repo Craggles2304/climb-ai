@@ -1,4 +1,4 @@
-const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage}=require('electron');
+const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage,globalShortcut,screen}=require('electron');
 const {spawn}=require('node:child_process');
 const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
@@ -8,7 +8,7 @@ const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
+let mainWindow=null,overlayWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null};
@@ -38,13 +38,14 @@ function configFile(){return path.join(configDir(),'companion.json')}
 function readConfig(){try{return JSON.parse(readFileSync(configFile(),'utf8'))}catch{return{webUrl:DEFAULT_WEB,tokenCipher:'',autoStart:false}}}
 function decryptToken(cfg){if(!cfg?.tokenCipher||!safeStorage.isEncryptionAvailable())return'';try{return safeStorage.decryptString(Buffer.from(cfg.tokenCipher,'base64'))}catch{return''}}
 function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync(configFile(),JSON.stringify(next,null,2),'utf8')}
-function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
+function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||''),overlayClickThrough:Boolean(raw.overlayClickThrough),overlayBounds:raw.overlayBounds&&typeof raw.overlayBounds==='object'?raw.overlayBounds:null}}
 function paired(){return Boolean(currentConfig().token)}
-function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl}}
+function publicState(){return{...state,logs:recentLogs.slice(-80),webUrl:currentConfig().webUrl,overlayClickThrough:currentConfig().overlayClickThrough}}
 function normalizedRole(value){const role=String(value||'').trim().toUpperCase();if(role==='BOTTOM'||role==='ADC')return'ADC';if(role==='UTILITY'||role==='SUPPORT')return'SUPPORT';if(role==='MIDDLE'||role==='MID')return'MID';if(role==='TOP')return'TOP';if(role==='JUNGLE')return'JUNGLE';return role}
 function needsRecordingPlanRecovery(){
   if(state.phase!=='RECORDING')return false;
   if(!state.teamPlan)return true;
+  if(!state.teamPlan?.adaptiveBuild)return true;
   const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
   return (role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
 }
@@ -65,6 +66,8 @@ function setState(patch){
   }
   updateTray();
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
+  if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.webContents.send('companion:state',publicState());
+  if(paired())createOverlayWindow(true);else if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.hide();
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
@@ -427,6 +430,62 @@ async function handlePairUrl(rawUrl){
   recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null,postGameReview:null});stopTracker();startTracker();
 }
 
+function trackerHome(){return process.env.LOCALAPPDATA?path.join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):path.join(configDir(),'tracker')}
+function activeSessionFile(){return path.join(trackerHome(),'active-session.json')}
+function markedMomentsFile(){return path.join(trackerHome(),'marked-moments.json')}
+function markMoment(){
+  if(state.phase!=='RECORDING')return{ok:false,error:'A League match is not currently recording.'};
+  let session={};try{session=JSON.parse(readFileSync(activeSessionFile(),'utf8'))}catch{}
+  const row={
+    at:new Date().toISOString(),
+    clientSessionId:String(session?.id||''),
+    gameSeconds:Math.max(0,Number(session?.lastGameTime)||0),
+    source:'PLAYER_HOTKEY',
+  };
+  mkdirSync(trackerHome(),{recursive:true});
+  let rows=[];try{const parsed=JSON.parse(readFileSync(markedMomentsFile(),'utf8'));if(Array.isArray(parsed))rows=parsed}catch{}
+  rows=rows.filter(item=>String(item?.clientSessionId||'')===row.clientSessionId||!row.clientSessionId).slice(-24);
+  rows.push(row);writeFileSync(markedMomentsFile(),JSON.stringify(rows.slice(-25)),'utf8');
+  addLog(`Moment marked at ${Math.floor(row.gameSeconds/60)}:${String(Math.floor(row.gameSeconds%60)).padStart(2,'0')}.`);
+  return{ok:true,moment:row};
+}
+function applyOverlayClickThrough(enabled){
+  const next=Boolean(enabled);
+  const cfg=readConfig();cfg.overlayClickThrough=next;writeConfig(cfg);
+  if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.setIgnoreMouseEvents(next,{forward:true});
+  setState({});
+  return{ok:true,enabled:next};
+}
+function toggleOverlayClickThrough(){return applyOverlayClickThrough(!currentConfig().overlayClickThrough)}
+function saveOverlayBounds(){
+  if(!overlayWindow||overlayWindow.isDestroyed())return;
+  const cfg=readConfig();cfg.overlayBounds=overlayWindow.getBounds();writeConfig(cfg);
+}
+function createOverlayWindow(show=true){
+  if(!paired())return null;
+  if(overlayWindow&&!overlayWindow.isDestroyed()){if(show&&!overlayWindow.isVisible())overlayWindow.showInactive();return overlayWindow}
+  const saved=currentConfig().overlayBounds;
+  const work=screen.getPrimaryDisplay().workArea;
+  const width=Math.max(360,Math.min(620,Number(saved?.width)||450));
+  const height=Math.max(360,Math.min(820,Number(saved?.height)||620));
+  const x=Number.isFinite(Number(saved?.x))?Number(saved.x):work.x+work.width-width-18;
+  const y=Number.isFinite(Number(saved?.y))?Number(saved.y):work.y+18;
+  overlayWindow=new BrowserWindow({
+    x,y,width,height,minWidth:340,minHeight:320,maxWidth:720,maxHeight:900,
+    show:false,frame:false,transparent:true,resizable:true,alwaysOnTop:true,skipTaskbar:true,
+    focusable:true,hasShadow:false,backgroundColor:'#00000000',title:'OP CLIMB HUD',
+    webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true},
+  });
+  overlayWindow.setAlwaysOnTop(true,'screen-saver');
+  try{overlayWindow.setVisibleOnAllWorkspaces(true,{visibleOnFullScreen:true})}catch{}
+  overlayWindow.setIgnoreMouseEvents(currentConfig().overlayClickThrough,{forward:true});
+  overlayWindow.loadFile(path.join(__dirname,'overlay.html'));
+  overlayWindow.once('ready-to-show',()=>{if(show)overlayWindow.showInactive();try{overlayWindow.webContents.send('companion:state',publicState())}catch{}});
+  overlayWindow.on('moved',saveOverlayBounds);overlayWindow.on('resized',saveOverlayBounds);
+  overlayWindow.on('closed',()=>{overlayWindow=null});
+  return overlayWindow;
+}
+
 function createWindow(show=true){
   if(mainWindow&&!mainWindow.isDestroyed()){if(show){mainWindow.show();mainWindow.focus()}return mainWindow}
   mainWindow=new BrowserWindow({width:1040,height:900,minWidth:760,minHeight:680,show:false,backgroundColor:'#090d0a',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
@@ -458,12 +517,17 @@ ipcMain.handle('companion:open-climb-path',(_event,path)=>{
 ipcMain.handle('companion:draft-coach',(_event,context)=>requestDraftCoach(context));
 ipcMain.handle('companion:intent-probe',(_event,context)=>answerIntentProbe(context));
 ipcMain.handle('companion:read-checkpoint',(_event,context)=>recordReadCheckpoint(context));
+ipcMain.handle('companion:mark-moment',()=>markMoment());
+ipcMain.handle('companion:toggle-click-through',()=>toggleOverlayClickThrough());
+ipcMain.handle('companion:open-window',()=>{createWindow(true);return{ok:true}});
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});
-app.on('before-quit',()=>{quitting=true;stopTracker()});app.on('window-all-closed',()=>{});
+app.on('before-quit',()=>{quitting=true;try{globalShortcut.unregisterAll()}catch{}stopTracker()});app.on('window-all-closed',()=>{});
 app.whenReady().then(()=>{
   const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
+  try{globalShortcut.register('CommandOrControl+Shift+M',()=>{const result=markMoment();if(result.ok&&overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.webContents.send('companion:moment-marked',result.moment)});globalShortcut.register('CommandOrControl+Shift+O',()=>toggleOverlayClickThrough())}catch{}
+  if(state.paired)createOverlayWindow(true);
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });

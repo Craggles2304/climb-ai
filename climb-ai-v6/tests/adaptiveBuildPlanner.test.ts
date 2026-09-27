@@ -122,3 +122,24 @@ test('mage draft tech stays inside AP-compatible item pool',()=>{
   assert.ok(!selected.some(value=>value.name==='Wrong Tank Tech'),JSON.stringify(selected));
   assert.ok(selected.some(value=>/AP|Large AP/.test(value.name)),JSON.stringify(selected));
 });
+
+
+test('draft plan exposes multiple static paths and an explicit champ-select lock boundary',()=>{
+  const enemies=[
+    enemy(champion('Ornn',['Tank'],3,4,175,'Knocks up enemies.'),'TOP'),
+    enemy(champion('Sejuani',['Tank'],3,4,175,'Stuns and knocks up enemies.'),'JUNGLE'),
+    enemy(champion('Sylas',['Mage','Assassin'],3,8,175,'Heals and dashes.'),'MID'),
+    enemy(champion('Samira',['Marksman'],9,1,500),'ADC'),
+    enemy(champion('Soraka',['Support'],1,8,550,'Heals and restores health.'),'SUPPORT'),
+  ];
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],enemies,items,
+  });
+  assert.equal(plan.version,2);
+  assert.equal(plan.lockedFrom,'CHAMP_SELECT');
+  assert.ok(plan.paths.some(path=>path.key==='STANDARD'));
+  assert.ok(plan.paths.some(path=>path.key==='VS_TANKS'));
+  assert.ok(plan.paths.some(path=>path.key==='VS_HEALING'));
+  assert.ok(plan.boundary.includes('WILL NOT CHANGE DURING THE MATCH'));
+});

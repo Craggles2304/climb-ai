@@ -11,7 +11,7 @@ test('tracker publishes structured state transitions without recurring database 
   assert.ok(runtime.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
   assert.ok(runtime.includes('emitTrackerState(next,message)'));
   assert.ok(runtime.includes('emitTrackerState(heartbeatState,heartbeatDetail)'));
-  assert.ok(runtime.includes("const RUNTIME_VERSION='2026.09.27.1'"));
+  assert.match(runtime,/const RUNTIME_VERSION='2026\.09\.27\.\d+';/);
   assert.ok(runtime.includes("let lastStatusSignature=''"));
   assert.ok(runtime.includes("if(!force&&signature===lastStatusSignature)return;"));
 });

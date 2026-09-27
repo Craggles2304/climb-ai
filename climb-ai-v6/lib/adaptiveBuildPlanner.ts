@@ -25,15 +25,16 @@ export interface AdaptiveEnemyProfile{
   physical:number;magic:number;mixed:number;tanks:number;divers:number;assassins:number;
   hardCc:number;healing:number;shielding:number;poke:number;ranged:number;
 }
+export interface AdaptiveBuildPath{key:'STANDARD'|'VS_BURST'|'VS_TANKS'|'VS_HEALING';label:string;reason:string;items:AdaptiveBuildItem[]}
 export interface AdaptiveBuildPlan{
-  version:1;patch:string;champion:string;role:AdaptiveBuildRole;confidence:'HIGH'|'MEDIUM';
+  version:2;patch:string;champion:string;role:AdaptiveBuildRole;confidence:'HIGH'|'MEDIUM';
   enemyProfile:AdaptiveEnemyProfile;read:string;core:AdaptiveBuildItem[];
   draftItem:AdaptiveBuildItem|null;finish:AdaptiveBuildItem|null;boots:AdaptiveBuildItem|null;
-  swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];rule:string;boundary:string;
+  swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];paths:AdaptiveBuildPath[];lockedFrom:'CHAMP_SELECT';rule:string;boundary:string;
 }
 
 const CC=/\b(stuns?|roots?|snares?|knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation)|pulls?|airborne)\b/i;
-const HEAL=/\b(heal|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
+const HEAL=/\b(heals?|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
 const SHIELD=/\b(shield|shielding)\b/i;
 const DASH=/\b(dashes?|blinks?|leaps?|charges?|dives?|jumps?|teleports?)\b/i;
 const POKE=/\b(long range|long-range|poke|artillery|from range)\b/i;
@@ -257,13 +258,31 @@ export function buildAdaptiveItemPlan(input:{
     profile.magic>profile.physical?'magic-leaning damage':profile.physical>profile.magic?'physical-leaning damage':'mixed damage',
   ].filter(Boolean);
 
+  const unique=(items:(AdaptiveBuildItem|null|undefined)[])=>{
+    const seen=new Set<number>();const out:AdaptiveBuildItem[]=[];
+    for(const item of items){if(!item||seen.has(item.id))continue;seen.add(item.id);out.push(item)}
+    return out.slice(0,5);
+  };
+  const tech=(flag:string)=>compatibleNonBoots.filter(item=>item.flags.includes(flag)).sort((a,b)=>(b.context+b.score*.35)-(a.context+a.score*.35))[0]??null;
+  const defense=compatibleNonBoots.filter(item=>item.hp>0||item.armor>0||item.mr>0||item.flags.some(flag=>['STASIS','REVIVE','LIFELINE','SPELL_SHIELD','CLEANSE'].includes(flag))).sort((a,b)=>(b.context+b.defense+b.score*.25)-(a.context+a.defense+a.score*.25))[0]??null;
+  const burstItem=itemOut(defense,'DRAFT');
+  const tankItem=itemOut(tech(attackBias>=.5?'ANTI_TANK':'MAGIC_PEN')??tech('ANTI_TANK'),'DRAFT');
+  const healItem=itemOut(tech('ANTI_HEAL'),'DRAFT');
+  const standardItems=unique([...core,draftItem,finish,boots]);
+  const paths:AdaptiveBuildPath[]=[
+    {key:'STANDARD',label:'STANDARD',reason:'Best all-round path for your champion and this draft.',items:standardItems},
+  ];
+  if(burstItem&&(profile.divers+profile.assassins>=2||profile.hardCc>=2))paths.push({key:'VS_BURST',label:'VS BURST',reason:'More survival against dive, burst or hard catch while keeping your core intact.',items:unique([...core,burstItem,finish,boots])});
+  if(tankItem&&profile.tanks>=2)paths.push({key:'VS_TANKS',label:'VS TANKS',reason:'Keeps damage relevant into the enemy frontline.',items:unique([...core,tankItem,finish,boots])});
+  if(healItem&&profile.healing>=2)paths.push({key:'VS_HEALING',label:'VS HEALING',reason:'Adds anti-heal when the enemy draft contains repeated sustain.',items:unique([...core,healItem,finish,boots])});
+
   return{
-    version:1,patch:input.patch,champion:you.name,role,
+    version:2,patch:input.patch,champion:you.name,role,
     confidence:input.enemies.length>=5?'HIGH':'MEDIUM',
     enemyProfile:profile,
     read:readParts.join(' · ')||'Draft still forming',
-    core,draftItem,finish,boots,swaps,order,
-    rule:'CORE ITEMS FIT YOUR CHAMPION + ROLE. DRAFT ITEM AND BOOTS CHANGE WITH THE ENEMY COMP. SWAPS ARE CONDITIONS, NOT A SECOND GENERIC BUILD.',
-    boundary:'DRAFT-FIT RECOMMENDATION FROM CURRENT-PATCH RIOT STATIC ITEM/CHAMPION DATA. IT DOES NOT CLAIM ITEM WIN RATE OR KNOW FUTURE ENEMY PURCHASES. RE-CHECK THE TECH SLOT IF THE ACTUAL GAME DEVELOPS DIFFERENTLY.',
+    core,draftItem,finish,boots,swaps,order,paths,lockedFrom:'CHAMP_SELECT',
+    rule:'CHOOSE THE PATH THAT MATCHES THE DRAFT. CORE FITS YOUR CHAMPION; TECH SLOTS ANSWER BURST, FRONTLINE OR HEALING.',
+    boundary:'LOCKED FROM CHAMP SELECT USING CURRENT-PATCH RIOT STATIC CHAMPION/ITEM DATA ONLY. IT DOES NOT READ LIVE GOLD, ENEMY PURCHASES OR IN-GAME STATE, AND IT WILL NOT CHANGE DURING THE MATCH.',
   };
 }

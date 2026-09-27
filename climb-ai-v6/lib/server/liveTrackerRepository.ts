@@ -13,7 +13,7 @@ import {canonicalLeaguePatch} from '@/lib/patchIntelligence';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
-export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[];readCheckpoints?:Array<{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}>}
+export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[];readCheckpoints?:Array<{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}>;markedMoments?:Array<{at:string;clientSessionId?:string;gameSeconds:number;source:'PLAYER_HOTKEY'}>}
 
 export async function createTrackerDevice(userId:string,accountKey:string,deviceName:string,riotProfile:RiotProfileInput){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for secure tracker pairing.');
@@ -116,6 +116,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
       count:snapshots.length,
       latestSnapshot:snapshots[snapshots.length-1]??null,
       readCheckpoints:envelope.readCheckpoints??[],
+      markedMoments:envelope.markedMoments??[],
       persistedAt:now,
     },
     riotEnrichment:{status:riotEnabled()?'DEFERRED':'DISABLED'},
