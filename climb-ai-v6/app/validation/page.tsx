@@ -42,7 +42,7 @@ export default function ValidationLab(){
 
   useEffect(()=>{void load()},[load]);
   useEffect(()=>{
-    const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void load()},30_000);
+    const timer=window.setInterval(()=>{if(document.visibilityState==='visible')void load()},10*60_000);
     return()=>window.clearInterval(timer);
   },[load]);
 
