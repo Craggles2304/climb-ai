@@ -320,22 +320,33 @@ async function requestDraftCoach(context){
   }finally{clearTimeout(timeout)}
 }
 
+function localReadCheckpointFile(){
+  const root=process.env.LOCALAPPDATA?path.join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):path.join(configDir(),'tracker');
+  mkdirSync(root,{recursive:true});
+  return path.join(root,'read-checkpoints.json');
+}
 async function recordReadCheckpoint(context){
-  const cfg=currentConfig();
-  if(!cfg.token)return{ok:false,status:401,error:'Pair this PC to OP CLIMB first.'};
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  if(!currentConfig().token)return{ok:false,status:401,error:'Pair this PC to OP CLIMB first.'};
+  const minute=Number(context?.checkpointMinute);
+  if(![5,10,15].includes(minute))return{ok:false,status:400,error:'Checkpoint minute is invalid.'};
+  const checkpoint={
+    checkpointMinute:minute,
+    gameSeconds:Math.max(0,Number(context?.gameSeconds)||0),
+    stateRead:['AHEAD','EVEN','BEHIND'].includes(String(context?.stateRead))?String(context.stateRead):'EVEN',
+    confidenceRead:['HIGH','MEDIUM','LOW'].includes(String(context?.confidenceRead))?String(context.confidenceRead):null,
+    threatRead:String(context?.threatRead||'').trim().slice(0,80)||null,
+    priorityRead:String(context?.priorityRead||'').trim().slice(0,80)||null,
+  };
   try{
-    const response=await fetch(`${cfg.webUrl}/api/live/read-checkpoint`,{
-      method:'POST',
-      headers:{'content-type':'application/json',authorization:`Bearer ${cfg.token}`},
-      body:JSON.stringify(context||{}),
-      signal:controller.signal,
-    });
-    const body=await response.json().catch(()=>({}));
-    return{...body,status:response.status,ok:Boolean(response.ok&&body?.ok)};
+    const file=localReadCheckpointFile();
+    let rows=[];try{const parsed=JSON.parse(readFileSync(file,'utf8'));if(Array.isArray(parsed))rows=parsed}catch{}
+    rows=rows.filter(row=>Number(row?.checkpointMinute)!==minute);
+    rows.push(checkpoint);rows.sort((a,b)=>Number(a.checkpointMinute)-Number(b.checkpointMinute));
+    writeFileSync(file,JSON.stringify(rows.slice(0,3)),'utf8');
+    return{ok:true,status:200,local:true,checkpoint};
   }catch(err){
-    return{ok:false,status:0,error:err?.name==='AbortError'?'Read checkpoint timed out.':(err?.message||'Could not save your game read.')};
-  }finally{clearTimeout(timeout)}
+    return{ok:false,status:0,error:err?.message||'Could not save your game read locally.'};
+  }
 }
 
 async function answerIntentProbe(context){
