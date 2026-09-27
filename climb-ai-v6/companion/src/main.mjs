@@ -20,6 +20,7 @@ const RUNTIME_VERSION='2026.09.27.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
+const READ_CHECKPOINT_FILE=TRACKER_HOME?join(TRACKER_HOME,'read-checkpoints.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 
@@ -474,6 +475,8 @@ function persistSession(snapshot){
 
 function clearPersistedSession(){if(!SESSION_FILE)return;try{unlinkSync(SESSION_FILE)}catch{}}
 function clearPendingMatch(){if(!PENDING_MATCH_FILE)return;try{unlinkSync(PENDING_MATCH_FILE)}catch{}}
+function clearLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE)return;try{unlinkSync(READ_CHECKPOINT_FILE)}catch{}}
+function readLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE||!existsSync(READ_CHECKPOINT_FILE))return[];try{const rows=JSON.parse(readFileSync(READ_CHECKPOINT_FILE,'utf8'));return Array.isArray(rows)?rows.slice(0,3):[]}catch{return[]}}
 function persistPendingMatch(envelope){if(!PENDING_MATCH_FILE)return;try{writeFileSync(PENDING_MATCH_FILE,JSON.stringify(envelope),'utf8')}catch{}}
 function restorePendingMatchUpload(){
   if(!PENDING_MATCH_FILE||!existsSync(PENDING_MATCH_FILE))return;
@@ -529,6 +532,7 @@ async function startSession(snapshot){
   if(pregame)await finishPregame('game started',true);
   const restored=loadPersistedSession(snapshot);
   if(restored){session=restored;logState('RECORDING',`OVERPOWERED Companion: resumed ${snapshot.active.championName||'League match'} after tracker restart.`);return}
+  clearLocalReadCheckpoints();
   session={
     id:randomUUID(),
     startedAt:new Date().toISOString(),
@@ -557,8 +561,10 @@ async function finishSession(reason){
     startedAt:finished.startedAt,
     endedAt:new Date().toISOString(),
     snapshots:keyframes,
+    readCheckpoints:readLocalReadCheckpoints(),
   };
   persistPendingMatch(envelope);
+  clearLocalReadCheckpoints();
   session=null;
   clearPersistedSession();
   queueEnvelope(envelope);
