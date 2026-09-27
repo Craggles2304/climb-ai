@@ -38,7 +38,7 @@ useEffect(()=>{
   };
   const onFocus=()=>pull();
   const onVisible=()=>{if(document.visibilityState==='visible')pull()};
-  const timer=window.setInterval(pull,20_000);
+  const timer=window.setInterval(pull,5*60_000);
   window.addEventListener('focus',onFocus);
   document.addEventListener('visibilitychange',onVisible);
   return()=>{stopped=true;window.clearInterval(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible)};
