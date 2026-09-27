@@ -1,4 +1,4 @@
-const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage}=require('electron');
+const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage,globalShortcut}=require('electron');
 const {spawn}=require('node:child_process');
 const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
@@ -8,10 +8,10 @@ const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
+let mainWindow=null,matchPanel=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null};
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,markedMoments:[]};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -55,6 +55,8 @@ function setState(patch){
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
+  if(enteringChampSelect)patch={...patch,markedMoments:[]};
+  if(enteringRecording)patch={...patch,frozenBrief:{teamPlan:state.teamPlan,matchup:state.matchup}};
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(enteringChampSelect){
     matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
@@ -65,6 +67,27 @@ function setState(patch){
   }
   updateTray();
   if(mainWindow&&!mainWindow.isDestroyed())mainWindow.webContents.send('companion:state',publicState());
+  if(state.phase==='RECORDING')createMatchPanel();
+  else if(matchPanel&&!matchPanel.isDestroyed()){matchPanel.destroy();matchPanel=null}
+  if(matchPanel&&!matchPanel.isDestroyed()&&!matchPanel.webContents.isLoading())matchPanel.webContents.send('companion:state',publicState());
+}
+function createMatchPanel(){
+  if(matchPanel&&!matchPanel.isDestroyed())return matchPanel;
+  matchPanel=new BrowserWindow({width:352,height:310,minWidth:300,minHeight:250,show:false,alwaysOnTop:true,frame:false,resizable:true,movable:true,skipTaskbar:false,backgroundColor:'#0b120e',title:'OP CLIMB · Match panel',webPreferences:{preload:path.join(__dirname,'match-panel-preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  matchPanel.setAlwaysOnTop(true,'screen-saver');
+  matchPanel.loadFile(path.join(__dirname,'match-panel.html'));
+  matchPanel.once('ready-to-show',()=>matchPanel?.showInactive());
+  matchPanel.on('closed',()=>{matchPanel=null});
+  return matchPanel;
+}
+function markMoment(){
+  if(state.phase!=='RECORDING')return{ok:false,error:'No match is being recorded.'};
+  const moment={at:new Date().toISOString(),champion:String(state.matchup?.champion||'')};
+  const markedMoments=[...(state.markedMoments||[]),moment].slice(-30);
+  const file=path.join(configDir(),'marked-moments.json');
+  try{mkdirSync(configDir(),{recursive:true});writeFileSync(file,JSON.stringify(markedMoments,null,2),'utf8')}
+  catch{return{ok:false,error:'Could not save this moment locally.'}}
+  setState({markedMoments});return{ok:true,count:markedMoments.length};
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
@@ -449,6 +472,8 @@ ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
+ipcMain.handle('companion:mark-moment',()=>markMoment());
+ipcMain.handle('companion:open-main',()=>{createWindow(true);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
   const safePaths=new Set(['/live','/progress','/ilp']);
   const target=safePaths.has(String(path||''))?String(path):'/live';
@@ -463,7 +488,9 @@ app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkF
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});
 app.on('before-quit',()=>{quitting=true;stopTracker()});app.on('window-all-closed',()=>{});
 app.whenReady().then(()=>{
+  globalShortcut.register('Control+Shift+M',()=>{markMoment()});
   const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });
+
