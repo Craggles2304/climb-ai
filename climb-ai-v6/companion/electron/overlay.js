@@ -80,6 +80,7 @@ async function flashMarked(){
 $('markBtn')?.addEventListener('click',async()=>{const r=await window.opCompanion.markMoment();if(r?.ok)flashMarked()});
 $('openBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
 $('reviewBtn')?.addEventListener('click',()=>window.opCompanion.openWindow());
+$('repairBtn')?.addEventListener('click',async()=>{await window.opCompanion.restart();});
 $('clickBtn')?.addEventListener('click',async()=>{const r=await window.opCompanion.toggleClickThrough();$('clickBtn').textContent=r?.enabled?'◉':'◎'});
 $('compactBtn')?.addEventListener('click',()=>{compact=!compact;$('hud').classList.toggle('compact',compact);$('compactBtn').textContent=compact?'+':'−'});
 window.opCompanion.getState().then(render).catch(()=>{});
