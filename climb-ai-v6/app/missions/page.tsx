@@ -14,7 +14,7 @@ export default function Missions(){
   const {active}=useAccount();
   const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
   const last=matches[0];
-  const {tasks}=useLearningPlan();
+  const {tasks,planReady,planError}=useLearningPlan();
   const detail=coachingLevelFor(active.rank);
   const activeThree=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
   const mastered=tasks.filter(task=>task.status==='MASTERED').length;
@@ -29,7 +29,9 @@ export default function Missions(){
       <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}><span className="op-tier op-tier-pro">{activeThree.length}/3 ACTIVE</span><span className="op-tier op-tier-plus">{missionRankBand(active.rank)} TARGETS</span>{detail.depth>=3&&<span className="op-tier op-tier-plus">{mastered} MASTERED</span>}{detail.depth>=4&&<span className="op-tier op-tier-plus">{last?`LAST GAME: ${last.champion} ${last.result}`:'WAITING FOR MATCH EVIDENCE'}</span>}</div>
     </section>
 
-    {activeThree.length===0?<section className="glass card"><div className="eyebrow">WAITING FOR PLAN</div><h2>No active missions yet.</h2><p className="muted">Track a game and OP CLIMB will build your first evidence-backed priorities.</p></section>:
+    {!planReady?<section className="glass card"><div className="eyebrow">LOADING YOUR PLAN</div><h2>Pulling your active missions…</h2><p className="muted">OP CLIMB is loading the evidence-backed plan already stored for this Riot account.</p></section>:
+    planError?<section className="glass card"><div className="eyebrow">PLAN LOAD ERROR</div><h2>Your missions are still stored.</h2><p className="muted">{planError}</p><button className="btn secondary" type="button" onClick={()=>window.location.reload()}>RETRY PLAN LOAD</button></section>:
+    activeThree.length===0?<section className="glass card"><div className="eyebrow">WAITING FOR PLAN</div><h2>No active missions yet.</h2><p className="muted">Track a game and OP CLIMB will build your first evidence-backed priorities.</p></section>:
     <div style={{display:'grid',gap:16}}>{activeThree.map((task,index)=>{
       const summary=missionSummary(task);
       const evidence=missionEvidence(task,last,active.rank);
