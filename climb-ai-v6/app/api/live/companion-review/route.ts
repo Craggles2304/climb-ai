@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {authenticateTrackerToken,latestLiveReview} from '@/lib/server/liveTrackerRepository';
+import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
+import {latestLiveRead} from '@/lib/server/liveReadRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {riotService} from '@/lib/services/riotService';
@@ -27,11 +28,11 @@ export async function GET(req:NextRequest){
   const device=await authenticateTrackerToken(token);
   if(!device)return NextResponse.json({ok:false,error:'Tracker token is invalid or revoked.'},{status:401});
 
-  const latest=await latestLiveReview(device.userId,device.accountKey);
+  const latest:any=await latestLiveRead(device.userId,device.accountKey,{lean:true});
   if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
 
-  const rankChange=await refreshPlayerRank(device.userId,device.riotAccountId).catch(()=>null);
-  const rank=rankChange?.current||await resolvePlayerRank(device.userId,device.riotAccountId);
+  const rankChange:RankChange|null=null;
+  const rank=await resolvePlayerRank(device.userId,device.riotAccountId);
   const coach=coachingLevelFor(rank);
   const snapshot=latest.latestSnapshot as any;
   const summary=latest.summary as any;
