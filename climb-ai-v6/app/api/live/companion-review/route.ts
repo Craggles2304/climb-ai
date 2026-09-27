@@ -6,6 +6,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import {riotService} from '@/lib/services/riotService';
 import {riotEnabled} from '@/lib/riot/client';
 import {buildPostGameSections,type FightReview,type ReviewMatch} from '@/lib/postGameReview';
+import {reviewMarkedMoments} from '@/lib/markedMomentReview';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -54,6 +55,7 @@ export async function GET(req:NextRequest){
     detailLimit,
   });
   const developmentPlan=developmentPlanFromSync((latest.summary as any)?.learningPlanSync,latest.status);
+  const markedMoments=reviewMarkedMoments(summary?.capture?.markedMoments,summary?.fightReviews,summary?.points,Number(snapshot?.gameTime||0));
 
   return NextResponse.json({
     ok:true,ready:true,
@@ -73,6 +75,7 @@ export async function GET(req:NextRequest){
       critical:sections.improve,
       nextFocus:sections.nextFocus,
       evidenceCount:sections.evidenceCount,
+      markedMoments,
       decisionGraph:summary?.decisionGraph??latest.proAnalysis?.decisionGraph??null,
       causalProfile:latest.causalProfile??null,
       playerCoachingIdentity:latest.playerCoachingIdentity??null,

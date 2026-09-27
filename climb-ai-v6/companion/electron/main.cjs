@@ -436,6 +436,7 @@ function markedMomentsFile(){return path.join(trackerHome(),'marked-moments.json
 function markMoment(){
   if(state.phase!=='RECORDING')return{ok:false,error:'A League match is not currently recording.'};
   let session={};try{session=JSON.parse(readFileSync(activeSessionFile(),'utf8'))}catch{}
+  if(!session?.id||!Number.isFinite(Number(session.lastGameTime)))return{ok:false,error:'The local match clock is not ready yet. Try again in a moment.'};
   const row={
     at:new Date().toISOString(),
     clientSessionId:String(session?.id||''),
@@ -527,7 +528,7 @@ app.on('before-quit',()=>{quitting=true;try{globalShortcut.unregisterAll()}catch
 app.whenReady().then(()=>{
   const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
-  try{globalShortcut.register('CommandOrControl+Shift+M',()=>{const result=markMoment();if(result.ok&&overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.webContents.send('companion:moment-marked',result.moment)});globalShortcut.register('CommandOrControl+Shift+O',()=>toggleOverlayClickThrough())}catch{}
+  try{globalShortcut.register('CommandOrControl+Shift+M',()=>{const result=markMoment();if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.webContents.send('companion:moment-result',result)});globalShortcut.register('CommandOrControl+Shift+O',()=>toggleOverlayClickThrough())}catch{}
   if(state.paired)createOverlayWindow(true);
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });
