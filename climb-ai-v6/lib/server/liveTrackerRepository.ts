@@ -163,6 +163,27 @@ export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelop
   return{sessionId};
 }
 
+export async function materializeDeferredLocalMatch(userId:string,accountKey:string){
+  const db=getSupabaseAdmin();if(!db||!accountKey)return false;
+  const {data,error}=await db.from('live_telemetry_sessions')
+    .select('id,status,summary')
+    .eq('user_id',userId)
+    .eq('account_key',accountKey)
+    .order('started_at',{ascending:false})
+    .limit(1)
+    .maybeSingle();
+  if(error)throw new Error(error.message);
+  const summary=(data?.summary&&typeof data.summary==='object')?data.summary as any:null;
+  const deferred=Boolean(
+    data&&data.status==='COMPLETE'&&
+    summary?.capture?.mode==='LOCAL_FIRST_V1'&&
+    summary?.learningPlanSync?.status==='DEFERRED'
+  );
+  if(!deferred)return false;
+  await latestLiveReview(userId,accountKey);
+  return true;
+}
+
 export async function latestLiveReview(userId:string,accountKey:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
