@@ -59,6 +59,7 @@ export async function GET(req:NextRequest){
     ok:true,ready:true,
     review:{
       sessionId:latest.sessionId,
+      startedAt:latest.startedAt??null,
       endedAt:latest.endedAt??latest.lastSeenAt??null,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
@@ -209,3 +210,4 @@ function rankLabel(tier:string,division:string,lp:unknown){
 
 function roleLabel(value:unknown){const v=String(value||'').toUpperCase();if(v==='BOTTOM')return'ADC';if(v==='UTILITY')return'SUPPORT';if(v==='MIDDLE')return'MID';return v||'UNKNOWN'}
 function findMe(snapshot:any){const players=Array.isArray(snapshot?.players)?snapshot.players:[];return players.find((p:any)=>snapshot.active?.riotId&&p.riotId===snapshot.active.riotId)||players.find((p:any)=>snapshot.active?.summonerName&&p.summonerName===snapshot.active.summonerName)||players.find((p:any)=>p.championName===snapshot.active?.championName)||null}
+
