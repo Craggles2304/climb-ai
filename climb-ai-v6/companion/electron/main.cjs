@@ -1,5 +1,6 @@
 const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage,globalShortcut}=require('electron');
 const {spawn}=require('node:child_process');
+const https=require('node:https');
 const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
 
@@ -80,14 +81,41 @@ function createMatchPanel(){
   matchPanel.on('closed',()=>{matchPanel=null});
   return matchPanel;
 }
-function markMoment(){
+function localGameSeconds(){
+  return new Promise(resolve=>{
+    const req=https.get('https://127.0.0.1:2999/liveclientdata/gamestats',{rejectUnauthorized:false,timeout:1200},res=>{
+      let body='';res.setEncoding('utf8');res.on('data',chunk=>{body+=chunk.slice(0,4096)});
+      res.on('end',()=>{try{const seconds=Number(JSON.parse(body).gameTime);resolve(Number.isFinite(seconds)&&seconds>=0?seconds:null)}catch{resolve(null)}});
+    });
+    req.on('timeout',()=>req.destroy());req.on('error',()=>resolve(null));
+  });
+}
+function readMarkedMoments(){try{const saved=JSON.parse(readFileSync(path.join(configDir(),'marked-moments.json'),'utf8'));return Array.isArray(saved)?saved.slice(-30):[]}catch{return[]}}
+async function markMoment(){
   if(state.phase!=='RECORDING')return{ok:false,error:'No match is being recorded.'};
-  const moment={at:new Date().toISOString(),champion:String(state.matchup?.champion||'')};
+  const moment={at:new Date().toISOString(),gameSeconds:await localGameSeconds(),champion:String(state.matchup?.champion||'')};
   const markedMoments=[...(state.markedMoments||[]),moment].slice(-30);
   const file=path.join(configDir(),'marked-moments.json');
   try{mkdirSync(configDir(),{recursive:true});writeFileSync(file,JSON.stringify(markedMoments,null,2),'utf8')}
   catch{return{ok:false,error:'Could not save this moment locally.'}}
   setState({markedMoments});return{ok:true,count:markedMoments.length};
+}
+function attachMarkedMoments(review){
+  const start=Date.parse(String(review?.startedAt||'')),end=Date.parse(String(review?.endedAt||''));
+  if(!Number.isFinite(start)||!Number.isFinite(end))return{...review,markedMoments:[]};
+  const evidence=review?.recognitionEvidence||{};
+  const fights=Array.isArray(evidence.fightReviews)?evidence.fightReviews:[];
+  const points=Array.isArray(evidence.strengthPoints)?evidence.strengthPoints:[];
+  const marked=readMarkedMoments().filter(moment=>{const at=Date.parse(String(moment?.at||''));return Number.isFinite(at)&&at>=start-30000&&at<=end+30000});
+  return{...review,markedMoments:marked.map(moment=>{
+    const seconds=moment.gameSeconds==null?NaN:Number(moment.gameSeconds);
+    if(!Number.isFinite(seconds))return{...moment,evidence:'Match clock was unavailable when this moment was marked.'};
+    const fight=fights.reduce((best,item)=>Math.abs(Number(item.atSeconds)-seconds)<Math.abs(Number(best?.atSeconds??Infinity)-seconds)?item:best,null);
+    if(fight&&Math.abs(Number(fight.atSeconds)-seconds)<=60)return{...moment,evidence:`Nearby recorded fight: ${String(fight.headline||fight.outcome||'Fight detected')}.`};
+    const point=points.reduce((best,item)=>Math.abs(Number(item.atSeconds)-seconds)<Math.abs(Number(best?.atSeconds??Infinity)-seconds)?item:best,null);
+    if(point&&Math.abs(Number(point.atSeconds)-seconds)<=45)return{...moment,evidence:`Nearby recorded state: ${String(point.verdict||'EVEN').toLowerCase().replaceAll('_',' ')}. ${String(point.comparisonReason||'')}`.trim()};
+    return{...moment,evidence:'No close enough recorded evidence to assess this moment.'};
+  })};
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
@@ -185,7 +213,7 @@ async function confirmReviewRendered(sessionId){
 async function presentPostGameReview(review,detail){
   const sessionId=String(review?.sessionId||'').trim();if(!sessionId)return false;
   stopPostGameReviewPoll();
-  setState({phase:'REVIEW',detail,postGameReview:review});
+  setState({phase:'REVIEW',detail,postGameReview:attachMarkedMoments(review)});
   createWindow(true);
   const rendered=await confirmReviewRendered(sessionId);
   if(rendered){
@@ -489,7 +517,7 @@ app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)})
 app.on('before-quit',()=>{quitting=true;stopTracker()});app.on('window-all-closed',()=>{});
 app.whenReady().then(()=>{
   globalShortcut.register('Control+Shift+M',()=>{markMoment()});
-  const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
+  const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart),markedMoments:readMarkedMoments()};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });
