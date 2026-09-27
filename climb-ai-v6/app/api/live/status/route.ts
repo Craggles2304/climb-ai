@@ -7,6 +7,9 @@ import {getCurrentUser} from '@/lib/supabase/server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
+const STATUS_KEEPALIVE_MS=5*60_000;
+const statusWriteCache=new Map<string,{signature:string;at:number}>();
+
 const heartbeatSchema=z.object({
   state:z.enum(['WAITING','CHAMP_SELECT','RECORDING','LCU_UNAVAILABLE','ERROR']),
   runtimeVersion:z.string().max(40),
@@ -23,11 +26,18 @@ export async function POST(req:NextRequest){
   let input:z.infer<typeof heartbeatSchema>;
   try{input=heartbeatSchema.parse(await req.json())}
   catch{return NextResponse.json({ok:false,error:'Invalid tracker heartbeat.'},{status:400})}
+  const signature=JSON.stringify(input);
+  const cached=statusWriteCache.get(device.id);
+  const nowMs=Date.now();
+  if(cached&&cached.signature===signature&&nowMs-cached.at<STATUS_KEEPALIVE_MS){
+    return NextResponse.json({ok:true,sampled:true,acceptedAt:new Date(nowMs).toISOString()});
+  }
   const db=getSupabaseAdmin();
   if(!db)return NextResponse.json({ok:false,error:'Tracker status storage unavailable.'},{status:503});
-  const now=new Date().toISOString();
+  const now=new Date(nowMs).toISOString();
   const {error}=await db.from('live_tracker_devices').update({tracker_status:input,tracker_status_updated_at:now,last_seen_at:now}).eq('id',device.id);
   if(error){console.error('[live-status] write failed',error);return NextResponse.json({ok:false,error:'Could not store tracker status.'},{status:503})}
+  statusWriteCache.set(device.id,{signature,at:nowMs});
   return NextResponse.json({ok:true,acceptedAt:now});
 }
 
