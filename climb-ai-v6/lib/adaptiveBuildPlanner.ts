@@ -34,7 +34,7 @@ export interface AdaptiveBuildPlan{
 }
 
 const CC=/\b(stuns?|roots?|snares?|knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation)|pulls?|airborne)\b/i;
-const HEAL=/\b(heal|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
+const HEAL=/\b(heals?|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
 const SHIELD=/\b(shield|shielding)\b/i;
 const DASH=/\b(dashes?|blinks?|leaps?|charges?|dives?|jumps?|teleports?)\b/i;
 const POKE=/\b(long range|long-range|poke|artillery|from range)\b/i;
