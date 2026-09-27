@@ -13,7 +13,7 @@ import {canonicalLeaguePatch} from '@/lib/patchIntelligence';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
-export interface LiveEnvelope{type:'SNAPSHOT'|'END';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot}
+export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[]}
 
 export async function createTrackerDevice(userId:string,accountKey:string,deviceName:string,riotProfile:RiotProfileInput){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for secure tracker pairing.');
@@ -99,6 +99,57 @@ async function readCheckpointsForSession(sessionId:string){
   return(data??[]).map((row:any)=>({id:row.id,checkpointMinute:Number(row.checkpoint_minute),gameSeconds:Number(row.game_seconds),stateRead:row.state_read,confidenceRead:row.confidence_read??null,threatRead:row.threat_read??null,priorityRead:row.priority_read??null,createdAt:row.created_at??null}));
 }
 
+export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:LiveEnvelope){
+  const snapshots=[...(envelope.snapshots??[])].sort((a,b)=>a.gameTime-b.gameTime);
+  if(!snapshots.length)throw new Error('Completed match bundle requires at least one keyframe.');
+  const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
+  const now=new Date().toISOString();
+  const strength=buildStrengthTimeline(snapshots);
+  const proAnalysis=buildLiveProAnalysis(snapshots,strength);
+  const gameVersion=await latestPatch().catch(()=>null),patch=canonicalLeaguePatch(gameVersion);
+  const summary={
+    ...strength,
+    proAnalysis,
+    decisionGraph:(proAnalysis as any)?.decisionGraph??null,
+    capture:{
+      mode:'LOCAL_FIRST_V1',
+      count:snapshots.length,
+      keyframes:snapshots,
+      persistedAt:now,
+    },
+    riotEnrichment:{status:riotEnabled()?'DEFERRED':'DISABLED'},
+    learningPlanSync:{status:'DEFERRED'},
+  };
+  const payload={
+    user_id:device.userId,
+    riot_account_id:device.riotAccountId,
+    device_id:device.id,
+    account_key:device.accountKey,
+    client_session_id:envelope.clientSessionId,
+    started_at:envelope.startedAt??snapshots[0]?.receivedAt??now,
+    last_seen_at:now,
+    status:'COMPLETE',
+    ended_at:envelope.endedAt??now,
+    patch,
+    game_version:gameVersion,
+    patch_source:patch?'DATA_DRAGON_CURRENT_AT_RECORDING':'UNKNOWN',
+    metadata:{deviceName:device.deviceName,captureMode:'LOCAL_FIRST_V1',captureCount:snapshots.length},
+    summary,
+  };
+  const {data,error}=await db.from('live_telemetry_sessions').insert(payload).select('id').single();
+  if(error){
+    if(error.code==='23505'){
+      const {data:existing,error:existingError}=await db.from('live_telemetry_sessions')
+        .select('id').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
+      if(existingError)throw new Error(existingError.message);
+      if(existing?.id)return{sessionId:existing.id as string};
+    }
+    throw new Error(error.message);
+  }
+  if(!data?.id)throw new Error('Completed match bundle could not be stored.');
+  return{sessionId:data.id as string};
+}
+
 export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');const now=new Date().toISOString();
   const existing=await db.from('live_telemetry_sessions').select('id,started_at').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();if(existing.error)throw new Error(existing.error.message);
@@ -115,8 +166,15 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error)throw new Error(error.message);if(!session)return null;
-  const {data:snapshots,error:snapshotError}=await db.from('live_telemetry_snapshots').select('game_time,payload').eq('session_id',session.id).order('game_time',{ascending:true});if(snapshotError)throw new Error(snapshotError.message);
-  const normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
+  const embedded=Array.isArray((session.summary as any)?.capture?.keyframes)
+    ?((session.summary as any).capture.keyframes as LiveTelemetrySnapshot[])
+    :[];
+  let normalized=embedded;
+  if(!normalized.length){
+    const {data:snapshots,error:snapshotError}=await db.from('live_telemetry_snapshots').select('game_time,payload').eq('session_id',session.id).order('game_time',{ascending:true});
+    if(snapshotError)throw new Error(snapshotError.message);
+    normalized=(snapshots??[]).map(row=>row.payload as LiveTelemetrySnapshot);
+  }
   const strength=normalized.length?buildStrengthTimeline(normalized):((session.summary as any)?.points?(session.summary as StrengthTimeline):null);
   const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(session.id),readCheckpointsForSession(session.id)]);
   let proAnalysis:ProMatchAnalysis|null=await getProMatchAnalysisBySession(session.id).catch(()=>null);
