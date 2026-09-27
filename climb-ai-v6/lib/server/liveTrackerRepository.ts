@@ -29,7 +29,7 @@ export async function createTrackerDevice(userId:string,accountKey:string,device
 
 export async function listTrackerDevices(userId:string){const db=getSupabaseAdmin();if(!db)return[];const {data,error}=await db.from('live_tracker_devices').select('id,account_key,riot_account_id,device_name,created_at,last_seen_at,revoked_at').eq('user_id',userId).is('revoked_at',null).order('created_at',{ascending:false});if(error)throw new Error(error.message);return data??[]}
 export async function revokeTrackerDevice(userId:string,deviceId:string){const db=getSupabaseAdmin();if(!db)return false;const {error}=await db.from('live_tracker_devices').update({revoked_at:new Date().toISOString()}).eq('id',deviceId).eq('user_id',userId);if(error)throw new Error(error.message);return true}
-const TRACKER_DB_RECOVERY_MODE=true;
+const TRACKER_DB_RECOVERY_MODE=false;
 const TRACKER_AUTH_CACHE_MS=5*60_000;
 const TRACKER_NEGATIVE_CACHE_MS=30_000;
 const TRACKER_LAST_SEEN_WRITE_MS=10*60_000;
