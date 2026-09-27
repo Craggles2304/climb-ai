@@ -8,12 +8,13 @@ const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
 const TOKEN=process.env.OP_TRACKER_TOKEN||process.env.CLIMB_TRACKER_TOKEN||'';
 const POLL_MS=Math.max(3000,Number(process.env.OP_POLL_MS||5000));
+const SNAPSHOT_UPLOAD_MS=Math.max(15_000,Number(process.env.OP_SNAPSHOT_UPLOAD_MS||30_000));
 const END_AFTER_MISSES=3;
 const PREGAME_END_AFTER_MISSES=2;
 const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8000));
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
-const HEARTBEAT_MS=60_000;
+const HEARTBEAT_MS=5*60_000;
 const RUNTIME_VERSION='2026.09.24.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
@@ -41,6 +42,7 @@ let droppedSnapshots=0;
 let lcuCredentials=null;
 let lcuCheckedAt=0;
 let lastStatusUploadAt=0;
+let lastSnapshotUploadAt=0;
 let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
@@ -348,7 +350,7 @@ async function pollPregame(){
     const context=await normalizePregame(data);
     emitPregameMatchup(context);
     const signature=JSON.stringify({...context,capturedAt:null});
-    const heartbeat=Date.now()-lastPregameUploadAt>=15_000;
+    const heartbeat=Date.now()-lastPregameUploadAt>=60_000;
     const detail=pregameDetail(context);
     lastLcuDetail=detail;
     if(signature!==lastPregameSignature||heartbeat){
@@ -462,7 +464,7 @@ async function startSession(snapshot){
 
 async function finishSession(reason){
   if(!session)return;
-  const finished=session;session=null;clearPersistedSession();
+  const finished=session;session=null;lastSnapshotUploadAt=0;clearPersistedSession();
   queueEnvelope({type:'END',clientSessionId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
   logState('WAITING',`OVERPOWERED Companion: match recording closed (${reason}). Waiting for League.`);
 }
@@ -481,7 +483,7 @@ async function tick(){
   if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
   if(!session)await startSession(snapshot);
   session.misses=0;session.lastGameTime=snapshot.gameTime;persistSession(snapshot);
-  queueEnvelope({type:'SNAPSHOT',clientSessionId:session.id,startedAt:session.startedAt,snapshot});
+  if(Date.now()-lastSnapshotUploadAt>=SNAPSHOT_UPLOAD_MS){queueEnvelope({type:'SNAPSHOT',clientSessionId:session.id,startedAt:session.startedAt,snapshot});lastSnapshotUploadAt=Date.now()}
   logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} silently for post-game review.`);
 }
 
