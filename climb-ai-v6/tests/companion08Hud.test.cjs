@@ -38,7 +38,7 @@ test('build recommendation freezes from champ-select/static inputs',()=>{
   assert.ok(route.includes('buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items})'));
   assert.ok(main.includes("return state.phase==='CHAMP_SELECT'||needsRecordingPlanRecovery()"));
   assert.ok(main.includes("if(!state.teamPlan?.adaptiveBuild)return true"));
-  assert.ok(overlay.includes('STATIC FROM CHAMP SELECT'));
+  assert.ok(overlayHtml.includes('STATIC FROM CHAMP SELECT'));
   assert.equal(overlay.includes('currentGold'),false);
   assert.equal(overlay.includes('enemy items'),false);
 });
