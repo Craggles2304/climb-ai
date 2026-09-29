@@ -329,7 +329,9 @@ function draftSnapshot(context:any){
     championName:String(entry?.championName??'').trim()||null,
   });
   return{
+    capturedAt:String(context?.capturedAt??''),
     phase:String(context?.phase??'CHAMP_SELECT'),
+    localPlayerCellId:Number(context?.localPlayerCellId??-1),
     localChampionName:String(context?.localChampionName??'').trim()||null,
     localRole:String(context?.localRole??'').trim()||null,
     localLockedIn:Boolean(context?.localLockedIn),
