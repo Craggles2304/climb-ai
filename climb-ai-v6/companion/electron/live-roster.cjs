@@ -4,7 +4,7 @@ const https=require('node:https');
 const HOST='127.0.0.1';
 const PORT=2999;
 const PATH='/liveclientdata/allgamedata';
-const POLL_MS=3000;
+const POLL_MS=750;
 let timer=null;
 let inFlight=false;
 
