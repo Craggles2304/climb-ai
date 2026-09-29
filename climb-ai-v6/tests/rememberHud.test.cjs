@@ -339,7 +339,8 @@ test('Decision Pre-Mortem freezes evidence-backed personal risk windows into the
 
 test('Companion path navigation is allowlisted before opening the web Learning Journey',()=>{
   assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
-  assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
+  const allowed=main.match(/const safePaths=new Set\(\[([^\]]+)\]\)/)?.[1]||'';
+  for(const route of ['/live','/progress','/ilp'])assert.ok(allowed.includes(`'${route}'`));
   assert.ok(main.includes("safePaths.has(String(path||''))?String(path):'/live'"));
 });
 

@@ -2,6 +2,7 @@ const {app,BrowserWindow,Menu,Tray,ipcMain,shell,nativeImage,safeStorage,globalS
 const {spawn}=require('node:child_process');
 const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
+const {championRoster,championGuide}=require('./champion-hub-data.cjs');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
@@ -472,11 +473,13 @@ ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:t
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
-  const safePaths=new Set(['/live','/progress','/ilp']);
+  const safePaths=new Set(['/live','/progress','/ilp','/champions/main']);
   const target=safePaths.has(String(path||''))?String(path):'/live';
   shell.openExternal(`${currentConfig().webUrl}${target}`);
   return{ok:true,path:target};
 });
+ipcMain.handle('companion:champion-roster',()=>championRoster(currentConfig().webUrl));
+ipcMain.handle('companion:champion-guide',(_event,{champion,role,refresh}={})=>championGuide(currentConfig().webUrl,champion,role,globalThis.fetch,Boolean(refresh)));
 ipcMain.handle('companion:draft-coach',(_event,context)=>requestDraftCoach(context));
 ipcMain.handle('companion:intent-probe',(_event,context)=>answerIntentProbe(context));
 ipcMain.handle('companion:read-checkpoint',(_event,context)=>recordReadCheckpoint(context));

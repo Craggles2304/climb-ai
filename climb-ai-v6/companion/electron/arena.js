@@ -63,7 +63,7 @@
     const root=ensureIdleArena();
     const phase=String(state?.phase||'WAITING');
     const readyMatch=Boolean(state?.matchup&&['LOADING','READY','ERROR'].includes(state.matchup.status));
-    const show=Boolean(state?.paired&&!readyMatch);
+    const show=Boolean(state?.paired&&!readyMatch&&phase!=='WAITING');
     root.classList.toggle('hidden',!show);
     if(!show){document.body.classList.remove('broadcast-settings-open');return}
     const presets={
