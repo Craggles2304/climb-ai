@@ -205,6 +205,20 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
     {!loading&&error&&<div className="glass card dt2-empty">{error}</div>}
 
     {!loading&&!error&&twin&&<>
+      <div className="dt9-mission glass" aria-label="Your next game mission">
+        <div className="dt9-mission-top"><span>YOUR NEXT GAME</span><b>{learningContract?.state==='TRANSFER_TEST'?'TRANSFER TEST':learningContract?'ACTIVE MISSION':autonomous?.state==='COMPLETE'?'MAINTENANCE':'BUILDING'}</b></div>
+        <div className="dt9-loop" aria-label="Learning loop"><span>PLAY</span><i>→</i><span>MISSION</span><i>→</i><span>TEST</span><i>→</i><span>PROVE</span><i>→</i><span>LEVEL UP</span></div>
+        <h3>{learningContract?learningContract.objectiveLabel:autonomous?.state==='COMPLETE'?'Keep your skills sharp':'Play to build your first mission'}</h3>
+        <p className="dt9-rule">{learningContract&&currentLesson?currentLesson.gameRule:autonomous?.state==='COMPLETE'?'Your evidence-backed skills are graduated. A new mission appears only when a verified need emerges.':'OP CLIMB needs repeated, verified decisions before it can choose one skill for you.'}</p>
+        {learningContract&&<div className="dt9-mission-bottom">
+          <div><span>NEXT TEST</span><strong>{learningContract.state==='TRANSFER_TEST'?'Use the same principle in a new champion or situation':'Look for the decision window in your next game'}</strong></div>
+          <div><span>PROVE IT</span><strong>{learningContract.state==='TRANSFER_TEST'?'Repeated clean decisions in genuinely new conditions':'A clean decision when the moment actually occurs'}</strong></div>
+          <div><span>LEVEL UP</span><strong>{learningContract.state==='TRANSFER_TEST'?'Principle owned from verified transfer':'Earn local mastery, then test transfer'}</strong></div>
+        </div>}
+        <small>{learningContract?'Your pregame draft will lock one match-specific mission. If its decision window never appears, there is no pass or fail.':'No mission is invented from missing evidence.'}</small>
+      </div>
+      <details className="dt9-intelligence">
+        <summary>Explore your player model and evidence <span>DECISION TWIN INTELLIGENCE</span></summary>
       <div className={`dt2-identity glass ${twin.identity.status.toLowerCase()}`}>
         <div className="dt2-identity-main">
           <span>YOUR CURRENT PATTERN</span>
@@ -483,6 +497,7 @@ export function DecisionTwinCommandCenter({accountId}:{accountId:string}){
       </div>}
 
       <div className="dt2-policy">THE MODEL CHANGES WHEN YOU CHANGE · LOCAL MASTERY ≠ GENERALISATION · NO TRANSFER CREDIT WITHOUT A FROZEN NOVEL TEST</div>
+      </details>
     </>}
   </section>;
 }
