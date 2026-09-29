@@ -5,9 +5,9 @@ import fs from 'node:fs';
 test('Stage 8 has one canonical Free Plus Pro product story',()=>{
   const subscription=fs.readFileSync('lib/subscription.ts','utf8');
   const pricing=fs.readFileSync('app/pricing/page.tsx','utf8');
-  assert.match(subscription,/AUTONOMOUS CURRICULUM/);
-  assert.match(subscription,/DECISION TWIN/);
-  assert.match(pricing,/MODEL HOW YOU LEARN/);
+  assert.match(subscription,/CHOOSES WHAT YOU SHOULD LEARN NEXT/);
+  assert.match(subscription,/TESTS LEARNING IN NEW SITUATIONS/);
+  assert.match(pricing,/BUILD A COACH THAT ACTUALLY KNOWS YOU/);
 });
 
 test('Stripe billing is webhook-driven and keeps card handling off OP CLIMB',()=>{
@@ -37,7 +37,7 @@ test('Paid users manage plan changes through Stripe portal',()=>{
 test('PLUS draft intelligence does not consume or expose the PRO player model',()=>{
   const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
   assert.match(draft,/const proModel=hasTier\(subscriptionTier,'PRO'\)/);
-  assert.match(draft,/proModel\?context\.decisionTwin:undefined/);
-  assert.match(draft,/coachTwin:proModel\?context\.coachTwin:null/);
+  assert.match(draft,/proModel\?coachingContext\.decisionTwin:undefined/);
+  assert.match(draft,/coachTwin:proModel\?coachingContext\.coachTwin:null/);
   assert.match(draft,/autonomousCurriculum:proModel\?/);
 });

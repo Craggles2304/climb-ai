@@ -10,5 +10,5 @@ function task():ILPTask{return{id:'pro-reset',accountId:'acct',title:'Improve Re
 describe('PRO ILP authority',()=>{
  it('uses PRO metric scores as automatic ILP evidence',()=>{const result=adaptILP([task()],[match('a',70),match('b',80)]).tasks[0];expect(result.metricProgress).toBe(75);expect(result.gamesObserved).toBe(2);expect(result.successfulGames).toBe(0)});
  it('masters a PRO mission after three evidence-backed games clear the target',()=>{const result=adaptILP([task()],[match('a',90),match('b',88),match('c',92)]).tasks[0];expect(result.status).toBe('MASTERED');expect(result.successfulGames).toBe(3)});
- it('refills the active five from the next weakest PRO evidence before generic baselines',()=>{const seed=[task()];const result=adaptAndRefill(seed,[match('a',55)],'acct','JUNGLE').tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED');expect(result).toHaveLength(5);expect(result.some(t=>t.metric==='reset_quality')).toBe(true)});
+ it('refills only from available evidence and keeps the PRO mission active',()=>{const seed=[task()];const result=adaptAndRefill(seed,[match('a',55)],'acct','JUNGLE').tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED');expect(result.length).toBeGreaterThan(0);expect(result.length<=3).toBe(true);expect(result.some(t=>t.metric==='reset_quality')).toBe(true)});
 });

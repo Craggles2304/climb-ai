@@ -37,6 +37,9 @@ export default function Progress(){
   return <AppShell>
     <TrackView event="career_viewed" props={{games:matches.length,rank:active.rank}}/>
     <PageHead title="Progress" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+detail.tier+' VIEW '+detail.depth+'/10'}/>
+    {tier==='PRO'?<DecisionTwinCommandCenter accountId={active.id}/>:<ProMoatGate/>}
+    <details className="vf-progress-detail">
+      <summary>Explore your match trends and career history</summary>
 
     <section className="vf-progress-hero">
       <div className="vf-op-score" style={{'--score':Math.max(0,Math.min(100,score))+'%'} as React.CSSProperties}>
@@ -60,7 +63,7 @@ export default function Progress(){
     </section>
 
     <CareerDevelopmentMap accountId={active.id}/>
-    {tier==='PRO'?<DecisionTwinCommandCenter accountId={active.id}/>:<ProMoatGate/>}
     <LearningJourneyTimeline accountId={active.id}/>
+    </details>
   </AppShell>;
 }
