@@ -128,7 +128,7 @@ async function pollChampionPlan(){
       const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
       const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
       scheduleChampionPlanPoll(Math.max(nextPollDelay,botMissing?1600:(state.matchup?.status==='READY'?2000:1600)));
-    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(750);
+    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(Math.max(nextPollDelay,1600));
   }
 }
 

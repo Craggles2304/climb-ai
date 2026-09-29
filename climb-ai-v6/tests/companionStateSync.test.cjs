@@ -7,13 +7,23 @@ const desktop=fs.readFileSync('companion/electron/main.cjs','utf8');
 const statusRoute=fs.readFileSync('app/api/live/status/route.ts','utf8');
 const championPlanRoute=fs.readFileSync('app/api/live/champion-plan/route-core.ts','utf8');
 
-test('tracker publishes structured state transitions without recurring database heartbeats',()=>{
+test('tracker publishes state transitions and renews steady state heartbeats',()=>{
   assert.ok(runtime.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
   assert.ok(runtime.includes('emitTrackerState(next,message)'));
   assert.ok(runtime.includes('emitTrackerState(heartbeatState,heartbeatDetail)'));
   assert.match(runtime,/const RUNTIME_VERSION='\d{4}\.\d{2}\.\d{2}\.\d+';/);
   assert.ok(runtime.includes("let lastStatusSignature=''"));
-  assert.ok(runtime.includes("if(!force&&signature===lastStatusSignature)return;"));
+  assert.ok(runtime.includes('Date.now()-lastStatusUploadAt<HEARTBEAT_MS'));
+  assert.ok(runtime.includes('lastStatusUploadAt=Date.now()'));
+  assert.ok(statusRoute.includes('const STATUS_KEEPALIVE_MS=10_000'));
+});
+
+test('a missed draft can recover a full in-game plan from the live roster',()=>{
+  assert.ok(runtime.includes("clientPregameId:session.id,startedAt:session.startedAt,context"));
+  assert.ok(runtime.includes("type:'PREGAME_END',clientPregameId:finished.id"));
+  assert.ok(runtime.includes('await recoverInGamePlan(snapshot)'));
+  assert.ok(desktop.includes('scheduleChampionPlanPoll(Math.max(nextPollDelay,1600))'));
+  assert.ok(packageJson.build.extraResources.some(resource=>resource.to==='tracker/in-game-recovery.mjs'));
 });
 
 test('desktop consumes authoritative tracker state instead of relying only on prose logs',()=>{

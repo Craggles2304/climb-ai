@@ -3,6 +3,7 @@ import {execFile} from 'node:child_process';
 import {get as httpsGet} from 'node:https';
 import {existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
+import {recoveryPregameContext} from './in-game-recovery.mjs';
 
 const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
@@ -17,8 +18,8 @@ const PREGAME_END_AFTER_MISSES=2;
 const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8000));
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
-const HEARTBEAT_MS=5*60_000;
-const RUNTIME_VERSION='2026.09.29.2';
+const HEARTBEAT_MS=15_000;
+const RUNTIME_VERSION='2026.09.29.3';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
@@ -50,6 +51,7 @@ let droppedSnapshots=0;
 let lcuCredentials=null;
 let lcuCheckedAt=0;
 let lastStatusSignature='';
+let lastStatusUploadAt=0;
 let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
@@ -320,9 +322,9 @@ async function postStatus(force=false){
   };
   const signature=JSON.stringify(payload);
   emitTrackerState(heartbeatState,heartbeatDetail);
-  if(!force&&signature===lastStatusSignature)return;
+  if(!force&&signature===lastStatusSignature&&Date.now()-lastStatusUploadAt<HEARTBEAT_MS)return;
   const result=await postJson('/api/live/status',payload);
-  if(result.ok)lastStatusSignature=signature;
+  if(result.ok){lastStatusSignature=signature;lastStatusUploadAt=Date.now()}
 }
 
 function queueEnvelope(envelope){
@@ -528,6 +530,15 @@ function localPlayer(snapshot){
     ||players.find(player=>player.championName===snapshot?.active?.championName&&player.team===snapshot?.active?.team)
     ||null;
 }
+async function recoverInGamePlan(snapshot){
+  if(!session||session.recoveryUploaded||Date.now()-(session.lastRecoveryAttemptAt||0)<10_000)return;
+  const context=recoveryPregameContext(snapshot);
+  if(!context)return;
+  session.lastRecoveryAttemptAt=Date.now();
+  const result=await postJson('/api/live/pregame',{type:'PREGAME',clientPregameId:session.id,startedAt:session.startedAt,context});
+  if(result.ok){session.recoveryUploaded=true;console.log('OVERPOWERED Companion: in-game team plan recovered from Riot Live Client roster.')}
+  else if(result.retryable)console.warn(`OVERPOWERED Companion: in-game plan recovery deferred — ${result.detail}.`);
+}
 function snapshotSignal(snapshot){
   const me=localPlayer(snapshot);
   const latestKill=[...(snapshot?.events??[])].reverse().find(event=>event?.name==='ChampionKill');
@@ -586,6 +597,10 @@ async function startSession(snapshot){
 async function finishSession(reason){
   if(!session)return;
   const finished=session;
+  if(finished.recoveryUploaded){
+    const result=await postJson('/api/live/pregame',{type:'PREGAME_END',clientPregameId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
+    if(!result.ok&&result.retryable)console.warn(`OVERPOWERED Companion: in-game plan close deferred — ${result.detail}.`);
+  }
   if(finished.lastSnapshot){
     session=finished;
     recordLocalKeyframe(finished.lastSnapshot,true);
@@ -630,6 +645,7 @@ async function tick(){
   if(!session)await startSession(snapshot);
   session.misses=0;session.lastGameTime=snapshot.gameTime;
   recordLocalKeyframe(snapshot);
+  await recoverInGamePlan(snapshot);
   persistSession(snapshot);
   logState('RECORDING',`OVERPOWERED Companion: recording ${snapshot.active.championName||'League match'} locally for post-game review.`);
 }
