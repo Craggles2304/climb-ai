@@ -182,7 +182,7 @@ async function normalizePregame(data){
   const allyBans=Array.isArray(data?.bans?.myTeamBans)?data.bans.myTeamBans:[];
   const enemyBans=Array.isArray(data?.bans?.theirTeamBans)?data.bans.theirTeamBans:[];
   const actionChampionIds=pickActions.map(action=>int(action?.championId,0)).filter(v=>v>0);
-  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0))
+  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId??p?.selectedChampionId,0))
     .concat(actionChampionIds,allyBans.map(v=>int(v,0)),enemyBans.map(v=>int(v,0)))
     .filter(v=>v>0);
   await Promise.all([...new Set(ids)].map(id=>championName(id)));
@@ -190,7 +190,7 @@ async function normalizePregame(data){
   const latestPickAction=cellId=>[...pickActions].reverse().find(action=>int(action?.actorCellId,-1)===cellId&&int(action?.championId,0)>0)||null;
   const locked=cellId=>pickActions.some(action=>int(action?.actorCellId,-1)===cellId&&Boolean(action?.completed));
   const selectedChampionId=(raw,allowHover)=>{
-    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId,0);
+    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId??raw?.selectedChampionId,0);
     if(rawChampionId>0)return rawChampionId;
     const action=latestPickAction(cellId);
     if(!action)return 0;
