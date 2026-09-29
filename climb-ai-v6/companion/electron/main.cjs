@@ -3,12 +3,14 @@ const {spawn}=require('node:child_process');
 const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
 const {championRoster,championGuide}=require('./champion-hub-data.cjs');
+const {draftFromLocalContext,freshestDraft}=require('./live-draft.cjs');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
 const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
+const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
 let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
 let recentLogs=[];
@@ -70,7 +72,7 @@ function setState(patch){
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
-  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)){parseTrackerLine(clean,kind);return}
+  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)||clean.startsWith(DRAFT_CONTEXT_PREFIX)){parseTrackerLine(clean,kind);return}
   recentLogs.push({at:new Date().toISOString(),kind,line:clean});
   if(recentLogs.length>200)recentLogs=recentLogs.slice(-200);
   setState({lastLog:clean});parseTrackerLine(clean,kind);
@@ -86,14 +88,19 @@ async function pollChampionPlan(){
   if(championPlanInFlight||!canPollChampionPlan())return;
   const cfg=currentConfig();if(!cfg.token)return;
   championPlanInFlight=true;
+  let nextPollDelay=1600;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
   try{
     const response=await fetch(`${cfg.webUrl}/api/live/champion-plan`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
     const body=await response.json().catch(()=>({}));
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
-    if(body?.draft)setState({draft:body.draft});
+    if(response.status===429){
+      nextPollDelay=Math.max(1600,Math.min(60_000,(Number(response.headers.get('retry-after'))||3)*1000));
+      return;
+    }
+    if(body?.draft)setState({draft:freshestDraft(state.draft,body.draft)});
     if(response.ok&&!body?.ready){
-      if(state.phase==='CHAMP_SELECT')setState({draft:body?.draft||state.draft,matchup:null,teamPlan:null});
+      if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,body?.draft),matchup:null,teamPlan:null});
       return;
     }
     if(!response.ok||!body?.plan||!body?.champion)return;
@@ -102,8 +109,8 @@ async function pollChampionPlan(){
     const teamPlan=body.teamPlan||null;
     const locked=Boolean(body.locked);
     const source=body.recoveredFromEndedPregame?'PREGAME_RECOVERY':locked?'CHAMPION_LOCK':'CHAMPION_HOVER';
-    const fullOpponent=Boolean(state.matchup?.opponent&&['CHAMP_SELECT','IN_GAME'].includes(String(state.matchup?.source||'')));
-    if(fullOpponent){setState({teamPlan,draft:body.draft||state.draft});return}
+    const fullOpponent=Boolean(state.matchup?.opponent&&String(state.matchup?.champion||'').toLowerCase()===champion.toLowerCase()&&['CHAMP_SELECT','IN_GAME'].includes(String(state.matchup?.source||'')));
+    if(fullOpponent){setState({teamPlan,draft:freshestDraft(state.draft,body.draft)});return}
     const signature=`self|${champion}|${role}|${locked?'locked':'preview'}|${JSON.stringify(teamPlan?.ourTeam||[])}|${JSON.stringify(teamPlan?.theirTeam||[])}`.toLowerCase();
     if(signature!==matchupSignature||state.matchup?.status!=='READY'){
       matchupSignature=signature;
@@ -112,15 +119,15 @@ async function pollChampionPlan(){
         :locked
           ?`${champion} locked. Final plan ready; it will keep upgrading as enemy picks appear.`
           :`${champion} preview ready. Change your hover freely — lock in to freeze the final plan.`;
-      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source,plan:body.plan,error:null,provisional:!locked},teamPlan,draft:body.draft||state.draft,detail});
-    }else if(teamPlan)setState({teamPlan,draft:body.draft||state.draft});
+      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source,plan:body.plan,error:null,provisional:!locked},teamPlan,draft:freshestDraft(state.draft,body.draft),detail});
+    }else if(teamPlan)setState({teamPlan,draft:freshestDraft(state.draft,body.draft)});
   }catch{}
   finally{
     clearTimeout(timeout);championPlanInFlight=false;
     if(state.phase==='CHAMP_SELECT'){
       const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
       const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
-      scheduleChampionPlanPoll(botMissing?350:(state.matchup?.status==='READY'?500:250));
+      scheduleChampionPlanPoll(Math.max(nextPollDelay,botMissing?1600:(state.matchup?.status==='READY'?2000:1600)));
     }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(750);
   }
 }
@@ -261,6 +268,7 @@ async function reconcileTrackerStatus(){
 function parseTrackerLine(line,kind){
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
   if(line.startsWith(TRACKER_STATE_PREFIX)){try{applyTrackerState(JSON.parse(line.slice(TRACKER_STATE_PREFIX.length)))}catch{}return}
+  if(line.startsWith(DRAFT_CONTEXT_PREFIX)){try{if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,draftFromLocalContext(JSON.parse(line.slice(DRAFT_CONTEXT_PREFIX.length))))})}catch{}return}
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
   if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.'});

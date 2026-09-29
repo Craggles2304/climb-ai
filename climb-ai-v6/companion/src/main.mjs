@@ -18,7 +18,7 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=5*60_000;
-const RUNTIME_VERSION='2026.09.29.1';
+const RUNTIME_VERSION='2026.09.29.2';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
@@ -26,6 +26,7 @@ const READ_CHECKPOINT_FILE=TRACKER_HOME?join(TRACKER_HOME,'read-checkpoints.json
 const MARKED_MOMENTS_FILE=TRACKER_HOME?join(TRACKER_HOME,'marked-moments.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
+const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
 
 if(!TOKEN){
   console.error('OVERPOWERED Companion: OP_TRACKER_TOKEN is missing. Pair this PC from the Live Companion page first.');
@@ -37,6 +38,7 @@ let session=null;
 let pregame=null;
 let pregameMisses=0;
 let lastPregameSignature='';
+let lastLocalDraftSignature='';
 let lastPregameUploadAt=0;
 let lastMatchupSignature='';
 let running=true;
@@ -389,13 +391,17 @@ async function pollPregame(){
     const heartbeat=Date.now()-lastPregameUploadAt>=60_000;
     const detail=pregameDetail(context);
     lastLcuDetail=detail;
+    logState('CHAMP_SELECT',`OVERPOWERED Companion: ${detail}`);
+    if(signature!==lastLocalDraftSignature){
+      lastLocalDraftSignature=signature;
+      console.log(`${DRAFT_CONTEXT_PREFIX}${JSON.stringify(context)}`);
+    }
     if(signature!==lastPregameSignature||heartbeat){
       const result=await postJson('/api/live/pregame',{type:'PREGAME',clientPregameId:pregame.id,startedAt:pregame.startedAt,context});
       if(result.ok){lastPregameSignature=signature;lastPregameUploadAt=Date.now()}
       else if(result.retryable)console.warn(`OVERPOWERED Companion: champ-select upload deferred — ${result.detail}. Detection continues locally.`);
       emitTrackerState('CHAMP_SELECT',detail);
     }
-    logState('CHAMP_SELECT',`OVERPOWERED Companion: ${detail}`);
   }catch(err){
     if(err?.status===404){lastLcuDetected=true;lastChampSelectDetected=false;lastLcuDetail='League Client connected; waiting for champ select.'}
     else{lastLcuDetected=false;lastChampSelectDetected=false;lastLcuDetail=err?.message||'League Client local connection unavailable.'}
@@ -405,7 +411,7 @@ async function pollPregame(){
 
 async function finishPregame(reason,quiet=false){
   if(!pregame)return;
-  const finished=pregame;pregame=null;pregameMisses=0;lastPregameSignature='';lastPregameUploadAt=0;lastChampSelectDetected=false;
+  const finished=pregame;pregame=null;pregameMisses=0;lastPregameSignature='';lastLocalDraftSignature='';lastPregameUploadAt=0;lastChampSelectDetected=false;
   const result=await postJson('/api/live/pregame',{type:'PREGAME_END',clientPregameId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
   if(!result.ok&&result.retryable)console.warn(`OVERPOWERED Companion: champ-select close upload missed — ${result.detail}. The server will expire the live draft state automatically.`);
   if(!quiet)logState('WAITING',`OVERPOWERED Companion: ${reason}. Waiting for the match to load.`);
