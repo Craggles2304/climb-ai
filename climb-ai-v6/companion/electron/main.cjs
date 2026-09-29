@@ -11,8 +11,9 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null;
+let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
+let lastLocalChampSelectAt=0;
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null};
 
@@ -60,6 +61,8 @@ function setState(patch){
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
+  if(state.phase==='WAITING'&&previousPhase!=='WAITING')scheduleMissedReviewRecovery(4500);
+  else if(previousPhase==='WAITING'&&state.phase!=='WAITING')stopMissedReviewRecovery();
   if(enteringChampSelect){
     matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
   }else if(enteringRecording){
@@ -133,6 +136,11 @@ async function pollChampionPlan(){
 }
 
 function stopPostGameReviewPoll(){if(reviewPollTimer){clearTimeout(reviewPollTimer);reviewPollTimer=null}}
+function stopMissedReviewRecovery(){if(missedReviewTimer){clearTimeout(missedReviewTimer);missedReviewTimer=null}}
+function scheduleMissedReviewRecovery(delay=30_000){
+  if(missedReviewTimer||quitting||state.phase!=='WAITING')return;
+  missedReviewTimer=setTimeout(()=>{missedReviewTimer=null;void recoverLatestCompletedReview()},delay);
+}
 function schedulePostGameReviewPoll(delay=1800){stopPostGameReviewPoll();reviewPollTimer=setTimeout(()=>{reviewPollTimer=null;void pollPostGameReview()},delay)}
 function startPostGameReviewPoll(){reviewPollAttempts=0;stopPostGameReviewPoll();void pollPostGameReview()}
 function markReviewRendered(sessionId){
@@ -185,7 +193,7 @@ async function recoverLatestCompletedReview(){
   if(reviewPollInFlight||state.phase!=='WAITING')return;
   const cfg=currentConfig();if(!cfg.token)return;
   reviewPollInFlight=true;
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20_000);
   try{
     const response=await fetch(`${cfg.webUrl}/api/live/companion-review`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
     if(response.status===202)return;
@@ -199,7 +207,7 @@ async function recoverLatestCompletedReview(){
     if(age<0||age>8*60*60_000)return;
     await presentPostGameReview(review,'Recovered your latest completed match review.');
   }catch{}
-  finally{clearTimeout(timeout);reviewPollInFlight=false}
+  finally{clearTimeout(timeout);reviewPollInFlight=false;scheduleMissedReviewRecovery()}
 }
 
 async function pollPostGameReview(){
@@ -207,7 +215,7 @@ async function pollPostGameReview(){
   const cfg=currentConfig();if(!cfg.token)return;
   if(reviewPollAttempts>=40){stopPostGameReviewPoll();setState({detail:'Match saved. Open OP CLIMB for the full review if the short summary has not appeared yet.'});return}
   reviewPollAttempts+=1;reviewPollInFlight=true;
-  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),7000);
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),20_000);
   try{
     const response=await fetch(`${cfg.webUrl}/api/live/companion-review`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
     if(response.status===202){schedulePostGameReviewPoll();return}
@@ -225,9 +233,12 @@ function applyTrackerState(raw){
   if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
   if(next==='GAME_STARTING')return setState({phase:'RECORDING',detail:detail||'League match detected. Connecting live telemetry…'});
   if(next==='CHAMP_SELECT'&&origin==='SERVER'&&state.phase==='RECORDING')return;
-  if(next==='CHAMP_SELECT')return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
+  if(next==='CHAMP_SELECT'){
+    if(origin==='LOCAL')lastLocalChampSelectAt=Date.now();
+    return setState({phase:'CHAMP_SELECT',detail:detail||'Champ select detected. Reading the draft now — hover a champion for a preview.'});
+  }
   if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
-    if(origin==='SERVER'&&state.phase==='CHAMP_SELECT')return;
+    if(origin==='SERVER'&&state.phase==='CHAMP_SELECT'&&Date.now()-lastLocalChampSelectAt<15_000)return;
     if(state.phase==='RECORDING'){
       setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});
       startPostGameReviewPoll();return;
@@ -392,7 +403,7 @@ function bindTrackerStream(stream,kind){
   stream.on('end',()=>{if(buffer.trim())addLog(buffer,kind);buffer=''});
 }
 function stopTracker(){
-  stopChampionPlanPoll();stopPostGameReviewPoll();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
+  stopChampionPlanPoll();stopPostGameReviewPoll();stopMissedReviewRecovery();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
 }
 function startTracker(){
@@ -402,7 +413,6 @@ function startTracker(){
   tracker=spawn(process.execPath,[runtime],{env:{...process.env,ELECTRON_RUN_AS_NODE:'1',OP_WEB_URL:cfg.webUrl,OP_TRACKER_TOKEN:cfg.token},windowsHide:true,stdio:['ignore','pipe','pipe']});
   setState({phase:'WAITING',detail:'Companion is running. Waiting for League.',trackerRunning:true});
   scheduleTrackerStatusReconcile(900);
-  setTimeout(()=>{if(state.phase==='WAITING')void recoverLatestCompletedReview()},4500);
   bindTrackerStream(tracker.stdout,'info');
   bindTrackerStream(tracker.stderr,'error');
   tracker.on('error',err=>{addLog(`Tracker failed to start: ${err.message}`,'error');setState({phase:'ERROR',detail:'Tracker could not start.',trackerRunning:false})});

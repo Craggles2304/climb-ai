@@ -26,8 +26,9 @@ test('a review fetched by an older Companion can be recovered once by the render
   assert.ok(desktop.includes("sessionId===cfg.lastReviewRenderedSessionId"));
 });
 
-test('paired Companion performs a one-shot missed-review recovery after startup',()=>{
-  assert.ok(desktop.includes("setTimeout(()=>{if(state.phase==='WAITING')void recoverLatestCompletedReview()},4500)"));
+test('paired Companion keeps looking for a delayed missed review while waiting',()=>{
+  assert.ok(desktop.includes("scheduleMissedReviewRecovery(4500)"));
+  assert.ok(desktop.includes("finally{clearTimeout(timeout);reviewPollInFlight=false;scheduleMissedReviewRecovery()}"));
 });
 
 test('review endpoint exposes completion time so recovery only shows recent games',()=>{

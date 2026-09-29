@@ -31,8 +31,10 @@ test('desktop consumes authoritative tracker state instead of relying only on pr
   assert.ok(desktop.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
   assert.ok(desktop.includes('function applyTrackerState(raw)'));
   assert.ok(desktop.includes("if(next==='RECORDING')return setState({phase:'RECORDING'"));
-  assert.ok(desktop.includes("if(next==='CHAMP_SELECT')return setState({phase:'CHAMP_SELECT'"));
+  assert.ok(desktop.includes("if(next==='CHAMP_SELECT'){"));
+  assert.ok(desktop.includes("if(origin==='LOCAL')lastLocalChampSelectAt=Date.now()"));
   assert.ok(desktop.includes("if(next==='WAITING'||next==='LCU_UNAVAILABLE')"));
+  assert.ok(desktop.includes("Date.now()-lastLocalChampSelectAt<15_000"));
 });
 
 test('desktop self-heals match end when a prose end log is missed',()=>{

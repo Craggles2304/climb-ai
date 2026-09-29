@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
+import {authenticateTrackerToken,type TrackerDevice} from '@/lib/server/liveTrackerRepository';
 import {latestLiveRead} from '@/lib/server/liveReadRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {coachingLevelFor} from '@/lib/coachingLevel';
@@ -7,6 +7,7 @@ import {riotService} from '@/lib/services/riotService';
 import {riotEnabled} from '@/lib/riot/client';
 import {buildPostGameSections,type FightReview,type ReviewMatch} from '@/lib/postGameReview';
 import {reviewMarkedMoments} from '@/lib/markedMomentReview';
+import {isNewRecentRiotMatch,riotCompanionReview} from '@/lib/riot/companionReviewFallback';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -22,6 +23,47 @@ type RankChange={
   coachingLayerChanged:boolean;
 };
 
+const riotReviewCache=new Map<string,{at:number;review:ReturnType<typeof riotCompanionReview>|null}>();
+
+async function recentRiotReview(device:TrackerDevice,latest:any){
+  if(!device.riotAccountId||!riotEnabled())return null;
+  if(latest&&!['COMPLETE','ABORTED'].includes(String(latest.status))){
+    const lastSeen=Date.parse(String(latest.lastSeenAt||''));
+    if(Number.isFinite(lastSeen)&&Date.now()-lastSeen<120_000)return null;
+  }
+  const cached=riotReviewCache.get(device.id);
+  if(cached&&Date.now()-cached.at<30_000){
+    if(cached.review&&!isNewRecentRiotMatch(cached.review.endedAt,latest?.endedAt??null))return null;
+    return cached.review;
+  }
+  let review:ReturnType<typeof riotCompanionReview>|null=null;
+  try{
+    review=await (async()=>{
+      const db=getSupabaseAdmin();
+      if(!db)return null;
+      const {data:account,error}=await db.from('riot_accounts')
+        .select('id,region,puuid,rank_tier,rank_division')
+        .eq('id',device.riotAccountId).eq('user_id',device.userId).maybeSingle();
+      if(error)throw error;
+      if(!account?.puuid||!account.region)return null;
+      const ids=await riotService.getRecentMatches(account.puuid,account.region,{count:1});
+      const id=ids[0];
+      if(!id)return null;
+      const rank=[account.rank_tier,account.rank_division].filter(Boolean).join(' ')||undefined;
+      const details=await riotService.getMatchDetails(id,account.region,{riotAccountId:account.id,puuid:account.puuid,rank});
+      if(!isNewRecentRiotMatch(details.match.createdAt,latest?.endedAt??null))return null;
+      const activeStarted=latest&&!['COMPLETE','ABORTED'].includes(String(latest.status))?Date.parse(String(latest.startedAt||'')):NaN;
+      if(Number.isFinite(activeStarted)&&Date.parse(details.match.createdAt)<activeStarted)return null;
+      const playerRank=await resolvePlayerRank(device.userId,device.riotAccountId);
+      const coach=coachingLevelFor(playerRank);
+      return riotCompanionReview(id,details,{rank:playerRank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints});
+    })();
+  }catch(error){console.warn('[companion-review] Riot fallback unavailable',error)}
+  riotReviewCache.set(device.id,{at:Date.now(),review});
+  if(riotReviewCache.size>500)riotReviewCache.clear();
+  return review;
+}
+
 export async function GET(req:NextRequest){
   const auth=req.headers.get('authorization')??'';
   const token=/^Bearer\s+(.+)$/i.exec(auth.trim())?.[1]?.trim();
@@ -30,6 +72,8 @@ export async function GET(req:NextRequest){
   if(!device)return NextResponse.json({ok:false,error:'Tracker token is invalid or revoked.'},{status:401});
 
   const latest:any=await latestLiveRead(device.userId,device.accountKey,{lean:true});
+  const riotReview=await recentRiotReview(device,latest);
+  if(riotReview)return NextResponse.json({ok:true,ready:true,review:riotReview});
   if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
 
   const rankChange:RankChange|null=null;
