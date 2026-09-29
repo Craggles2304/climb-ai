@@ -167,8 +167,13 @@ function ensureQuietMode(){
       <span class="quiet-live"><i></i> RECORDING</span>
     </div>
     <div class="quiet-focus"><span>WHAT OP CLIMB IS DOING</span><strong id="quietFocus">No live instructions. OP CLIMB is recording the match so your missions can be scored after the game.</strong></div>
+    <div class="quiet-mark"><button id="markMoment" class="primary">MARK THIS MOMENT</button><span>Or press Ctrl+Shift+M during a match.</span><small id="markMomentResult" role="status"></small></div>
     <p class="quiet-boundary">Tracking only. No reactive shotcalling, no live performance grading and no new tactical advice during the match. Coaching resumes after the game.</p>`;
   $('status').after(section);
+  section.querySelector('#markMoment')?.addEventListener('click',async()=>{
+    const result=await window.opCompanion.markMoment();
+    $('markMomentResult').textContent=result?.ok?'Moment marked for your post-game review.':result?.error||'Could not mark this moment.';
+  });
   return section;
 }
 
