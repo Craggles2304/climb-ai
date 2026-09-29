@@ -181,20 +181,22 @@ async function normalizePregame(data){
   const pickActions=actions.filter(action=>text(action?.type).toLowerCase()==='pick');
   const allyBans=Array.isArray(data?.bans?.myTeamBans)?data.bans.myTeamBans:[];
   const enemyBans=Array.isArray(data?.bans?.theirTeamBans)?data.bans.theirTeamBans:[];
-  const actionChampionIds=pickActions.map(action=>int(action?.championId,0)).filter(v=>v>0);
-  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0))
+  const actionChampionIds=pickActions.map(action=>int(action?.championId,0)||int(action?.selectedChampionId,0)).filter(v=>v>0);
+  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0)||int(p?.selectedChampionId,0))
     .concat(actionChampionIds,allyBans.map(v=>int(v,0)),enemyBans.map(v=>int(v,0)))
     .filter(v=>v>0);
   await Promise.all([...new Set(ids)].map(id=>championName(id)));
 
-  const latestPickAction=cellId=>[...pickActions].reverse().find(action=>int(action?.actorCellId,-1)===cellId&&int(action?.championId,0)>0)||null;
-  const locked=cellId=>pickActions.some(action=>int(action?.actorCellId,-1)===cellId&&Boolean(action?.completed));
+  const actionChampionId=action=>int(action?.championId,0)||int(action?.selectedChampionId,0);
+  const actionLocked=action=>Boolean(action?.completed||action?.isCompleted||action?.lockedIn||action?.selectionState==='LOCKED');
+  const latestPickAction=cellId=>[...pickActions].reverse().find(action=>int(action?.actorCellId,-1)===cellId&&actionChampionId(action)>0)||null;
+  const locked=cellId=>pickActions.some(action=>int(action?.actorCellId,-1)===cellId&&actionLocked(action));
   const selectedChampionId=(raw,allowHover)=>{
-    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId,0);
+    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId,0)||int(raw?.selectedChampionId,0);
     if(rawChampionId>0)return rawChampionId;
     const action=latestPickAction(cellId);
     if(!action)return 0;
-    if(Boolean(action?.completed)||allowHover)return int(action?.championId,0);
+    if(actionLocked(action)||allowHover)return actionChampionId(action);
     return 0;
   };
   const mapPick=(raw,allowHover)=>{
@@ -706,3 +708,4 @@ const text=value=>typeof value==='string'?value.trim():'';
 const num=(value,fallback)=>Number.isFinite(Number(value))?Number(value):fallback;
 const int=(value,fallback)=>Math.max(fallback<0?-1:0,Math.round(num(value,fallback)));
 const nullable=value=>Number.isFinite(Number(value))?Number(value):null;
+
