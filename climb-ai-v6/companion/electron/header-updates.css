@@ -1,0 +1,5 @@
+.header-tools{display:flex;align-items:center;gap:10px;margin-left:auto}
+.brand .header-updates{flex:none;min-height:32px;padding:8px 12px;border:1px solid rgba(86,217,184,.36);border-radius:0;background:#11191e;color:#75dfbc;font:700 9px 'IBM Plex Mono',monospace;letter-spacing:.08em;white-space:nowrap}
+.brand .header-updates.needs-update{border-color:#b6f66b;background:rgba(182,246,107,.1);color:#b6f66b}
+.brand .header-updates:hover{border-color:#b6f66b;color:#b6f66b}
+@media(max-width:600px){.header-tools{gap:0}.brand .header-updates{font-size:8px;padding:7px 9px}}
