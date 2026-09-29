@@ -76,7 +76,7 @@ function addLog(line,kind='info'){
 }
 
 function stopChampionPlanPoll(){if(championPlanTimer){clearTimeout(championPlanTimer);championPlanTimer=null}}
-function scheduleChampionPlanPoll(delay=2200){
+function scheduleChampionPlanPoll(delay=250){
   stopChampionPlanPoll();if(!canPollChampionPlan())return;
   championPlanTimer=setTimeout(()=>{championPlanTimer=null;void pollChampionPlan()},delay);
 }
@@ -119,8 +119,8 @@ async function pollChampionPlan(){
     if(state.phase==='CHAMP_SELECT'){
       const role=normalizedRole(state.matchup?.role||state.matchup?.plan?.role);
       const botMissing=(role==='ADC'||role==='SUPPORT')&&!state.teamPlan?.botLane;
-      scheduleChampionPlanPoll(botMissing?1200:(state.matchup?.status==='READY'?3000:1500));
-    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(2200);
+      scheduleChampionPlanPoll(botMissing?350:(state.matchup?.status==='READY'?500:250));
+    }else if(needsRecordingPlanRecovery())scheduleChampionPlanPoll(750);
   }
 }
 
@@ -232,7 +232,7 @@ function applyTrackerState(raw){
 function stopTrackerStatusReconcile(){
   if(trackerStatusTimer){clearTimeout(trackerStatusTimer);trackerStatusTimer=null}
 }
-function scheduleTrackerStatusReconcile(delay=3500){
+function scheduleTrackerStatusReconcile(delay=900){
   stopTrackerStatusReconcile();
   if(quitting||!paired()||!tracker||tracker.killed)return;
   trackerStatusTimer=setTimeout(()=>{trackerStatusTimer=null;void reconcileTrackerStatus()},delay);
