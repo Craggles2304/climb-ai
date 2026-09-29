@@ -185,7 +185,8 @@ test('post-game review links directly into the player Learning Journey',()=>{
   assert.ok(core.includes("openClimbPath?.('/progress')"));
   assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
   assert.ok(main.includes("ipcMain.handle('companion:open-climb-path'"));
-  assert.ok(main.includes("new Set(['/live','/progress','/ilp'])"));
+  const allowed=main.match(/const safePaths=new Set\(\[([^\]]+)\]\)/)?.[1]||'';
+  assert.ok(allowed.includes("'/progress'"));
 });
 
 

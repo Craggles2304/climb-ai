@@ -12,6 +12,7 @@
 <link rel="stylesheet" href="updates.css">
 <link rel="stylesheet" href="arena.css">
 <link rel="stylesheet" href="brand-sync.css">
+<link rel="stylesheet" href="champion-hub.css">
 </head>
 <body>
 <main class="shell">
@@ -40,6 +41,33 @@
     <div class="status-bottom">
       <div class="status-metrics"><span>PC <b>Connected</b></span><span>Tracker <b id="trackerState">Starting</b></span><span>Mode <b id="modeState">Waiting</b></span></div>
       <div class="status-actions"><button id="openClimb" class="ghost">OPEN OP CLIMB</button><button id="restart" class="ghost">RESTART</button><button id="showLogs" class="ghost">DIAGNOSTICS</button></div>
+    </div>
+  </section>
+
+  <section id="championHub" class="champion-hub hidden" aria-label="Your main champion">
+    <div class="hub-heading">
+      <div><span class="hub-kicker">YOUR CHAMPION · BETWEEN GAMES</span><h2>Know your pick before you queue.</h2><p>Choose a champion to keep its current setup and simple play plan here until champion select starts.</p></div>
+      <span class="hub-ready"><i></i> MATCH DETECTION ARMED</span>
+    </div>
+    <div class="hub-picker">
+      <label><span>CHAMPION</span><input id="hubChampion" list="hubChampionList" type="text" maxlength="32" placeholder="Search any champion…" autocomplete="off"><datalist id="hubChampionList"></datalist></label>
+      <label><span>ROLE</span><select id="hubRole"><option value="TOP">TOP</option><option value="JUNGLE">JUNGLE</option><option value="MID">MID</option><option value="ADC">ADC</option><option value="SUPPORT">SUPPORT</option></select></label>
+      <button id="hubChoose" class="primary" type="button">SET MY CHAMPION</button>
+    </div>
+    <p id="hubNotice" class="hub-notice" role="status">Choose a champion to load your page.</p>
+    <div id="hubContent" class="hidden">
+      <div class="hub-hero"><img id="hubSplash" alt="" aria-hidden="true"><div class="hub-hero-shade"></div><div class="hub-hero-copy"><span id="hubPatch">CURRENT PATCH</span><h3 id="hubName">CHAMPION</h3><p id="hubIdentity"></p></div><button id="hubRefresh" type="button">REFRESH DATA</button></div>
+      <div class="hub-cards">
+        <article class="hub-card hub-runes"><span>RUNES FOR THIS ROLE</span><div id="hubRunes" class="hub-icons"></div><small id="hubRuneSource"></small></article>
+        <article class="hub-card"><span>SUMMONERS + START</span><div id="hubSummoners" class="hub-icons"></div><div id="hubStarters" class="hub-icons"></div></article>
+        <article class="hub-card hub-skill"><span>SKILL PRIORITY</span><strong id="hubSkills">—</strong><small id="hubSkillNote"></small></article>
+      </div>
+      <section class="hub-build"><div class="hub-section-heading"><div><span>BUILD</span><h3>Items to plan around</h3></div><small id="hubBuildSource"></small></div><div id="hubBuildItems" class="hub-build-items"></div><p id="hubBuildNote"></p></section>
+      <div class="hub-bottom">
+        <section class="hub-panel"><div class="hub-section-heading"><div><span>PLAY YOUR CHAMPION</span><h3>Simple lane plan</h3></div></div><ol id="hubLanePlan"></ol></section>
+        <section class="hub-panel"><div class="hub-section-heading"><div><span>POWER SPIKES</span><h3>When your tools change</h3></div></div><div id="hubSpikes"></div></section>
+      </div>
+      <div class="hub-footer"><span>This is your champion setup. The enemy-team build and team victory plan replace it when champion select starts.</span><button id="hubOpenWeb" type="button">OPEN FULL CHAMPION PAGE ↗</button></div>
     </div>
   </section>
 
@@ -245,6 +273,7 @@
 </main>
 <script src="renderer.js"></script>
 <script src="arena.js"></script>
+<script src="champion-hub.js"></script>
 <script src="review-v2.js"></script>
 </body>
 </html>

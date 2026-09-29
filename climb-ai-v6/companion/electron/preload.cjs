@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('opCompanion',{
   answerIntentProbe:(context)=>ipcRenderer.invoke('companion:intent-probe',context),
   recordReadCheckpoint:(context)=>ipcRenderer.invoke('companion:read-checkpoint',context),
   markMoment:()=>ipcRenderer.invoke('companion:mark-moment'),
+  getChampionRoster:()=>ipcRenderer.invoke('companion:champion-roster'),
+  getChampionGuide:(selection)=>ipcRenderer.invoke('companion:champion-guide',selection),
   onState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:state',listener);return()=>ipcRenderer.removeListener('companion:state',listener)},
   onUpdateState:(handler)=>{const listener=(_event,state)=>handler(state);ipcRenderer.on('companion:update-state',listener);return()=>ipcRenderer.removeListener('companion:update-state',listener)}
 });
