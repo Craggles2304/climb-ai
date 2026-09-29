@@ -400,7 +400,11 @@ function renderPostGameReview(review,phase){
   if(activeCoachLevel.depth>=2&&match.kda)bits.push(`${match.kda} KDA`);
   if(activeCoachLevel.depth>=4&&Number.isFinite(match.csPerMin))bits.push(`${match.csPerMin} CS/min`);
   $('simpleReviewMatch').textContent=bits.filter(Boolean).join(' · ');
-  $('simpleReviewTag').textContent=`${activeCoachLevel.tier} COACH · ${review.partial?'PARTIAL':'POST-GAME'}`;
+  $('simpleReviewTag').textContent=`${activeCoachLevel.tier} COACH · ${review.source==='RIOT_MATCH'?'RIOT MATCH':review.partial?'PARTIAL':'POST-GAME'}`;
+  const intro=section.querySelector('.coach-review-intro');
+  if(intro)intro.textContent=review.source==='RIOT_MATCH'
+    ?'Riot match evidence is available. Local Companion decision recording was missed, so this is a limited review.'
+    :'One thing that held. One thing to fix. One rule to carry into the next game.';
   renderReviewList('simpleGood',review.good,'✓');
   renderReviewList('simpleCritical',review.critical,'!');
   $('simpleNextTitle').textContent=review.nextFocus?.title||'NEXT GAME';
