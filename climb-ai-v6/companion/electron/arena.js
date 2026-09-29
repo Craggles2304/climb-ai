@@ -54,8 +54,7 @@
       </div>`;
     const status=$('status');status?.insertAdjacentElement('afterend',root);
     $('idleOpenClimb')?.addEventListener('click',()=>window.opCompanion?.openClimb?.());
-    $('idleSettings')?.addEventListener('click',()=>document.body.classList.toggle('broadcast-settings-open'));
-    const settings=$('settings');if(settings)settings.classList.add('broadcast-settings');
+    $('idleSettings')?.addEventListener('click',()=>$('headerUpdates')?.click());
     return root;
   }
 
@@ -65,7 +64,7 @@
     const readyMatch=Boolean(state?.matchup&&['LOADING','READY','ERROR'].includes(state.matchup.status));
     const show=Boolean(state?.paired&&!readyMatch&&phase!=='WAITING');
     root.classList.toggle('hidden',!show);
-    if(!show){document.body.classList.remove('broadcast-settings-open');return}
+    if(!show)return;
     const presets={
       WAITING:{signal:'SYSTEM ARMED',kicker:'QUEUE STATE // STANDBY',title:'QUEUE UP. LOCK IN. CLIMB.',copy:'Champ select detection is armed. Lock your champion and the analyst desk will take over with your power spikes, lane win condition, 2v2 plan and teamfight job.',next:'CHAMP SELECT → CHAMPION LOCK',riot:'WAITING FOR LEAGUE'},
       CHAMP_SELECT:{signal:'DRAFT SIGNAL ACQUIRED',kicker:'CHAMP SELECT // LIVE',title:'LOCK YOUR CHAMPION.',copy:'Draft is detected. As soon as your champion locks, OP CLIMB deploys your personal power curve first, then enriches it as the enemy lane and full composition resolve.',next:'YOUR LOCK-IN → PREGAME BRIEFING',riot:'CHAMP SELECT LIVE'},

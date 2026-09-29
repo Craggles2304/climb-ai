@@ -105,40 +105,20 @@ function render(state){
   const rows=safeArray(current.logs);
   $('logs').textContent=rows.length?rows.map(row=>`[${new Date(row.at).toLocaleTimeString()}] ${row.line}`).join('\n'):'No tracker activity yet.';
 
-  ensureSettingsToggle();
   syncSettingsVisibility();
-}
-
-function ensureSettingsToggle(){
-  const status=$('status');
-  if(!status||$('simpleSettingsToggle'))return;
-  const row=document.createElement('div');
-  row.id='simpleSettingsRow';
-  row.style.cssText='display:flex;justify-content:flex-end;margin-top:12px';
-  const button=document.createElement('button');
-  button.id='simpleSettingsToggle';
-  button.className='ghost';
-  button.textContent='SETTINGS';
-  button.style.cssText='font-size:10px;min-height:32px;padding:7px 11px;opacity:.72';
-  button.addEventListener('click',()=>{settingsOpen=!settingsOpen;syncSettingsVisibility()});
-  row.appendChild(button);
-  status.appendChild(row);
 }
 
 function syncSettingsVisibility(){
   const settings=$('settings');
-  const toggle=$('simpleSettingsToggle');
   if(!settings)return;
-  const phase=String(current?.phase||'WAITING');
-  const paired=Boolean(current?.paired);
-  const updateNeedsAction=['AVAILABLE','READY'].includes(String(updateState?.status||''));
-  const canOpen=['WAITING','STARTING'].includes(phase);
-  const visible=paired&&(updateNeedsAction||(canOpen&&settingsOpen));
-  setHidden(settings,!visible);
-  if(toggle){
-    toggle.style.display=paired&&canOpen&&!updateNeedsAction?'':'none';
-    toggle.textContent=settingsOpen?'HIDE SETTINGS':'SETTINGS';
-  }
+  setHidden(settings,!settingsOpen);
+  const button=$('headerUpdates');
+  if(!button)return;
+  button.setAttribute('aria-expanded',String(settingsOpen));
+  const status=String(updateState?.status||'');
+  const needsUpdate=['AVAILABLE','DOWNLOADING','READY'].includes(status);
+  button.classList.toggle('needs-update',needsUpdate);
+  button.textContent=status==='READY'?'UPDATE READY':status==='AVAILABLE'?'UPDATE AVAILABLE':status==='DOWNLOADING'?'DOWNLOADING UPDATE':settingsOpen?'CLOSE SETTINGS':'UPDATES & SETTINGS';
 }
 
 
@@ -540,5 +520,6 @@ bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());
 bind('installUpdate','click',async()=>{const result=await window.opCompanion.installUpdate(current?.phase||'');if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error});
 bind('showLogs','click',()=>{diagnosticsOpen=!diagnosticsOpen;setHidden($('logs'),!diagnosticsOpen);$('showLogs').textContent=diagnosticsOpen?'HIDE DIAGNOSTICS':'DIAGNOSTICS'});
+bind('headerUpdates','click',()=>{settingsOpen=!settingsOpen;syncSettingsVisibility();if(settingsOpen)$('settings')?.scrollIntoView({behavior:'smooth',block:'start'})});
 
 boot();
