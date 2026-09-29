@@ -80,7 +80,8 @@ jobs:
             $installDir = $installedExe.Directory.FullName
             $requiredPackagedFiles = @(
               (Join-Path $installDir 'resources\app.asar'),
-              (Join-Path $installDir 'resources\tracker\main.mjs')
+              (Join-Path $installDir 'resources\tracker\main.mjs'),
+              (Join-Path $installDir 'resources\tracker\in-game-recovery.mjs')
             )
             foreach ($file in $requiredPackagedFiles) {
               if (-not (Test-Path $file)) { throw "Packaged runtime is missing: $file" }

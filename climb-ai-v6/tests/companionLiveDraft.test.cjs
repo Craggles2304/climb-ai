@@ -30,4 +30,6 @@ test('local tracker emits the draft before waiting for a network upload',()=>{
   assert.ok(emit>0&&upload>emit);
   assert.ok(desktop.includes("line.startsWith(DRAFT_CONTEXT_PREFIX)"));
   assert.ok(desktop.includes("response.status===429"));
+  assert.ok(tracker.includes('pregameUpload=(async()=>{'));
+  assert.ok(tracker.includes('if(pregameUpload)await pregameUpload'));
 });

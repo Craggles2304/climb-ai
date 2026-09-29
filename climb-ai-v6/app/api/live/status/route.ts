@@ -7,7 +7,7 @@ import {getCurrentUser} from '@/lib/supabase/server';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
 
-const STATUS_KEEPALIVE_MS=5*60_000;
+const STATUS_KEEPALIVE_MS=10_000;
 const statusWriteCache=new Map<string,{signature:string;at:number}>();
 
 const heartbeatSchema=z.object({
