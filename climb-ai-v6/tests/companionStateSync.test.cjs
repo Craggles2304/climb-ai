@@ -15,6 +15,7 @@ test('tracker publishes state transitions and renews steady state heartbeats',()
   assert.ok(runtime.includes("let lastStatusSignature=''"));
   assert.ok(runtime.includes('Date.now()-lastStatusUploadAt<HEARTBEAT_MS'));
   assert.ok(runtime.includes('lastStatusUploadAt=Date.now()'));
+  assert.ok(runtime.includes('void postStatus().catch(()=>{})'));
   assert.ok(statusRoute.includes('const STATUS_KEEPALIVE_MS=10_000'));
 });
 

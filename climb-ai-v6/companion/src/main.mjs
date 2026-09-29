@@ -41,6 +41,7 @@ let pregameMisses=0;
 let lastPregameSignature='';
 let lastLocalDraftSignature='';
 let lastPregameUploadAt=0;
+let pregameUpload=null;
 let lastMatchupSignature='';
 let running=true;
 let state='STARTING';
@@ -52,6 +53,7 @@ let lcuCredentials=null;
 let lcuCheckedAt=0;
 let lastStatusSignature='';
 let lastStatusUploadAt=0;
+let statusUpload=null;
 let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
@@ -322,9 +324,13 @@ async function postStatus(force=false){
   };
   const signature=JSON.stringify(payload);
   emitTrackerState(heartbeatState,heartbeatDetail);
+  if(statusUpload){if(force)await statusUpload;else return}
   if(!force&&signature===lastStatusSignature&&Date.now()-lastStatusUploadAt<HEARTBEAT_MS)return;
-  const result=await postJson('/api/live/status',payload);
-  if(result.ok){lastStatusSignature=signature;lastStatusUploadAt=Date.now()}
+  statusUpload=postJson('/api/live/status',payload);
+  try{
+    const result=await statusUpload;
+    if(result.ok){lastStatusSignature=signature;lastStatusUploadAt=Date.now()}
+  }finally{statusUpload=null}
 }
 
 function queueEnvelope(envelope){
@@ -398,10 +404,13 @@ async function pollPregame(){
       lastLocalDraftSignature=signature;
       console.log(`${DRAFT_CONTEXT_PREFIX}${JSON.stringify(context)}`);
     }
-    if(signature!==lastPregameSignature||heartbeat){
-      const result=await postJson('/api/live/pregame',{type:'PREGAME',clientPregameId:pregame.id,startedAt:pregame.startedAt,context});
-      if(result.ok){lastPregameSignature=signature;lastPregameUploadAt=Date.now()}
-      else if(result.retryable)console.warn(`OVERPOWERED Companion: champ-select upload deferred — ${result.detail}. Detection continues locally.`);
+    if(!pregameUpload&&(signature!==lastPregameSignature||heartbeat)){
+      const draft=pregame;
+      pregameUpload=(async()=>{
+        const result=await postJson('/api/live/pregame',{type:'PREGAME',clientPregameId:draft.id,startedAt:draft.startedAt,context});
+        if(result.ok){lastPregameSignature=signature;lastPregameUploadAt=Date.now()}
+        else if(result.retryable)console.warn(`OVERPOWERED Companion: champ-select upload deferred — ${result.detail}. Detection continues locally.`);
+      })().finally(()=>{pregameUpload=null});
       emitTrackerState('CHAMP_SELECT',detail);
     }
   }catch(err){
@@ -413,6 +422,7 @@ async function pollPregame(){
 
 async function finishPregame(reason,quiet=false){
   if(!pregame)return;
+  if(pregameUpload)await pregameUpload;
   const finished=pregame;pregame=null;pregameMisses=0;lastPregameSignature='';lastLocalDraftSignature='';lastPregameUploadAt=0;lastChampSelectDetected=false;
   const result=await postJson('/api/live/pregame',{type:'PREGAME_END',clientPregameId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
   if(!result.ok&&result.retryable)console.warn(`OVERPOWERED Companion: champ-select close upload missed — ${result.detail}. The server will expire the live draft state automatically.`);
@@ -654,7 +664,7 @@ async function loop(){
   while(running){
     try{await pollPregame()}catch(err){lastLcuDetail=err?.message||'Champ-select detector error';console.warn(`OVERPOWERED Companion: champ-select detector recovered — ${lastLcuDetail}`)}
     try{await tick()}catch(err){console.warn(`OVERPOWERED Companion: recorder loop recovered from an error — ${err?.message||err}`)}
-    try{await postStatus()}catch{}
+    void postStatus().catch(()=>{});
     const delay=pregame?CHAMP_SELECT_POLL_MS:(lastGameflowPhase==='InProgress'||lastGameflowPhase==='Reconnect'?POLL_MS:Math.min(POLL_MS,750));
     await new Promise(resolve=>setTimeout(resolve,delay));
   }
