@@ -7,7 +7,9 @@ import {dirname,join} from 'node:path';
 const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
 const TOKEN=process.env.OP_TRACKER_TOKEN||process.env.CLIMB_TRACKER_TOKEN||'';
-const POLL_MS=Math.max(3000,Number(process.env.OP_POLL_MS||5000));
+const POLL_MS=Math.max(500,Number(process.env.OP_POLL_MS||750));
+const CHAMP_SELECT_POLL_MS=Math.max(150,Number(process.env.OP_CHAMP_SELECT_POLL_MS||250));
+const GAMEFLOW_POLL_MS=Math.max(300,Number(process.env.OP_GAMEFLOW_POLL_MS||500));
 const LOCAL_KEYFRAME_SECONDS=180;
 const MAX_LOCAL_KEYFRAMES=12;
 const END_AFTER_MISSES=3;
@@ -16,7 +18,7 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=5*60_000;
-const RUNTIME_VERSION='2026.09.27.2';
+const RUNTIME_VERSION='2026.09.29.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
@@ -49,6 +51,8 @@ let lastStatusSignature='';
 let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
+let lastGameflowPhase='';
+let lastGameflowCheckedAt=0;
 const championNames=new Map();
 
 function emitTrackerState(next,detail){
@@ -351,8 +355,30 @@ function scheduleUploadRetry(){
   uploadRetryTimer=setTimeout(()=>{uploadRetryTimer=null;void flushUploadQueue()},UPLOAD_RETRY_MS);
 }
 
+async function pollGameflow(force=false){
+  if(!force&&Date.now()-lastGameflowCheckedAt<GAMEFLOW_POLL_MS)return lastGameflowPhase;
+  lastGameflowCheckedAt=Date.now();
+  try{
+    const phase=text(await lcuJson('/lol-gameflow/v1/gameflow-phase'));
+    lastGameflowPhase=phase;
+    lastLcuDetected=true;
+    if(phase==='InProgress'||phase==='Reconnect'){
+      lastLcuDetail='League match is active. Connecting live telemetry…';
+      if(!session)emitTrackerState('GAME_STARTING',lastLcuDetail);
+    }else if(phase==='ChampSelect'){
+      lastChampSelectDetected=true;
+    }
+    return phase;
+  }catch(err){
+    if(err?.status!==404)lastLcuDetail=err?.message||'League Client local connection unavailable.';
+    return lastGameflowPhase;
+  }
+}
+
 async function pollPregame(){
   if(session){lastChampSelectDetected=false;return}
+  const gameflow=await pollGameflow();
+  if(gameflow==='InProgress'||gameflow==='Reconnect'){lastChampSelectDetected=false;return}
   try{
     const data=await lcuJson('/lol-champ-select/v1/session');
     lastLcuDetected=true;lastChampSelectDetected=true;lastLcuDetail='League Client connected and champ select detected.';pregameMisses=0;
@@ -578,11 +604,17 @@ async function finishSession(reason){
 }
 
 async function tick(){
+  const gameflow=await pollGameflow();
   let data;
   try{data=await localGameData()}
   catch{
-    if(session){session.misses+=1;if(session.misses>=END_AFTER_MISSES)await finishSession('League game ended')}
-    else if(!pregame)logState('WAITING','OVERPOWERED Companion: connected. Waiting for League or champ select.');
+    if(session){
+      session.misses+=1;
+      if(session.misses>=END_AFTER_MISSES&&gameflow!=='InProgress'&&gameflow!=='Reconnect')await finishSession('League game ended');
+      else if(gameflow==='InProgress'||gameflow==='Reconnect')emitTrackerState('RECORDING','Match is active. Live Client telemetry is reconnecting…');
+    }else if(gameflow==='InProgress'||gameflow==='Reconnect'){
+      emitTrackerState('GAME_STARTING','League reports an active match. Waiting for Live Client telemetry…');
+    }else if(!pregame)logState('WAITING','OVERPOWERED Companion: connected. Waiting for League or champ select.');
     return;
   }
   lastLcuDetected=true;
@@ -601,7 +633,8 @@ async function loop(){
     try{await pollPregame()}catch(err){lastLcuDetail=err?.message||'Champ-select detector error';console.warn(`OVERPOWERED Companion: champ-select detector recovered — ${lastLcuDetail}`)}
     try{await tick()}catch(err){console.warn(`OVERPOWERED Companion: recorder loop recovered from an error — ${err?.message||err}`)}
     try{await postStatus()}catch{}
-    await new Promise(resolve=>setTimeout(resolve,POLL_MS));
+    const delay=pregame?CHAMP_SELECT_POLL_MS:(lastGameflowPhase==='InProgress'||lastGameflowPhase==='Reconnect'?POLL_MS:Math.min(POLL_MS,750));
+    await new Promise(resolve=>setTimeout(resolve,delay));
   }
 }
 
