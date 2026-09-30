@@ -190,20 +190,24 @@ function renderAdaptiveBuild(team){
   const read=document.getElementById('opAdaptiveBuildRead');
   const build=team?.adaptiveBuild||team?.rememberPlan?.adaptiveBuild||null;
   if(!root||!grid){return false}
-  const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
-  root.classList.toggle('hidden',items.length<2);
-  if(items.length<2)return false;
+  // The planner returns a full path: two core items, one item for this enemy
+  // team, a finisher and boots, plus a few situational swaps. Show all of it.
+  const path=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.finish||null,build?.boots||null].filter(Boolean);
+  const swaps=(Array.isArray(build?.swaps)?build.swaps:[]).filter(item=>item&&item.id).slice(0,3).map(item=>({...item,slot:'SWAP'}));
+  const items=[...path,...swaps];
+  root.classList.toggle('hidden',path.length<2);
+  if(path.length<2)return false;
   grid.replaceChildren();
   items.forEach((item,index)=>{
     const card=document.createElement('article');
-    card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'');
+    card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'')+(item?.slot==='SWAP'?' swap':'')+(item?.slot==='BOOTS'?' boots':'')+(item?.slot==='FINISH'?' finish':'');
     card.title=String(item?.why||'').trim();
     const img=document.createElement('img');
     img.alt='';
     img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
     const copy=document.createElement('div');
     const label=document.createElement('span');
-    label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='BOOTS'?'BOOTS':String(item?.slot||'ITEM');
+    label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='FINISH'?'FINISH':item?.slot==='BOOTS'?'BOOTS':item?.slot==='SWAP'?'SWAP IF':String(item?.slot||'ITEM');
     const name=document.createElement('strong');
     name.textContent=String(item?.name||'ITEM').toUpperCase();
     copy.append(label,name);card.append(img,copy);grid.appendChild(card);
@@ -256,11 +260,11 @@ function renderMissionReminders(state){
   toggle('opCompPlanChip',!hasRoleWin);
   toggle('opJob',hasRoleWin);
   toggle('opSimpleFlow',hasRoleWin);
-  toggle('opPaidWin',!paid||hasRoleWin);
+  toggle('opPaidWin',!paid); // the team win condition sits beside the role plan, not instead of it
   toggle('opPaidLoss',!paid);
   toggle('opDeepRead',!hasDeep);
   if(paid){
-    if(!hasRoleWin)set('opYourWin',ourWinCommand(team,matchup));
+    set('opYourWin',ourWinCommand(team,matchup));
     set('opVsTeam',theirWinCommand(team));
   }
 }

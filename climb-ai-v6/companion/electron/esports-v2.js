@@ -112,11 +112,206 @@
     }));
   }
 
+  /* -------------------------------------------------- match plan page ---- */
+  // The page shown after you lock in (built by preload.cjs). This only adds a
+  // squad strip and champion chips; the text preload writes is never touched.
+  const ROLE_ORDER=['TOP','JUNGLE','MID','ADC','SUPPORT'];
+  const roleKey=value=>{
+    const role=String(value||'').trim().toUpperCase();
+    return role==='BOTTOM'?'ADC':role==='UTILITY'?'SUPPORT':role==='MIDDLE'?'MID':role;
+  };
+  function rosterOf(side){
+    const plan=state?.teamPlan;
+    const live=Array.isArray(plan?.[side])?plan[side]:[];
+    const frozenKey=side==='ourTeam'?'ours':'theirs';
+    const frozenSource=plan?.rememberPlan?.draftTeams?.[frozenKey];
+    const source=live.length?live:(Array.isArray(frozenSource)?frozenSource:[]);
+    return source.map(p=>({name:String(p?.name||'').trim(),role:roleKey(p?.role)})).filter(p=>p.name);
+  }
+  function inRoleOrder(list){
+    const placed=ROLE_ORDER.map(role=>list.find(p=>p.role===role)).filter(Boolean);
+    return [...placed,...list.filter(p=>!placed.includes(p))].slice(0,5);
+  }
+  const escapeRegExp=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  // Whole-name match only: "Sion" must not be found inside "DECISION".
+  const mentions=(text,name)=>new RegExp(`(^|[^A-Za-z])${escapeRegExp(name)}($|[^A-Za-z])`,'i').test(String(text||''));
+  function namesIn(text,roster){
+    return roster
+      .filter(p=>mentions(text,p.name))
+      .sort((a,b)=>String(text).toLowerCase().indexOf(a.name.toLowerCase())-String(text).toLowerCase().indexOf(b.name.toLowerCase()));
+  }
+  function portrait(name,className){
+    const id=championId(name);
+    const img=document.createElement(id?'img':'span');
+    img.className=className;
+    if(id){img.alt='';img.decoding='async';img.src=tileUrl(id);img.onerror=()=>img.classList.add('es-missing')}
+    else img.textContent='?';
+    return img;
+  }
+  function unit(person,tag,side){
+    const card=document.createElement('div');
+    card.className=`es-unit ${side}${tag?` es-${tag}`:''}`;
+    const art=portrait(person.name,'es-unit-art');
+    const role=document.createElement('span');role.className='es-unit-role';role.textContent=person.role||'—';
+    const name=document.createElement('b');name.className='es-unit-name';name.textContent=person.name;
+    card.append(art,role,name);
+    if(tag){
+      const badge=document.createElement('i');badge.className='es-unit-tag';
+      badge.textContent=tag==='you'?'YOU':tag==='link'?'LINK':'THREAT';
+      card.append(badge);
+    }
+    return card;
+  }
+  // The "OUR STYLE" / "THEIR STYLE" labels preload.cjs writes live in the tag
+  // row. They describe one team each, so they are moved above that team's
+  // portraits. The same nodes are moved, so preload keeps updating them.
+  const chipOf=id=>$(id)?.closest?.('.op-chip')||null;
+  function decorateSquad(section,ours,theirs,tagOf){
+    let squad=$('esSquad');
+    const styleChips={ours:chipOf('opOurIdentity'),theirs:chipOf('opTheirIdentity')};
+    if(!ours.length&&!theirs.length){
+      // No portraits to hang the labels on: give them back to the tag row.
+      const row=section.querySelector('.op-draft');
+      for(const chip of Object.values(styleChips))if(chip&&row)row.append(chip);
+      squad?.remove();return;
+    }
+    if(!squad){
+      squad=document.createElement('div');squad.id='esSquad';squad.className='es-squad';
+      const head=section.querySelector('.op-head');
+      if(head)head.after(squad);else section.prepend(squad);
+    }
+    const signature=JSON.stringify([ours.map(p=>[p.name,p.role,tagOf(p,'ours')]),theirs.map(p=>[p.name,p.role,tagOf(p,'theirs')])]);
+    if(squad.dataset.signature===signature)return;
+    squad.dataset.signature=signature;
+    const side=(people,key)=>{
+      const col=document.createElement('div');col.className=`es-col ${key}`;
+      const caption=document.createElement('div');caption.className='es-caption';
+      if(styleChips[key])caption.append(styleChips[key]);
+      const units=document.createElement('div');units.className=`es-side ${key}`;
+      units.append(...people.map(p=>unit(p,tagOf(p,key),key)));
+      col.append(caption,units);
+      return col;
+    };
+    const versus=document.createElement('div');versus.className='es-vs';versus.textContent='VS';
+    squad.replaceChildren(side(ours,'ours'),versus,side(theirs,'theirs'));
+  }
+  // Champion chips inside a step / card, built once per set of names.
+  const chipRows=new WeakMap();
+  function setChips(host,people,kind){
+    if(!host)return;
+    let row=chipRows.get(host);
+    if(!people.length){row?.remove();chipRows.delete(host);return}
+    if(!row){
+      row=document.createElement('div');chipRows.set(host,row);
+      const label=host.querySelector('span');
+      if(label)label.after(row);else host.prepend(row);
+    }
+    row.className=`es-chips ${kind}`;
+    const signature=people.map(p=>p.name).join('|');
+    if(row.dataset.signature===signature)return;
+    row.dataset.signature=signature;
+    row.replaceChildren(...people.map(p=>{
+      const chip=document.createElement('span');chip.className='es-chip';chip.title=p.name;
+      const name=document.createElement('b');name.textContent=p.name;
+      chip.append(portrait(p.name,'es-chip-art'),name);
+      return chip;
+    }));
+  }
+  const onlyNames=(text,roster)=>{
+    const words=String(text||'').split(/\s*[\/,&+]\s*|\s+and\s+/i).map(w=>w.trim().toLowerCase()).filter(Boolean);
+    return words.length>0&&words.every(word=>roster.some(p=>p.name.toLowerCase()===word));
+  };
+  /* --------------------------------- long lines become separate pieces ---- */
+  // "A → B → C" or "X, OR Y" reads as one block of text. Show each part as its own
+  // piece with an arrow (or "OR") between. preload.cjs keeps writing the original
+  // sentence, so it stays in the page, visually hidden, and is re-split when it changes.
+  const flows=new WeakMap();
+  function setFlow(host,segments,mode){
+    let list=flows.get(host);
+    if(segments.length<(mode==='rule'?1:2)){list?.remove();flows.delete(host);host.classList.remove('es-flowed');return false}
+    if(!list){
+      list=document.createElement('ol');flows.set(host,list);
+      const text=host.querySelector('strong');
+      if(text)text.after(list);else host.append(list);
+    }
+    list.className=`es-flow ${mode}`;
+    host.classList.add('es-flowed');
+    const signature=segments.join('\u0001');
+    if(list.dataset.signature===signature)return true;
+    list.dataset.signature=signature;
+    list.replaceChildren(...segments.map(part=>{const item=document.createElement('li');item.textContent=part;return item}));
+    return true;
+  }
+  const cut=(text,pattern)=>String(text||'').split(pattern).map(part=>part.trim().replace(/[.,]+$/,'')).filter(Boolean);
+  const ARROW=/\s*(?:→|->)\s*/;
+  function decorateFlows(theirs){
+    for(let i=1;i<=5;i++){
+      const node=$(`opRoleStep${i}`);
+      const host=node?.closest('.op-role-step');
+      if(!host)continue;
+      const text=node.textContent;
+      if(i===3){
+        // "Yone / Pyke / Lux — DO NOT STEP OUT…": the names are already shown as
+        // portraits, so the rule on its own is what is left to read.
+        const parts=cut(text,/\s+[—–]\s+/);
+        const rule=parts.length>1&&onlyNames(parts[0],theirs)?parts.slice(1):[];
+        if(setFlow(host,rule,'rule'))continue;
+      }
+      setFlow(host,cut(text,ARROW),'down');
+    }
+    // The simple four-step plan (early / mid game / objective / fight) has the same kind of chains.
+    for(const id of ['opEarly','opMid','opObjective','opFight']){
+      const node=$(id);
+      const host=node?.closest?.('.op-step');
+      if(host)setFlow(host,cut(node.textContent,ARROW),'down');
+    }
+    const win=$('opPaidWin');
+    if(win){
+      const text=$('opYourWin')?.textContent||'';
+      let parts=cut(text,ARROW);
+      if(parts.length<2)parts=cut(text,/(?<=[.!?])\s+/);
+      setFlow(win,parts,'inline');
+    }
+    const loss=$('opPaidLoss');
+    if(loss)setFlow(loss,cut($('opVsTeam')?.textContent,/,?\s+OR\s+/),'or');
+  }
+
+  function decorateMatchPage(){
+    const section=$('opMissionReminders');
+    if(!section||section.classList.contains('hidden'))return;
+    const plan=state?.teamPlan||{};
+    const ours=inRoleOrder(rosterOf('ourTeam'));
+    const theirs=inRoleOrder(rosterOf('theirTeam'));
+    const you=String(state?.matchup?.champion||state?.matchup?.plan?.you?.name||'').trim().toLowerCase();
+    const text=id=>$(id)?.textContent||'';
+    const read=plan.compositionRead||{};
+    const linkText=`${text('opRoleStep2')} ${(read.protectors||[]).join(' ')}`;
+    const threatText=`${text('opRoleStep3')} ${(read.enemyThreats||[]).join(' ')} ${text('opVsTeam')}`;
+    decorateSquad(section,ours,theirs,(person,side)=>{
+      if(side==='ours')return person.name.toLowerCase()===you?'you':mentions(linkText,person.name)?'link':'';
+      return mentions(threatText,person.name)?'threat':'';
+    });
+
+    // Step 2 (who to stay with) and step 3 (who to survive) get champion chips;
+    // when the step is nothing but names, the chips replace the plain text.
+    const step2=$('opRoleStep2')?.closest('.op-role-step');
+    const step3=$('opRoleStep3')?.closest('.op-role-step');
+    const links=namesIn(text('opRoleStep2'),ours);
+    const threats=namesIn(text('opRoleStep3'),theirs);
+    setChips(step2,links,'ally');
+    setChips(step3,threats,'foe');
+    step2?.classList.toggle('es-names-only',onlyNames(text('opRoleStep2'),ours));
+    step3?.classList.toggle('es-names-only',onlyNames(text('opRoleStep3'),theirs));
+    setChips($('opPaidLoss'),namesIn(text('opVsTeam'),theirs),'foe');
+    decorateFlows(theirs);
+  }
+
   function apply(){
     if(!state)return;
     decorateRows('draftOurPicks',Array.isArray(state.draft?.allies)?state.draft.allies:[],{ours:true});
     decorateRows('draftTheirPicks',Array.isArray(state.draft?.enemies)?state.draft.enemies:[],{ours:false});
     decoratePlan();
+    decorateMatchPage();
     decorateReview();
   }
 
