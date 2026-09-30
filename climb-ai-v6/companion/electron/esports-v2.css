@@ -1,0 +1,326 @@
+/* ==========================================================================
+   OP CLIMB COMPANION · ESPORTS LAYER
+   Additive only: loaded last, changes how existing screens LOOK. It never
+   hides information, never renames an element and never changes behaviour.
+   Champion art is added by esports-v2.js; without it everything still reads.
+   ========================================================================== */
+
+:root{
+  --es-lime:#d6ff2f;
+  --es-lime-2:#b6f66b;
+  --es-blue:#4c91ff;
+  --es-red:#ff4d5e;
+  --es-gold:#ffc53d;
+  --es-void:#04070a;
+  --es-panel:#0a1115;
+  --es-panel-2:#0e171c;
+  --es-line:rgba(255,255,255,.08);
+  --es-cut:14px;
+  --es-cut-sm:9px;
+  --es-display:'Barlow Condensed',Impact,sans-serif;
+  --es-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --es-cut-shape:polygon(0 0,calc(100% - var(--es-cut)) 0,100% var(--es-cut),100% 100%,var(--es-cut) 100%,0 calc(100% - var(--es-cut)));
+  --es-cut-shape-sm:polygon(0 0,calc(100% - var(--es-cut-sm)) 0,100% var(--es-cut-sm),100% 100%,var(--es-cut-sm) 100%,0 calc(100% - var(--es-cut-sm)));
+}
+
+@keyframes es-pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.72)}}
+@keyframes es-sweep{0%{transform:translateX(-120%)}100%{transform:translateX(320%)}}
+@keyframes es-glow{0%,100%{box-shadow:0 0 0 0 rgba(214,255,47,0),inset 0 0 0 1px rgba(214,255,47,.55)}50%{box-shadow:0 0 22px 0 rgba(214,255,47,.22),inset 0 0 0 1px rgba(214,255,47,.9)}}
+
+/* ---------------------------------------------------------------- chrome -- */
+
+/* The stage everything sits on: faint grid + vignette, so screens feel like a
+   broadcast desk rather than a web form. */
+html body{
+  background:
+    radial-gradient(1100px 520px at 12% -8%,rgba(214,255,47,.085),transparent 62%),
+    radial-gradient(900px 480px at 100% 4%,rgba(76,145,255,.075),transparent 60%),
+    repeating-linear-gradient(0deg,rgba(255,255,255,.016) 0 1px,transparent 1px 4px),
+    #05090b !important;
+}
+
+/* The live signal in the header becomes a real "on air" tag. */
+.brand-signal{position:relative;overflow:hidden}
+.brand-signal span{animation:es-pulse 1.8s ease-in-out infinite}
+
+/* --------------------------------------------------------- CHAMP SELECT -- */
+
+/* --- the draft stage ------------------------------------------------------ */
+#draftBoard{
+  position:relative;
+  gap:14px !important;
+  padding:20px 22px 18px !important;
+  border:0 !important;
+  border-radius:0 !important;
+  clip-path:var(--es-cut-shape);
+  background:
+    linear-gradient(180deg,rgba(214,255,47,.07),transparent 120px),
+    linear-gradient(135deg,rgba(76,145,255,.05),transparent 40%,rgba(255,77,94,.05)),
+    var(--es-panel) !important;
+  box-shadow:inset 0 1px 0 rgba(214,255,47,.55),inset 0 0 0 1px var(--es-line);
+}
+#draftBoard::before{ /* animated scan line along the top edge */
+  content:"";position:absolute;left:0;top:0;height:2px;width:34%;
+  background:linear-gradient(90deg,transparent,var(--es-lime),transparent);
+  animation:es-sweep 3.6s linear infinite;pointer-events:none;
+}
+#draftBoard .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.2em !important;color:var(--es-lime) !important}
+#draftBoard .eyebrow::before{content:"";display:inline-block;width:7px;height:7px;margin-right:9px;border-radius:50%;background:var(--es-red);box-shadow:0 0 10px var(--es-red);animation:es-pulse 1.4s ease-in-out infinite;vertical-align:1px}
+#draftBoardTitle{
+  font-family:var(--es-display) !important;font-weight:800 !important;font-style:italic;
+  font-size:clamp(34px,5.4vw,54px) !important;line-height:.92 !important;letter-spacing:.005em !important;
+  text-transform:uppercase;text-shadow:0 2px 0 rgba(0,0,0,.5);
+}
+#draftBoardState{
+  font-family:var(--es-mono);letter-spacing:.16em;padding:8px 14px !important;border-radius:0 !important;
+  clip-path:var(--es-cut-shape-sm);
+}
+#draftBoardState.good{animation:es-glow 2.4s ease-in-out infinite}
+
+/* three telemetry tiles: role / pick / draft read */
+#draftBoard > div:nth-of-type(2) > div{
+  position:relative;border:0 !important;border-radius:0 !important;padding:11px 14px !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(255,255,255,.012)) !important;
+  box-shadow:inset 3px 0 0 var(--es-lime),inset 0 0 0 1px var(--es-line);
+  clip-path:var(--es-cut-shape-sm);
+}
+#draftBoard > div:nth-of-type(2) > div:nth-child(2){box-shadow:inset 3px 0 0 var(--es-blue),inset 0 0 0 1px var(--es-line)}
+#draftBoard > div:nth-of-type(2) > div:nth-child(3){box-shadow:inset 3px 0 0 var(--es-gold),inset 0 0 0 1px var(--es-line)}
+#draftBoard > div:nth-of-type(2) .eyebrow{font-size:9px !important;letter-spacing:.18em !important;color:#8fa0a6 !important}
+#draftBoard > div:nth-of-type(2) .eyebrow::before{display:none}
+#draftBoard > div:nth-of-type(2) strong{font-family:var(--es-display);font-weight:700;font-size:24px;letter-spacing:.02em;text-transform:uppercase;line-height:1.05}
+
+/* team headers */
+#draftBoard > div:nth-of-type(3) > div > .eyebrow{
+  display:flex !important;align-items:center;gap:10px;margin-bottom:9px !important;
+  font-size:11px !important;letter-spacing:.24em !important;color:var(--es-blue) !important;
+}
+#draftBoard > div:nth-of-type(3) > div > .eyebrow::before{display:none}
+#draftBoard > div:nth-of-type(3) > div > .eyebrow::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,currentColor,transparent);opacity:.45}
+#draftBoard > div:nth-of-type(3) > div:nth-child(2) > .eyebrow{color:var(--es-red) !important}
+
+/* player rows — champion tile, role, name, lock state */
+#draftOurPicks > div,#draftTheirPicks > div{
+  position:relative;
+  grid-template-columns:54px 62px minmax(0,1fr) auto !important;
+  gap:11px !important;padding:0 14px 0 0 !important;min-height:54px;
+  border:0 !important;border-radius:0 !important;
+  background:linear-gradient(90deg,rgba(76,145,255,.10),rgba(255,255,255,.02) 55%) !important;
+  box-shadow:inset 0 0 0 1px var(--es-line);
+  clip-path:var(--es-cut-shape-sm);
+}
+#draftTheirPicks > div{background:linear-gradient(90deg,rgba(255,77,94,.10),rgba(255,255,255,.02) 55%) !important}
+#draftOurPicks > div::before,#draftTheirPicks > div::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--es-blue)}
+#draftTheirPicks > div::before{background:var(--es-red)}
+#draftOurPicks > div > span:first-of-type,#draftTheirPicks > div > span:first-of-type{
+  font-family:var(--es-mono);font-size:10px !important;letter-spacing:.14em;opacity:.7 !important;text-transform:uppercase;
+}
+#draftOurPicks > div > strong,#draftTheirPicks > div > strong{
+  font-family:var(--es-display);font-weight:700;font-size:22px;letter-spacing:.025em;text-transform:uppercase;
+}
+#draftOurPicks > div > span:last-child,#draftTheirPicks > div > span:last-child{
+  font-family:var(--es-mono);font-size:9px !important;letter-spacing:.14em;
+}
+.es-tile{
+  width:54px;height:54px;object-fit:cover;display:block;align-self:stretch;
+  background:#0b1418;border-right:1px solid rgba(255,255,255,.1);
+}
+.es-tile.es-empty{display:grid;place-items:center;color:#5f7077;font:700 20px var(--es-display);background:repeating-linear-gradient(135deg,#0b1418 0 6px,#0e1a1f 6px 12px)}
+.es-tile.es-missing{visibility:hidden}
+#draftOurPicks > div.es-locked > span:last-child{
+  color:#07120a !important;background:var(--es-lime);padding:4px 8px;font-weight:800;
+  clip-path:var(--es-cut-shape-sm);
+}
+#draftTheirPicks > div.es-locked > span:last-child{
+  color:#fff !important;background:var(--es-red);padding:4px 8px;font-weight:800;clip-path:var(--es-cut-shape-sm);
+}
+#draftOurPicks > div.es-you{
+  background:linear-gradient(90deg,rgba(214,255,47,.20),rgba(214,255,47,.04) 60%) !important;
+  box-shadow:inset 0 0 0 1px rgba(214,255,47,.6),0 0 24px rgba(214,255,47,.12);
+}
+#draftOurPicks > div.es-you::before{background:var(--es-lime);width:4px}
+#draftOurPicks > div.es-you::after{
+  content:"YOU";position:absolute;right:14px;bottom:5px;font:800 8px var(--es-mono);letter-spacing:.2em;color:var(--es-lime);
+}
+#draftOurPicks > div.es-you > span:last-child{margin-bottom:12px}
+
+/* bans: greyed, crossed */
+#draftOurBans span,#draftTheirBans span{
+  position:relative;border-radius:0 !important;clip-path:var(--es-cut-shape-sm);
+  padding:5px 9px !important;font-family:var(--es-mono);letter-spacing:.08em;text-decoration:line-through;
+  text-decoration-color:rgba(255,77,94,.7);color:#9aa8ad !important;border-color:rgba(255,77,94,.3) !important;
+}
+#draftBoard .eyebrow + #draftOurBans,#draftBoard .eyebrow + #draftTheirBans{margin-top:7px !important}
+#draftBoardHint{font-family:var(--es-mono);font-size:10px !important;letter-spacing:.04em;opacity:.6 !important;border-left:2px solid var(--es-lime);padding-left:11px}
+
+/* --- the game plan -------------------------------------------------------- */
+#simplePregame{position:relative;margin-top:16px}
+
+/* hero: your champion on the left, the lane opponent on the right. The art is
+   attached by esports-v2.js as two CSS variables; with no art it is a clean
+   dark banner. */
+#simplePregame > div:first-child{
+  position:relative;isolation:isolate;overflow:hidden;
+  min-height:196px;padding:26px 28px !important;align-items:flex-end !important;
+  clip-path:var(--es-cut-shape);
+  background:var(--es-panel);
+  box-shadow:inset 0 0 0 1px var(--es-line);
+}
+#simplePregame > div:first-child::before,#simplePregame > div:first-child::after{
+  content:"";position:absolute;top:0;bottom:0;z-index:-1;background-size:cover;background-position:center 22%;opacity:0;transition:opacity .5s ease;
+}
+#simplePregame > div:first-child::before{
+  left:0;width:62%;background-image:var(--es-you-art,none);
+  -webkit-mask-image:linear-gradient(90deg,#000 35%,transparent);mask-image:linear-gradient(90deg,#000 35%,transparent);
+}
+#simplePregame > div:first-child::after{
+  right:0;width:46%;background-image:var(--es-them-art,none);filter:saturate(.85) hue-rotate(-8deg);
+  -webkit-mask-image:linear-gradient(270deg,#000 25%,transparent);mask-image:linear-gradient(270deg,#000 25%,transparent);
+}
+#simplePregame.es-art > div:first-child::before{opacity:.78}
+#simplePregame.es-art.es-foe > div:first-child::after{opacity:.6}
+#simplePregame > div:first-child > div:first-child{position:relative;z-index:1;text-shadow:0 2px 14px rgba(0,0,0,.9)}
+#simplePregame > div:first-child::selection{background:transparent}
+#simplePregameTier{font-family:var(--es-mono) !important;letter-spacing:.22em !important;color:var(--es-lime) !important}
+#simplePregameTitle{
+  font-family:var(--es-display) !important;font-weight:800 !important;font-style:italic;text-transform:uppercase;
+  font-size:clamp(44px,8vw,86px) !important;line-height:.86 !important;letter-spacing:-.005em !important;
+  margin:8px 0 12px !important;text-shadow:0 3px 0 rgba(0,0,0,.55),0 0 34px rgba(0,0,0,.6);
+}
+#simplePregameSummary{opacity:.9 !important;max-width:560px !important;font-size:14px;color:#dfe8e6}
+#simplePregamePill{
+  position:relative;z-index:1;align-self:flex-start;font-family:var(--es-mono);letter-spacing:.2em;font-weight:800;
+  padding:9px 16px !important;border-radius:0 !important;clip-path:var(--es-cut-shape-sm);
+}
+#simplePregamePill.good{animation:es-glow 2.4s ease-in-out infinite;color:#07120a !important;background:var(--es-lime) !important}
+
+/* job + plan: two mission cards */
+#simplePregame > div:nth-child(2) article{
+  position:relative;border:0 !important;border-radius:0 !important;padding:18px 20px 18px 22px !important;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012)) !important;
+  clip-path:var(--es-cut-shape);
+  box-shadow:inset 0 0 0 1px var(--es-line);
+}
+#simplePregame > div:nth-child(2) article::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-lime)}
+#simplePregame > div:nth-child(2) article:nth-child(2)::before{background:var(--es-blue)}
+#simplePregame > div:nth-child(2) article .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.22em !important}
+#simplePregame > div:nth-child(2) article:nth-child(1) .eyebrow{color:var(--es-lime) !important}
+#simplePregame > div:nth-child(2) article:nth-child(2) .eyebrow{color:var(--es-blue) !important}
+#simplePregame > div:nth-child(2) article strong{font-family:var(--es-display);font-weight:700;font-size:26px !important;line-height:1.08 !important;letter-spacing:.012em;text-transform:uppercase}
+#simplePregameLead{letter-spacing:.06em !important;color:#fff}
+
+/* REMEMBER THIS — three big numbered orders */
+#simplePregame > div:nth-child(3){
+  position:relative;border:0 !important;border-radius:0 !important;padding:18px 22px !important;
+  background:linear-gradient(180deg,rgba(214,255,47,.05),transparent) !important;
+  clip-path:var(--es-cut-shape);box-shadow:inset 0 0 0 1px var(--es-line);
+}
+#simplePregame > div:nth-child(3) > .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.24em !important;color:var(--es-lime) !important}
+#simplePregameRules{gap:0 !important;margin-top:8px !important}
+#simplePregameRules > div{
+  grid-template-columns:54px minmax(0,1fr) !important;align-items:center !important;gap:12px !important;
+  padding:11px 0;border-top:1px solid var(--es-line);
+}
+#simplePregameRules > div:first-child{border-top:0}
+#simplePregameRules > div > b{
+  font-family:var(--es-display);font-weight:800;font-style:italic;font-size:46px;line-height:.9;opacity:1 !important;
+  color:transparent;-webkit-text-stroke:1.5px var(--es-lime);letter-spacing:.01em;
+}
+#simplePregameRules > div > strong{font-size:16px;line-height:1.35 !important;font-weight:600}
+#simplePregameExtra{border-radius:0 !important;clip-path:var(--es-cut-shape-sm);border-color:var(--es-line) !important}
+#simplePregameMore,#simplePregameFull{font-family:var(--es-mono);letter-spacing:.14em;border-radius:0 !important;clip-path:var(--es-cut-shape-sm)}
+
+/* the idle radar is for waiting around. Once the match room is on screen it is
+   only in the way, and in the review it would show stale "queue up" copy. */
+main:has(#matchup:not(.hidden)) #idleArena,
+body.op-mode-coach-review #idleArena{display:none !important}
+
+/* The status tiles are pinned to the bottom of the radar panel and the stage to
+   its top; at the original height the "next signal" chip sat 8px underneath. */
+body #idleArena{min-height:560px}
+
+/* -------------------------------------------------------- IN-GAME QUIET -- */
+
+#quietMode{
+  position:relative;border:0 !important;border-radius:0 !important;clip-path:var(--es-cut-shape);
+  background:linear-gradient(180deg,rgba(255,77,94,.06),transparent 140px),var(--es-panel) !important;
+  box-shadow:inset 0 1px 0 rgba(255,77,94,.6),inset 0 0 0 1px var(--es-line);
+}
+#quietMode h2{font-family:var(--es-display) !important;font-weight:800;font-style:italic;font-size:clamp(36px,6vw,62px) !important;line-height:.9 !important;text-transform:uppercase}
+#quietMode .quiet-live{font-family:var(--es-mono);letter-spacing:.18em;font-weight:800}
+.quiet-live i{animation:es-pulse 1.2s ease-in-out infinite}
+
+/* ---------------------------------------------------------- POST-GAME ---- */
+
+body #simplePostgameReview{
+  position:relative;overflow:hidden;border:0 !important;border-radius:0 !important;padding:0 !important;
+  clip-path:var(--es-cut-shape);background:var(--es-panel) !important;
+  box-shadow:inset 0 1px 0 rgba(214,255,47,.6),inset 0 0 0 1px var(--es-line);
+}
+#simplePostgameReview .coach-review-head{
+  position:relative;isolation:isolate;min-height:190px;padding:26px 28px 22px;align-items:flex-end;
+  overflow:hidden;
+}
+#simplePostgameReview .coach-review-head::before{
+  content:"";position:absolute;inset:0;z-index:-1;background-image:var(--es-review-art,none);background-size:cover;background-position:center 20%;
+  opacity:0;transition:opacity .5s;
+  -webkit-mask-image:linear-gradient(90deg,#000 20%,transparent 92%);mask-image:linear-gradient(90deg,#000 20%,transparent 92%);
+}
+#simplePostgameReview.es-art .coach-review-head::before{opacity:.72}
+#simplePostgameReview .coach-review-head::after{
+  content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,transparent 30%,rgba(5,9,11,.92));
+}
+#simplePostgameReview .coach-review-head h2{
+  font-weight:800 !important;font-style:italic;font-size:clamp(46px,8vw,88px) !important;line-height:.84 !important;text-shadow:0 3px 0 rgba(0,0,0,.55),0 0 30px rgba(0,0,0,.6);
+}
+#simplePostgameReview .coach-review-head .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.22em !important;color:var(--es-lime) !important}
+#simplePostgameReview .coach-review-head .pill{font-family:var(--es-mono);letter-spacing:.2em;font-weight:800;border-radius:0;clip-path:var(--es-cut-shape-sm);align-self:flex-start}
+
+/* scoreboard strip (added by esports-v2.js) */
+.es-stats{display:flex;flex-wrap:wrap;gap:0;border-top:1px solid var(--es-line);border-bottom:1px solid var(--es-line);background:rgba(255,255,255,.025)}
+.es-stat{flex:1 1 120px;padding:12px 20px;border-right:1px solid var(--es-line)}
+.es-stat:last-child{border-right:0}
+.es-stat span{display:block;font:500 9px var(--es-mono);letter-spacing:.2em;color:#7d8d93;text-transform:uppercase}
+.es-stat b{display:block;margin-top:3px;font:800 34px/1 var(--es-display);letter-spacing:.02em;color:#fff}
+.es-stat.es-accent b{color:var(--es-lime)}
+
+#simplePostgameReview .coach-review-intro{padding:16px 28px 0;margin:0 !important}
+#simplePostgameReview .coach-review-grid{padding:0 28px;margin-top:16px}
+#simplePostgameReview .coach-review-card{
+  position:relative;border:0 !important;border-radius:0;clip-path:var(--es-cut-shape);padding:20px 22px;
+  background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012));box-shadow:inset 0 0 0 1px var(--es-line);
+}
+#simplePostgameReview .coach-review-card.good{box-shadow:inset 0 0 0 1px var(--es-line),inset 0 3px 0 var(--es-lime-2)}
+#simplePostgameReview .coach-review-card.fix{box-shadow:inset 0 0 0 1px var(--es-line),inset 0 3px 0 var(--es-red)}
+#simplePostgameReview .coach-review-card > span{font-family:var(--es-mono);letter-spacing:.22em}
+#simplePostgameReview .coach-review-card b{font-family:var(--es-display);font-weight:700;font-size:24px;letter-spacing:.015em;text-transform:uppercase;line-height:1.05}
+#simplePostgameReview .coach-review-card #simpleGood > div > b:first-child{color:var(--es-lime-2)}
+#simplePostgameReview .coach-review-card #simpleCritical > div > b:first-child{color:var(--es-red)}
+#simplePostgameReview .coach-review-next{
+  margin:14px 28px 0;position:relative;border:0 !important;clip-path:var(--es-cut-shape);padding:22px 24px;
+  background:repeating-linear-gradient(115deg,rgba(214,255,47,.07) 0 14px,rgba(214,255,47,.02) 14px 28px),var(--es-panel-2);
+  box-shadow:inset 0 0 0 1px rgba(214,255,47,.5),0 0 28px rgba(214,255,47,.08);
+}
+#simplePostgameReview .coach-review-next > span{font-family:var(--es-mono);letter-spacing:.24em;color:var(--es-lime)}
+#simplePostgameReview .coach-review-next h3{font-weight:800 !important;font-style:italic;font-size:38px !important;letter-spacing:.005em}
+#simplePostgameReview .coach-review-actions{padding:0 28px 24px}
+#simplePostgameReview .coach-review-actions button{font-family:var(--es-mono);letter-spacing:.14em;border-radius:0;clip-path:var(--es-cut-shape-sm)}
+
+/* ------------------------------------------------------------- reduced -- */
+@media (prefers-reduced-motion:reduce){
+  #draftBoard::before,.brand-signal span,.quiet-live i,#draftBoardState.good,#simplePregamePill.good,#draftBoard .eyebrow::before{animation:none !important}
+}
+
+/* ---------------------------------------------------- narrow windows ----- */
+/* The window can be shrunk to 760px. Keep rows readable instead of cramped. */
+@media (max-width:900px){
+  #draftOurPicks > div,#draftTheirPicks > div{grid-template-columns:44px 50px minmax(0,1fr) auto !important;gap:8px !important;min-height:46px}
+  #draftOurPicks > div > span:first-of-type,#draftTheirPicks > div > span:first-of-type{font-size:8.5px !important;letter-spacing:.06em}
+  .es-tile{width:44px;height:46px}
+  #draftOurPicks > div > strong,#draftTheirPicks > div > strong{font-size:19px}
+  #simplePregame > div:first-child{min-height:160px;padding:20px !important}
+  #simplePregameRules > div{grid-template-columns:44px minmax(0,1fr) !important}
+  #simplePregameRules > div > b{font-size:38px}
+  #simplePostgameReview .coach-review-head,#simplePostgameReview .coach-review-intro,#simplePostgameReview .coach-review-grid,#simplePostgameReview .coach-review-actions{padding-left:18px;padding-right:18px}
+  #simplePostgameReview .coach-review-next{margin-left:18px;margin-right:18px}
+}
