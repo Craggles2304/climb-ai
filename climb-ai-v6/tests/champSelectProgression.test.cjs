@@ -8,17 +8,20 @@ const renderer=fs.readFileSync('companion/electron/renderer.js','utf8');
 const route=fs.readFileSync('app/api/live/champion-plan/route-core.ts','utf8');
 const webDraft=fs.readFileSync('components/LivePregameMount.tsx','utf8');
 
-test('champ select reads the local hover from Riot pick actions before lock',()=>{
-  assert.ok(tracker.includes("const actionChampionIds=pickActions.map(action=>int(action?.championId,0)||int(action?.selectedChampionId,0))"));
-  assert.ok(tracker.includes("const latestPickAction=cellId=>[...pickActions].reverse().find"));
-  assert.ok(tracker.includes("const localChampionId=localRaw?selectedChampionId(localRaw,true):0"));
-  assert.ok(tracker.includes("localSelectionState:localLockedIn?'LOCKED':localChampionId>0?'HOVER':'WAITING'"));
+test('champ select reads the local hover from Riot pick actions before lock',async()=>{
+  const {normalizePregame}=await import('../companion/src/pregame-normalizer.mjs');
+  const context=await normalizePregame({localPlayerCellId:2,myTeam:[{cellId:2,championId:0,assignedPosition:'BOTTOM'}],theirTeam:[],actions:[[{type:'pick',actorCellId:2,championId:222,completed:false}]]},async id=>id===222?'Jinx':null);
+  assert.equal(context.localChampionName,'Jinx');
+  assert.equal(context.localRole,'ADC');
+  assert.equal(context.localSelectionState,'HOVER');
 });
 
-test('enemy hidden hover is not exposed by the progressive draft mapper',()=>{
-  assert.ok(tracker.includes("allies:myTeam.map(raw=>mapPick(raw,true)).slice(0,5)"));
-  assert.ok(tracker.includes("enemies:theirTeam.map(raw=>mapPick(raw,false)).slice(0,5)"));
-  assert.ok(tracker.includes("if(actionLocked(action)||allowHover)return actionChampionId(action)"));
+test('enemy hidden hover is not exposed by the progressive draft mapper',async()=>{
+  const {normalizePregame}=await import('../companion/src/pregame-normalizer.mjs');
+  const context=await normalizePregame({localPlayerCellId:2,myTeam:[{cellId:2,selectedChampionId:222}],theirTeam:[{cellId:7,championId:0}],actions:[[{type:'pick',actorCellId:7,championId:51,completed:false}]]},async id=>({222:'Jinx',51:'Caitlyn'})[id]);
+  assert.equal(context.localChampionName,'Jinx');
+  assert.equal(context.enemies[0].championName,null);
+  assert.equal(context.enemies[0].selectionState,'WAITING');
 });
 
 test('champion plan is previewable before lock and only adaptive build waits for lock',()=>{

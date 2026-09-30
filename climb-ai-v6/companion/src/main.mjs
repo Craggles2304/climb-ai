@@ -4,6 +4,7 @@ import {get as httpsGet} from 'node:https';
 import {existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
 import {recoveryPregameContext} from './in-game-recovery.mjs';
+import {normalizePregame} from './pregame-normalizer.mjs';
 
 const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
@@ -174,66 +175,6 @@ async function championName(id){
   }
 }
 
-async function normalizePregame(data){
-  const myTeam=Array.isArray(data?.myTeam)?data.myTeam:[];
-  const theirTeam=Array.isArray(data?.theirTeam)?data.theirTeam:[];
-  const actions=(Array.isArray(data?.actions)?data.actions:[]).flatMap(row=>Array.isArray(row)?row:[]);
-  const pickActions=actions.filter(action=>text(action?.type).toLowerCase()==='pick');
-  const allyBans=Array.isArray(data?.bans?.myTeamBans)?data.bans.myTeamBans:[];
-  const enemyBans=Array.isArray(data?.bans?.theirTeamBans)?data.bans.theirTeamBans:[];
-  const actionChampionIds=pickActions.map(action=>int(action?.championId,0)||int(action?.selectedChampionId,0)).filter(v=>v>0);
-  const ids=[...myTeam,...theirTeam].map(p=>int(p?.championId,0)||int(p?.selectedChampionId,0))
-    .concat(actionChampionIds,allyBans.map(v=>int(v,0)),enemyBans.map(v=>int(v,0)))
-    .filter(v=>v>0);
-  await Promise.all([...new Set(ids)].map(id=>championName(id)));
-
-  const actionChampionId=action=>int(action?.championId,0)||int(action?.selectedChampionId,0);
-  const actionLocked=action=>Boolean(action?.completed||action?.isCompleted||action?.lockedIn||action?.selectionState==='LOCKED');
-  const latestPickAction=cellId=>[...pickActions].reverse().find(action=>int(action?.actorCellId,-1)===cellId&&actionChampionId(action)>0)||null;
-  const locked=cellId=>pickActions.some(action=>int(action?.actorCellId,-1)===cellId&&actionLocked(action));
-  const selectedChampionId=(raw,allowHover)=>{
-    const cellId=int(raw?.cellId,-1),rawChampionId=int(raw?.championId,0)||int(raw?.selectedChampionId,0);
-    if(rawChampionId>0)return rawChampionId;
-    const action=latestPickAction(cellId);
-    if(!action)return 0;
-    if(actionLocked(action)||allowHover)return actionChampionId(action);
-    return 0;
-  };
-  const mapPick=(raw,allowHover)=>{
-    const cellId=int(raw?.cellId,-1),championId=selectedChampionId(raw,allowHover),isLocked=locked(cellId);
-    return{
-      cellId,
-      championId,
-      championName:championNames.get(championId)||null,
-      role:champSelectRole(raw)||null,
-      lockedIn:isLocked,
-      selectionState:isLocked?'LOCKED':championId>0?'HOVER':'WAITING',
-    };
-  };
-
-  const localCell=int(data?.localPlayerCellId,-1);
-  const localRaw=myTeam.find(p=>int(p?.cellId,-1)===localCell)||null;
-  const localChampionId=localRaw?selectedChampionId(localRaw,true):0;
-  const localLockedIn=localCell>=0?locked(localCell):false;
-  return{
-    version:1,
-    capturedAt:new Date().toISOString(),
-    phase:text(data?.timer?.phase)||text(data?.timer?.phaseType)||'CHAMP_SELECT',
-    localPlayerCellId:localCell,
-    localChampionId,
-    localChampionName:championNames.get(localChampionId)||null,
-    localRole:champSelectRole(localRaw)||null,
-    localLockedIn,
-    localSelectionState:localLockedIn?'LOCKED':localChampionId>0?'HOVER':'WAITING',
-    allies:myTeam.map(raw=>mapPick(raw,true)).slice(0,5),
-    enemies:theirTeam.map(raw=>mapPick(raw,false)).slice(0,5),
-    bans:{
-      allies:allyBans.map(id=>({championId:int(id,0),championName:championNames.get(int(id,0))||null})).filter(b=>b.championId>0).slice(0,10),
-      enemies:enemyBans.map(id=>({championId:int(id,0),championName:championNames.get(int(id,0))||null})).filter(b=>b.championId>0).slice(0,10),
-    },
-  };
-}
-
 function canonicalRole(value){
   const role=text(value).toUpperCase();
   if(role==='BOTTOM'||role==='ADC')return'ADC';
@@ -241,14 +182,6 @@ function canonicalRole(value){
   if(role==='MIDDLE'||role==='MID')return'MID';
   if(role==='TOP')return'TOP';
   if(role==='JUNGLE')return'JUNGLE';
-  return'';
-}
-
-function champSelectRole(raw){
-  const explicit=canonicalRole(text(raw?.assignedPosition)||text(raw?.position));
-  if(explicit)return explicit;
-  const spell1=int(raw?.spell1Id,0),spell2=int(raw?.spell2Id,0);
-  if(spell1===11||spell2===11)return'JUNGLE';
   return'';
 }
 
@@ -395,7 +328,7 @@ async function pollPregame(){
     const data=await lcuJson('/lol-champ-select/v1/session');
     lastLcuDetected=true;lastChampSelectDetected=true;lastLcuDetail='League Client connected and champ select detected.';pregameMisses=0;
     if(!pregame)pregame={id:randomUUID(),startedAt:new Date().toISOString()};
-    const context=await normalizePregame(data);
+    const context=await normalizePregame(data,championName);
     emitPregameMatchup(context);
     const signature=JSON.stringify({...context,capturedAt:null});
     const heartbeat=Date.now()-lastPregameUploadAt>=60_000;
