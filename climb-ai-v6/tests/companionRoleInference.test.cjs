@@ -1,14 +1,10 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
-const fs=require('node:fs');
-const path=require('node:path');
-
-const source=fs.readFileSync(path.join(__dirname,'..','companion','src','main.mjs'),'utf8');
-
-test('champ select keeps explicit role and falls back to Smite for jungle',()=>{
-  assert.match(source,/function champSelectRole\(raw\)/);
-  assert.match(source,/const explicit=canonicalRole\(text\(raw\?\.assignedPosition\)\|\|text\(raw\?\.position\)\)/);
-  assert.match(source,/spell1===11\|\|spell2===11\)return'JUNGLE'/);
-  assert.match(source,/role:champSelectRole\(raw\)\|\|null/);
-  assert.match(source,/localRole:champSelectRole\(localRaw\)\|\|null/);
+test('champ select keeps explicit role and falls back to Smite for jungle',async()=>{
+  const {normalizePregame}=await import('../companion/src/pregame-normalizer.mjs');
+  const fixture={localPlayerCellId:1,myTeam:[{cellId:1,championId:222,assignedPosition:'UTILITY',spell1Id:11}],theirTeam:[]};
+  const explicit=await normalizePregame(fixture,async()=> 'Jinx');
+  assert.equal(explicit.localRole,'SUPPORT');
+  const inferred=await normalizePregame({...fixture,myTeam:[{cellId:1,championId:222,spell1Id:11}]},async()=> 'Jinx');
+  assert.equal(inferred.localRole,'JUNGLE');
 });
