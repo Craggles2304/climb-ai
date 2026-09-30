@@ -68,11 +68,21 @@ const BOARD={
 };
 const PATH=[['1 · TEMPO','150 CS @20'],['2 · LINK','WITH JANNA'],['3 · SURVIVE','DENY PYKE'],['4 · FIGHT','HIT YONE IF SAFE'],['5 · CASH OUT','DRAGON / BARON']];
 
-function gamePage(values={},{live=true}={}){
+// What the board writes for a PRO player before the site's deep coach has answered.
+const PRO_BOARD={
+  opRemCoachStatus:'SAFE LOCAL PLAN',
+  opRemMission:'AFTER DYING: COLLECT SAFE RESOURCES.', // the board starts with the generic mission here
+  opRemTrapTitle:'BUILDING YOUR PROFILE',opRemTrapCue:'FOLLOW THE DRAFT PLAN WHILE OP CLIMB BUILDS REPEATED EVIDENCE.',opRemTrapProof:'NO PERSONAL CLAIM WITHOUT ENOUGH EVIDENCE',
+};
+const PRO={strategyAccess:{deepStrategy:true,paidStrategy:true,tier:'PRO'}};
+
+function gamePage(values={},{live=true,withPro=false}={}){
   const shell=make('div',{className:'shell'});
   const live_=text('span','','LIVE · RECORDING');live_.className='rem4-live';
   const hud=make('section',{id:'opRememberHud'},live_);
-  for(const [id,value] of Object.entries({...BOARD,...values}))hud.append(text('strong',id,value));
+  for(const [id,value] of Object.entries({...BOARD,...(withPro?PRO_BOARD:{}),...values}))hud.append(text('strong',id,value));
+  // the trap panel carries a "building" class until the coach has a real pattern
+  if(withPro){const trap=make('div',{id:'opRemPersonalTrap',className:'rem5-trap building'});trap.classList.add('building');hud.append(trap)}
   hud.append(make('div',{id:'opRemWinPath'},...PATH.map(([label,value])=>make('div',{className:'rem4-step'},text('i','',label),text('strong','',value)))));
   shell.append(hud);
   const body=new El('body');
@@ -92,7 +102,7 @@ function gamePage(values={},{live=true}={}){
   const push=async(next=state())=>{handler(next);await new Promise(r=>setTimeout(r,5))};
   const game=()=>byId(shell,'esGame');
   const card=name=>find(game(),name);
-  return {shell,hud,body,push,state,game,card,set:(id,value)=>{byId(shell,id).textContent=value}};
+  return {shell,hud,body,push,state,game,card,trap:()=>byId(shell,'opRemPersonalTrap'),set:(id,value)=>{byId(shell,id).textContent=value}};
 }
 const pieces=el=>el.querySelector('ol').children.map(li=>li.textContent);
 
@@ -209,4 +219,105 @@ test('the old board is not hidden by anything outside its own top section',()=>{
   // ".rem4-body" only appears as the path to the four sections inside it.
   const hidden=[...rule.matchAll(/(\.rem4-[a-z-]+)/g)].map(m=>m[1]).filter(name=>name!=='.rem4-body');
   assert.deepEqual([...new Set(hidden)].sort(),['.rem4-call-row','.rem4-carry-strip','.rem4-command-strip','.rem4-draft','.rem4-top']);
+});
+
+/* ----------------------------------- PRO: personal pattern and mission ------ */
+// These come from the site's draft coach, in game only. The screen must show them when they are
+// real and must NEVER present the board's own defaults as if they were about the player.
+
+const pattern=g=>g.card('pattern');
+const patternKind=g=>String(pattern(g)?.className||'').replace('es-g-card pattern','').trim();
+const missionOf=g=>({label:g.card('mission').children[0].textContent,text:g.card('mission').children[1].textContent,cls:g.card('mission').className});
+const GENERIC='After dying: collect safe resources.';
+
+test('PRO: before the deep coach answers, nothing generic is passed off as personal',async()=>{
+  const g=gamePage({opRemMission:'AFTER DYING: COLLECT SAFE RESOURCES.'},{withPro:true});
+  await g.push(g.state(PRO));
+  assert.equal(patternKind(g),'loading');
+  assert.match(pattern(g).textContent,/WAITING FOR YOUR DEEP COACH/);
+  assert.doesNotMatch(pattern(g).textContent,/BUILDING YOUR/,'the board default "building your profile" would wrongly imply you have no history');
+  assert.equal(missionOf(g).label,'YOUR CLIMB MISSION');
+});
+
+test('PRO: a verified pattern and a personal mission are shown, with the evidence',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.trap().classList.remove('building');
+  g.set('opRemCoachStatus','DEEP VERIFIED · PRO');
+  g.set('opRemTrapTitle',"YOU'VE SEEN THIS DECISION BEFORE · CHAIN DEATHS");
+  g.set('opRemTrapCue','AFTER A DEATH, WAIT FOR YOUR WAVE.');
+  g.set('opRemTrapProof','4 OF YOUR LAST 6 GAMES');
+  g.set('opRemMission','AFTER YOUR FIRST DEATH: RESET, THEN REJOIN WITH JANNA.');
+  await g.push(g.state(PRO));
+  assert.equal(patternKind(g),'real');
+  assert.deepEqual(pattern(g).children.map(c=>c.textContent),['YOUR PATTERN · PRO',"YOU'VE SEEN THIS DECISION BEFORE · CHAIN DEATHS",'AFTER A DEATH, WAIT FOR YOUR WAVE.','4 OF YOUR LAST 6 GAMES']);
+  assert.equal(missionOf(g).label,'YOUR PERSONAL MISSION · PRO');
+  assert.equal(missionOf(g).text,'AFTER YOUR FIRST DEATH: RESET, THEN REJOIN WITH JANNA.');
+  assert.ok(g.game().classList.contains('es-g-tight'),'the extra bar makes the screen compact so it still fits');
+});
+
+test('PRO: the coach answered but found no pattern: say exactly that',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.set('opRemCoachStatus','RULE PLAN');
+  g.set('opRemTrapTitle','NO VERIFIED PERSONAL TRAP');
+  g.set('opRemTrapCue','NO RECURRING WEAKNESS MATCHED THIS DRAFT. EXECUTE THE NORMAL GAME PLAN.');
+  await g.push(g.state(PRO));
+  assert.equal(patternKind(g),'none');
+  assert.match(pattern(g).textContent,/NO RECURRING WEAKNESS MATCHED THIS DRAFT/);
+});
+
+test('PRO: the coach answered but the profile is still building: show the board\'s own honest text',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.set('opRemCoachStatus','DEEP VERIFIED · PRO');
+  g.set('opRemTrapTitle','BUILDING YOUR CLIMB PROFILE');
+  await g.push(g.state(PRO));
+  assert.equal(patternKind(g),'building');
+  assert.match(pattern(g).textContent,/BUILDING YOUR CLIMB PROFILE/);
+});
+
+test('PRO: while the coach is checking, or when it is unavailable, the screen says so',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.set('opRemCoachStatus','DEEP COACH CHECKING…');
+  await g.push(g.state(PRO));
+  assert.match(pattern(g).textContent,/CHECKING YOUR HISTORY/);
+  g.set('opRemCoachStatus','DEEP COACH UNAVAILABLE · SAFE PLAN');
+  await g.push(g.state(PRO));
+  assert.equal(patternKind(g),'unavailable');
+  assert.match(pattern(g).textContent,/DEEP COACH UNAVAILABLE · SAFE PLAN/);
+});
+
+test('PRO: the intent check still gates the coaching cue, and points at where to answer it',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.set('opRemCoachStatus','DEEP VERIFIED · PRO');
+  g.set('opRemMission','ANSWER THE INTENT CHECK ABOVE TO UNLOCK THIS COACHING CUE');
+  await g.push(g.state(PRO));
+  assert.match(missionOf(g).cls,/pending/);
+  assert.equal(missionOf(g).text,'ANSWER THE INTENT CHECK IN COACH DETAIL BELOW TO UNLOCK THIS COACHING CUE');
+  assert.ok(!/ABOVE/.test(missionOf(g).text),'the intent check is in the drawer BELOW this screen, not above it');
+});
+
+test('PRO: "no forced rep" and a mission equal to the generic one are not dressed up as personal',async()=>{
+  const g=gamePage({},{withPro:true});
+  g.set('opRemCoachStatus','DEEP VERIFIED · PRO');
+  g.set('opRemMission','NO FORCED REP THIS DRAFT · EXECUTE THE FROZEN GAME PLAN');
+  await g.push(g.state(PRO));
+  assert.equal(missionOf(g).label,'YOUR CLIMB MISSION');
+  assert.equal(missionOf(g).text,GENERIC);
+
+  g.set('opRemMission',GENERIC.toUpperCase());
+  await g.push(g.state(PRO));
+  assert.equal(missionOf(g).label,'YOUR CLIMB MISSION','same text as the generic mission: not personal');
+});
+
+test('not PRO: no pattern bar, the generic mission, and the screen keeps its normal size',async()=>{
+  for(const access of [{},{strategyAccess:{paidStrategy:true,deepStrategy:false,tier:'PLUS'}},{strategyAccess:{paidStrategy:false,deepStrategy:false,tier:'FREE'}}]){
+    const g=gamePage({},{withPro:true});
+    g.trap().classList.remove('building');
+    g.set('opRemCoachStatus','DEEP VERIFIED · PRO');
+    g.set('opRemMission','A PERSONAL-LOOKING MISSION THAT A NON-PRO PLAYER MUST NOT SEE');
+    await g.push(g.state(access));
+    assert.equal(pattern(g),undefined);
+    assert.equal(missionOf(g).label,'YOUR CLIMB MISSION');
+    assert.equal(missionOf(g).text,GENERIC);
+    assert.ok(!g.game().classList.contains('es-g-tight'));
+  }
 });

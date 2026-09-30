@@ -304,6 +304,18 @@
     step3?.classList.toggle('es-names-only',onlyNames(text('opRoleStep3'),theirs));
     setChips($('opPaidLoss'),namesIn(text('opVsTeam'),theirs),'foe');
     decorateFlows(theirs);
+
+    // PRO's personal pattern and mission are produced by the site's draft coach once the game has
+    // loaded (it needs the live player list), so they cannot be shown yet. Say so, rather than show
+    // a "building your profile" placeholder that would wrongly suggest there is no history.
+    const access=plan.strategyAccess||{};
+    const tier=access.deepStrategy===true?'PRO':access.paidStrategy===true?'PLUS':'FREE';
+    const missionBar=section.querySelector('.op-mission');
+    let note=$('esProNote');
+    if(!missionBar||tier==='FREE'){note?.remove();return}
+    if(!note){note=document.createElement('span');note.id='esProNote';note.className='es-pro-note';missionBar.append(note)}
+    const noteText=tier==='PRO'?'PRO · PERSONAL PATTERN LOADS IN GAME':'PRO ADDS YOUR PERSONAL PATTERN';
+    if(note.dataset.tier!==tier||note.textContent!==noteText){note.dataset.tier=tier;note.textContent=noteText}
   }
 
   /* ------------------------------------------------ in-game screen ------- */
@@ -345,6 +357,36 @@
     return [...path.map((item,index)=>card(item,label(item,index),item.slot==='DRAFT'?'draft':item.slot==='BOOTS'?'boots':item.slot==='FINISH'?'finish':'core')),
       ...swaps.map(item=>card(item,'SWAP IF','swap'))];
   }
+  // PRO's personal pattern and mission come from the site's draft coach. The board writes
+  // them (and its own "loading" / "unavailable" status) into elements; this turns those raw
+  // values into what the cards should say, without ever claiming more than the board did.
+  const DEFAULT_MISSION=/^NO FORCED REP/i;
+  const INTENT_PENDING=/ANSWER THE INTENT CHECK/i;
+  const COACH_UNAVAILABLE=/UNAVAILABLE|REQUIRED|WAITING|OFFLINE|BUSY|QUALITY GATE/i;
+  function personalView(raw){
+    const status=clean(raw.status);
+    // Until the deep coach has answered, the board shows its own defaults ("SAFE LOCAL PLAN",
+    // "BUILDING YOUR PROFILE", the generic mission). Those say nothing about YOU, so they are
+    // never presented as personal.
+    const delivered=/^(DEEP VERIFIED|RULE PLAN)/i.test(status);
+    let pattern;
+    if(/CHECKING/i.test(status))pattern={kind:'loading',text:'CHECKING YOUR HISTORY…'};
+    else if(COACH_UNAVAILABLE.test(status))pattern={kind:'unavailable',text:status};
+    else if(!delivered)pattern={kind:'loading',text:'WAITING FOR YOUR DEEP COACH…'};
+    else if(!raw.building)pattern={kind:'real',title:clean(raw.title),cue:clean(raw.cue),proof:clean(raw.proof)};
+    else if(/^NO VERIFIED/i.test(clean(raw.title)))pattern={kind:'none',text:clean(raw.cue)};
+    else pattern={kind:'building',title:clean(raw.title),text:clean(raw.cue),proof:clean(raw.proof)};
+
+    const mission=clean(raw.mission);
+    let personal=null;
+    if(delivered&&mission&&!DEFAULT_MISSION.test(mission)&&mission.toLowerCase()!==clean(raw.generic).toLowerCase()){
+      personal=INTENT_PENDING.test(mission)
+        ?{tone:'pending',text:mission.replace(/\bABOVE\b/i,'IN COACH DETAIL BELOW')}
+        :{tone:'personal',text:mission};
+    }
+    return {pattern,personal};
+  }
+
   function renderGame(){
     const hud=$('opRememberHud');
     const live=Boolean(hud)&&document.body.classList.contains('op-remember-live');
@@ -373,6 +415,13 @@
       you:clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name),steps,ours,theirs,
       build:build?[build.patch,build.read,build.core,build.draftItem,build.finish,build.boots,build.swaps]:null,
     };
+    // PRO only: the personal pattern and mission the site's draft coach produced.
+    const pro=plan.strategyAccess?.deepStrategy===true||String(plan.strategyAccess?.tier||'').toUpperCase()==='PRO';
+    const personal=pro?personalView({
+      status:val('opRemCoachStatus'),building:Boolean($('opRemPersonalTrap')?.classList.contains('building')),
+      title:val('opRemTrapTitle'),cue:val('opRemTrapCue'),proof:val('opRemTrapProof'),mission:val('opRemMission'),generic:val('opMissionCue'),
+    }):null;
+    data.personal=personal;
     const signature=JSON.stringify(data);
     if(!root){root=node('section','es-game');root.id='esGame';hud.before(root)}
     if(root.dataset.signature===signature)return;
@@ -433,14 +482,33 @@
     const winParts=(()=>{const arrows=cut(data.win,ARROW);return arrows.length>1?arrows:cut(data.win,/(?<=[.!?])\s+/)})();
     const win=gameCard('win','OUR WIN CONDITION');
     win.append(winParts.length>1?pieceList(winParts,'inline'):node('p','es-g-line small',data.win));
-    const mission=gameCard('mission','YOUR CLIMB MISSION',node('strong','',data.mission));
+    // A PRO player's personal mission, when the coach produced one, replaces the generic one.
+    const personalMission=personal?.personal||null;
+    const mission=gameCard(`mission${personalMission?` ${personalMission.tone}`:''}`,personalMission?'YOUR PERSONAL MISSION · PRO':'YOUR CLIMB MISSION',
+      node('strong','',personalMission?personalMission.text:data.mission));
     const goals=node('div','es-g-goals');
     if(data.win)goals.append(win);
-    if(data.mission)goals.append(mission);
+    if(personalMission||data.mission)goals.append(mission);
+
+    // PRO's personal pattern: what you repeat across games, or an honest note about why it is not there
+    let pattern=null;
+    if(personal){
+      const view=personal.pattern;
+      pattern=gameCard(`pattern ${view.kind}`,'YOUR PATTERN · PRO');
+      if(view.kind==='real'){
+        pattern.append(node('strong','',view.title||'VERIFIED PERSONAL PATTERN'),node('span','es-g-cue',view.cue));
+        if(view.proof)pattern.append(node('small','',view.proof));
+      }else{
+        if(view.title&&view.kind==='building')pattern.append(node('strong','',view.title));
+        pattern.append(node('span','es-g-cue',view.text));
+        if(view.proof)pattern.append(node('small','',view.proof));
+      }
+    }
+    root.classList.toggle('es-g-tight',Boolean(pattern));
 
     const calls=node('div','es-g-calls');
     calls.append(job,threat);
-    root.replaceChildren(head,squad,calls,cells,path,goals);
+    root.replaceChildren(head,squad,calls,...(pattern?[pattern]:[]),cells,path,goals);
     if(build){
       const row=node('section','es-g-build');
       const heading2=node('div','es-g-build-head');

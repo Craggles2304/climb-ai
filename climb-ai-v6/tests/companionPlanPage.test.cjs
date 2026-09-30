@@ -120,7 +120,8 @@ function page(steps,{win='',loss='',ourStyle='FRONT-TO-BACK',theirStyle='DIVE',a
   const roleWin=make('div',{id:'opRoleWin',className:'op-rolewin'},...stepCards);
   const winCard=make('article',{id:'opPaidWin',className:'op-winhero'},make('span'),text('strong','opYourWin',win));
   const lossCard=make('article',{id:'opPaidLoss',className:'op-danger'},make('span'),text('strong','opVsTeam',loss));
-  const section=make('section',{id:'opMissionReminders'},head,draft,roleWin,lossCard,winCard);
+  const missionBar=make('div',{className:'op-mission'},make('span'),text('strong','opMissionCue','After dying: collect safe resources.'));
+  const section=make('section',{id:'opMissionReminders'},head,draft,roleWin,lossCard,winCard,missionBar);
   let handler=null;
   const sandbox={
     document:{getElementById:id=>byId(section,id),createElement:tag=>new El(tag)},
@@ -129,10 +130,10 @@ function page(steps,{win='',loss='',ourStyle='FRONT-TO-BACK',theirStyle='DIVE',a
   };
   sandbox.window=sandbox;
   vm.runInContext(layer,vm.createContext(sandbox),{filename:'esports-v2.js'});
-  const state=()=>({matchup:{champion:'Caitlyn',plan:{you:{name:'Caitlyn'}}},teamPlan:{ourTeam:allyList.map(person),theirTeam:enemyList.map(person),compositionRead:{}}});
+  const state=(strategyAccess)=>({matchup:{champion:'Caitlyn',plan:{you:{name:'Caitlyn'}}},teamPlan:{ourTeam:allyList.map(person),theirTeam:enemyList.map(person),compositionRead:{},strategyAccess}});
   const push=async(next=state())=>{handler(next);await new Promise(r=>setTimeout(r,5))};
   const pieces=card=>{const list=card.children.find(c=>c.tagName==='OL');return list?list.children.map(li=>li.textContent):null};
-  return {section,stepCards,winCard,lossCard,draft,head,push,pieces,flowOf:card=>card.children.find(c=>c.tagName==='OL')||null};
+  return {section,stepCards,winCard,lossCard,draft,head,missionBar,state,push,pieces,flowOf:card=>card.children.find(c=>c.tagName==='OL')||null};
 }
 
 const STEPS=['CORE ITEMS + SAFE FARM','Janna / Ornn','Yone / Pyke / Lux — DO NOT STEP OUT BEFORE THEIR ACCESS IS COMMITTED',
@@ -246,6 +247,44 @@ test('with no portraits to hang them on, the labels go back to the tag row',asyn
   await p.push({matchup:{champion:'Caitlyn'},teamPlan:{ourTeam:[],theirTeam:[],compositionRead:{}}});
   assert.equal(byId(p.section,'esSquad'),null);
   assert.equal(p.draft.children.length,2,'both labels are back where preload put them');
+});
+
+/* ----------------------------------------------- PRO note on the plan page -- */
+// PRO's personal pattern and mission are produced by the site's draft coach in game (it needs the
+// live player list), so the plan page cannot show them. It says so, truthfully, instead of showing a
+// "building your profile" placeholder that would wrongly imply the player has no history.
+
+const PLUS={paidStrategy:true,deepStrategy:false,tier:'PLUS'};
+const PRO_ACCESS={paidStrategy:true,deepStrategy:true,tier:'PRO'};
+const FREE={paidStrategy:false,deepStrategy:false,tier:'FREE'};
+const noteOf=p=>byId(p.section,'esProNote');
+
+test('PRO: the plan page says the personal pattern loads in game, at the end of the mission bar',async()=>{
+  const p=page(STEPS);
+  await p.push(p.state(PRO_ACCESS));
+  assert.equal(noteOf(p).textContent,'PRO · PERSONAL PATTERN LOADS IN GAME');
+  assert.equal(p.missionBar.children.at(-1),noteOf(p),'the note follows the mission text');
+  assert.equal(byId(p.section,'opMissionCue').textContent,'After dying: collect safe resources.','the mission text itself is untouched');
+});
+
+test('PLUS: a one-line pointer to what PRO adds; FREE: nothing',async()=>{
+  const plus=page(STEPS);
+  await plus.push(plus.state(PLUS));
+  assert.equal(noteOf(plus).textContent,'PRO ADDS YOUR PERSONAL PATTERN');
+
+  const free=page(STEPS);
+  await free.push(free.state(FREE));
+  assert.equal(noteOf(free),null,'the free plan page already has its own upgrade card');
+});
+
+test('the note follows the tier, and is never added twice',async()=>{
+  const p=page(STEPS);
+  await p.push(p.state(PLUS));await p.push(p.state(PLUS));await p.push(p.state(PLUS));
+  assert.equal(p.missionBar.children.filter(c=>c.id==='esProNote').length,1);
+  await p.push(p.state(PRO_ACCESS));
+  assert.equal(noteOf(p).textContent,'PRO · PERSONAL PATTERN LOADS IN GAME');
+  await p.push(p.state(FREE));
+  assert.equal(noteOf(p),null);
 });
 
 test('the stylesheet places the win, loss and mission cards and shows the arrows',()=>{

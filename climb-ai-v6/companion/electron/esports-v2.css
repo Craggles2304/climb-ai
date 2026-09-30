@@ -713,6 +713,55 @@ body:has(#esGame) .shell{padding-top:10px !important;padding-bottom:10px !import
   .es-g-build{grid-template-columns:minmax(0,1fr)}.es-g-items{flex-wrap:wrap}
 }
 
+/* ------------------------------------------------ PRO: personal pattern + mission -- */
+/* PRO's personal pattern and mission come from the site's draft coach (in game only). Violet marks
+   "this is about YOU, from YOUR games". Muted styles are honest placeholders, never fake content. */
+
+.es-g-card.pattern{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;padding:7px 12px 8px 16px;
+  background:linear-gradient(100deg,rgba(180,140,255,.2),rgba(180,140,255,.03) 72%);box-shadow:inset 0 0 0 1px rgba(180,140,255,.45)}
+.es-g-card.pattern::before{background:#b48cff}
+.es-g-card.pattern .es-g-label{margin:0;color:#b48cff}
+.es-g-card.pattern strong{font:800 italic 18px/1.1 var(--es-display);text-transform:uppercase;color:#fff;letter-spacing:.02em}
+.es-g-card.pattern .es-g-cue{font:600 13px/1.3 'DM Sans',system-ui,sans-serif;color:#f4f7f9}
+.es-g-card.pattern small{font:500 11px var(--es-mono);letter-spacing:.04em;color:#cdbcff}
+.es-g-card.pattern:is(.loading,.none,.building,.unavailable) .es-g-cue{color:#c5d0d5;font-weight:500}
+.es-g-card.pattern:is(.loading,.none,.building,.unavailable) strong{color:#d9ccff}
+.es-g-card.pattern.unavailable{box-shadow:inset 0 0 0 1px rgba(255,197,61,.4)}
+.es-g-card.pattern.unavailable::before{background:var(--es-gold)}
+.es-g-card.pattern.unavailable .es-g-label{color:var(--es-gold)}
+
+.es-g-card.mission.personal::before{background:#b48cff}
+.es-g-card.mission.personal .es-g-label{color:#b48cff}
+.es-g-card.mission.personal{background:linear-gradient(100deg,rgba(180,140,255,.18),rgba(180,140,255,.03) 75%);box-shadow:inset 0 0 0 1px rgba(180,140,255,.4)}
+.es-g-card.mission.pending::before{background:var(--es-gold)}
+.es-g-card.mission.pending .es-g-label{color:var(--es-gold)}
+
+/* the extra bar needs room: tighten everything a little, only while it is present */
+.es-game.es-g-tight{gap:5px;padding-top:8px;padding-bottom:8px}
+.es-game.es-g-tight .es-g-title h2{font-size:30px}
+.es-game.es-g-tight .es-g-squad .es-unit{grid-template-rows:26px auto}
+.es-game.es-g-tight .es-g-squad .es-unit-art{height:26px}
+.es-game.es-g-tight .es-g-squad .es-unit-role{bottom:20px}
+.es-game.es-g-tight .es-flow.big li{font-size:19px;padding:3px 9px}
+.es-game.es-g-tight .es-g-why{margin-top:4px}
+.es-game.es-g-tight .es-g-card{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-card.pattern{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-step{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-step strong{font-size:16px}
+.es-game.es-g-tight .es-g-build{padding-top:4px;padding-bottom:4px}
+.es-game.es-g-tight .es-g-item{padding-top:3px;padding-bottom:4px}
+.es-game.es-g-tight .es-g-item img{width:26px;height:26px}
+.es-game.es-g-tight .es-g-item.swap img{width:22px;height:22px}
+
+/* plan page: a small honest note about PRO, at the end of the mission bar */
+.es-pro-note{margin-left:auto;padding:4px 10px;font:700 11px var(--es-mono);letter-spacing:.06em;white-space:nowrap;color:#d9ccff;
+  background:rgba(180,140,255,.12);box-shadow:inset 0 0 0 1px rgba(180,140,255,.4);clip-path:var(--es-cut-shape-sm)}
+/* with the note present, the mission text must still fit on one line */
+body #opMissionReminders .op-mission:has(.es-pro-note){gap:10px}
+body #opMissionReminders .op-mission:has(.es-pro-note) > span{letter-spacing:.08em}
+.es-pro-note{padding-left:8px;padding-right:8px}
+.es-pro-note[data-tier="PLUS"]{color:#b9a7e8;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--es-line)}
+
 /* ------------------------------------------------------------- reduced -- */
 @media (prefers-reduced-motion:reduce){
   #draftBoard::before,.brand-signal span,.quiet-live i,#draftBoardState.good,#simplePregamePill.good,#draftBoard .eyebrow::before{animation:none !important}
