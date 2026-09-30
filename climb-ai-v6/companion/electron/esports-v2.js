@@ -306,12 +306,159 @@
     decorateFlows(theirs);
   }
 
+  /* ------------------------------------------------ in-game screen ------- */
+  // While a match is recording, the coach board is a tall stack of tiny text
+  // with the win path and build hidden in a drawer. This builds a one-screen
+  // version from the values the board has already computed (it only READS the
+  // board's elements; the board keeps updating them, and its drawers stay below
+  // for the interactive tools). Long lines wrap into pieces instead of being clipped.
+  const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
+  const val=id=>clean($(id)?.textContent);
+  const node=(tag,className,content)=>{
+    const el=document.createElement(tag);
+    if(className)el.className=className;
+    if(content!==undefined)el.textContent=content;
+    return el;
+  };
+  const gameCard=(className,label,...kids)=>{
+    const card=node('article',`es-g-card ${className}`);
+    card.append(node('span','es-g-label',label),...kids);
+    return card;
+  };
+  const pieceList=(parts,mode)=>{
+    const list=node('ol',`es-flow ${mode}`);
+    parts.forEach(part=>list.append(node('li','',part)));
+    return list;
+  };
+  const itemIcon=(patch,id)=>`https://ddragon.leagueoflegends.com/cdn/${encodeURIComponent(patch)}/img/item/${encodeURIComponent(id)}.png`;
+  function buildCards(build){
+    const path=[...(build.core||[]).slice(0,2),build.draftItem,build.finish,build.boots].filter(Boolean);
+    const swaps=(build.swaps||[]).filter(item=>item&&item.id).slice(0,3);
+    const label=(item,index)=>item.slot==='CORE'?`CORE ${index+1}`:item.slot==='DRAFT'?'VS THIS TEAM':item.slot==='FINISH'?'FINISH':item.slot==='BOOTS'?'BOOTS':'ITEM';
+    const card=(item,text,kind)=>{
+      const el=node('article',`es-g-item ${kind}`);
+      el.title=clean(item.why);
+      const icon=document.createElement('img');icon.alt='';icon.src=itemIcon(build.patch,item.id);icon.onerror=()=>icon.classList.add('es-missing');
+      el.append(icon,node('span','',text),node('b','',clean(item.name).toUpperCase()));
+      return el;
+    };
+    return [...path.map((item,index)=>card(item,label(item,index),item.slot==='DRAFT'?'draft':item.slot==='BOOTS'?'boots':item.slot==='FINISH'?'finish':'core')),
+      ...swaps.map(item=>card(item,'SWAP IF','swap'))];
+  }
+  function renderGame(){
+    const hud=$('opRememberHud');
+    const live=Boolean(hud)&&document.body.classList.contains('op-remember-live');
+    let root=$('esGame');
+    if(!live){root?.remove();return}
+    // The board fills in its values as it renders; follow it (debounced, and it only
+    // redraws when a value actually changed, so watching can never loop).
+    if(!hud.dataset.esWatched&&typeof MutationObserver==='function'){
+      hud.dataset.esWatched='1';
+      let pending=0;
+      new MutationObserver(()=>{clearTimeout(pending);pending=setTimeout(()=>{try{renderGame()}catch{}},30)})
+        .observe(hud,{childList:true,subtree:true,characterData:true});
+    }
+    const plan=state?.teamPlan||{};
+    const ours=inRoleOrder(rosterOf('ourTeam'));
+    const theirs=inRoleOrder(rosterOf('theirTeam'));
+    const build=plan.adaptiveBuild||plan.rememberPlan?.adaptiveBuild||null;
+    const steps=[...($('opRemWinPath')?.children||[])].map(step=>[clean(step.querySelector('i')?.textContent),clean(step.querySelector('strong')?.textContent)]);
+    const data={
+      title:val('opRememberTitle'),shape:val('opRemOurShape'),curve:val('opRemEnemyCurve'),
+      job:val('opRemGameCall'),why:val('opRemGameCallWhy'),threat:val('opRemThreat'),answer:val('opRemThreatAnswer'),
+      carry:val('opRemCarryPrimary'),role:val('opRemCarryRole'),around:val('opRemCarryPlay'),
+      mode:val('opRemDecisionCall'),when:val('opRemFightWhen'),stop:val('opRemStopRule'),
+      mission:val('opMissionCue')||val('opRemMission'),win:val('opYourWin'),
+      live:clean(hud.querySelector('.rem4-live')?.textContent)||'LIVE · RECORDING',
+      you:clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name),steps,ours,theirs,
+      build:build?[build.patch,build.read,build.core,build.draftItem,build.finish,build.boots,build.swaps]:null,
+    };
+    const signature=JSON.stringify(data);
+    if(!root){root=node('section','es-game');root.id='esGame';hud.before(root)}
+    if(root.dataset.signature===signature)return;
+    root.dataset.signature=signature;
+
+    // header: who you are, and the shape of both teams
+    const [titleMain,titleRest]=data.title.split('//').map(clean);
+    const head=node('header','es-g-head');
+    const heading=node('div','es-g-title');
+    heading.append(node('span','es-g-live',`● ${data.live}`),node('h2','',titleMain||'YOUR GAME PLAN'));
+    if(titleRest)heading.querySelector('h2').append(node('small','',` // ${titleRest}`));
+    const tags=node('div','es-g-tags');
+    if(data.shape)tags.append(node('span','ours',`OUR SHAPE · ${data.shape}`));
+    if(data.curve)tags.append(node('span','theirs',`THEIR CURVE · ${data.curve}`));
+    head.append(heading,tags);
+
+    // both squads, tagged: you / who you play with / who to fear
+    const you=data.you.toLowerCase();
+    const linkText=`${steps[1]?.[1]||''} ${data.around}`;
+    const threatText=`${data.threat} ${steps[2]?.[1]||''}`;
+    const squad=node('div','es-g-squad');
+    const side=(people,key)=>{
+      const column=node('div',`es-side ${key}`);
+      column.append(...people.map(p=>unit(p,key==='ours'?(p.name.toLowerCase()===you?'you':mentions(linkText,p.name)?'link':''):(mentions(threatText,p.name)?'threat':''),key)));
+      return column;
+    };
+    squad.append(side(ours,'ours'),node('div','es-vs','VS'),side(theirs,'theirs'));
+
+    // the two big calls: your job, and the threat to respect
+    const jobParts=cut(data.job,ARROW);
+    const job=gameCard('job','YOUR JOB');
+    job.append(jobParts.length>1?pieceList(jobParts,'big'):node('p','es-g-line',data.job||'PLAY YOUR ROLE'));
+    if(data.why)job.append(node('p','es-g-why',data.why));
+    const threat=gameCard('threat','MAIN THREAT');
+    const threatPerson=namesIn(data.threat,theirs)[0];
+    const threatBody=node('div','es-g-threat-body');
+    threatBody.append(node('h3','',data.threat||'THEIR ENGAGE'));
+    const answers=cut(data.answer,/\s+·\s+/);
+    if(answers.length){const list=node('ul','es-g-bullets');answers.forEach(a=>list.append(node('li','',a)));threatBody.append(list)}
+    if(threatPerson)threat.append(portrait(threatPerson.name,'es-g-threat-art'));
+    threat.append(threatBody);
+
+    // six short rules
+    const cells=node('div','es-g-cells');
+    [['WHO CARRIES',data.carry,'lime'],['YOUR ROLE',data.role,'blue'],['PLAY AROUND',data.around,'blue'],
+      ['FIGHT / FARM',data.mode,'gold'],['FIGHT WHEN',data.when,'lime'],["DON'T",data.stop,'red']]
+      .filter(([,value])=>value).forEach(([label,value,tone])=>cells.append(gameCard(`cell ${tone}`,label,node('strong','',value))));
+
+    // your path to winning, step by step
+    const path=node('div','es-g-steps');
+    steps.slice(0,5).forEach(([label,value])=>{
+      const step=node('article','es-g-step');
+      step.append(node('span','es-g-label',label),node('strong','',value));
+      path.append(step);
+    });
+
+    // the team's win condition and your mission
+    const winParts=(()=>{const arrows=cut(data.win,ARROW);return arrows.length>1?arrows:cut(data.win,/(?<=[.!?])\s+/)})();
+    const win=gameCard('win','OUR WIN CONDITION');
+    win.append(winParts.length>1?pieceList(winParts,'inline'):node('p','es-g-line small',data.win));
+    const mission=gameCard('mission','YOUR CLIMB MISSION',node('strong','',data.mission));
+    const goals=node('div','es-g-goals');
+    if(data.win)goals.append(win);
+    if(data.mission)goals.append(mission);
+
+    const calls=node('div','es-g-calls');
+    calls.append(job,threat);
+    root.replaceChildren(head,squad,calls,cells,path,goals);
+    if(build){
+      const row=node('section','es-g-build');
+      const heading2=node('div','es-g-build-head');
+      heading2.append(node('span','es-g-label','BUILD FOR THIS GAME'),node('small','',clean(build.read)));
+      const grid=node('div','es-g-items');
+      grid.append(...buildCards(build));
+      row.append(heading2,grid);
+      root.append(row);
+    }
+  }
+
   function apply(){
     if(!state)return;
     decorateRows('draftOurPicks',Array.isArray(state.draft?.allies)?state.draft.allies:[],{ours:true});
     decorateRows('draftTheirPicks',Array.isArray(state.draft?.enemies)?state.draft.enemies:[],{ours:false});
     decoratePlan();
     decorateMatchPage();
+    renderGame();
     decorateReview();
   }
 

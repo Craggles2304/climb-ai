@@ -44,7 +44,9 @@ test('the stylesheet does not hide information or remove elements',()=>{
     // ".op-chip.role" is the "YOU · CHAMPION · ROLE" tag: the title and the YOU portrait say the same.
     // ".shell > footer" is the generic app footer, hidden only while the plan page (which has its own
     // reminder line) is on screen, to give the plan room.
-    assert.match(selector,/#idleArena|\.es-tile\.es-missing|::-webkit|::before|::after|\.es-|\.op-foot|#opMissionReminders\.hidden|\.op-chip\.role|\.shell > footer|@media \(max-height:\d+px\)/,`unexpected hiding rule: ${selector}`);
+    // "#esGame ~ #opRememberHud" is the old coach board's top section, which the in-game screen
+    // replaces. companionGameScreen.test.cjs pins exactly which four parts may be hidden.
+    assert.match(selector,/#idleArena|\.es-tile\.es-missing|::-webkit|::before|::after|\.es-|\.op-foot|#opMissionReminders\.hidden|\.op-chip\.role|\.shell > footer|@media \(max-height:\d+px\)|#esGame ~ #opRememberHud/,`unexpected hiding rule: ${selector}`);
   }
   const footRule=css.indexOf('.op-foot{display:none}');
   assert.ok(footRule>-1,'the reminder line is expected to be hidden in short windows');
