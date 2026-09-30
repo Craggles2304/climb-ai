@@ -75,7 +75,9 @@
     const body=detail?.querySelector('.rem5-coach-detail-body');
     if(body){
       const summary=detail.querySelector('summary');
-      if(summary)summary.textContent='DEEP COACH · WHY THIS FITS YOU';
+      // Only write when it differs: this runs inside a MutationObserver, and a
+      // write (even of identical text) is a page change that re-triggers it.
+      if(summary&&summary.textContent!=='DEEP COACH · WHY THIS FITS YOU')summary.textContent='DEEP COACH · WHY THIS FITS YOU';
       ['opRemPersonalTrap','opRemStrategy','opRemCausalRoute','opRemExperiment'].forEach(id=>{
         const node=$(id);if(node&&node.parentElement===panel)body.prepend(node);
       });

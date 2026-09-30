@@ -3,7 +3,7 @@ import {execFile} from 'node:child_process';
 import {get as httpsGet} from 'node:https';
 import {existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
-import {recoveryPregameContext} from './in-game-recovery.mjs';
+import {recoveryPregameContext,gameActiveNow,isGameActivePhase,trackerHeartbeatState} from './in-game-recovery.mjs';
 import {normalizePregame} from './pregame-normalizer.mjs';
 
 const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
@@ -59,6 +59,7 @@ let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
 let lastGameflowPhase='';
+let lastGameflowOkAt=0;
 let lastGameflowCheckedAt=0;
 const championNames=new Map();
 
@@ -248,8 +249,16 @@ async function postEnvelope(envelope){
 }
 
 async function postStatus(force=false){
-  const heartbeatState=session?'RECORDING':pregame?'CHAMP_SELECT':lastLcuDetected?'WAITING':'LCU_UNAVAILABLE';
-  const heartbeatDetail=session?'Match telemetry is recording locally.':lastLcuDetail;
+  // While a match is loading or running the tracker is RECORDING even before
+  // League's Live Client answers. Reporting WAITING here made the desktop app
+  // think the match had finished and stopped the server restoring the plan.
+  const gameActive=gameActiveNow({gameflow:lastGameflowPhase,gameflowSeenAt:lastGameflowOkAt,now:Date.now()});
+  const heartbeatState=trackerHeartbeatState({hasSession:Boolean(session),gameActive,hasPregame:Boolean(pregame),lcuDetected:lastLcuDetected});
+  const heartbeatDetail=session
+    ?'Match telemetry is recording locally.'
+    :gameActive
+      ?'League match is active. Waiting for Live Client telemetry…'
+      :lastLcuDetail;
   const payload={
     state:heartbeatState,
     runtimeVersion:RUNTIME_VERSION,
@@ -306,6 +315,7 @@ async function pollGameflow(force=false){
   try{
     const phase=text(await lcuJson('/lol-gameflow/v1/gameflow-phase'));
     lastGameflowPhase=phase;
+    lastGameflowOkAt=Date.now();
     lastLcuDetected=true;
     if(phase==='InProgress'||phase==='Reconnect'){
       lastLcuDetail='League match is active. Connecting live telemetry…';
@@ -351,17 +361,32 @@ async function pollPregame(){
   }catch(err){
     if(err?.status===404){lastLcuDetected=true;lastChampSelectDetected=false;lastLcuDetail='League Client connected; waiting for champ select.'}
     else{lastLcuDetected=false;lastChampSelectDetected=false;lastLcuDetail=err?.message||'League Client local connection unavailable.'}
-    if(pregame){pregameMisses+=1;if(pregameMisses>=PREGAME_END_AFTER_MISSES)await finishPregame('champ select ended')}
+    if(pregame){
+      // Know whether this is a game starting or a dodge BEFORE deciding, so the
+      // desktop can be moved on first. The cached reading can be up to a poll stale.
+      await pollGameflow(true);
+      pregameMisses+=1;
+      if(pregameMisses>=PREGAME_END_AFTER_MISSES)await finishPregame('champ select ended');
+    }
   }
 }
 
 async function finishPregame(reason,quiet=false){
   if(!pregame)return;
+  // Closing the draft makes the server forget it. If the desktop app is still in
+  // CHAMP_SELECT at that moment, its next plan poll sees 'not ready' and throws
+  // away the plan it was holding. So when the match is starting, tell it first.
+  const gameStarting=gameActiveNow({gameflow:lastGameflowPhase,gameflowSeenAt:lastGameflowOkAt,now:Date.now()});
+  if(gameStarting)
+    emitTrackerState('GAME_STARTING','League is starting the match. Keeping your draft plan.');
   if(pregameUpload)await pregameUpload;
   const finished=pregame;pregame=null;pregameMisses=0;lastPregameSignature='';lastLocalDraftSignature='';lastPregameUploadAt=0;lastChampSelectDetected=false;
   const result=await postJson('/api/live/pregame',{type:'PREGAME_END',clientPregameId:finished.id,startedAt:finished.startedAt,endedAt:new Date().toISOString()});
   if(!result.ok&&result.retryable)console.warn(`OVERPOWERED Companion: champ-select close upload missed — ${result.detail}. The server will expire the live draft state automatically.`);
-  if(!quiet)logState('WAITING',`OVERPOWERED Companion: ${reason}. Waiting for the match to load.`);
+  // The desktop app also reads this text, and 'waiting for the match' moves it
+  // to WAITING. When the match IS starting that would undo the GAME_STARTING
+  // above and show a false 'match finished', so stay silent in that case.
+  if(!quiet&&!gameStarting)logState('WAITING',`OVERPOWERED Companion: ${reason}. Waiting for the match to load.`);
 }
 
 function normalize(data){
@@ -578,7 +603,9 @@ async function tick(){
       session.misses+=1;
       if(session.misses>=END_AFTER_MISSES&&gameflow!=='InProgress'&&gameflow!=='Reconnect')await finishSession('League game ended');
       else if(gameflow==='InProgress'||gameflow==='Reconnect')emitTrackerState('RECORDING','Match is active. Live Client telemetry is reconnecting…');
-    }else if(gameflow==='InProgress'||gameflow==='Reconnect'){
+    }else if(isGameActivePhase(gameflow)){
+      // Includes GameStart (the loading screen): it used to fall through to the
+      // WAITING log below, which the desktop app reads as 'nothing is happening'.
       emitTrackerState('GAME_STARTING','League reports an active match. Waiting for Live Client telemetry…');
     }else if(!pregame)logState('WAITING','OVERPOWERED Companion: connected. Waiting for League or champ select.');
     return;

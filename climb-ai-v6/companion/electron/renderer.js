@@ -10,6 +10,10 @@ let activeCoachLevel={tier:'SILVER',depth:3,visiblePoints:3,reviewPoints:2,summa
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function safeArray(value){return Array.isArray(value)?value.filter(Boolean):[]}
 function setHidden(node,hidden){if(node)node.classList.toggle('hidden',Boolean(hidden))}
+function roleLabel(value){
+  const role=String(value||'').trim().toUpperCase();
+  return({TOP:'TOP',JUNGLE:'JUNGLE',MIDDLE:'MID',MID:'MID',BOTTOM:'ADC',ADC:'ADC',UTILITY:'SUPPORT',SUPPORT:'SUPPORT'})[role]||'—';
+}
 
 function phaseTitle(phase){
   return ({
