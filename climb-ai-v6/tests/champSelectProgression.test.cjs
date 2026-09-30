@@ -9,7 +9,7 @@ const route=fs.readFileSync('app/api/live/champion-plan/route-core.ts','utf8');
 const webDraft=fs.readFileSync('components/LivePregameMount.tsx','utf8');
 
 test('champ select reads the local hover from Riot pick actions before lock',()=>{
-  assert.ok(tracker.includes("const actionChampionIds=pickActions.map(action=>int(action?.championId,0))"));
+  assert.ok(tracker.includes("const actionChampionIds=pickActions.map(action=>int(action?.championId,0)||int(action?.selectedChampionId,0))"));
   assert.ok(tracker.includes("const latestPickAction=cellId=>[...pickActions].reverse().find"));
   assert.ok(tracker.includes("const localChampionId=localRaw?selectedChampionId(localRaw,true):0"));
   assert.ok(tracker.includes("localSelectionState:localLockedIn?'LOCKED':localChampionId>0?'HOVER':'WAITING'"));
@@ -18,7 +18,7 @@ test('champ select reads the local hover from Riot pick actions before lock',()=
 test('enemy hidden hover is not exposed by the progressive draft mapper',()=>{
   assert.ok(tracker.includes("allies:myTeam.map(raw=>mapPick(raw,true)).slice(0,5)"));
   assert.ok(tracker.includes("enemies:theirTeam.map(raw=>mapPick(raw,false)).slice(0,5)"));
-  assert.ok(tracker.includes("if(Boolean(action?.completed)||allowHover)return int(action?.championId,0)"));
+  assert.ok(tracker.includes("if(actionLocked(action)||allowHover)return actionChampionId(action)"));
 });
 
 test('champion plan is previewable before lock and only adaptive build waits for lock',()=>{
