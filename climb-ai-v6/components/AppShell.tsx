@@ -2,7 +2,7 @@
 import {useEffect,useMemo,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
-import {useAccount} from './AccountContext';
+import {matchesFor,useAccount} from './AccountContext';
 import {useSubscription} from './SubscriptionContext';
 import {SessionBar} from './SessionBar';
 import {LivePregameMount} from './LivePregameMount';
@@ -13,6 +13,7 @@ import {useLearningPlan} from './LearningPlanContext';
 import {accountProgress,type AccountProgress} from '@/lib/accountXp';
 import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 
 type ProgressionPayload={
   ok:boolean;
@@ -95,6 +96,8 @@ export function AppShell({children}:{children:React.ReactNode}){
     });
   },[tasks,latestLearningMatch]);
   const latestLearningEvents=useMemo(()=>progression?.recent?.filter(item=>item.matchId===latestLearningMatch)??[],[progression?.recent,latestLearningMatch]);
+  const latestLearningMatchData=useMemo(()=>latestLearningMatch?matchesFor(active.id).find(match=>match.id===latestLearningMatch):undefined,[active.id,latestLearningMatch]);
+  const latestStrengths=useMemo(()=>latestLearningMatchData?positiveEvidenceForMatch(latestLearningMatchData,active.rank):[],[latestLearningMatchData,active.rank]);
   const latestLearningAt=progression?.sync.latestMatchAt??null;
   const latestLearningRecent=Boolean(latestLearningAt&&Date.now()-Date.parse(latestLearningAt)<6*60*60*1000);
   const showLearningReceipt=Boolean(latestLearningMatch&&latestLearningRecent&&seenLearningMatch!==latestLearningMatch);
@@ -246,6 +249,7 @@ export function AppShell({children}:{children:React.ReactNode}){
             <small>{summary.confirmed}/{summary.required} proven reps · {learningStageLabel(summary.stage)}</small>
           </div>)}
         </div>:<p>Match data has synced. Mission evidence can take a short moment to finish processing.</p>}
+        {latestStrengths.length>0&&<div className="op-learning-strength-count">✓ {latestStrengths.length} VERIFIED STRENGTH{latestStrengths.length===1?'':'S'} · GOOD PLAY MEASURED TOO</div>}
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
       </div>
       <div className="op-learning-receipt-actions">
