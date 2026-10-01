@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {mergeIlpCloudSnapshot,type CloudIlpRow} from '../lib/ilpCloudMerge';
 import type {ILPTask} from '../lib/types';
 
-function task(id:string,over:Partial<ILPTask>={}):ILPTask{return{id,accountId:'acct',title:`Task ${id}`,category:'CONSISTENCY',why:'test',gameRule:'test rule',metric:'test_metric',target:'3 games',progress:20,status:'ACTIVE',source:'SYSTEM',evidence:[],priority:60,history:[],...over}}
+function task(id:string,over:Partial<ILPTask>={}):ILPTask{return{id,accountId:'acct',title:`Task ${id}`,dnaDomain:'CONSISTENCY',category:'CONSISTENCY',why:'test',gameRule:'test rule',metric:'test_metric',target:'3 games',progress:20,status:'ACTIVE',source:'SYSTEM',evidence:[],priority:60,history:[],...over}}
 function row(task:ILPTask,updatedAt:string):CloudIlpRow{return{id:task.id,payload:task,updated_at:updatedAt}}
 
 const t1='2026-09-16T12:00:00.000Z';
