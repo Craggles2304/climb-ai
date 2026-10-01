@@ -12,6 +12,7 @@ export type ClientDnaMission={
 type Props={
   player:string;
   missions:ClientDnaMission[];
+  compact?:boolean;
 };
 
 declare global{
@@ -24,7 +25,7 @@ declare global{
   }
 }
 
-export function ClientGameDna({player,missions}:Props){
+export function ClientGameDna({player,missions,compact=false}:Props){
   const host=useRef<HTMLDivElement>(null);
   const [scriptReady,setScriptReady]=useState(false);
 
@@ -50,6 +51,6 @@ export function ClientGameDna({player,missions}:Props){
 
   return <>
     <Script src="/client/dna.js" strategy="afterInteractive" onLoad={()=>setScriptReady(true)}/>
-    <div ref={host} className="client-original-dna-host"/>
+    <div ref={host} className={compact?"client-original-dna-host dna-preview-compact":"client-original-dna-host"}/>
   </>;
 }
