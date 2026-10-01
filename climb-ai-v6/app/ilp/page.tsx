@@ -17,6 +17,7 @@ import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
+import {dnaDomainLabel} from '@/lib/dnaDomain';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -141,7 +142,7 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
     <div className="ip-mission-top">
       <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
-      <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{clean(task.category)}</em></div>
+      <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
     </div>
     <h2>{plain.name}</h2>
     <div className="ip-layman">
@@ -245,7 +246,7 @@ function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}
   return <article className="ip-archive">
     <div className="ip-archive-head"><span>{title}</span><b>{tasks.length}</b></div>
     {tasks.length?<div>{tasks.map(task=><details key={task.id}>
-      <summary><b>{plainLanguageFocus(task).name}</b><span>{clean(task.category)}</span></summary>
+      <summary><b>{plainLanguageFocus(task).name}</b><span>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</span></summary>
       <p>{task.lastUpdatedReason||task.evidence.at(-1)||'No additional evidence note.'}</p>
       {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
     </details>)}</div>:<p className="muted">{empty}</p>}
