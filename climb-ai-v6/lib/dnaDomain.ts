@@ -18,6 +18,15 @@ export const DNA_DOMAIN_LABELS:Record<DnaDomain,string>={
   CONSISTENCY:'Consistency',
 };
 
+export const DNA_DOMAIN_COLORS:Record<DnaDomain,string>={
+  LANING:'#b6ff2e',
+  WAVES_CS:'#00f5d4',
+  VISION_MAP:'#a46bff',
+  OBJECTIVES:'#ffb21e',
+  TEAMFIGHTS:'#ff3d71',
+  CONSISTENCY:'#2ec7ff',
+};
+
 
 export const DNA_DOMAIN_GUIDE:Record<DnaDomain,{summary:string;purpose:string;subskills:string[]}>={
   LANING:{
