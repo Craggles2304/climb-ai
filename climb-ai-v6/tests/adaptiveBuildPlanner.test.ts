@@ -196,3 +196,29 @@ test('a generic mixed enemy team can leave the draft tech slot empty instead of 
   assert.ok(plan.core.length>=2);
   assert.equal(plan.draftItem,null);
 });
+
+
+test('current rank and role popular core anchors the first purchases while draft tech stays adaptive',()=>{
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:[
+      enemy(champion('Ornn',['Tank'],3,4,175,'Knocks up enemies.'),'TOP'),
+      enemy(champion('Sejuani',['Tank'],3,4,175,'Stuns enemies.'),'JUNGLE'),
+      enemy(champion('Orianna',['Mage'],2,9,525),'MID'),
+      enemy(champion('Jinx',['Marksman'],9,1,525),'ADC'),
+      enemy(champion('Nautilus',['Tank','Support'],2,3,175,'Roots and stuns enemies.'),'SUPPORT'),
+    ],
+    items,
+    popularItems:[
+      {id:10002,name:'Attack Speed Engine'},
+      {id:20003,name:'Attack Speed Boots'},
+      {id:10001,name:'Crit Engine'},
+    ],
+    popularSource:'LOLALYTICS PLATINUM BOTTOM',
+  });
+  assert.deepEqual(plan.core.map(item=>item.name),['Attack Speed Engine','Crit Engine']);
+  assert.equal(plan.boots?.name,'Steel Boots');
+  assert.ok(plan.draftItem?.flags.includes('ANTI_TANK'),JSON.stringify(plan.draftItem));
+  assert.match(plan.read,/LOLALYTICS PLATINUM BOTTOM/);
+});
