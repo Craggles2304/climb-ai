@@ -4742,3 +4742,65 @@ body[data-op-area="hq"] .hq-mission-why p{
   font:900 8px/1.35 var(--font-mono,'IBM Plex Mono',monospace);
   letter-spacing:.07em;
 }
+
+
+/* Simple explanation first, complex proof on demand */
+.ar-strength-simple,.ip-strength-simple{
+  margin-top:10px;
+  padding-top:9px;
+  border-top:1px solid color-mix(in srgb,var(--strand-color) 18%,rgba(255,255,255,.055));
+}
+.ar-strength-simple b,.ip-strength-simple b{
+  display:block;
+  margin-bottom:4px;
+  color:var(--strand-color);
+  font:900 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;
+}
+.ar-strength-simple p,.ip-strength-simple p{
+  margin:0!important;
+  min-height:0!important;
+  color:#c9d3d2!important;
+  font-size:10px!important;
+  line-height:1.5!important;
+}
+.ar-strength-proof,.ip-strength-proof{
+  margin-top:11px;
+  border-top:1px solid rgba(255,255,255,.065);
+}
+.ar-strength-proof summary,.ip-strength-proof summary{
+  padding-top:9px;
+  cursor:pointer;
+  color:#7f8f93;
+  font:800 7px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.ar-strength-proof>div,.ip-strength-proof>div{
+  display:grid;
+  gap:4px;
+  margin-top:9px;
+  padding:9px;
+  border:1px solid color-mix(in srgb,var(--strand-color) 20%,rgba(255,255,255,.06));
+  background:rgba(0,0,0,.14);
+}
+.ar-strength-proof>div span,.ip-strength-proof>div span{
+  color:#78878b;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.07em;
+  text-transform:uppercase;
+}
+.ar-strength-proof>div strong,.ip-strength-proof>div strong{
+  color:var(--strand-color);
+  font-size:18px;
+}
+.ar-strength-proof>div small,.ip-strength-proof>div small{
+  color:#728085;
+  font-size:8px;
+}
+.ar-strength-proof ul,.ip-strength-proof ul{
+  margin:8px 0 0;
+  padding-left:17px;
+  color:#89989c;
+  font-size:9px;
+  line-height:1.45;
+}
