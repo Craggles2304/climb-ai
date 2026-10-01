@@ -4,6 +4,8 @@ import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {clampCoachText} from '@/lib/coachingLevel';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import {resolveLeagueEntitlement} from '@/lib/server/subscriptionAccess';
+import {canUseMetric,historyCutoffIso,type CoachingMetricKey,type SubscriptionTier} from '@/lib/subscription';
 
 const historyTurnSchema=z.object({role:z.enum(['user','assistant']),content:z.string().min(1).max(2200)});
 const taskSchema=z.object({title:z.string(),category:z.string(),metric:z.string(),progress:z.number(),target:z.string(),gameRule:z.string()});
@@ -42,15 +44,19 @@ export async function POST(req:Request){
     if(!user)return NextResponse.json({error:'Sign in to compare your recent games.'},{status:401});
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({error:'Trend analysis is unavailable.'},{status:503});
+    const tier=(await resolveLeagueEntitlement(user.id)).tier;
 
     const {data:account,error:accountError}=await db.from('riot_accounts').select('id').eq('id',input.accountId).eq('user_id',user.id).maybeSingle();
     if(accountError)throw new Error(accountError.message);
     if(!account)return NextResponse.json({error:'That Riot account is not linked to this user.'},{status:403});
 
-    const {data:analysisRows,error:analysisError}=await db.from('op_match_analysis')
+    let analysisQuery=db.from('op_match_analysis')
       .select('match_id,champion,role,created_at,analysis')
       .eq('user_id',user.id).eq('riot_account_id',input.accountId)
-      .not('match_id','is',null).order('created_at',{ascending:false}).limit(15);
+      .not('match_id','is',null);
+    const cutoff=historyCutoffIso(tier);
+    if(cutoff)analysisQuery=analysisQuery.gte('created_at',cutoff);
+    const {data:analysisRows,error:analysisError}=await analysisQuery.order('created_at',{ascending:false}).limit(15);
     if(analysisError)throw new Error(analysisError.message);
     const ids=(analysisRows??[]).map((row:any)=>String(row.match_id||'')).filter(Boolean);
     if(!ids.length)return NextResponse.json(noGames(input.requestedGames,input.rank));
@@ -81,11 +87,11 @@ export async function POST(req:Request){
     }
     if(!games.length)return NextResponse.json(noGames(input.requestedGames,input.rank));
 
-    const answer=clampCoachText(buildAnswer(games,input.requestedGames,input.activeTasks??[],excluded,input.role),input.rank);
+    const answer=clampCoachText(buildAnswer(games,input.requestedGames,input.activeTasks??[],excluded,input.role,tier),input.rank);
     return NextResponse.json({
       answer,
       grounding:'recent-match-trend+ilp',
-      factsUsed:['recent_game_rows','historical_pro_analysis','active_ilp_tasks','rank',...(excluded?['invalid_sessions_excluded']:[])],
+      factsUsed:['recent_game_rows','eligible_tier_metrics','eligible_history_window','active_ilp_tasks','rank',...(excluded?['invalid_sessions_excluded']:[])],
       gamesUsed:games.length,
       requestedGames:input.requestedGames,
       excludedSessions:excluded,
@@ -106,7 +112,7 @@ function meaningful(match:MatchRow,metric?:MetricRow){
   return true;
 }
 
-function buildAnswer(newestFirst:TrendGame[],requested:number,tasks:z.infer<typeof taskSchema>[],excluded:number,selectedRole?:string){
+function buildAnswer(newestFirst:TrendGame[],requested:number,tasks:z.infer<typeof taskSchema>[],excluded:number,selectedRole:string|undefined,tier:SubscriptionTier){
   const chronological=[...newestFirst].reverse();
   const latest=chronological[chronological.length-1];
   const previous=chronological.length>1?chronological[chronological.length-2]:null;
@@ -118,6 +124,7 @@ function buildAnswer(newestFirst:TrendGame[],requested:number,tasks:z.infer<type
   const crossRoleBlocked=new Set(['carry_preservation','objective_readiness']);
 
   for(const [key,label] of PRO_SPECS){
+    if(!canUseMetric(tier,key as CoachingMetricKey))continue;
     if(mixedRoles&&crossRoleBlocked.has(key))continue;
     const series=chronological.map(game=>score(game.analysis,key)).filter((v):v is number=>v!==null);
     if(series.length<2)continue;
