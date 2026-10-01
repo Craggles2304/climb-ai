@@ -835,3 +835,57 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 @media(max-width:520px){
   .coach-preview-facts{grid-template-columns:1fr}
 }
+
+
+/* Shared Game DNA strand navigation */
+.dna-strand-guide{display:grid;gap:16px}
+.dna-strand-guide-head{align-items:flex-end}
+.dna-strand-guide-head h3{margin:6px 0 0;font-size:30px}
+.dna-strand-guide-head>small{max-width:430px;color:var(--dim);line-height:1.5;text-align:right}
+.dna-strand-tabs,.ip-dna-filter-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
+.dna-strand-tabs button,.ip-dna-filter-tabs button{
+  appearance:none;border:1px solid var(--line);background:#091014;color:var(--muted);
+  min-height:43px;padding:8px 9px;font:600 10px var(--mono);letter-spacing:.035em;
+  cursor:pointer;text-transform:uppercase
+}
+.dna-strand-tabs button:hover,.ip-dna-filter-tabs button:hover{border-color:#506268;color:var(--text);background:#10191d}
+.dna-strand-tabs button.active,.ip-dna-filter-tabs button.active{
+  border-color:var(--mint);color:var(--mint);background:linear-gradient(180deg,rgba(182,246,107,.1),rgba(182,246,107,.025));
+  box-shadow:inset 0 -2px 0 var(--mint)
+}
+.dna-strand-explainer{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(250px,.55fr);gap:16px}
+.dna-strand-explainer>div,.dna-strand-explainer>aside{border:1px solid var(--line);background:#091014;padding:18px}
+.dna-strand-explainer h3{font-size:28px;margin:7px 0 8px;line-height:1.04}
+.dna-strand-explainer p{margin:0;color:var(--muted);line-height:1.58}
+.dna-strand-subskills,.ip-dna-filter-detail>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}
+.dna-strand-subskills span,.ip-dna-filter-detail span{
+  border:1px solid #26393f;background:#0d171b;padding:6px 8px;
+  font:500 9px var(--mono);letter-spacing:.055em;text-transform:uppercase;color:#aebfc0
+}
+.dna-strand-explainer>aside{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px}
+.dna-strand-explainer>aside>span{font:500 8px var(--mono);letter-spacing:.1em;color:var(--dim)}
+.dna-strand-explainer>aside>b{font:800 23px var(--display)}
+.dna-strand-explainer>aside>small{color:var(--muted);line-height:1.5;margin-bottom:9px}
+.coach-preview-grid-single{grid-template-columns:1fr}
+.coach-preview-grid-single .coach-preview-current{max-width:none}
+
+/* My Climb DNA deep-link/filter */
+.ip-dna-filter{margin:18px 0}
+.ip-dna-filter-head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end}
+.ip-dna-filter-head h2{font-size:32px;margin:7px 0 5px}
+.ip-dna-filter-head p{margin:0;color:var(--muted);max-width:800px;line-height:1.5}
+.ip-dna-filter-tabs{margin-top:16px;grid-template-columns:76px repeat(6,minmax(0,1fr))}
+.ip-dna-filter-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.ip-dna-filter-detail>p{margin:0;color:#c6d2d1;line-height:1.55}
+
+@media(max-width:1050px){
+  .dna-strand-tabs{grid-template-columns:repeat(3,1fr)}
+  .ip-dna-filter-tabs{grid-template-columns:repeat(4,1fr)}
+  .dna-strand-explainer{grid-template-columns:1fr}
+}
+@media(max-width:680px){
+  .dna-strand-guide-head,.ip-dna-filter-head{align-items:flex-start;flex-direction:column}
+  .dna-strand-guide-head>small{text-align:left}
+  .dna-strand-tabs,.ip-dna-filter-tabs{grid-template-columns:repeat(2,1fr)}
+  .dna-strand-explainer h3,.ip-dna-filter-head h2{font-size:25px}
+}
