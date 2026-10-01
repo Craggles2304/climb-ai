@@ -78,6 +78,7 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
+  renderPlayerHome(current.playerHome,paired&&phase==='WAITING');
   renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
@@ -92,7 +93,8 @@ function render(state){
   const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup||current.draft);
   const quietVisible=phase==='RECORDING';
   const reviewVisible=phase==='REVIEW'&&Boolean(current.postGameReview);
-  setHidden($('status'),pregameVisible||quietVisible||reviewVisible);
+  const homeVisible=phase==='WAITING'&&Boolean(current.playerHome?.ok);
+  setHidden($('status'),homeVisible||pregameVisible||quietVisible||reviewVisible);
 
   $('statusTitle').textContent=phaseTitle(phase);
   $('statusCopy').textContent=phaseCopy(current);
@@ -110,6 +112,142 @@ function render(state){
   $('logs').textContent=rows.length?rows.map(row=>`[${new Date(row.at).toLocaleTimeString()}] ${row.line}`).join('\n'):'No tracker activity yet.';
 
   syncSettingsVisibility();
+}
+
+function renderPlayerHome(home,visible){
+  const section=ensurePlayerHome();
+  setHidden(section,!visible);
+  if(!visible||!home?.ok)return;
+
+  const player=home.player||{};
+  const tier=String(home.tier||'FREE').toUpperCase();
+  const baseline=home.baseline||{games:0,required:3,ready:false};
+  const baselineReady=Boolean(baseline.ready);
+  const games=Math.max(0,Number(baseline.games||0));
+  const required=Math.max(1,Number(baseline.required||3));
+
+  $('playerHomeName').textContent=[player.gameName,player.tagline?'#'+player.tagline:''].filter(Boolean).join(' ');
+  $('playerHomeRank').textContent=[player.rank,player.role].filter(Boolean).join(' · ')||'PLAYER PROFILE';
+  $('playerHomeTier').textContent=tier;
+  $('playerHomeView').textContent=String(home.tierView?.label||'PLAYER OVERVIEW');
+  $('playerHomeViewCopy').textContent=baselineReady
+    ?String(home.tierView?.detail||'Your current development view.')
+    :`DNA baseline ${Math.min(games,required)}/${required} · your strands stay at 0% until game ${required}.`;
+
+  const dnaRoot=$('playerHomeDna');
+  dnaRoot.replaceChildren();
+  safeArray(home.dna).forEach(item=>{
+    const row=document.createElement('div');
+    row.className='player-dna-row'+(!baselineReady?' baseline':'');
+    row.style.setProperty('--dna-color',baselineReady?String(item.color||'#7d8a8f'):'#677378');
+
+    const label=document.createElement('div');
+    label.className='player-dna-label';
+    const dot=document.createElement('i');
+    const name=document.createElement('span');name.textContent=String(item.label||item.domain||'DNA');
+    label.append(dot,name);
+
+    const track=document.createElement('div');track.className='player-dna-track';
+    const fill=document.createElement('i');fill.style.width=(baselineReady?clamp(Number(item.progress)||0,0,100):0)+'%';track.appendChild(fill);
+
+    const value=document.createElement('b');value.textContent=(baselineReady?clamp(Number(item.progress)||0,0,100):0)+'%';
+
+    row.append(label,track,value);
+    dnaRoot.appendChild(row);
+  });
+
+  const missionRoot=$('playerHomeMissions');
+  missionRoot.replaceChildren();
+  if(!baselineReady){
+    const card=document.createElement('article');card.className='player-mission-card baseline';
+    card.innerHTML=`<span>DNA BASELINE</span><h3>${Math.min(games,required)}/${required} GAMES OBSERVED</h3><p>Play normally. OP CLIMB is learning your starting habits before it gives you a personalised mission.</p><div class="player-baseline-dots">${[0,1,2].map(i=>`<i class="${i<games?'done':i===games?'current':''}">${i<games?'✓':i+1}</i>`).join('')}</div>`;
+    missionRoot.appendChild(card);
+  }else{
+    const missions=safeArray(home.missions);
+    missions.forEach((mission,index)=>{
+      const dna=safeArray(home.dna).find(item=>String(item.domain)===String(mission.domain));
+      const card=document.createElement('article');card.className='player-mission-card';
+      card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
+      const top=document.createElement('div');top.className='player-mission-top';
+      const label=document.createElement('span');label.textContent=index===0?'MAIN MISSION':'SUPPORT MISSION';
+      const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} REPS`;
+      top.append(label,reps);
+      const title=document.createElement('h3');title.textContent=String(mission.title||'Current mission');
+      const rule=document.createElement('p');rule.textContent=String(mission.gameRule||'Keep building evidence in your next game.');
+      const progress=document.createElement('div');progress.className='player-mission-progress';
+      const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
+      card.append(top,title,rule,progress);
+      missionRoot.appendChild(card);
+    });
+
+    const limit=Number(home.tierView?.missionLimit)||1;
+    while(missionRoot.children.length<limit){
+      const empty=document.createElement('article');empty.className='player-mission-card empty';
+      empty.innerHTML='<span>MISSION SLOT</span><h3>WAITING FOR EVIDENCE</h3><p>OP CLIMB will fill this when another repeatable priority is strong enough.</p>';
+      missionRoot.appendChild(empty);
+    }
+
+    if(tier==='FREE'){
+      const locked=document.createElement('article');locked.className='player-mission-card locked';
+      locked.innerHTML='<span>PLUS</span><h3>2 MORE ACTIVE MISSIONS</h3><p>Free keeps one clear focus live. Plus can hold up to three current development missions.</p>';
+      missionRoot.appendChild(locked);
+    }
+  }
+
+  const memory=$('playerHomeMemory');
+  if(tier==='PRO'){
+    memory.className='player-memory pro';
+    memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Long-term learning memory is active. OP CLIMB can carry proven habits across games and choose what to learn next.</small>`;
+  }else if(tier==='PLUS'){
+    memory.className='player-memory plus';
+    memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>Three current missions are available. Long-term mastered-habit memory unlocks with Pro.</small>';
+  }else{
+    memory.className='player-memory free';
+    memory.innerHTML='<span>FREE DEVELOPMENT VIEW</span><strong>ONE CLEAR FOCUS</strong><small>Your six DNA strands remain visible, with one active mission and a 7-day progress window.</small>';
+  }
+
+  const upgrade=$('playerHomeUpgrade');
+  if(home.upgrade){
+    upgrade.classList.remove('hidden');
+    upgrade.querySelector('b').textContent='UNLOCK '+String(home.upgrade.tier||'NEXT');
+    upgrade.querySelector('span').textContent=String(home.upgrade.copy||'');
+  }else upgrade.classList.add('hidden');
+}
+
+function ensurePlayerHome(){
+  let section=$('playerHome');
+  if(section)return section;
+  section=document.createElement('section');
+  section.id='playerHome';
+  section.className='player-home hidden';
+  section.innerHTML=`
+    <header class="player-home-hero">
+      <div>
+        <div class="player-home-kicker"><span id="playerHomeView">PLAYER OVERVIEW</span><b id="playerHomeTier">FREE</b></div>
+        <h2 id="playerHomeName">PLAYER</h2>
+        <p id="playerHomeRank">RANK · ROLE</p>
+        <small id="playerHomeViewCopy">Loading your development view…</small>
+      </div>
+      <div class="player-home-ready"><i></i><span>READY FOR LEAGUE</span><small>Match detection armed</small></div>
+    </header>
+    <div class="player-home-grid">
+      <section class="player-dna-panel">
+        <div class="player-panel-head"><div><span>YOUR GAME DNA</span><h3>Your player shape.</h3></div><button id="playerHomeOpenClimb" type="button">OPEN MY CLIMB ↗</button></div>
+        <div id="playerHomeDna" class="player-dna-tree"></div>
+      </section>
+      <section class="player-missions-panel">
+        <div class="player-panel-head"><div><span>CURRENT MISSIONS</span><h3>What you are learning now.</h3></div></div>
+        <div id="playerHomeMissions" class="player-mission-list"></div>
+      </section>
+    </div>
+    <div class="player-home-bottom">
+      <article id="playerHomeMemory" class="player-memory"></article>
+      <article id="playerHomeUpgrade" class="player-upgrade hidden"><div><b>UNLOCK NEXT</b><span></span></div><button id="playerHomePlans" type="button">SEE PLANS ↗</button></article>
+    </div>`;
+  $('status').after(section);
+  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/ilp'));
+  section.querySelector('#playerHomePlans')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/progress'));
+  return section;
 }
 
 function syncSettingsVisibility(){
