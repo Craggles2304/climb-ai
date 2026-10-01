@@ -26,6 +26,7 @@ function task(metric:string):ILPTask{
     id:'t1',
     accountId:'a1',
     title:'Mission',
+    dnaDomain:'CONSISTENCY',
     category:'CONSISTENCY',
     why:'Measured mission.',
     gameRule:'Do the measurable thing.',
