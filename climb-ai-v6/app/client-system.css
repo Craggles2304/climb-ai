@@ -761,3 +761,77 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .coach-subtabs button:last-child{border-bottom:0}
   .coach-dna-stats{width:100%;grid-template-columns:repeat(3,1fr)}
 }
+
+
+/* Game DNA preview for FREE / PLUS */
+.coach-dna-preview-intro{margin-bottom:0}
+.coach-dna-preview-shell{
+  position:relative;overflow:hidden;border:1px solid #3c484c;background:#060b0e
+}
+.coach-dna-preview-shell .client-original-dna-host{margin:0}
+.coach-dna-preview-shell .dna-panel{margin:0!important;border:0!important}
+.coach-dna-preview-shell .dna-is-preview .dna-visual{
+  background:
+    linear-gradient(rgba(255,255,255,.018) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.018) 1px,transparent 1px),
+    radial-gradient(circle at 50% 48%,rgba(86,217,184,.055),transparent 40%),
+    #050a0d!important
+}
+.coach-dna-preview-shell .dna-is-preview .dna-side{
+  background:linear-gradient(145deg,#10171b,#0b1114)!important
+}
+.coach-dna-preview-shell .dna-is-preview .dna-gene:not([style*="--s:0.00"]){border-color:#41584e}
+.coach-dna-preview-shell .dna-is-preview .dna-gene b{
+  font-size:9px!important;letter-spacing:.05em;min-width:46px;text-align:right
+}
+.coach-dna-preview-shell .dna-is-preview .dna-state.s0{color:#6e7b7e!important;border-color:#394347!important}
+.coach-dna-preview-shell .dna-is-preview .dna-state.s1{color:var(--mint)!important}
+.coach-dna-preview-shell .dna-is-preview .dna-state.s2{color:var(--teal)!important}
+.coach-dna-preview-ribbon{
+  position:absolute;left:14px;top:52px;z-index:5;display:flex;align-items:center;gap:8px;
+  padding:7px 9px;border:1px solid #6d5a37;background:rgba(14,13,9,.9);
+  font:500 8px var(--mono);letter-spacing:.08em;pointer-events:none
+}
+.coach-dna-preview-ribbon span{color:var(--gold)}
+.coach-dna-preview-ribbon strong{font-weight:500;color:#b6b0a3}
+
+.coach-preview-grid{display:grid;grid-template-columns:minmax(0,.78fr) minmax(0,1.22fr);gap:18px}
+.coach-preview-current h3,.coach-preview-upgrade h3{font-size:30px;margin:9px 0 8px}
+.coach-preview-current>p,.coach-preview-upgrade p{margin:0;color:var(--muted);line-height:1.55}
+.coach-preview-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:20px}
+.coach-preview-facts>div{padding:11px 12px;border:1px solid var(--line);background:#0b1215}
+.coach-preview-facts span{display:block;font:500 8px var(--mono);letter-spacing:.09em;color:var(--dim)}
+.coach-preview-facts b{display:block;margin-top:5px;font:700 14px var(--display);color:#dce6e3}
+
+.coach-preview-gene-list{display:grid;margin-top:12px}
+.coach-preview-gene-list>div{
+  display:grid;grid-template-columns:9px minmax(0,1fr) auto;gap:11px;align-items:center;
+  padding:11px 0;border-top:1px solid var(--line)
+}
+.coach-preview-gene-list>div:first-child{border-top:0}
+.coach-preview-gene-list i{width:7px;height:7px;border-radius:50%;background:#465155;box-shadow:0 0 0 3px rgba(70,81,85,.1)}
+.coach-preview-gene-list .is-live i{background:var(--mint);box-shadow:0 0 10px rgba(182,246,107,.45)}
+.coach-preview-gene-list span{display:grid;gap:2px}
+.coach-preview-gene-list strong{font-size:12px}
+.coach-preview-gene-list small{font-size:9px;color:var(--dim)}
+.coach-preview-gene-list>div>b{font:500 8px var(--mono);letter-spacing:.07em;color:#657174}
+.coach-preview-gene-list .is-live>b{color:var(--mint)}
+
+.coach-preview-upgrade{
+  display:flex;align-items:center;justify-content:space-between;gap:24px;
+  border-color:#6a5535!important;background:linear-gradient(120deg,#181712,#11191c)!important
+}
+.coach-preview-upgrade>div{max-width:760px}
+.coach-preview-upgrade .btn{white-space:nowrap}
+
+@media(max-width:980px){
+  .coach-preview-grid{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .coach-preview-upgrade{align-items:flex-start;flex-direction:column}
+  .coach-preview-facts{grid-template-columns:1fr 1fr}
+  .coach-dna-preview-ribbon{position:static;margin:10px 10px 0;width:max-content;max-width:calc(100% - 20px)}
+}
+@media(max-width:520px){
+  .coach-preview-facts{grid-template-columns:1fr}
+}
