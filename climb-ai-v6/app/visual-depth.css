@@ -4804,3 +4804,98 @@ body[data-op-area="hq"] .hq-mission-why p{
   font-size:9px;
   line-height:1.45;
 }
+
+
+/* Three-game DNA observation baseline */
+.ip-baseline{
+  display:grid;
+  gap:18px;
+  margin:18px 0;
+  border-color:rgba(255,255,255,.09)!important;
+  background:
+    radial-gradient(520px 230px at 100% 0%,rgba(135,149,154,.07),transparent 72%),
+    rgba(9,15,19,.8)!important;
+}
+.ip-baseline-copy h2{
+  max-width:850px;
+  margin:7px 0 8px;
+  font-size:clamp(30px,4vw,48px);
+  line-height:.98;
+}
+.ip-baseline-copy p{
+  max-width:900px;
+  margin:0;
+  color:#94a2a6;
+  line-height:1.55;
+}
+.ip-baseline-track{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+}
+.ip-baseline-track>div{
+  min-height:112px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:6px;
+  border:1px solid rgba(255,255,255,.075);
+  background:#0b1216;
+  color:#5f6b70;
+}
+.ip-baseline-track i{
+  width:34px;
+  height:34px;
+  display:grid;
+  place-items:center;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:50%;
+  font:900 11px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  font-style:normal;
+}
+.ip-baseline-track span{
+  font:900 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;
+}
+.ip-baseline-track small{
+  color:#647177;
+  font-size:9px;
+}
+.ip-baseline-track>div.done{
+  color:#c8d2d4;
+  border-color:rgba(182,246,107,.19);
+  background:rgba(182,246,107,.025);
+}
+.ip-baseline-track>div.done i{
+  border-color:#b6f66b;
+  color:#b6f66b;
+}
+.ip-baseline-track>div.current{
+  border-color:rgba(255,255,255,.16);
+  color:#d5ddde;
+}
+.ip-baseline-track>div.current i{
+  box-shadow:0 0 0 4px rgba(255,255,255,.025);
+}
+.ip-baseline footer{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:16px;
+  align-items:center;
+  padding-top:14px;
+  border-top:1px solid rgba(255,255,255,.065);
+}
+.ip-baseline footer>b{
+  color:#edf3f2;
+  font-size:15px;
+}
+.ip-baseline footer>span{
+  color:#849297;
+  font-size:10px;
+  line-height:1.45;
+}
+@media(max-width:720px){
+  .ip-baseline-track{grid-template-columns:1fr}
+  .ip-baseline-track>div{min-height:82px}
+  .ip-baseline footer{grid-template-columns:1fr}
+}
