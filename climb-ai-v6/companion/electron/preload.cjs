@@ -219,7 +219,9 @@ function renderMissionReminders(state){
   const phase=String(state?.phase||'');
   const team=state?.teamPlan||null;
   const matchup=state?.matchup?.plan||null;
-  const mission=Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
+  const baseline=team?.dnaBaseline||null;
+  const baselineReady=baseline?.ready!==false;
+  const mission=baselineReady&&Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
   const visible=['CHAMP_SELECT','RECORDING'].includes(phase)&&Boolean(team||matchup||mission);
   section.classList.toggle('hidden',!visible);
   if(!visible)return;
@@ -248,7 +250,15 @@ function renderMissionReminders(state){
   set('opMid',midCommand(team,role));
   set('opObjective',objectiveCommand(team,role));
   set('opFight',fightCommand(team));
-  set('opMissionCue',oneLine(mission?.cue,100)||'STAY WITH YOUR CURRENT DEVELOPMENT FOCUS');
+  const missionCard=document.querySelector('.op-mission');
+  const missionLabel=missionCard?.querySelector('span');
+  if(!baselineReady){
+    if(missionLabel)missionLabel.textContent='DNA BASELINE';
+    set('opMissionCue',`GAME ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))}/${Number(baseline?.required||3)} · PLAY NORMALLY. OP CLIMB IS LEARNING YOUR STARTING POINT.`);
+  }else{
+    if(missionLabel)missionLabel.textContent='YOUR CLIMB MISSION';
+    set('opMissionCue',oneLine(mission?.cue,100)||'STAY WITH YOUR CURRENT DEVELOPMENT FOCUS');
+  }
   renderAdaptiveBuild(team);
 
   toggle('opStrategyLock',paid);
