@@ -13,201 +13,96 @@ const CHAMPION_ASSET_IDS:Record<string,string>={
 };
 const championAsset=(name:string)=>CHAMPION_ASSET_IDS[name]||name.replace(/[^A-Za-z0-9]/g,'');
 const championSplash=(name:string)=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${championAsset(name)}_0.jpg`;
-const avg=(xs:number[])=>xs.length?xs.reduce((a,b)=>a+b,0)/xs.length:0;
 const clock=(seconds:number)=>`${Math.floor(seconds/60)}:${String(seconds%60).padStart(2,'0')}`;
-const issueLabel=(value:string)=>value.replaceAll('_',' ');
+const clean=(value:string)=>value.replaceAll('_',' ');
 const ROLE_ORDER:Role[]=['TOP','JUNGLE','MID','ADC','SUPPORT'];
 
-type ReviewPreview={
-  report:ReturnType<typeof analyseMatch>;
-  review:ReturnType<typeof buildReview>;
-};
+type Preview={report:ReturnType<typeof analyseMatch>;review:ReturnType<typeof buildReview>};
 
-export default function AnalyseHub(){
+export default function MyGames(){
   const {active}=useAccount();
   const matches=matchesFor(active.id);
-  const [roleFilter,setRoleFilter]=useState('ALL');
-  const [championFilter,setChampionFilter]=useState('ALL');
-  const [visibleCount,setVisibleCount]=useState(10);
+  const [role,setRole]=useState<'ALL'|Role>('ALL');
+  const [champion,setChampion]=useState('ALL');
+  const [visible,setVisible]=useState(10);
 
-  const roleBase=useMemo(
-    ()=>matches.filter(match=>championFilter==='ALL'||match.champion===championFilter),
-    [matches,championFilter],
-  );
-  const roleCounts=useMemo(
-    ()=>Object.fromEntries(ROLE_ORDER.map(role=>[role,roleBase.filter(match=>match.role===role).length])) as Record<Role,number>,
-    [roleBase],
-  );
-  const champions=useMemo(()=>{
-    const pool=roleFilter==='ALL'?matches:matches.filter(match=>match.role===roleFilter);
-    return ['ALL',...Array.from(new Set(pool.map(match=>match.champion)))];
-  },[matches,roleFilter]);
-  const filtered=useMemo(()=>roleBase.filter(match=>roleFilter==='ALL'||match.role===roleFilter),[roleBase,roleFilter]);
-
-  useEffect(()=>setVisibleCount(10),[roleFilter,championFilter]);
-  useEffect(()=>{
-    if(championFilter!=='ALL'&&!champions.includes(championFilter))setChampionFilter('ALL');
-  },[roleFilter,champions,championFilter]);
+  const champions=useMemo(()=>['ALL',...Array.from(new Set(matches.filter(m=>role==='ALL'||m.role===role).map(m=>m.champion)))],[matches,role]);
+  const filtered=useMemo(()=>matches.filter(m=>(role==='ALL'||m.role===role)&&(champion==='ALL'||m.champion===champion)),[matches,role,champion]);
+  useEffect(()=>{setVisible(10);if(champion!=='ALL'&&!champions.includes(champion))setChampion('ALL')},[role,champion,champions]);
 
   const previews=useMemo(()=>{
-    const map=new Map<string,ReviewPreview>();
-    for(const role of ROLE_ORDER){
-      const roleMatches=roleBase.filter(match=>match.role===role);
-      for(let index=0;index<roleMatches.length;index++){
-        const match=roleMatches[index];
-        const older=roleMatches.slice(index+1,index+6);
-        const report=analyseMatch(match,older);
+    const map=new Map<string,Preview>();
+    for(const currentRole of ROLE_ORDER){
+      const roleMatches=matches.filter(match=>match.role===currentRole);
+      roleMatches.forEach((match,index)=>{
+        const report=analyseMatch(match,roleMatches.slice(index+1,index+6));
         map.set(match.id,{report,review:buildReview(match,report)});
-      }
+      });
     }
     return map;
-  },[roleBase]);
+  },[matches]);
 
-  const recent=filtered.slice(0,5);
-  const previous=filtered.slice(5,10);
-  const latest=filtered[0];
+  const latest=filtered[0]??matches[0];
   const latestPreview=latest?previews.get(latest.id):undefined;
-  const winRate=recent.length?Math.round(recent.filter(match=>match.result==='WIN').length/recent.length*100):0;
-  const previousWinRate=previous.length?Math.round(previous.filter(match=>match.result==='WIN').length/previous.length*100):0;
-  const cs=avg(recent.map(match=>match.metrics.csPerMin));
-  const prevCs=avg(previous.map(match=>match.metrics.csPerMin));
-  const deaths=avg(recent.map(match=>match.deaths));
-  const prevDeaths=avg(previous.map(match=>match.deaths));
-  const cleanEarly=recent.filter(match=>match.metrics.deathsPre10===0).length;
-  const shown=filtered.slice(0,visibleCount);
-  const roleSections=useMemo(()=>ROLE_ORDER.map(role=>{
-    const games=roleBase.filter(match=>match.role===role);
-    const sample=games.slice(0,5);
-    return{
-      role,
-      games,
-      winRate:sample.length?Math.round(sample.filter(match=>match.result==='WIN').length/sample.length*100):0,
-      champions:Array.from(new Set(games.map(match=>match.champion))).slice(0,3),
-    };
-  }).filter(section=>section.games.length>0),[roleBase]);
 
   return <AppShell>
-    <section className="ar-toolbar">
+    <header className="page-head">
       <div>
-        <div className="eyebrow">POST-GAME REVIEW</div>
-        <h1>Find the decision worth fixing.</h1>
+        <div className="eyebrow">MY GAMES · REVIEW</div>
+        <h1>Every game has a lesson.</h1>
+        <p>What happened → why it happened → what you carry into the next game.</p>
       </div>
-      <Link href="/uploads" className="btn secondary">ADD A GAME</Link>
-    </section>
+      <Link className="btn btn-small" href="/uploads">Add a game</Link>
+    </header>
 
-    <section className="ar-role-switcher" aria-label="Choose a role">
-      <button type="button" className={roleFilter==='ALL'?'active':''} onClick={()=>setRoleFilter('ALL')}>
-        <span>ALL</span><b>{roleBase.length}</b><small>ALL ROLES</small>
-      </button>
-      {ROLE_ORDER.map(role=><button
-        key={role}
-        type="button"
-        className={roleFilter===role?'active':''}
-        onClick={()=>setRoleFilter(role)}
-        disabled={roleCounts[role]===0}
-      ><span>{role}</span><b>{roleCounts[role]}</b><small>GAME{roleCounts[role]===1?'':'S'}</small></button>)}
-    </section>
-
-    {!latest?<section className="ar-empty">
+    {!latest?<section className="panel panel-padding">
       <div className="eyebrow">NO MATCHES YET</div>
-      <h2>Your first review starts with one tracked game.</h2>
-      <p>Connect the Companion or add a match. OP CLIMB will turn the evidence into one clear review and a next-game target.</p>
-      <div><Link className="btn primary" href="/live">CONNECT COMPANION</Link><Link className="btn secondary" href="/uploads">ADD A GAME</Link></div>
+      <h2 style={{margin:'10px 0'}}>Your first review starts with one tracked game.</h2>
+      <p className="muted">Connect the Companion or add a match. OP CLIMB will turn it into one clear lesson and one next-game rule.</p>
+      <div className="mission-actions" style={{marginTop:18}}><Link className="btn primary" href="/live">Open Match Room →</Link><Link className="btn" href="/uploads">Add a game</Link></div>
     </section>:<>
-      <section className="ar-latest">
-        <img className="ar-latest-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>
-        <div className="ar-latest-shade"/>
-        <div className="ar-latest-content">
-          <div className="ar-latest-top">
-            <span className={latest.result==='WIN'?'win':'loss'}>{latest.result==='WIN'?'VICTORY':'DEFEAT'}</span>
-            <small>{latest.role} · {latest.rank} · {clock(latest.durationSeconds)}</small>
-          </div>
-          <div className="ar-latest-main">
-            <div>
-              <div className="eyebrow">LATEST REVIEW READY</div>
-              <h2>{latest.champion}{latest.opponent?' vs '+latest.opponent:''}</h2>
-              <p>{latestPreview?.review.headline||'Your latest game is ready to review.'}</p>
-            </div>
-            <div className="ar-latest-kda">
-              <span>K / D / A</span>
-              <b>{latest.kills}<i>/</i>{latest.deaths}<i>/</i>{latest.assists}</b>
-            </div>
-          </div>
-          <div className="ar-latest-bottom">
-            <div className="ar-focus-preview">
-              <span>REVIEW FOCUS</span>
-              <b>{latestPreview?issueLabel(latestPreview.report.primary.category):'MATCH EVIDENCE'}</b>
-              <small>{latestPreview?.review.biggestMistake.title||'Open the game to see the coaching read.'}</small>
-            </div>
-            <Link className="btn primary" href={'/analyse/'+encodeURIComponent(latest.id)}>REVIEW THIS GAME →</Link>
-          </div>
+      <section className="mission games-latest">
+        <img className="mission-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>
+        <div className="mission-copy">
+          <div className="eyebrow">{latest.result==='WIN'?'VICTORY':'DEFEAT'} · {latest.role} · {clock(latest.durationSeconds)}</div>
+          <h2>{latest.champion}<br/><em>{latestPreview?.review.headline||'Review ready.'}</em></h2>
+          <p><strong>KDA · {latest.kills}/{latest.deaths}/{latest.assists}</strong><br/>{latestPreview?.review.biggestMistake.title||'Open the review to see the decision that mattered.'}</p>
+          <div className="mission-actions"><Link className="btn primary" href={'/analyse/'+encodeURIComponent(latest.id)}>Open latest review →</Link></div>
         </div>
       </section>
 
-      {roleFilter!=='ALL'?<section className="ar-trend-strip">
-        <TrendCard label={roleFilter+' · LAST 5'} value={recent.length?winRate+'%':'—'} sub="win rate" delta={previous.length?winRate-previousWinRate:null}/>
-        <TrendCard label="CS / MIN" value={recent.length?cs.toFixed(1):'—'} sub="last 5 average" delta={previous.length?cs-prevCs:null}/>
-        <TrendCard label="DEATHS" value={recent.length?deaths.toFixed(1):'—'} sub="last 5 average" delta={previous.length?prevDeaths-deaths:null}/>
-        <TrendCard label="CLEAN EARLY GAMES" value={recent.length?`${cleanEarly}/${recent.length}`:'—'} sub="0 deaths before 10" delta={null}/>
-      </section>:<section className="ar-role-overview">
-        {roleSections.map(section=><button key={section.role} type="button" onClick={()=>setRoleFilter(section.role)}>
-          <span>{section.role}</span>
-          <b>{section.games.length} GAME{section.games.length===1?'':'S'}</b>
-          <small>{section.winRate}% WR · {section.champions.join(' · ')}</small>
-        </button>)}
-      </section>}
-
-      <section className="ar-controls">
-        <div className="ar-current-scope"><span>VIEW</span><b>{roleFilter==='ALL'?'ALL ROLES':roleFilter+' GAMES'}</b></div>
-        <label className="ar-champ-filter"><span>CHAMPION</span><select value={championFilter} onChange={event=>setChampionFilter(event.target.value)}>{champions.map(champion=><option key={champion}>{champion}</option>)}</select></label>
-        {(roleFilter!=='ALL'||championFilter!=='ALL')&&<button className="ar-clear" type="button" onClick={()=>{setRoleFilter('ALL');setChampionFilter('ALL')}}>CLEAR FILTERS</button>}
+      <section className="games-history-head">
+        <div><div className="eyebrow">REVIEW HISTORY</div><h2>Your games, in coaching order.</h2></div>
+        <details className="games-filter">
+          <summary>FILTER GAMES</summary>
+          <div>
+            <label><span>ROLE</span><select value={role} onChange={e=>setRole(e.target.value as 'ALL'|Role)}><option value="ALL">All roles</option>{ROLE_ORDER.map(r=><option key={r} value={r}>{r}</option>)}</select></label>
+            <label><span>CHAMPION</span><select value={champion} onChange={e=>setChampion(e.target.value)}>{champions.map(name=><option key={name} value={name}>{name==='ALL'?'All champions':name}</option>)}</select></label>
+          </div>
+        </details>
       </section>
 
-      <section className="ar-queue-head">
-        <div><div className="eyebrow">{roleFilter==='ALL'?'ROLE SECTIONS':'REVIEW QUEUE'}</div><h2>{roleFilter==='ALL'?'Every game kept in its role.':'Your '+roleFilter.toLowerCase()+' games.'}</h2></div>
-        <span>{filtered.length} GAME{filtered.length===1?'':'S'}</span>
-      </section>
+      <div className="games-review-grid">
+        {filtered.slice(0,visible).map(match=><GameCard key={match.id} match={match} preview={previews.get(match.id)}/>)}
+      </div>
 
-      {roleFilter==='ALL'?<div className="ar-role-sections">
-        {roleSections.map(section=><section className="ar-role-section" key={section.role}>
-          <div className="ar-role-section-head">
-            <div><span>{section.role}</span><b>{section.games.length} GAME{section.games.length===1?'':'S'}</b><small>LAST 5 · {section.winRate}% WR</small></div>
-            <button type="button" onClick={()=>setRoleFilter(section.role)}>OPEN {section.role} →</button>
-          </div>
-          <div className="ar-game-list">
-            {section.games.slice(0,5).map((match,index)=><ReviewRow key={match.id} match={match} preview={previews.get(match.id)} latest={index===0}/>)}
-          </div>
-          {section.games.length>5&&<button className="ar-role-more" type="button" onClick={()=>setRoleFilter(section.role)}>VIEW ALL {section.games.length} {section.role} GAMES →</button>}
-        </section>)}
-      </div>:<>
-        <div className="ar-game-list">
-          {shown.map((match,index)=><ReviewRow key={match.id} match={match} preview={previews.get(match.id)} latest={index===0}/>)}
-        </div>
-        {visibleCount<filtered.length&&<div className="ar-more"><button className="btn secondary" type="button" onClick={()=>setVisibleCount(count=>count+10)}>SHOW 10 MORE</button></div>}
-      </>}
+      {visible<filtered.length&&<div className="games-more"><button className="btn" onClick={()=>setVisible(v=>v+10)}>Show 10 more</button></div>}
     </>}
   </AppShell>;
 }
 
-function TrendCard({label,value,sub,delta}:{label:string;value:string;sub:string;delta:number|null}){
-  const meaningful=delta!==null&&Math.abs(delta)>=0.05;
-  return <article>
-    <span>{label}</span>
-    <b>{value}</b>
-    <small>{sub}</small>
-    {delta!==null&&<em className={meaningful?(delta>0?'up':'down'):''}>{meaningful?(delta>0?'▲ ':'▼ '):'• '}{meaningful?Math.abs(delta).toFixed(Math.abs(delta)<1?1:0):'steady'} vs previous 5</em>}
-  </article>;
-}
-
-function ReviewRow({match,preview,latest}:{match:Match;preview?:ReviewPreview;latest:boolean}){
-  return <Link className="ar-game-row" href={'/analyse/'+encodeURIComponent(match.id)}>
-    <div className="ar-row-result">
-      <i className={match.result==='WIN'?'win':'loss'}/>
-      <div><span>{latest?'LATEST':match.result}</span><b>{match.champion}</b><small>{match.role}{match.opponent?' · vs '+match.opponent:''}</small></div>
+function GameCard({match,preview}:{match:Match;preview?:Preview}){
+  const review=preview?.review;
+  return <Link className="panel games-review-card" href={'/analyse/'+encodeURIComponent(match.id)}>
+    <div className="games-card-art"><img src={championSplash(match.champion)} alt="" aria-hidden="true"/><span className={match.result==='WIN'?'win':'loss'}>{match.result}</span></div>
+    <div className="games-card-body">
+      <div className="games-card-top"><div><strong>{match.champion}</strong><small>{match.role} · {match.rank}</small></div><b>{match.kills}/{match.deaths}/{match.assists}</b></div>
+      <div className="games-story">
+        <div><span>WHAT HAPPENED</span><p>{review?.headline||'Match review ready.'}</p></div>
+        <div><span>WHY IT MATTERS</span><p>{review?.biggestMistake.title||clean(preview?.report.primary.category||'MATCH EVIDENCE')}</p></div>
+        <div><span>TAKE INTO NEXT GAME</span><p>{review?.mission.rule||'Open the review for one clear next-game rule.'}</p></div>
+      </div>
+      <span className="games-open">OPEN REVIEW →</span>
     </div>
-    <div className="ar-row-kda"><span>KDA</span><b>{match.kills}/{match.deaths}/{match.assists}</b></div>
-    <div className="ar-row-metric"><span>CS/MIN</span><b>{match.metrics.csPerMin.toFixed(1)}</b></div>
-    <div className="ar-row-focus"><span>REVIEW FOCUS</span><b>{preview?issueLabel(preview.report.primary.category):'MATCH REVIEW'}</b><small>{preview?.review.biggestMistake.title||'Open review'}</small></div>
-    <div className="ar-row-arrow">→</div>
   </Link>;
 }
