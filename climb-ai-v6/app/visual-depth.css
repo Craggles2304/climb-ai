@@ -4406,3 +4406,112 @@ body[data-op-area="hq"] .hq-mission-why p{
   .vl-mission-results>div:not(.eyebrow){grid-template-columns:1fr 80px}
   .vl-mission-results span,.vl-mission-results small{grid-column:1/-1}
 }
+
+
+/* My Climb inherits the canonical Game DNA strand colour */
+.ip-mission[style]{
+  position:relative;
+  border-color:color-mix(in srgb,var(--strand-color) 38%,rgba(255,255,255,.08));
+  background:
+    radial-gradient(420px 210px at 100% 0%,color-mix(in srgb,var(--strand-color) 10%,transparent),transparent 72%),
+    rgba(9,15,19,.78);
+  box-shadow:inset 3px 0 0 color-mix(in srgb,var(--strand-color) 88%,transparent);
+}
+.ip-mission[style].secondary{
+  border-color:color-mix(in srgb,var(--strand-color) 28%,rgba(255,255,255,.08));
+  background:
+    radial-gradient(360px 180px at 100% 0%,color-mix(in srgb,var(--strand-color) 7%,transparent),transparent 72%),
+    rgba(9,15,19,.76);
+}
+.ip-mission[style] .ip-mission-top>span,
+.ip-mission[style] .ip-mission-top em,
+.ip-mission[style] .ip-mission-brief section>span,
+.ip-mission[style] .ip-mission-details summary::before,
+.ip-strand-item[style] .ip-strand-label{
+  color:var(--strand-color);
+}
+.ip-mission[style] .ip-mission-top em{
+  border-color:color-mix(in srgb,var(--strand-color) 34%,rgba(255,255,255,.07));
+  background:color-mix(in srgb,var(--strand-color) 6%,transparent);
+}
+.ip-mission[style] .ip-rule{
+  border-color:color-mix(in srgb,var(--strand-color) 28%,rgba(255,255,255,.06));
+  background:color-mix(in srgb,var(--strand-color) 5%,transparent);
+}
+.ip-mission[style] .ip-rule>span,
+.ip-mission[style] .ip-target span{
+  color:color-mix(in srgb,var(--strand-color) 66%,#829196);
+}
+.ip-mission[style] .progress>i{
+  background:linear-gradient(90deg,var(--strand-color),color-mix(in srgb,var(--strand-color) 62%,white));
+  box-shadow:0 0 14px color-mix(in srgb,var(--strand-color) 24%,transparent);
+}
+.ip-mission[style] .ip-pips i.on{
+  background:var(--strand-color);
+  box-shadow:0 0 14px color-mix(in srgb,var(--strand-color) 26%,transparent);
+}
+.ip-mission[style] .ip-progress>div:first-child>b,
+.ip-mission[style] .ip-xp-reward b{
+  color:var(--strand-color);
+}
+.ip-mission[style] .ip-xp-reward{
+  border-color:color-mix(in srgb,var(--strand-color) 24%,rgba(255,255,255,.06));
+  background:color-mix(in srgb,var(--strand-color) 4%,transparent);
+}
+.ip-mission[style] .ip-mission-details{
+  border-top-color:color-mix(in srgb,var(--strand-color) 20%,rgba(255,255,255,.06));
+}
+
+.ip-evidence-card[style]{
+  border-color:color-mix(in srgb,var(--strand-color) 34%,rgba(255,255,255,.075));
+  background:
+    radial-gradient(320px 150px at 100% 0%,color-mix(in srgb,var(--strand-color) 7%,transparent),transparent 75%),
+    rgba(9,15,19,.72);
+  box-shadow:inset 3px 0 0 color-mix(in srgb,var(--strand-color) 76%,transparent);
+}
+.ip-evidence-card[style] .ip-evidence-head span,
+.ip-evidence-card[style] .ip-evidence-head>b{
+  color:var(--strand-color);
+}
+.ip-evidence-card[style] .ip-evidence-head>b{
+  border-color:color-mix(in srgb,var(--strand-color) 28%,rgba(255,255,255,.07));
+  background:color-mix(in srgb,var(--strand-color) 5%,transparent);
+}
+.ip-evidence-card[style] .ip-evidence-reason{
+  border-color:color-mix(in srgb,var(--strand-color) 20%,rgba(255,255,255,.06));
+}
+.ip-evidence-card[style] .ip-evidence-reason span{
+  color:color-mix(in srgb,var(--strand-color) 70%,#708086);
+}
+
+.ip-strand-item[style]{
+  border-left:3px solid var(--strand-color);
+  background:linear-gradient(90deg,color-mix(in srgb,var(--strand-color) 7%,transparent),transparent 55%);
+}
+.ip-strand-item[style] .habit-index{
+  color:var(--strand-color);
+  border-color:color-mix(in srgb,var(--strand-color) 42%,transparent);
+}
+.ip-strand-item[style] .tag{
+  color:var(--strand-color);
+  border-color:color-mix(in srgb,var(--strand-color) 35%,rgba(255,255,255,.08));
+  background:color-mix(in srgb,var(--strand-color) 5%,transparent);
+}
+.ip-strand-label{
+  display:block;
+  margin-bottom:4px;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em;
+  text-transform:uppercase;
+}
+
+.ip-archive details.ip-strand-history[style]{
+  padding-left:10px;
+  border-left:2px solid color-mix(in srgb,var(--strand-color) 72%,transparent);
+}
+.ip-archive details.ip-strand-history[style] summary span{
+  color:var(--strand-color);
+}
+.ip-archive details.ip-strand-history[style] summary b{
+  color:#edf3f2;
+}
