@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useState} from 'react';
+import {useEffect,useMemo,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useAccount} from './AccountContext';
@@ -11,6 +11,8 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import {BetaReporter} from './BetaReporter';
 import {useLearningPlan} from './LearningPlanContext';
 import {accountProgress,type AccountProgress} from '@/lib/accountXp';
+import {missionSummary} from '@/lib/missionLoop';
+import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 
 type ProgressionPayload={
   ok:boolean;
@@ -81,7 +83,21 @@ export function AppShell({children}:{children:React.ReactNode}){
   const fallbackXp=accountProgress(allTasks[active.id]??tasks);
   const [progression,setProgression]=useState<ProgressionPayload|null>(null);
   const [progressToast,setProgressToast]=useState<{title:string;body:string;kind:'XP'|'LEVEL'}|null>(null);
+  const [seenLearningMatch,setSeenLearningMatch]=useState<string>('');
   const xp=progression?.progress??fallbackXp;
+  const latestLearningMatch=progression?.sync.latestMatchId??null;
+  const latestLearning=useMemo(()=>{
+    if(!latestLearningMatch)return[];
+    return tasks.flatMap(task=>{
+      const attempt=(task.missionHistory??[]).find(item=>item.matchId===latestLearningMatch);
+      if(!attempt)return[];
+      return[{task,attempt,summary:missionSummary(task)}];
+    });
+  },[tasks,latestLearningMatch]);
+  const latestLearningEvents=useMemo(()=>progression?.recent?.filter(item=>item.matchId===latestLearningMatch)??[],[progression?.recent,latestLearningMatch]);
+  const latestLearningAt=progression?.sync.latestMatchAt??null;
+  const latestLearningRecent=Boolean(latestLearningAt&&Date.now()-Date.parse(latestLearningAt)<6*60*60*1000);
+  const showLearningReceipt=Boolean(latestLearningMatch&&latestLearningRecent&&seenLearningMatch!==latestLearningMatch);
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -108,6 +124,9 @@ export function AppShell({children}:{children:React.ReactNode}){
     };
   },[path,tier]);
   useEffect(()=>setAdvancedOpen(false),[path]);
+  useEffect(()=>{
+    try{setSeenLearningMatch(localStorage.getItem('op:learning-receipt:seen:'+active.id)||'')}catch{setSeenLearningMatch('')}
+  },[active.id]);
   useEffect(()=>{
     let stopped=false,busy=false;
     const pull=async()=>{
@@ -139,7 +158,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     const onFocus=()=>void pull();
     const onVisible=()=>{if(document.visibilityState==='visible')void pull()};
     void pull();
-    const timer=window.setInterval(()=>void pull(),5*60_000);
+    const timer=window.setInterval(()=>void pull(),30_000);
     window.addEventListener('focus',onFocus);
     document.addEventListener('visibilitychange',onVisible);
     return()=>{stopped=true;window.clearInterval(timer);window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',onVisible)};
@@ -203,6 +222,36 @@ export function AppShell({children}:{children:React.ReactNode}){
       <b>{progressToast.title}</b>
       <small>{progressToast.body}</small>
     </div>}
+    {showLearningReceipt&&<aside className="op-learning-receipt" role="status" style={latestLearning[0]?({'--strand-color':DNA_DOMAIN_COLORS[latestLearning[0].task.dnaDomain]} as CSSProperties):undefined}>
+      <div className="op-learning-receipt-head">
+        <div><span>GAME COMPLETE · LEARNING UPDATED</span><strong>{progression?.sync.latestMatchChampion||'LATEST GAME'} · {progression?.sync.latestMatchRole||active.role}</strong></div>
+        <button type="button" aria-label="Dismiss learning update" onClick={()=>{
+          if(!latestLearningMatch)return;
+          try{localStorage.setItem('op:learning-receipt:seen:'+active.id,latestLearningMatch)}catch{}
+          setSeenLearningMatch(latestLearningMatch);
+        }}>×</button>
+      </div>
+      <div className="op-learning-receipt-body">
+        <h2>{latestLearning.length
+          ?latestLearning.some(item=>item.attempt.banksPass)
+            ?'That game moved your Climb.'
+            :'Game reviewed. Keep training the same habit.'
+          :'Your game is in. OP CLIMB is measuring it now.'}</h2>
+        {latestLearning.length?<div className="op-learning-receipt-missions">
+          {latestLearning.slice(0,3).map(({task,attempt,summary})=><div key={task.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[task.dnaDomain]} as CSSProperties)}>
+            <span>{DNA_DOMAIN_LABELS[task.dnaDomain]}</span>
+            <b>{task.title}</b>
+            <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ REP BANKED':'○ NO REP BANKED'}</strong>
+            <small>{summary.confirmed}/{summary.required} proven reps · {learningStageLabel(summary.stage)}</small>
+          </div>)}
+        </div>:<p>Match data has synced. Mission evidence can take a short moment to finish processing.</p>}
+        {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
+      </div>
+      <div className="op-learning-receipt-actions">
+        <Link className="btn primary" href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE WHAT I LEARNED →</Link>
+        {latestLearningMatch&&<Link className="btn secondary" href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
+      </div>
+    </aside>}
     <BetaReporter/>
   </div>;
 }
@@ -227,4 +276,12 @@ function relativeTime(value:string){
   const hours=Math.floor(minutes/60);
   if(hours<24)return hours+'H AGO';
   return Math.floor(hours/24)+'D AGO';
+}
+
+function learningStageLabel(stage:string){
+  if(stage==='DISCOVER')return'RECOGNISE';
+  if(stage==='PRACTISE')return'EXECUTE';
+  if(stage==='REPEAT')return'REPEAT';
+  if(stage==='MASTERED')return'MASTERED';
+  return stage;
 }
