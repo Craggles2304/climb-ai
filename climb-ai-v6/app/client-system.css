@@ -523,3 +523,90 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .client-analyse-cta{display:none!important}
   .client-auth-topbar .op-hud-crumb span,.client-auth-topbar .op-hud-crumb i{display:none}
 }
+
+
+/* Authenticated Coach Memory — mirrors the Client demo, backed by real data */
+.client-memory-section{display:grid;gap:18px;padding-top:4px}
+.client-memory-head{display:flex;justify-content:space-between;align-items:flex-end;gap:18px}
+.client-memory-head h2{font-size:clamp(38px,4vw,58px);line-height:.94;margin:6px 0 8px}
+.client-memory-head p{margin:0;color:var(--muted);font-size:15px}
+.client-dna-panel{
+  display:grid;grid-template-columns:minmax(0,1.05fr) minmax(340px,.95fr);
+  min-height:440px;border:1px solid #364348;background:linear-gradient(145deg,#0d171b,#101921 55%,#15182a);overflow:hidden;
+}
+.client-dna-visual{
+  position:relative;min-height:440px;padding:24px;overflow:hidden;
+  background:
+    linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px),
+    radial-gradient(circle at 50% 45%,rgba(157,255,66,.08),transparent 35%);
+  background-size:34px 34px,34px 34px,auto;
+  border-right:1px solid var(--line);
+}
+.client-dna-title{display:flex;justify-content:space-between;gap:12px;font:500 9px var(--mono);letter-spacing:.12em;color:var(--dim)}
+.client-dna-title strong{color:#a9b6b2}
+.client-dna-helix{position:absolute;left:50%;top:50%;width:min(78%,500px);height:290px;transform:translate(-50%,-48%)}
+.client-dna-helix:before,.client-dna-helix:after{
+  content:'';position:absolute;top:0;bottom:0;width:44%;border:3px solid rgba(157,255,66,.38);
+  border-top-color:#9dff42;border-bottom-color:#52d6bf;border-radius:50%;filter:drop-shadow(0 0 9px rgba(157,255,66,.2));
+}
+.client-dna-helix:before{left:6%;transform:skewY(18deg)}
+.client-dna-helix:after{right:6%;transform:skewY(-18deg)}
+.client-dna-rung{
+  --dna-progress:0%;position:absolute;left:18%;right:18%;height:2px;
+  top:calc(10% + (var(--dna-order) * 15.5%));
+  background:linear-gradient(90deg,#2b3438 0%,#2b3438 calc(100% - var(--dna-progress)),#9dff42 calc(100% - var(--dna-progress)),#52d6bf 100%);
+  box-shadow:0 0 10px rgba(157,255,66,.14);
+}
+.client-dna-rung:nth-child(2n){transform:rotate(8deg)}
+.client-dna-rung:nth-child(2n+1){transform:rotate(-8deg)}
+.client-dna-rung i,.client-dna-rung b{position:absolute;top:50%;width:9px;height:9px;border-radius:50%;transform:translateY(-50%);background:#0d1418;border:2px solid #9dff42}
+.client-dna-rung i{left:-4px}.client-dna-rung b{right:-4px;border-color:#52d6bf}
+.client-dna-rung span{position:absolute;left:50%;top:50%;width:5px;height:5px;border-radius:50%;transform:translate(-50%,-50%);background:#fff;box-shadow:0 0 12px #9dff42}
+.client-dna-score{
+  position:absolute;left:24px;bottom:24px;display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:end;
+  padding:12px 14px;border:1px solid rgba(157,255,66,.25);background:rgba(9,16,20,.82);
+}
+.client-dna-score>b{grid-row:1/3;font:800 34px var(--display);color:#9dff42}
+.client-dna-score>span{font:500 10px var(--mono);letter-spacing:.1em;color:#b7c2bf}
+.client-dna-score>small{font-size:9px;color:var(--dim)}
+.client-dna-side{padding:28px}
+.client-dna-side h3{font-size:31px;line-height:1;margin:6px 0 0}
+.client-dna-side>p{color:var(--muted);line-height:1.6;margin:14px 0 20px}
+.client-dna-genes{display:grid;gap:9px}
+.client-dna-gene{
+  position:relative;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;
+  padding:12px 13px;border:1px solid var(--line);background:#0d1418;overflow:hidden;
+}
+.client-dna-gene>i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(157,255,66,.13),rgba(82,214,191,.05));pointer-events:none}
+.client-dna-gene>div,.client-dna-gene>b{position:relative}
+.client-dna-gene strong{display:block;font-size:12px}
+.client-dna-gene small{display:block;margin-top:3px;color:var(--dim);font-size:9px}
+.client-dna-gene>b{font:800 18px var(--display);color:#9dff42}
+.client-memory-grid{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(300px,.7fr);gap:18px}
+.client-memory-timeline-card,.client-memory-carry-card{padding:24px;border:1px solid var(--line);background:var(--panel)}
+.client-memory-timeline-card h3,.client-memory-carry-card h3{font-size:29px;margin:0}
+.client-memory-timeline{margin-top:16px;display:grid}
+.client-memory-timeline>div{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:16px 0;border-top:1px solid var(--line)}
+.client-memory-timeline>div:first-child{border-top:0}
+.client-memory-timeline>div>span{font:500 10px var(--mono);letter-spacing:.12em;color:#9dff42;padding-top:3px}
+.client-memory-timeline strong{display:block;font-size:15px}
+.client-memory-timeline p{margin:5px 0 0;color:var(--muted);line-height:1.55}
+.client-memory-carry-card{background:linear-gradient(145deg,#171d20,#11171a)}
+.client-memory-carry-card>h3{margin:10px 0 18px}
+.client-memory-criteria{display:grid}
+.client-memory-criteria>div{display:grid;grid-template-columns:32px 1fr;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.client-memory-criteria>div:first-child{border-top:0}
+.client-memory-criteria b{font:500 9px var(--mono);color:#9dff42}
+.client-memory-criteria span{font-size:12px;color:#c1cbc8}
+.client-memory-goal{margin:18px 0;padding:15px;border:1px solid rgba(157,255,66,.18);background:rgba(157,255,66,.035)}
+.client-memory-goal strong{font-size:13px}.client-memory-goal p{margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.5}
+@media(max-width:1000px){
+  .client-dna-panel,.client-memory-grid{grid-template-columns:1fr}
+  .client-dna-visual{border-right:0;border-bottom:1px solid var(--line)}
+}
+@media(max-width:760px){
+  .client-memory-head{align-items:flex-start;flex-direction:column}
+  .client-dna-side{padding:20px}
+  .client-dna-visual{min-height:360px}
+}
