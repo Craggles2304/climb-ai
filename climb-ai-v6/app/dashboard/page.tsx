@@ -1,6 +1,7 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
+import type {CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
@@ -253,7 +254,7 @@ export default function Home(){
           <div className="client-dna-visual" aria-label="Game DNA based on your real development plan">
             <div className="client-dna-title"><span>GAME DNA</span><strong>{active.gameName}{active.tagline}</strong></div>
             <div className="client-dna-helix" aria-hidden="true">
-              {memoryGenes.map((gene,index)=><div className="client-dna-rung" key={gene.id} style={{'--dna-progress':gene.score+'%','--dna-order':index} as React.CSSProperties}><i/><b/><span/></div>)}
+              {memoryGenes.map((gene,index)=><div className="client-dna-rung" key={gene.id} style={{'--dna-progress':gene.score+'%','--dna-order':index} as CSSProperties}><i/><b/><span/></div>)}
             </div>
             <div className="client-dna-score"><b>{dnaStrength}%</b><span>DNA strength</span><small>{masteredMemories} memories · {learningMemories} learning</small></div>
           </div>
