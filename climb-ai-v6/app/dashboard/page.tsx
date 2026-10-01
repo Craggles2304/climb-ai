@@ -260,59 +260,15 @@ export default function Home(){
         <p className="sample-caption">YOUR MATCHES · SELECT A GAME TO SEE THE COACH’S READ</p>
       </section>
 
-      <section className="panel panel-padding memory-card">
-        <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY</div>
+      <section className="panel panel-padding memory-card" id="coach-memory">
+        <div className="eyebrow" style={{color:'var(--gold)'}}>YOUR GAME DNA</div>
         <h2>Your coach shouldn’t start from zero.</h2>
-        <p>Keep your patterns, test your fixes and find the next thing worth working on.</p>
-        <div className="memory-mini"><span>Current memories<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
-        <Link className="btn gold" href="#coach-memory">See what your coach remembers →</Link>
+        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} missions={dnaMissions}/></div>
+        <div className="memory-mini"><span>Memories banked<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
+        <p>See the patterns your coach is carrying forward, what has stuck and what gets tested next.</p>
+        <Link className="btn gold" href="/coach">Open Coach →</Link>
       </section>
     </div>
-
-    <section id="coach-memory" style={{marginTop:30}}>
-      <header className="page-head">
-        <div>
-          <div className="eyebrow">THE OP CLIMB DIFFERENCE / SEASON-LONG COACHING</div>
-          <h1>A coach that remembers you.</h1>
-          <p>Your last game is one chapter. Your development is the whole story.</p>
-        </div>
-        <Link className="btn btn-small" href="/coach">Open full coach →</Link>
-      </header>
-
-      <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
-
-      <div className="climb-grid">
-        <section className="panel panel-padding memory-panel">
-          <div className="section-head"><h2>One habit. Your real context.</h2><span className="tag gold">Memory</span></div>
-          <div className="memory-timeline">
-            <div className="memory-event"><span>NOW</span><div><h3>Find the repeat.</h3><p>{missionPlain?.name||'Build the first measurable focus.'} {missionPlain?.why||'OP CLIMB is waiting for enough evidence to choose the first repeat.'}</p></div></div>
-            <div className="memory-event"><span>PROOF</span><div><h3>Practise one decision.</h3><p>{missionProof?missionProof.confirmed+' of '+missionProof.required+' proven reps currently support this mission.':'The next tracked game starts the evidence trail.'}</p></div></div>
-            <div className="memory-event"><span>GAMES</span><div><h3>Use fewer prompts.</h3><p>{matches.length?matches.length+' tracked games can now test whether the same decision holds across different situations.':'Connect the Companion so the coach can compare the same decision across games.'}</p></div></div>
-            <div className="memory-event"><span>NEXT</span><div><h3>Test it somewhere new.</h3><p>{activeMission?.status==='MASTERED'?'This habit is mastered. Re-test it in a new situation before moving on.':'Carry the same rule into the next game and check whether it holds without adding more advice.'}</p></div></div>
-          </div>
-        </section>
-
-        <aside className="panel panel-padding">
-          <span className="eyebrow accent">WHAT THE COACH CARRIES FORWARD</span>
-          <h2 style={{marginTop:12}}>Not just your numbers.</h2>
-          <div className="criteria">
-            <div><span className="mint">◎</span><span>Recurring decision patterns</span></div>
-            <div><span className="mint">◎</span><span>Your current focus and why it matters</span></div>
-            <div><span className="mint">◎</span><span>Examples that support—or challenge—the read</span></div>
-            <div><span className="mint">◎</span><span>When the habit holds without help</span></div>
-            <div><span className="mint">◎</span><span>The next useful test, not a random tip</span></div>
-          </div>
-          <div className="micro-box"><strong>The goal: need less help.</strong><p>Progress means you make the read yourself, even in a new situation.</p></div>
-          <Link className="btn gold" style={{width:'100%',marginTop:20}} href="/coach">Open Coach memory →</Link>
-        </aside>
-      </div>
-
-      <div className="memory-outcomes">
-        <article className="panel outcome"><span className="eyebrow">MEMORIES BANKED</span><strong>{masteredMemories}</strong><p>Mastered missions that stay in the player model.</p></article>
-        <article className="panel outcome"><span className="eyebrow">LEARNING NOW</span><strong>{learningMemories}</strong><p>Active development threads still gathering evidence.</p></article>
-        <article className="panel outcome"><span className="eyebrow">THE NEXT TEST</span><strong>{activeMission?'NEXT GAME':'BASELINE'}</strong><p>{activeMission?'Can the current read hold again without extra help?':'Play a tracked game to establish the first real coaching thread.'}</p></article>
-      </div>
-    </section>
 
     <section className="home-plan-strip">
       <span className="metric-icon">◆</span>
