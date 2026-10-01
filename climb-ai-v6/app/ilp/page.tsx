@@ -123,12 +123,16 @@ export default function PlayerDevelopmentCentre(){
         <div className="ip-game-strengths-head"><span>WHAT YOU DID WELL · MEASURED</span><b>{gameStrengths.length} VERIFIED STRENGTH{gameStrengths.length===1?'':'S'}</b></div>
         <div>
           {gameStrengths.slice(0,4).map(item=><article key={item.id} style={strandStyle(item.dnaDomain)}>
-            <span>{dnaDomainLabel(item.dnaDomain)}</span>
+            <span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span>
             <h3>{item.title}</h3>
-            <strong>{item.value}</strong>
-            <small>Rank / evidence bar · {item.target}</small>
-            <p>{item.detail}</p>
+            <div className="ip-strength-simple"><b>WHAT YOU DID</b><p>{item.whatHappened}</p></div>
+            <div className="ip-strength-simple"><b>WHY IT MATTERED</b><p>{item.whyItMattered}</p></div>
             <em>KEEP THIS</em>
+            <details className="ip-strength-proof">
+              <summary>SHOW THE PROOF</summary>
+              <div><span>{item.technicalLabel}</span><strong>{item.value}</strong><small>Bar · {item.target} · {item.confidence} confidence</small></div>
+              {item.proof.length>0&&<ul>{item.proof.map(line=><li key={line}>{line}</li>)}</ul>}
+            </details>
           </article>)}
         </div>
       </div>}
