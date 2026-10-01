@@ -341,7 +341,10 @@ test('Companion path navigation is allowlisted before opening the web Learning J
   assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
   const allowed=main.match(/const safePaths=new Set\(\[([^\]]+)\]\)/)?.[1]||'';
   for(const route of ['/live','/progress','/ilp'])assert.ok(allowed.includes(`'${route}'`));
-  assert.ok(main.includes("safePaths.has(String(path||''))?String(path):'/live'"));
+  assert.ok(main.includes("const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse'])"));
+  assert.ok(main.includes('safePaths.has(parsed.pathname)'));
+  assert.ok(main.includes("parsed.pathname==='/ilp'"));
+  assert.ok(main.includes("parsed.searchParams.get('game')"));
 });
 
 
