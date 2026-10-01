@@ -192,5 +192,5 @@ function clock(seconds:number){
 }
 
 function clean(value:string){
-  return String(value||'').replaceAll('_',' ').toLowerCase().replace(/\\b\\w/g,char=>char.toUpperCase());
+  return String(value||'').replaceAll('_',' ').toLowerCase().replace(/\b\w/g,char=>char.toUpperCase());
 }
