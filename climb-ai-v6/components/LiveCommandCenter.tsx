@@ -62,8 +62,11 @@ return <div className="match-room">
   </div>
 
   {ready&&review?.matchId&&<section className="panel panel-padding match-room-complete">
-    <div><div className="eyebrow">GAME COMPLETE</div><h2>Review it in My Games.</h2><p className="muted">Match Room is for preparation. The coaching review now lives where your match history lives.</p></div>
-    <Link className="btn primary" href={'/analyse/'+encodeURIComponent(review.matchId)}>Open review →</Link>
+    <div><div className="eyebrow">GAME COMPLETE</div><h2>See what changed.</h2><p className="muted">My Climb shows what you did well, whether your challenge counted, how your DNA moved and what to take into the next game.</p></div>
+    <div className="mission-actions">
+      <Link className="btn primary" href={'/ilp?game='+encodeURIComponent(review.matchId)}>SEE MY PROGRESS →</Link>
+      <Link className="btn secondary" href={'/analyse/'+encodeURIComponent(review.matchId)}>DETAILED MATCH REVIEW</Link>
+    </div>
   </section>}
 
   <details className="panel panel-padding match-room-setup" open={!online||Boolean(pairCode)}>
