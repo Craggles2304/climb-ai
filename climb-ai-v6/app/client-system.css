@@ -848,24 +848,44 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   min-height:43px;padding:8px 9px;font:600 10px var(--mono);letter-spacing:.035em;
   cursor:pointer;text-transform:uppercase
 }
-.dna-strand-tabs button:hover,.ip-dna-filter-tabs button:hover{border-color:#506268;color:var(--text);background:#10191d}
+.dna-strand-tabs button:hover,.ip-dna-filter-tabs button:hover{
+  border-color:var(--strand-color,#506268);
+  color:var(--strand-color,var(--text));
+  background:color-mix(in srgb,var(--strand-color,#10191d) 8%,#10191d)
+}
 .dna-strand-tabs button.active,.ip-dna-filter-tabs button.active{
-  border-color:var(--mint);color:var(--mint);background:linear-gradient(180deg,rgba(182,246,107,.1),rgba(182,246,107,.025));
-  box-shadow:inset 0 -2px 0 var(--mint)
+  border-color:var(--strand-color,var(--mint));
+  color:var(--strand-color,var(--mint));
+  background:color-mix(in srgb,var(--strand-color,var(--mint)) 12%,#0b1114);
+  box-shadow:inset 0 -2px 0 var(--strand-color,var(--mint)),0 0 16px color-mix(in srgb,var(--strand-color,var(--mint)) 14%,transparent)
 }
 .dna-strand-explainer{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(250px,.55fr);gap:16px}
-.dna-strand-explainer>div,.dna-strand-explainer>aside{border:1px solid var(--line);background:#091014;padding:18px}
+.dna-strand-explainer>div,.dna-strand-explainer>aside{
+  border:1px solid color-mix(in srgb,var(--strand-color,var(--line)) 42%,var(--line));
+  background:linear-gradient(135deg,color-mix(in srgb,var(--strand-color,#091014) 6%,#091014),#091014);
+  padding:18px
+}
+.dna-strand-explainer .eyebrow{color:var(--strand-color,var(--mint))}
 .dna-strand-explainer h3{font-size:28px;margin:7px 0 8px;line-height:1.04}
 .dna-strand-explainer p{margin:0;color:var(--muted);line-height:1.58}
 .dna-strand-subskills,.ip-dna-filter-detail>div{display:flex;flex-wrap:wrap;gap:7px;margin-top:15px}
 .dna-strand-subskills span,.ip-dna-filter-detail span{
-  border:1px solid #26393f;background:#0d171b;padding:6px 8px;
-  font:500 9px var(--mono);letter-spacing:.055em;text-transform:uppercase;color:#aebfc0
+  border:1px solid color-mix(in srgb,var(--strand-color,#26393f) 48%,#26393f);
+  background:color-mix(in srgb,var(--strand-color,#0d171b) 7%,#0d171b);
+  padding:6px 8px;
+  font:500 9px var(--mono);letter-spacing:.055em;text-transform:uppercase;
+  color:var(--strand-color,#aebfc0)
 }
 .dna-strand-explainer>aside{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:6px}
 .dna-strand-explainer>aside>span{font:500 8px var(--mono);letter-spacing:.1em;color:var(--dim)}
 .dna-strand-explainer>aside>b{font:800 23px var(--display)}
 .dna-strand-explainer>aside>small{color:var(--muted);line-height:1.5;margin-bottom:9px}
+.dna-strand-explainer>aside .btn.primary{
+  background:var(--strand-color,var(--mint));
+  border-color:var(--strand-color,var(--mint));
+  color:#061015;
+  box-shadow:0 0 16px color-mix(in srgb,var(--strand-color,var(--mint)) 22%,transparent)
+}
 .coach-preview-grid-single{grid-template-columns:1fr}
 .coach-preview-grid-single .coach-preview-current{max-width:none}
 
@@ -877,6 +897,8 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .ip-dna-filter-tabs{margin-top:16px;grid-template-columns:76px repeat(6,minmax(0,1fr))}
 .ip-dna-filter-detail{margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
 .ip-dna-filter-detail>p{margin:0;color:#c6d2d1;line-height:1.55}
+.ip-dna-filter[style] .eyebrow{color:var(--strand-color,var(--mint))}
+.ip-dna-filter[style]{border-color:color-mix(in srgb,var(--strand-color,var(--line)) 38%,var(--line))}
 
 @media(max-width:1050px){
   .dna-strand-tabs{grid-template-columns:repeat(3,1fr)}
