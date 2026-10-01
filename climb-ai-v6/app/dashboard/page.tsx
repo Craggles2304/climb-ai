@@ -17,6 +17,7 @@ import type {Match,Role} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
+import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -160,25 +161,15 @@ export default function Home(){
   const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
   const missionProof=activeMission?missionSummary(activeMission):null;
   const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
-    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
-      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
-      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
-      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
-      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
-      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
-      {id:'mind',label:'Mindset',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
-    ];
-    return defs.flatMap(def=>{
-      const real=tasks.filter(task=>def.categories.includes(task.category)).slice(0,4).map(task=>({
-        c:def.id,
-        n:task.title,
-        s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
-      }));
-      while(real.length<4)real.push({c:def.id,n:`Awaiting next ${def.label} mission`,s:0});
-      return real;
-    });
-  },[tasks]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
+    const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
+      c:DNA_DOMAIN_GENE[domain],
+      n:task.title,
+      s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
+    }));
+    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0});
+    return real;
+  }),[tasks]);
   const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
   const learningMemories=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
 
