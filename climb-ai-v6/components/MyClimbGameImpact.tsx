@@ -21,12 +21,19 @@ export function MyClimbGameImpact({
   learning,
   strengths,
   activeTasks,
+  baselineGames=3,
+  baselineRequired=3,
 }:{
-  match:Match;
+  match?:Match;
   learning:LearningRow[];
   strengths:StrengthEvidence[];
   activeTasks:ILPTask[];
+  baselineGames?:number;
+  baselineRequired?:number;
 }){
+  const baselineReady=baselineGames>=baselineRequired;
+  if(!baselineReady)return <BaselineImpact match={match} games={baselineGames} required={baselineRequired}/>;
+  if(!match)return <section className="mc-impact"><div className="panel panel-padding"><div className="eyebrow">MY CLIMB</div><h2>Waiting for your first tracked game.</h2><p className="muted">OP CLIMB needs a completed match before it can show last-game impact.</p></div></section>;
   const primaryLearning=learning.find(item=>item.attempt.banksPass)??learning[0]??null;
   const primaryTask=primaryLearning?.task??activeTasks[0]??null;
   const primarySummary=primaryLearning?.summary??(primaryTask?missionSummary(primaryTask):null);
@@ -147,6 +154,89 @@ export function MyClimbGameImpact({
           {!keyMoments.length&&<p className="muted">No reliable timestamped moments were available for this match.</p>}
         </div>
         <footer>No video required · timestamps come from match/timeline evidence.</footer>
+      </article>
+    </div>
+  </section>;
+}
+
+function BaselineImpact({match,games,required}:{match?:Match;games:number;required:number}){
+  const safeGames=Math.max(0,Math.min(required,games));
+  const left=Math.max(0,required-safeGames);
+  const moments=(match?.moments??[]).slice(0,3);
+
+  return <section className="mc-impact mc-impact-baseline">
+    <header className="mc-impact-hero">
+      <div>
+        <div className="eyebrow">MY CLIMB · DNA BASELINE</div>
+        <h1>BUILDING YOUR STARTING POINT.</h1>
+        <p>{match?match.champion+' · '+(match.result==='WIN'?'VICTORY':'DEFEAT')+' · '+match.kills+'/'+match.deaths+'/'+match.assists+' · ':''}Game {safeGames} of {required} observed. OP CLIMB is collecting evidence before it tells you what to change.</p>
+      </div>
+      <Link className="btn primary" href="/live">TRACK GAME {Math.min(safeGames+1,required)} →</Link>
+    </header>
+
+    <div className="mc-impact-strip">
+      <article className="baseline-card">
+        <span>DNA BASELINE</span><small>OBSERVATION PROGRESS</small>
+        <strong>{safeGames}/{required}</strong><b>{left?left+' GAME'+(left===1?'':'S')+' LEFT':'READY TO REVEAL'}</b>
+      </article>
+      <article className="baseline-card">
+        <span>GAME DNA</span><small>CURRENT STATE</small>
+        <strong>0%</strong><b>GREY UNTIL GAME 3</b>
+      </article>
+      <article className="baseline-card">
+        <span>CLIMB MISSION</span><small>PERSONALISED CHALLENGE</small>
+        <h3>LOCKED</h3><b>UNLOCKS AFTER BASELINE</b>
+      </article>
+      <article className="baseline-card">
+        <span>LEARNING</span><small>PROVEN REPS</small>
+        <h3>0</h3><b>STARTS AFTER GAME 3</b>
+      </article>
+    </div>
+
+    <div className="mc-impact-grid">
+      <article className="mc-change panel baseline-panel">
+        <div className="mc-card-head"><div><span>WHAT HAPPENED LAST GAME</span><h2>{match?'Game recorded. Not judged yet.':'Waiting for a tracked game.'}</h2></div><b>OBSERVATION</b></div>
+        <div className="mc-baseline-message">
+          <strong>{match?match.champion+' · '+match.kills+'/'+match.deaths+'/'+match.assists:'NO MATCH YET'}</strong>
+          <p>OP CLIMB is deliberately not turning one or two games into a coaching conclusion. It is watching for what repeats across the first three games.</p>
+        </div>
+        <div className="mc-baseline-steps">
+          {[0,1,2].map(index=><div key={index} className={index<safeGames?'done':index===safeGames?'current':''}>
+            <i>{index<safeGames?'✓':index+1}</i><span>GAME {index+1}</span><small>{index<safeGames?'OBSERVED':index===safeGames?'NEXT':'WAITING'}</small>
+          </div>)}
+        </div>
+      </article>
+
+      <article className="mc-mission panel baseline-panel">
+        <div className="mc-card-head"><div><span>YOUR NEXT STEP</span><h2>Play normally.</h2></div><b>{safeGames}/{required}</b></div>
+        <p className="mc-mission-rule">Do not change your play for OP CLIMB yet. The baseline needs your real habits before a challenge starts influencing them.</p>
+        <div className="mc-how-pass"><span>AFTER GAME 3</span><b>DNA reveals → first challenge unlocks → proven reps begin → strands grow from evidence.</b></div>
+        <Link className="btn primary" href="/live" style={{marginTop:14}}>TRACK NEXT GAME →</Link>
+      </article>
+
+      <article className="mc-dna panel baseline-panel">
+        <div className="mc-card-head"><div><span>YOUR GAME DNA</span><h2>Nothing coloured in yet.</h2></div><b>0%</b></div>
+        <div className="mc-dna-list">
+          {DNA_DOMAINS.map(domain=><div key={domain} className="baseline-dna-row">
+            <span>{DNA_DOMAIN_LABELS[domain]}</span><div><i style={{width:'0%'}}/></div><b>0%</b><em>LOCKED</em>
+          </div>)}
+        </div>
+      </article>
+
+      <article className="mc-strengths panel baseline-panel">
+        <div className="mc-card-head"><div><span>WHAT YOU DID WELL · MEASURED</span><h2>Still observing.</h2></div><b>LOCKED</b></div>
+        <div className="mc-baseline-message"><strong>NO EARLY PRAISE OR CRITICISM</strong><p>OP CLIMB can record the match, but it waits for the third game before turning patterns into strengths or challenges.</p></div>
+      </article>
+
+      <article className="mc-moments panel baseline-panel">
+        <div className="mc-card-head"><div><span>KEY MOMENTS</span><h2>Last-game timestamps.</h2></div><b>OBSERVATION</b></div>
+        <div className="mc-moment-list">
+          {moments.map((moment,index)=><div key={moment.atMs+'-'+moment.type} className="baseline-moment">
+            <strong>{moment.clock}</strong><i>{index+1}</i><p>{moment.text}</p>
+          </div>)}
+          {!moments.length&&<p className="muted">No reliable timestamped moments were available for this match yet.</p>}
+        </div>
+        <footer>Recorded for context · not used to score learning until the baseline is complete.</footer>
       </article>
     </div>
   </section>;
