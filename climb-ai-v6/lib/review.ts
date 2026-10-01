@@ -155,7 +155,7 @@ export function buildReview(match:Match,report:AnalysisReport,rank=match.rank):M
   // decision scores create verified strengths instead of generic praise.
   const strengths=positiveEvidenceForMatch(match,rank);
   const didWell=strengths.length
-    ?strengths.slice(0,4).map(item=>item.whatHappened)
+    ?strengths.slice(0,3).map(item=>item.whatHappened)
     :[pick(WELL_LANE,`w:${seed}`)];
 
   const titlePool=MISTAKE_TITLE[category]??[category.replaceAll('_',' ')];
