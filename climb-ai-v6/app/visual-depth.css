@@ -4515,3 +4515,145 @@ body[data-op-area="hq"] .hq-mission-why p{
 .ip-archive details.ip-strand-history[style] summary b{
   color:#edf3f2;
 }
+
+
+/* Visible learning loop — post-game receipt + mission learning path */
+.op-learning-receipt{
+  position:fixed;
+  right:22px;
+  bottom:22px;
+  z-index:140;
+  width:min(520px,calc(100vw - 28px));
+  border:1px solid color-mix(in srgb,var(--strand-color,#b6f66b) 38%,rgba(255,255,255,.10));
+  border-radius:16px;
+  background:
+    radial-gradient(420px 200px at 100% 0%,color-mix(in srgb,var(--strand-color,#b6f66b) 9%,transparent),transparent 72%),
+    rgba(7,13,17,.975);
+  box-shadow:0 22px 70px rgba(0,0,0,.45),inset 3px 0 0 color-mix(in srgb,var(--strand-color,#b6f66b) 86%,transparent);
+  backdrop-filter:blur(18px);
+  overflow:hidden;
+}
+.op-learning-receipt-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:14px;
+  padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.065)
+}
+.op-learning-receipt-head>div{display:grid;gap:4px}
+.op-learning-receipt-head span{
+  color:var(--strand-color,#b6f66b);
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em
+}
+.op-learning-receipt-head strong{font:900 16px/1 var(--font-display,'Barlow Condensed',sans-serif);text-transform:uppercase}
+.op-learning-receipt-head button{
+  border:0;background:transparent;color:#7d8b90;font-size:22px;line-height:1;cursor:pointer
+}
+.op-learning-receipt-body{padding:16px}
+.op-learning-receipt-body h2{margin:0 0 10px;font-size:30px;line-height:.98}
+.op-learning-receipt-body>p{margin:0;color:#8e9da1;font-size:11px;line-height:1.5}
+.op-learning-receipt-missions{display:grid;gap:8px}
+.op-learning-receipt-missions>div{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;gap:5px 12px;
+  padding:11px 12px;border:1px solid color-mix(in srgb,var(--strand-color) 30%,rgba(255,255,255,.07));
+  border-radius:10px;background:color-mix(in srgb,var(--strand-color) 4%,rgba(0,0,0,.15))
+}
+.op-learning-receipt-missions span{
+  color:var(--strand-color);
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;text-transform:uppercase
+}
+.op-learning-receipt-missions b{font-size:11px}
+.op-learning-receipt-missions strong{font:900 8px/1 var(--font-mono,'IBM Plex Mono',monospace);text-align:right}
+.op-learning-receipt-missions strong.good{color:#b6f66b}.op-learning-receipt-missions strong.watch{color:#d9a56b}
+.op-learning-receipt-missions small{grid-column:1/-1;color:#738287;font-size:8px}
+.op-learning-mastered{
+  margin-top:10px;padding:9px 10px;border:1px solid rgba(255,193,90,.25);
+  border-radius:8px;color:#ffc15a;background:rgba(255,193,90,.04);
+  font:800 8px/1.3 var(--font-mono,'IBM Plex Mono',monospace)
+}
+.op-learning-receipt-actions{
+  display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid rgba(255,255,255,.055)
+}
+
+.ip-game-learning{
+  margin:18px 0;
+  border-color:rgba(182,246,107,.22)!important;
+  background:linear-gradient(145deg,rgba(182,246,107,.035),rgba(9,15,19,.78))!important
+}
+.ip-game-learning-head{
+  display:flex;align-items:flex-start;justify-content:space-between;gap:20px
+}
+.ip-game-learning-head h2{margin:7px 0 6px;font-size:34px;line-height:1}
+.ip-game-learning-head p{margin:0;color:#8a999e;font-size:11px;line-height:1.5}
+.ip-game-learning-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.ip-game-learning-grid{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:16px
+}
+.ip-game-learning-grid>article{
+  padding:13px;border:1px solid color-mix(in srgb,var(--strand-color) 32%,rgba(255,255,255,.07));
+  border-radius:11px;background:color-mix(in srgb,var(--strand-color) 5%,rgba(0,0,0,.13));
+  box-shadow:inset 3px 0 0 color-mix(in srgb,var(--strand-color) 78%,transparent)
+}
+.ip-game-learning-grid>article>span{
+  color:var(--strand-color);
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;text-transform:uppercase
+}
+.ip-game-learning-grid h3{margin:7px 0 8px;font-size:20px;line-height:1.05}
+.ip-game-learning-grid strong{font:900 8px/1 var(--font-mono,'IBM Plex Mono',monospace)}
+.ip-game-learning-grid strong.good{color:#b6f66b}.ip-game-learning-grid strong.watch{color:#d9a56b}
+.ip-game-learning-grid p{min-height:3em;margin:8px 0 10px;color:#8d9b9f;font-size:9px;line-height:1.45}
+.ip-game-learning-grid article>div{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:9px;
+  border-top:1px solid color-mix(in srgb,var(--strand-color) 18%,rgba(255,255,255,.05))
+}
+.ip-game-learning-grid article>div b{font-size:9px}
+.ip-game-learning-grid article>div small{color:var(--strand-color);font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);text-align:right}
+.ip-game-learning-processing{
+  margin-top:14px;padding:13px;border:1px dashed rgba(255,255,255,.10);border-radius:10px
+}
+.ip-game-learning-processing span{color:#b6f66b;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em}
+.ip-game-learning-processing p{margin:6px 0 0;color:#829196;font-size:10px}
+
+.ip-learning-path{
+  margin-top:10px;padding:11px 12px;border:1px solid color-mix(in srgb,var(--strand-color) 22%,rgba(255,255,255,.06));
+  border-radius:10px;background:rgba(0,0,0,.12)
+}
+.ip-learning-path>div{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.ip-learning-path>div span{
+  color:#75858a;font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em
+}
+.ip-learning-path>div b{color:var(--strand-color);font:900 10px/1 var(--font-mono,'IBM Plex Mono',monospace)}
+.ip-learning-path ol{
+  list-style:none;display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:10px 0 0;padding:0
+}
+.ip-learning-path li{
+  position:relative;display:grid;justify-items:center;gap:5px;color:#536166
+}
+.ip-learning-path li:before{
+  content:'';position:absolute;left:-50%;right:50%;top:10px;height:1px;background:rgba(255,255,255,.07)
+}
+.ip-learning-path li:first-child:before{display:none}
+.ip-learning-path li.done:before,.ip-learning-path li.active:before{
+  background:color-mix(in srgb,var(--strand-color) 48%,rgba(255,255,255,.07))
+}
+.ip-learning-path li i{
+  position:relative;z-index:1;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.10);background:#0a1115;
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);font-style:normal
+}
+.ip-learning-path li.done i,.ip-learning-path li.active i{
+  border-color:var(--strand-color);color:var(--strand-color);
+  box-shadow:0 0 11px color-mix(in srgb,var(--strand-color) 18%,transparent)
+}
+.ip-learning-path li.active i{background:color-mix(in srgb,var(--strand-color) 10%,#0a1115)}
+.ip-learning-path li span{
+  font:800 6px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.05em;text-align:center
+}
+.ip-learning-path li.done span,.ip-learning-path li.active span{color:#cbd5d4}
+
+@media(max-width:760px){
+  .op-learning-receipt{right:14px;bottom:74px;width:calc(100vw - 28px)}
+  .ip-game-learning-head{flex-direction:column}
+  .ip-game-learning-actions{justify-content:flex-start}
+  .ip-game-learning-grid{grid-template-columns:1fr}
+}
