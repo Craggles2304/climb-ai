@@ -49,7 +49,7 @@ export default function PlayerDevelopmentCentre(){
     window.history.replaceState({},'',url.pathname+url.search);
   };
 
-  const allRoleMatches=useMemo(()=>matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role]);
+  const allRoleMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);
   const baselineGames=useMemo(()=>dnaBaselineGameCount(allRoleMatches,active.role),[allRoleMatches,active.role]);
   const baselineReady=dnaBaselineReady(baselineGames);
   const activeTasks=useMemo(()=>{
@@ -62,7 +62,7 @@ export default function PlayerDevelopmentCentre(){
   const pausedAll=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
-  const matches=useMemo(()=>filterHistoryForTier(allRoleMatches,tier),[allRoleMatches,tier]);
+  const matches=filterHistoryForTier(allRoleMatches,tier);
   const gameMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
   const gameLearning=useMemo(()=>selectedGame?tasks.flatMap(task=>{
     const attempt=(task.missionHistory??[]).find(item=>item.matchId===selectedGame);
