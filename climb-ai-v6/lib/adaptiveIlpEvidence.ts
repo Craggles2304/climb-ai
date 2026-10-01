@@ -1,5 +1,6 @@
 import {candidateTasks} from './ilpEngine';
 import type {ILPTask,IssueCategory,Role} from './types';
+import {dnaDomainForTask} from './dnaDomain';
 import type {HistoryAnalysisRow,ProHistoryFix,ProLearningProfile} from './riot/proHistory';
 
 export type AdaptiveIlpAction='WATCH'|'PROMOTED'|'STRENGTHENED'|'REVISED'|'MASTERED'|'REOPENED'|'REFILLED';
@@ -169,7 +170,7 @@ function attachAdaptive(task:AdaptiveTask,fix:ProHistoryFix,evidence:PatternEvid
   return{
     ...task,
     title:task.source==='SYSTEM'?fix.title:task.title,
-    category:categoryForFix(fix),why:fix.why,gameRule:fix.rule,target:fix.mastery,
+    category:categoryForFix(fix),dnaDomain:dnaDomainForTask({category:categoryForFix(fix),metric:task.metric,title:fix.title}),why:fix.why,gameRule:fix.rule,target:fix.mastery,
     priority:Math.max(Number(task.priority||0),adaptivePriority(fix,confidence)),
     status:task.status==='MASTERED'?'MASTERED':'EVIDENCE_BUILDING',
     evidence:evidenceLines(fix,evidence,confidence),
@@ -190,7 +191,7 @@ function reviseManagedTask(task:AdaptiveTask,fix:ProHistoryFix,evidence:PatternE
       ?`${fix.key} repeated again in ${evidence.recentSupportGames} of the last ${evidence.recentWindow} evidence-backed games.`
       :`${fix.title}: ${evidence.recentSupportGames}/${evidence.recentWindow||0} recent games showed the pattern; clean streak ${cleanStreak}/${MASTERY_CLEAN_GAMES}.`;
   return{
-    ...task,title:task.source==='SYSTEM'?fix.title:task.title,category:categoryForFix(fix),why:fix.why,gameRule:fix.rule,target:fix.mastery,
+    ...task,title:task.source==='SYSTEM'?fix.title:task.title,category:categoryForFix(fix),dnaDomain:dnaDomainForTask({category:categoryForFix(fix),metric:task.metric,title:fix.title}),why:fix.why,gameRule:fix.rule,target:fix.mastery,
     progress,metricProgress:progress,missionProgress:progress,status,
     priority:adaptivePriority(fix,confidence),successfulGames:cleanStreak,gamesObserved,masteryRequired:MASTERY_CLEAN_GAMES,
     evidence:evidenceLines(fix,evidence,confidence),lastUpdatedReason:reason,
@@ -202,7 +203,7 @@ function reviseManagedTask(task:AdaptiveTask,fix:ProHistoryFix,evidence:PatternE
 function createAdaptiveTask(accountId:string,fix:ProHistoryFix,evidence:PatternEvidence,activatedAfter:string|null,now:string,role:Role|null):AdaptiveTask{
   const confidence=patternConfidence(fix,evidence);
   return{
-    id:`op-pro-${(role??'global').toLowerCase()}-${fix.key.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,accountId,title:fix.title,category:categoryForFix(fix),why:fix.why,gameRule:fix.rule,
+    id:`op-pro-${(role??'global').toLowerCase()}-${fix.key.toLowerCase().replace(/[^a-z0-9]+/g,'-')}`,accountId,title:fix.title,category:categoryForFix(fix),dnaDomain:dnaDomainForTask({category:categoryForFix(fix),metric:'OP PRO Fix Ladder',title:fix.title}),why:fix.why,gameRule:fix.rule,
     metric:'OP PRO Fix Ladder',target:fix.mastery,progress:0,status:'EVIDENCE_BUILDING',source:'SYSTEM',evidence:evidenceLines(fix,evidence,confidence),
     priority:adaptivePriority(fix,confidence),successfulGames:0,gamesObserved:0,masteryRequired:MASTERY_CLEAN_GAMES,roleScope:role??'GLOBAL',roleEvidence:role?[role]:[],
     lastUpdatedReason:`Promoted only after repeated post-game evidence. ${MASTERY_CLEAN_GAMES} future clean games are required for mastery.`,
