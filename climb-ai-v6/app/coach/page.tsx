@@ -4,6 +4,8 @@ import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {missionSummary} from '@/lib/missionLoop';
 import {IssueCategory,Match} from '@/lib/types';
@@ -44,7 +46,7 @@ function Message({m}:{m:Msg}){
 }
 
 export default function Coach(){
-  const {active}=useAccount();const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
+  const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
   const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
     const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
       {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
@@ -118,41 +120,58 @@ export default function Coach(){
         <div className="vf-coach-rail-block"><span>PLAYER CONTEXT</span><strong>{active.role}</strong><p>{active.gameName}{active.tagline} · {active.rank} · {summary.games} recent meaningful game{summary.games===1?'':'s'}.</p></div>
       </aside>
     </section>
-    <section className="coach-memory-destination">
+    {tier==='PRO'?<>
+      <section className="coach-memory-destination">
+        <header className="page-head">
+          <div>
+            <div className="eyebrow">COACH MEMORY · YOUR DEVELOPMENT OVER TIME</div>
+            <h1>Your coach remembers the player, not just the scoreline.</h1>
+            <p>Game DNA, mastered habits, current tests and the next useful decision all live here.</p>
+          </div>
+          <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
+        </header>
+
+        <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
+
+        <div className="climb-grid coach-memory-summary">
+          <section className="panel panel-padding">
+            <div className="section-head"><h2>Current memory thread</h2><span className="tag gold">{mastered.length} mastered</span></div>
+            <div className="memory-timeline">
+              <div className="memory-event"><span>NOW</span><div><h3>{activeThree[0]?.title||'Build the first coaching thread'}</h3><p>{activeThree[0]?.gameRule||'Play one tracked game so the coach has real evidence to carry forward.'}</p></div></div>
+              <div className="memory-event"><span>PROOF</span><div><h3>Test the same decision again.</h3><p>{primarySummary?primarySummary.confirmed+' of '+primarySummary.required+' proven reps currently support this focus.':'No proven reps yet.'}</p></div></div>
+              <div className="memory-event"><span>HISTORY</span><div><h3>{mastered.length?'Mastered habits stay remembered.':'Memory builds when habits hold.'}</h3><p>{mastered.length?mastered.slice(0,3).map(task=>task.title).join(' · '):'Once a mission holds repeatedly, it moves out of the active plan but stays in your player model.'}</p></div></div>
+              <div className="memory-event"><span>NEXT</span><div><h3>Use less help, not more.</h3><p>The next test is whether the current read holds in a different game state without needing another new tip.</p></div></div>
+            </div>
+          </section>
+          <aside className="panel panel-padding">
+            <span className="eyebrow accent">WHAT YOUR COACH CARRIES FORWARD</span>
+            <h2 style={{marginTop:12}}>The context behind every answer.</h2>
+            <div className="criteria">
+              <div><span className="mint">◎</span><span>Recurring decision patterns</span></div>
+              <div><span className="mint">◎</span><span>Your current focus and why it exists</span></div>
+              <div><span className="mint">◎</span><span>Evidence that supports or challenges the read</span></div>
+              <div><span className="mint">◎</span><span>Mastered habits that should still hold</span></div>
+              <div><span className="mint">◎</span><span>The next useful test across a new situation</span></div>
+            </div>
+          </aside>
+        </div>
+      </section>
+    </>:<section className="coach-memory-destination coach-memory-locked">
       <header className="page-head">
         <div>
-          <div className="eyebrow">COACH MEMORY · YOUR DEVELOPMENT OVER TIME</div>
-          <h1>Your coach remembers the player, not just the scoreline.</h1>
-          <p>Game DNA, mastered habits, current tests and the next useful decision all live here.</p>
+          <div className="eyebrow">COACH MEMORY · PRO</div>
+          <h1>Persistent memory starts on PRO.</h1>
+          <p>{tier==='PLUS'?'PLUS understands each current game in full. PRO adds cross-game memory, Game DNA, transfer tests and long-term development.':'FREE proves the core coaching loop. PRO adds cross-game memory, Game DNA, transfer tests and long-term development.'}</p>
         </div>
-        <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
+        <Link className="btn btn-small" href="/pricing">Compare plans →</Link>
       </header>
-
-      <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
-
-      <div className="climb-grid coach-memory-summary">
-        <section className="panel panel-padding">
-          <div className="section-head"><h2>Current memory thread</h2><span className="tag gold">{mastered.length} mastered</span></div>
-          <div className="memory-timeline">
-            <div className="memory-event"><span>NOW</span><div><h3>{activeThree[0]?.title||'Build the first coaching thread'}</h3><p>{activeThree[0]?.gameRule||'Play one tracked game so the coach has real evidence to carry forward.'}</p></div></div>
-            <div className="memory-event"><span>PROOF</span><div><h3>Test the same decision again.</h3><p>{primarySummary?primarySummary.confirmed+' of '+primarySummary.required+' proven reps currently support this focus.':'No proven reps yet.'}</p></div></div>
-            <div className="memory-event"><span>HISTORY</span><div><h3>{mastered.length?'Mastered habits stay remembered.':'Memory builds when habits hold.'}</h3><p>{mastered.length?mastered.slice(0,3).map(task=>task.title).join(' · '):'Once a mission holds repeatedly, it moves out of the active plan but stays in your player model.'}</p></div></div>
-            <div className="memory-event"><span>NEXT</span><div><h3>Use less help, not more.</h3><p>The next test is whether the current read holds in a different game state without needing another new tip.</p></div></div>
-          </div>
-        </section>
-        <aside className="panel panel-padding">
-          <span className="eyebrow accent">WHAT YOUR COACH CARRIES FORWARD</span>
-          <h2 style={{marginTop:12}}>The context behind every answer.</h2>
-          <div className="criteria">
-            <div><span className="mint">◎</span><span>Recurring decision patterns</span></div>
-            <div><span className="mint">◎</span><span>Your current focus and why it exists</span></div>
-            <div><span className="mint">◎</span><span>Evidence that supports or challenges the read</span></div>
-            <div><span className="mint">◎</span><span>Mastered habits that should still hold</span></div>
-            <div><span className="mint">◎</span><span>The next useful test across a new situation</span></div>
-          </div>
-        </aside>
-      </div>
-    </section>
+      <section className="panel panel-padding pro-memory-gate">
+        <div className="eyebrow">YOUR CURRENT ACCESS</div>
+        <h2>{tier} · {historyWindowLabel(tier)}</h2>
+        <p className="muted">You can still ask the Coach about your current focus and eligible recent games. Persistent memories, mastered-habit recall and the full Game DNA remain locked until PRO.</p>
+        <Link className="btn gold" href="/pricing">Unlock persistent Coach Memory →</Link>
+      </section>
+    </section>}
 
   </AppShell>;
 
