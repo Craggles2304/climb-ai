@@ -7,6 +7,8 @@ import {AppShell} from '@/components/AppShell';
 import {MetricCard,PageHead} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel,requiredTierForHistoryDate,type SubscriptionTier} from '@/lib/subscription';
 import {useProMatch} from '@/components/useProMatch';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
@@ -24,13 +26,17 @@ const liveTask=(status:string)=>status!=='MASTERED'&&status!=='PAUSED';
 export default function Analysis(){
   const params=useParams<{match:string}>();
   const {active,hydrated}=useAccount();
+  const {tier}=useSubscription();
   const {tasks}=useLearningPlan();
   const [serverMatch,setServerMatch]=useState<Match|null>(null);
   const [serverLoading,setServerLoading]=useState(false);
   const [serverCheckedId,setServerCheckedId]=useState('');
+  const [serverHistoryLock,setServerHistoryLock]=useState<SubscriptionTier|null>(null);
   const id=String(params.match||'');
-  const matches=matchesFor(active.id);
+  const allMatches=matchesFor(active.id);
+  const matches=filterHistoryForTier(allMatches,tier);
   const cachedMatch=matches.find(m=>m.id===id);
+  const cachedHistoricalMatch=!cachedMatch?allMatches.find(m=>m.id===id):undefined;
   const match=cachedMatch??serverMatch??undefined;
   const detail=coachingLevelFor(active.rank);
   const embeddedPro=match?.proAnalysis;
@@ -38,10 +44,10 @@ export default function Analysis(){
   const proAnalysis=embeddedPro??fetchedPro??undefined;
   const proLoading=!embeddedPro&&fetchingPro;
 
-  useEffect(()=>{setServerMatch(null);setServerCheckedId('')},[id,active.id]);
+  useEffect(()=>{setServerMatch(null);setServerCheckedId('');setServerHistoryLock(null)},[id,active.id]);
 
   useEffect(()=>{
-    if(!hydrated||!id||cachedMatch||serverCheckedId===id)return;
+    if(!hydrated||!id||cachedMatch||cachedHistoricalMatch||serverCheckedId===id)return;
     const controller=new AbortController();
     setServerLoading(true);
     void fetch('/api/analyse',{
@@ -53,15 +59,26 @@ export default function Analysis(){
       const body=await response.json().catch(()=>null);
       if(controller.signal.aborted)return;
       if(response.ok&&body?.match&&body.match.riotAccountId===active.id)setServerMatch(body.match as Match);
+      else if(response.status===403&&body?.upgradeRequired)setServerHistoryLock((body.requiredTier||'PRO') as SubscriptionTier);
     }).catch(()=>{}).finally(()=>{
       if(controller.signal.aborted)return;
       setServerCheckedId(id);
       setServerLoading(false);
     });
     return()=>controller.abort();
-  },[hydrated,id,cachedMatch,serverCheckedId,active.id]);
+  },[hydrated,id,cachedMatch,cachedHistoricalMatch,serverCheckedId,active.id]);
 
   if(!hydrated)return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading your evidence…</h2></section></AppShell>;
+
+  if(cachedHistoricalMatch||serverHistoryLock){
+    const required=serverHistoryLock??requiredTierForHistoryDate(cachedHistoricalMatch!.createdAt);
+    return <AppShell><section className="glass card">
+      <div className="eyebrow">HISTORY LIMIT · {tier}</div>
+      <h2>This match sits outside {historyWindowLabel(tier).toLowerCase()}.</h2>
+      <p className="muted">{required==='PLUS'?'PLUS unlocks match history up to 90 days.':'PRO unlocks long-term match history and persistent development context.'}</p>
+      <div className="hero-actions"><Link className="btn primary" href="/pricing">SEE {required} →</Link><Link className="btn secondary" href="/analyse">BACK TO MY GAMES</Link></div>
+    </section></AppShell>;
+  }
 
   if(!cachedMatch&&(serverLoading||serverCheckedId!==id))return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading the saved match…</h2><p className="muted">Opening the server copy directly so a newly completed Companion game cannot be blocked by stale browser state.</p></section></AppShell>;
 
