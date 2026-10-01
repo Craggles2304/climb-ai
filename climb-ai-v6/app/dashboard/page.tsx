@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {TrackView} from '@/components/TrackView';
 import {FirstRun} from '@/components/FirstRun';
 import {LiveGameCard} from '@/components/LiveGameCard';
@@ -117,7 +119,8 @@ function buildGameMissions(samples:Match[],role:Role,champion:string):MissionCar
 
 export default function Home(){
   const {active,isEmpty,profile}=useAccount();
-  const matches=matchesFor(active.id);
+  const {tier}=useSubscription();
+  const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier),[active.id,tier]);
   const {tasks}=useLearningPlan();
   const leadTask=tasks.find(task=>task.status!=='MASTERED'&&task.status!=='PAUSED');
   const [mainChampion,setMainChampionState]=useState<string>('');
@@ -230,7 +233,7 @@ export default function Home(){
       <div className="panel metric"><span className="metric-icon">◎</span><div><div className="value">{activeMission?activeMission.progress+'%':'—'}</div><p>Current focus</p></div></div>
       <div className="panel metric"><span className="metric-icon">✓</span><div><div className="value">{missionProof?missionProof.confirmed+'/'+missionProof.required:'—'}</div><p>Proven reps</p></div></div>
       <div className="panel metric"><span className="metric-icon">↗</span><div><div className="value">{championStats.games?championStats.csPerMin:'—'}</div><p>CS / min · {mainChampion||'main'}</p></div></div>
-      <div className="panel metric"><span className="metric-icon">◈</span><div><div className="value">{masteredMemories}</div><p>Coaching memories</p></div></div>
+      <div className="panel metric"><span className="metric-icon">◈</span><div><div className="value">{tier==='PRO'?masteredMemories:tier==='PLUS'?'90D':'7D'}</div><p>{tier==='PRO'?'Coaching memories':'History window'}</p></div></div>
     </div>
 
     <section className="loop-section">
@@ -260,14 +263,20 @@ export default function Home(){
         <p className="sample-caption">YOUR MATCHES · SELECT A GAME TO SEE THE COACH’S READ</p>
       </section>
 
-      <section className="panel panel-padding memory-card" id="coach-memory">
-        <div className="eyebrow" style={{color:'var(--gold)'}}>YOUR GAME DNA</div>
+      {tier==='PRO'?<section className="panel panel-padding memory-card" id="coach-memory">
+        <div className="eyebrow" style={{color:'var(--gold)'}}>YOUR GAME DNA · PRO</div>
         <h2>Your coach shouldn’t start from zero.</h2>
         <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} missions={dnaMissions}/></div>
         <div className="memory-mini"><span>Memories banked<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
         <p>See the patterns your coach is carrying forward, what has stuck and what gets tested next.</p>
         <Link className="btn gold" href="/coach">Open Coach →</Link>
-      </section>
+      </section>:<section className="panel panel-padding memory-card memory-locked">
+        <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY · PRO</div>
+        <h2>A coach that remembers you.</h2>
+        <p>{tier==='PLUS'?'PLUS understands the current game. PRO adds persistent cross-game memory, transfer tests and Game DNA.':'FREE proves the coaching loop. PRO adds persistent cross-game memory, transfer tests and Game DNA.'}</p>
+        <div className="memory-mini"><span>YOUR CURRENT HISTORY</span><strong>{historyWindowLabel(tier)}</strong></div>
+        <Link className="btn gold" href="/pricing">See PRO memory →</Link>
+      </section>}
     </div>
 
     <section className="home-plan-strip">
