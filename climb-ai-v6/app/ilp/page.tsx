@@ -5,6 +5,8 @@ import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {AnimatedBar} from '@/components/Motion';
 import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
@@ -21,6 +23,7 @@ const clean=(value:string)=>value.replaceAll('_',' ');
 
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
+  const {tier}=useSubscription();
   const {tasks,allTasks,refreshFromMatches,pauseTask}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
@@ -32,7 +35,7 @@ export default function PlayerDevelopmentCentre(){
   );
   const mastered=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
   const paused=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
-  const matches=matchesFor(active.id).filter(match=>match.role===active.role);
+  const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.role===active.role),[active.id,active.role,tier]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
   const planProgress=activeTasks.length
@@ -55,7 +58,7 @@ export default function PlayerDevelopmentCentre(){
       <div>
         <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
         <h1>One core. Two support.</h1>
-        <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b></p>
+        <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
       </div>
       <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
     </section>
@@ -79,7 +82,7 @@ export default function PlayerDevelopmentCentre(){
     <nav className="ip-tabs" aria-label="Development plan sections">
       <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{activeTasks.length} missions</small></button>
       <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
-      <button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>
+      {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
 
     {tab==='CURRENT'&&<div className="ip-panel">
@@ -92,7 +95,7 @@ export default function PlayerDevelopmentCentre(){
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
-      {mastered.length>0&&<section className="panel panel-padding" style={{marginTop:18}}>
+      {tier==='PRO'&&mastered.length>0&&<section className="panel panel-padding" style={{marginTop:18}}>
         <div className="section-head"><div><div className="eyebrow">RECENTLY MASTERED</div><h2>Habits that moved into memory.</h2></div><button className="text-btn" type="button" onClick={()=>setTab('HISTORY')}>View history →</button></div>
         <div>
           {mastered.slice(0,3).map((task,index)=><div className="habit done" key={task.id}>
@@ -122,7 +125,7 @@ export default function PlayerDevelopmentCentre(){
       </div>:<section className="ip-empty"><h2>No active evidence yet.</h2><p>Play tracked games to build the plan.</p></section>}
     </div>}
 
-    {tab==='HISTORY'&&<div className="ip-panel">
+    {tier==='PRO'&&tab==='HISTORY'&&<div className="ip-panel">
       <section className="ip-history-grid">
         <Archive title="MASTERED" empty="Nothing mastered yet." tasks={mastered}/>
         <Archive title="PAUSED" empty="No paused missions." tasks={paused}/>
