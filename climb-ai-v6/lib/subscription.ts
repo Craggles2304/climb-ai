@@ -35,7 +35,7 @@ export const TIER_RANK:Record<SubscriptionTier,number>={FREE:0,PLUS:1,PRO:2};
 export const METRIC_TIER:Record<CoachingMetricKey,SubscriptionTier>={
   op_score:'FREE',fight_selection:'FREE',death_control:'FREE',cs_curve:'FREE',
   unspent_gold:'PLUS',red_state_fights:'PLUS',chain_deaths:'PLUS',thrown_advantage:'PLUS',underdog_conversion:'PLUS',fight_conversion:'PLUS',resource_conversion:'PLUS',
-  lead_protection:'PRO',power_spike_conversion:'PRO',reset_quality:'PRO',objective_readiness:'PRO',farm_fight_tradeoff:'PRO',repeat_threat:'PRO',opponent_adaptation:'PRO',item_timing_diff:'PRO',build_response:'PRO',damage_efficiency:'PRO',survival_value:'PRO',carry_preservation:'PRO',decision_fingerprint:'PRO',historical_leak_rate:'PRO',historical_recovery:'PRO',champion_identity:'PRO',
+  lead_protection:'PRO',power_spike_conversion:'PRO',reset_quality:'PLUS',objective_readiness:'PRO',farm_fight_tradeoff:'PRO',repeat_threat:'PRO',opponent_adaptation:'PRO',item_timing_diff:'PRO',build_response:'PRO',damage_efficiency:'PRO',survival_value:'PRO',carry_preservation:'PRO',decision_fingerprint:'PRO',historical_leak_rate:'PRO',historical_recovery:'PRO',champion_identity:'PRO',
 };
 
 /**
