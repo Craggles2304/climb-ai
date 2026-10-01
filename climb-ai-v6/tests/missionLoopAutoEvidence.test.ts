@@ -8,6 +8,7 @@ function task(overrides:Partial<ILPTask>={}):ILPTask{
     id:'t1',
     accountId:'a1',
     title:'Own the wave',
+    dnaDomain:'LANING',
     category:'LANING',
     why:'Farm reliably.',
     gameRule:'Protect the wave.',
