@@ -1,18 +1,19 @@
 /* OP Climb — Game DNA.
-   A rotating double helix on the Coach memory page. Each colour is a gene
+   A rotating neon double helix on the Coach memory page. Each colour is a gene
    (one part of the game) made of four mission rungs. Learning rungs flicker,
-   learned rungs light up, and a rung that holds again later becomes memory:
-   thicker and glowing. Gene strands thicken as their genes fill up. */
+   learned rungs light up with energy running across them, and a rung that holds
+   again later becomes memory: thicker, brighter and pulsing. Gene strands glow
+   brighter and shed more particles as their genes fill up. */
 (() => {
   'use strict';
 
   const CATS = [
-    {id:'lane',   label:'Laning',       hint:'Trades, spacing, level spikes',    color:'#b6f66b'},
-    {id:'wave',   label:'Waves & CS',   hint:'Wave states, recalls, farming',    color:'#56d9b8'},
-    {id:'vision', label:'Vision & map', hint:'Wards, tracking, map checks',      color:'#b7a4ef'},
-    {id:'obj',    label:'Objectives',   hint:'Dragons, Herald, towers, tempo',   color:'#e8c086'},
-    {id:'fight',  label:'Teamfights',   hint:'Positioning, targets, engage',     color:'#f99594'},
-    {id:'mind',   label:'Mindset',      hint:'Focus, tilt control, consistency', color:'#8fd3ff'}
+    {id:'lane',   label:'Laning',       hud:'LANING',     hint:'Trades, spacing, level spikes',    color:'#b6ff2e'},
+    {id:'wave',   label:'Waves & CS',   hud:'WAVES',      hint:'Wave states, recalls, farming',    color:'#00f5d4'},
+    {id:'vision', label:'Vision & map', hud:'VISION',     hint:'Wards, tracking, map checks',      color:'#a46bff'},
+    {id:'obj',    label:'Objectives',   hud:'OBJECTIVES', hint:'Dragons, Herald, towers, tempo',   color:'#ffb21e'},
+    {id:'fight',  label:'Teamfights',   hud:'FIGHTS',     hint:'Positioning, targets, engage',     color:'#ff3d71'},
+    {id:'mind',   label:'Mindset',      hud:'MINDSET',    hint:'Focus, tilt control, consistency', color:'#2ec7ff'}
   ];
   // [gene, mission, state] — 0 not started, 1 learning, 2 learned, 3 memory
   const START = [
@@ -79,8 +80,9 @@
   function panel(){
     return `<section class="panel dna-panel" data-dna aria-labelledby="dna-title">
       <div class="dna-visual">
-        <canvas class="dna-canvas" role="img" aria-label="Game DNA helix: six coloured genes, one for each part of the game. Lit rungs are learned missions; glowing rungs are locked into memory."></canvas>
-        <span class="dna-cap">KAI#EUW · GAME DNA</span>
+        <canvas class="dna-canvas" role="img" aria-label="Game DNA helix: six neon genes, one for each part of the game. Lit rungs are learned missions; pulsing rungs are locked into memory."></canvas>
+        <span class="dna-cap">GAME DNA <em>//</em> KAI#EUW</span>
+        <span class="dna-seq"><i></i>${START.length} MISSIONS SEQUENCED</span>
         <div class="dna-legend" aria-hidden="true"><span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span></div>
         <div class="dna-tip" hidden></div>
       </div>
@@ -151,7 +153,7 @@
     const legend = root.querySelector('.dna-legend');
     const side = root.querySelector('[data-dna-side]');
     const ctx = canvas.getContext('2d');
-    const st = {W:0, H:0, geo:null, hover:-1, padBottom:52};
+    const st = {W:0, H:0, geo:null, hover:-1, padBottom:52, parts:[], last:0};
 
     const refresh = focusSel => {
       side.innerHTML = sideHTML();
@@ -167,111 +169,230 @@
       // Keep the helix clear of the legend, which wraps to two lines on phones.
       st.padBottom = (legend ? legend.offsetHeight : 0) + 26;
       st.hover = -1;
+      st.parts = [];
       tip.hidden = true;
     };
     const ro = window.ResizeObserver ? new ResizeObserver(resize) : null;
     ro ? ro.observe(canvas) : window.addEventListener('resize', resize);
     resize();
 
+    // Neon primitives: a wide faint halo, a tighter glow, the coloured tube and a white-hot core.
+    const path = pts => { ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y); for(let p = 1; p < pts.length; p++) ctx.lineTo(pts[p].x, pts[p].y); ctx.stroke(); };
+    const seg = (x1, y1, x2, y2) => { ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke(); };
+    function neon(draw, color, w, i, layers = 4){
+      if(i <= 0.01) return;
+      if(layers > 2){ ctx.strokeStyle = rgba(color, 0.08 * i); ctx.lineWidth = w + 12; draw(); }
+      ctx.strokeStyle = rgba(color, 0.24 * i); ctx.lineWidth = w + 4.5; draw();
+      ctx.strokeStyle = rgba(color, Math.min(1, 0.92 * i)); ctx.lineWidth = w; draw();
+      if(layers > 2){ ctx.strokeStyle = rgba('#ffffff', Math.min(0.9, 0.5 * i * i)); ctx.lineWidth = Math.max(0.6, w * 0.38); draw(); }
+    }
+    const dot = (x, y, r, color, a) => { if(a <= 0.01 || r <= 0) return; ctx.fillStyle = rgba(color, a); ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); };
+    function reticle(x, y, a, now){
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.rotate(reduce ? Math.PI / 4 : Math.PI / 4 + now * 0.0016);
+      ctx.strokeStyle = rgba('#ffffff', a);
+      ctx.lineWidth = 1.3;
+      const s = 9, l = 4;
+      for(const [sx, sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+        ctx.beginPath(); ctx.moveTo(sx * s, sy * (s - l)); ctx.lineTo(sx * s, sy * s); ctx.lineTo(sx * (s - l), sy * s); ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     function draw(now){
       const {W, H} = st;
+      const dt = Math.min(50, st.last ? now - st.last : 16);
+      st.last = now;
+      ctx.globalCompositeOperation = 'source-over';
       ctx.clearRect(0, 0, W, H);
       if(!W || !H) return;
       const top = 46, bottom = H - st.padBottom, N = missions.length;
       const gap = (bottom - top) / (N - 1);
-      const cx = W / 2, A = Math.min(W * 0.3, 104);
+      const hud = W >= 380;
+      const cx = W / 2, A = Math.min(W * (hud ? 0.25 : 0.3), 100);
       const k = (Math.PI * 2 * 2.25) / (bottom - top);
-      const phi = reduce ? 0.9 : now * 0.00055;
+      const phi = reduce ? 0.9 : now * 0.0007;
       const geneSpan = gap * 4;
       const strength = {};
       CATS.forEach(c => { strength[c.id] = geneStrength(c.id); });
       st.geo = {top, gap, cx, A, k, phi};
       flashes = flashes.filter(f => now - f.at < FLASH_MS);
       const geneAt = y => Math.max(0, Math.min(CATS.length - 1, Math.floor((y - top + gap / 2) / geneSpan)));
+      const dimOf = id => focusGene && focusGene !== id ? 0.2 : 1;
+      const scanY = reduce ? -9999 : top - 60 + ((now % 4600) / 3400) * (bottom - top + 120);
+      const scan = y => reduce ? 0 : Math.max(0, 1 - Math.abs(y - scanY) / 38);
       const pulse = y => {
         let b = 0;
         for(const f of flashes){
           const p = (now - f.at) / FLASH_MS;
           if(p < 0) continue;
           const d = Math.abs(Math.abs(y - (top + f.i * gap)) - p * Math.max(H, 420));
-          if(d < 26) b = Math.max(b, (1 - d / 26) * (1 - p));
+          if(d < 24) b = Math.max(b, (1 - d / 24) * (1 - p));
         }
         return b;
       };
 
-      const segs = [];
+      // HUD: gene sections, labels and readouts.
+      ctx.lineCap = 'round';
+      CATS.forEach((g, gi) => {
+        const s = strength[g.id], dim = dimOf(g.id);
+        const y0 = top + gi * geneSpan - gap / 2, yc = y0 + geneSpan / 2;
+        if(gi){ ctx.strokeStyle = rgba('#2ec7ff', 0.07); ctx.lineWidth = 1; ctx.setLineDash([2, 6]); seg(10, y0, W - 10, y0); ctx.setLineDash([]); }
+        ctx.fillStyle = rgba(g.color, (0.9 * s + 0.3) * 0.08 * dim);
+        ctx.fillRect(4, y0 + 3, 2, geneSpan - 6);
+        if(!hud) return;
+        ctx.textBaseline = 'middle';
+        ctx.textAlign = 'left';
+        ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace';
+        ctx.fillStyle = rgba(g.color, (0.45 + 0.55 * s) * dim);
+        ctx.fillText(`0${gi + 1} ${g.hud}`, 14, yc - 7);
+        ctx.fillStyle = rgba('#ffffff', 0.08 * dim);
+        ctx.fillRect(14, yc + 3, 56, 2);
+        ctx.fillStyle = rgba(g.color, (0.6 + 0.4 * s) * dim);
+        ctx.fillRect(14, yc + 3, 56 * s, 2);
+        ctx.textAlign = 'right';
+        ctx.font = '700 17px "Barlow Condensed", Impact, sans-serif';
+        ctx.fillStyle = rgba(g.color, (0.35 + 0.65 * s) * dim);
+        ctx.fillText(pct(s), W - 14, yc);
+      });
+
+      ctx.globalCompositeOperation = 'lighter';
+
+      // Backbones, batched into runs of the same gene and depth band.
+      const runs = [];
       for(let s = 0; s < 2; s++){
-        let prev = null;
-        for(let y = top - 16; y <= bottom + 16; y += 5){
+        let run = null, prev = null;
+        for(let y = top - 16; y <= bottom + 16; y += 4){
           const th = (y - top) * k + phi + s * Math.PI;
           const pt = {x: cx + A * Math.sin(th), y, z: Math.cos(th)};
-          if(prev) segs.push({x1: prev.x, y1: prev.y, x2: pt.x, y2: pt.y, z: (pt.z + prev.z) / 2, g: geneAt(y)});
+          const g = geneAt(y), q = Math.round((pt.z + 1) / 2 * 3), key = g * 10 + q;
+          if(!run || run.key !== key){ if(run) runs.push(run); run = {key, g, q, pts: prev ? [prev] : []}; }
+          run.pts.push(pt);
           prev = pt;
         }
+        if(run) runs.push(run);
       }
-      ctx.lineCap = 'round';
-      const drawSeg = sg => {
-        const g = CATS[sg.g], str = strength[g.id], depth = (sg.z + 1) / 2;
-        const dim = focusGene && focusGene !== g.id ? 0.25 : 1;
-        const boost = reduce ? 0 : pulse((sg.y1 + sg.y2) / 2);
-        const w = (1.4 + 2.8 * str) * (0.65 + 0.35 * depth) + boost * 2.5;
-        if(depth > 0.55 && (str > 0.3 || boost > 0)){
-          ctx.strokeStyle = rgba(g.color, (0.07 + 0.14 * str) * dim + boost * 0.3);
-          ctx.lineWidth = w + 7 * str + boost * 8;
-          ctx.beginPath(); ctx.moveTo(sg.x1, sg.y1); ctx.lineTo(sg.x2, sg.y2); ctx.stroke();
-        }
-        ctx.strokeStyle = rgba(g.color, ((0.18 + 0.82 * depth) * (0.3 + 0.7 * str)) * dim + boost * 0.8);
-        ctx.lineWidth = w;
-        ctx.beginPath(); ctx.moveTo(sg.x1, sg.y1); ctx.lineTo(sg.x2, sg.y2); ctx.stroke();
+      const drawRun = run => {
+        if(run.pts.length < 2) return;
+        const g = CATS[run.g], s = strength[g.id], depth = run.q / 3;
+        neon(() => path(run.pts), g.color, (1.1 + 2.3 * s) * (0.6 + 0.4 * depth), (0.3 + 0.7 * s) * (0.28 + 0.72 * depth) * dimOf(g.id), depth > 0.5 ? 4 : 2);
       };
-      segs.filter(s => s.z < 0).forEach(drawSeg);
+      runs.filter(r => r.q <= 1).forEach(drawRun);
 
+      // Particles: ambient ones rise off the genes (stronger genes shed more); bursts fly from completed rungs.
+      if(!reduce){
+        const ambient = st.parts.filter(p => !p.burst).length;
+        if(ambient < 14 + 34 * totalStrength() && Math.random() < 0.35){
+          const weights = CATS.map(c => 0.12 + strength[c.id]);
+          let r = Math.random() * weights.reduce((a, b) => a + b, 0), gi = 0;
+          while(r > weights[gi] && gi < CATS.length - 1){ r -= weights[gi]; gi++; }
+          st.parts.push({x: cx + (Math.random() * 2 - 1) * A * 1.15, y: top + (gi + Math.random()) * geneSpan - gap / 2, vx: (Math.random() - 0.5) * 0.008, vy: -(0.01 + Math.random() * 0.03), life: 0, max: 2200 + Math.random() * 2600, color: CATS[gi].color, size: 0.7 + Math.random() * 1.4});
+        }
+        for(const f of flashes){
+          if(f.burst || now < f.at) continue;
+          f.burst = true;
+          const color = catOf(missions[f.i].c).color, y = top + f.i * gap;
+          for(let n = 0; n < 22; n++){
+            const a = Math.random() * Math.PI * 2, v = 0.05 + Math.random() * 0.16;
+            st.parts.push({x: cx, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v, life: 0, max: 700 + Math.random() * 500, color, size: 1 + Math.random() * 1.6, burst: true});
+          }
+        }
+        st.parts = st.parts.filter(p => (p.life += dt) < p.max);
+        for(const p of st.parts){
+          p.x += p.vx * dt; p.y += p.vy * dt;
+          if(p.burst){ p.vx *= 0.985; p.vy *= 0.985; }
+          const a = Math.sin(Math.PI * p.life / p.max) * (p.burst ? 1 : 0.7);
+          dot(p.x, p.y, p.size * 3.2, p.color, a * 0.16);
+          dot(p.x, p.y, p.size, p.color, a);
+        }
+      }
+
+      // Rungs: base pairs split in the middle, styled by mission state.
       missions.forEach((m, i) => {
         const y = top + i * gap, th = (y - top) * k + phi;
-        const xa = cx + A * Math.sin(th), xb = cx - A * Math.sin(th), za = Math.cos(th);
-        const g = catOf(m.c);
-        const dim = focusGene && focusGene !== m.c ? 0.22 : 1;
+        const sx = A * Math.sin(th), xa = cx + sx, xb = cx - sx, za = Math.cos(th);
+        const g = catOf(m.c), dim = dimOf(m.c);
         const f = flashes.find(fl => fl.i === i && now >= fl.at);
         const fp = f ? (now - f.at) / FLASH_MS : 1;
         const flash = f ? Math.max(0, 1 - fp) : 0;
-        const look = [
-          {a: 0.38, w: 2,   glow: 0},
-          {a: 0.45 + (reduce ? 0 : 0.22 * Math.sin(now * 0.004 + i)), w: 2.6, glow: 0},
-          {a: 0.95, w: 3.4, glow: 0.18},
-          {a: 1,    w: 4.8, glow: 0.32}
-        ][m.s];
-        const col = m.s === 0 ? '#3a4a50' : g.color;
-        const mid = (xa + xb) / 2, gapPx = Math.min(3, Math.abs(xa - xb) * 0.08), dir = xa < xb ? 1 : -1;
-        const half = (x1, x2) => { ctx.beginPath(); ctx.moveTo(x1, y); ctx.lineTo(x2, y); ctx.stroke(); };
-        if(look.glow || flash){
+        const sc = scan(y), len = Math.abs(xb - xa), dir = xa < xb ? 1 : -1, gp = Math.min(3, len * 0.08);
+        const halves = [[xa, cx - dir * gp], [cx + dir * gp, xb]];
+        if(m.s === 0){
+          ctx.setLineDash([2, 5]);
+          ctx.strokeStyle = rgba('#7fd8ff', (0.13 + 0.35 * sc + flash) * dim);
+          ctx.lineWidth = 1;
+          seg(xa, y, xb, y);
           ctx.setLineDash([]);
-          ctx.strokeStyle = rgba(g.color, (look.glow + flash * 0.5) * dim);
-          ctx.lineWidth = look.w + 8 + flash * 10;
-          half(xa, xb);
+        }else if(m.s === 1){
+          const flick = reduce ? 0.75 : 0.5 + 0.5 * Math.abs(Math.sin(now * 0.011 + i * 1.7) * Math.sin(now * 0.0047 + i));
+          ctx.setLineDash([4, 5]);
+          ctx.lineDashOffset = reduce ? 0 : -now * 0.03;
+          halves.forEach(([a, b]) => neon(() => seg(a, y, b, y), g.color, 1.8, (0.55 * flick + 0.5 * sc + flash) * dim, 2));
+          ctx.setLineDash([]);
+          ctx.lineDashOffset = 0;
+        }else{
+          const mem = m.s === 3, breathe = mem && !reduce ? 0.86 + 0.14 * Math.sin(now * 0.004 + i) : 1;
+          halves.forEach(([a, b]) => neon(() => seg(a, y, b, y), g.color, mem ? 3.6 : 2.5, ((mem ? 1.15 : 0.82) * breathe + 0.5 * sc + 1.2 * flash) * dim));
+          if(!reduce && len > 10){
+            for(let p = 0; p < (mem ? 2 : 1); p++){
+              const t = (now * 0.0011 + i * 0.37 + p * 0.5) % 1, x = xa + (xb - xa) * t;
+              dot(x, y, 4.5, g.color, 0.3 * dim);
+              dot(x, y, 1.5, '#ffffff', 0.9 * dim);
+            }
+          }
         }
-        ctx.setLineDash(m.s === 1 ? [3, 4] : []);
-        ctx.strokeStyle = rgba(col, Math.min(1, look.a + flash) * dim);
-        ctx.lineWidth = look.w + flash * 3;
-        half(xa, mid - dir * gapPx);
-        half(mid + dir * gapPx, xb);
-        ctx.setLineDash([]);
         for(const [x, z] of [[xa, za], [xb, -za]]){
           const depth = (z + 1) / 2;
-          ctx.fillStyle = rgba(m.s >= 2 ? g.color : '#4a5a60', (0.35 + 0.65 * depth) * dim + flash * 0.6);
-          ctx.beginPath(); ctx.arc(x, y, 2 + 2 * depth + (m.s === 3 ? 1.5 : 0) + flash * 3, 0, Math.PI * 2); ctx.fill();
-        }
-        if(i === selected || i === st.hover){
-          ctx.strokeStyle = rgba('#ffffff', i === selected ? 0.9 : 0.5);
-          ctx.lineWidth = 1.2;
-          for(const x of [xa, xb]){ ctx.beginPath(); ctx.arc(x, y, 8, 0, Math.PI * 2); ctx.stroke(); }
+          if(m.s === 0){ dot(x, y, 1.4 + 1.2 * depth, '#7fd8ff', (0.18 + 0.3 * depth) * dim + flash); continue; }
+          const r = (1.8 + 2 * depth) * (m.s === 3 ? 1.35 : 1) + flash * 3;
+          dot(x, y, r * 2.8, g.color, ((m.s >= 2 ? 0.14 : 0.08) + 0.1 * depth) * dim + flash * 0.3);
+          dot(x, y, r, g.color, (0.5 + 0.5 * depth) * dim + flash * 0.5);
+          if(m.s >= 2) dot(x, y, r * 0.45, '#ffffff', (0.45 + 0.55 * depth) * dim);
         }
         if(flash > 0 && !reduce){
-          ctx.strokeStyle = rgba(g.color, flash * 0.8);
-          ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.arc(cx, y, 10 + 80 * fp, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rgba(g.color, flash * 0.9); ctx.lineWidth = 2;
+          ctx.beginPath(); ctx.arc(cx, y, 10 + 95 * fp, 0, Math.PI * 2); ctx.stroke();
+          ctx.strokeStyle = rgba('#ffffff', flash * 0.55); ctx.lineWidth = 1;
+          ctx.beginPath(); ctx.arc(cx, y, 6 + 60 * fp, 0, Math.PI * 2); ctx.stroke();
         }
       });
-      segs.filter(s => s.z >= 0).forEach(drawSeg);
+
+      runs.filter(r => r.q >= 2).forEach(drawRun);
+
+      // Light travelling through the strand: the pulse from a completed mission and the scanner beam.
+      if(!reduce){
+        for(let s = 0; s < 2; s++){
+          for(let y = top - 12; y <= bottom + 12; y += 4){
+            const b = pulse(y) + 0.55 * scan(y);
+            if(b < 0.06) continue;
+            const th1 = (y - top) * k + phi + s * Math.PI, th2 = (y + 4 - top) * k + phi + s * Math.PI;
+            const g = CATS[geneAt(y)];
+            neon(() => seg(cx + A * Math.sin(th1), y, cx + A * Math.sin(th2), y + 4), g.color, 2.2, b * dimOf(g.id), 2);
+          }
+        }
+        if(scanY > top - 40 && scanY < bottom + 40){
+          const grad = ctx.createLinearGradient(0, 0, W, 0);
+          grad.addColorStop(0, 'rgba(46,199,255,0)');
+          grad.addColorStop(0.5, 'rgba(46,199,255,0.42)');
+          grad.addColorStop(1, 'rgba(46,199,255,0)');
+          ctx.fillStyle = grad;
+          ctx.fillRect(0, scanY - 0.75, W, 1.5);
+          const band = ctx.createLinearGradient(0, scanY - 26, 0, scanY + 26);
+          band.addColorStop(0, 'rgba(46,199,255,0)');
+          band.addColorStop(0.5, 'rgba(46,199,255,0.05)');
+          band.addColorStop(1, 'rgba(46,199,255,0)');
+          ctx.fillStyle = band;
+          ctx.fillRect(0, scanY - 26, W, 52);
+        }
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      for(const i of new Set([st.hover, selected])){
+        if(i < 0 || i >= N) continue;
+        const y = top + i * gap, sx = A * Math.sin((y - top) * k + phi);
+        for(const x of [cx + sx, cx - sx]) reticle(x, y, i === selected ? 0.95 : 0.5, now);
+      }
     }
 
     (function loop(){
