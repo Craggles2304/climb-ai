@@ -7,7 +7,7 @@ function match(overrides:Partial<Match['metrics']>={},rank='Bronze IV'):Match{
   return{
     id:'EUW1-TEST',riotAccountId:'acc',champion:'Jinx',role:'ADC',result:'WIN',
     kills:5,deaths:3,assists:7,durationSeconds:1800,rank,source:'riot',createdAt:new Date().toISOString(),
-    metrics:{cs:180,csPerMin:6,...overrides},
+    metrics:{cs:180,csPerMin:6,deaths:3,...overrides},
   };
 }
 
