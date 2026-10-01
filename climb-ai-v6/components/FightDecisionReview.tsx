@@ -23,7 +23,7 @@ const METRIC_ORDER:CoachingMetricKey[]=[
 
 export function FightDecisionReview({fights,proAnalysis,historyProfile}:{fights:FightReview[];proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null}){
   const {tier}=useSubscription();
-  const [tab,setTab]=useState<'STRENGTH'|'WEAKNESS'>('WEAKNESS');
+  const [tab,setTab]=useState<'STRENGTH'|'WEAKNESS'>('STRENGTH');
   const [openFight,setOpenFight]=useState<string|null>(null);
   const [openFix,setOpenFix]=useState<string|null>(null);
   const [openMetric,setOpenMetric]=useState<string|null>(null);
