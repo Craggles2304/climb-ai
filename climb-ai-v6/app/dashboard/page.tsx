@@ -122,8 +122,8 @@ function buildGameMissions(samples:Match[],role:Role,champion:string):MissionCar
 export default function Home(){
   const {active,isEmpty,profile}=useAccount();
   const {tier}=useSubscription();
-  const allTrackedMatches=useMemo(()=>matchesFor(active.id),[active.id]);
-  const matches=useMemo(()=>filterHistoryForTier(allTrackedMatches,tier),[allTrackedMatches,tier]);
+  const allTrackedMatches=matchesFor(active.id);
+  const matches=filterHistoryForTier(allTrackedMatches,tier);
   const baselineGames=useMemo(()=>dnaBaselineGameCount(allTrackedMatches,active.role),[allTrackedMatches,active.role]);
   const baselineReady=dnaBaselineReady(baselineGames);
   const {tasks}=useLearningPlan();
