@@ -15,6 +15,7 @@ type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
 type CoachResponse={answer?:string;error?:string;suggestion?:Suggestion;grounding?:string;factsUsed?:string[]};
 type HistoryTurn={role:'user'|'assistant';content:string};
+type CoachTab='DNA'|'ASK'|'MEMORY';
 
 const THREAD_KEY='op_climb_coach_thread_v1';
 const MAX_SAVED_MESSAGES=30;
@@ -46,7 +47,7 @@ function Message({m}:{m:Msg}){
 }
 
 export default function Coach(){
-  const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
+  const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
   const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
     const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
       {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
@@ -74,64 +75,117 @@ export default function Coach(){
   function applyProposal(index:number,task:Suggestion){addTask(task);setMessages(current=>current.map((m,i)=>i===index?{...m,applied:true}:m))}
   function resetThread(){const next:Msg[]=[welcome(activeThree[0]?.title,detail.tier)];setMessages(next);try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(next))}catch{}}
   return <AppShell>
-    <header className="page-head">
+    <header className="coach-hub-head">
       <div>
-        <div className="eyebrow">ASK YOUR COACH</div>
-        <h1>Ask one real question.</h1>
-        <p>Your coach answers from your current focus, recent games and development memory — not from a blank slate.</p>
+        <div className="eyebrow">COACH · YOUR DEVELOPMENT SYSTEM</div>
+        <h1>Your game. Remembered.</h1>
+        <p>See your Game DNA, ask your coach, then inspect the memories shaping what comes next.</p>
       </div>
       <Link className="btn btn-small" href="/live">Prepare next game →</Link>
     </header>
 
-    <section className="vf-coach-context">
-      <div className="vf-coach-focus-card">
-        <div className="eyebrow">YOUR CURRENT FOCUS</div>
-        <h1>{activeThree[0]?.title||'Play one tracked game'}</h1>
-        <p>{activeThree[0]?.gameRule||'Once OP CLIMB has a real game to work from, your coach will give you one clear next-game rule.'}</p>
-        <div className="vf-coach-focus-actions"><Link href="/live" className="btn primary">TRACK NEXT GAME →</Link><Link href="/ilp" className="btn secondary">OPEN DEVELOPMENT PLAN</Link></div>
-      </div>
-      <div className="vf-coach-context-stats">
-        <div><span>RECENT GAMES</span><b>{summary.games}</b><small>used for current context</small></div>
-        <div><span>AVG DEATHS</span><b>{summary.deaths===undefined?'—':summary.deaths.toFixed(1)}</b><small>recent meaningful games</small></div>
-        <div><span>CS / MIN</span><b>{summary.csPerMin===undefined?'—':summary.csPerMin.toFixed(1)}</b><small>full-game economy</small></div>
-      </div>
-    </section>
+    <nav className="coach-subtabs" aria-label="Coach sections">
+      <button type="button" className={tab==='DNA'?'active':''} onClick={()=>setTab('DNA')}>
+        <span>01</span><div><b>GAME DNA</b><small>Your development map</small></div>
+      </button>
+      <button type="button" className={tab==='ASK'?'active':''} onClick={()=>setTab('ASK')}>
+        <span>02</span><div><b>ASK COACH</b><small>One real question</small></div>
+      </button>
+      <button type="button" className={tab==='MEMORY'?'active':''} onClick={()=>setTab('MEMORY')}>
+        <span>03</span><div><b>MEMORY</b><small>What carries forward</small></div>
+      </button>
+    </nav>
 
-    <section className="vf-coach-prompts" aria-label="Quick coach questions">
-      {promptCards.slice(0,detail.visiblePoints<=2?3:4).map(card=><button key={card.title} onClick={()=>void send(card.ask)} disabled={pending}><span>{card.icon}</span><div><b>{card.title}</b><small>{card.text}</small></div></button>)}
-    </section>
-
-    <section className="vf-coach-workspace">
-      <div className="vf-coach-console">
-        <div className="vf-chat-head">
-          <div><div className="eyebrow">COACH CONVERSATION</div><b>Ask normally. Your game evidence stays attached to the answer.</b></div>
-          <div className="vf-chat-head-actions"><span>{pending?'CHECKING YOUR GAMES…':`${messages.length} MESSAGES`}</span><button className="btn secondary" onClick={resetThread} disabled={pending}>NEW CHAT</button></div>
+    {tab==='DNA'&&<section className="coach-tab-panel coach-dna-first">
+      {tier==='PRO'?<>
+        <div className="coach-tab-intro">
+          <div>
+            <div className="eyebrow">GAME DNA · PRO</div>
+            <h2>The shape of the player you are becoming.</h2>
+            <p>Every strand comes from real missions, repeated evidence and behaviours your coach is tracking over time.</p>
+          </div>
+          <div className="coach-dna-stats">
+            <div><span>MASTERED</span><b>{mastered.length}</b></div>
+            <div><span>LEARNING</span><b>{activeThree.length}</b></div>
+            <div><span>PROVEN REPS</span><b>{primarySummary?.confirmed??0}/{primarySummary?.required??3}</b></div>
+          </div>
         </div>
-        <div className="vf-chat-list">
-          {messages.map((m,i)=><div className="vf-message-stack" key={i}><Message m={m}/>{m.task&&<div className="vf-coach-proposal"><div><span>{m.applied?'FOCUS UPDATED':'TRY THIS NEXT'}</span><h3>{m.task.title}</h3><p>{m.task.gameRule}</p>{detail.depth>=3&&<small className="muted">{m.task.target}</small>}</div><button className={`btn ${m.applied?'secondary':'primary'}`} disabled={m.applied} onClick={()=>applyProposal(i,m.task!)}>{m.applied?'USING THIS FOCUS':'USE THIS FOCUS'}</button></div>}</div>)}
-          {pending&&<div className="vf-message-row ai"><div className="vf-message ai is-loading"><div className="vf-message-ai-head"><span>OP CLIMB COACH</span></div><p>Checking your recent games and current development plan…</p></div></div>}
+        <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
+        <div className="coach-dna-next panel panel-padding">
+          <div>
+            <div className="eyebrow">CURRENT EXPRESSION</div>
+            <h3>{activeThree[0]?.title||'Build your first coaching strand'}</h3>
+            <p>{activeThree[0]?.gameRule||'Play a tracked game so OP CLIMB can start building your real development DNA.'}</p>
+          </div>
+          <Link className="btn primary" href="/ilp">Open My Climb →</Link>
         </div>
-        <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="Ask what went wrong, what improved, or what to do next…" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'ASK COACH ↗'}</button></div>
-      </div>
+      </>:<section className="panel panel-padding pro-memory-gate coach-dna-lock">
+        <div className="eyebrow">GAME DNA · PRO</div>
+        <h2>Your development map starts on PRO.</h2>
+        <p className="muted">{tier==='PLUS'?'PLUS understands the current game in full. PRO turns those games into persistent Game DNA, transfer tests and long-term player development.':'FREE proves the coaching loop. PRO turns your games into persistent Game DNA and a coach that remembers what has actually stuck.'}</p>
+        <div className="memory-mini"><span>YOUR CURRENT ACCESS</span><strong>{tier} · {historyWindowLabel(tier)}</strong></div>
+        <Link className="btn gold" href="/pricing">Unlock Game DNA →</Link>
+      </section>}
+    </section>}
 
-      <aside className="vf-coach-rail">
-        <div className="vf-coach-rail-block"><span>HOW TO USE THIS</span><strong>Ask one real question.</strong><p>Deaths, farm, fights, objectives, recalls, progress or a specific game. The answer should end in something you can actually do.</p></div>
-        <div className="vf-coach-rail-block accent"><span>COACH DEPTH</span><strong>{detail.tier}</strong><p>Your visible explanation depth adapts to {active.rank}. The underlying evidence stays intact.</p></div>
-        <div className="vf-coach-rail-block"><span>PLAYER CONTEXT</span><strong>{active.role}</strong><p>{active.gameName}{active.tagline} · {active.rank} · {summary.games} recent meaningful game{summary.games===1?'':'s'}.</p></div>
-      </aside>
-    </section>
-    {tier==='PRO'?<>
-      <section className="coach-memory-destination">
-        <header className="page-head">
+    {tab==='ASK'&&<section className="coach-tab-panel">
+      <header className="page-head coach-inner-head">
+        <div>
+          <div className="eyebrow">ASK YOUR COACH</div>
+          <h2>Ask one real question.</h2>
+          <p>Your answer uses your current focus and the match evidence your plan allows.</p>
+        </div>
+      </header>
+
+      <section className="vf-coach-context">
+        <div className="vf-coach-focus-card">
+          <div className="eyebrow">YOUR CURRENT FOCUS</div>
+          <h1>{activeThree[0]?.title||'Play one tracked game'}</h1>
+          <p>{activeThree[0]?.gameRule||'Once OP CLIMB has a real game to work from, your coach will give you one clear next-game rule.'}</p>
+          <div className="vf-coach-focus-actions"><Link href="/live" className="btn primary">TRACK NEXT GAME →</Link><Link href="/ilp" className="btn secondary">OPEN DEVELOPMENT PLAN</Link></div>
+        </div>
+        <div className="vf-coach-context-stats">
+          <div><span>RECENT GAMES</span><b>{summary.games}</b><small>used for current context</small></div>
+          <div><span>AVG DEATHS</span><b>{summary.deaths===undefined?'—':summary.deaths.toFixed(1)}</b><small>recent meaningful games</small></div>
+          <div><span>CS / MIN</span><b>{summary.csPerMin===undefined?'—':summary.csPerMin.toFixed(1)}</b><small>full-game economy</small></div>
+        </div>
+      </section>
+
+      <section className="vf-coach-prompts" aria-label="Quick coach questions">
+        {promptCards.slice(0,detail.visiblePoints<=2?3:4).map(card=><button key={card.title} onClick={()=>void send(card.ask)} disabled={pending}><span>{card.icon}</span><div><b>{card.title}</b><small>{card.text}</small></div></button>)}
+      </section>
+
+      <section className="vf-coach-workspace">
+        <div className="vf-coach-console">
+          <div className="vf-chat-head">
+            <div><div className="eyebrow">COACH CONVERSATION</div><b>Ask normally. Your game evidence stays attached to the answer.</b></div>
+            <div className="vf-chat-head-actions"><span>{pending?'CHECKING YOUR GAMES…':`${messages.length} MESSAGES`}</span><button className="btn secondary" onClick={resetThread} disabled={pending}>NEW CHAT</button></div>
+          </div>
+          <div className="vf-chat-list">
+            {messages.map((m,i)=><div className="vf-message-stack" key={i}><Message m={m}/>{m.task&&<div className="vf-coach-proposal"><div><span>{m.applied?'FOCUS UPDATED':'TRY THIS NEXT'}</span><h3>{m.task.title}</h3><p>{m.task.gameRule}</p>{detail.depth>=3&&<small className="muted">{m.task.target}</small>}</div><button className={`btn ${m.applied?'secondary':'primary'}`} disabled={m.applied} onClick={()=>applyProposal(i,m.task!)}>{m.applied?'USING THIS FOCUS':'USE THIS FOCUS'}</button></div>}</div>)}
+            {pending&&<div className="vf-message-row ai"><div className="vf-message ai is-loading"><div className="vf-message-ai-head"><span>OP CLIMB COACH</span></div><p>Checking your recent games and current development plan…</p></div></div>}
+          </div>
+          <div className="vf-coach-input"><input value={q} onChange={e=>setQ(e.target.value)} onKeyDown={e=>{if(e.key==='Enter')void send()}} placeholder="Ask what went wrong, what improved, or what to do next…" disabled={pending}/><button onClick={()=>void send()} disabled={pending}>{pending?'…':'ASK COACH ↗'}</button></div>
+        </div>
+
+        <aside className="vf-coach-rail">
+          <div className="vf-coach-rail-block"><span>HOW TO USE THIS</span><strong>Ask one real question.</strong><p>Deaths, farm, fights, objectives, recalls, progress or a specific game. The answer should end in something you can actually do.</p></div>
+          <div className="vf-coach-rail-block accent"><span>COACH DEPTH</span><strong>{detail.tier}</strong><p>Your visible explanation depth adapts to {active.rank}. The underlying evidence stays intact.</p></div>
+          <div className="vf-coach-rail-block"><span>PLAYER CONTEXT</span><strong>{active.role}</strong><p>{active.gameName}{active.tagline} · {active.rank} · {summary.games} recent meaningful game{summary.games===1?'':'s'}.</p></div>
+        </aside>
+      </section>
+    </section>}
+
+    {tab==='MEMORY'&&<section className="coach-tab-panel">
+      {tier==='PRO'?<>
+        <header className="page-head coach-inner-head">
           <div>
             <div className="eyebrow">COACH MEMORY · YOUR DEVELOPMENT OVER TIME</div>
-            <h1>Your coach remembers the player, not just the scoreline.</h1>
-            <p>Game DNA, mastered habits, current tests and the next useful decision all live here.</p>
+            <h2>What your coach carries forward.</h2>
+            <p>This is the part of OP CLIMB that stops every new game from becoming a blank slate.</p>
           </div>
           <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
         </header>
-
-        <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
 
         <div className="climb-grid coach-memory-summary">
           <section className="panel panel-padding">
@@ -143,6 +197,7 @@ export default function Coach(){
               <div className="memory-event"><span>NEXT</span><div><h3>Use less help, not more.</h3><p>The next test is whether the current read holds in a different game state without needing another new tip.</p></div></div>
             </div>
           </section>
+
           <aside className="panel panel-padding">
             <span className="eyebrow accent">WHAT YOUR COACH CARRIES FORWARD</span>
             <h2 style={{marginTop:12}}>The context behind every answer.</h2>
@@ -155,24 +210,13 @@ export default function Coach(){
             </div>
           </aside>
         </div>
-      </section>
-    </>:<section className="coach-memory-destination coach-memory-locked">
-      <header className="page-head">
-        <div>
-          <div className="eyebrow">COACH MEMORY · PRO</div>
-          <h1>Persistent memory starts on PRO.</h1>
-          <p>{tier==='PLUS'?'PLUS understands each current game in full. PRO adds cross-game memory, Game DNA, transfer tests and long-term development.':'FREE proves the core coaching loop. PRO adds cross-game memory, Game DNA, transfer tests and long-term development.'}</p>
-        </div>
-        <Link className="btn btn-small" href="/pricing">Compare plans →</Link>
-      </header>
-      <section className="panel panel-padding pro-memory-gate">
-        <div className="eyebrow">YOUR CURRENT ACCESS</div>
-        <h2>{tier} · {historyWindowLabel(tier)}</h2>
-        <p className="muted">You can still ask the Coach about your current focus and eligible recent games. Persistent memories, mastered-habit recall and the full Game DNA remain locked until PRO.</p>
-        <Link className="btn gold" href="/pricing">Unlock persistent Coach Memory →</Link>
-      </section>
+      </>:<section className="panel panel-padding pro-memory-gate">
+        <div className="eyebrow">COACH MEMORY · PRO</div>
+        <h2>Persistent memory starts on PRO.</h2>
+        <p className="muted">{tier==='PLUS'?'PLUS understands each current game in full. PRO adds cross-game memory, mastered-habit recall and transfer testing.':'FREE proves the core coaching loop. PRO adds cross-game memory, mastered-habit recall and transfer testing.'}</p>
+        <Link className="btn gold" href="/pricing">Unlock Coach Memory →</Link>
+      </section>}
     </section>}
-
   </AppShell>;
 
 }
