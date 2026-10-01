@@ -217,7 +217,20 @@ function renderDeepRead(team,set){
   return true;
 }
 
+function championAssetKey(name){
+  const clean=String(name||'').trim();
+  const special={
+    'Aurelion Sol':'AurelionSol',"Bel'Veth":'Belveth',"Cho'Gath":'Chogath','Dr. Mundo':'DrMundo',
+    'Jarvan IV':'JarvanIV',"Kai'Sa":'Kaisa',"Kha'Zix":'Khazix',"K'Sante":'KSante','LeBlanc':'Leblanc',
+    'Lee Sin':'LeeSin','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Nunu & Willump':'Nunu',
+    "Rek'Sai":'RekSai','Renata Glasc':'Renata','Tahm Kench':'TahmKench','Twisted Fate':'TwistedFate',
+    "Vel'Koz":'Velkoz','Wukong':'MonkeyKing','Xin Zhao':'XinZhao'
+  };
+  return special[clean]||clean.replace(/[^A-Za-z0-9]/g,'');
+}
+
 function renderTeamBoard(team,champion){
+  const threatNames=new Set((Array.isArray(team?.compositionRead?.enemyThreats)?team.compositionRead.enemyThreats:[]).map(value=>String(value||'').toUpperCase()));
   const renderSide=(id,rows,ours)=>{
     const root=document.getElementById(id);
     if(!root)return;
@@ -229,10 +242,19 @@ function renderTeamBoard(team,champion){
       const name=String(pick?.name||'PENDING').trim();
       const role=normalizedRole(pick?.role||'')||['TOP','JUNGLE','MID','ADC','SUPPORT'][index]||'';
       const mine=ours&&name&&champion&&name.toUpperCase()===champion.toUpperCase();
-      card.className='op-team-pick'+(mine?' you':'');
-      const roleNode=document.createElement('span');roleNode.textContent=role||'ROLE';
+      const threat=!ours&&threatNames.has(name.toUpperCase());
+      card.className='op-team-pick'+(mine?' you':'')+(threat?' threat':'');
+      const asset=championAssetKey(name);
+      if(asset&&name!=='PENDING'){
+        const img=document.createElement('img');
+        img.alt='';
+        img.src='https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/'+encodeURIComponent(asset)+'_0.jpg';
+        card.appendChild(img);
+      }
+      const copy=document.createElement('div');
+      const roleNode=document.createElement('span');roleNode.textContent=(threat?'THREAT · ':'')+(role||'ROLE');
       const nameNode=document.createElement('b');nameNode.textContent=name||'PENDING';
-      card.append(roleNode,nameNode);root.appendChild(card);
+      copy.append(roleNode,nameNode);card.appendChild(copy);root.appendChild(card);
     });
   };
   const ours=Array.isArray(team?.ourTeam)?team.ourTeam:team?.rememberPlan?.draftTeams?.ours||[];
