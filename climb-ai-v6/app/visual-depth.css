@@ -5397,3 +5397,145 @@ body[data-op-area="hq"] .hq-mission-why p{
   .mc-learning-path li:before{display:none}
   .mc-moment-list>div{grid-template-columns:52px 24px minmax(0,1fr)}
 }
+
+
+/* My Climb baseline uses the same dashboard shell, but stays deliberately unlit. */
+.mc-impact-baseline{
+  --baseline:#7d8a8f;
+}
+.mc-impact-baseline .mc-impact-hero{
+  background:
+    radial-gradient(700px 260px at 78% 22%,rgba(124,139,145,.07),transparent 62%),
+    radial-gradient(560px 250px at 22% 0%,rgba(124,139,145,.055),transparent 68%),
+    linear-gradient(130deg,#0d1418 0%,#0a1115 54%,#080d10 100%);
+}
+.mc-impact-baseline .mc-impact-hero:after{
+  background:linear-gradient(90deg,#59666b,#77868b,#59666b);
+  opacity:.55;
+}
+.mc-impact-baseline .mc-impact-hero .eyebrow,
+.mc-impact-baseline .mc-card-head span,
+.mc-impact-baseline .mc-impact-strip span{
+  color:#a4b0b3;
+}
+.mc-impact-baseline .mc-impact-strip>article{
+  --strand-color:#7b878c;
+  border-color:rgba(148,162,167,.16);
+  background:
+    radial-gradient(260px 120px at 100% 0%,rgba(123,135,140,.06),transparent 70%),
+    linear-gradient(145deg,rgba(12,19,23,.98),rgba(7,12,15,.98));
+  box-shadow:inset 3px 0 0 rgba(134,146,151,.38),0 15px 30px rgba(0,0,0,.14);
+}
+.mc-impact-baseline .mc-impact-strip>article:after{
+  background:#7b878c;
+  opacity:.035;
+}
+.mc-impact-baseline .mc-impact-strip strong,
+.mc-impact-baseline .mc-impact-strip h3{
+  color:#e3e9e8;
+  text-shadow:none;
+}
+.mc-impact-baseline .mc-impact-strip b{
+  color:#a3b0b3;
+}
+.mc-impact-baseline .baseline-panel{
+  --strand-color:#7d8a8f;
+  border-color:rgba(148,162,167,.12)!important;
+  box-shadow:0 18px 35px rgba(0,0,0,.14)!important;
+}
+.mc-baseline-message{
+  margin-top:14px;
+  padding:14px;
+  border:1px solid rgba(255,255,255,.065);
+  background:#0a1216;
+}
+.mc-baseline-message strong{
+  display:block;
+  color:#dfe6e5;
+  font:900 16px/1 var(--font-display,'Barlow Condensed',sans-serif);
+}
+.mc-baseline-message p{
+  margin:6px 0 0;
+  color:#8b999e;
+  font-size:10px;
+  line-height:1.5;
+}
+.mc-baseline-steps{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:12px;
+}
+.mc-baseline-steps>div{
+  min-height:92px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:6px;
+  border:1px solid rgba(255,255,255,.07);
+  background:#0a1115;
+  color:#5f6d72;
+}
+.mc-baseline-steps i{
+  width:30px;height:30px;
+  display:grid;place-items:center;
+  border:1px solid rgba(255,255,255,.11);
+  border-radius:50%;
+  font:900 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  font-style:normal;
+}
+.mc-baseline-steps span{
+  font:900 8px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;
+}
+.mc-baseline-steps small{
+  color:#657278;
+  font-size:8px;
+}
+.mc-baseline-steps>div.done{
+  color:#b7c2c3;
+  border-color:rgba(182,246,107,.16);
+}
+.mc-baseline-steps>div.done i{
+  color:#b6f66b;
+  border-color:rgba(182,246,107,.55);
+}
+.mc-baseline-steps>div.current{
+  color:#d7dfde;
+  border-color:rgba(255,255,255,.16);
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.02);
+}
+.mc-impact-baseline .mc-dna-list .baseline-dna-row{
+  --strand-color:#657277!important;
+  opacity:.72;
+}
+.mc-impact-baseline .mc-dna-list .baseline-dna-row>div{
+  background:#111a1e;
+}
+.mc-impact-baseline .mc-dna-list .baseline-dna-row>div i{
+  width:0!important;
+  box-shadow:none!important;
+}
+.mc-impact-baseline .mc-dna-list .baseline-dna-row em{
+  color:#6e7b80;
+}
+.mc-impact-baseline .mc-moment-list .baseline-moment{
+  --strand-color:#6f7d82!important;
+  border-color:rgba(255,255,255,.07);
+  background:#0a1216;
+}
+.mc-impact-baseline .mc-moment-list .baseline-moment:before{
+  background:#657277;
+  box-shadow:none;
+}
+.mc-impact-baseline .mc-moment-list .baseline-moment i{
+  color:#9ba8ab;
+  border-color:rgba(255,255,255,.13);
+}
+.mc-impact-baseline .mc-moments footer{
+  color:#68767b;
+}
+@media(max-width:720px){
+  .mc-baseline-steps{grid-template-columns:1fr}
+  .mc-baseline-steps>div{min-height:72px}
+}
