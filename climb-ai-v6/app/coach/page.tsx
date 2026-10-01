@@ -67,6 +67,34 @@ export default function Coach(){
       return real;
     });
   },[tasks]);
+  const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>{
+    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
+      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
+      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
+      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
+      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
+      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
+      {id:'mind',label:'Consistency',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
+    ];
+    const allowed=tier==='FREE'?activeThree.slice(0,1):activeThree.slice(0,3);
+    return defs.flatMap(def=>{
+      const live=allowed.filter(task=>def.categories.includes(task.category)).slice(0,2).map(task=>({
+        c:def.id,
+        n:task.title,
+        s:(tier==='PLUS'&&task.progress>=100?2:1) as 0|1|2|3,
+      }));
+      while(live.length<4)live.push({c:def.id,n:`${def.label} memory strand · unlock with PRO`,s:0});
+      return live;
+    });
+  },[activeThree,tier]);
+  const previewGenes=useMemo(()=>[
+    {id:'lane',label:'Laning',hint:'Trades, spacing, recalls',categories:['LANING','TRADING','RECALL_TIMING']},
+    {id:'wave',label:'Waves & CS',hint:'Wave states, farming, resources',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
+    {id:'vision',label:'Vision & map',hint:'Vision, tracking, map checks',categories:['VISION','MAP_AWARENESS']},
+    {id:'obj',label:'Objectives',hint:'Objectives, tempo, conversion',categories:['OBJECTIVES','TEMPO']},
+    {id:'fight',label:'Teamfights',hint:'Positioning, targets, survival',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
+    {id:'mind',label:'Consistency',hint:'Repeat the read under pressure',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
+  ].map(gene=>({...gene,live:activeThree.some(task=>gene.categories.includes(task.category))})),[activeThree]);
   const mastered=tasks.filter(task=>task.status==='MASTERED');
   const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier)])},[active.id,priorityTitle,detail.tier]);
@@ -119,13 +147,59 @@ export default function Coach(){
           </div>
           <Link className="btn primary" href="/ilp">Open My Climb →</Link>
         </div>
-      </>:<section className="panel panel-padding pro-memory-gate coach-dna-lock">
-        <div className="eyebrow">GAME DNA · PRO</div>
-        <h2>Your development map starts on PRO.</h2>
-        <p className="muted">{tier==='PLUS'?'PLUS understands the current game in full. PRO turns those games into persistent Game DNA, transfer tests and long-term player development.':'FREE proves the coaching loop. PRO turns your games into persistent Game DNA and a coach that remembers what has actually stuck.'}</p>
-        <div className="memory-mini"><span>YOUR CURRENT ACCESS</span><strong>{tier} · {historyWindowLabel(tier)}</strong></div>
-        <Link className="btn gold" href="/pricing">Unlock Game DNA →</Link>
-      </section>}
+      </>:<>
+        <div className="coach-tab-intro coach-dna-preview-intro">
+          <div>
+            <div className="eyebrow">GAME DNA · {tier} PREVIEW</div>
+            <h2>See what your DNA could become.</h2>
+            <p>{tier==='PLUS'?'PLUS can feed richer current-game evidence into this preview. PRO is what remembers it, retests it and turns it into a persistent player model.':'FREE can show the focus you are working on now. PRO is what remembers whether that habit sticks across games, situations and time.'}</p>
+          </div>
+          <div className="coach-dna-stats">
+            <div><span>HISTORY</span><b>{tier==='FREE'?'7D':'90D'}</b></div>
+            <div><span>ELIGIBLE GAMES</span><b>{summary.games}</b></div>
+            <div><span>FOCUS</span><b>{activeThree[0]?activeThree[0].progress+'%':'—'}</b></div>
+          </div>
+        </div>
+
+        <div className="coach-dna-preview-shell">
+          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} missions={previewDnaMissions}/>
+          <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
+        </div>
+
+        <div className="coach-preview-grid">
+          <section className="panel panel-padding coach-preview-current">
+            <div className="eyebrow">WHAT IS LIVE RIGHT NOW</div>
+            <h3>{activeThree[0]?.title||'Play one tracked game'}</h3>
+            <p>{activeThree[0]?.gameRule||'Your first eligible game will create a basic coaching focus for this preview.'}</p>
+            <div className="coach-preview-facts">
+              <div><span>CURRENT PLAN</span><b>{tier}</b></div>
+              <div><span>COACHING WINDOW</span><b>{historyWindowLabel(tier)}</b></div>
+              <div><span>VISIBLE SIGNALS</span><b>{tier==='FREE'?'1 focus':'Up to 3 focuses'}</b></div>
+              <div><span>FIX LADDER</span><b>{tier==='FREE'?'2 stages':'4 stages'}</b></div>
+            </div>
+          </section>
+
+          <section className="panel panel-padding coach-preview-genes">
+            <div className="eyebrow">YOUR SIX DEVELOPMENT STRANDS</div>
+            <div className="coach-preview-gene-list">
+              {previewGenes.map(gene=><div className={gene.live?'is-live':'is-locked'} key={gene.id}>
+                <i/>
+                <span><strong>{gene.label}</strong><small>{gene.hint}</small></span>
+                <b>{gene.live?(tier==='FREE'?'BUILDING':'CURRENT'):'LOCKED MEMORY'}</b>
+              </div>)}
+            </div>
+          </section>
+        </div>
+
+        <section className="coach-preview-upgrade panel panel-padding">
+          <div>
+            <div className="eyebrow">WHY PRO CHANGES THIS</div>
+            <h3>Your DNA hasn’t started remembering yet.</h3>
+            <p>{tier==='FREE'?'FREE can identify what to work on now. PRO remembers whether the habit sticks across games, matchups and time.':'PLUS understands the current game in full. PRO connects those games into recurring patterns, transfer tests and long-term development.'}</p>
+          </div>
+          <Link className="btn gold" href="/pricing">UNLOCK A COACH THAT REMEMBERS →</Link>
+        </section>
+      </>}
     </section>}
 
     {tab==='ASK'&&<section className="coach-tab-panel">
