@@ -218,7 +218,7 @@ test('current rank and role popular core anchors the first purchases while draft
     popularSource:'LOLALYTICS PLATINUM BOTTOM',
   });
   assert.deepEqual(plan.core.map(item=>item.name),['Attack Speed Engine','Crit Engine']);
-  assert.equal(plan.boots?.name,'Mercury Boots');
+  assert.equal(plan.boots?.name,'Attack Speed Boots');
   assert.ok(plan.draftItem?.flags.includes('ANTI_TANK'),JSON.stringify(plan.draftItem));
   assert.match(plan.read,/LOLALYTICS PLATINUM BOTTOM/);
 });
