@@ -1,5 +1,5 @@
 'use client';
-import {useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
@@ -10,7 +10,7 @@ import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
-import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -71,10 +71,11 @@ export default function Coach(){
   const mastered=tasks.filter(task=>task.status==='MASTERED');
   const tierVisibleTasks=tier==='FREE'?activeThree.slice(0,1):activeThree;
   const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
+  const selectedStrandStyle=({'--strand-color':DNA_DOMAIN_COLORS[selectedDnaDomain]} as CSSProperties);
   const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
   const selectedMastered=tier==='PRO'?mastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
   const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
-  const strandGuide=<section className="dna-strand-guide panel panel-padding">
+  const strandGuide=<section className="dna-strand-guide panel panel-padding" style={selectedStrandStyle}>
     <div className="section-head dna-strand-guide-head">
       <div>
         <div className="eyebrow">EXPLORE YOUR SIX STRANDS</div>
@@ -89,6 +90,7 @@ export default function Coach(){
         role="tab"
         aria-selected={selectedDnaDomain===domain}
         className={selectedDnaDomain===domain?'active':''}
+        style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
         onClick={()=>setSelectedDnaDomain(domain)}
       >{DNA_DOMAIN_LABELS[domain]}</button>)}
     </div>
