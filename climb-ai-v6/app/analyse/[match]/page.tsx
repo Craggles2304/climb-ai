@@ -11,7 +11,6 @@ import {useSubscription} from '@/components/SubscriptionContext';
 import {filterHistoryForTier,historyWindowLabel,requiredTierForHistoryDate,type SubscriptionTier} from '@/lib/subscription';
 import {useProMatch} from '@/components/useProMatch';
 import {analyseMatch} from '@/lib/engine';
-import {buildReview} from '@/lib/review';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import type {Match} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
@@ -24,7 +23,6 @@ import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
-const liveTask=(status:string)=>status!=='MASTERED'&&status!=='PAUSED';
 
 export default function Analysis(){
   const params=useParams<{match:string}>();
@@ -91,15 +89,11 @@ export default function Analysis(){
 
   const recent=matches.filter(m=>m.id!==match.id);
   const report=analyseMatch({...match,proAnalysis},recent);
-  const review=buildReview({...match,proAnalysis},report);
   const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
-  const visible=detail.visiblePoints;
-  const reviewPoints=detail.reviewPoints;
   const missionResults=tasks.flatMap(task=>{
     const attempt=(task.missionHistory??[]).find(rep=>rep.matchId===id);
     return attempt?[{task,attempt}]:[];
   });
-  const existingTask=tasks.find(task=>liveTask(task.status)&&(task.metric===report.mission.metric||task.category===report.mission.category));
   const plainProblems=plainProblemCards(match,proAnalysis,report.primary.category,report.mission.dnaDomain).slice(0,2);
   const nextAction=plainNextAction(report.primary.category,match.opponent);
 
