@@ -76,6 +76,8 @@ test('praise is only given for metrics that exist',()=>{
   const sparse=review(match('EUW1_nope',{},{
     goldDiffAt15:undefined,laneCsPerMin:undefined,deathsPre10:undefined,
     killParticipation:undefined,damageShare:undefined,visionScore:undefined,
+    csAt10:undefined,csAt15:undefined,post15CsPerMin:undefined,csPerMin:undefined,
+    secondItemMinute:undefined,objectiveParticipation:undefined,deathsPost20:undefined,
   }));
   assert.equal(sparse.didWell.length,1,'with nothing measurable, offer one honest line, not three invented ones');
   assert.doesNotMatch(sparse.didWell[0],/\d/,'the fallback must not contain a fabricated figure');
