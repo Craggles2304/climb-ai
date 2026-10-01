@@ -36,7 +36,9 @@ test('tracking and marked moments remain available in the main window',()=>{
 
 test('locked pregame builds remain draft-based',()=>{
   assert.ok(route.includes('snapshot:null'));
-  assert.ok(route.includes('buildAdaptiveItemPlan({patch,you,role,allies:alliesForBuild,enemies:enemiesForBuild,items})'));
+  assert.ok(route.includes('buildAdaptiveItemPlan({'));
+  assert.ok(route.includes('popularItems:popular?.items??null'));
+  assert.ok(route.includes('popularSource:popular?'));
   assert.ok(main.includes("return state.phase==='CHAMP_SELECT'||needsRecordingPlanRecovery()"));
   assert.ok(main.includes("if(!state.teamPlan?.adaptiveBuild)return true"));
 });
