@@ -15,8 +15,9 @@ export interface MatchMetrics{
 export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'|'live_tracker'; createdAt:string; patch?:string|null; gameVersion?:string|null; patchSource?:'MATCH_V5'|'DATA_DRAGON_CURRENT_AT_RECORDING'|'UNKNOWN';
   moments?:KeyMoment[]; proAnalysis?:ProMatchAnalysis }
 export type IssueCategory='FARMING'|'POSITIONING'|'DEATHS'|'LANING'|'TRADING'|'WAVE_MANAGEMENT'|'TEMPO'|'OBJECTIVES'|'VISION'|'TEAMFIGHTING'|'TARGET_SELECTION'|'RECALL_TIMING'|'RESOURCE_COLLECTION'|'MAP_AWARENESS'|'CHAMPION_MASTERY'|'ITEMISATION'|'MATCHUPS'|'CONSISTENCY';
+export type DnaDomain='LANING'|'WAVES_CS'|'VISION_MAP'|'OBJECTIVES'|'TEAMFIGHTS'|'CONSISTENCY';
 export interface Signal{category:IssueCategory;severity:number;confidence:number;facts:string[];inference:string;suggestion:string}
-export interface Mission{ id:string; riotAccountId:string; category:IssueCategory; title:string; metric:string; target:number; unit:string; gamesRequired:number; gamesCompleted:number; successfulGames:number; rules:string[]; status:'DISCOVER'|'PRACTISE'|'REPEAT'|'MASTERED'; createdAt:string }
+export interface Mission{ id:string; riotAccountId:string; dnaDomain:DnaDomain; category:IssueCategory; title:string; metric:string; target:number; unit:string; gamesRequired:number; gamesCompleted:number; successfulGames:number; rules:string[]; status:'DISCOVER'|'PRACTISE'|'REPEAT'|'MASTERED'; createdAt:string }
 export interface AnalysisReport{matchId:string;performance:number;good:string[];primary:Signal;mission:Mission;summary:string}
 
 export type ILPStatus='ACTIVE'|'EVIDENCE_BUILDING'|'MASTERED'|'PAUSED';
@@ -34,7 +35,7 @@ export interface ILPMissionAttempt{
 export type ILPHistoryEvent='PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';
 export interface ILPHistoryEntry{at:string;type:ILPHistoryEvent;note:string}
 export interface ILPTask{
-  id:string;accountId:string;title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;progress:number;status:ILPStatus;source:'SYSTEM'|'COACH'|'USER';evidence:string[];
+  id:string;accountId:string;title:string;dnaDomain:DnaDomain;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;progress:number;status:ILPStatus;source:'SYSTEM'|'COACH'|'USER';evidence:string[];
   priority?:number;successfulGames?:number;gamesObserved?:number;masteryRequired?:number;lastUpdatedReason?:string;history?:Array<{at:string;type:ILPHistoryEvent|string;note:string}>;
   missionHistory?:ILPMissionAttempt[];metricProgress?:number;missionProgress?:number;
   roleScope?:Role|'GLOBAL';roleEvidence?:Role[];
