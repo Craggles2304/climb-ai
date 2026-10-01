@@ -41,7 +41,7 @@ test('first-run journey sends players to Companion before manual upload',()=>{
 
 test('empty Climb Session has a direct recovery path instead of a dead end',()=>{
   const session=fs.readFileSync(path.join(root,'app','session','page.tsx'),'utf8');
-  assert.ok(session.includes('FIRST, GIVE THE COACH A REAL GAME'));
+  assert.ok(session.includes("baselineReady?'WAITING FOR A VERIFIED CHALLENGE':'DNA BASELINE'"));
   assert.ok(session.includes('SET UP COMPANION →'));
   assert.ok(session.includes('href="/live"'));
   assert.ok(session.includes('ADD A GAME MANUALLY'));
