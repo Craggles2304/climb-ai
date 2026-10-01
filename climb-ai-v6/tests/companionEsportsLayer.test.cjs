@@ -33,13 +33,25 @@ test('the layer ships inside the installer',()=>{
 });
 
 test('the stylesheet does not hide information or remove elements',()=>{
-  // Decoration only: the layer may restyle, never take content away. The two
-  // deliberate exceptions are the idle radar, which is redundant once the match
-  // room is showing (and stale in the review).
+  // Decoration only: the layer may restyle, never take content away. The
+  // deliberate exceptions are the idle radar (redundant once the match room is
+  // showing, stale in the review), our own elements, and the one-line reminder
+  // under the plan, which is dropped only in windows too short to hold it.
   const hiding=[...css.matchAll(/([^{}]+)\{[^}]*display\s*:\s*none[^}]*\}/g)].map(m=>m[1].trim());
   for(const selector of hiding){
-    assert.match(selector,/#idleArena|\.es-tile\.es-missing|::-webkit|::before|::after|\.es-/,`unexpected hiding rule: ${selector}`);
+    // "#opMissionReminders.hidden" only keeps the page's own hide/show switch working
+    // now that the section is a grid; it does not hide anything the app wants shown.
+    // ".op-chip.role" is the "YOU · CHAMPION · ROLE" tag: the title and the YOU portrait say the same.
+    // ".shell > footer" is the generic app footer, hidden only while the plan page (which has its own
+    // reminder line) is on screen, to give the plan room.
+    // "#esGame ~ #opRememberHud" is the old coach board's top section, which the in-game screen
+    // replaces. companionGameScreen.test.cjs pins exactly which four parts may be hidden.
+    assert.match(selector,/#idleArena|\.es-tile\.es-missing|::-webkit|::before|::after|\.es-|\.op-foot|#opMissionReminders\.hidden|\.op-chip\.role|\.shell > footer|@media \(max-height:\d+px\)|#esGame ~ #opRememberHud/,`unexpected hiding rule: ${selector}`);
   }
+  const footRule=css.indexOf('.op-foot{display:none}');
+  assert.ok(footRule>-1,'the reminder line is expected to be hidden in short windows');
+  const context=css.slice(css.lastIndexOf('@media',footRule),footRule);
+  assert.match(context,/^@media \(max-height:\d+px\)\{[^}]*$/,'and ONLY inside a max-height media query');
 });
 
 test('reduced motion turns the animations off',()=>{

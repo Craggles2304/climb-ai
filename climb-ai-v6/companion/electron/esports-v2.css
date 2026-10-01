@@ -306,6 +306,462 @@ body #simplePostgameReview{
 #simplePostgameReview .coach-review-actions{padding:0 28px 24px}
 #simplePostgameReview .coach-review-actions button{font-family:var(--es-mono);letter-spacing:.14em;border-radius:0;clip-path:var(--es-cut-shape-sm)}
 
+/* ------------------------------------------------ MATCH PLAN PAGE -------- */
+/* Shown after you lock in (and before the game). Built by preload.cjs; this
+   layer arranges it as one screen: squad, five objectives, threat, mission,
+   build. Text sizes never drop below 11px. */
+
+body #opMissionReminders{
+  position:relative;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:0 9px;
+  margin-top:8px;padding:10px 18px 8px !important;border:0 !important;border-radius:0 !important;
+  clip-path:var(--es-cut-shape);
+  background:linear-gradient(180deg,rgba(214,255,47,.06),transparent 120px),var(--es-panel) !important;
+  box-shadow:inset 0 1px 0 rgba(214,255,47,.55),inset 0 0 0 1px var(--es-line);
+}
+body #opMissionReminders > *{min-width:0}
+body #opMissionReminders.hidden{display:none !important}
+
+/* title row: title left, style tags right */
+body #opMissionReminders .op-head{grid-column:1/6;grid-row:1;margin:0 0 6px !important;align-self:end;flex-wrap:nowrap;align-items:flex-end}
+body #opMissionReminders .op-kicker{font:600 11px var(--es-mono) !important;letter-spacing:.2em !important;color:var(--es-lime) !important}
+body #opMissionReminders .op-kicker::before{content:"";display:inline-block;width:8px;height:8px;margin-right:9px;background:var(--es-lime);clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%);animation:es-pulse 1.8s ease-in-out infinite}
+body #opMissionReminders .op-head h3{
+  margin:2px 0 0 !important;font-family:var(--es-display) !important;font-weight:800 !important;font-style:italic;text-transform:uppercase;
+  font-size:clamp(30px,3.5vw,38px) !important;line-height:.92 !important;white-space:nowrap;letter-spacing:0 !important;text-shadow:0 2px 0 rgba(0,0,0,.5);
+}
+body #opMissionReminders .op-rank{
+  position:absolute;top:14px;right:18px;font:800 11px var(--es-mono);letter-spacing:.18em;padding:8px 13px;
+  color:#07120a !important;background:var(--es-lime) !important;border:0 !important;clip-path:var(--es-cut-shape-sm);
+}
+body #opMissionReminders .op-draft{grid-column:6/-1;grid-row:1;margin:0 0 6px;justify-content:flex-end;align-content:flex-end;gap:6px;padding-top:24px}
+body #opMissionReminders .op-chip{
+  font:500 11px var(--es-mono);letter-spacing:0;padding:6px 10px;border:0;clip-path:var(--es-cut-shape-sm);
+  background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px var(--es-line);color:#9fb0b6;
+}
+body #opMissionReminders .op-chip b{color:#fff;font-weight:700}
+/* "YOU · CHAMPION · ROLE" repeats the title and the YOU portrait below */
+body #opMissionReminders .op-chip.role{display:none}
+
+/* squad strip: both teams as portraits */
+.es-squad{grid-column:1/-1;grid-row:2;margin-bottom:6px;display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);gap:8px;align-items:end}
+.es-col{display:grid;gap:5px;min-width:0}
+/* each team's style label sits above its own portraits */
+.es-caption{min-height:20px;display:flex}
+.es-caption .op-chip{padding:4px 10px;font-size:11px;box-shadow:none;background:none;clip-path:none;padding-left:0;color:#9fb0b6}
+.es-col.ours .es-caption .op-chip b{color:var(--es-blue)}
+.es-col.theirs .es-caption{justify-content:flex-end}
+.es-col.theirs .es-caption .op-chip{padding-left:10px;padding-right:0}
+.es-col.theirs .es-caption .op-chip b{color:var(--es-red)}
+.es-side{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.es-vs{font:800 18px var(--es-display);font-style:italic;color:var(--es-lime);text-align:center;letter-spacing:.06em}
+.es-unit{
+  position:relative;display:grid;grid-template-rows:32px auto;min-width:0;overflow:hidden;
+  background:#0b1418;clip-path:var(--es-cut-shape-sm);box-shadow:inset 0 0 0 1px var(--es-line);
+}
+.es-unit.ours{box-shadow:inset 0 -2px 0 var(--es-blue),inset 0 0 0 1px var(--es-line)}
+.es-unit.theirs{box-shadow:inset 0 -2px 0 rgba(255,77,94,.75),inset 0 0 0 1px var(--es-line)}
+.es-unit-art{width:100%;height:32px;object-fit:cover;object-position:center 18%;display:grid;place-items:center;background:#0e1a1f;color:#5f7077;font:700 20px var(--es-display)}
+.es-unit-art.es-missing{visibility:hidden}
+.es-unit-role{position:absolute;left:5px;bottom:21px;font:700 10px var(--es-mono);letter-spacing:.1em;color:#fff;text-shadow:0 1px 4px #000,0 0 8px #000}
+.es-unit-name{display:block;padding:3px 6px 4px;font:700 13px/1.1 var(--es-display);letter-spacing:.03em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.es-unit-tag{position:absolute;top:4px;right:4px;font:800 10px var(--es-mono);font-style:normal;letter-spacing:.1em;padding:2px 5px;color:#07120a;background:var(--es-blue);clip-path:var(--es-cut-shape-sm)}
+.es-unit.es-you{box-shadow:inset 0 0 0 2px var(--es-lime),0 0 18px rgba(214,255,47,.3)}
+.es-unit.es-you .es-unit-tag{background:var(--es-lime)}
+.es-unit.es-link .es-unit-tag{background:var(--es-blue)}
+.es-unit.es-threat{box-shadow:inset 0 0 0 2px var(--es-red),0 0 16px rgba(255,77,94,.28)}
+.es-unit.es-threat .es-unit-tag{background:var(--es-red);color:#fff}
+
+/* five objectives */
+/* uneven widths so the long "survive" step and the short "stay with" step end up the same height */
+body #opMissionReminders .op-rolewin{grid-column:1/-1;grid-row:6;grid-template-columns:1fr .8fr 1.3fr 1.35fr 1.35fr;gap:8px;margin:0 0 6px;counter-reset:es-step}
+body #opMissionReminders .op-role-step{
+  position:relative;counter-increment:es-step;min-height:0;padding:9px 10px 9px 15px;border:0;overflow:hidden;
+  background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));
+  clip-path:var(--es-cut-shape-sm);box-shadow:inset 0 0 0 1px var(--es-line);
+  --es-step:var(--es-lime);
+}
+body #opMissionReminders .op-role-step:before{width:4px;background:var(--es-step)}
+body #opMissionReminders .op-role-step:nth-child(2){--es-step:var(--es-blue)}
+body #opMissionReminders .op-role-step:nth-child(3){--es-step:var(--es-red)}
+body #opMissionReminders .op-role-step:nth-child(4){--es-step:var(--es-gold)}
+body #opMissionReminders .op-role-step:nth-child(5){--es-step:#56d9b8}
+body #opMissionReminders .op-role-step:after{ /* big watermark numeral */
+  content:counter(es-step);position:absolute;right:6px;top:-6px;font:800 italic 56px/1 var(--es-display);
+  color:transparent;-webkit-text-stroke:1.5px var(--es-step);opacity:.4;pointer-events:none;
+}
+body #opMissionReminders .op-role-step > span{
+  display:flex;align-items:center;gap:7px;margin:0 0 5px;font:700 11px var(--es-mono);letter-spacing:.08em;color:var(--es-step);
+}
+body #opMissionReminders .op-role-step > span::before{ /* icon, coloured by the step */
+  content:"";flex:none;width:17px;height:17px;background:currentColor;
+  -webkit-mask:var(--es-icon) center/contain no-repeat;mask:var(--es-icon) center/contain no-repeat;
+}
+body #opMissionReminders .op-role-step:nth-child(1){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z'/%3E%3C/svg%3E")}
+body #opMissionReminders .op-role-step:nth-child(2){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z'/%3E%3C/svg%3E")}
+body #opMissionReminders .op-role-step:nth-child(3){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z'/%3E%3C/svg%3E")}
+body #opMissionReminders .op-role-step:nth-child(4){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2 4 14h6l-1 8 9-12h-6l1-8z'/%3E%3C/svg%3E")}
+body #opMissionReminders .op-role-step:nth-child(5){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3v18h2v-7h11l-2-4 2-4H7V3H5z'/%3E%3C/svg%3E")}
+body #opMissionReminders .op-role-step strong{font:600 12.5px/1.3 'DM Sans',system-ui,sans-serif;color:#f4f7f9;text-transform:none;letter-spacing:.005em}
+body #opMissionReminders .op-role-step.es-names-only strong{
+  position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap; /* the chips say it */
+}
+
+/* champion chips */
+.es-chips{display:flex;flex-wrap:wrap;gap:5px;margin:0 0 5px}
+body #opMissionReminders .es-chip{display:inline-flex !important;align-items:center;gap:6px;padding:2px 9px 2px 2px;background:rgba(255,255,255,.07);clip-path:var(--es-cut-shape-sm);box-shadow:inset 0 0 0 1px var(--es-line)}
+.es-chip-art{width:30px;height:30px;object-fit:cover;display:block;background:#0e1a1f;flex:none}
+.es-chip-art.es-missing{visibility:hidden}
+.es-chip b{font:700 14px var(--es-display);letter-spacing:.03em;text-transform:uppercase;color:#fff}
+.es-chips.ally .es-chip{box-shadow:inset 0 0 0 1px rgba(76,145,255,.7),inset 3px 0 0 var(--es-blue)}
+.es-chips.foe .es-chip{box-shadow:inset 0 0 0 1px rgba(255,77,94,.7),inset 3px 0 0 var(--es-red)}
+.op-role-step.es-names-only .es-chips{margin-bottom:0}
+.op-role-step.es-names-only .es-chips{gap:8px;flex-wrap:nowrap}
+.op-role-step.es-names-only .es-chip{flex-direction:column;gap:2px;padding:0 0 3px;flex:1;min-width:0;align-items:center}
+.op-role-step.es-names-only .es-chip-art{width:100%;height:40px}
+.op-role-step.es-names-only .es-chip b{font-size:13px}
+
+/* threat + mission row */
+body #opMissionReminders .op-danger{
+  grid-column:6/-1;grid-row:8;margin:0 0 6px;position:relative;padding:8px 10px 9px 16px;border:0;clip-path:var(--es-cut-shape-sm);
+  background:linear-gradient(100deg,rgba(255,77,94,.16),rgba(255,77,94,.03) 70%);box-shadow:inset 0 0 0 1px rgba(255,77,94,.35);
+}
+body #opMissionReminders .op-danger::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-red)}
+body #opMissionReminders .op-danger{display:flex;flex-wrap:wrap;align-items:center;gap:0 12px}
+body #opMissionReminders .op-danger strong{grid-column:1/-1}
+body #opMissionReminders .op-danger .es-chips{margin:0;justify-content:flex-start;flex-wrap:nowrap}
+body #opMissionReminders .op-danger .es-chip-art{width:22px;height:22px}
+body #opMissionReminders .op-danger .es-chip b{font-size:12px}
+body #opMissionReminders .op-danger > span{font:800 11px var(--es-mono);letter-spacing:.18em;color:var(--es-red);margin-bottom:6px;grid-row:1}
+body #opMissionReminders .op-danger strong{font:600 13px/1.35 'DM Sans',system-ui,sans-serif;margin:0;color:#fff;text-transform:none}
+body #opMissionReminders .op-mission{
+  grid-column:1/-1;grid-row:9;margin:0 0 6px;position:relative;padding:6px 14px 7px 18px;border:0;clip-path:var(--es-cut-shape-sm);
+  background:linear-gradient(100deg,rgba(214,255,47,.16),rgba(214,255,47,.03) 70%);box-shadow:inset 0 0 0 1px rgba(214,255,47,.4);
+}
+body #opMissionReminders .op-mission::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-lime)}
+body #opMissionReminders .op-mission{display:flex;align-items:baseline;gap:14px}
+body #opMissionReminders .op-mission > span{font:800 11px var(--es-mono);letter-spacing:.18em;color:var(--es-lime);margin:0;white-space:nowrap}
+body #opMissionReminders .op-mission strong{font:600 13px/1.35 'DM Sans',system-ui,sans-serif;margin:0;color:#fff}
+body #opMissionReminders:has(.op-danger.hidden) .op-mission{grid-column:1/-1}
+
+/* optional deep read: a slim bar */
+body #opMissionReminders .op-deep{grid-column:1/6;grid-row:11;margin:0;align-self:center;border:0;padding:0 14px;clip-path:var(--es-cut-shape-sm);background:rgba(76,145,255,.07);box-shadow:inset 0 0 0 1px rgba(76,145,255,.3)}
+body #opMissionReminders .op-deep summary{font:700 11px var(--es-mono);letter-spacing:.12em;padding:6px 0}
+
+/* when the drawer is opened it takes the full width and the footer moves below it */
+body #opMissionReminders .op-deep[open]{grid-column:1/-1;grid-row:11;padding-bottom:10px}
+body #opMissionReminders .op-deep[open] ~ .op-foot{grid-column:1/-1;grid-row:12;text-align:center;margin-top:7px}
+body #opMissionReminders .op-deep-grid{gap:8px}
+body #opMissionReminders .op-deep-card{padding:9px 11px;clip-path:var(--es-cut-shape-sm);border:0;box-shadow:inset 0 0 0 1px var(--es-line)}
+body #opMissionReminders .op-deep-card span{font:700 11px var(--es-mono);letter-spacing:.1em;color:var(--es-blue)}
+body #opMissionReminders .op-deep-card strong{font:600 13px/1.3 'DM Sans',system-ui,sans-serif;margin-top:4px}
+body #opMissionReminders .op-deep-rule{font-size:12.5px;line-height:1.4;color:#c5d0d5}
+
+/* ---- our win condition: beside "they win if", not instead of it ---- */
+body #opMissionReminders .op-winhero{
+  grid-column:1/6;grid-row:8;margin:0 0 6px;position:relative;padding:9px 12px 10px 16px;border:0;clip-path:var(--es-cut-shape-sm);
+  background:linear-gradient(100deg,rgba(86,217,184,.18),rgba(86,217,184,.03) 75%);box-shadow:inset 0 0 0 1px rgba(86,217,184,.4);
+}
+body #opMissionReminders .op-winhero::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:#56d9b8}
+body #opMissionReminders .op-winhero > span{font:800 11px var(--es-mono);letter-spacing:.14em;color:#56d9b8;margin-bottom:6px}
+body #opMissionReminders .op-winhero strong{font:600 13px/1.35 'DM Sans',system-ui,sans-serif;margin:0;color:#fff}
+
+/* ---- long lines split into separate pieces ---- */
+.es-flowed > strong{position:absolute !important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap} /* the pieces say it */
+.es-flow{list-style:none;margin:0;padding:0;counter-reset:es-flow}
+.es-flow li{position:relative;counter-increment:es-flow;font:600 12px/1.25 'DM Sans',system-ui,sans-serif;color:#f4f7f9;text-transform:none}
+
+/* a chain of steps: numbered boxes joined by arrows pointing down */
+.es-flow.down{display:grid;gap:7px}
+.es-flow.down li{padding:3px 8px 3px 13px;background:rgba(255,255,255,.06);box-shadow:inset 0 0 0 1px var(--es-line)}
+.es-flow.down li::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-step,var(--es-lime));
+}
+.es-flow.down li:not(:last-child)::after{ /* arrow to the next piece */
+  content:"";position:absolute;left:8px;bottom:-8px;width:12px;height:8px;background:var(--es-step,var(--es-lime));
+  clip-path:polygon(0 0,100% 0,50% 100%);
+}
+
+/* one thing to obey, with a stop sign instead of a number */
+.es-flow.rule li{padding:5px 8px 5px 30px;background:rgba(255,77,94,.12);box-shadow:inset 0 0 0 1px rgba(255,77,94,.4)}
+.es-flow.rule li::before{content:"\2715";position:absolute;left:0;top:0;bottom:0;width:22px;display:grid;place-items:center;background:var(--es-red);color:#fff;font:800 12px var(--es-mono)}
+
+/* "A, OR B": two alternatives with an OR badge between */
+.es-flow.or{display:grid;gap:11px}
+.es-flow.or li{padding:4px 8px;background:rgba(255,255,255,.05);box-shadow:inset 0 0 0 1px rgba(255,77,94,.25);font-size:12px}
+.es-flow.or li:not(:last-child)::after{
+  content:"OR";position:absolute;left:50%;bottom:-12px;transform:translateX(-50%);padding:0 8px;background:var(--es-red);color:#fff;
+  font:800 10px/14px var(--es-mono);letter-spacing:.14em;clip-path:var(--es-cut-shape-sm);
+}
+
+/* a winning line: pieces in a row, chevrons between */
+.es-flow.inline{display:flex;flex-wrap:wrap;gap:6px 18px}
+.es-flow.inline li{padding:4px 9px;background:rgba(86,217,184,.12);box-shadow:inset 0 0 0 1px rgba(86,217,184,.35)}
+.es-flow.inline li:not(:last-child)::after{
+  content:"";position:absolute;right:-14px;top:50%;width:9px;height:14px;margin-top:-7px;background:#56d9b8;
+  clip-path:polygon(0 0,100% 50%,0 100%,0 75%,50% 50%,0 25%);
+}
+
+/* body #opMissionReminders .op-danger .es-flow{flex:0 0 100%;margin-top:4px}
+body #opMissionReminders .op-winhero .es-flow{margin-top:2px}
+
+the build path: clear arrows between the items bought in order (boots stand apart) */
+body #opMissionReminders .op-build-grid{gap:16px}
+body #opMissionReminders .op-build-card:not(.swap):not(:last-of-type)::after{display:none}
+body #opMissionReminders .op-build-card:not(.swap):not(.boots):has(+ .op-build-card:not(.swap):not(.boots))::after{
+  display:block;content:"";position:absolute;right:-14px;top:40%;width:12px;height:20px;background:#fff;opacity:.85;
+  clip-path:polygon(0 0,100% 50%,0 100%,0 72%,52% 50%,0 28%);
+}
+body #opMissionReminders .op-build-card.boots{margin-left:2px}
+body #opMissionReminders .op-build-card:not(.swap) + .op-build-card.swap{margin-left:8px}
+
+/* free-tier layout: same treatment for the simple flow */
+body #opMissionReminders .op-job,body #opMissionReminders .op-paid-lock{grid-column:1/-1;margin:0 0 6px}
+body #opMissionReminders .op-paid-lock{grid-row:3}
+body #opMissionReminders .op-job{grid-row:5}
+body #opMissionReminders .op-flow{grid-column:1/-1;grid-row:7;margin-bottom:6px;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+body #opMissionReminders .op-step{min-height:0;padding:11px 12px 12px 15px;clip-path:var(--es-cut-shape-sm);border:0;box-shadow:inset 0 0 0 1px var(--es-line)}
+body #opMissionReminders .op-step span{font:700 11px var(--es-mono);letter-spacing:.14em}
+body #opMissionReminders .op-step strong{font:600 13px/1.32 'DM Sans',system-ui,sans-serif;text-transform:none}
+
+/* the build: full path, then swaps */
+body #opMissionReminders .op-build{
+  grid-column:1/-1;grid-row:10;margin:0 0 6px;padding:8px 12px 8px;border:0;clip-path:var(--es-cut-shape-sm);
+  background:linear-gradient(135deg,rgba(76,145,255,.09),rgba(4,8,12,.5));box-shadow:inset 0 0 0 1px rgba(76,145,255,.3);
+}
+/* heading sits beside the icons rather than above them: saves a whole row */
+body #opMissionReminders .op-build{display:grid;grid-template-columns:150px minmax(0,1fr);grid-template-rows:auto 1fr;column-gap:12px;align-items:center}
+body #opMissionReminders .op-build-head{grid-column:1;grid-row:1;flex-direction:column;align-items:flex-start;justify-content:flex-end;gap:3px}
+body #opMissionReminders .op-build-head span{font:800 11px var(--es-mono);letter-spacing:.08em;color:var(--es-blue);white-space:nowrap}
+body #opMissionReminders .op-build-head small{font:500 10px var(--es-mono);letter-spacing:0;color:#8fa0a6}
+body #opMissionReminders .op-build-grid{grid-column:2;grid-row:1/3;display:flex;align-items:stretch;gap:7px;margin-top:0}
+body #opMissionReminders .op-build-card{
+  position:relative;flex:1.3 1 0;display:flex;flex-direction:column;align-items:center;gap:5px;min-width:0;padding:5px 6px 6px;
+  border:0;background:rgba(4,8,12,.6);clip-path:var(--es-cut-shape-sm);box-shadow:inset 0 0 0 1px var(--es-line);text-align:center;
+}
+body #opMissionReminders .op-build-card > div{display:flex;flex-direction:column-reverse;align-items:center;gap:4px;width:100%;min-width:0}
+body #opMissionReminders .op-build-card img{order:-1;width:34px;height:34px;border-radius:0;clip-path:var(--es-cut-shape-sm);box-shadow:0 0 0 1px rgba(255,255,255,.14);background:#0b1418}
+body #opMissionReminders .op-build-card span{font:700 10px var(--es-mono);letter-spacing:.1em;color:var(--es-blue)}
+body #opMissionReminders .op-build-card strong{
+  font:700 12px/1.15 var(--es-display);letter-spacing:.03em;white-space:normal;overflow:hidden;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;text-transform:uppercase;color:#fff;
+}
+body #opMissionReminders .op-build-card.draft{box-shadow:inset 0 0 0 1px rgba(214,255,47,.55)}
+body #opMissionReminders .op-build-card.draft span{color:var(--es-lime)}
+body #opMissionReminders .op-build-card.finish span{color:var(--es-gold)}
+body #opMissionReminders .op-build-card.boots span{color:#56d9b8}
+body #opMissionReminders .op-build-card.swap{flex:1 1 0;opacity:.88;background:rgba(255,255,255,.03)}
+body #opMissionReminders .op-build-card.swap span{color:#9fb0b6}
+body #opMissionReminders .op-build-card.swap img{width:38px;height:38px}
+body #opMissionReminders .op-build-card:not(.swap):not(:last-of-type)::after{ /* chevron between the path items */
+  content:"";position:absolute;right:-7px;top:38%;width:7px;height:12px;background:rgba(255,255,255,.3);
+  clip-path:polygon(0 0,100% 50%,0 100%,0 80%,55% 50%,0 20%);
+}
+body #opMissionReminders .op-build-card:not(.swap) + .op-build-card.swap{margin-left:12px}
+body #opMissionReminders .op-build-card:not(.swap) + .op-build-card.swap::before{content:"";position:absolute;left:-10px;top:8%;bottom:8%;width:1px;background:rgba(255,255,255,.22)}
+body #opMissionReminders .op-build-read{grid-column:1;grid-row:2;align-self:start;font:500 10.5px/1.3 var(--es-mono);letter-spacing:0;color:#9fb0b6;margin-top:5px}
+body #opMissionReminders .op-foot{grid-column:6/-1;grid-row:11;margin:0;text-align:right;align-self:center;font:500 10px var(--es-mono);letter-spacing:.06em;color:#5f7077}
+
+@media (max-width:900px){
+  body #opMissionReminders{grid-template-columns:minmax(0,1fr)}
+  body #opMissionReminders .op-head,body #opMissionReminders .op-draft{grid-column:1/-1}
+  body #opMissionReminders .op-draft{justify-content:flex-start;padding-top:0}
+  body #opMissionReminders .op-rolewin{grid-template-columns:repeat(3,minmax(0,1fr))}
+  body #opMissionReminders .op-build{grid-template-columns:minmax(0,1fr)}
+  body #opMissionReminders .op-build-head,body #opMissionReminders .op-build-grid,body #opMissionReminders .op-build-read{grid-column:1;grid-row:auto}
+  body #opMissionReminders .op-build-grid{flex-wrap:wrap}
+  body #opMissionReminders .op-winhero,body #opMissionReminders .op-danger,body #opMissionReminders .op-mission{grid-column:1/-1;grid-row:auto}
+  body #opMissionReminders > *{grid-row:auto !important}
+  .es-squad{grid-template-columns:minmax(0,1fr)}
+  .es-vs{display:none}
+}
+
+/* While the plan page is up, the app chrome around it shrinks so the whole
+   plan fits one window: a slimmer header, and no marketing footer (the plan
+   carries its own one-line reminder). */
+body:has(#opMissionReminders:not(.hidden)) .brand{padding-top:4px !important;padding-bottom:10px !important;margin-bottom:0 !important;min-height:0 !important}
+body:has(#opMissionReminders:not(.hidden)) .brand .mark{width:34px !important;height:34px !important;font-size:15px}
+body:has(#opMissionReminders:not(.hidden)) .brand h1{font-size:30px}
+body:has(#opMissionReminders:not(.hidden)) .shell > footer{display:none}
+body:has(#opMissionReminders:not(.hidden)) .shell{padding-top:10px !important;padding-bottom:10px !important}
+
+/* ------------------------------------------------ IN-GAME SCREEN --------- */
+/* One screen, built by esports-v2.js from the values the coach board already
+   computed. The board's own top section is replaced by it; its drawers (win
+   path detail, lane, contingency, self-check) stay below for the interactive tools. */
+
+#esGame ~ #opRememberHud > .rem4-top,
+#esGame ~ #opRememberHud .rem4-body > .rem4-draft,
+#esGame ~ #opRememberHud .rem4-body > .rem4-call-row,
+#esGame ~ #opRememberHud .rem4-body > .rem4-carry-strip,
+#esGame ~ #opRememberHud .rem4-body > .rem4-command-strip{display:none !important}
+body.op-remember-live #esGame ~ #opRememberHud{margin-top:4px !important;min-height:0 !important}
+#esGame ~ #opRememberHud .rem4-body{padding:2px 14px 3px !important}
+
+.es-game{
+  position:relative;display:grid;gap:6px;margin-top:4px;padding:10px 14px 10px;
+  clip-path:var(--es-cut-shape);background:linear-gradient(180deg,rgba(214,255,47,.06),transparent 110px),var(--es-panel);
+  box-shadow:inset 0 1px 0 rgba(214,255,47,.55),inset 0 0 0 1px var(--es-line);
+}
+.es-game > *{min-width:0}
+
+/* header */
+.es-g-head{display:flex;justify-content:space-between;align-items:flex-end;gap:12px}
+.es-g-live{display:block;font:700 11px var(--es-mono);letter-spacing:.2em;color:var(--es-lime)}
+.es-g-title h2{margin:2px 0 0;font:800 italic clamp(30px,3.6vw,38px)/.95 var(--es-display);text-transform:uppercase;letter-spacing:0;text-shadow:0 2px 0 rgba(0,0,0,.5)}
+.es-g-title h2 small{font:600 13px var(--es-mono);font-style:normal;letter-spacing:.06em;color:#7d8d93;text-shadow:none}
+.es-g-tags{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.es-g-tags span{font:500 11px var(--es-mono);padding:5px 10px;color:#c5d0d5;background:rgba(255,255,255,.05);clip-path:var(--es-cut-shape-sm);box-shadow:inset 3px 0 0 var(--es-blue),inset 0 0 0 1px var(--es-line)}
+.es-g-tags span.theirs{box-shadow:inset 3px 0 0 var(--es-red),inset 0 0 0 1px var(--es-line)}
+
+/* squads: same portraits as the plan page */
+.es-g-squad{display:grid;grid-template-columns:minmax(0,1fr) 34px minmax(0,1fr);gap:8px;align-items:center}
+.es-g-squad .es-unit{grid-template-rows:32px auto}
+.es-g-squad .es-unit-art{height:32px}
+.es-g-squad .es-unit-role{bottom:21px}
+
+/* cards */
+.es-g-card{position:relative;padding:9px 12px 10px 16px;clip-path:var(--es-cut-shape-sm);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));box-shadow:inset 0 0 0 1px var(--es-line)}
+.es-g-card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-lime)}
+.es-g-label{display:block;margin:0 0 5px;font:800 11px var(--es-mono);letter-spacing:.14em;color:var(--es-lime);white-space:nowrap}
+.es-g-line{margin:0;font:600 14px/1.3 'DM Sans',system-ui,sans-serif;color:#fff}
+.es-g-line.small{font-size:13px}
+.es-g-why{margin:7px 0 0;font:500 12px/1.3 var(--es-mono);color:#c5d0d5}
+
+/* the two big calls */
+.es-g-calls{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:6px}
+.es-g-card.job{background:linear-gradient(100deg,rgba(214,255,47,.17),rgba(214,255,47,.03) 70%);box-shadow:inset 0 0 0 1px rgba(214,255,47,.4)}
+.es-flow.big{display:flex;flex-wrap:wrap;gap:8px 24px}
+.es-flow.big li{padding:4px 10px;font:800 italic 22px/1.05 var(--es-display);letter-spacing:.02em;text-transform:uppercase;background:rgba(214,255,47,.12);box-shadow:inset 0 0 0 1px rgba(214,255,47,.4)}
+.es-flow.big li:not(:last-child)::after{content:"";position:absolute;right:-17px;top:50%;width:11px;height:18px;margin-top:-9px;background:var(--es-lime);clip-path:polygon(0 0,100% 50%,0 100%,0 72%,52% 50%,0 28%)}
+.es-g-card.threat{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;align-items:center;background:linear-gradient(100deg,rgba(255,77,94,.17),rgba(255,77,94,.03) 70%);box-shadow:inset 0 0 0 1px rgba(255,77,94,.4)}
+.es-g-card.threat::before{background:var(--es-red)}
+.es-g-card.threat .es-g-label{grid-column:1/-1;color:var(--es-red)}
+.es-g-threat-art{width:62px;height:62px;object-fit:cover;object-position:center 18%;display:block;clip-path:var(--es-cut-shape-sm);box-shadow:0 0 0 2px var(--es-red)}
+.es-g-threat-body h3{margin:0;font:800 italic 30px/1 var(--es-display);text-transform:uppercase;color:#fff}
+.es-g-bullets{list-style:none;margin:5px 0 0;padding:0;display:grid;gap:2px}
+.es-g-bullets li{position:relative;padding-left:12px;font:600 12.5px/1.3 'DM Sans',system-ui,sans-serif;color:#f4f7f9}
+.es-g-bullets li::before{content:"";position:absolute;left:0;top:.5em;width:6px;height:6px;background:var(--es-red)}
+
+/* six short rules */
+.es-g-cells{display:grid;grid-template-columns:1fr .85fr 1fr .8fr 1.7fr 1.7fr;gap:6px}
+.es-g-card.cell{padding:7px 10px 8px 14px}
+.es-g-card.cell strong{display:block;font:700 13px/1.25 'DM Sans',system-ui,sans-serif;color:#fff}
+.es-g-card.cell.blue::before{background:var(--es-blue)}.es-g-card.cell.blue .es-g-label{color:var(--es-blue)}
+.es-g-card.cell.gold::before{background:var(--es-gold)}.es-g-card.cell.gold .es-g-label{color:var(--es-gold)}
+.es-g-card.cell.red::before{background:var(--es-red)}.es-g-card.cell.red .es-g-label{color:var(--es-red)}
+.es-g-card.cell.gold strong{font:800 italic 20px/1.05 var(--es-display);text-transform:uppercase}
+
+/* your path, step by step */
+.es-g-steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;counter-reset:es-gstep}
+.es-g-step{position:relative;overflow:hidden;counter-increment:es-gstep;padding:8px 10px 9px 14px;clip-path:var(--es-cut-shape-sm);background:linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.015));box-shadow:inset 0 0 0 1px var(--es-line);--es-step:var(--es-lime)}
+.es-g-step::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-step)}
+.es-g-step:nth-child(2){--es-step:var(--es-blue)}
+.es-g-step:nth-child(3){--es-step:var(--es-red)}
+.es-g-step:nth-child(4){--es-step:var(--es-gold)}
+.es-g-step:nth-child(5){--es-step:#56d9b8}
+.es-g-step::after{content:counter(es-gstep);position:absolute;right:6px;top:-6px;font:800 italic 48px/1 var(--es-display);color:transparent;-webkit-text-stroke:1.5px var(--es-step);opacity:.4}
+.es-g-step .es-g-label{display:flex;align-items:center;gap:7px;color:var(--es-step);margin-bottom:4px;letter-spacing:.06em}
+.es-g-step .es-g-label::before{content:"";flex:none;width:16px;height:16px;background:currentColor;-webkit-mask:var(--es-icon) center/contain no-repeat;mask:var(--es-icon) center/contain no-repeat}
+.es-g-step:nth-child(1){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a7 7 0 0 0-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 0 0-7-7zm0 9.5A2.5 2.5 0 1 1 12 6.5a2.5 2.5 0 0 1 0 5z'/%3E%3C/svg%3E")}
+.es-g-step:nth-child(2){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M16 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zM8 11a3 3 0 1 0-3-3 3 3 0 0 0 3 3zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13zm8 0c-.3 0-.6 0-1 .1 1.2.8 2 2 2 3.4V19h6v-2.5c0-2.3-4.7-3.5-7-3.5z'/%3E%3C/svg%3E")}
+.es-g-step:nth-child(3){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2 4 5v6c0 5 3.4 9.7 8 11 4.6-1.3 8-6 8-11V5l-8-3z'/%3E%3C/svg%3E")}
+.es-g-step:nth-child(4){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M13 2 4 14h6l-1 8 9-12h-6l1-8z'/%3E%3C/svg%3E")}
+.es-g-step:nth-child(5){--es-icon:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M5 3v18h2v-7h11l-2-4 2-4H7V3H5z'/%3E%3C/svg%3E")}
+.es-g-step strong{display:block;font:800 18px/1.1 var(--es-display);letter-spacing:.02em;text-transform:uppercase;color:#fff}
+
+/* the team's win condition + your mission */
+.es-g-goals{display:grid;grid-template-columns:minmax(0,2.3fr) minmax(0,1fr);gap:6px}
+.es-g-card.win .es-flow.inline{gap:5px 18px}
+.es-g-card.win .es-flow.inline li{padding:3px 8px}
+.es-g-goals > :only-child{grid-column:1/-1}
+.es-g-card.win{background:linear-gradient(100deg,rgba(86,217,184,.18),rgba(86,217,184,.03) 75%);box-shadow:inset 0 0 0 1px rgba(86,217,184,.4)}
+.es-g-card.win::before{background:#56d9b8}.es-g-card.win .es-g-label{color:#56d9b8}
+.es-g-card.mission strong{display:block;font:600 13px/1.35 'DM Sans',system-ui,sans-serif;color:#fff}
+
+/* the build */
+.es-g-build{display:grid;grid-template-columns:150px minmax(0,1fr);gap:12px;align-items:center;padding:6px 12px;clip-path:var(--es-cut-shape-sm);background:linear-gradient(135deg,rgba(76,145,255,.09),rgba(4,8,12,.5));box-shadow:inset 0 0 0 1px rgba(76,145,255,.3)}
+.es-g-build .es-g-label{color:var(--es-blue);letter-spacing:.08em;margin-bottom:3px}
+.es-g-build-head small{display:block;font:500 10.5px/1.3 var(--es-mono);color:#9fb0b6}
+.es-g-items{display:flex;align-items:stretch;gap:14px}
+.es-g-item{position:relative;flex:1.3 1 0;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;padding:5px 6px 6px;text-align:center;background:rgba(4,8,12,.6);clip-path:var(--es-cut-shape-sm);box-shadow:inset 0 0 0 1px var(--es-line)}
+.es-g-item img{order:-1;width:30px;height:30px;clip-path:var(--es-cut-shape-sm);box-shadow:0 0 0 1px rgba(255,255,255,.14);background:#0b1418}
+.es-g-item img.es-missing{visibility:hidden}
+.es-g-item span{font:700 10px var(--es-mono);letter-spacing:.1em;color:var(--es-blue)}
+.es-g-item b{font:700 12px/1.15 var(--es-display);letter-spacing:.03em;text-transform:uppercase;color:#fff;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.es-g-item.draft{box-shadow:inset 0 0 0 1px rgba(214,255,47,.55)}.es-g-item.draft span{color:var(--es-lime)}
+.es-g-item.finish span{color:var(--es-gold)}
+.es-g-item.boots span{color:#56d9b8}
+.es-g-item.swap{flex:1 1 0;opacity:.88;background:rgba(255,255,255,.03)}.es-g-item.swap span{color:#9fb0b6}.es-g-item.swap img{width:26px;height:26px}
+.es-g-item.swap:first-of-type{margin-left:0}
+.es-g-item:not(.swap):not(.boots):has(+ .es-g-item:not(.swap):not(.boots))::after{content:"";position:absolute;right:-14px;top:38%;width:12px;height:20px;background:#fff;opacity:.85;clip-path:polygon(0 0,100% 50%,0 100%,0 72%,52% 50%,0 28%)}
+.es-g-item:not(.swap) + .es-g-item.swap{margin-left:8px}
+.es-g-item:not(.swap) + .es-g-item.swap::before{content:"";position:absolute;left:-11px;top:8%;bottom:8%;width:1px;background:rgba(255,255,255,.22)}
+
+/* while the in-game screen is up, the chrome around it shrinks so it fits one window */
+body:has(#esGame) .brand{padding-top:4px !important;padding-bottom:10px !important;margin-bottom:0 !important;min-height:0 !important}
+body:has(#esGame) .brand .mark{width:34px !important;height:34px !important;font-size:15px}
+body:has(#esGame) .brand h1{font-size:30px}
+body:has(#esGame) .shell > footer{display:none}
+body:has(#esGame) .shell{padding-top:10px !important;padding-bottom:10px !important}
+
+@media (max-width:900px){
+  .es-g-head{flex-direction:column;align-items:flex-start}.es-g-tags{justify-content:flex-start}
+  .es-g-squad{grid-template-columns:minmax(0,1fr)}.es-g-squad .es-vs{display:none}
+  .es-g-calls,.es-g-goals{grid-template-columns:minmax(0,1fr)}
+  .es-g-cells{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .es-g-steps{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .es-g-build{grid-template-columns:minmax(0,1fr)}.es-g-items{flex-wrap:wrap}
+}
+
+/* ------------------------------------------------ PRO: personal pattern + mission -- */
+/* PRO's personal pattern and mission come from the site's draft coach (in game only). Violet marks
+   "this is about YOU, from YOUR games". Muted styles are honest placeholders, never fake content. */
+
+.es-g-card.pattern{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px;padding:7px 12px 8px 16px;
+  background:linear-gradient(100deg,rgba(180,140,255,.2),rgba(180,140,255,.03) 72%);box-shadow:inset 0 0 0 1px rgba(180,140,255,.45)}
+.es-g-card.pattern::before{background:#b48cff}
+.es-g-card.pattern .es-g-label{margin:0;color:#b48cff}
+.es-g-card.pattern strong{font:800 italic 18px/1.1 var(--es-display);text-transform:uppercase;color:#fff;letter-spacing:.02em}
+.es-g-card.pattern .es-g-cue{font:600 13px/1.3 'DM Sans',system-ui,sans-serif;color:#f4f7f9}
+.es-g-card.pattern small{font:500 11px var(--es-mono);letter-spacing:.04em;color:#cdbcff}
+.es-g-card.pattern:is(.loading,.none,.building,.unavailable) .es-g-cue{color:#c5d0d5;font-weight:500}
+.es-g-card.pattern:is(.loading,.none,.building,.unavailable) strong{color:#d9ccff}
+.es-g-card.pattern.unavailable{box-shadow:inset 0 0 0 1px rgba(255,197,61,.4)}
+.es-g-card.pattern.unavailable::before{background:var(--es-gold)}
+.es-g-card.pattern.unavailable .es-g-label{color:var(--es-gold)}
+
+.es-g-card.mission.personal::before{background:#b48cff}
+.es-g-card.mission.personal .es-g-label{color:#b48cff}
+.es-g-card.mission.personal{background:linear-gradient(100deg,rgba(180,140,255,.18),rgba(180,140,255,.03) 75%);box-shadow:inset 0 0 0 1px rgba(180,140,255,.4)}
+.es-g-card.mission.pending::before{background:var(--es-gold)}
+.es-g-card.mission.pending .es-g-label{color:var(--es-gold)}
+
+/* the extra bar needs room: tighten everything a little, only while it is present */
+.es-game.es-g-tight{gap:5px;padding-top:8px;padding-bottom:8px}
+.es-game.es-g-tight .es-g-title h2{font-size:30px}
+.es-game.es-g-tight .es-g-squad .es-unit{grid-template-rows:26px auto}
+.es-game.es-g-tight .es-g-squad .es-unit-art{height:26px}
+.es-game.es-g-tight .es-g-squad .es-unit-role{bottom:20px}
+.es-game.es-g-tight .es-flow.big li{font-size:19px;padding:3px 9px}
+.es-game.es-g-tight .es-g-why{margin-top:4px}
+.es-game.es-g-tight .es-g-card{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-card.pattern{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-step{padding-top:6px;padding-bottom:7px}
+.es-game.es-g-tight .es-g-step strong{font-size:16px}
+.es-game.es-g-tight .es-g-build{padding-top:4px;padding-bottom:4px}
+.es-game.es-g-tight .es-g-item{padding-top:3px;padding-bottom:4px}
+.es-game.es-g-tight .es-g-item img{width:26px;height:26px}
+.es-game.es-g-tight .es-g-item.swap img{width:22px;height:22px}
+
+/* plan page: a small honest note about PRO, at the end of the mission bar */
+.es-pro-note{margin-left:auto;padding:4px 10px;font:700 11px var(--es-mono);letter-spacing:.06em;white-space:nowrap;color:#d9ccff;
+  background:rgba(180,140,255,.12);box-shadow:inset 0 0 0 1px rgba(180,140,255,.4);clip-path:var(--es-cut-shape-sm)}
+/* with the note present, the mission text must still fit on one line */
+body #opMissionReminders .op-mission:has(.es-pro-note){gap:10px}
+body #opMissionReminders .op-mission:has(.es-pro-note) > span{letter-spacing:.08em}
+.es-pro-note{padding-left:8px;padding-right:8px}
+.es-pro-note[data-tier="PLUS"]{color:#b9a7e8;background:rgba(255,255,255,.04);box-shadow:inset 0 0 0 1px var(--es-line)}
+
 /* ------------------------------------------------------------- reduced -- */
 @media (prefers-reduced-motion:reduce){
   #draftBoard::before,.brand-signal span,.quiet-live i,#draftBoardState.good,#simplePregamePill.good,#draftBoard .eyebrow::before{animation:none !important}
@@ -324,3 +780,12 @@ body #simplePostgameReview{
   #simplePostgameReview .coach-review-head,#simplePostgameReview .coach-review-intro,#simplePostgameReview .coach-review-grid,#simplePostgameReview .coach-review-actions{padding-left:18px;padding-right:18px}
   #simplePostgameReview .coach-review-next{margin-left:18px;margin-right:18px}
 }
+
+/* the one-line reminder under the plan is only shown when the window is tall enough */
+@media (max-height:800px){body #opMissionReminders .op-foot{display:none}body #opMissionReminders .op-deep{grid-column:1/-1}}
+
+body #opMissionReminders .op-role-step:nth-child(3) .es-chip{padding:2px}
+body #opMissionReminders .op-role-step:nth-child(3) .es-chip b{display:none}
+
+/* step labels stay on one line, even in the narrow "stay with" column */
+body #opMissionReminders .op-role-step > span{white-space:nowrap;letter-spacing:.04em}

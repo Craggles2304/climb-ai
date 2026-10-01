@@ -112,11 +112,421 @@
     }));
   }
 
+  /* -------------------------------------------------- match plan page ---- */
+  // The page shown after you lock in (built by preload.cjs). This only adds a
+  // squad strip and champion chips; the text preload writes is never touched.
+  const ROLE_ORDER=['TOP','JUNGLE','MID','ADC','SUPPORT'];
+  const roleKey=value=>{
+    const role=String(value||'').trim().toUpperCase();
+    return role==='BOTTOM'?'ADC':role==='UTILITY'?'SUPPORT':role==='MIDDLE'?'MID':role;
+  };
+  function rosterOf(side){
+    const plan=state?.teamPlan;
+    const live=Array.isArray(plan?.[side])?plan[side]:[];
+    const frozenKey=side==='ourTeam'?'ours':'theirs';
+    const frozenSource=plan?.rememberPlan?.draftTeams?.[frozenKey];
+    const source=live.length?live:(Array.isArray(frozenSource)?frozenSource:[]);
+    return source.map(p=>({name:String(p?.name||'').trim(),role:roleKey(p?.role)})).filter(p=>p.name);
+  }
+  function inRoleOrder(list){
+    const placed=ROLE_ORDER.map(role=>list.find(p=>p.role===role)).filter(Boolean);
+    return [...placed,...list.filter(p=>!placed.includes(p))].slice(0,5);
+  }
+  const escapeRegExp=value=>value.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  // Whole-name match only: "Sion" must not be found inside "DECISION".
+  const mentions=(text,name)=>new RegExp(`(^|[^A-Za-z])${escapeRegExp(name)}($|[^A-Za-z])`,'i').test(String(text||''));
+  function namesIn(text,roster){
+    return roster
+      .filter(p=>mentions(text,p.name))
+      .sort((a,b)=>String(text).toLowerCase().indexOf(a.name.toLowerCase())-String(text).toLowerCase().indexOf(b.name.toLowerCase()));
+  }
+  function portrait(name,className){
+    const id=championId(name);
+    const img=document.createElement(id?'img':'span');
+    img.className=className;
+    if(id){img.alt='';img.decoding='async';img.src=tileUrl(id);img.onerror=()=>img.classList.add('es-missing')}
+    else img.textContent='?';
+    return img;
+  }
+  function unit(person,tag,side){
+    const card=document.createElement('div');
+    card.className=`es-unit ${side}${tag?` es-${tag}`:''}`;
+    const art=portrait(person.name,'es-unit-art');
+    const role=document.createElement('span');role.className='es-unit-role';role.textContent=person.role||'—';
+    const name=document.createElement('b');name.className='es-unit-name';name.textContent=person.name;
+    card.append(art,role,name);
+    if(tag){
+      const badge=document.createElement('i');badge.className='es-unit-tag';
+      badge.textContent=tag==='you'?'YOU':tag==='link'?'LINK':'THREAT';
+      card.append(badge);
+    }
+    return card;
+  }
+  // The "OUR STYLE" / "THEIR STYLE" labels preload.cjs writes live in the tag
+  // row. They describe one team each, so they are moved above that team's
+  // portraits. The same nodes are moved, so preload keeps updating them.
+  const chipOf=id=>$(id)?.closest?.('.op-chip')||null;
+  function decorateSquad(section,ours,theirs,tagOf){
+    let squad=$('esSquad');
+    const styleChips={ours:chipOf('opOurIdentity'),theirs:chipOf('opTheirIdentity')};
+    if(!ours.length&&!theirs.length){
+      // No portraits to hang the labels on: give them back to the tag row.
+      const row=section.querySelector('.op-draft');
+      for(const chip of Object.values(styleChips))if(chip&&row)row.append(chip);
+      squad?.remove();return;
+    }
+    if(!squad){
+      squad=document.createElement('div');squad.id='esSquad';squad.className='es-squad';
+      const head=section.querySelector('.op-head');
+      if(head)head.after(squad);else section.prepend(squad);
+    }
+    const signature=JSON.stringify([ours.map(p=>[p.name,p.role,tagOf(p,'ours')]),theirs.map(p=>[p.name,p.role,tagOf(p,'theirs')])]);
+    if(squad.dataset.signature===signature)return;
+    squad.dataset.signature=signature;
+    const side=(people,key)=>{
+      const col=document.createElement('div');col.className=`es-col ${key}`;
+      const caption=document.createElement('div');caption.className='es-caption';
+      if(styleChips[key])caption.append(styleChips[key]);
+      const units=document.createElement('div');units.className=`es-side ${key}`;
+      units.append(...people.map(p=>unit(p,tagOf(p,key),key)));
+      col.append(caption,units);
+      return col;
+    };
+    const versus=document.createElement('div');versus.className='es-vs';versus.textContent='VS';
+    squad.replaceChildren(side(ours,'ours'),versus,side(theirs,'theirs'));
+  }
+  // Champion chips inside a step / card, built once per set of names.
+  const chipRows=new WeakMap();
+  function setChips(host,people,kind){
+    if(!host)return;
+    let row=chipRows.get(host);
+    if(!people.length){row?.remove();chipRows.delete(host);return}
+    if(!row){
+      row=document.createElement('div');chipRows.set(host,row);
+      const label=host.querySelector('span');
+      if(label)label.after(row);else host.prepend(row);
+    }
+    row.className=`es-chips ${kind}`;
+    const signature=people.map(p=>p.name).join('|');
+    if(row.dataset.signature===signature)return;
+    row.dataset.signature=signature;
+    row.replaceChildren(...people.map(p=>{
+      const chip=document.createElement('span');chip.className='es-chip';chip.title=p.name;
+      const name=document.createElement('b');name.textContent=p.name;
+      chip.append(portrait(p.name,'es-chip-art'),name);
+      return chip;
+    }));
+  }
+  const onlyNames=(text,roster)=>{
+    const words=String(text||'').split(/\s*[\/,&+]\s*|\s+and\s+/i).map(w=>w.trim().toLowerCase()).filter(Boolean);
+    return words.length>0&&words.every(word=>roster.some(p=>p.name.toLowerCase()===word));
+  };
+  /* --------------------------------- long lines become separate pieces ---- */
+  // "A → B → C" or "X, OR Y" reads as one block of text. Show each part as its own
+  // piece with an arrow (or "OR") between. preload.cjs keeps writing the original
+  // sentence, so it stays in the page, visually hidden, and is re-split when it changes.
+  const flows=new WeakMap();
+  function setFlow(host,segments,mode){
+    let list=flows.get(host);
+    if(segments.length<(mode==='rule'?1:2)){list?.remove();flows.delete(host);host.classList.remove('es-flowed');return false}
+    if(!list){
+      list=document.createElement('ol');flows.set(host,list);
+      const text=host.querySelector('strong');
+      if(text)text.after(list);else host.append(list);
+    }
+    list.className=`es-flow ${mode}`;
+    host.classList.add('es-flowed');
+    const signature=segments.join('\u0001');
+    if(list.dataset.signature===signature)return true;
+    list.dataset.signature=signature;
+    list.replaceChildren(...segments.map(part=>{const item=document.createElement('li');item.textContent=part;return item}));
+    return true;
+  }
+  const cut=(text,pattern)=>String(text||'').split(pattern).map(part=>part.trim().replace(/[.,]+$/,'')).filter(Boolean);
+  const ARROW=/\s*(?:→|->)\s*/;
+  function decorateFlows(theirs){
+    for(let i=1;i<=5;i++){
+      const node=$(`opRoleStep${i}`);
+      const host=node?.closest('.op-role-step');
+      if(!host)continue;
+      const text=node.textContent;
+      if(i===3){
+        // "Yone / Pyke / Lux — DO NOT STEP OUT…": the names are already shown as
+        // portraits, so the rule on its own is what is left to read.
+        const parts=cut(text,/\s+[—–]\s+/);
+        const rule=parts.length>1&&onlyNames(parts[0],theirs)?parts.slice(1):[];
+        if(setFlow(host,rule,'rule'))continue;
+      }
+      setFlow(host,cut(text,ARROW),'down');
+    }
+    // The simple four-step plan (early / mid game / objective / fight) has the same kind of chains.
+    for(const id of ['opEarly','opMid','opObjective','opFight']){
+      const node=$(id);
+      const host=node?.closest?.('.op-step');
+      if(host)setFlow(host,cut(node.textContent,ARROW),'down');
+    }
+    const win=$('opPaidWin');
+    if(win){
+      const text=$('opYourWin')?.textContent||'';
+      let parts=cut(text,ARROW);
+      if(parts.length<2)parts=cut(text,/(?<=[.!?])\s+/);
+      setFlow(win,parts,'inline');
+    }
+    const loss=$('opPaidLoss');
+    if(loss)setFlow(loss,cut($('opVsTeam')?.textContent,/,?\s+OR\s+/),'or');
+  }
+
+  function decorateMatchPage(){
+    const section=$('opMissionReminders');
+    if(!section||section.classList.contains('hidden'))return;
+    const plan=state?.teamPlan||{};
+    const ours=inRoleOrder(rosterOf('ourTeam'));
+    const theirs=inRoleOrder(rosterOf('theirTeam'));
+    const you=String(state?.matchup?.champion||state?.matchup?.plan?.you?.name||'').trim().toLowerCase();
+    const text=id=>$(id)?.textContent||'';
+    const read=plan.compositionRead||{};
+    const linkText=`${text('opRoleStep2')} ${(read.protectors||[]).join(' ')}`;
+    const threatText=`${text('opRoleStep3')} ${(read.enemyThreats||[]).join(' ')} ${text('opVsTeam')}`;
+    decorateSquad(section,ours,theirs,(person,side)=>{
+      if(side==='ours')return person.name.toLowerCase()===you?'you':mentions(linkText,person.name)?'link':'';
+      return mentions(threatText,person.name)?'threat':'';
+    });
+
+    // Step 2 (who to stay with) and step 3 (who to survive) get champion chips;
+    // when the step is nothing but names, the chips replace the plain text.
+    const step2=$('opRoleStep2')?.closest('.op-role-step');
+    const step3=$('opRoleStep3')?.closest('.op-role-step');
+    const links=namesIn(text('opRoleStep2'),ours);
+    const threats=namesIn(text('opRoleStep3'),theirs);
+    setChips(step2,links,'ally');
+    setChips(step3,threats,'foe');
+    step2?.classList.toggle('es-names-only',onlyNames(text('opRoleStep2'),ours));
+    step3?.classList.toggle('es-names-only',onlyNames(text('opRoleStep3'),theirs));
+    setChips($('opPaidLoss'),namesIn(text('opVsTeam'),theirs),'foe');
+    decorateFlows(theirs);
+
+    // PRO's personal pattern and mission are produced by the site's draft coach once the game has
+    // loaded (it needs the live player list), so they cannot be shown yet. Say so, rather than show
+    // a "building your profile" placeholder that would wrongly suggest there is no history.
+    const access=plan.strategyAccess||{};
+    const tier=access.deepStrategy===true?'PRO':access.paidStrategy===true?'PLUS':'FREE';
+    const missionBar=section.querySelector('.op-mission');
+    let note=$('esProNote');
+    if(!missionBar||tier==='FREE'){note?.remove();return}
+    if(!note){note=document.createElement('span');note.id='esProNote';note.className='es-pro-note';missionBar.append(note)}
+    const noteText=tier==='PRO'?'PRO · PERSONAL PATTERN LOADS IN GAME':'PRO ADDS YOUR PERSONAL PATTERN';
+    if(note.dataset.tier!==tier||note.textContent!==noteText){note.dataset.tier=tier;note.textContent=noteText}
+  }
+
+  /* ------------------------------------------------ in-game screen ------- */
+  // While a match is recording, the coach board is a tall stack of tiny text
+  // with the win path and build hidden in a drawer. This builds a one-screen
+  // version from the values the board has already computed (it only READS the
+  // board's elements; the board keeps updating them, and its drawers stay below
+  // for the interactive tools). Long lines wrap into pieces instead of being clipped.
+  const clean=value=>String(value||'').replace(/\s+/g,' ').trim();
+  const val=id=>clean($(id)?.textContent);
+  const node=(tag,className,content)=>{
+    const el=document.createElement(tag);
+    if(className)el.className=className;
+    if(content!==undefined)el.textContent=content;
+    return el;
+  };
+  const gameCard=(className,label,...kids)=>{
+    const card=node('article',`es-g-card ${className}`);
+    card.append(node('span','es-g-label',label),...kids);
+    return card;
+  };
+  const pieceList=(parts,mode)=>{
+    const list=node('ol',`es-flow ${mode}`);
+    parts.forEach(part=>list.append(node('li','',part)));
+    return list;
+  };
+  const itemIcon=(patch,id)=>`https://ddragon.leagueoflegends.com/cdn/${encodeURIComponent(patch)}/img/item/${encodeURIComponent(id)}.png`;
+  function buildCards(build){
+    const path=[...(build.core||[]).slice(0,2),build.draftItem,build.finish,build.boots].filter(Boolean);
+    const swaps=(build.swaps||[]).filter(item=>item&&item.id).slice(0,3);
+    const label=(item,index)=>item.slot==='CORE'?`CORE ${index+1}`:item.slot==='DRAFT'?'VS THIS TEAM':item.slot==='FINISH'?'FINISH':item.slot==='BOOTS'?'BOOTS':'ITEM';
+    const card=(item,text,kind)=>{
+      const el=node('article',`es-g-item ${kind}`);
+      el.title=clean(item.why);
+      const icon=document.createElement('img');icon.alt='';icon.src=itemIcon(build.patch,item.id);icon.onerror=()=>icon.classList.add('es-missing');
+      el.append(icon,node('span','',text),node('b','',clean(item.name).toUpperCase()));
+      return el;
+    };
+    return [...path.map((item,index)=>card(item,label(item,index),item.slot==='DRAFT'?'draft':item.slot==='BOOTS'?'boots':item.slot==='FINISH'?'finish':'core')),
+      ...swaps.map(item=>card(item,'SWAP IF','swap'))];
+  }
+  // PRO's personal pattern and mission come from the site's draft coach. The board writes
+  // them (and its own "loading" / "unavailable" status) into elements; this turns those raw
+  // values into what the cards should say, without ever claiming more than the board did.
+  const DEFAULT_MISSION=/^NO FORCED REP/i;
+  const INTENT_PENDING=/ANSWER THE INTENT CHECK/i;
+  const COACH_UNAVAILABLE=/UNAVAILABLE|REQUIRED|WAITING|OFFLINE|BUSY|QUALITY GATE/i;
+  function personalView(raw){
+    const status=clean(raw.status);
+    // Until the deep coach has answered, the board shows its own defaults ("SAFE LOCAL PLAN",
+    // "BUILDING YOUR PROFILE", the generic mission). Those say nothing about YOU, so they are
+    // never presented as personal.
+    const delivered=/^(DEEP VERIFIED|RULE PLAN)/i.test(status);
+    let pattern;
+    if(/CHECKING/i.test(status))pattern={kind:'loading',text:'CHECKING YOUR HISTORY…'};
+    else if(COACH_UNAVAILABLE.test(status))pattern={kind:'unavailable',text:status};
+    else if(!delivered)pattern={kind:'loading',text:'WAITING FOR YOUR DEEP COACH…'};
+    else if(!raw.building)pattern={kind:'real',title:clean(raw.title),cue:clean(raw.cue),proof:clean(raw.proof)};
+    else if(/^NO VERIFIED/i.test(clean(raw.title)))pattern={kind:'none',text:clean(raw.cue)};
+    else pattern={kind:'building',title:clean(raw.title),text:clean(raw.cue),proof:clean(raw.proof)};
+
+    const mission=clean(raw.mission);
+    let personal=null;
+    if(delivered&&mission&&!DEFAULT_MISSION.test(mission)&&mission.toLowerCase()!==clean(raw.generic).toLowerCase()){
+      personal=INTENT_PENDING.test(mission)
+        ?{tone:'pending',text:mission.replace(/\bABOVE\b/i,'IN COACH DETAIL BELOW')}
+        :{tone:'personal',text:mission};
+    }
+    return {pattern,personal};
+  }
+
+  function renderGame(){
+    const hud=$('opRememberHud');
+    const live=Boolean(hud)&&document.body.classList.contains('op-remember-live');
+    let root=$('esGame');
+    if(!live){root?.remove();return}
+    // The board fills in its values as it renders; follow it (debounced, and it only
+    // redraws when a value actually changed, so watching can never loop).
+    if(!hud.dataset.esWatched&&typeof MutationObserver==='function'){
+      hud.dataset.esWatched='1';
+      let pending=0;
+      new MutationObserver(()=>{clearTimeout(pending);pending=setTimeout(()=>{try{renderGame()}catch{}},30)})
+        .observe(hud,{childList:true,subtree:true,characterData:true});
+    }
+    const plan=state?.teamPlan||{};
+    const ours=inRoleOrder(rosterOf('ourTeam'));
+    const theirs=inRoleOrder(rosterOf('theirTeam'));
+    const build=plan.adaptiveBuild||plan.rememberPlan?.adaptiveBuild||null;
+    const steps=[...($('opRemWinPath')?.children||[])].map(step=>[clean(step.querySelector('i')?.textContent),clean(step.querySelector('strong')?.textContent)]);
+    const data={
+      title:val('opRememberTitle'),shape:val('opRemOurShape'),curve:val('opRemEnemyCurve'),
+      job:val('opRemGameCall'),why:val('opRemGameCallWhy'),threat:val('opRemThreat'),answer:val('opRemThreatAnswer'),
+      carry:val('opRemCarryPrimary'),role:val('opRemCarryRole'),around:val('opRemCarryPlay'),
+      mode:val('opRemDecisionCall'),when:val('opRemFightWhen'),stop:val('opRemStopRule'),
+      mission:val('opMissionCue')||val('opRemMission'),win:val('opYourWin'),
+      live:clean(hud.querySelector('.rem4-live')?.textContent)||'LIVE · RECORDING',
+      you:clean(state?.matchup?.champion||state?.matchup?.plan?.you?.name),steps,ours,theirs,
+      build:build?[build.patch,build.read,build.core,build.draftItem,build.finish,build.boots,build.swaps]:null,
+    };
+    // PRO only: the personal pattern and mission the site's draft coach produced.
+    const pro=plan.strategyAccess?.deepStrategy===true||String(plan.strategyAccess?.tier||'').toUpperCase()==='PRO';
+    const personal=pro?personalView({
+      status:val('opRemCoachStatus'),building:Boolean($('opRemPersonalTrap')?.classList.contains('building')),
+      title:val('opRemTrapTitle'),cue:val('opRemTrapCue'),proof:val('opRemTrapProof'),mission:val('opRemMission'),generic:val('opMissionCue'),
+    }):null;
+    data.personal=personal;
+    const signature=JSON.stringify(data);
+    if(!root){root=node('section','es-game');root.id='esGame';hud.before(root)}
+    if(root.dataset.signature===signature)return;
+    root.dataset.signature=signature;
+
+    // header: who you are, and the shape of both teams
+    const [titleMain,titleRest]=data.title.split('//').map(clean);
+    const head=node('header','es-g-head');
+    const heading=node('div','es-g-title');
+    heading.append(node('span','es-g-live',`● ${data.live}`),node('h2','',titleMain||'YOUR GAME PLAN'));
+    if(titleRest)heading.querySelector('h2').append(node('small','',` // ${titleRest}`));
+    const tags=node('div','es-g-tags');
+    if(data.shape)tags.append(node('span','ours',`OUR SHAPE · ${data.shape}`));
+    if(data.curve)tags.append(node('span','theirs',`THEIR CURVE · ${data.curve}`));
+    head.append(heading,tags);
+
+    // both squads, tagged: you / who you play with / who to fear
+    const you=data.you.toLowerCase();
+    const linkText=`${steps[1]?.[1]||''} ${data.around}`;
+    const threatText=`${data.threat} ${steps[2]?.[1]||''}`;
+    const squad=node('div','es-g-squad');
+    const side=(people,key)=>{
+      const column=node('div',`es-side ${key}`);
+      column.append(...people.map(p=>unit(p,key==='ours'?(p.name.toLowerCase()===you?'you':mentions(linkText,p.name)?'link':''):(mentions(threatText,p.name)?'threat':''),key)));
+      return column;
+    };
+    squad.append(side(ours,'ours'),node('div','es-vs','VS'),side(theirs,'theirs'));
+
+    // the two big calls: your job, and the threat to respect
+    const jobParts=cut(data.job,ARROW);
+    const job=gameCard('job','YOUR JOB');
+    job.append(jobParts.length>1?pieceList(jobParts,'big'):node('p','es-g-line',data.job||'PLAY YOUR ROLE'));
+    if(data.why)job.append(node('p','es-g-why',data.why));
+    const threat=gameCard('threat','MAIN THREAT');
+    const threatPerson=namesIn(data.threat,theirs)[0];
+    const threatBody=node('div','es-g-threat-body');
+    threatBody.append(node('h3','',data.threat||'THEIR ENGAGE'));
+    const answers=cut(data.answer,/\s+·\s+/);
+    if(answers.length){const list=node('ul','es-g-bullets');answers.forEach(a=>list.append(node('li','',a)));threatBody.append(list)}
+    if(threatPerson)threat.append(portrait(threatPerson.name,'es-g-threat-art'));
+    threat.append(threatBody);
+
+    // six short rules
+    const cells=node('div','es-g-cells');
+    [['WHO CARRIES',data.carry,'lime'],['YOUR ROLE',data.role,'blue'],['PLAY AROUND',data.around,'blue'],
+      ['FIGHT / FARM',data.mode,'gold'],['FIGHT WHEN',data.when,'lime'],["DON'T",data.stop,'red']]
+      .filter(([,value])=>value).forEach(([label,value,tone])=>cells.append(gameCard(`cell ${tone}`,label,node('strong','',value))));
+
+    // your path to winning, step by step
+    const path=node('div','es-g-steps');
+    steps.slice(0,5).forEach(([label,value])=>{
+      const step=node('article','es-g-step');
+      step.append(node('span','es-g-label',label),node('strong','',value));
+      path.append(step);
+    });
+
+    // the team's win condition and your mission
+    const winParts=(()=>{const arrows=cut(data.win,ARROW);return arrows.length>1?arrows:cut(data.win,/(?<=[.!?])\s+/)})();
+    const win=gameCard('win','OUR WIN CONDITION');
+    win.append(winParts.length>1?pieceList(winParts,'inline'):node('p','es-g-line small',data.win));
+    // A PRO player's personal mission, when the coach produced one, replaces the generic one.
+    const personalMission=personal?.personal||null;
+    const mission=gameCard(`mission${personalMission?` ${personalMission.tone}`:''}`,personalMission?'YOUR PERSONAL MISSION · PRO':'YOUR CLIMB MISSION',
+      node('strong','',personalMission?personalMission.text:data.mission));
+    const goals=node('div','es-g-goals');
+    if(data.win)goals.append(win);
+    if(personalMission||data.mission)goals.append(mission);
+
+    // PRO's personal pattern: what you repeat across games, or an honest note about why it is not there
+    let pattern=null;
+    if(personal){
+      const view=personal.pattern;
+      pattern=gameCard(`pattern ${view.kind}`,'YOUR PATTERN · PRO');
+      if(view.kind==='real'){
+        pattern.append(node('strong','',view.title||'VERIFIED PERSONAL PATTERN'),node('span','es-g-cue',view.cue));
+        if(view.proof)pattern.append(node('small','',view.proof));
+      }else{
+        if(view.title&&view.kind==='building')pattern.append(node('strong','',view.title));
+        pattern.append(node('span','es-g-cue',view.text));
+        if(view.proof)pattern.append(node('small','',view.proof));
+      }
+    }
+    root.classList.toggle('es-g-tight',Boolean(pattern));
+
+    const calls=node('div','es-g-calls');
+    calls.append(job,threat);
+    root.replaceChildren(head,squad,calls,...(pattern?[pattern]:[]),cells,path,goals);
+    if(build){
+      const row=node('section','es-g-build');
+      const heading2=node('div','es-g-build-head');
+      heading2.append(node('span','es-g-label','BUILD FOR THIS GAME'),node('small','',clean(build.read)));
+      const grid=node('div','es-g-items');
+      grid.append(...buildCards(build));
+      row.append(heading2,grid);
+      root.append(row);
+    }
+  }
+
   function apply(){
     if(!state)return;
     decorateRows('draftOurPicks',Array.isArray(state.draft?.allies)?state.draft.allies:[],{ours:true});
     decorateRows('draftTheirPicks',Array.isArray(state.draft?.enemies)?state.draft.enemies:[],{ours:false});
     decoratePlan();
+    decorateMatchPage();
+    renderGame();
     decorateReview();
   }
 

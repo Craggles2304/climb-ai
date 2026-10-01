@@ -49,7 +49,11 @@ test('Companion keeps simple plan visible while paid structured match read is ga
   assert.ok(preload.includes('OUR WIN CONDITION'));
   assert.ok(preload.includes('THEY WIN IF'));
   assert.ok(preload.includes('opRoleWin'));
-  assert.match(preload,/toggle\('opPaidWin',!paid\|\|hasRoleWin\)/);
+  assert.match(preload,/toggle\('opPaidWin',!paid\)/);
+  // The team win condition is written for every paid player, including those who
+  // also get a structured role plan: it is shown beside "they win if", not instead of it.
+  assert.match(preload,/\n\s+set\('opYourWin',ourWinCommand\(team,matchup\)\);/);
+  assert.ok(!/if\(!hasRoleWin\)set\('opYourWin'/.test(preload),'the team win condition must not be skipped when a role plan exists');
   assert.match(preload,/toggle\('opPaidLoss',!paid\)/);
   assert.match(preload,/toggle\('opSimpleFlow',hasRoleWin\)/);
 });
