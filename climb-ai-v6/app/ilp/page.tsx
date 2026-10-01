@@ -92,6 +92,17 @@ export default function PlayerDevelopmentCentre(){
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
+      {mastered.length>0&&<section className="panel panel-padding" style={{marginTop:18}}>
+        <div className="section-head"><div><div className="eyebrow">RECENTLY MASTERED</div><h2>Habits that moved into memory.</h2></div><button className="text-btn" type="button" onClick={()=>setTab('HISTORY')}>View history →</button></div>
+        <div>
+          {mastered.slice(0,3).map((task,index)=><div className="habit done" key={task.id}>
+            <span className="habit-index">✓</span>
+            <div><h3>{plainLanguageFocus(task).name}</h3><p>{task.gameRule}</p></div>
+            <span className="tag">Mastered</span>
+          </div>)}
+        </div>
+      </section>}
+
       {activeTasks.length>0&&<section className="ip-next">
         <div>
           <span>HOW THE PLAN MOVES</span>
