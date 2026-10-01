@@ -1,0 +1,77 @@
+import type {DnaDomain,ILPTask,IssueCategory} from './types';
+
+export const DNA_DOMAINS:DnaDomain[]=[
+  'LANING',
+  'WAVES_CS',
+  'VISION_MAP',
+  'OBJECTIVES',
+  'TEAMFIGHTS',
+  'CONSISTENCY',
+];
+
+export const DNA_DOMAIN_LABELS:Record<DnaDomain,string>={
+  LANING:'Laning',
+  WAVES_CS:'Waves & CS',
+  VISION_MAP:'Vision & Map',
+  OBJECTIVES:'Objectives',
+  TEAMFIGHTS:'Teamfights',
+  CONSISTENCY:'Consistency',
+};
+
+export const DNA_DOMAIN_GENE:Record<DnaDomain,'lane'|'wave'|'vision'|'obj'|'fight'|'mind'>={
+  LANING:'lane',
+  WAVES_CS:'wave',
+  VISION_MAP:'vision',
+  OBJECTIVES:'obj',
+  TEAMFIGHTS:'fight',
+  CONSISTENCY:'mind',
+};
+
+const DEFAULT_DOMAIN:Record<IssueCategory,DnaDomain>={
+  LANING:'LANING',
+  TRADING:'LANING',
+  MATCHUPS:'LANING',
+  FARMING:'WAVES_CS',
+  WAVE_MANAGEMENT:'WAVES_CS',
+  RESOURCE_COLLECTION:'WAVES_CS',
+  RECALL_TIMING:'WAVES_CS',
+  ITEMISATION:'WAVES_CS',
+  VISION:'VISION_MAP',
+  MAP_AWARENESS:'VISION_MAP',
+  OBJECTIVES:'OBJECTIVES',
+  TEMPO:'OBJECTIVES',
+  TEAMFIGHTING:'TEAMFIGHTS',
+  TARGET_SELECTION:'TEAMFIGHTS',
+  POSITIONING:'TEAMFIGHTS',
+  DEATHS:'TEAMFIGHTS',
+  CHAMPION_MASTERY:'CONSISTENCY',
+  CONSISTENCY:'CONSISTENCY',
+};
+
+export function dnaDomainForCategory(category:IssueCategory):DnaDomain{
+  return DEFAULT_DOMAIN[category]??'CONSISTENCY';
+}
+
+export function dnaDomainForTask(task:Pick<ILPTask,'category'|'metric'|'title'>|{category:IssueCategory;metric?:string;title?:string}):DnaDomain{
+  const metric=String(task.metric||'').toLowerCase();
+  const title=String(task.title||'').toLowerCase();
+
+  if(task.category==='DEATHS'){
+    if(metric==='deathspre10'||title.includes('10 minute')||title.includes('opening'))return'LANING';
+    if(metric==='historical_recovery'||metric==='chain_deaths'||title.includes('second death')||title.includes('recovery'))return'CONSISTENCY';
+    return'TEAMFIGHTS';
+  }
+  if(task.category==='POSITIONING'&&(title.includes('lane')||title.includes('trade')))return'LANING';
+  if(task.category==='TEMPO'&&(metric==='farm_fight_tradeoff'||title.includes('wave')||title.includes('farm')))return'WAVES_CS';
+
+  return dnaDomainForCategory(task.category);
+}
+
+export function ensureDnaDomain<T extends {category:IssueCategory;metric?:string;title?:string;dnaDomain?:DnaDomain}>(task:T):T&DnaDomainStamped{
+  return{...task,dnaDomain:task.dnaDomain??dnaDomainForTask(task)};
+}
+
+export type DnaDomainStamped={dnaDomain:DnaDomain};
+
+export function dnaDomainLabel(domain:DnaDomain){return DNA_DOMAIN_LABELS[domain]}
+export function dnaGeneForTask(task:Pick<ILPTask,'dnaDomain'>){return DNA_DOMAIN_GENE[task.dnaDomain]}
