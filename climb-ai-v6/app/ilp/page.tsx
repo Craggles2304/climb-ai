@@ -90,25 +90,27 @@ export default function PlayerDevelopmentCentre(){
   };
 
   return <AppShell>
-    <section className="ip-head">
-      <div>
-        <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
-        <h1>{!baselineReady?'Build your baseline.':tier==='FREE'?'One focus. Prove it.':'One core. Two support.'}</h1>
-        <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
-      </div>
-      <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
-    </section>
+    {!baselineReady&&<>
+      <section className="ip-head">
+        <div>
+          <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
+          <h1>Build your baseline.</h1>
+          <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
+        </div>
+        <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
+      </section>
 
-    <section className="ip-summary">
-      <div className="ip-summary-main">
-        <span>CURRENT PLAN</span>
-        <b>{baselineReady?activeTasks.length+'/'+(tier==='FREE'?1:3)+' ACTIVE':Math.min(baselineGames,DNA_BASELINE_GAMES)+'/'+DNA_BASELINE_GAMES+' BASELINE'}</b>
-        <small>{baselineReady?matches.length+' '+active.role.toLowerCase()+' games · '+missionRankBand(active.rank)+' targets':'No personalised challenge until the third tracked game is complete'}</small>
-      </div>
-      <div><span>PROVEN REPS</span><b>{baselineReady?banked+'/'+(required||9):'0'}</b><small>{baselineReady?'tracked game evidence only':'starts after baseline'}</small></div>
-      <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
-      <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
-    </section>
+      <section className="ip-summary">
+        <div className="ip-summary-main">
+          <span>CURRENT PLAN</span>
+          <b>{Math.min(baselineGames,DNA_BASELINE_GAMES)+'/'+DNA_BASELINE_GAMES+' BASELINE'}</b>
+          <small>No personalised challenge until the third tracked game is complete</small>
+        </div>
+        <div><span>PROVEN REPS</span><b>0</b><small>starts after baseline</small></div>
+        <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
+        <div><span>PLAN</span><b>0%</b><small>starts after game 3</small></div>
+      </section>
+    </>}
 
     {!baselineReady&&<section className="ip-baseline panel panel-padding">
       <div className="ip-baseline-copy">
