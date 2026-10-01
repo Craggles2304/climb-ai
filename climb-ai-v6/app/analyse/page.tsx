@@ -4,6 +4,8 @@ import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
+import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import type {Match,Role} from '@/lib/types';
@@ -21,7 +23,8 @@ type Preview={report:ReturnType<typeof analyseMatch>;review:ReturnType<typeof bu
 
 export default function MyGames(){
   const {active}=useAccount();
-  const matches=matchesFor(active.id);
+  const {tier}=useSubscription();
+  const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier),[active.id,tier]);
   const [role,setRole]=useState<'ALL'|Role>('ALL');
   const [champion,setChampion]=useState('ALL');
   const [visible,setVisible]=useState(10);
@@ -50,7 +53,7 @@ export default function MyGames(){
       <div>
         <div className="eyebrow">MY GAMES · REVIEW</div>
         <h1>Every game has a lesson.</h1>
-        <p>What happened → why it happened → what you carry into the next game.</p>
+        <p>What happened → why it happened → what you carry into the next game. <span className="history-window-tag">{historyWindowLabel(tier)}</span></p>
       </div>
       <Link className="btn btn-small" href="/uploads">Add a game</Link>
     </header>
