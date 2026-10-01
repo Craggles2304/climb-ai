@@ -2,6 +2,7 @@ import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {requireLeagueTier} from '@/lib/server/subscriptionAccess';
 import {buildLearningJourney} from '@/lib/learningJourney';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
@@ -13,6 +14,8 @@ export async function GET(req:Request){
     const input=querySchema.parse({accountId:new URL(req.url).searchParams.get('accountId')});
     const user=await getCurrentUser();
     if(!user)return NextResponse.json({error:'Sign in to view your Learning Journey.'},{status:401});
+    const access=await requireLeagueTier(user.id,'PRO');
+    if(!access.allowed)return NextResponse.json({error:'PRO unlocks persistent Learning Journey history.',upgradeRequired:true,requiredTier:'PRO',currentTier:access.entitlement.tier},{status:403});
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({error:'Learning Journey is unavailable.'},{status:503});
 
