@@ -4,8 +4,6 @@ import Link from 'next/link';
 import {usePathname} from 'next/navigation';
 import {useAccount} from './AccountContext';
 import {useSubscription} from './SubscriptionContext';
-import {BRAND} from '@/lib/brand';
-import {Wordmark} from './UI';
 import {SessionBar} from './SessionBar';
 import {LivePregameMount} from './LivePregameMount';
 import {LiveFightReviewMount} from './LiveFightReviewMount';
@@ -68,9 +66,13 @@ function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void
   </section>;
 }
 function SidebarTierStep({tier}:{tier:'FREE'|'PLUS'|'PRO'}){
-  if(tier==='FREE')return <div className="op-sidebar-upgrade"><span>NEXT · PLUS</span><strong>Unlock the full game plan.</strong><Link href="/pricing">SEE WHAT CHANGES →</Link></div>;
-  if(tier==='PLUS')return <div className="op-sidebar-upgrade"><span>NEXT · PRO</span><strong>Turn reviews into a coach that remembers you.</strong><Link href="/pricing">SEE WHAT CHANGES →</Link></div>;
-  return <div className="op-sidebar-upgrade"><span>PRO ACTIVE</span><strong>Full player-model coaching is unlocked.</strong><Link href="/ilp">OPEN MY DEVELOPMENT →</Link></div>;
+  const next=tier==='FREE'?'Next unlock: the full match coaching loop.':tier==='PLUS'?'Next unlock: a coach that remembers.':'Your full player-model coaching is active.';
+  return <div className="sidebar-plan">
+    <span className="eyebrow">YOUR COACHING PLAN</span>
+    <strong>{tier}<span>{tier==='PRO'?'ACTIVE':'PLAN'}</span></strong>
+    <p>{next}</p>
+    <Link className="btn btn-small" href="/pricing">Explore your unlocks <span>↗</span></Link>
+  </div>;
 }
 
 export function AppShell({children}:{children:React.ReactNode}){
@@ -87,6 +89,25 @@ export function AppShell({children}:{children:React.ReactNode}){
   const coaching=coachingLevelFor(active.rank);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=path.startsWith('/matchup-lab')&&coaching.depth<7;
+  useEffect(()=>{
+    let link=document.querySelector<HTMLLinkElement>('link[data-op-client-css="1"]');
+    if(!link){
+      link=document.createElement('link');
+      link.rel='stylesheet';
+      link.href='/client/styles.css';
+      link.dataset.opClientCss='1';
+      document.head.appendChild(link);
+    }
+  },[]);
+  useEffect(()=>{
+    const view=path==='/dashboard'?'overview':path==='/live'?'match-room':path==='/ilp'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
+    document.body.dataset.clientView=view;
+    document.body.dataset.clientTier=tier.toLowerCase();
+    return()=>{
+      delete document.body.dataset.clientView;
+      delete document.body.dataset.clientTier;
+    };
+  },[path,tier]);
   useEffect(()=>setAdvancedOpen(false),[path]);
   useEffect(()=>{
     let stopped=false,busy=false;
@@ -130,62 +151,54 @@ export function AppShell({children}:{children:React.ReactNode}){
     return()=>window.clearTimeout(timer);
   },[progressToast]);
 
-  return <div className={'app-layout op-shell client-auth-shell '+(live?'is-live':'')}>
-    <aside className="sidebar op-sidebar client-auth-sidebar">
-      <div className="client-sidebar-brand">
-        <Link href="/dashboard" className="logo-link" aria-label={BRAND.name+' home'}><Wordmark size="sm" priority/></Link>
-      </div>
-
-      <div className="op-client-game-label"><span>L</span> LEAGUE OF LEGENDS</div>
-      <div className="op-client-nav-caption">YOUR WORKSPACE</div>
-
-      <nav className="op-nav client-primary-nav" aria-label="Main navigation">
-        <div className="op-nav-group">
-          {primary.map(([name,href,icon])=>{
-            const activeLink=isPrimaryActive(path,href);
-            return <Link className={activeLink?'active-nav':''} key={href} href={href}>
-              <span className="op-nav-icon">{icon}</span><span>{name}</span>{name==='Coach memory'&&tier==='PRO'&&<small className="client-nav-pro">PRO</small>}{activeLink&&<i/>}
-            </Link>;
-          })}
-        </div>
+  return <div className={'app-shell authenticated-client-shell '+(live?'is-live':'')}>
+    <aside className="sidebar" aria-label="Primary navigation">
+      <Link className="brand" href="/dashboard" aria-label="OP Climb home">
+        <span className="brand-mark">OP<span>↗</span></span>
+        <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
+      </Link>
+      <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
+      <p className="nav-caption">YOUR WORKSPACE</p>
+      <nav aria-label="Main navigation">
+        {primary.map(([name,href,icon])=>{
+          const activeLink=isPrimaryActive(path,href);
+          return <Link className={'nav-link '+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
+            <span aria-hidden="true">{icon}</span><span>{name}</span>{name==='Coach memory'&&tier==='PRO'&&<span className="nav-extra">PRO</span>}
+          </Link>;
+        })}
       </nav>
-
-      <div className="client-sidebar-bottom">
+      <div className="sidebar-bottom">
         <SidebarTierStep tier={tier}/>
-        <Link className="client-sidebar-help" href="/client">◎ <span>Take a quick tour</span></Link>
-        <div className="client-mini-profile">
-          <span className="client-player-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}</span>
-          <div className="client-player-copy">
-            <strong>{active.gameName}{active.tagline}</strong>
-            <small>{active.rank} · {active.role} · CLIMB LV {xp.level}</small>
-            {accounts.length>1&&<select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline}</option>)}</select>}
-          </div>
-          <Link className="client-profile-settings" href="/settings" aria-label="Player settings">≡</Link>
+        <Link className="sidebar-help" href="/client"><span>◎</span> Take a quick tour</Link>
+        <div className="mini-profile">
+          <span className="player-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}</span>
+          <span><strong>{active.gameName}{active.tagline}</strong><small>{active.rank} · {active.role} · LV {xp.level}</small></span>
+          <Link className="icon-button" href="/settings" aria-label="Player settings">≡</Link>
         </div>
+        {accounts.length>1&&<select className="client-account-switch" aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline}</option>)}</select>}
         <SyncHealth sync={progression?.sync??null}/>
         <SessionBar/>
       </div>
     </aside>
 
-    <main className={'app-main op-main client-auth-main '+(live?'op-live-main':'')}>
-      <header className="op-broadcast-hud client-auth-topbar">
-        <div className="op-hud-brand">
-          <div className="op-hud-crumb"><span>Player workspace</span><i>/</i><strong>{title}</strong></div>
-        </div>
-        <div className="client-topbar-right">
-          <Link className="btn primary btn-small client-analyse-cta" href="/analyse">Analyse my games</Link>
-          <span className="client-plan-badge">{tier} PLAN</span>
-          <Link className="client-topbar-icon" href="/account" aria-label="Account">◉</Link>
-          <Link className="client-topbar-icon" href="/settings" aria-label="Settings">⚙</Link>
+    <div className="workspace">
+      <header className="topbar">
+        <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
+        <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
+        <div className="topbar-right">
+          <Link className="btn primary btn-small site-cta" href="/analyse">Analyse my games</Link>
+          <span className="demo-badge">{tier} PLAN</span>
+          <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
+          <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
         </div>
       </header>
 
-      <div className="op-screen-frame client-auth-frame">
-        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:children}
-      </div>
-    </main>
+      <main id="content" tabIndex={-1}>
+        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{children}</div>}
+      </main>
+    </div>
 
-    <nav className="mobile-nav"><div>{mobile.map(([name,href])=><Link className={isPrimaryActive(path,href)?'active':''} key={href} href={href}>{name}</Link>)}</div></nav>
+    <nav className="mobile-nav" aria-label="Mobile navigation">{mobile.map(([name,href])=><Link className={isPrimaryActive(path,href)?'active':''} key={href} href={href}>{name}</Link>)}</nav>
     {progressToast&&<div className={'op-progress-toast '+(progressToast.kind==='LEVEL'?'is-level':'')} role="status">
       <span>{progressToast.kind==='LEVEL'?'LEVEL UP':'PROGRESSION UPDATED'}</span>
       <b>{progressToast.title}</b>
