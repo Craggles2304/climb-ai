@@ -2,6 +2,7 @@ import type {IssueCategory,Role} from '@/lib/types';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {loadCoachMemories} from './playerLearningRepository';
 import {ensureLearningModelCurrent} from './proLearningRepository';
+import {METRIC_TIER,canUseMetric,type CoachingMetricKey,type SubscriptionTier} from '@/lib/subscription';
 export type CoachAuthorityTask={title:string;category:IssueCategory;metric:string;progress:number;target:string;gameRule:string;priority:number};
 export type CoachAuthority={accountId:string|null;role:Role|null;tasks:CoachAuthorityTask[];primary:CoachAuthorityTask|null;latestPro:any|null;proMetric:any|null;memories:any[];learningProfile:any|null;selectedRoleProfile:any|null};
 const ACTIVE=new Set(['ACTIVE','EVIDENCE_BUILDING']);
@@ -34,6 +35,30 @@ export async function loadCoachAuthority(db:any,userId:string,requestedAccountId
   const primary=tasks[0]??null;
   const proMetric=primary?.metric&&latestPro?.metrics?.[primary.metric]?latestPro.metrics[primary.metric]:weakestActionable(latestPro);
   return{accountId,role,tasks,primary,latestPro,proMetric,memories,learningProfile,selectedRoleProfile};
+}
+
+
+export function authorityForTier(authority:CoachAuthority,tier:SubscriptionTier):CoachAuthority{
+  const metrics=authority.latestPro?.metrics??{};
+  const allowedMetrics=Object.fromEntries(Object.entries(metrics).filter(([key])=>{
+    if(!(key in METRIC_TIER))return true;
+    return canUseMetric(tier,key as CoachingMetricKey);
+  }));
+  const latestPro=authority.latestPro?{
+    ...authority.latestPro,
+    metrics:allowedMetrics,
+    ...(tier==='PRO'?{}:{fingerprint:null,historicalProfile:null}),
+  }:null;
+  const primaryMetric=authority.primary?.metric&&allowedMetrics[authority.primary.metric]?allowedMetrics[authority.primary.metric]:weakestActionable(latestPro);
+  if(tier==='PRO')return{...authority,latestPro,proMetric:primaryMetric};
+  return{
+    ...authority,
+    latestPro,
+    proMetric:primaryMetric,
+    memories:[],
+    learningProfile:null,
+    selectedRoleProfile:null,
+  };
 }
 
 function toTask(payload:any):CoachAuthorityTask|null{if(!payload?.title||!payload?.metric)return null;return{title:String(payload.title),category:String(payload.category||'CONSISTENCY') as IssueCategory,metric:String(payload.metric),progress:Number(payload.progress||0),target:String(payload.target||''),gameRule:String(payload.gameRule||''),priority:Number(payload.priority||50)}}function weakestActionable(analysis:any){const blocked=new Set(['op_score','decision_fingerprint','champion_identity','historical_leak_rate']);return Object.values(analysis?.metrics??{}).filter((metric:any)=>metric&&typeof metric.score==='number'&&!blocked.has(metric.key)&&!['UNAVAILABLE','BUILDING'].includes(metric.status)).sort((a:any,b:any)=>a.score-b.score)[0]??null}
