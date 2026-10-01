@@ -217,31 +217,86 @@ function renderDeepRead(team,set){
   return true;
 }
 
+function renderTeamBoard(team,champion){
+  const renderSide=(id,rows,ours)=>{
+    const root=document.getElementById(id);
+    if(!root)return;
+    root.replaceChildren();
+    const list=Array.isArray(rows)?rows.slice(0,5):[];
+    const values=list.length?list:Array.from({length:5},()=>null);
+    values.forEach((pick,index)=>{
+      const card=document.createElement('article');
+      const name=String(pick?.name||'PENDING').trim();
+      const role=normalizedRole(pick?.role||'')||['TOP','JUNGLE','MID','ADC','SUPPORT'][index]||'';
+      const mine=ours&&name&&champion&&name.toUpperCase()===champion.toUpperCase();
+      card.className='op-team-pick'+(mine?' you':'');
+      const roleNode=document.createElement('span');roleNode.textContent=role||'ROLE';
+      const nameNode=document.createElement('b');nameNode.textContent=name||'PENDING';
+      card.append(roleNode,nameNode);root.appendChild(card);
+    });
+  };
+  const ours=Array.isArray(team?.ourTeam)?team.ourTeam:team?.rememberPlan?.draftTeams?.ours||[];
+  const theirs=Array.isArray(team?.theirTeam)?team.theirTeam:team?.rememberPlan?.draftTeams?.theirs||[];
+  renderSide('opOurTeamPicks',ours,true);
+  renderSide('opTheirTeamPicks',theirs,false);
+  const ourState=document.getElementById('opOurTeamState');
+  const theirState=document.getElementById('opTheirTeamState');
+  if(ourState)ourState.textContent=ours.length>=5?'5/5 LOCKED':String(ours.length)+'/5 KNOWN';
+  if(theirState)theirState.textContent=theirs.length>=5?'5/5 LOCKED':String(theirs.length)+'/5 KNOWN';
+}
+
 function renderAdaptiveBuild(team){
   const root=document.getElementById('opAdaptiveBuild');
   const grid=document.getElementById('opAdaptiveBuildGrid');
   const read=document.getElementById('opAdaptiveBuildRead');
   const build=team?.adaptiveBuild||team?.rememberPlan?.adaptiveBuild||null;
-  if(!root||!grid){return false}
-  const items=[...(Array.isArray(build?.core)?build.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null].filter(Boolean);
-  root.classList.toggle('hidden',items.length<2);
-  if(items.length<2)return false;
+  if(!root||!grid)return false;
+
+  const unique=[];
+  const seen=new Set();
+  const add=item=>{if(!item||seen.has(item.id))return;seen.add(item.id);unique.push(item)};
+  (Array.isArray(build?.core)?build.core.slice(0,2):[]).forEach(add);
+  add(build?.draftItem||null);
+  add(build?.finish||null);
+  add(build?.boots||null);
+
+  root.classList.toggle('hidden',unique.length<2);
+  if(unique.length<2)return false;
+
   grid.replaceChildren();
-  items.forEach((item,index)=>{
+  let coreIndex=0;
+  unique.slice(0,5).forEach(item=>{
     const card=document.createElement('article');
     card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'');
     card.title=String(item?.why||'').trim();
+
     const img=document.createElement('img');
     img.alt='';
     img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
+
     const copy=document.createElement('div');
     const label=document.createElement('span');
-    label.textContent=item?.slot==='CORE'?('CORE '+String(index+1)):item?.slot==='DRAFT'?'VS THIS TEAM':item?.slot==='BOOTS'?'BOOTS':String(item?.slot||'ITEM');
+    if(item?.slot==='CORE'){coreIndex+=1;label.textContent='CORE '+String(coreIndex)}
+    else if(item?.slot==='DRAFT')label.textContent='DRAFT ANSWER';
+    else if(item?.slot==='FINISH')label.textContent='NEXT DAMAGE';
+    else if(item?.slot==='BOOTS')label.textContent='BOOTS';
+    else label.textContent=String(item?.slot||'ITEM');
+
     const name=document.createElement('strong');
     name.textContent=String(item?.name||'ITEM').toUpperCase();
-    copy.append(label,name);card.append(img,copy);grid.appendChild(card);
+
+    const why=document.createElement('small');
+    why.textContent=oneLine(item?.why,82)||'Fits this champion and enemy draft.';
+
+    copy.append(label,name,why);card.append(img,copy);grid.appendChild(card);
   });
-  if(read)read.textContent=String(build?.read||build?.rule||'').toUpperCase();
+
+  if(read){
+    const draft=build?.draftItem
+      ?'DRAFT ANSWER · '+String(build.draftItem.name||'TECH')+' — '+String(build.draftItem.why||'')
+      :'NO FORCED TECH ITEM · KEEP THE CORE DAMAGE PATH';
+    read.textContent=[String(build?.read||'').toUpperCase(),draft.toUpperCase()].filter(Boolean).join('  //  ');
+  }
   return true;
 }
 
@@ -257,6 +312,7 @@ function renderMissionReminders(state){
   const mission=baselineReady&&Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
   const visible=['CHAMP_SELECT','RECORDING'].includes(phase)&&Boolean(team||matchup||mission);
   section.classList.toggle('hidden',!visible);
+  section.classList.toggle('op-phase-live',phase==='RECORDING');
   if(!visible)return;
 
   const statusCopy=document.getElementById('statusCopy');
@@ -277,6 +333,9 @@ function renderMissionReminders(state){
   set('opRole',role?`${champion} · ${role}`:`${champion} · ROLE NOT CONFIRMED`);
   set('opOurIdentity',oneLine(team?.ourIdentity,40)||'FORMING');
   set('opTheirIdentity',oneLine(team?.theirIdentity,40)||'FORMING');
+  renderTeamBoard(team,champion);
+  const threatNames=Array.isArray(team?.compositionRead?.enemyThreats)?team.compositionRead.enemyThreats:[];
+  set('opThreatNames',threatNames.length?'WATCH: '+threatNames.slice(0,3).join(' / ').toUpperCase():'');
   set('opStep1Label',labels[0]);set('opStep2Label',labels[1]);set('opStep3Label',labels[2]);set('opStep4Label',labels[3]);
   set('opYourJob',oneLine(team?.yourJob,125)||'PLAY YOUR ROLE INSIDE THE TEAM PLAN');
   set('opEarly',openingCommand(team,matchup,role));
@@ -297,13 +356,13 @@ function renderMissionReminders(state){
   toggle('opStrategyLock',paid);
   toggle('opRoleWin',!hasRoleWin);
   toggle('opCompPlanChip',!hasRoleWin);
-  toggle('opJob',hasRoleWin);
+  toggle('opJob',false);
   toggle('opSimpleFlow',hasRoleWin);
-  toggle('opPaidWin',!paid||hasRoleWin);
+  toggle('opPaidWin',!paid);
   toggle('opPaidLoss',!paid);
   toggle('opDeepRead',!hasDeep);
   if(paid){
-    if(!hasRoleWin)set('opYourWin',ourWinCommand(team,matchup));
+    set('opYourWin',ourWinCommand(team,matchup));
     set('opVsTeam',theirWinCommand(team));
   }
 }
