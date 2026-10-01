@@ -158,6 +158,22 @@ export default function Home(){
   const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
   const missionProof=activeMission?missionSummary(activeMission):null;
   const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
+  const memoryGenes=[
+    {id:'lane',label:'Laning',hint:'Trades, spacing, recalls',categories:['LANING','TRADING','RECALL_TIMING']},
+    {id:'wave',label:'Waves & CS',hint:'Wave states, farming, resources',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
+    {id:'vision',label:'Vision & map',hint:'Vision, tracking, map checks',categories:['VISION','MAP_AWARENESS']},
+    {id:'objectives',label:'Objectives',hint:'Objectives, tempo, conversion',categories:['OBJECTIVES','TEMPO']},
+    {id:'fights',label:'Teamfights',hint:'Positioning, targets, survival',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
+    {id:'consistency',label:'Consistency',hint:'Repeat the read under pressure',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS']},
+  ].map(gene=>{
+    const geneTasks=tasks.filter(task=>gene.categories.includes(task.category));
+    const score=geneTasks.length?Math.round(geneTasks.reduce((sum,task)=>sum+Math.max(0,Math.min(100,task.progress||0)),0)/geneTasks.length):0;
+    const mastered=geneTasks.filter(task=>task.status==='MASTERED').length;
+    return{...gene,score,mastered,total:geneTasks.length};
+  });
+  const dnaStrength=Math.round(memoryGenes.reduce((sum,gene)=>sum+gene.score,0)/memoryGenes.length);
+  const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
+  const learningMemories=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
 
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
@@ -220,6 +236,64 @@ export default function Home(){
           <Link className="client-loop-card" href="/live"><span className="step">01 · PREPARE</span><h3>Know your job.</h3><p>Open the Match room before queueing and carry one useful rule into the game.</p><span className="link">Prepare next game →</span></Link>
           <Link className="client-loop-card" href="/analyse"><span className="step">02 · REVIEW</span><h3>Find the decision.</h3><p>Use your real match evidence to understand what held, what broke and what matters next.</p><span className="link">Review my games →</span></Link>
           <Link className="client-loop-card" href="/coach"><span className="step">03 · REMEMBER</span><h3>Build coaching memory.</h3><p>Your coach carries the thread across games so each answer starts from your development history.</p><span className="link">Open Coach memory →</span></Link>
+        </div>
+      </section>
+
+      <section className="client-memory-section" id="coach-memory">
+        <header className="client-memory-head">
+          <div>
+            <div className="eyebrow">THE OP CLIMB DIFFERENCE / SEASON-LONG COACHING</div>
+            <h2>A coach that remembers you.</h2>
+            <p>Your last game is one chapter. Your development is the whole story.</p>
+          </div>
+          <Link className="btn secondary" href="/coach">OPEN FULL COACH MEMORY →</Link>
+        </header>
+
+        <section className="client-dna-panel">
+          <div className="client-dna-visual" aria-label="Game DNA based on your real development plan">
+            <div className="client-dna-title"><span>GAME DNA</span><strong>{active.gameName}{active.tagline}</strong></div>
+            <div className="client-dna-helix" aria-hidden="true">
+              {memoryGenes.map((gene,index)=><div className="client-dna-rung" key={gene.id} style={{'--dna-progress':gene.score+'%','--dna-order':index} as React.CSSProperties}><i/><b/><span/></div>)}
+            </div>
+            <div className="client-dna-score"><b>{dnaStrength}%</b><span>DNA strength</span><small>{masteredMemories} memories · {learningMemories} learning</small></div>
+          </div>
+          <div className="client-dna-side">
+            <div className="client-section-head"><div><span className="eyebrow">YOUR GAME DNA · MEMORY</span><h3>Every mission writes to memory.</h3></div><span className="client-plan-badge">REAL DATA</span></div>
+            <p>Each part of your game strengthens as missions move from active practice into repeatable evidence. Mastered missions stay visible as memory rather than disappearing.</p>
+            <div className="client-dna-genes">
+              {memoryGenes.map(gene=><div className="client-dna-gene" key={gene.id}>
+                <i style={{width:gene.score+'%'}}/>
+                <div><strong>{gene.label}</strong><small>{gene.hint}</small></div>
+                <b>{gene.score}%</b>
+              </div>)}
+            </div>
+          </div>
+        </section>
+
+        <div className="client-memory-grid">
+          <article className="client-memory-timeline-card">
+            <div className="client-section-head"><h3>One habit. Your real context.</h3><span className="client-plan-badge">MEMORY</span></div>
+            <div className="client-memory-timeline">
+              <div><span>01</span><section><strong>Current focus</strong><p>{missionPlain?.name||'Build the first measurable focus.'} {missionPlain?.why||'OP CLIMB is waiting for enough real evidence to choose the next repeat.'}</p></section></div>
+              <div><span>02</span><section><strong>Evidence building</strong><p>{missionProof?missionProof.confirmed+' of '+missionProof.required+' proven reps currently support this mission.':'No proven reps yet. The next tracked game starts the evidence trail.'}</p></section></div>
+              <div><span>03</span><section><strong>Across games</strong><p>{matches.length?matches.length+' tracked games are available to test whether the same decision keeps appearing.':'Connect the Companion or add a game so the coach can compare the same decision across matches.'}</p></section></div>
+              <div><span>04</span><section><strong>Next test</strong><p>{activeMission&&activeMission.status==='MASTERED'?'This habit is mastered. The coach can now re-test it in a new situation before moving on.':'Carry the current rule into the next game, then check whether it held without adding more advice.'}</p></section></div>
+            </div>
+          </article>
+
+          <aside className="client-memory-carry-card">
+            <span className="eyebrow">WHAT THE COACH CARRIES FORWARD</span>
+            <h3>Not just your numbers.</h3>
+            <div className="client-memory-criteria">
+              <div><b>01</b><span>Recurring decision patterns</span></div>
+              <div><b>02</b><span>Your current focus and why it matters</span></div>
+              <div><b>03</b><span>Evidence that supports—or challenges—the read</span></div>
+              <div><b>04</b><span>When the habit holds without help</span></div>
+              <div><b>05</b><span>The next useful test, not a random tip</span></div>
+            </div>
+            <div className="client-memory-goal"><strong>The goal: need less help.</strong><p>Progress means you make the read yourself, even when the matchup or game state changes.</p></div>
+            <Link className="btn secondary" href="/coach">ASK MY COACH →</Link>
+          </aside>
         </div>
       </section>
 
