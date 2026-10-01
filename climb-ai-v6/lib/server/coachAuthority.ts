@@ -44,9 +44,15 @@ export function authorityForTier(authority:CoachAuthority,tier:SubscriptionTier)
     if(!(key in METRIC_TIER))return true;
     return canUseMetric(tier,key as CoachingMetricKey);
   }));
+  const allowedLeakSignals=(authority.latestPro?.leakSignals??[]).filter((signal:any)=>{
+    const key=String(signal?.key||'');
+    if(key in METRIC_TIER)return canUseMetric(tier,key as CoachingMetricKey);
+    return tier!=='FREE';
+  });
   const latestPro=authority.latestPro?{
     ...authority.latestPro,
     metrics:allowedMetrics,
+    leakSignals:allowedLeakSignals,
     ...(tier==='PRO'?{}:{fingerprint:null,historicalProfile:null}),
   }:null;
   const primaryMetric=authority.primary?.metric&&allowedMetrics[authority.primary.metric]?allowedMetrics[authority.primary.metric]:weakestActionable(latestPro);
