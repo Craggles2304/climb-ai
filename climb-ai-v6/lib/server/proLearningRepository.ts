@@ -3,7 +3,7 @@ import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import {adaptActiveFiveFromPostGameEvidence} from '@/lib/adaptiveIlpEvidence';
-import type {ILPTask,Role} from '@/lib/types';
+import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
 import {buildLearningJourney} from '@/lib/learningJourney';
@@ -25,6 +25,7 @@ import {patchChangesForHistory} from './lolPatchIntelligenceRepository';
 import {CURRENT_LEARNING_MODEL_VERSION,buildLearningModelHealth,learningModelNeedsRebuild,type LearningModelHealth} from '@/lib/learningModelVersion';
 import {LEAGUE_ROLES,buildRoleAwareLearningSummary,canonicalLeagueRole,globalLearningRows,rowsForRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {benchmarkTargetText} from '@/lib/rankMissionBenchmarks';
+import {ensureDnaDomain} from '@/lib/dnaDomain';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis;patch?:string|null;gameVersion?:string|null;patchContext?:Record<string,unknown>}
 
@@ -33,6 +34,7 @@ export interface PostGameIlpMission{
   title:string;
   status:string;
   progress:number;
+  dnaDomain:DnaDomain;
   category:string;
   gameRule:string;
   priority:number;
@@ -375,7 +377,7 @@ function ilpSyncSnapshot(tasks:ILPTask[],profile:ProLearningProfile,changes:stri
 }
 function toPostGameMission(task:ILPTask):PostGameIlpMission{
   const adaptive=(task as ILPTask&{adaptive?:{lastAction?:string}}).adaptive;
-  return{id:task.id,title:task.title,status:String(task.status||'ACTIVE'),progress:Number(task.progress||0),category:String(task.category||'CONSISTENCY'),gameRule:task.gameRule,priority:Number(task.priority??50),source:String(task.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null,roleScope:task.roleScope??null};
+  const stamped=ensureDnaDomain(task as ILPTask&{dnaDomain?:DnaDomain});return{id:stamped.id,title:stamped.title,status:String(stamped.status||'ACTIVE'),progress:Number(stamped.progress||0),dnaDomain:stamped.dnaDomain,category:String(stamped.category||'CONSISTENCY'),gameRule:stamped.gameRule,priority:Number(stamped.priority??50),source:String(stamped.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null,roleScope:stamped.roleScope??null};
 }
 
 function extractLeakRate(value:unknown){const match=String(value||'').match(/([\d.]+)/);return match?Number(match[1]):0}
