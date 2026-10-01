@@ -129,12 +129,22 @@ export default function Analysis(){
       </div>
       {strengths.length?<div className="ar-strength-grid">
         {strengths.slice(0,4).map(item=><article key={item.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.dnaDomain]} as CSSProperties)}>
-          <span>{dnaDomainLabel(item.dnaDomain)}</span>
+          <span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span>
           <h3>{item.title}</h3>
-          <strong>{item.value}</strong>
-          <small>Target · {item.target}</small>
-          <p>{item.detail}</p>
+          <div className="ar-strength-simple">
+            <b>WHAT YOU DID</b>
+            <p>{item.whatHappened}</p>
+          </div>
+          <div className="ar-strength-simple">
+            <b>WHY IT MATTERED</b>
+            <p>{item.whyItMattered}</p>
+          </div>
           <em>REPEAT THIS</em>
+          <details className="ar-strength-proof">
+            <summary>SHOW THE PROOF</summary>
+            <div><span>{item.technicalLabel}</span><strong>{item.value}</strong><small>Bar · {item.target} · {item.confidence} confidence</small></div>
+            {item.proof.length>0&&<ul>{item.proof.map(line=><li key={line}>{line}</li>)}</ul>}
+          </details>
         </article>)}
       </div>:<div className="ar-strength-empty">
         <b>No verified strength was strong enough to call yet.</b>
