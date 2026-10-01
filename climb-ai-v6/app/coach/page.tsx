@@ -8,9 +8,9 @@ import {useSubscription} from '@/components/SubscriptionContext';
 import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {missionSummary} from '@/lib/missionLoop';
-import {IssueCategory,Match} from '@/lib/types';
+import type {DnaDomain,IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
-import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -48,7 +48,7 @@ function Message({m}:{m:Msg}){
 }
 
 export default function Coach(){
-  const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
+  const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const [selectedDnaDomain,setSelectedDnaDomain]=useState<DnaDomain>('LANING');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
   const dnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
     const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
       c:DNA_DOMAIN_GENE[domain],
@@ -68,13 +68,49 @@ export default function Coach(){
     while(live.length<4)live.push({c:DNA_DOMAIN_GENE[domain],n:`${DNA_DOMAIN_LABELS[domain]} memory strand · unlock with PRO`,s:0});
     return live;
   }),[activeThree,tier]);
-  const previewGenes=useMemo(()=>DNA_DOMAINS.map(domain=>({
-    id:domain,
-    label:DNA_DOMAIN_LABELS[domain],
-    live:activeThree.some(task=>task.dnaDomain===domain),
-  })),[activeThree]);
   const mastered=tasks.filter(task=>task.status==='MASTERED');
+  const tierVisibleTasks=tier==='FREE'?activeThree.slice(0,1):activeThree;
+  const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
+  const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
+  const selectedMastered=tier==='PRO'?mastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
   const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
+  const strandGuide=<section className="dna-strand-guide panel panel-padding">
+    <div className="section-head dna-strand-guide-head">
+      <div>
+        <div className="eyebrow">EXPLORE YOUR SIX STRANDS</div>
+        <h3>What does each part of your DNA mean?</h3>
+      </div>
+      <small>Choose a strand to understand it, then open the missions that train it.</small>
+    </div>
+    <div className="dna-strand-tabs" role="tablist" aria-label="Game DNA strands">
+      {DNA_DOMAINS.map(domain=><button
+        key={domain}
+        type="button"
+        role="tab"
+        aria-selected={selectedDnaDomain===domain}
+        className={selectedDnaDomain===domain?'active':''}
+        onClick={()=>setSelectedDnaDomain(domain)}
+      >{DNA_DOMAIN_LABELS[domain]}</button>)}
+    </div>
+    <div className="dna-strand-explainer">
+      <div>
+        <span className="eyebrow">{DNA_DOMAIN_LABELS[selectedDnaDomain]}</span>
+        <h3>{selectedGuide.summary}</h3>
+        <p>{selectedGuide.purpose}</p>
+        <div className="dna-strand-subskills">{selectedGuide.subskills.map(skill=><span key={skill}>{skill}</span>)}</div>
+      </div>
+      <aside>
+        <span>YOUR CURRENT PLAN</span>
+        <b>{selectedVisibleTasks.length?selectedVisibleTasks.length+' active mission'+(selectedVisibleTasks.length===1?'':'s'):'No active mission'}</b>
+        <small>{tier==='PRO'
+          ?selectedMastered.length+' mastered mission'+(selectedMastered.length===1?'':'s')+' already stored in this strand.'
+          :tier==='PLUS'
+            ?'PLUS can show up to three current missions across the six strands. Long-term memory stays PRO.'
+            :'FREE shows your single current focus. All six strand explanations stay open so the system still makes sense.'}</small>
+        <Link className="btn primary" href={`/ilp?dna=${selectedDnaDomain}`}>OPEN IN MY CLIMB →</Link>
+      </aside>
+    </div>
+  </section>;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier)])},[active.id,priorityTitle,detail.tier]);
   useEffect(()=>{if(loadedAccount.current!==active.id||!messages.length)return;try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)))}catch{}},[active.id,messages]);
   async function send(t?:string){const text=(t??q).trim();if(!text||pending)return;const history=threadHistory(messages);const userMessage:Msg={who:'user',text};const activeTaskContext=activeThree.map(task=>({title:task.title,dnaDomain:task.dnaDomain,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule}));const useTrend=isTrendQuestion(text)&&UUID.test(active.id);setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));try{const endpoint=useTrend?'/api/coach/trend':'/api/coach';const payload=useTrend?{message:text,history,accountId:active.id,requestedGames:requestedTrendGames(text),activeTasks:activeTaskContext,rank:active.rank,role:active.role}:{message:text,history,accountId:active.id,context:{rank:active.rank,role:active.role,mission:activeThree[0]?.title,champions:active.champions,activeTasks:activeTaskContext,recent:summary}};const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await res.json() as CoachResponse;if(!res.ok)throw new Error(body.error||'Coach request failed.');const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough from your games to answer that properly yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES))}catch(error){const errorMessage:Msg={who:'ai',text:`I can’t pull that game evidence right now. Keep your current focus: “${activeThree[0]?.title||'play one tracked game'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES))}finally{setPending(false)}}
@@ -117,6 +153,7 @@ export default function Coach(){
           </div>
         </div>
         <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
+        {strandGuide}
         <div className="coach-dna-next panel panel-padding">
           <div>
             <div className="eyebrow">CURRENT EXPRESSION</div>
@@ -144,7 +181,9 @@ export default function Coach(){
           <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
         </div>
 
-        <div className="coach-preview-grid">
+        {strandGuide}
+
+        <div className="coach-preview-grid coach-preview-grid-single">
           <section className="panel panel-padding coach-preview-current">
             <div className="eyebrow">WHAT IS LIVE RIGHT NOW</div>
             <h3>{activeThree[0]?.title||'Play one tracked game'}</h3>
@@ -157,16 +196,6 @@ export default function Coach(){
             </div>
           </section>
 
-          <section className="panel panel-padding coach-preview-genes">
-            <div className="eyebrow">YOUR SIX DEVELOPMENT STRANDS</div>
-            <div className="coach-preview-gene-list">
-              {previewGenes.map(gene=><div className={gene.live?'is-live':'is-locked'} key={gene.id}>
-                <i/>
-                <span><strong>{gene.label}</strong><small>{gene.live?'Current measurable mission evidence':'No current mission in this strand'}</small></span>
-                <b>{gene.live?(tier==='FREE'?'BUILDING':'CURRENT'):'LOCKED MEMORY'}</b>
-              </div>)}
-            </div>
-          </section>
         </div>
 
         <section className="coach-preview-upgrade panel panel-padding">
