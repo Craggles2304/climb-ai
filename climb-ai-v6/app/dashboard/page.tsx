@@ -18,6 +18,7 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -121,9 +122,12 @@ function buildGameMissions(samples:Match[],role:Role,champion:string):MissionCar
 export default function Home(){
   const {active,isEmpty,profile}=useAccount();
   const {tier}=useSubscription();
-  const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier),[active.id,tier]);
+  const allTrackedMatches=useMemo(()=>matchesFor(active.id),[active.id]);
+  const matches=useMemo(()=>filterHistoryForTier(allTrackedMatches,tier),[allTrackedMatches,tier]);
+  const baselineGames=useMemo(()=>dnaBaselineGameCount(allTrackedMatches,active.role),[allTrackedMatches,active.role]);
+  const baselineReady=dnaBaselineReady(baselineGames);
   const {tasks}=useLearningPlan();
-  const leadTask=tasks.find(task=>task.status!=='MASTERED'&&task.status!=='PAUSED');
+  const leadTask=baselineReady?tasks.find(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'):undefined;
   const [mainChampion,setMainChampionState]=useState<string>('');
 
   useEffect(()=>{
@@ -154,7 +158,7 @@ export default function Home(){
     return{games:championMatches.length,winRate:Math.round(wins/championMatches.length*100),kda:round1((kills+assists)/Math.max(1,deaths)),csPerMin:round1(cspm)};
   },[championMatches]);
 
-  const planMissions=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
+  const planMissions=baselineReady?tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3):[];
 
   const recentMatches=matches.slice(0,3);
   const activeMission=planMissions[0]??leadTask;
@@ -165,7 +169,8 @@ export default function Home(){
     const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
       c:DNA_DOMAIN_GENE[domain],
       n:task.title,
-      s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
+      s:dnaTaskState(task),
+      p:dnaTaskProgress(task),
     }));
     while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0});
     return real;
@@ -193,8 +198,8 @@ export default function Home(){
         {mainChampion&&<img className="mission-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
         <div className="mission-copy">
           <div className="eyebrow">◎ YOUR NEXT GAME PLAN</div>
-          <h2>{missionPlain?.name||'Build the next'}<br/><em>{activeMission?'rep.':'useful focus.'}</em></h2>
-          <p><strong>{missionPlain?.success||'Your next tracked game creates the baseline.'}</strong><br/>{missionPlain?.why||'OP CLIMB turns your real match evidence into one clear decision to carry into queue.'}</p>
+          <h2>{baselineReady?(missionPlain?.name||'Build the next'):'Build your baseline'}<br/><em>{baselineReady?(activeMission?'rep.':'useful focus.'):`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} games.`}</em></h2>
+          <p><strong>{baselineReady?(missionPlain?.success||'Your next tracked game creates the next useful rep.'):'Play normally for three tracked games.'}</strong><br/>{baselineReady?(missionPlain?.why||'OP CLIMB turns your real match evidence into one clear decision to carry into queue.'):'OP CLIMB is observing before it gives you personalised challenges. Your DNA stays at 0% until the baseline is complete.'}</p>
           <div className="mission-actions">
             <Link className="btn primary" href="/live">Open my match plan →</Link>
             <Link className="pin-btn" href="/ilp" aria-label="Open my climb">⌖</Link>
@@ -211,7 +216,7 @@ export default function Home(){
         </div>
         <div className="rank-progress">
           <div className="progress-track"><span style={{width:(activeMission?.progress??0)+'%'}}/></div>
-          <div className="between" style={{marginTop:8}}><small>Current focus</small><small>{activeMission?activeMission.progress+'%':'Building'}</small></div>
+          <div className="between" style={{marginTop:8}}><small>{baselineReady?'Current focus':'DNA baseline'}</small><small>{baselineReady?(activeMission?activeMission.progress+'%':'Building'):`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</small></div>
         </div>
         <div className="rank-footer">
           <div><b className="mint">{matches.length||'—'}</b><small>Tracked games</small></div>
@@ -221,7 +226,7 @@ export default function Home(){
     </div>
 
     <div className="metric-row">
-      <div className="panel metric"><span className="metric-icon">◎</span><div><div className="value">{activeMission?activeMission.progress+'%':'—'}</div><p>Current focus</p></div></div>
+      <div className="panel metric"><span className="metric-icon">◎</span><div><div className="value">{baselineReady?(activeMission?activeMission.progress+'%':'—'):'0%'}</div><p>{baselineReady?'Current focus':'DNA baseline'}</p></div></div>
       <div className="panel metric"><span className="metric-icon">✓</span><div><div className="value">{missionProof?missionProof.confirmed+'/'+missionProof.required:'—'}</div><p>Proven reps</p></div></div>
       <div className="panel metric"><span className="metric-icon">↗</span><div><div className="value">{championStats.games?championStats.csPerMin:'—'}</div><p>CS / min · {mainChampion||'main'}</p></div></div>
       <div className="panel metric"><span className="metric-icon">◈</span><div><div className="value">{tier==='PRO'?masteredMemories:tier==='PLUS'?'90D':'7D'}</div><p>{tier==='PRO'?'Coaching memories':'History window'}</p></div></div>
@@ -257,7 +262,7 @@ export default function Home(){
       {tier==='PRO'?<section className="panel panel-padding memory-card" id="coach-memory">
         <div className="eyebrow" style={{color:'var(--gold)'}}>YOUR GAME DNA · PRO</div>
         <h2>Your coach shouldn’t start from zero.</h2>
-        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} missions={dnaMissions}/></div>
+        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
         <div className="memory-mini"><span>Memories banked<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
         <p>See the patterns your coach is carrying forward, what has stuck and what gets tested next.</p>
         <Link className="btn gold" href="/coach">Open Coach →</Link>
