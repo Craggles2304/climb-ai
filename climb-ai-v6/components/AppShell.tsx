@@ -37,7 +37,7 @@ const routeTitle=(path:string)=>{
   if(path==='/coach')return'COACH';
   if(path==='/live')return'COMPANION';
   if(path==='/analyse'||path.startsWith('/analyse/'))return'MY GAMES';
-  if(path==='/ilp')return'MY PROGRESS';
+  if(path==='/ilp')return'MY CLIMB';
   if(path==='/validation')return'VALIDATION LAB';
   if(path==='/advanced-statistics')return'ADVANCED';
   if(path==='/progress')return'ADVANCED PROGRESS';
@@ -98,6 +98,11 @@ export function AppShell({children}:{children:React.ReactNode}){
   const latestLearningAt=progression?.sync.latestMatchAt??null;
   const latestLearningRecent=Boolean(latestLearningAt&&Date.now()-Date.parse(latestLearningAt)<6*60*60*1000);
   const showLearningReceipt=Boolean(latestLearningMatch&&latestLearningRecent&&seenLearningMatch!==latestLearningMatch);
+  const acknowledgeLearningMatch=()=>{
+    if(!latestLearningMatch)return;
+    try{localStorage.setItem('op:learning-receipt:seen:'+active.id,latestLearningMatch)}catch{}
+    setSeenLearningMatch(latestLearningMatch);
+  };
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
@@ -225,11 +230,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     {showLearningReceipt&&<aside className="op-learning-receipt" role="status" style={latestLearning[0]?({'--strand-color':DNA_DOMAIN_COLORS[latestLearning[0].task.dnaDomain]} as CSSProperties):undefined}>
       <div className="op-learning-receipt-head">
         <div><span>GAME COMPLETE · LEARNING UPDATED</span><strong>{progression?.sync.latestMatchChampion||'LATEST GAME'} · {progression?.sync.latestMatchRole||active.role}</strong></div>
-        <button type="button" aria-label="Dismiss learning update" onClick={()=>{
-          if(!latestLearningMatch)return;
-          try{localStorage.setItem('op:learning-receipt:seen:'+active.id,latestLearningMatch)}catch{}
-          setSeenLearningMatch(latestLearningMatch);
-        }}>×</button>
+        <button type="button" aria-label="Dismiss learning update" onClick={acknowledgeLearningMatch}>×</button>
       </div>
       <div className="op-learning-receipt-body">
         <h2>{latestLearning.length
@@ -248,8 +249,8 @@ export function AppShell({children}:{children:React.ReactNode}){
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
       </div>
       <div className="op-learning-receipt-actions">
-        <Link className="btn primary" href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE WHAT I LEARNED →</Link>
-        {latestLearningMatch&&<Link className="btn secondary" href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
+        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE WHAT I LEARNED →</Link>
+        {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
       </div>
     </aside>}
     <BetaReporter/>
