@@ -4730,3 +4730,15 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ar-strengths-head,.ip-game-strengths-head{align-items:flex-start;flex-direction:column}
   .ar-strength-grid,.ip-game-strengths>div:last-child{grid-template-columns:1fr}
 }
+
+
+.op-learning-strength-count{
+  margin-top:10px;
+  padding:8px 10px;
+  border:1px solid rgba(182,246,107,.22);
+  border-radius:8px;
+  background:rgba(182,246,107,.045);
+  color:#b6f66b;
+  font:900 8px/1.35 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.07em;
+}
