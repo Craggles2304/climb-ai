@@ -65,7 +65,8 @@
     previewTier=String(input.tier||previewTier).toUpperCase().slice(0,12);
     playerLabel=String(input.player||playerLabel).slice(0,48);
     baselineRequired=Math.max(1,Math.round(Number(input.baselineRequired)||3));
-    baselineGames=Math.max(0,Math.round(Number(input.baselineGames)??baselineRequired));
+    const incomingBaselineGames=Number(input.baselineGames);
+    baselineGames=Number.isFinite(incomingBaselineGames)?Math.max(0,Math.round(incomingBaselineGames)):baselineRequired;
     baselineMode=baselineGames<baselineRequired;
     START=rows;
     missions=fresh();
@@ -137,7 +138,7 @@
         <div class="dna-tip" hidden></div>
       </div>
       <div class="dna-side">
-        <div class="section-head"><span class="eyebrow accent">${baselineMode?'YOUR GAME DNA · BUILDING':previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?'0 / 3':previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
+        <div class="section-head"><span class="eyebrow accent">${baselineMode?'YOUR GAME DNA · BUILDING':previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?`${Math.min(baselineGames,baselineRequired)} / ${baselineRequired}`:previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
         <h2 id="dna-title">${baselineMode?'Three games before your DNA begins.':previewMode?'See what your DNA could become.':'Every proven rep grows your DNA.'}</h2>
         <p class="dna-intro">${baselineMode?'Games 1–3 are observation. OP CLIMB uses them to learn your starting habits and choose challenges from your actual play. Nothing is coloured in before there is enough evidence.':previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a part of your game. Challenges come from your own matches, and every proven rep adds visible growth. Mastered behaviours stay written into the strand.'}</p>
         <div data-dna-side>${sideHTML()}</div>
