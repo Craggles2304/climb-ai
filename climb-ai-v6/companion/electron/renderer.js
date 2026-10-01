@@ -128,7 +128,8 @@ function syncSettingsVisibility(){
 
 function renderQuietMode(state,visible){
   const section=ensureQuietMode();
-  setHidden(section,!visible);
+  const hasLockedPlan=Boolean(state?.teamPlan?.adaptiveBuild||state?.teamPlan?.ourWinCondition||state?.teamPlan?.roleWinCondition);
+  setHidden(section,!visible||hasLockedPlan);
   if(!visible)return;
   const matchup=state?.matchup||null;
   const role=String(matchup?.role||matchup?.plan?.role||'').toUpperCase();
