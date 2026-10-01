@@ -48,53 +48,30 @@ function Message({m}:{m:Msg}){
 
 export default function Coach(){
   const {active}=useAccount();const {tier}=useSubscription();const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role,tier]);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
-    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
-      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
-      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
-      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
-      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
-      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
-      {id:'mind',label:'Mindset',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
-    ];
-    return defs.flatMap(def=>{
-      const real=tasks.filter(task=>def.categories.includes(task.category)).slice(0,4).map(task=>({
-        c:def.id,
-        n:task.title,
-        s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
-      }));
-      while(real.length<4)real.push({c:def.id,n:`Awaiting next ${def.label} mission`,s:0});
-      return real;
-    });
-  },[tasks]);
-  const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>{
-    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
-      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
-      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
-      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
-      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
-      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
-      {id:'mind',label:'Consistency',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
-    ];
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
+    const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
+      c:DNA_DOMAIN_GENE[domain],
+      n:task.title,
+      s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
+    }));
+    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0});
+    return real;
+  }),[tasks]);
+  const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
     const allowed=tier==='FREE'?activeThree.slice(0,1):activeThree.slice(0,3);
-    return defs.flatMap(def=>{
-      const live=allowed.filter(task=>def.categories.includes(task.category)).slice(0,2).map(task=>({
-        c:def.id,
-        n:task.title,
-        s:(tier==='PLUS'&&task.progress>=100?2:1) as 0|1|2|3,
-      }));
-      while(live.length<4)live.push({c:def.id,n:`${def.label} memory strand · unlock with PRO`,s:0});
-      return live;
-    });
-  },[activeThree,tier]);
-  const previewGenes=useMemo(()=>[
-    {id:'lane',label:'Laning',hint:'Trades, spacing, recalls',categories:['LANING','TRADING','RECALL_TIMING']},
-    {id:'wave',label:'Waves & CS',hint:'Wave states, farming, resources',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
-    {id:'vision',label:'Vision & map',hint:'Vision, tracking, map checks',categories:['VISION','MAP_AWARENESS']},
-    {id:'obj',label:'Objectives',hint:'Objectives, tempo, conversion',categories:['OBJECTIVES','TEMPO']},
-    {id:'fight',label:'Teamfights',hint:'Positioning, targets, survival',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
-    {id:'mind',label:'Consistency',hint:'Repeat the read under pressure',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
-  ].map(gene=>({...gene,live:activeThree.some(task=>gene.categories.includes(task.category))})),[activeThree]);
+    const live=allowed.filter(task=>task.dnaDomain===domain).slice(0,2).map(task=>({
+      c:DNA_DOMAIN_GENE[domain],
+      n:task.title,
+      s:(tier==='PLUS'&&task.progress>=100?2:1) as 0|1|2|3,
+    }));
+    while(live.length<4)live.push({c:DNA_DOMAIN_GENE[domain],n:`${DNA_DOMAIN_LABELS[domain]} memory strand · unlock with PRO`,s:0});
+    return live;
+  }),[activeThree,tier]);
+  const previewGenes=useMemo(()=>DNA_DOMAINS.map(domain=>({
+    id:domain,
+    label:DNA_DOMAIN_LABELS[domain],
+    live:activeThree.some(task=>task.dnaDomain===domain),
+  })),[activeThree]);
   const mastered=tasks.filter(task=>task.status==='MASTERED');
   const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier)])},[active.id,priorityTitle,detail.tier]);
@@ -184,7 +161,7 @@ export default function Coach(){
             <div className="coach-preview-gene-list">
               {previewGenes.map(gene=><div className={gene.live?'is-live':'is-locked'} key={gene.id}>
                 <i/>
-                <span><strong>{gene.label}</strong><small>{gene.hint}</small></span>
+                <span><strong>{gene.label}</strong><small>{gene.live?'Current measurable mission evidence':'No current mission in this strand'}</small></span>
                 <b>{gene.live?(tier==='FREE'?'BUILDING':'CURRENT'):'LOCKED MEMORY'}</b>
               </div>)}
             </div>
