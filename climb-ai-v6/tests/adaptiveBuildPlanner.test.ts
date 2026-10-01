@@ -143,3 +143,56 @@ test('draft plan exposes multiple static paths and an explicit champ-select lock
   assert.ok(plan.paths.some(path=>path.key==='VS_HEALING'));
   assert.ok(plan.boundary.includes('WILL NOT CHANGE DURING THE MATCH'));
 });
+
+
+test('knock-up heavy teams do not force a cleanse item that cannot answer the main threat',()=>{
+  const knockups=[
+    champion('Malphite',['Tank'],3,5,125,'Knocks up enemies.'),
+    champion('Wukong',['Fighter'],8,2,175,'Knocks up enemies.'),
+    champion('Yasuo',['Fighter'],8,2,175,'Knocks up enemies.'),
+  ];
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:[
+      enemy(knockups[0],'TOP'),enemy(knockups[1],'JUNGLE'),enemy(knockups[2],'MID'),
+      enemy(champion('Jinx',['Marksman'],9,1,525),'ADC'),
+      enemy(champion('Alistar',['Tank','Support'],2,3,125,'Knocks enemies up.'),'SUPPORT'),
+    ],items,
+  });
+  assert.ok(plan.enemyProfile.airborneCc>=3);
+  assert.equal(plan.enemyProfile.cleanseableCc,0);
+  assert.ok(!plan.draftItem?.flags.includes('CLEANSE'),JSON.stringify(plan.draftItem));
+});
+
+test('ADC core does not start with a situational defensive or cleanse item',()=>{
+  const ccTeam=[
+    enemy(champion('Leona',['Tank','Support'],2,3,125,'Stuns and roots enemies.'),'SUPPORT'),
+    enemy(champion('Lissandra',['Mage'],2,9,550,'Roots and stuns enemies.'),'MID'),
+    enemy(champion('Vi',['Fighter'],8,2,125,'Stuns the target.'),'JUNGLE'),
+    enemy(champion('Jinx',['Marksman'],9,1,525),'ADC'),
+    enemy(champion('Garen',['Fighter'],8,1,175),'TOP'),
+  ];
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],enemies:ccTeam,items,
+  });
+  assert.equal(plan.core.length,2);
+  assert.ok(plan.core.every(item=>!item.flags.some(flag=>['CLEANSE','REVIVE','SPELL_SHIELD','ANTI_HEAL'].includes(flag))),JSON.stringify(plan.core));
+});
+
+test('a generic mixed enemy team can leave the draft tech slot empty instead of inventing one',()=>{
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],
+    enemies:[
+      enemy(champion('Gnar',['Fighter'],6,3,400),'TOP'),
+      enemy(champion('Lee Sin',['Fighter'],8,2,125),'JUNGLE'),
+      enemy(champion('Orianna',['Mage'],2,9,525),'MID'),
+      enemy(champion('Jinx',['Marksman'],9,1,525),'ADC'),
+      enemy(champion('Bard',['Support'],3,7,500),'SUPPORT'),
+    ],items,
+  });
+  assert.ok(plan.core.length>=2);
+  assert.ok(plan.draftItem===null||plan.draftItem.context===undefined);
+});
