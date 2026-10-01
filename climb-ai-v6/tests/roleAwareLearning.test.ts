@@ -78,7 +78,7 @@ test('cross-role repeated patterns are labelled as global only after multiple ro
 });
 
 test('role-scoped tasks do not leak into another role while GLOBAL tasks do',()=>{
-  const base={id:'x',accountId:'a',title:'x',category:'CONSISTENCY',why:'x',gameRule:'x',metric:'x',target:'x',progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]} as ILPTask;
+  const base={id:'x',accountId:'a',title:'x',dnaDomain:'CONSISTENCY',category:'CONSISTENCY',why:'x',gameRule:'x',metric:'x',target:'x',progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]} as ILPTask;
   const adc={...base,roleScope:'ADC' as const,roleEvidence:['ADC' as const]};
   const jungle={...base,id:'y',roleScope:'JUNGLE' as const,roleEvidence:['JUNGLE' as const]};
   const global={...base,id:'z',roleScope:'GLOBAL' as const,roleEvidence:[]};
