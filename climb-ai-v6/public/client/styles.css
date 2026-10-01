@@ -434,3 +434,35 @@ body[data-client-tier="free"] .sidebar-plan{filter:saturate(.65)}
 @media(max-width:1100px){.dna-panel{grid-template-columns:1fr}.dna-visual{min-height:460px}}
 @media(max-width:560px){.dna-panel{padding:16px;gap:18px}.dna-visual{min-height:470px}.dna-seq{display:none}.dna-gene{grid-template-columns:12px minmax(0,1fr) auto 40px;gap:10px}.dna-gene-name small{display:none}}
 @media(prefers-reduced-motion:reduce){.dna-seq i{animation:none}}
+
+
+/* DNA baseline: zero means zero. No strand colour before three tracked games. */
+.dna-panel.dna-baseline .dna-canvas{
+  filter:grayscale(1) saturate(0);
+  opacity:.62;
+}
+.dna-panel.dna-baseline .dna-gene,
+.dna-panel.dna-baseline .dna-detail{
+  --c:#7e898d!important;
+}
+.dna-panel.dna-baseline .dna-gene{
+  cursor:default;
+  opacity:.72;
+}
+.dna-panel.dna-baseline .dna-gene .dna-dot,
+.dna-panel.dna-baseline .dna-pips i{
+  filter:grayscale(1) saturate(0);
+}
+.dna-panel.dna-baseline .dna-strength>b,
+.dna-panel.dna-baseline .dna-strength span,
+.dna-panel.dna-baseline .dna-chip{
+  color:#a4afb2!important;
+}
+.dna-panel.dna-baseline .dna-bar>i{
+  width:0!important;
+  box-shadow:none!important;
+}
+.dna-panel.dna-baseline .dna-seq i{
+  background:#7e898d!important;
+  box-shadow:none!important;
+}
