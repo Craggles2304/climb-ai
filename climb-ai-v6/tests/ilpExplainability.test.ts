@@ -4,7 +4,7 @@ import {explainIlpTask} from '../lib/ilpExplainability';
 import type {ILPTask} from '../lib/types';
 
 const base=(overrides:Partial<ILPTask>={}):ILPTask=>({
-  id:'mission-1',accountId:'acct',title:'Stop the second death',category:'DEATHS',why:'Chain deaths are costing tempo',gameRule:'Recover first',metric:'OP PRO Fix Ladder',target:'3 clean games',progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],masteryRequired:3,successfulGames:0,...overrides,
+  id:'mission-1',accountId:'acct',title:'Stop the second death',dnaDomain:'CONSISTENCY',category:'DEATHS',why:'Chain deaths are costing tempo',gameRule:'Recover first',metric:'OP PRO Fix Ladder',target:'3 clean games',progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],masteryRequired:3,successfulGames:0,...overrides,
 });
 
 function adaptive(task:ILPTask,meta:Record<string,unknown>){return Object.assign(task,{adaptive:{managedBy:'POST_GAME_EVIDENCE',patternKey:'CHAIN_DEATH',confidence:82,recentSupportGames:3,recentWindow:5,recentOccurrences:4,totalSupportGames:6,cleanStreak:1,lastAction:'STRENGTHENED',...meta}})}
