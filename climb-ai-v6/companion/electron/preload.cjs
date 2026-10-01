@@ -222,12 +222,11 @@ function renderMissionReminders(state){
   const baseline=team?.dnaBaseline||null;
   const baselineReady=baseline?.ready!==false;
   const mission=baselineReady&&Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
-  const visible=['CHAMP_SELECT','RECORDING'].includes(phase)&&Boolean(team||matchup||mission);
+  const visible=phase==='CHAMP_SELECT'&&Boolean(team||matchup||mission);
   section.classList.toggle('hidden',!visible);
   if(!visible)return;
 
   const statusCopy=document.getElementById('statusCopy');
-  if(statusCopy&&phase==='RECORDING')statusCopy.textContent='Play normally. Follow the locked role plan; glance, then get your eyes back on League.';
   const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value};
   const toggle=(id,hidden)=>document.getElementById(id)?.classList.toggle('hidden',hidden);
   const role=roleFor(state,matchup);
