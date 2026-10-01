@@ -6,7 +6,7 @@ import {ILPTask,Match,MatchMetrics} from '../lib/types';
 let seq=0;
 function task(id:string,metric:string,priority:number):ILPTask{
   return {
-    id,accountId:'a',title:id,category:'FARMING',why:'',gameRule:'',metric,target:'',
+    id,accountId:'a',title:id,dnaDomain:'WAVES_CS',category:'FARMING',why:'',gameRule:'',metric,target:'',
     progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],priority,
     successfulGames:0,masteryRequired:3,
   };
