@@ -57,7 +57,7 @@ export default function Coach(){
       s:dnaTaskState(task),
       p:dnaTaskProgress(task),
     }));
-    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0});
+    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0,p:0});
     return real;
   }),[tasks]);
   const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
@@ -68,7 +68,7 @@ export default function Coach(){
       s:dnaTaskState(task),
       p:dnaTaskProgress(task),
     }));
-    while(live.length<4)live.push({c:DNA_DOMAIN_GENE[domain],n:`${DNA_DOMAIN_LABELS[domain]} memory strand · unlock with PRO`,s:0});
+    while(live.length<4)live.push({c:DNA_DOMAIN_GENE[domain],n:`${DNA_DOMAIN_LABELS[domain]} memory strand · unlock with PRO`,s:0,p:0});
     return live;
   }),[activeThree,tier]);
   const mastered=tasks.filter(task=>task.status==='MASTERED');
