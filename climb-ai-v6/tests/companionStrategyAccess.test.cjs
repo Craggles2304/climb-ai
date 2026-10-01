@@ -49,7 +49,7 @@ test('Companion keeps simple plan visible while paid structured match read is ga
   assert.ok(preload.includes('OUR WIN CONDITION'));
   assert.ok(preload.includes('THEY WIN IF'));
   assert.ok(preload.includes('opRoleWin'));
-  assert.match(preload,/toggle\('opPaidWin',!paid\|\|hasRoleWin\)/);
+  assert.match(preload,/toggle\('opPaidWin',!paid\)/);
   assert.match(preload,/toggle\('opPaidLoss',!paid\)/);
   assert.match(preload,/toggle\('opSimpleFlow',hasRoleWin\)/);
 });
