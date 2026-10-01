@@ -26,8 +26,11 @@
   ];
   let START = DEMO_START.map(row=>[...row]);
   let realMode = false;
+  let previewMode = false;
+  let previewTier = 'FREE';
   let playerLabel = 'KAI#EUW';
   const STATE = ['Not started','Learning','Learned','Memory'];
+  const stateLabel = s => previewMode ? (s===0?'Locked':s===1?'Current focus':s===2?'Current evidence':'Memory') : STATE[s];
   const KEY = 'opclimb-dna-v1';
   const FLASH_MS = 1600;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -55,6 +58,8 @@
       .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s)]);
     if(!rows.length)return;
     realMode=Boolean(input.real);
+    previewMode=Boolean(input.preview);
+    previewTier=String(input.tier||previewTier).toUpperCase().slice(0,12);
     playerLabel=String(input.player||playerLabel).slice(0,48);
     START=rows;
     missions=fresh();
@@ -78,6 +83,12 @@
 
   function evidence(m, i){
     const gene = catOf(m.c).label;
+    if(previewMode){
+      if(m.s === 0) return `Preview only. ${gene} stays dim until PRO can carry evidence across games and situations.`;
+      if(m.s === 1) return 'Current focus from your eligible coaching window. It is visible now, but it is not written into persistent memory.';
+      if(m.s === 2) return 'Current-game evidence is strong here. PRO tests whether the read transfers and still holds later.';
+      return 'Persistent memory is a PRO feature.';
+    }
     if(m.s === 0) return `Not started. It joins your DNA once the current ${gene} mission is learned.`;
     if(m.s === 1) return `Learning now: held in ${1 + (i * 7) % 3} of your last 5 games. Complete it to light up this rung.`;
     if(m.s === 2) return 'Learned: completed in 5 of 5 games. When it holds again later without a reminder, it locks into memory.';
@@ -89,31 +100,32 @@
     const c = catOf(m.c);
     const total = totalStrength();
     const done = count(3) === missions.length;
-    return `<div class="dna-strength"><b>${pct(total)}</b><div><span>DNA strength</span><div class="dna-bar"><i style="width:${pct(total)}"></i></div></div><small>${count(3)} memories · ${count(2)} learned · ${count(1)} learning · ${count(0)} to go</small></div>
+    const liveSignals=count(1)+count(2);
+    return `<div class="dna-strength"><b>${previewMode?liveSignals:pct(total)}</b><div><span>${previewMode?'live signals':'DNA strength'}</span><div class="dna-bar"><i style="width:${previewMode?Math.max(4,Math.round(total*100))+'%':pct(total)}"></i></div></div><small>${previewMode?`${count(0)} locked until PRO · ${previewTier} preview only`:`${count(3)} memories · ${count(2)} learned · ${count(1)} learning · ${count(0)} to go`}</small></div>
       <div class="dna-genes">${CATS.map(g => {
-        const ms = missions.filter(x => x.c === g.id), s = geneStrength(g.id);
-        return `<button class="dna-gene" type="button" data-dna-gene="${g.id}" aria-pressed="${focusGene === g.id}" style="--c:${g.color};--s:${s.toFixed(2)}" aria-label="${g.label}: ${pct(s)} strength, ${ms.filter(x => x.s === 3).length} memories"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true">${ms.map(x => `<i class="s${x.s}"></i>`).join('')}</span><b>${pct(s)}</b></button>`;
+        const ms = missions.filter(x => x.c === g.id), s = geneStrength(g.id), active = ms.some(x=>x.s>0);
+        return `<button class="dna-gene" type="button" data-dna-gene="${g.id}" aria-pressed="${focusGene === g.id}" style="--c:${g.color};--s:${s.toFixed(2)}" aria-label="${g.label}: ${previewMode?(active?'current signal':'locked preview'):`${pct(s)} strength, ${ms.filter(x => x.s === 3).length} memories`}"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true">${ms.map(x => `<i class="s${x.s}"></i>`).join('')}</span><b>${previewMode?(active?'LIVE':'LOCKED'):pct(s)}</b></button>`;
       }).join('')}</div>
-      <div class="dna-detail" style="--c:${c.color}" aria-live="polite"><div class="dna-detail-top"><span class="dna-chip">${c.label}</span><span class="dna-state s${m.s}">${STATE[m.s]}</span></div><h3>${m.n}</h3><p>${evidence(m, selected)}</p></div>
+      <div class="dna-detail" style="--c:${c.color}" aria-live="polite"><div class="dna-detail-top"><span class="dna-chip">${c.label}</span><span class="dna-state s${m.s}">${stateLabel(m.s)}</span></div><h3>${m.n}</h3><p>${evidence(m, selected)}</p></div>
       ${realMode?'':`<div class="dna-actions"><button class="btn primary" type="button" data-dna-act="complete"${done ? ' disabled' : ''}>${done ? 'DNA fully written' : 'Complete a mission <span class="dna-demo">demo</span>'}</button><button class="btn btn-small" type="button" data-dna-act="reset">Reset</button></div>`}`;
   }
 
   function panel(input){
     if(input)configure(input);
-    return `<section class="panel dna-panel" data-dna aria-labelledby="dna-title">
+    return `<section class="panel dna-panel${previewMode?' dna-is-preview':''}" data-dna aria-labelledby="dna-title">
       <div class="dna-visual">
-        <canvas class="dna-canvas" role="img" aria-label="Game DNA helix: six neon genes, one for each part of the game. Lit rungs are learned missions; pulsing rungs are locked into memory."></canvas>
-        <span class="dna-cap">GAME DNA <em>//</em> ${playerLabel}</span>
-        <span class="dna-seq"><i></i>${missions.length} MISSIONS SEQUENCED</span>
-        <div class="dna-legend" aria-hidden="true"><span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span></div>
+        <canvas class="dna-canvas" role="img" aria-label="${previewMode?'Game DNA preview showing current eligible signals and locked future strands.':'Game DNA helix: six neon genes, one for each part of the game. Lit rungs are learned missions; pulsing rungs are locked into memory.'}"></canvas>
+        <span class="dna-cap">${previewMode?'GAME DNA PREVIEW':'GAME DNA'} <em>//</em> ${playerLabel}</span>
+        <span class="dna-seq"><i></i>${previewMode?`${count(1)+count(2)} LIVE · ${count(0)} LOCKED`:`${missions.length} MISSIONS SEQUENCED`}</span>
+        <div class="dna-legend" aria-hidden="true">${previewMode?'<span><i class="s0"></i>Locked</span><span><i class="s1"></i>Current focus</span><span><i class="s2"></i>Current evidence</span><span><i class="s3"></i>PRO memory</span>':'<span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span>'}</div>
         <div class="dna-tip" hidden></div>
       </div>
       <div class="dna-side">
-        <div class="section-head"><span class="eyebrow accent">YOUR GAME DNA · MEMORY</span><span class="tag gold">Pro</span></div>
-        <h2 id="dna-title">Every mission writes to memory.</h2>
-        <p class="dna-intro">Each colour is a part of your game. Completing a mission lights up its rung. When it holds again in later games, it locks into memory and that part of the strand gets stronger.</p>
+        <div class="section-head"><span class="eyebrow accent">${previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
+        <h2 id="dna-title">${previewMode?'See what your DNA could become.':'Every mission writes to memory.'}</h2>
+        <p class="dna-intro">${previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a part of your game. Completing a mission lights up its rung. When it holds again in later games, it locks into memory and that part of the strand gets stronger.'}</p>
         <div data-dna-side>${sideHTML()}</div>
-        ${realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
+        ${previewMode?'<p class="footnote">Preview only: no persistent memories are being created on this plan.</p>':realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
       </div>
     </section>`;
   }
@@ -439,7 +451,7 @@
       if(i < 0){ tip.hidden = true; return; }
       const m = missions[i], g = catOf(m.c);
       tip.style.setProperty('--c', g.color);
-      tip.innerHTML = `<small>${g.label} · ${STATE[m.s]}</small><b>${m.n}</b>`;
+      tip.innerHTML = `<small>${g.label} · ${stateLabel(m.s)}</small><b>${m.n}</b>`;
       tip.hidden = false;
       tip.style.left = Math.min(e.clientX - r.left + 14, r.width - 230) + 'px';
       tip.style.top = Math.min(e.clientY - r.top + 14, r.height - 64) + 'px';
