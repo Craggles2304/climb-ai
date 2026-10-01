@@ -1,6 +1,7 @@
 import type {AnalysisReport,IssueCategory,Match,Mission,Signal} from './types';
 import type {ProConfidence,ProMatchAnalysis,ProMetric} from './riot/proAnalysis';
 import {leakMetricBoosts} from './proLeakWeighting';
+import {dnaDomainForTask} from './dnaDomain';
 
 type Candidate={key:string;metric:ProMetric;priority:number};
 
@@ -36,7 +37,7 @@ export function analyseProMatch(match:Match,analysis:ProMatchAnalysis):AnalysisR
   const facts=evidence.length?evidence:[metric.value,metric.summary].filter(Boolean);
   const primary:Signal={category:spec.category,severity:+severity.toFixed(2),confidence:+confidence.toFixed(2),facts,inference:metric.summary,suggestion:spec.suggestion};
   const target=Math.min(100,Math.round(score+10));
-  const mission:Mission={id:`m-${match.riotAccountId}-pro-${key}`,riotAccountId:match.riotAccountId,category:spec.category,title:spec.title,metric:key,target,unit:'PRO evidence score',gamesRequired:3,gamesCompleted:0,successfulGames:0,rules:spec.rules,status:'DISCOVER',createdAt:new Date().toISOString()};
+  const mission:Mission={id:`m-${match.riotAccountId}-pro-${key}`,riotAccountId:match.riotAccountId,dnaDomain:dnaDomainForTask({category:spec.category,metric:key,title:spec.title}),category:spec.category,title:spec.title,metric:key,target,unit:'PRO evidence score',gamesRequired:3,gamesCompleted:0,successfulGames:0,rules:spec.rules,status:'DISCOVER',createdAt:new Date().toISOString()};
   const scored=Object.values(analysis.metrics).filter((m):m is ProMetric=>Boolean(m&&typeof m.score==='number'&&m.status!=='UNAVAILABLE'));
   const performance=scored.length?Math.max(1,Math.min(10,+((scored.reduce((sum,m)=>sum+(m.score??0),0)/scored.length/10).toFixed(1)))):5;
   return {matchId:match.id,performance,good:positiveEvidence(analysis),primary,mission,summary:`${spec.title} is the highest-priority evidence-backed behaviour in this match. The target is improvement against your own current PRO evidence baseline, not a generic rank benchmark.`};
