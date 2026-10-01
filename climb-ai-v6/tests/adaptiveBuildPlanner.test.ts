@@ -190,7 +190,7 @@ test('a generic mixed enemy team can leave the draft tech slot empty instead of 
       enemy(champion('Diana',['Mage','Fighter'],3,9,150,'Dashes to a target.'),'JUNGLE'),
       enemy(champion('Orianna',['Mage'],2,9,525),'MID'),
       enemy(champion('Jinx',['Marksman'],9,1,525),'ADC'),
-      enemy(champion('Bard',['Support'],3,6,500,'Stuns a target.'),'SUPPORT'),
+      enemy(champion('Bard',['Support'],5,5,500,'Stuns a target.'),'SUPPORT'),
     ],items,
   });
   assert.ok(plan.core.length>=2);
