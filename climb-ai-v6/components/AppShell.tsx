@@ -212,7 +212,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
         <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
         <div className="topbar-right">
-          <Link className="btn primary btn-small site-cta" href="/analyse">Analyse my games</Link>
+          <Link className="btn primary btn-small site-cta" href="/ilp">See my progress</Link>
           <span className="demo-badge">{tier} PLAN</span>
           <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
           <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
@@ -253,7 +253,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
       </div>
       <div className="op-learning-receipt-actions">
-        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE WHAT I LEARNED →</Link>
+        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE MY PROGRESS →</Link>
         {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
       </div>
     </aside>}
