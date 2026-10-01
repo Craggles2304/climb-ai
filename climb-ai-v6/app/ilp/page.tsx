@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useMemo,useState} from 'react';
+import {useEffect,useMemo,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
@@ -17,7 +17,7 @@ import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
-import {DNA_DOMAINS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
+import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -91,7 +91,7 @@ export default function PlayerDevelopmentCentre(){
       <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
     </section>
 
-    <section className="ip-dna-filter panel panel-padding">
+    <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
           <div className="eyebrow">GAME DNA → MY CLIMB</div>
@@ -106,6 +106,7 @@ export default function PlayerDevelopmentCentre(){
           key={domain}
           type="button"
           className={selectedDomain===domain?'active':''}
+          style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
           onClick={()=>chooseDomain(domain)}
         >{DNA_DOMAIN_LABELS[domain]}</button>)}
       </div>
