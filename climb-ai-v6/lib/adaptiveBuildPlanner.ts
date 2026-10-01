@@ -82,7 +82,7 @@ function enemyProfile(enemies:AdaptiveBuildPlayer[]):AdaptiveEnemyProfile{
     const detail=enemy.detail;
     const type=damageType(detail.info);
     const role=normRole(enemy.role);
-    const threatWeight=role==='ADC'?1.45:role==='MID'?1.35:role==='JUNGLE'?1.15:role==='TOP'?1.05:role==='SUPPORT'?.72:1;
+    const threatWeight=role==='ADC'?1.45:role==='MID'?1.35:role==='JUNGLE'?1.15:role==='TOP'?1.05:role==='SUPPORT'?0.72:1;
     if(type==='PHYSICAL'){out.physical++;out.physicalThreat+=threatWeight}
     else if(type==='MAGIC'){out.magic++;out.magicThreat+=threatWeight}
     else{
@@ -247,7 +247,7 @@ export function buildAdaptiveItemPlan(input:{
     if(mage)return item.ap>0||item.flags.includes('MAGIC_PEN');
     return item.ad>0||item.ap>0||item.hp>0;
   });
-  const coreTechFlags=new Set(['CLEANSE','ANTI_HEAL','ANTI_SHIELD','STASIS','REVIVE','SPELL_SHIELD']);
+  const coreTechFlags=new Set(['CLEANSE','ANTI_HEAL','ANTI_SHIELD','ANTI_TANK','STASIS','REVIVE','SPELL_SHIELD']);
   const coreRanked=[...coreEligible].sort((a,b)=>{
     const aTech=a.flags.some(flag=>coreTechFlags.has(flag))?1:0;
     const bTech=b.flags.some(flag=>coreTechFlags.has(flag))?1:0;
