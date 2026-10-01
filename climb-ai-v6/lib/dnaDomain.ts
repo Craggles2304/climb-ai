@@ -18,6 +18,40 @@ export const DNA_DOMAIN_LABELS:Record<DnaDomain,string>={
   CONSISTENCY:'Consistency',
 };
 
+
+export const DNA_DOMAIN_GUIDE:Record<DnaDomain,{summary:string;purpose:string;subskills:string[]}>={
+  LANING:{
+    summary:'How you create, protect and convert advantages before the map opens up.',
+    purpose:'This strand reads your lane decisions: trades, matchup understanding, early positioning and whether you give away avoidable early deaths.',
+    subskills:['Trading','Matchups','Lane positioning','Early survival'],
+  },
+  WAVES_CS:{
+    summary:'How you control waves and turn safe resources into gold, recalls and item timings.',
+    purpose:'This strand tracks farming, wave states, recall timing, resource collection and whether your economy stays healthy after lane.',
+    subskills:['Farming','Wave management','Recall timing','Item timings'],
+  },
+  VISION_MAP:{
+    summary:'How well you gather and use information before you commit.',
+    purpose:'This strand measures map awareness, tracking and vision habits so your decisions are based on what is actually happening around you.',
+    subskills:['Map awareness','Vision','Tracking','Information use'],
+  },
+  OBJECTIVES:{
+    summary:'How you prepare for and convert pressure around the things that win the map.',
+    purpose:'This strand covers objective readiness, tempo and whether your waves, recalls and movement leave you ready for dragons, Herald, Baron and towers.',
+    subskills:['Objective setup','Tempo','Arrival timing','Pressure conversion'],
+  },
+  TEAMFIGHTS:{
+    summary:'How you position, survive and make decisions when teams collide.',
+    purpose:'This strand reads positioning, target selection, fight selection and death control so your mechanics happen from a playable position.',
+    subskills:['Positioning','Target selection','Fight selection','Death control'],
+  },
+  CONSISTENCY:{
+    summary:'Whether good decisions become habits that survive different games and situations.',
+    purpose:'This strand is about repeatability: recovery after mistakes, champion mastery, transferring a lesson into new situations and eventually doing it without a reminder.',
+    subskills:['Repeatability','Recovery','Transfer','Autonomy'],
+  },
+};
+
 export const DNA_DOMAIN_GENE:Record<DnaDomain,'lane'|'wave'|'vision'|'obj'|'fight'|'mind'>={
   LANING:'lane',
   WAVES_CS:'wave',
