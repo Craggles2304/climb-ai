@@ -2,9 +2,10 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
-import {PageHead} from '@/components/UI';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
+import {missionSummary} from '@/lib/missionLoop';
 import {IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 
@@ -44,6 +45,27 @@ function Message({m}:{m:Msg}){
 
 export default function Coach(){
   const {active}=useAccount();const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);const {tasks,addTask}=useLearningPlan();const activeThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
+    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
+      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
+      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
+      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
+      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
+      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
+      {id:'mind',label:'Mindset',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
+    ];
+    return defs.flatMap(def=>{
+      const real=tasks.filter(task=>def.categories.includes(task.category)).slice(0,4).map(task=>({
+        c:def.id,
+        n:task.title,
+        s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
+      }));
+      while(real.length<4)real.push({c:def.id,n:`Awaiting next ${def.label} mission`,s:0});
+      return real;
+    });
+  },[tasks]);
+  const mastered=tasks.filter(task=>task.status==='MASTERED');
+  const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier)])},[active.id,priorityTitle,detail.tier]);
   useEffect(()=>{if(loadedAccount.current!==active.id||!messages.length)return;try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)))}catch{}},[active.id,messages]);
   async function send(t?:string){const text=(t??q).trim();if(!text||pending)return;const history=threadHistory(messages);const userMessage:Msg={who:'user',text};const activeTaskContext=activeThree.map(task=>({title:task.title,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule}));const useTrend=isTrendQuestion(text)&&UUID.test(active.id);setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));try{const endpoint=useTrend?'/api/coach/trend':'/api/coach';const payload=useTrend?{message:text,history,accountId:active.id,requestedGames:requestedTrendGames(text),activeTasks:activeTaskContext,rank:active.rank,role:active.role}:{message:text,history,accountId:active.id,context:{rank:active.rank,role:active.role,mission:activeThree[0]?.title,champions:active.champions,activeTasks:activeTaskContext,recent:summary}};const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await res.json() as CoachResponse;if(!res.ok)throw new Error(body.error||'Coach request failed.');const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough from your games to answer that properly yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES))}catch(error){const errorMessage:Msg={who:'ai',text:`I can’t pull that game evidence right now. Keep your current focus: “${activeThree[0]?.title||'play one tracked game'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES))}finally{setPending(false)}}
@@ -61,6 +83,42 @@ export default function Coach(){
         <div><span>RECENT GAMES</span><b>{summary.games}</b><small>used for current context</small></div>
         <div><span>AVG DEATHS</span><b>{summary.deaths===undefined?'—':summary.deaths.toFixed(1)}</b><small>recent meaningful games</small></div>
         <div><span>CS / MIN</span><b>{summary.csPerMin===undefined?'—':summary.csPerMin.toFixed(1)}</b><small>full-game economy</small></div>
+      </div>
+    </section>
+
+    <section className="coach-memory-destination">
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">COACH MEMORY · YOUR DEVELOPMENT OVER TIME</div>
+          <h1>Your coach remembers the player, not just the scoreline.</h1>
+          <p>Game DNA, mastered habits, current tests and the next useful decision all live here.</p>
+        </div>
+        <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
+      </header>
+
+      <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
+
+      <div className="climb-grid coach-memory-summary">
+        <section className="panel panel-padding">
+          <div className="section-head"><h2>Current memory thread</h2><span className="tag gold">{mastered.length} mastered</span></div>
+          <div className="memory-timeline">
+            <div className="memory-event"><span>NOW</span><div><h3>{activeThree[0]?.title||'Build the first coaching thread'}</h3><p>{activeThree[0]?.gameRule||'Play one tracked game so the coach has real evidence to carry forward.'}</p></div></div>
+            <div className="memory-event"><span>PROOF</span><div><h3>Test the same decision again.</h3><p>{primarySummary?primarySummary.confirmed+' of '+primarySummary.required+' proven reps currently support this focus.':'No proven reps yet.'}</p></div></div>
+            <div className="memory-event"><span>HISTORY</span><div><h3>{mastered.length?'Mastered habits stay remembered.':'Memory builds when habits hold.'}</h3><p>{mastered.length?mastered.slice(0,3).map(task=>task.title).join(' · '):'Once a mission holds repeatedly, it moves out of the active plan but stays in your player model.'}</p></div></div>
+            <div className="memory-event"><span>NEXT</span><div><h3>Use less help, not more.</h3><p>The next test is whether the current read holds in a different game state without needing another new tip.</p></div></div>
+          </div>
+        </section>
+        <aside className="panel panel-padding">
+          <span className="eyebrow accent">WHAT YOUR COACH CARRIES FORWARD</span>
+          <h2 style={{marginTop:12}}>The context behind every answer.</h2>
+          <div className="criteria">
+            <div><span className="mint">◎</span><span>Recurring decision patterns</span></div>
+            <div><span className="mint">◎</span><span>Your current focus and why it exists</span></div>
+            <div><span className="mint">◎</span><span>Evidence that supports or challenges the read</span></div>
+            <div><span className="mint">◎</span><span>Mastered habits that should still hold</span></div>
+            <div><span className="mint">◎</span><span>The next useful test across a new situation</span></div>
+          </div>
+        </aside>
       </div>
     </section>
 
