@@ -1,4 +1,5 @@
 import type {ILPTask} from './types';
+import {ensureDnaDomain} from './dnaDomain';
 
 export type CloudIlpRow={id:string;payload:any;updated_at:string|null};
 export type CloudIlpMerge={tasks:ILPTask[];writes:ILPTask[]};
@@ -66,15 +67,15 @@ export function mergeIlpCloudSnapshot(localTasks:ILPTask[],remoteRows:CloudIlpRo
 
   for(const row of remoteRows){
     const payload=(row.payload&&typeof row.payload==='object')?row.payload:{};
-    mergedById.set(String(row.id),{...payload,id:String(row.id),accountId} as ILPTask);
+    mergedById.set(String(row.id),ensureDnaDomain({...payload,id:String(row.id),accountId} as ILPTask&{dnaDomain?:ILPTask['dnaDomain']}));
   }
 
   for(const local of localTasks){
-    const localTask={...local,accountId};
+    const localTask=ensureDnaDomain({...local,accountId} as ILPTask&{dnaDomain?:ILPTask['dnaDomain']});
     const remoteRow=remoteById.get(String(local.id));
     if(!remoteRow){mergedById.set(local.id,localTask);writes.push(localTask);continue}
     const remotePayload=(remoteRow.payload&&typeof remoteRow.payload==='object')?remoteRow.payload:{};
-    const remoteTask={...remotePayload,id:String(remoteRow.id),accountId} as ILPTask;
+    const remoteTask=ensureDnaDomain({...remotePayload,id:String(remoteRow.id),accountId} as ILPTask&{dnaDomain?:ILPTask['dnaDomain']});
     const remoteAt=stamp(remoteRow.updated_at);
     const localAt=taskFreshness(localTask);
     const mayOverride=serverEvidenceManaged(remoteTask)?explicitLocalActionAfter(localTask,remoteAt):localAt>remoteAt;
