@@ -194,5 +194,5 @@ test('a generic mixed enemy team can leave the draft tech slot empty instead of 
     ],items,
   });
   assert.ok(plan.core.length>=2);
-  assert.ok(plan.draftItem===null||plan.draftItem.context===undefined);
+  assert.equal(plan.draftItem,null);
 });
