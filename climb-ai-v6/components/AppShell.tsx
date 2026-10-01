@@ -23,14 +23,14 @@ type ProgressionPayload={
 };
 
 const primary=[
-  ['Home','/dashboard','⌂','Your next action'],
-  ['My Main Champ','/champions/main','◈','Build + abilities'],
-  ['My Coach','/coach','✦','Ask + understand'],
-  ['My Games','/analyse','◇','Reviews + evidence'],
-  ['My Progress','/ilp','◎','Focus + development'],
-  ['Companion','/live','●','Connect League'],
+  ['Overview','/dashboard','⌂','Your daily briefing'],
+  ['Match room','/live','◇','Prepare + connect'],
+  ['My climb','/ilp','◎','Focus + development'],
+  ['Coach memory','/coach','✦','Ask + understand'],
+  ['My games','/analyse','◈','Reviews + evidence'],
+  ['Plans & unlocks','/pricing','◆','Coaching depth'],
 ] as const;
-const mobile=[['Home','/dashboard'],['Main','/champions/main'],['Coach','/coach'],['Games','/analyse'],['Progress','/ilp']] as const;
+const mobile=[['Overview','/dashboard'],['Match','/live'],['Climb','/ilp'],['Coach','/coach'],['Games','/analyse']] as const;
 
 type RouteScene={code:string;kicker:string;title:string;copy:string;signals:[string,string,string];tone:string;watermark:string};
 const routeScene=(path:string):RouteScene|null=>{
@@ -150,7 +150,7 @@ export function AppShell({children}:{children:React.ReactNode}){
 
   return <div className={'app-layout op-shell '+(live?'is-live':'')}>
     <aside className="sidebar op-sidebar">
-      <div className="op-brand-block"><Link href="/dashboard" className="logo-link" aria-label={BRAND.name+' home'}><Wordmark size="sm" priority/></Link><span className={'op-tier op-tier-'+tier.toLowerCase()}>LEAGUE · {tier}</span></div>
+      <div className="op-brand-block"><Link href="/dashboard" className="logo-link" aria-label={BRAND.name+' home'}><Wordmark size="sm" priority/></Link><div className="op-client-game-label"><span>L</span> LEAGUE OF LEGENDS</div><span className={'op-tier op-tier-'+tier.toLowerCase()}>YOUR PLAN · {tier}</span></div>
       <div className="account-switch op-account-card">
         <div className="op-player-kicker"><span>YOU</span><i/></div>
         <select aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline} · {a.region}</option>)}</select>
@@ -163,6 +163,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <SyncHealth sync={progression?.sync??null}/>
       </div>
 
+      <div className="op-client-nav-caption">YOUR WORKSPACE</div>
       <nav className="op-nav" aria-label="Main navigation">
         <div className="op-nav-group">
           <div className="op-nav-label"><span>YOUR CLIMB</span></div>
@@ -195,7 +196,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-hud-player"><div><small>PLAYER</small><strong>{active.gameName}{active.tagline}</strong></div><div><small>RANK</small><strong>{active.rank}</strong></div><div><small>ROLE</small><strong>{active.role}</strong></div><span className={'op-hud-state '+(live?'live':'')}><i/>{live?'MATCH MODE':'READY'}</span></div>
       </header>
       <div className="op-energy-rail"><i/><span>ONE FOCUS. ONE GAME AT A TIME.</span></div>
-      {!live&&scene&&<section className="op-route-scene" data-scene={scene.tone}>
+      {!live&&path!=='/dashboard'&&scene&&<section className="op-route-scene" data-scene={scene.tone}>
         <div className="op-route-scene-copy">
           <div className="op-scene-kicker"><span>{scene.code}</span><i/>{scene.kicker}</div>
           <div className="op-scene-title">{scene.title}</div>
