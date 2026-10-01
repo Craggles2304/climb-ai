@@ -4657,3 +4657,76 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ip-game-learning-actions{justify-content:flex-start}
   .ip-game-learning-grid{grid-template-columns:1fr}
 }
+
+
+/* Measurable strengths — good play gets equal evidential weight */
+.ar-strengths{
+  margin:18px 0;
+  padding:18px;
+  border:1px solid rgba(182,246,107,.18);
+  background:linear-gradient(145deg,rgba(182,246,107,.035),rgba(9,15,19,.76));
+}
+.ar-strengths-head{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:18px;margin-bottom:14px
+}
+.ar-strengths-head h2{margin:6px 0 5px;font-size:34px;line-height:1}
+.ar-strengths-head p{margin:0;max-width:760px;color:#8f9da1;font-size:11px;line-height:1.5}
+.ar-strengths-head>b{
+  flex:none;color:#b6f66b;font:900 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em
+}
+.ar-strength-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px
+}
+.ar-strength-grid>article,.ip-game-strengths article{
+  padding:13px;border:1px solid color-mix(in srgb,var(--strand-color) 34%,rgba(255,255,255,.07));
+  background:color-mix(in srgb,var(--strand-color) 5%,rgba(0,0,0,.16));
+  box-shadow:inset 3px 0 0 color-mix(in srgb,var(--strand-color) 78%,transparent)
+}
+.ar-strength-grid article>span,.ip-game-strengths article>span{
+  color:var(--strand-color);
+  font:800 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.09em;text-transform:uppercase
+}
+.ar-strength-grid h3,.ip-game-strengths h3{
+  margin:7px 0 9px;font-size:19px;line-height:1.05
+}
+.ar-strength-grid strong,.ip-game-strengths strong{
+  display:block;color:#edf3f2;font:900 20px/1 var(--font-display,'Barlow Condensed',sans-serif)
+}
+.ar-strength-grid small,.ip-game-strengths small{
+  display:block;margin-top:3px;color:#77878c;font-size:8px;line-height:1.35
+}
+.ar-strength-grid p,.ip-game-strengths p{
+  margin:10px 0 11px;color:#91a0a4;font-size:9px;line-height:1.48
+}
+.ar-strength-grid em,.ip-game-strengths em{
+  color:var(--strand-color);font:900 7px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em;font-style:normal
+}
+.ar-strength-empty{
+  padding:14px;border:1px dashed rgba(255,255,255,.09)
+}
+.ar-strength-empty b{font-size:12px}.ar-strength-empty p{margin:4px 0 0;color:#829196;font-size:10px}
+
+.ip-game-strengths{margin-top:16px}
+.ip-game-strengths-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:8px
+}
+.ip-game-strengths-head span{
+  color:#b6f66b;font:900 8px/1 var(--font-mono,'IBM Plex Mono',monospace);letter-spacing:.09em
+}
+.ip-game-strengths-head b{
+  color:#92a0a4;font:800 8px/1 var(--font-mono,'IBM Plex Mono',monospace)
+}
+.ip-game-strengths>div:last-child{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px
+}
+
+@media(max-width:1000px){
+  .ar-strength-grid,.ip-game-strengths>div:last-child{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+  .ar-strengths-head,.ip-game-strengths-head{align-items:flex-start;flex-direction:column}
+  .ar-strength-grid,.ip-game-strengths>div:last-child{grid-template-columns:1fr}
+}
