@@ -18,6 +18,7 @@ import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
+import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -62,6 +63,7 @@ export default function PlayerDevelopmentCentre(){
     const attempt=(task.missionHistory??[]).find(item=>item.matchId===selectedGame);
     return attempt?[{task,attempt,summary:missionSummary(task)}]:[];
   }):[],[tasks,selectedGame]);
+  const gameStrengths=useMemo(()=>gameMatch?positiveEvidenceForMatch(gameMatch,active.rank):[],[gameMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
   const planProgress=activeTasks.length
@@ -117,6 +119,19 @@ export default function PlayerDevelopmentCentre(){
           }}>CLOSE</button>
         </div>
       </div>
+      {gameStrengths.length>0&&<div className="ip-game-strengths">
+        <div className="ip-game-strengths-head"><span>WHAT YOU DID WELL · MEASURED</span><b>{gameStrengths.length} VERIFIED STRENGTH{gameStrengths.length===1?'':'S'}</b></div>
+        <div>
+          {gameStrengths.slice(0,4).map(item=><article key={item.id} style={strandStyle(item.dnaDomain)}>
+            <span>{dnaDomainLabel(item.dnaDomain)}</span>
+            <h3>{item.title}</h3>
+            <strong>{item.value}</strong>
+            <small>Rank / evidence bar · {item.target}</small>
+            <p>{item.detail}</p>
+            <em>KEEP THIS</em>
+          </article>)}
+        </div>
+      </div>}
       {gameLearning.length?<div className="ip-game-learning-grid">
         {gameLearning.map(({task,attempt,summary})=><article key={task.id} style={strandStyle(task.dnaDomain)}>
           <span>{dnaDomainLabel(task.dnaDomain)}</span>
