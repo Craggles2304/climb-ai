@@ -1,6 +1,6 @@
 'use client';
 
-import {useMemo,useState} from 'react';
+import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
@@ -11,13 +11,13 @@ import {AnimatedBar} from '@/components/Motion';
 import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
-import type {ILPTask} from '@/lib/types';
+import type {DnaDomain,ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
-import {dnaDomainLabel} from '@/lib/dnaDomain';
+import {DNA_DOMAINS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -29,13 +29,29 @@ export default function PlayerDevelopmentCentre(){
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
+  const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
 
-  const activeTasks=useMemo(
-    ()=>tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3),
-    [tasks],
-  );
-  const mastered=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
-  const paused=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
+  useEffect(()=>{
+    const raw=new URLSearchParams(window.location.search).get('dna');
+    setSelectedDomain(DNA_DOMAINS.includes(raw as DnaDomain)?raw as DnaDomain:null);
+  },[]);
+
+  const chooseDomain=(domain:DnaDomain|null)=>{
+    setSelectedDomain(domain);
+    const url=new URL(window.location.href);
+    if(domain)url.searchParams.set('dna',domain);else url.searchParams.delete('dna');
+    window.history.replaceState({},'',url.pathname+url.search);
+  };
+
+  const activeTasks=useMemo(()=>{
+    const live=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
+    return tier==='FREE'?live.slice(0,1):live;
+  },[tasks,tier]);
+  const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
+  const masteredAll=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
+  const pausedAll=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
+  const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
+  const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.role===active.role),[active.id,active.role,tier]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
@@ -58,7 +74,7 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-head">
       <div>
         <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
-        <h1>One core. Two support.</h1>
+        <h1>{tier==='FREE'?'One focus. Prove it.':'One core. Two support.'}</h1>
         <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
       </div>
       <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
@@ -67,12 +83,36 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-summary">
       <div className="ip-summary-main">
         <span>CURRENT PLAN</span>
-        <b>{activeTasks.length}/3 ACTIVE</b>
+        <b>{activeTasks.length}/{tier==='FREE'?1:3} ACTIVE</b>
         <small>{matches.length} {active.role.toLowerCase()} games · {missionRankBand(active.rank)} targets</small>
       </div>
       <div><span>PROVEN REPS</span><b>{banked}/{required||9}</b><small>tracked game evidence only</small></div>
       <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
       <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
+    </section>
+
+    <section className="ip-dna-filter panel panel-padding">
+      <div className="ip-dna-filter-head">
+        <div>
+          <div className="eyebrow">GAME DNA → MY CLIMB</div>
+          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'All current missions'}</h2>
+          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'Choose a DNA strand to see only the missions that are training that part of your game.'}</p>
+        </div>
+        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW ALL MISSIONS</button>}
+      </div>
+      <div className="ip-dna-filter-tabs" aria-label="Filter missions by Game DNA strand">
+        <button type="button" className={!selectedDomain?'active':''} onClick={()=>chooseDomain(null)}>ALL</button>
+        {DNA_DOMAINS.map(domain=><button
+          key={domain}
+          type="button"
+          className={selectedDomain===domain?'active':''}
+          onClick={()=>chooseDomain(domain)}
+        >{DNA_DOMAIN_LABELS[domain]}</button>)}
+      </div>
+      {selectedDomain&&<div className="ip-dna-filter-detail">
+        <p>{DNA_DOMAIN_GUIDE[selectedDomain].purpose}</p>
+        <div>{DNA_DOMAIN_GUIDE[selectedDomain].subskills.map(skill=><span key={skill}>{skill}</span>)}</div>
+      </div>}
     </section>
 
     {changes.length>0&&<section className="ip-update">
@@ -81,18 +121,26 @@ export default function PlayerDevelopmentCentre(){
     </section>}
 
     <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{activeTasks.length} missions</small></button>
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{displayTasks.length}{selectedDomain?' in '+DNA_DOMAIN_LABELS[selectedDomain]:''}</small></button>
       <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
       {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
 
     {tab==='CURRENT'&&<div className="ip-panel">
-      {activeTasks.length?<div className="ip-mission-grid">
-        {activeTasks.map((task,index)=><MissionCard key={task.id} task={task} index={index} role={active.role} pauseTask={pauseTask}/>) }
-      </div>:<section className="ip-empty">
+      {displayTasks.length?<div className="ip-mission-grid">
+        {displayTasks.map(task=>{
+          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
+          return <MissionCard key={task.id} task={task} index={Math.max(0,index)} role={active.role} pauseTask={pauseTask}/>;
+        })}
+      </div>:selectedDomain?<section className="ip-empty">
+        <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NO CURRENT MISSION</div>
+        <h2>This strand is not in your active plan right now.</h2>
+        <p>{tier==='FREE'?'FREE keeps one measurable focus live at a time. You can still understand every DNA strand, but only your current focus becomes an active mission.':'OP CLIMB only puts a strand into My Climb when your game evidence makes it one of your current priorities.'}</p>
+        <button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW CURRENT PLAN</button>
+      </section>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
         <h2>Play a tracked game.</h2>
-        <p>OP CLIMB needs real evidence before it chooses your core behaviour and two support behaviours.</p>
+        <p>OP CLIMB needs real evidence before it chooses your current measurable focus.</p>
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
@@ -121,9 +169,12 @@ export default function PlayerDevelopmentCentre(){
     </div>}
 
     {tab==='EVIDENCE'&&<div className="ip-panel">
-      {activeTasks.length?<div className="ip-evidence-grid">
-        {activeTasks.map((task,index)=><EvidenceCard key={task.id} task={task} index={index}/>)}
-      </div>:<section className="ip-empty"><h2>No active evidence yet.</h2><p>Play tracked games to build the plan.</p></section>}
+      {displayTasks.length?<div className="ip-evidence-grid">
+        {displayTasks.map(task=>{
+          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
+          return <EvidenceCard key={task.id} task={task} index={Math.max(0,index)}/>;
+        })}
+      </div>:<section className="ip-empty"><h2>{selectedDomain?'No current '+DNA_DOMAIN_LABELS[selectedDomain]+' evidence.':'No active evidence yet.'}</h2><p>{selectedDomain?'This strand is not one of your current measurable priorities.':'Play tracked games to build the plan.'}</p></section>}
     </div>}
 
     {tier==='PRO'&&tab==='HISTORY'&&<div className="ip-panel">
