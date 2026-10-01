@@ -195,7 +195,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-hud-player"><div><small>PLAYER</small><strong>{active.gameName}{active.tagline}</strong></div><div><small>RANK</small><strong>{active.rank}</strong></div><div><small>ROLE</small><strong>{active.role}</strong></div><span className={'op-hud-state '+(live?'live':'')}><i/>{live?'MATCH MODE':'READY'}</span></div>
       </header>
       <div className="op-energy-rail"><i/><span>ONE FOCUS. ONE GAME AT A TIME.</span></div>
-      {!live&&scene&&<section className="op-route-scene" data-scene={scene.tone}>
+      {!live&&scene&&path!=='/dashboard'&&<section className="op-route-scene" data-scene={scene.tone}>
         <div className="op-route-scene-copy">
           <div className="op-scene-kicker"><span>{scene.code}</span><i/>{scene.kicker}</div>
           <div className="op-scene-title">{scene.title}</div>

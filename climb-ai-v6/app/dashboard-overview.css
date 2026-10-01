@@ -1,0 +1,50 @@
+/* Dashboard only: the public Client overview's clear hierarchy with real account data. */
+.client-home{gap:18px}
+.client-home-label{margin:0;color:var(--mint);font:500 13px/1.4 var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.client-home-intro{display:flex;align-items:end;justify-content:space-between;gap:22px;padding:12px 0 8px}
+.client-home-intro h1{font:700 clamp(38px,4vw,58px)/.98 var(--display);text-transform:uppercase;margin:9px 0 10px}
+.client-home-intro p:last-child{font-size:17px;color:var(--muted);margin:0}
+.client-home-intro .btn{flex:none}
+.client-home-top{display:grid;grid-template-columns:minmax(0,1fr) minmax(245px,290px);gap:18px}
+.client-home-plan{min-height:340px;position:relative;overflow:hidden;display:flex;align-items:center;border:1px solid #587554;background:linear-gradient(115deg,#142322,#1c2d2d)}
+.client-home-plan::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#0f1b1bf5 0%,#111e22df 42%,#0d182775 72%,#11172720);pointer-events:none}
+.client-home-plan::before{content:'';position:absolute;bottom:0;left:0;width:40%;height:3px;background:var(--mint);z-index:2}
+.client-home-plan-art{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:66% center;opacity:.85}
+.client-home-plan-copy{position:relative;z-index:1;padding:30px;max-width:570px}
+.client-home-plan h2{font:700 clamp(42px,4vw,64px)/.94 var(--display);text-transform:uppercase;margin:17px 0 18px}
+.client-home-plan h2 em{color:var(--mint);font-style:italic}
+.client-home-focus{font-size:16px;line-height:1.55;color:#d4e0df;max-width:450px;margin:0 0 24px}
+.client-home-focus strong{color:#fff}
+.client-home-art-credit{position:absolute;z-index:1;right:14px;bottom:12px;color:#d6e4dc;font:12px var(--mono);text-transform:uppercase;text-shadow:0 1px 4px #000}
+.client-home-rank{border:1px solid var(--line);background:radial-gradient(ellipse at 50% 28%,#66573a24,transparent 65%),var(--panel);padding:24px;display:flex;flex-direction:column}
+.client-home-rank>div:nth-child(2){display:flex;align-items:center;gap:15px;margin:24px 0 6px}
+.client-home-rank-icon{display:grid;place-items:center;flex:none;width:65px;height:65px;border:1px solid #766444;color:var(--gold);font-size:36px}
+.client-home-rank strong{font:700 clamp(27px,3vw,38px)/1 var(--display);text-transform:uppercase;color:var(--text)}
+.client-home-rank>p:nth-child(3){color:var(--muted);font-size:14px;margin:0 0 auto}
+.client-home-rank-footer{display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid var(--line);margin-top:25px;padding-top:17px}
+.client-home-rank-footer div{display:grid;gap:4px}
+.client-home-rank-footer b{font:700 30px/1 var(--display);color:var(--gold)}
+.client-home-rank-footer span{font-size:13px;color:var(--muted)}
+.client-home-metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.client-home-metrics>div{min-height:94px;display:flex;flex-direction:column;justify-content:center;gap:7px;padding:17px 19px;border:1px solid var(--line);background:var(--panel)}
+.client-home-metrics strong{font:700 31px/1 var(--display);color:var(--text)}
+.client-home-metrics span{font-size:14px;color:var(--muted);line-height:1.3}
+.client-home-games{border:1px solid var(--line);background:var(--panel);padding:24px}
+.client-home-section-heading{display:flex;justify-content:space-between;align-items:end;gap:20px;margin-bottom:11px}
+.client-home-section-heading h2{font:700 clamp(28px,2.6vw,35px)/1 var(--display);text-transform:uppercase;margin:9px 0 0}
+.client-home-section-heading a{color:var(--mint);font-size:15px;font-weight:600;white-space:nowrap}
+.client-home-match{display:grid;grid-template-columns:90px minmax(110px,1fr) minmax(150px,1fr) 18px;align-items:center;gap:15px;min-height:65px;border-bottom:1px solid var(--line);color:var(--text);text-decoration:none;font-size:15px}
+.client-home-match:last-child{border-bottom:0}
+.client-home-match:hover{background:#ffffff06}
+.client-home-match-result{color:var(--teal);font-weight:700}
+.client-home-match.loss .client-home-match-result{color:var(--red)}
+.client-home-match strong{font-size:17px}
+.client-home-match>span:last-child{color:var(--mint)}
+.client-home-no-games{color:var(--muted);font-size:15px;margin:18px 0 0}
+/* Existing champion and mission detail remains below the new overview. */
+.client-home .hq-main-card{margin-top:10px}
+.client-home .hq-main-note,.client-home .hq-main-stats span{font-size:14px!important}
+.hq-game-missions .hq-mission-card p,.hq-game-missions .hq-mission-target span,.hq-game-missions .hq-mission-proof span{font-size:14px!important;line-height:1.45}
+@media(max-width:1050px){.client-home-top{grid-template-columns:minmax(0,1fr) 245px}.client-home-plan-copy{padding:25px}}
+@media(max-width:760px){.client-home-intro{align-items:start;flex-direction:column}.client-home-top{grid-template-columns:1fr}.client-home-plan{min-height:330px}.client-home-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.client-home-rank{min-height:230px}.client-home-match{grid-template-columns:78px 1fr 18px}.client-home-match>span:nth-child(3){grid-column:2;grid-row:2;padding-bottom:13px}.client-home-match>span:last-child{grid-column:3;grid-row:1 / 3}.client-home-match{row-gap:0}}
+@media(max-width:480px){.client-home-plan-copy{padding:22px}.client-home-plan h2{font-size:42px}.client-home-plan-art{object-position:72% center}.client-home-metrics{gap:10px}.client-home-metrics>div{padding:14px}.client-home-games{padding:18px}.client-home-section-heading{align-items:start;flex-direction:column}.client-home-match{grid-template-columns:72px 1fr 15px;gap:10px}}
