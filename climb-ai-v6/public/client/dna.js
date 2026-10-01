@@ -13,7 +13,7 @@
     {id:'vision', label:'Vision & map', hud:'VISION',     hint:'Wards, tracking, map checks',      color:'#a46bff'},
     {id:'obj',    label:'Objectives',   hud:'OBJECTIVES', hint:'Dragons, Herald, towers, tempo',   color:'#ffb21e'},
     {id:'fight',  label:'Teamfights',   hud:'FIGHTS',     hint:'Positioning, targets, engage',     color:'#ff3d71'},
-    {id:'mind',   label:'Mindset',      hud:'MINDSET',    hint:'Focus, tilt control, consistency', color:'#2ec7ff'}
+    {id:'mind',   label:'Consistency',  hud:'CONSISTENCY',hint:'Repeat, recovery, transfer, autonomy', color:'#2ec7ff'}
   ];
   // [gene, mission, state] — 0 not started, 1 learning, 2 learned, 3 memory
   const DEMO_START = [
