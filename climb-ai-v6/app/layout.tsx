@@ -12,6 +12,7 @@ import './ilp-explainability.css';
 import './ux-journey.css';
 import './public-personal.css';
 import './client-system.css';
+import './dashboard-overview.css';
 import './visual-depth.css';
 import type {Metadata} from 'next';
 import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';

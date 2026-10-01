@@ -152,13 +152,53 @@ export default function Home(){
   },[championMatches]);
 
   const planMissions=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
+  const latestMatches=matches.slice(0,3);
+  const recentSample=matches.slice(0,20);
+  const recentWins=recentSample.filter(match=>match.result==='WIN').length;
+  const coreFocus=planMissions[0]?plainLanguageFocus(planMissions[0]):null;
+  const playerName=active.gameName&&active.gameName!=='Complete onboarding'?active.gameName:'player';
 
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
-    {isEmpty&&<PageHead title="Your Climb" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+active.role}/>}
-    <div className="v7-stack">
+    <div className="v7-stack client-home">
+      <header className="client-home-intro">
+        <div><p className="client-home-label">YOUR DAILY BRIEFING</p><h1>Welcome back, {playerName}.</h1><p>One focus. Every game. Lasting improvement.</p></div>
+        <Link className="btn secondary" href="/analyse">Analyse my games →</Link>
+      </header>
+      {isEmpty&&<PageHead title="Your Climb" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+active.role}/>}
       {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
       {isEmpty&&<FirstRun task={leadTask} gameName={active.gameName}/>}
+
+      <div className="client-home-top">
+        <section className="client-home-plan">
+          {mainChampion&&<img src={championSplash(mainChampion)} alt="" aria-hidden="true" className="client-home-plan-art"/>}
+          <div className="client-home-plan-copy">
+            <p className="client-home-label">YOUR NEXT GAME PLAN</p>
+            <h2>Less autopilot.<br/><em>More intention.</em></h2>
+            <p className="client-home-focus"><strong>{coreFocus?coreFocus.name:'Find your first focus.'}</strong><br/>{coreFocus?coreFocus.success:'Play a tracked game to build your personal coaching plan.'}</p>
+            <Link className="btn primary" href="/session">Open my match plan →</Link>
+          </div>
+          {mainChampion&&<span className="client-home-art-credit">{mainChampion} · {active.role}</span>}
+        </section>
+        <aside className="client-home-rank">
+          <p className="client-home-label">YOUR RANKED SNAPSHOT</p>
+          <div><span className="client-home-rank-icon" aria-hidden="true">◇</span><strong>{active.rank}</strong></div>
+          <p>{active.gameName}{active.tagline} · {active.region}</p>
+          <div className="client-home-rank-footer"><div><b>{recentSample.length}</b><span>Recent games</span></div><div><b>{recentSample.length?`${Math.round(recentWins/recentSample.length*100)}%`:'—'}</b><span>Win rate</span></div></div>
+        </aside>
+      </div>
+
+      <div className="client-home-metrics">
+        <div><strong>{championStats.games||'—'}</strong><span>{mainChampion?`${mainChampion} games`:'Main champion games'}</span></div>
+        <div><strong>{championStats.games?`${championStats.winRate}%`:'—'}</strong><span>Main champion win rate</span></div>
+        <div><strong>{championStats.games?championStats.kda:'—'}</strong><span>Main champion KDA</span></div>
+        <div><strong>{championStats.games?championStats.csPerMin:'—'}</strong><span>Main champion CS / min</span></div>
+      </div>
+
+      <section className="client-home-games">
+        <div className="client-home-section-heading"><div><p className="client-home-label">MATCH REVIEW</p><h2>Every game has a lesson.</h2></div><Link href="/analyse">See all games →</Link></div>
+        {latestMatches.length?<div className="client-home-match-list">{latestMatches.map(match=><Link href="/analyse" key={match.id} className={`client-home-match ${match.result==='WIN'?'win':'loss'}`}><span className="client-home-match-result">{match.result==='WIN'?'Victory':'Defeat'}</span><strong>{match.champion}</strong><span>{match.role} · {match.kills} / {match.deaths} / {match.assists}</span><span aria-hidden="true">→</span></Link>)}</div>:<p className="client-home-no-games">Your reviewed games will appear here after your first tracked match.</p>}
+      </section>
 
       <section className="hq-main-card">
         {mainChampion&&<img className="hq-main-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
