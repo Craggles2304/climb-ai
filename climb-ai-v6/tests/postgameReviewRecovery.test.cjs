@@ -45,7 +45,8 @@ const analyseApi=fs.readFileSync('app/api/analyse/route.ts','utf8');
 test('completed live review exposes the saved match id for full analysis',()=>{
   assert.ok(liveRead.includes("db.from('matches').select('id').eq('live_session_id',session.id)"));
   assert.ok(liveRead.includes('matchId=(matchRow as any)?.data?.id??null'));
-  assert.ok(liveCenter.includes('OPEN FULL MATCH REVIEW →'));
+  assert.ok(liveCenter.includes('SEE MY PROGRESS →'));
+  assert.ok(liveCenter.includes('DETAILED MATCH REVIEW'));
   assert.ok(liveReview.includes('OPEN FULL MATCH REVIEW →'));
 });
 
