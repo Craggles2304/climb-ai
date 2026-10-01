@@ -29,13 +29,16 @@
   let previewMode = false;
   let previewTier = 'FREE';
   let playerLabel = 'KAI#EUW';
+  let baselineGames = 3;
+  let baselineRequired = 3;
+  let baselineMode = false;
   const STATE = ['Not started','Learning','Learned','Memory'];
   const stateLabel = s => previewMode ? (s===0?'Locked':s===1?'Current focus':s===2?'Current evidence':'Memory') : STATE[s];
   const KEY = 'opclimb-dna-v1';
   const FLASH_MS = 1600;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const fresh = () => START.map(([c,n,s],i) => ({c, n, s, t: s >= 2 ? i : -1}));
+  const fresh = () => START.map(([c,n,s,p],i) => ({c, n, s, p: Number.isFinite(Number(p)) ? Math.max(0,Math.min(100,Number(p))) : Math.round((Number(s)||0)/3*100), t: s >= 2 ? i : -1}));
   function load(){
     try{
       const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -55,12 +58,15 @@
     if(!input||!Array.isArray(input.missions))return;
     const rows=input.missions
       .filter(m=>m&&CATS.some(cat=>cat.id===m.c)&&typeof m.n==='string'&&[0,1,2,3].includes(Number(m.s)))
-      .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s)]);
+      .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s),Number.isFinite(Number(m.p))?Math.max(0,Math.min(100,Number(m.p))):Math.round(Number(m.s)/3*100)]);
     if(!rows.length)return;
     realMode=Boolean(input.real);
     previewMode=Boolean(input.preview);
     previewTier=String(input.tier||previewTier).toUpperCase().slice(0,12);
     playerLabel=String(input.player||playerLabel).slice(0,48);
+    baselineRequired=Math.max(1,Math.round(Number(input.baselineRequired)||3));
+    baselineGames=Math.max(0,Math.round(Number(input.baselineGames)??baselineRequired));
+    baselineMode=baselineGames<baselineRequired;
     START=rows;
     missions=fresh();
     clock=Math.max(START.length,...missions.map(m=>m.t));
@@ -72,8 +78,12 @@
   }
 
   const catOf = id => CATS.find(c => c.id === id);
-  const geneStrength = id => { const ms = missions.filter(m => m.c === id); return ms.reduce((a,m) => a + m.s, 0) / (ms.length * 3); };
-  const totalStrength = () => missions.reduce((a,m) => a + m.s, 0) / (missions.length * 3);
+  const geneStrength = id => {
+    if(baselineMode)return 0;
+    const ms = missions.filter(m => m.c === id);
+    return ms.length ? ms.reduce((a,m) => a + (Number.isFinite(m.p)?m.p:Math.round(m.s/3*100)), 0) / (ms.length * 100) : 0;
+  };
+  const totalStrength = () => baselineMode ? 0 : (missions.length ? missions.reduce((a,m) => a + (Number.isFinite(m.p)?m.p:Math.round(m.s/3*100)), 0) / (missions.length * 100) : 0);
   const count = s => missions.filter(m => m.s === s).length;
   const pct = v => Math.round(v * 100) + '%';
   function rgba(hex, a){
@@ -96,6 +106,12 @@
   }
 
   function sideHTML(){
+    if(baselineMode){
+      const completed=Math.min(baselineGames,baselineRequired);
+      return `<div class="dna-strength"><b>0%</b><div><span>DNA strength</span><div class="dna-bar"><i style="width:0%"></i></div></div><small>${completed}/${baselineRequired} baseline games complete</small></div>
+        <div class="dna-genes">${CATS.map(g => `<button class="dna-gene" type="button" disabled style="--c:#7e898d;--s:0"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true"><i class="s0"></i><i class="s0"></i><i class="s0"></i><i class="s0"></i></span><b>0%</b></button>`).join('')}</div>
+        <div class="dna-detail" style="--c:#7e898d"><div class="dna-detail-top"><span class="dna-chip">BASELINE</span><span class="dna-state s0">${completed}/${baselineRequired} GAMES</span></div><h3>${completed===0?'Start with three real games.':completed<baselineRequired?'Keep playing. OP CLIMB is still learning you.':'Baseline ready.'}</h3><p>The first three tracked games are observation only. Your DNA stays at zero while OP CLIMB learns what you already do well, what repeats, and which challenges should come first.</p></div>`;
+    }
     const m = missions[selected] || missions[0];
     const c = catOf(m.c);
     const total = totalStrength();
@@ -112,18 +128,18 @@
 
   function panel(input){
     if(input)configure(input);
-    return `<section class="panel dna-panel${previewMode?' dna-is-preview':''}" data-dna aria-labelledby="dna-title">
+    return `<section class="panel dna-panel${previewMode?' dna-is-preview':''}${baselineMode?' dna-baseline':''}" data-dna aria-labelledby="dna-title">
       <div class="dna-visual">
-        <canvas class="dna-canvas" role="img" aria-label="${previewMode?'Game DNA preview showing current eligible signals and locked future strands.':'Game DNA helix: six neon genes, one for each part of the game. Lit rungs are learned missions; pulsing rungs are locked into memory.'}"></canvas>
+        <canvas class="dna-canvas" role="img" aria-label="${baselineMode?'Game DNA baseline at zero while the first three tracked games are observed.':previewMode?'Game DNA preview showing current eligible signals and locked future strands.':'Game DNA helix: six development strands that grow from proven learning evidence.'}"></canvas>
         <span class="dna-cap">${previewMode?'GAME DNA PREVIEW':'GAME DNA'} <em>//</em> ${playerLabel}</span>
-        <span class="dna-seq"><i></i>${previewMode?`${count(1)+count(2)} LIVE · ${count(0)} LOCKED`:`${missions.length} MISSIONS SEQUENCED`}</span>
-        <div class="dna-legend" aria-hidden="true">${previewMode?'<span><i class="s0"></i>Locked</span><span><i class="s1"></i>Current focus</span><span><i class="s2"></i>Current evidence</span><span><i class="s3"></i>PRO memory</span>':'<span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span>'}</div>
+        <span class="dna-seq"><i></i>${baselineMode?`BASELINE ${Math.min(baselineGames,baselineRequired)}/${baselineRequired}`:previewMode?`${count(1)+count(2)} LIVE · ${count(0)} LOCKED`:`${missions.length} CHALLENGES SEQUENCED`}</span>
+        <div class="dna-legend" aria-hidden="true">${baselineMode?'<span><i class="s0"></i>Baseline building</span>':previewMode?'<span><i class="s0"></i>Locked</span><span><i class="s1"></i>Current focus</span><span><i class="s2"></i>Current evidence</span><span><i class="s3"></i>PRO memory</span>':'<span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span>'}</div>
         <div class="dna-tip" hidden></div>
       </div>
       <div class="dna-side">
-        <div class="section-head"><span class="eyebrow accent">${previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
-        <h2 id="dna-title">${previewMode?'See what your DNA could become.':'Every mission writes to memory.'}</h2>
-        <p class="dna-intro">${previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a part of your game. Completing a mission lights up its rung. When it holds again in later games, it locks into memory and that part of the strand gets stronger.'}</p>
+        <div class="section-head"><span class="eyebrow accent">${baselineMode?'YOUR GAME DNA · BUILDING':previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?'0 / 3':previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
+        <h2 id="dna-title">${baselineMode?'Three games before your DNA begins.':previewMode?'See what your DNA could become.':'Every proven rep grows your DNA.'}</h2>
+        <p class="dna-intro">${baselineMode?'Games 1–3 are observation. OP CLIMB uses them to learn your starting habits and choose challenges from your actual play. Nothing is coloured in before there is enough evidence.':previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a part of your game. Challenges come from your own matches, and every proven rep adds visible growth. Mastered behaviours stay written into the strand.'}</p>
         <div data-dna-side>${sideHTML()}</div>
         ${previewMode?'<p class="footnote">Preview only: no persistent memories are being created on this plan.</p>':realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
       </div>
