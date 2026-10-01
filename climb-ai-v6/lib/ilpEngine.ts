@@ -143,6 +143,10 @@ export function adaptILP(tasks:ILPTask[],matches:Match[],rank?:string|null):{tas
     const rankedTask=target===t.target?t:{...t,target};
     const e=evaluateMetric(rankedTask,recent,rank);
     if(!e.hasEvidence)return{...t,lastUpdatedReason:e.note};
+    const taskRole=(rankedTask.roleScope&&rankedTask.roleScope!=='GLOBAL'?rankedTask.roleScope:recent[0]?.role) as Role|undefined;
+    const coaching=rankedTask.source==='SYSTEM'&&taskRole
+      ?coachingNeedScore({role:taskRole,rank:rank||recent[0]?.rank,category:rankedTask.category,metric:rankedTask.metric,evidenceProgress:e.progress,legacyPriority:rankedTask.priority})
+      :null;
 
     const attempts=automaticAttempts(rankedTask,matches,rank);
     const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
@@ -160,6 +164,7 @@ export function adaptILP(tasks:ILPTask[],matches:Match[],rank?:string|null):{tas
     const missionNote=` Tracked evidence: ${confirmed}/${masteryRequired} proven reps from ${gamesObserved} game${gamesObserved===1?'':'s'}.`;
     return{
       ...rankedTask,
+      priority:coaching?Math.round(coaching.score):rankedTask.priority,
       progress,
       metricProgress,
       missionProgress,
@@ -169,7 +174,7 @@ export function adaptILP(tasks:ILPTask[],matches:Match[],rank?:string|null):{tas
       masteryRequired,
       missionHistory:attempts,
       lastUpdatedReason:`${e.note}${missionNote}`,
-      evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')),`AUTO: ${e.note}`],
+      evidence:[...t.evidence.filter(x=>!x.startsWith('AUTO:')&&!x.startsWith('COACHING PRIORITY:')),`AUTO: ${e.note}`,...(coaching?[`COACHING PRIORITY: ${coaching.reason}`]:[])],
       history:[...(t.history||[]),{at:new Date().toISOString(),type:(mastered?'MASTERED':'PROGRESS') as 'MASTERED'|'PROGRESS',note:`${e.note}${missionNote}`}].slice(-12),
     };
   });
