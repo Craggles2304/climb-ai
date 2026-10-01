@@ -65,6 +65,47 @@ async function recentRiotReview(device:TrackerDevice,latest:any){
   return review;
 }
 
+async function learningSignalForMatch(userId:string,riotAccountId:string|null,matchId:string|null){
+  const db=getSupabaseAdmin();
+  if(!db||!riotAccountId||!matchId)return null;
+  const {data,error}=await db.from('ilp_tasks')
+    .select('id,payload')
+    .eq('user_id',userId)
+    .eq('riot_account_id',riotAccountId);
+  if(error){
+    console.warn('[companion-review] learning signal lookup failed',error.message);
+    return null;
+  }
+
+  const rows=(data??[]).flatMap((row:any)=>{
+    const task=(row?.payload&&typeof row.payload==='object')?row.payload:{};
+    const history=Array.isArray(task?.missionHistory)?task.missionHistory:[];
+    const attempt=history.find((item:any)=>String(item?.matchId||'')===matchId);
+    if(!attempt)return[];
+    const confirmed=history.filter((item:any)=>Boolean(item?.banksPass)).length;
+    const required=Math.max(1,Number(task?.masteryRequired||3));
+    const mastered=String(task?.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
+    return[{
+      missionId:String(row.id),
+      title:String(task?.title||'Current challenge'),
+      dnaDomain:String(task?.dnaDomain||'CONSISTENCY'),
+      banksPass:Boolean(attempt?.banksPass),
+      outcome:String(attempt?.outcome||'REVIEWED'),
+      confirmed,
+      required,
+      progress:Math.max(0,Math.min(100,Number(task?.progress||0))),
+      mastered,
+    }];
+  });
+
+  if(!rows.length)return null;
+  const best=rows.find((item:any)=>item.mastered)||rows.find((item:any)=>item.banksPass)||rows[0];
+  return{
+    status:best.mastered?'MASTERED':best.banksPass?'REP_BANKED':'NO_REP',
+    ...best,
+  };
+}
+
 export async function GET(req:NextRequest){
   const auth=req.headers.get('authorization')??'';
   const token=/^Bearer\s+(.+)$/i.exec(auth.trim())?.[1]?.trim();
@@ -81,6 +122,7 @@ export async function GET(req:NextRequest){
       role:(riotReview as any)?.match?.role??null,
     });
     const matchId=String((riotReview as any)?.matchId||'').trim()||null;
+    const learningSignal=await learningSignalForMatch(device.userId,device.riotAccountId,matchId);
     return NextResponse.json({
       ok:true,
       ready:true,
@@ -88,6 +130,7 @@ export async function GET(req:NextRequest){
         ...riotReview,
         matchId,
         dnaBaseline:baseline,
+        learningSignal,
         progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
       },
     });
@@ -128,6 +171,7 @@ export async function GET(req:NextRequest){
     riotAccountId:device.riotAccountId,
     role:match?.role??null,
   });
+  const learningSignal=await learningSignalForMatch(device.userId,device.riotAccountId,matchId);
 
   return NextResponse.json({
     ok:true,ready:true,
@@ -136,6 +180,7 @@ export async function GET(req:NextRequest){
       matchId,
       progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
       dnaBaseline,
+      learningSignal,
       endedAt:latest.endedAt??latest.lastSeenAt??null,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
