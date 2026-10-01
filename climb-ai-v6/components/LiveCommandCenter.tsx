@@ -78,5 +78,6 @@ return <div className="match-room">
       {pairCode&&<WindowsTrackerInstaller code={pairCode}/>}
     </div>
   </details>
-</div>
+</div>;
+}
 function Mini({label,value}:{label:string;value:string}){return <div className="glass op-live-metric"><div className="eyebrow">{label}</div><strong>{value}</strong></div>}function findMe(s:Snapshot){return s.players.find(p=>Boolean(s.active.riotId&&p.riotId===s.active.riotId))||s.players.find(p=>p.summonerName===s.active.summonerName)||s.players.find(p=>p.championName===s.active.championName)||null}function role(v:string|null){const x=(v||'').toUpperCase();return x==='BOTTOM'?'ADC':x||'ROLE UNKNOWN'}function clock(sec:number){const n=Math.max(0,Math.round(sec));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`}function recent(value:string|null,ms:number){if(!value)return false;return Date.now()-new Date(value).getTime()<=ms}
