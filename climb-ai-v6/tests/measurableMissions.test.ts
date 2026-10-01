@@ -12,7 +12,7 @@ test('every built-in system mission candidate is measurable from completed game 
 test('a completed measurable game creates a persistent tracked mission rep',()=>{
   const promotedAt='2026-09-25T10:00:00.000Z';
   const task:ILPTask={
-    id:'system-adc-farm',accountId:'a',title:'Leave lane at 6.5+ CS/min',category:'LANING',
+    id:'system-adc-farm',accountId:'a',title:'Leave lane at 6.5+ CS/min',dnaDomain:'LANING',category:'LANING',
     why:'',gameRule:'',metric:'laneCsPerMin',target:'6.5+ lane CS/min across 3 games',
     progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],masteryRequired:3,
     history:[{at:promotedAt,type:'PROMOTED',note:'started'}],
