@@ -153,52 +153,104 @@ export default function Home(){
 
   const planMissions=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
 
+  const recentMatches=matches.slice(0,3);
+  const activeMission=planMissions[0]??leadTask;
+  const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
+  const missionProof=activeMission?missionSummary(activeMission):null;
+  const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
+
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
-    {isEmpty&&<PageHead title="Your Climb" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+active.role}/>}
-    <div className="v7-stack">
+    <div className="client-auth-dashboard">
+      <header className="client-auth-head">
+        <div>
+          <div className="eyebrow">YOUR DAILY BRIEFING · {active.gameName}{active.tagline}</div>
+          <h1>Welcome back, {active.gameName}.</h1>
+          <p>One focus. Every game. Lasting improvement. Your real account, match evidence and coaching plan now live inside the same Client system you explored before signing in.</p>
+        </div>
+        <Link className="btn secondary" href="/account">PLAYER PROFILE →</Link>
+      </header>
+
       {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
       {isEmpty&&<FirstRun task={leadTask} gameName={active.gameName}/>}
 
-      <section className="hq-main-card">
-        {mainChampion&&<img className="hq-main-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
-        <div className="hq-main-overlay"/>
-        <div className="hq-main-content">
-          <div className="hq-main-topline"><span className="v7-badge engine">YOUR MAIN</span><span className="v7-badge">{championStats.games>=3?'AUTO-UPDATES FROM YOUR GAMES':'YOUR STARTING PICK'}</span></div>
-          <div className="hq-main-copy">
-            <div>
-              <p className="hq-main-kicker">MAIN CHAMPION</p>
-              <h2>{mainChampion||'CHOOSE YOUR MAIN'}</h2>
-              <p className="hq-main-note">{mainChampion?'This starts from the champion you picked. If another champion clearly becomes your most played, Optimus updates it automatically.':'Pick your main champion so Optimus can build your player profile around what you actually play.'}</p>
+      <section className="client-overview-top">
+        <article className="client-mission-hero">
+          {mainChampion&&<img className="client-mission-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
+          <div className="client-mission-shade"/>
+          <div className="client-mission-copy">
+            <div className="eyebrow">YOUR NEXT GAME PLAN · {missionRankBand(active.rank)}</div>
+            <h2>{missionPlain?.name||'Build your next'}<br/><em>{activeMission?'rep.':'useful focus.'}</em></h2>
+            <p>{missionPlain?.why||'Play a tracked game and OP CLIMB will turn the evidence into one clear job for your next queue.'}</p>
+            <div className="client-mission-actions">
+              <Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link>
+              <Link className="btn secondary" href="/ilp">OPEN MY CLIMB</Link>
             </div>
-            <Link className="btn secondary" href="/champions/main">{mainChampion?'OPEN CHAMPION →':'CHOOSE MAIN →'}</Link>
           </div>
-          <div className="hq-main-stats">
-            <div><span>GAMES</span><b>{championStats.games||'—'}</b></div>
-            <div><span>WIN RATE</span><b>{championStats.games?`${championStats.winRate}%`:'—'}</b></div>
-            <div><span>KDA</span><b>{championStats.games?championStats.kda:'—'}</b></div>
-            <div><span>CS / MIN</span><b>{championStats.games?championStats.csPerMin:'—'}</b></div>
+        </article>
+
+        <aside className="glass client-rank-card">
+          <div>
+            <div className="eyebrow">YOUR RANKED SNAPSHOT</div>
+            <div className="rank-name">{active.rank}</div>
+            <div className="rank-role">{active.role} · {mainChampion||'Main champion not set'}</div>
           </div>
+          <div className="client-rank-metrics">
+            <div><span>TRACKED GAMES</span><b>{matches.length||'—'}</b></div>
+            <div><span>WIN RATE</span><b>{matches.length?currentWinRate+'%':'—'}</b></div>
+            <div><span>MAIN GAMES</span><b>{championStats.games||'—'}</b></div>
+            <div><span>MAIN KDA</span><b>{championStats.games?championStats.kda:'—'}</b></div>
+          </div>
+        </aside>
+      </section>
+
+      <section className="client-metric-row" aria-label="Player development snapshot">
+        <article className="client-metric"><span>ACTIVE FOCUS</span><b>{activeMission?activeMission.progress+'%':'—'}</b><small>{missionPlain?.success||'Waiting for measurable evidence'}</small></article>
+        <article className="client-metric"><span>PROVEN REPS</span><b>{missionProof?missionProof.confirmed+'/'+missionProof.required:'—'}</b><small>{activeMission?missionRankBand(active.rank)+' proof bar':'No active mission yet'}</small></article>
+        <article className="client-metric"><span>MAIN CHAMPION</span><b>{mainChampion||'—'}</b><small>{championStats.games?championStats.games+' tracked games':'Choose or establish your main'}</small></article>
+        <article className="client-metric"><span>CS / MIN</span><b>{championStats.games?championStats.csPerMin:'—'}</b><small>{championStats.games?'Across tracked '+mainChampion+' games':'Build a baseline from real games'}</small></article>
+      </section>
+
+      <section className="client-loop-section">
+        <div className="client-section-head">
+          <div><div className="eyebrow">THE OP COACHING LOOP</div><h2>Stop repeating. Start improving.</h2></div>
+          <span className="eyebrow">REAL ACCOUNT · REAL EVIDENCE</span>
+        </div>
+        <div className="client-loop-grid">
+          <Link className="client-loop-card" href="/live"><span className="step">01 · PREPARE</span><h3>Know your job.</h3><p>Open the Match room before queueing and carry one useful rule into the game.</p><span className="link">Prepare next game →</span></Link>
+          <Link className="client-loop-card" href="/analyse"><span className="step">02 · REVIEW</span><h3>Find the decision.</h3><p>Use your real match evidence to understand what held, what broke and what matters next.</p><span className="link">Review my games →</span></Link>
+          <Link className="client-loop-card" href="/coach"><span className="step">03 · REMEMBER</span><h3>Build coaching memory.</h3><p>Your coach carries the thread across games so each answer starts from your development history.</p><span className="link">Open Coach memory →</span></Link>
         </div>
       </section>
-    </div>
 
-    <section className="v7-section hq-game-missions">
-      <div className="v7-section-head hq-mission-head">
-        <div><div className="eyebrow">NEXT GAME · {missionRankBand(active.rank)} TARGETS</div><h2>One core. Two support.</h2><p className="muted">Your Core mission is the main job. Support missions keep developing in the background, and every proof bar scales with your current rank.</p></div>
-      </div>
-      {planMissions.length?<div className="hq-mission-grid">
-        {planMissions.map((task,index)=>{
-          const plain=plainLanguageFocus(task),summary=missionSummary(task);
-          return <article key={task.id} className={`hq-mission-card ${index===0?'lime':'teal'} ${index===0?'is-core':''}`}>
-            <div className="hq-mission-top"><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><MissionMeasurementBadge metric={task.metric} compact/></div>
-            <h3>{plain.name}</h3>
-            <div className="hq-mission-target"><strong>{task.progress}%</strong><span>{plain.success}</span></div>
-            <div className="hq-mission-proof"><span>{summary.confirmed}/{summary.required} PROVEN REPS</span><span>{missionRankBand(active.rank)} BAR</span></div>
-            <div className="hq-mission-why"><span>{index===0?'WHY THIS IS CORE':'WHY THIS SUPPORTS YOU'}</span><p>{plain.why}</p></div>
-          </article>;
-        })}
-      </div>:<div className="glass card"><div className="eyebrow">PLAN BUILDING</div><h3>Play a tracked game.</h3><p className="muted">OP CLIMB will only create missions when your actual match data contains something it can measure.</p></div>}
-    </section>
+      <section className="client-overview-bottom">
+        <article className="glass client-real-matches">
+          <div className="client-section-head">
+            <div><div className="eyebrow">YOUR REAL MATCHES</div><h2>Every game has a lesson.</h2></div>
+            <Link className="text-link" href="/analyse">MATCH REVIEW →</Link>
+          </div>
+          <div className="client-match-list">
+            {recentMatches.length?recentMatches.map(match=><div className="client-match-row" key={match.id}>
+              <div><span className={'result '+(match.result==='WIN'?'win':'loss')}>{match.result==='WIN'?'VICTORY':'DEFEAT'}</span></div>
+              <div><div className="champ">{match.champion}</div><div className="meta">{match.role} · {match.kills}/{match.deaths}/{match.assists}</div></div>
+              <Link className="text-link" href="/analyse">REVIEW →</Link>
+            </div>):<div className="client-match-row"><div/><div><div className="champ">No tracked matches yet</div><div className="meta">Connect the Companion or add a game to start building your evidence.</div></div><Link className="text-link" href="/live">CONNECT →</Link></div>}
+          </div>
+        </article>
+
+        <aside className="glass client-memory-card">
+          <div className="eyebrow">COACH MEMORY</div>
+          <h2>Your coach shouldn’t start from zero.</h2>
+          <p>Keep the focus, evidence and repeated decisions connected across games. The authenticated workspace uses your actual development record rather than demo examples.</p>
+          <div className="memory-progress"><span>CURRENT DEVELOPMENT THREAD</span><b>{missionPlain?.name||'BUILDING BASELINE'}</b></div>
+          <Link className="btn secondary" href="/coach">OPEN COACH MEMORY →</Link>
+        </aside>
+      </section>
+
+      <section className="client-plan-strip">
+        <div><h3>Find your focus. Build your game. Develop the player.</h3><p>Your subscription changes coaching depth, not the visual system. The same Client workspace stays around you.</p></div>
+        <Link className="btn secondary" href="/pricing">PLANS & UNLOCKS →</Link>
+      </section>
+    </div>
   </AppShell>;
 }
