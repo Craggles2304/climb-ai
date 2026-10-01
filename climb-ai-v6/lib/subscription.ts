@@ -110,3 +110,11 @@ export function historyWindowLabel(tier:SubscriptionTier){
 export function hasPersistentDevelopment(tier:SubscriptionTier){
   return tier==='PRO';
 }
+
+
+export function requiredTierForHistoryDate(createdAt:string,now=Date.now()):SubscriptionTier{
+  const at=Date.parse(createdAt);
+  if(!Number.isFinite(at))return'PRO';
+  const ageDays=Math.max(0,(now-at)/(24*60*60*1000));
+  return ageDays<=PLAN_COPY.FREE.historyDays?'FREE':ageDays<=PLAN_COPY.PLUS.historyDays?'PLUS':'PRO';
+}
