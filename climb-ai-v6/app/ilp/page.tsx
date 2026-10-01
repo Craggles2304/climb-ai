@@ -21,6 +21,7 @@ import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDoma
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
+const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties);
 
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
@@ -148,9 +149,9 @@ export default function PlayerDevelopmentCentre(){
       {tier==='PRO'&&mastered.length>0&&<section className="panel panel-padding" style={{marginTop:18}}>
         <div className="section-head"><div><div className="eyebrow">RECENTLY MASTERED</div><h2>Habits that moved into memory.</h2></div><button className="text-btn" type="button" onClick={()=>setTab('HISTORY')}>View history →</button></div>
         <div>
-          {mastered.slice(0,3).map((task,index)=><div className="habit done" key={task.id}>
+          {mastered.slice(0,3).map(task=><div className="habit done ip-strand-item" style={strandStyle(task.dnaDomain)} key={task.id}>
             <span className="habit-index">✓</span>
-            <div><h3>{plainLanguageFocus(task).name}</h3><p>{task.gameRule}</p></div>
+            <div><small className="ip-strand-label">{dnaDomainLabel(task.dnaDomain)}</small><h3>{plainLanguageFocus(task).name}</h3><p>{task.gameRule}</p></div>
             <span className="tag">Mastered</span>
           </div>)}
         </div>
@@ -191,7 +192,7 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   const plain=plainLanguageFocus(task);
   const summary=missionSummary(task);
   const sideMissions=awarenessMissions(task,role);
-  return <article className={'ip-mission '+(index===0?'primary':'secondary')}>
+  return <article className={'ip-mission '+(index===0?'primary':'secondary')} style={strandStyle(task.dnaDomain)}>
     <div className="ip-mission-top">
       <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
       <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
@@ -274,9 +275,9 @@ function stageLabel(stage:string){
 function EvidenceCard({task,index}:{task:ILPTask;index:number}){
   const summary=missionSummary(task);
   const recent=(task.missionHistory??[]).slice(-4).reverse();
-  return <article className="ip-evidence-card">
+  return <article className="ip-evidence-card" style={strandStyle(task.dnaDomain)}>
     <div className="ip-evidence-head">
-      <div><span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
+      <div><span>{index===0?'CORE MISSION':'SUPPORT 0'+index} · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
@@ -297,7 +298,7 @@ function EvidenceCard({task,index}:{task:ILPTask;index:number}){
 function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}){
   return <article className="ip-archive">
     <div className="ip-archive-head"><span>{title}</span><b>{tasks.length}</b></div>
-    {tasks.length?<div>{tasks.map(task=><details key={task.id}>
+    {tasks.length?<div>{tasks.map(task=><details key={task.id} className="ip-strand-history" style={strandStyle(task.dnaDomain)}>
       <summary><b>{plainLanguageFocus(task).name}</b><span>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</span></summary>
       <p>{task.lastUpdatedReason||task.evidence.at(-1)||'No additional evidence note.'}</p>
       {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
