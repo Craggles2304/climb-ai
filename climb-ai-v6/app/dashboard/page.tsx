@@ -1,22 +1,20 @@
 'use client';
 
 import {useEffect,useMemo,useState} from 'react';
-import type {CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
-import {PageHead} from '@/components/UI';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {TrackView} from '@/components/TrackView';
 import {FirstRun} from '@/components/FirstRun';
 import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
+import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {getMainChampion,setMainChampion} from '@/lib/mainChampion';
 import type {Match,Role} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
-import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -159,173 +157,167 @@ export default function Home(){
   const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
   const missionProof=activeMission?missionSummary(activeMission):null;
   const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
-  const memoryGenes=[
-    {id:'lane',label:'Laning',hint:'Trades, spacing, recalls',categories:['LANING','TRADING','RECALL_TIMING']},
-    {id:'wave',label:'Waves & CS',hint:'Wave states, farming, resources',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
-    {id:'vision',label:'Vision & map',hint:'Vision, tracking, map checks',categories:['VISION','MAP_AWARENESS']},
-    {id:'objectives',label:'Objectives',hint:'Objectives, tempo, conversion',categories:['OBJECTIVES','TEMPO']},
-    {id:'fights',label:'Teamfights',hint:'Positioning, targets, survival',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
-    {id:'consistency',label:'Consistency',hint:'Repeat the read under pressure',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS']},
-  ].map(gene=>{
-    const geneTasks=tasks.filter(task=>gene.categories.includes(task.category));
-    const score=geneTasks.length?Math.round(geneTasks.reduce((sum,task)=>sum+Math.max(0,Math.min(100,task.progress||0)),0)/geneTasks.length):0;
-    const mastered=geneTasks.filter(task=>task.status==='MASTERED').length;
-    return{...gene,score,mastered,total:geneTasks.length};
-  });
-  const dnaStrength=Math.round(memoryGenes.reduce((sum,gene)=>sum+gene.score,0)/memoryGenes.length);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>{
+    const defs:Array<{id:ClientDnaMission['c'];label:string;categories:string[]}>= [
+      {id:'lane',label:'Laning',categories:['LANING','TRADING','RECALL_TIMING']},
+      {id:'wave',label:'Waves & CS',categories:['FARMING','WAVE_MANAGEMENT','RESOURCE_COLLECTION']},
+      {id:'vision',label:'Vision & map',categories:['VISION','MAP_AWARENESS']},
+      {id:'obj',label:'Objectives',categories:['OBJECTIVES','TEMPO']},
+      {id:'fight',label:'Teamfights',categories:['TEAMFIGHTING','TARGET_SELECTION','POSITIONING','DEATHS']},
+      {id:'mind',label:'Mindset',categories:['CONSISTENCY','CHAMPION_MASTERY','MATCHUPS','ITEMISATION']},
+    ];
+    return defs.flatMap(def=>{
+      const real=tasks.filter(task=>def.categories.includes(task.category)).slice(0,4).map(task=>({
+        c:def.id,
+        n:task.title,
+        s:(task.status==='MASTERED'?3:task.progress>=100?2:1) as 0|1|2|3,
+      }));
+      while(real.length<4)real.push({c:def.id,n:`Awaiting next ${def.label} mission`,s:0});
+      return real;
+    });
+  },[tasks]);
   const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
   const learningMemories=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
 
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
-    <div className="client-auth-dashboard">
-      <header className="client-auth-head">
-        <div>
-          <div className="eyebrow">YOUR DAILY BRIEFING · {active.gameName}{active.tagline}</div>
-          <h1>Welcome back, {active.gameName}.</h1>
-          <p>One focus. Every game. Lasting improvement. Your real account, match evidence and coaching plan now live inside the same Client system you explored before signing in.</p>
+
+    <header className="page-head">
+      <div>
+        <div className="eyebrow">YOUR DAILY BRIEFING · {active.gameName}{active.tagline}</div>
+        <h1>Welcome back, {active.gameName}.</h1>
+        <p>One focus. Every game. Lasting improvement.</p>
+      </div>
+      <Link className="btn btn-small" href="/client">Explore the client ◎</Link>
+    </header>
+
+    {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
+    {isEmpty&&<FirstRun task={leadTask} gameName={active.gameName}/>}
+
+    <div className="overview-top">
+      <section className="mission">
+        {mainChampion&&<img className="mission-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
+        <div className="mission-copy">
+          <div className="eyebrow">◎ YOUR NEXT GAME PLAN</div>
+          <h2>{missionPlain?.name||'Build the next'}<br/><em>{activeMission?'rep.':'useful focus.'}</em></h2>
+          <p><strong>{missionPlain?.success||'Your next tracked game creates the baseline.'}</strong><br/>{missionPlain?.why||'OP CLIMB turns your real match evidence into one clear decision to carry into queue.'}</p>
+          <div className="mission-actions">
+            <Link className="btn primary" href="/live">Open my match plan →</Link>
+            <Link className="pin-btn" href="/ilp" aria-label="Open my climb">⌖</Link>
+          </div>
         </div>
-        <Link className="btn secondary" href="/account">PLAYER PROFILE →</Link>
+        <span className="art-credit">{mainChampion||'YOUR MAIN'} · {active.role}</span>
+      </section>
+
+      <aside className="rank-card panel">
+        <div className="eyebrow">YOUR RANKED SNAPSHOT</div>
+        <div className="rank-main">
+          <span className="rank-emblem">♜</span>
+          <div><h3>{active.rank}</h3><p>{active.role}</p></div>
+        </div>
+        <div className="rank-progress">
+          <div className="progress-track"><span style={{width:(activeMission?.progress??0)+'%'}}/></div>
+          <div className="between" style={{marginTop:8}}><small>Current focus</small><small>{activeMission?activeMission.progress+'%':'Building'}</small></div>
+        </div>
+        <div className="rank-footer">
+          <div><b className="mint">{matches.length||'—'}</b><small>Tracked games</small></div>
+          <div><b>{matches.length?currentWinRate+'%':'—'}</b><small>Win rate</small></div>
+        </div>
+      </aside>
+    </div>
+
+    <div className="metric-row">
+      <div className="panel metric"><span className="metric-icon">◎</span><div><div className="value">{activeMission?activeMission.progress+'%':'—'}</div><p>Current focus</p></div></div>
+      <div className="panel metric"><span className="metric-icon">✓</span><div><div className="value">{missionProof?missionProof.confirmed+'/'+missionProof.required:'—'}</div><p>Proven reps</p></div></div>
+      <div className="panel metric"><span className="metric-icon">↗</span><div><div className="value">{championStats.games?championStats.csPerMin:'—'}</div><p>CS / min · {mainChampion||'main'}</p></div></div>
+      <div className="panel metric"><span className="metric-icon">◈</span><div><div className="value">{masteredMemories}</div><p>Coaching memories</p></div></div>
+    </div>
+
+    <section className="loop-section">
+      <div className="section-head">
+        <div><h2>Stop repeating. Start improving.</h2></div>
+        <span className="eyebrow">THE OP COACHING LOOP</span>
+      </div>
+      <div className="loop-grid">
+        <Link className="panel loop-card" href="/live"><span className="loop-number">01</span><span className="metric-icon">⚔</span><h3>Know your win condition</h3><p>A plan for the lane, the fight and your job.</p><span className="link-label">Prepare your next game →</span></Link>
+        <Link className="panel loop-card" href="/analyse"><span className="loop-number">02</span><span className="metric-icon">▣</span><h3>Find the turning point</h3><p>One decision to understand. Not twenty graphs.</p><span className="link-label">Review your last game →</span></Link>
+        <Link className="panel loop-card" href="#coach-memory"><span className="loop-number">03</span><span className="metric-icon">◎</span><h3>Make the habit stick</h3><p>A coach that remembers and tests your progress.</p><span className="link-label">Explore coaching memory →</span></Link>
+      </div>
+    </section>
+
+    <div className="overview-bottom">
+      <section className="panel panel-padding">
+        <div className="section-head"><h2>Every game has a lesson.</h2><Link className="text-btn" href="/analyse">Match review →</Link></div>
+        <div className="match-list">
+          {recentMatches.length?recentMatches.map(match=><Link href="/analyse" className={'match-row '+(match.result==='WIN'?'':'loss')} key={match.id}>
+            <span className="result-line"/>
+            <span className="champion-avatar" style={{backgroundImage:`url(${championSplash(match.champion)})`}}/>
+            <span className="match-name"><strong><span className="match-result">{match.result==='WIN'?'VICTORY':'DEFEAT'}</span>{match.champion}</strong><small>{match.role} · tracked match</small></span>
+            <span className="kda">{match.kills} / {match.deaths} / {match.assists}<small>{match.metrics.csPerMin?match.metrics.csPerMin.toFixed(1)+' CS/min':'Review ready'}</small></span>
+            <span>→</span>
+          </Link>):<div className="match-row"><span className="result-line"/><span className="champion-avatar"/><span className="match-name"><strong>NO TRACKED MATCHES YET</strong><small>Connect the Companion to begin.</small></span><Link className="text-btn" href="/live">Connect →</Link></div>}
+        </div>
+        <p className="sample-caption">YOUR MATCHES · SELECT A GAME TO SEE THE COACH’S READ</p>
+      </section>
+
+      <section className="panel panel-padding memory-card">
+        <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY</div>
+        <h2>Your coach shouldn’t start from zero.</h2>
+        <p>Keep your patterns, test your fixes and find the next thing worth working on.</p>
+        <div className="memory-mini"><span>Current memories<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
+        <Link className="btn gold" href="#coach-memory">See what your coach remembers →</Link>
+      </section>
+    </div>
+
+    <section id="coach-memory" style={{marginTop:30}}>
+      <header className="page-head">
+        <div>
+          <div className="eyebrow">THE OP CLIMB DIFFERENCE / SEASON-LONG COACHING</div>
+          <h1>A coach that remembers you.</h1>
+          <p>Your last game is one chapter. Your development is the whole story.</p>
+        </div>
+        <Link className="btn btn-small" href="/coach">Open full coach →</Link>
       </header>
 
-      {profile&&<ErrorBoundary label="live_game" compact><LiveGameCard gameName={profile.gameName} tagline={profile.tagline} region={profile.region} task={leadTask}/></ErrorBoundary>}
-      {isEmpty&&<FirstRun task={leadTask} gameName={active.gameName}/>}
+      <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions}/>
 
-      <section className="client-overview-top">
-        <article className="client-mission-hero">
-          {mainChampion&&<img className="client-mission-art" src={championSplash(mainChampion)} alt="" aria-hidden="true"/>}
-          <div className="client-mission-shade"/>
-          <div className="client-mission-copy">
-            <div className="eyebrow">YOUR NEXT GAME PLAN · {missionRankBand(active.rank)}</div>
-            <h2>{missionPlain?.name||'Build your next'}<br/><em>{activeMission?'rep.':'useful focus.'}</em></h2>
-            <p>{missionPlain?.why||'Play a tracked game and OP CLIMB will turn the evidence into one clear job for your next queue.'}</p>
-            <div className="client-mission-actions">
-              <Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link>
-              <Link className="btn secondary" href="/ilp">OPEN MY CLIMB</Link>
-            </div>
-          </div>
-        </article>
-
-        <aside className="glass client-rank-card">
-          <div>
-            <div className="eyebrow">YOUR RANKED SNAPSHOT</div>
-            <div className="rank-name">{active.rank}</div>
-            <div className="rank-role">{active.role} · {mainChampion||'Main champion not set'}</div>
-          </div>
-          <div className="client-rank-metrics">
-            <div><span>TRACKED GAMES</span><b>{matches.length||'—'}</b></div>
-            <div><span>WIN RATE</span><b>{matches.length?currentWinRate+'%':'—'}</b></div>
-            <div><span>MAIN GAMES</span><b>{championStats.games||'—'}</b></div>
-            <div><span>MAIN KDA</span><b>{championStats.games?championStats.kda:'—'}</b></div>
-          </div>
-        </aside>
-      </section>
-
-      <section className="client-metric-row" aria-label="Player development snapshot">
-        <article className="client-metric"><span>ACTIVE FOCUS</span><b>{activeMission?activeMission.progress+'%':'—'}</b><small>{missionPlain?.success||'Waiting for measurable evidence'}</small></article>
-        <article className="client-metric"><span>PROVEN REPS</span><b>{missionProof?missionProof.confirmed+'/'+missionProof.required:'—'}</b><small>{activeMission?missionRankBand(active.rank)+' proof bar':'No active mission yet'}</small></article>
-        <article className="client-metric"><span>MAIN CHAMPION</span><b>{mainChampion||'—'}</b><small>{championStats.games?championStats.games+' tracked games':'Choose or establish your main'}</small></article>
-        <article className="client-metric"><span>CS / MIN</span><b>{championStats.games?championStats.csPerMin:'—'}</b><small>{championStats.games?'Across tracked '+mainChampion+' games':'Build a baseline from real games'}</small></article>
-      </section>
-
-      <section className="client-loop-section">
-        <div className="client-section-head">
-          <div><div className="eyebrow">THE OP COACHING LOOP</div><h2>Stop repeating. Start improving.</h2></div>
-          <span className="eyebrow">REAL ACCOUNT · REAL EVIDENCE</span>
-        </div>
-        <div className="client-loop-grid">
-          <Link className="client-loop-card" href="/live"><span className="step">01 · PREPARE</span><h3>Know your job.</h3><p>Open the Match room before queueing and carry one useful rule into the game.</p><span className="link">Prepare next game →</span></Link>
-          <Link className="client-loop-card" href="/analyse"><span className="step">02 · REVIEW</span><h3>Find the decision.</h3><p>Use your real match evidence to understand what held, what broke and what matters next.</p><span className="link">Review my games →</span></Link>
-          <Link className="client-loop-card" href="/coach"><span className="step">03 · REMEMBER</span><h3>Build coaching memory.</h3><p>Your coach carries the thread across games so each answer starts from your development history.</p><span className="link">Open Coach memory →</span></Link>
-        </div>
-      </section>
-
-      <section className="client-memory-section" id="coach-memory">
-        <header className="client-memory-head">
-          <div>
-            <div className="eyebrow">THE OP CLIMB DIFFERENCE / SEASON-LONG COACHING</div>
-            <h2>A coach that remembers you.</h2>
-            <p>Your last game is one chapter. Your development is the whole story.</p>
-          </div>
-          <Link className="btn secondary" href="/coach">OPEN FULL COACH MEMORY →</Link>
-        </header>
-
-        <section className="client-dna-panel">
-          <div className="client-dna-visual" aria-label="Game DNA based on your real development plan">
-            <div className="client-dna-title"><span>GAME DNA</span><strong>{active.gameName}{active.tagline}</strong></div>
-            <div className="client-dna-helix" aria-hidden="true">
-              {memoryGenes.map((gene,index)=><div className="client-dna-rung" key={gene.id} style={{'--dna-progress':gene.score+'%','--dna-order':index} as CSSProperties}><i/><b/><span/></div>)}
-            </div>
-            <div className="client-dna-score"><b>{dnaStrength}%</b><span>DNA strength</span><small>{masteredMemories} memories · {learningMemories} learning</small></div>
-          </div>
-          <div className="client-dna-side">
-            <div className="client-section-head"><div><span className="eyebrow">YOUR GAME DNA · MEMORY</span><h3>Every mission writes to memory.</h3></div><span className="client-plan-badge">REAL DATA</span></div>
-            <p>Each part of your game strengthens as missions move from active practice into repeatable evidence. Mastered missions stay visible as memory rather than disappearing.</p>
-            <div className="client-dna-genes">
-              {memoryGenes.map(gene=><div className="client-dna-gene" key={gene.id}>
-                <i style={{width:gene.score+'%'}}/>
-                <div><strong>{gene.label}</strong><small>{gene.hint}</small></div>
-                <b>{gene.score}%</b>
-              </div>)}
-            </div>
+      <div className="climb-grid">
+        <section className="panel panel-padding memory-panel">
+          <div className="section-head"><h2>One habit. Your real context.</h2><span className="tag gold">Memory</span></div>
+          <div className="memory-timeline">
+            <div className="memory-event"><span>NOW</span><div><h3>Find the repeat.</h3><p>{missionPlain?.name||'Build the first measurable focus.'} {missionPlain?.why||'OP CLIMB is waiting for enough evidence to choose the first repeat.'}</p></div></div>
+            <div className="memory-event"><span>PROOF</span><div><h3>Practise one decision.</h3><p>{missionProof?missionProof.confirmed+' of '+missionProof.required+' proven reps currently support this mission.':'The next tracked game starts the evidence trail.'}</p></div></div>
+            <div className="memory-event"><span>GAMES</span><div><h3>Use fewer prompts.</h3><p>{matches.length?matches.length+' tracked games can now test whether the same decision holds across different situations.':'Connect the Companion so the coach can compare the same decision across games.'}</p></div></div>
+            <div className="memory-event"><span>NEXT</span><div><h3>Test it somewhere new.</h3><p>{activeMission?.status==='MASTERED'?'This habit is mastered. Re-test it in a new situation before moving on.':'Carry the same rule into the next game and check whether it holds without adding more advice.'}</p></div></div>
           </div>
         </section>
 
-        <div className="client-memory-grid">
-          <article className="client-memory-timeline-card">
-            <div className="client-section-head"><h3>One habit. Your real context.</h3><span className="client-plan-badge">MEMORY</span></div>
-            <div className="client-memory-timeline">
-              <div><span>01</span><section><strong>Current focus</strong><p>{missionPlain?.name||'Build the first measurable focus.'} {missionPlain?.why||'OP CLIMB is waiting for enough real evidence to choose the next repeat.'}</p></section></div>
-              <div><span>02</span><section><strong>Evidence building</strong><p>{missionProof?missionProof.confirmed+' of '+missionProof.required+' proven reps currently support this mission.':'No proven reps yet. The next tracked game starts the evidence trail.'}</p></section></div>
-              <div><span>03</span><section><strong>Across games</strong><p>{matches.length?matches.length+' tracked games are available to test whether the same decision keeps appearing.':'Connect the Companion or add a game so the coach can compare the same decision across matches.'}</p></section></div>
-              <div><span>04</span><section><strong>Next test</strong><p>{activeMission&&activeMission.status==='MASTERED'?'This habit is mastered. The coach can now re-test it in a new situation before moving on.':'Carry the current rule into the next game, then check whether it held without adding more advice.'}</p></section></div>
-            </div>
-          </article>
-
-          <aside className="client-memory-carry-card">
-            <span className="eyebrow">WHAT THE COACH CARRIES FORWARD</span>
-            <h3>Not just your numbers.</h3>
-            <div className="client-memory-criteria">
-              <div><b>01</b><span>Recurring decision patterns</span></div>
-              <div><b>02</b><span>Your current focus and why it matters</span></div>
-              <div><b>03</b><span>Evidence that supports—or challenges—the read</span></div>
-              <div><b>04</b><span>When the habit holds without help</span></div>
-              <div><b>05</b><span>The next useful test, not a random tip</span></div>
-            </div>
-            <div className="client-memory-goal"><strong>The goal: need less help.</strong><p>Progress means you make the read yourself, even when the matchup or game state changes.</p></div>
-            <Link className="btn secondary" href="/coach">ASK MY COACH →</Link>
-          </aside>
-        </div>
-      </section>
-
-      <section className="client-overview-bottom">
-        <article className="glass client-real-matches">
-          <div className="client-section-head">
-            <div><div className="eyebrow">YOUR REAL MATCHES</div><h2>Every game has a lesson.</h2></div>
-            <Link className="text-link" href="/analyse">MATCH REVIEW →</Link>
+        <aside className="panel panel-padding">
+          <span className="eyebrow accent">WHAT THE COACH CARRIES FORWARD</span>
+          <h2 style={{marginTop:12}}>Not just your numbers.</h2>
+          <div className="criteria">
+            <div><span className="mint">◎</span><span>Recurring decision patterns</span></div>
+            <div><span className="mint">◎</span><span>Your current focus and why it matters</span></div>
+            <div><span className="mint">◎</span><span>Examples that support—or challenge—the read</span></div>
+            <div><span className="mint">◎</span><span>When the habit holds without help</span></div>
+            <div><span className="mint">◎</span><span>The next useful test, not a random tip</span></div>
           </div>
-          <div className="client-match-list">
-            {recentMatches.length?recentMatches.map(match=><div className="client-match-row" key={match.id}>
-              <div><span className={'result '+(match.result==='WIN'?'win':'loss')}>{match.result==='WIN'?'VICTORY':'DEFEAT'}</span></div>
-              <div><div className="champ">{match.champion}</div><div className="meta">{match.role} · {match.kills}/{match.deaths}/{match.assists}</div></div>
-              <Link className="text-link" href="/analyse">REVIEW →</Link>
-            </div>):<div className="client-match-row"><div/><div><div className="champ">No tracked matches yet</div><div className="meta">Connect the Companion or add a game to start building your evidence.</div></div><Link className="text-link" href="/live">CONNECT →</Link></div>}
-          </div>
-        </article>
-
-        <aside className="glass client-memory-card">
-          <div className="eyebrow">COACH MEMORY</div>
-          <h2>Your coach shouldn’t start from zero.</h2>
-          <p>Keep the focus, evidence and repeated decisions connected across games. The authenticated workspace uses your actual development record rather than demo examples.</p>
-          <div className="memory-progress"><span>CURRENT DEVELOPMENT THREAD</span><b>{missionPlain?.name||'BUILDING BASELINE'}</b></div>
-          <Link className="btn secondary" href="/coach">OPEN COACH MEMORY →</Link>
+          <div className="micro-box"><strong>The goal: need less help.</strong><p>Progress means you make the read yourself, even in a new situation.</p></div>
+          <Link className="btn gold" style={{width:'100%',marginTop:20}} href="/coach">Open Coach memory →</Link>
         </aside>
-      </section>
+      </div>
 
-      <section className="client-plan-strip">
-        <div><h3>Find your focus. Build your game. Develop the player.</h3><p>Your subscription changes coaching depth, not the visual system. The same Client workspace stays around you.</p></div>
-        <Link className="btn secondary" href="/pricing">PLANS & UNLOCKS →</Link>
-      </section>
-    </div>
+      <div className="memory-outcomes">
+        <article className="panel outcome"><span className="eyebrow">MEMORIES BANKED</span><strong>{masteredMemories}</strong><p>Mastered missions that stay in the player model.</p></article>
+        <article className="panel outcome"><span className="eyebrow">LEARNING NOW</span><strong>{learningMemories}</strong><p>Active development threads still gathering evidence.</p></article>
+        <article className="panel outcome"><span className="eyebrow">THE NEXT TEST</span><strong>{activeMission?'NEXT GAME':'BASELINE'}</strong><p>{activeMission?'Can the current read hold again without extra help?':'Play a tracked game to establish the first real coaching thread.'}</p></article>
+      </div>
+    </section>
+
+    <section className="home-plan-strip">
+      <span className="metric-icon">◆</span>
+      <div><h3>Find your focus. Build your game. Develop the player.</h3><p>Your plan changes coaching depth, not the Client workspace around you.</p></div>
+      <Link className="btn" href="/pricing">Compare unlocks →</Link>
+    </section>
   </AppShell>;
 }
