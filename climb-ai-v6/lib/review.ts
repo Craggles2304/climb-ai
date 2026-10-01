@@ -1,4 +1,5 @@
 import {AnalysisReport,Match,IssueCategory} from './types';
+import {positiveEvidenceForMatch} from './positiveEvidence';
 
 /**
  * Deterministic match review.
@@ -64,9 +65,6 @@ export function bandFor(rank:string):RankBand{
 }
 
 /* ---------- number formatting that refuses to guess ---------- */
-
-const has=(v:number|undefined):v is number=>typeof v==='number'&&Number.isFinite(v);
-const one=(v:number)=>v.toFixed(1);
 
 /* ---------- phrasing pools ---------- */
 
@@ -153,25 +151,12 @@ export function buildReview(match:Match,report:AnalysisReport,rank=match.rank):M
 
   const headline=pick(HEADLINE[band][match.result],`h:${seed}`);
 
-  // "What went well" is built from metrics that actually exist. Nothing here is
-  // manufactured praise — if a metric is missing, its line is simply not offered.
-  const wellPool:string[]=[];
-  const m=match.metrics;
-  if(has(m.goldDiffAt15)&&m.goldDiffAt15>0)
-    wellPool.push(`You left lane ${m.goldDiffAt15} gold up on your opponent.`);
-  if(has(m.laneCsPerMin)&&m.laneCsPerMin>=6.3)
-    wellPool.push(`Lane farm held at ${one(m.laneCsPerMin)} CS/min.`);
-  if(has(m.deathsPre10)&&m.deathsPre10===0)
-    wellPool.push('You survived the whole early game without dying.');
-  if(has(m.killParticipation)&&m.killParticipation>=0.6)
-    wellPool.push(`You were involved in ${Math.round(m.killParticipation*100)}% of your team’s takedowns.`);
-  if(has(m.damageShare)&&m.damageShare>=0.27)
-    wellPool.push(`You accounted for ${Math.round(m.damageShare*100)}% of your team’s champion damage.`);
-  if(has(m.visionScore)&&m.visionScore>=20)
-    wellPool.push(`Vision score of ${m.visionScore} is above where most of your games sit.`);
-  if(!wellPool.length)wellPool.push(pick(WELL_LANE,`w:${seed}`));
-
-  const didWell=wellPool.slice(0,3);
+  // Positive coaching is evidence-backed too. Rank-relative benchmarks and
+  // decision scores create verified strengths instead of generic praise.
+  const strengths=positiveEvidenceForMatch(match,rank);
+  const didWell=strengths.length
+    ?strengths.slice(0,4).map(item=>`${item.title}: ${item.value} · target ${item.target}.`)
+    :[pick(WELL_LANE,`w:${seed}`)];
 
   const titlePool=MISTAKE_TITLE[category]??[category.replaceAll('_',' ')];
   const whyPool=WHY[band][category]??['This is the pattern most likely to be costing you games right now.'];
