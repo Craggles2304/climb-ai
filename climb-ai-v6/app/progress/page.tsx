@@ -3,6 +3,7 @@ import {AppShell} from '@/components/AppShell';
 import {PageHead} from '@/components/UI';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
+import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {LineChart,Line,CartesianGrid,XAxis,YAxis,Tooltip,ResponsiveContainer} from 'recharts';
 import {climbScore} from '@/lib/engine';
 import {coachingLevelFor} from '@/lib/coachingLevel';
@@ -18,7 +19,7 @@ const signed=(n:number,digits=1)=>(n>0?'+':'')+n.toFixed(digits);
 export default function Progress(){
   const {active}=useAccount();
   const {tier}=useSubscription();
-  const matches=matchesFor(active.id);
+  const matches=filterHistoryForTier(matchesFor(active.id),tier);
   const detail=coachingLevelFor(active.rank);
   const ordered=[...matches].reverse();
   const data=ordered.map((m,i)=>({game:i+1,full:m.metrics.csPerMin,post:m.metrics.post15CsPerMin||m.metrics.csPerMin,deaths:m.deaths}));
@@ -36,7 +37,7 @@ export default function Progress(){
 
   return <AppShell>
     <TrackView event="career_viewed" props={{games:matches.length,rank:active.rank}}/>
-    <PageHead title="Progress" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+detail.tier+' VIEW '+detail.depth+'/10'}/>
+    <PageHead title="Progress" subtitle={active.gameName+active.tagline+' · '+active.rank+' · '+detail.tier+' VIEW '+detail.depth+'/10 · '+historyWindowLabel(tier)}/>
     {tier==='PRO'?<DecisionTwinCommandCenter accountId={active.id}/>:<ProMoatGate/>}
     <details className="vf-progress-detail">
       <summary>Explore your match trends and career history</summary>
@@ -62,8 +63,7 @@ export default function Progress(){
       <div className="vf-verdict-action"><span>NEXT ACTION</span><b>{active.role==='ADC'?'Protect the last wave before objective setup.':'Track objective timing and deaths around setup.'}</b></div>
     </section>
 
-    <CareerDevelopmentMap accountId={active.id}/>
-    <LearningJourneyTimeline accountId={active.id}/>
+    {tier==='PRO'?<><CareerDevelopmentMap accountId={active.id}/><LearningJourneyTimeline accountId={active.id}/></>:<section className="glass card"><div className="eyebrow">LONG-TERM DEVELOPMENT · PRO</div><h3>Persistent career memory is locked.</h3><p className="muted">{tier==='PLUS'?'PLUS keeps your current-game coaching and 90-day history. PRO adds long-term learning journeys, transfer tests and player-model development.':'FREE keeps the basic loop and 7-day view. PRO adds long-term learning journeys, transfer tests and player-model development.'}</p></section>}
     </details>
   </AppShell>;
 }
