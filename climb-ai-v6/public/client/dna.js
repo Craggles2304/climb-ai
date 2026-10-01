@@ -16,7 +16,7 @@
     {id:'mind',   label:'Mindset',      hud:'MINDSET',    hint:'Focus, tilt control, consistency', color:'#2ec7ff'}
   ];
   // [gene, mission, state] — 0 not started, 1 learning, 2 learned, 3 memory
-  const START = [
+  const DEMO_START = [
     ['lane','Protect the first reset',3],['lane','Trade when their key spell is down',2],['lane','Respect the level-2 spike',1],['lane','Punish their last-hits',0],
     ['wave','Crash the wave before you recall',3],['wave','70 CS by 10:00',2],['wave','Freeze when you are ahead',1],['wave','Reset on the cannon wave',0],
     ['vision','Ward before you step forward',2],['vision','Track the jungler’s first clear',1],['vision','Sweep before objectives',0],['vision','Check the map every wave',0],
@@ -24,6 +24,9 @@
     ['fight','Hit the closest safe target',2],['fight','Wait for your engage',1],['fight','Stay behind your frontline',0],['fight','Flash to survive, not to chase',0],
     ['mind','One focus per game',3],['mind','Mute after two deaths',2],['mind','Stop after two losses',1],['mind','Review before you requeue',0]
   ];
+  let START = DEMO_START.map(row=>[...row]);
+  let realMode = false;
+  let playerLabel = 'KAI#EUW';
   const STATE = ['Not started','Learning','Learned','Memory'];
   const KEY = 'opclimb-dna-v1';
   const FLASH_MS = 1600;
@@ -44,6 +47,24 @@
   let selected = missions.findIndex(m => m.s === 1);
   let focusGene = null;
   let flashes = [];
+
+  function configure(input){
+    if(!input||!Array.isArray(input.missions))return;
+    const rows=input.missions
+      .filter(m=>m&&CATS.some(cat=>cat.id===m.c)&&typeof m.n==='string'&&[0,1,2,3].includes(Number(m.s)))
+      .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s)]);
+    if(!rows.length)return;
+    realMode=Boolean(input.real);
+    playerLabel=String(input.player||playerLabel).slice(0,48);
+    START=rows;
+    missions=fresh();
+    clock=Math.max(START.length,...missions.map(m=>m.t));
+    selected=missions.findIndex(m=>m.s===1);
+    if(selected<0)selected=missions.findIndex(m=>m.s>=2);
+    if(selected<0)selected=0;
+    focusGene=null;
+    flashes=[];
+  }
 
   const catOf = id => CATS.find(c => c.id === id);
   const geneStrength = id => { const ms = missions.filter(m => m.c === id); return ms.reduce((a,m) => a + m.s, 0) / (ms.length * 3); };
@@ -74,15 +95,16 @@
         return `<button class="dna-gene" type="button" data-dna-gene="${g.id}" aria-pressed="${focusGene === g.id}" style="--c:${g.color};--s:${s.toFixed(2)}" aria-label="${g.label}: ${pct(s)} strength, ${ms.filter(x => x.s === 3).length} memories"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true">${ms.map(x => `<i class="s${x.s}"></i>`).join('')}</span><b>${pct(s)}</b></button>`;
       }).join('')}</div>
       <div class="dna-detail" style="--c:${c.color}" aria-live="polite"><div class="dna-detail-top"><span class="dna-chip">${c.label}</span><span class="dna-state s${m.s}">${STATE[m.s]}</span></div><h3>${m.n}</h3><p>${evidence(m, selected)}</p></div>
-      <div class="dna-actions"><button class="btn primary" type="button" data-dna-act="complete"${done ? ' disabled' : ''}>${done ? 'DNA fully written' : 'Complete a mission <span class="dna-demo">demo</span>'}</button><button class="btn btn-small" type="button" data-dna-act="reset">Reset</button></div>`;
+      ${realMode?'':`<div class="dna-actions"><button class="btn primary" type="button" data-dna-act="complete"${done ? ' disabled' : ''}>${done ? 'DNA fully written' : 'Complete a mission <span class="dna-demo">demo</span>'}</button><button class="btn btn-small" type="button" data-dna-act="reset">Reset</button></div>`}`;
   }
 
-  function panel(){
+  function panel(input){
+    if(input)configure(input);
     return `<section class="panel dna-panel" data-dna aria-labelledby="dna-title">
       <div class="dna-visual">
         <canvas class="dna-canvas" role="img" aria-label="Game DNA helix: six neon genes, one for each part of the game. Lit rungs are learned missions; pulsing rungs are locked into memory."></canvas>
-        <span class="dna-cap">GAME DNA <em>//</em> KAI#EUW</span>
-        <span class="dna-seq"><i></i>${START.length} MISSIONS SEQUENCED</span>
+        <span class="dna-cap">GAME DNA <em>//</em> ${playerLabel}</span>
+        <span class="dna-seq"><i></i>${missions.length} MISSIONS SEQUENCED</span>
         <div class="dna-legend" aria-hidden="true"><span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span></div>
         <div class="dna-tip" hidden></div>
       </div>
@@ -91,7 +113,7 @@
         <h2 id="dna-title">Every mission writes to memory.</h2>
         <p class="dna-intro">Each colour is a part of your game. Completing a mission lights up its rung. When it holds again in later games, it locks into memory and that part of the strand gets stronger.</p>
         <div data-dna-side>${sideHTML()}</div>
-        <p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>
+        ${realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
       </div>
     </section>`;
   }
@@ -446,7 +468,7 @@
     });
   }
 
-  window.opDna = {panel};
+  window.opDna = {panel,mount,configure};
   const content = document.getElementById('content');
   if(content){
     new MutationObserver(() => {
