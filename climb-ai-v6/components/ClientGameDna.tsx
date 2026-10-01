@@ -7,6 +7,7 @@ export type ClientDnaMission={
   c:'lane'|'wave'|'vision'|'obj'|'fight'|'mind';
   n:string;
   s:0|1|2|3;
+  p?:number;
 };
 
 type Props={
@@ -15,19 +16,21 @@ type Props={
   compact?:boolean;
   preview?:boolean;
   tier?:'FREE'|'PLUS'|'PRO';
+  baselineGames?:number;
+  baselineRequired?:number;
 };
 
 declare global{
   interface Window{
     opDna?:{
-      panel:(input?:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string})=>string;
+      panel:(input?:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>string;
       mount?:(root:HTMLElement)=>void;
-      configure?:(input:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string})=>void;
+      configure?:(input:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>void;
     };
   }
 }
 
-export function ClientGameDna({player,missions,compact=false,preview=false,tier='PRO'}:Props){
+export function ClientGameDna({player,missions,compact=false,preview=false,tier='PRO',baselineGames=3,baselineRequired=3}:Props){
   const host=useRef<HTMLDivElement>(null);
   const [scriptReady,setScriptReady]=useState(false);
 
@@ -35,10 +38,10 @@ export function ClientGameDna({player,missions,compact=false,preview=false,tier=
     const api=window.opDna;
     const el=host.current;
     if(!api?.panel||!api.mount||!el)return;
-    el.innerHTML=api.panel({player,missions,real:true,preview,tier});
+    el.innerHTML=api.panel({player,missions,real:true,preview,tier,baselineGames,baselineRequired});
     const root=el.querySelector<HTMLElement>('[data-dna]');
     if(root)api.mount(root);
-  },[player,missions,preview,tier]);
+  },[player,missions,preview,tier,baselineGames,baselineRequired]);
 
   useEffect(()=>{
     if(window.opDna?.panel&&window.opDna?.mount){
