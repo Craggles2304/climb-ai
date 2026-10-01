@@ -157,6 +157,8 @@ function reasonFor(read:ItemRead,profile:AdaptiveEnemyProfile,role:AdaptiveBuild
 export function buildAdaptiveItemPlan(input:{
   patch:string;you:ChampionDetail;role?:string|null;allies:AdaptiveBuildPlayer[];enemies:AdaptiveBuildPlayer[];
   items:Record<string,DataDragonItemFull>;
+  popularItems?:{id:number;name:string}[]|null;
+  popularSource?:string|null;
 }):AdaptiveBuildPlan{
   const role=normRole(input.role);
   const you=input.you;
@@ -230,6 +232,13 @@ export function buildAdaptiveItemPlan(input:{
     reads.push({id,item,text,flags,ad,ap,as,crit,hp,armor,mr,lifesteal,ms,isBoots,offense,defense,utility,context,score});
   }
 
+  const readById=new Map(reads.map(read=>[read.id,read]));
+  const popularReads=(input.popularItems??[])
+    .map(item=>readById.get(Number(item.id)))
+    .filter((item):item is ItemRead=>Boolean(item));
+  const popularNonBoots=popularReads.filter(item=>!item.isBoots);
+  const popularBoot=popularReads.find(item=>item.isBoots)??null;
+
   const nonBoots=reads.filter(item=>!item.isBoots);
   const classCompatible=(item:ItemRead)=>{
     if(tank)return item.hp>0||item.armor>0||item.mr>0;
@@ -253,17 +262,30 @@ export function buildAdaptiveItemPlan(input:{
     const bTech=b.flags.some(flag=>coreTechFlags.has(flag))?1:0;
     const aSeed=damageSeed.has(a.id)?28:0;
     const bSeed=damageSeed.has(b.id)?28:0;
-    const aScore=a.offense+a.defense*.25+a.utility*.2+aSeed-aTech*30;
-    const bScore=b.offense+b.defense*.25+b.utility*.2+bSeed-bTech*30;
+    const aPopular=popularNonBoots.findIndex(item=>item.id===a.id);
+    const bPopular=popularNonBoots.findIndex(item=>item.id===b.id);
+    const aPopularBoost=aPopular>=0?110-Math.min(4,aPopular)*16:0;
+    const bPopularBoost=bPopular>=0?110-Math.min(4,bPopular)*16:0;
+    const aScore=a.offense+a.defense*.25+a.utility*.2+aSeed+aPopularBoost-aTech*30;
+    const bScore=b.offense+b.defense*.25+b.utility*.2+bSeed+bPopularBoost-bTech*30;
     return bScore-aScore||b.score-a.score;
   });
+
   const chosen=new Set<number>();
   const coreReads:ItemRead[]=[];
+  // A real current-patch, rank/role build is the anchor. Draft logic may
+  // change tech/boots/finish slots, but should not invent a new champion core.
+  for(const read of popularNonBoots){
+    if(chosen.has(read.id)||!coreEligible.some(item=>item.id===read.id))continue;
+    if(read.flags.some(flag=>coreTechFlags.has(flag)))continue;
+    coreReads.push(read);chosen.add(read.id);
+    if(coreReads.length===2)break;
+  }
   for(const read of coreRanked){
+    if(coreReads.length>=2)break;
     if(chosen.has(read.id))continue;
     if(marksman&&read.flags.some(flag=>coreTechFlags.has(flag)))continue;
     coreReads.push(read);chosen.add(read.id);
-    if(coreReads.length===2)break;
   }
   if(coreReads.length<2){
     for(const read of coreRanked){
@@ -309,21 +331,26 @@ export function buildAdaptiveItemPlan(input:{
   const draftRead=techRanked.find(item=>techPriority(item)>=32)??null;
   if(draftRead)chosen.add(draftRead.id);
 
-  const finishRead=coreRanked.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.offense+b.defense*.18+b.utility*.12)-(a.offense+a.defense*.18+a.utility*.12))[0]??null;
+  const finishRead=popularNonBoots.find(item=>!chosen.has(item.id)&&coreEligible.some(core=>core.id===item.id)&&!item.flags.some(flag=>coreTechFlags.has(flag)))
+    ??coreRanked.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.offense+b.defense*.18+b.utility*.12)-(a.offense+a.defense*.18+a.utility*.12))[0]
+    ??null;
   if(finishRead)chosen.add(finishRead.id);
 
   const bootReads=reads.filter(item=>item.isBoots);
-  const bootRead=[...bootReads].sort((a,b)=>{
-    const bootScore=(item:ItemRead)=>{
-      let value=item.offense*.45+item.defense*.45+item.utility*.25;
-      if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=55;
-      if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=42;
-      if(item.flags.includes('TENACITY')&&profile.cleanseableCc>=3)value+=42;
-      if(marksman&&item.as>0&&profile.cleanseableCc<3&&!(profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8))value+=50;
-      return value;
-    };
-    return bootScore(b)-bootScore(a);
-  })[0]??null;
+  const bootScore=(item:ItemRead)=>{
+    let value=item.offense*.45+item.defense*.45+item.utility*.25;
+    if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=70;
+    if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=58;
+    if(item.flags.includes('TENACITY')&&profile.cleanseableCc>=3)value+=60;
+    if(marksman&&item.as>0&&profile.cleanseableCc<3&&!(profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8))value+=50;
+    return value;
+  };
+  const bestDraftBoot=[...bootReads].sort((a,b)=>bootScore(b)-bootScore(a))[0]??null;
+  const defensiveBootNeeded=
+    (profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)||
+    (profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)||
+    profile.cleanseableCc>=3;
+  const bootRead=defensiveBootNeeded?bestDraftBoot:(popularBoot??bestDraftBoot);
 
   const itemOut=(read:ItemRead|null,slot:AdaptiveBuildItem['slot']):AdaptiveBuildItem|null=>read?{
     id:read.id,name:read.item.name,gold:read.item.gold?.total??0,slot,score:round(read.score),
@@ -366,9 +393,9 @@ export function buildAdaptiveItemPlan(input:{
     version:2,patch:input.patch,champion:you.name,role,
     confidence:input.enemies.length>=5?'HIGH':'MEDIUM',
     enemyProfile:profile,
-    read:readParts.join(' · ')||'Draft still forming',
+    read:[input.popularSource?'CORE · '+input.popularSource:null,...readParts].filter(Boolean).join(' · ')||'Draft still forming',
     core,draftItem,finish,boots,swaps,order,paths,lockedFrom:'CHAMP_SELECT',
-    rule:'KEEP THE CHAMPION CORE INTACT. ONLY ADD A DRAFT TECH ITEM WHEN THE ENEMY TEAM CREATES A SPECIFIC PROBLEM THAT ITEM ACTUALLY SOLVES.',
+    rule:'START FROM THE CURRENT-PATCH RANK/ROLE CORE. CHANGE BOOTS OR ADD A TECH ITEM ONLY WHEN THIS ENEMY DRAFT CREATES A SPECIFIC PROBLEM THAT THE ITEM ACTUALLY SOLVES.',
     boundary:'LOCKED FROM CHAMP SELECT USING CURRENT-PATCH RIOT STATIC CHAMPION/ITEM DATA ONLY. IT DOES NOT READ LIVE GOLD, ENEMY PURCHASES OR IN-GAME STATE, AND IT WILL NOT CHANGE DURING THE MATCH.',
   };
 }
