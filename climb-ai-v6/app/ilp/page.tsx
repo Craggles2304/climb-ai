@@ -20,6 +20,7 @@ import type {Role} from '@/lib/types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
+import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -63,12 +64,14 @@ export default function PlayerDevelopmentCentre(){
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
-  const gameMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
-  const gameLearning=useMemo(()=>selectedGame?tasks.flatMap(task=>{
-    const attempt=(task.missionHistory??[]).find(item=>item.matchId===selectedGame);
+  const selectedMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
+  const impactMatch=selectedMatch??matches[0];
+  const impactMatchId=impactMatch?.id??'';
+  const gameLearning=useMemo(()=>impactMatchId?tasks.flatMap(task=>{
+    const attempt=(task.missionHistory??[]).find(item=>item.matchId===impactMatchId);
     return attempt?[{task,attempt,summary:missionSummary(task)}]:[];
-  }):[],[tasks,selectedGame]);
-  const gameStrengths=useMemo(()=>gameMatch?positiveEvidenceForMatch(gameMatch,active.rank):[],[gameMatch,active.rank]);
+  }):[],[tasks,impactMatchId]);
+  const gameStrengths=useMemo(()=>impactMatch?positiveEvidenceForMatch(impactMatch,active.rank):[],[impactMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
   const planProgress=activeTasks.length
@@ -123,53 +126,13 @@ export default function PlayerDevelopmentCentre(){
       <footer><b>{Math.max(0,DNA_BASELINE_GAMES-baselineGames)} game{Math.max(0,DNA_BASELINE_GAMES-baselineGames)===1?'':'s'} left</b><span>After game 3: DNA reveals → first challenges unlock → proven reps grow the strands.</span><Link className="btn primary" href="/live">TRACK NEXT GAME →</Link></footer>
     </section>}
 
-    {selectedGame&&<section className="ip-game-learning panel panel-padding">
-      <div className="ip-game-learning-head">
-        <div>
-          <div className="eyebrow">WHAT CHANGED THIS GAME</div>
-          <h2>{gameLearning.length?gameLearning.some(item=>item.attempt.banksPass)?'You made measurable learning progress.':'This game was reviewed, but no rep was banked.':'Your game is synced. Mission evidence is still processing.'}</h2>
-          <p>{gameMatch?`${gameMatch.champion} · ${gameMatch.result} · ${gameMatch.kills}/${gameMatch.deaths}/${gameMatch.assists}`:'Latest tracked game'} · Your Climb only moves when the behaviour is actually observed.</p>
-        </div>
-        <div className="ip-game-learning-actions">
-          {gameMatch&&<Link className="btn secondary" href={'/analyse/'+encodeURIComponent(gameMatch.id)}>REVIEW GAME</Link>}
-          <button className="btn secondary" type="button" onClick={()=>{
-            const url=new URL(window.location.href);
-            url.searchParams.delete('game');
-            window.history.replaceState({},'',url.pathname+url.search);
-            setSelectedGame('');
-          }}>CLOSE</button>
-        </div>
-      </div>
-      {gameStrengths.length>0&&<div className="ip-game-strengths">
-        <div className="ip-game-strengths-head"><span>WHAT YOU DID WELL · MEASURED</span><b>{gameStrengths.length} VERIFIED STRENGTH{gameStrengths.length===1?'':'S'}</b></div>
-        <div>
-          {gameStrengths.slice(0,4).map(item=><article key={item.id} style={strandStyle(item.dnaDomain)}>
-            <span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span>
-            <h3>{item.title}</h3>
-            <div className="ip-strength-simple"><b>WHAT YOU DID</b><p>{item.whatHappened}</p></div>
-            <div className="ip-strength-simple"><b>WHY IT MATTERED</b><p>{item.whyItMattered}</p></div>
-            <em>KEEP THIS</em>
-            <details className="ip-strength-proof">
-              <summary>SHOW THE PROOF</summary>
-              <div><span>{item.technicalLabel}</span><strong>{item.value}</strong><small>Bar · {item.target} · {item.confidence} confidence</small></div>
-              {item.proof.length>0&&<ul>{item.proof.map(line=><li key={line}>{line}</li>)}</ul>}
-            </details>
-          </article>)}
-        </div>
-      </div>}
-      {gameLearning.length?<div className="ip-game-learning-grid">
-        {gameLearning.map(({task,attempt,summary})=><article key={task.id} style={strandStyle(task.dnaDomain)}>
-          <span>{dnaDomainLabel(task.dnaDomain)}</span>
-          <h3>{plainLanguageFocus(task).name}</h3>
-          <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ PROVEN REP BANKED':'○ NO REP BANKED'}</strong>
-          <p>{attemptMeaning(attempt.outcome,attempt.banksPass)}</p>
-          <div><b>{summary.confirmed}/{summary.required} proven reps</b><small>{learningStageLabel(summary.stage)}</small></div>
-        </article>)}
-      </div>:<div className="ip-game-learning-processing">
-        <span>ANALYSING</span>
-        <p>OP CLIMB has the match. It is waiting for the mission grader to finish attaching evidence to your current focus.</p>
-      </div>}
-    </section>}
+    {baselineReady&&impactMatch&&<MyClimbGameImpact
+      match={impactMatch}
+      learning={gameLearning}
+      strengths={gameStrengths}
+      activeTasks={activeTasks}
+    />}
+
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
