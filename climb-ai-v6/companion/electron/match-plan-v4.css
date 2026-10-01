@@ -1,0 +1,341 @@
+/* OP CLIMB Companion · Match Plan V4
+   Same visual language as Player Overview/My Climb.
+   Locked from champion select; the live state only changes the status treatment. */
+
+#opMissionReminders{
+  --op-lime:#b6f66b;
+  --op-teal:#00f5d4;
+  --op-blue:#2ec7ff;
+  --op-red:#ff3d71;
+  --op-amber:#ffb21e;
+  --op-violet:#a46bff;
+  display:grid!important;
+  grid-template-columns:repeat(12,minmax(0,1fr))!important;
+  gap:10px!important;
+  margin:10px 0 16px!important;
+  padding:18px!important;
+  border:1px solid rgba(255,255,255,.08)!important;
+  border-top:2px solid var(--op-lime)!important;
+  border-left:1px solid rgba(255,255,255,.08)!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(720px 260px at 88% 0,rgba(0,245,212,.065),transparent 67%),
+    radial-gradient(520px 220px at 5% 0,rgba(182,246,107,.065),transparent 70%),
+    linear-gradient(145deg,#0d161a,#081014 68%)!important;
+  box-shadow:0 24px 70px rgba(0,0,0,.28)!important;
+}
+#opMissionReminders.op-phase-live{
+  border-top-color:var(--op-red)!important;
+  background:
+    radial-gradient(620px 230px at 90% 0,rgba(255,61,113,.065),transparent 68%),
+    radial-gradient(520px 220px at 5% 0,rgba(182,246,107,.045),transparent 70%),
+    linear-gradient(145deg,#0d1519,#081014 68%)!important;
+}
+#opMissionReminders>.op-head,
+#opMissionReminders>.op-draft,
+#opMissionReminders>.op-team-board,
+#opMissionReminders>.op-paid-lock,
+#opMissionReminders>.op-rolewin,
+#opMissionReminders>.op-flow,
+#opMissionReminders>.op-deep,
+#opMissionReminders>.op-build,
+#opMissionReminders>.op-foot{grid-column:1/-1!important}
+
+#opMissionReminders>.op-head{
+  min-height:74px;
+  margin:0!important;
+  padding:3px 0 14px!important;
+  border:0!important;
+  border-bottom:1px solid rgba(255,255,255,.065)!important;
+  align-items:center!important;
+}
+#opMissionReminders .op-kicker{
+  color:var(--op-lime)!important;
+  font:800 8px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.18em!important
+}
+#opMissionReminders .op-head h3{
+  margin:7px 0 0!important;
+  color:#f4f8f7!important;
+  font:800 clamp(32px,4.8vw,54px)/.9 'Barlow Condensed',sans-serif!important;
+  letter-spacing:-.035em!important;
+  text-transform:uppercase!important
+}
+#opMissionReminders .op-rank{
+  padding:8px 10px!important;
+  border:1px solid rgba(182,246,107,.28)!important;
+  border-radius:0!important;
+  background:rgba(182,246,107,.04)!important;
+  color:var(--op-lime)!important;
+  font:800 8px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.12em!important
+}
+#opMissionReminders.op-phase-live .op-kicker{color:var(--op-red)!important}
+#opMissionReminders.op-phase-live .op-head:after{
+  content:'LIVE · RECORDING';
+  margin-left:auto;
+  padding:7px 9px;
+  border:1px solid rgba(255,61,113,.28);
+  background:rgba(255,61,113,.035);
+  color:#ff7b9b;
+  font:800 7px 'IBM Plex Mono',monospace;
+  letter-spacing:.12em
+}
+
+#opMissionReminders>.op-draft{margin:0!important;gap:6px!important}
+#opMissionReminders .op-chip{
+  padding:7px 9px!important;
+  border:1px solid rgba(255,255,255,.07)!important;
+  border-radius:0!important;
+  background:#0a1317!important;
+  color:#68777c!important;
+  font:700 7px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.08em!important
+}
+#opMissionReminders .op-chip b{color:#dce5e2!important}
+#opMissionReminders .op-chip.role{border-color:rgba(182,246,107,.24)!important;color:var(--op-lime)!important}
+
+#opMissionReminders .op-team-board{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 36px minmax(0,1fr)!important;
+  gap:8px!important;
+  align-items:stretch!important
+}
+#opMissionReminders .op-team-side{
+  padding:10px!important;
+  border:1px solid rgba(255,255,255,.065)!important;
+  border-radius:0!important;
+  background:#091115!important
+}
+#opMissionReminders .op-team-side.ours{border-top:2px solid var(--op-blue)!important}
+#opMissionReminders .op-team-side.theirs{border-top:2px solid var(--op-red)!important}
+#opMissionReminders .op-team-label{
+  margin-bottom:8px!important;
+  color:#66757a!important;
+  font:800 7px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.1em!important
+}
+#opMissionReminders .op-team-side.ours .op-team-label b{color:var(--op-blue)!important}
+#opMissionReminders .op-team-side.theirs .op-team-label b{color:#ff7693!important}
+#opMissionReminders .op-team-picks{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:5px!important}
+#opMissionReminders .op-team-pick{
+  position:relative;
+  min-width:0;
+  min-height:64px;
+  display:grid!important;
+  grid-template-columns:38px minmax(0,1fr)!important;
+  gap:7px!important;
+  align-items:center!important;
+  padding:6px!important;
+  overflow:hidden;
+  border:1px solid rgba(255,255,255,.055)!important;
+  border-radius:0!important;
+  background:#0c1519!important
+}
+#opMissionReminders .op-team-pick img{
+  width:38px;height:50px;object-fit:cover;object-position:center 20%;
+  border:1px solid rgba(255,255,255,.07)
+}
+#opMissionReminders .op-team-pick>div{min-width:0}
+#opMissionReminders .op-team-pick span{
+  display:block!important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#64747a!important;
+  font:700 6px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.06em!important
+}
+#opMissionReminders .op-team-pick b{
+  display:block!important;
+  margin-top:4px!important;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+  color:#e1e9e7!important;
+  font:800 10px 'DM Sans',sans-serif!important
+}
+#opMissionReminders .op-team-pick.you{
+  border-color:rgba(182,246,107,.34)!important;
+  box-shadow:inset 0 -2px 0 var(--op-lime),0 0 18px rgba(182,246,107,.06)!important
+}
+#opMissionReminders .op-team-pick.you span{color:var(--op-lime)!important}
+#opMissionReminders .op-team-pick.threat{
+  border-color:rgba(255,61,113,.28)!important;
+  box-shadow:inset 0 -2px 0 var(--op-red)!important
+}
+#opMissionReminders .op-team-pick.threat span{color:#ff7693!important}
+#opMissionReminders .op-team-vs{
+  display:grid!important;place-items:center!important;
+  color:var(--op-lime)!important;
+  font:900 11px 'IBM Plex Mono',monospace!important
+}
+
+#opMissionReminders>.op-job{
+  grid-column:1/9!important;
+  grid-row:auto!important;
+  min-height:150px!important;
+  margin:0!important;
+  padding:20px 22px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  border:1px solid rgba(182,246,107,.24)!important;
+  border-left:3px solid var(--op-lime)!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(420px 180px at 0 0,rgba(182,246,107,.08),transparent 70%),
+    #0a1216!important
+}
+#opMissionReminders>.op-job span{color:var(--op-lime)!important;font:800 7px 'IBM Plex Mono',monospace!important;letter-spacing:.15em!important}
+#opMissionReminders>.op-job strong{
+  margin-top:9px!important;
+  max-width:22ch;
+  color:#f3f7f5!important;
+  font:800 clamp(30px,4vw,48px)/.96 'Barlow Condensed',sans-serif!important;
+  letter-spacing:-.025em!important;
+  text-transform:uppercase!important
+}
+#opMissionReminders>.op-danger{
+  grid-column:9/-1!important;
+  min-height:150px!important;
+  margin:0!important;
+  padding:20px!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  border:1px solid rgba(255,61,113,.22)!important;
+  border-left:3px solid var(--op-red)!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(280px 150px at 100% 0,rgba(255,61,113,.08),transparent 70%),
+    #0a1115!important
+}
+#opMissionReminders>.op-danger span{color:#ff7693!important;font:800 7px 'IBM Plex Mono',monospace!important;letter-spacing:.14em!important}
+#opMissionReminders>.op-danger strong{margin-top:8px!important;color:#f4dfe5!important;font-size:13px!important;line-height:1.45!important}
+#opMissionReminders>.op-danger small{margin-top:9px!important;color:#ff8ba4!important;font:800 7px 'IBM Plex Mono',monospace!important;letter-spacing:.06em!important}
+
+#opMissionReminders>.op-rolewin{
+  display:grid!important;
+  grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:6px!important;
+  margin:0!important
+}
+#opMissionReminders .op-role-step{
+  position:relative!important;
+  min-height:94px!important;
+  padding:11px 10px!important;
+  border:1px solid rgba(255,255,255,.065)!important;
+  border-radius:0!important;
+  background:#0a1216!important
+}
+#opMissionReminders .op-role-step:before{
+  width:2px!important;
+  background:linear-gradient(180deg,var(--op-lime),var(--op-teal))!important
+}
+#opMissionReminders .op-role-step span{color:#69787d!important;font:800 6px 'IBM Plex Mono',monospace!important;letter-spacing:.1em!important}
+#opMissionReminders .op-role-step strong{color:#e8efed!important;font-size:10px!important;line-height:1.38!important}
+
+#opMissionReminders>.op-winhero{
+  grid-column:1/9!important;
+  min-height:104px!important;
+  margin:0!important;
+  padding:16px 18px!important;
+  border:1px solid rgba(0,245,212,.2)!important;
+  border-left:3px solid var(--op-teal)!important;
+  border-radius:0!important;
+  background:rgba(0,245,212,.025)!important
+}
+#opMissionReminders>.op-winhero span{color:var(--op-teal)!important}
+#opMissionReminders>.op-winhero strong{margin-top:7px!important;font-size:15px!important;line-height:1.4!important}
+#opMissionReminders>.op-mission{
+  grid-column:9/-1!important;
+  min-height:104px!important;
+  margin:0!important;
+  padding:16px 18px!important;
+  border:1px solid rgba(164,107,255,.22)!important;
+  border-left:3px solid var(--op-violet)!important;
+  border-radius:0!important;
+  background:rgba(164,107,255,.025)!important
+}
+#opMissionReminders>.op-mission span{color:#b795ff!important}
+#opMissionReminders>.op-mission strong{margin-top:7px!important;font-size:12px!important;line-height:1.42!important}
+
+#opMissionReminders>.op-build{
+  margin:0!important;
+  padding:14px!important;
+  border:1px solid rgba(255,178,30,.2)!important;
+  border-left:3px solid var(--op-amber)!important;
+  border-radius:0!important;
+  background:
+    radial-gradient(520px 160px at 100% 0,rgba(255,178,30,.06),transparent 72%),
+    #091115!important
+}
+#opMissionReminders .op-build-head span{color:var(--op-amber)!important;font:800 8px 'IBM Plex Mono',monospace!important;letter-spacing:.13em!important}
+#opMissionReminders .op-build-head small{color:#6d7a7f!important;font:700 7px 'IBM Plex Mono',monospace!important;letter-spacing:.07em!important}
+#opMissionReminders .op-build-grid{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:6px!important;margin-top:10px!important}
+#opMissionReminders .op-build-card{
+  min-height:76px!important;
+  display:grid!important;
+  grid-template-columns:40px minmax(0,1fr)!important;
+  gap:8px!important;
+  align-items:center!important;
+  padding:9px!important;
+  border:1px solid rgba(255,255,255,.065)!important;
+  border-radius:0!important;
+  background:#0a1216!important
+}
+#opMissionReminders .op-build-card.draft{
+  border-color:rgba(255,178,30,.42)!important;
+  box-shadow:inset 0 -2px 0 var(--op-amber)!important
+}
+#opMissionReminders .op-build-card img{width:40px!important;height:40px!important;border-radius:0!important}
+#opMissionReminders .op-build-card span{color:#68787d!important;font:800 6px 'IBM Plex Mono',monospace!important;letter-spacing:.09em!important}
+#opMissionReminders .op-build-card.draft span{color:var(--op-amber)!important}
+#opMissionReminders .op-build-card strong{margin-top:3px!important;color:#eef3f1!important;font-size:9px!important;line-height:1.15!important}
+#opMissionReminders .op-build-card small{display:block!important;margin-top:4px!important;color:#738287!important;font-size:7px!important;line-height:1.3!important}
+#opMissionReminders .op-build-read{
+  margin-top:9px!important;
+  color:#9aa8aa!important;
+  font:700 7px/1.45 'IBM Plex Mono',monospace!important;
+  letter-spacing:.04em!important;
+  text-transform:none!important
+}
+
+#opMissionReminders>.op-paid-lock{
+  margin:0!important;
+  padding:9px 11px!important;
+  border:1px solid rgba(255,255,255,.065)!important;
+  background:#0a1216!important
+}
+#opMissionReminders>.op-paid-lock span{color:#7b8a8e!important}
+#opMissionReminders>.op-paid-lock strong{font-size:9px!important}
+#opMissionReminders>.op-paid-lock small{display:none!important}
+
+#opMissionReminders>.op-deep{
+  margin:0!important;
+  border:1px solid rgba(164,107,255,.16)!important;
+  border-radius:0!important;
+  background:rgba(164,107,255,.018)!important
+}
+#opMissionReminders>.op-deep summary{color:#b795ff!important}
+#opMissionReminders>.op-foot{
+  margin:0!important;
+  padding-top:5px!important;
+  color:#55656a!important;
+  font:700 6px 'IBM Plex Mono',monospace!important;
+  letter-spacing:.1em!important
+}
+
+@media(max-width:920px){
+  #opMissionReminders>.op-job,
+  #opMissionReminders>.op-danger,
+  #opMissionReminders>.op-winhero,
+  #opMissionReminders>.op-mission{grid-column:1/-1!important}
+  #opMissionReminders .op-team-board{grid-template-columns:1fr!important}
+  #opMissionReminders .op-team-vs{min-height:20px!important}
+  #opMissionReminders .op-rolewin{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #opMissionReminders .op-build-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:650px){
+  #opMissionReminders{padding:12px!important}
+  #opMissionReminders .op-team-picks{grid-template-columns:1fr 1fr!important}
+  #opMissionReminders .op-rolewin,
+  #opMissionReminders .op-build-grid{grid-template-columns:1fr 1fr!important}
+}
