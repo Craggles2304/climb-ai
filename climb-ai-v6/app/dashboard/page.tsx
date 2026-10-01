@@ -172,7 +172,7 @@ export default function Home(){
       s:dnaTaskState(task),
       p:dnaTaskProgress(task),
     }));
-    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0});
+    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0,p:0});
     return real;
   }),[tasks]);
   const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
