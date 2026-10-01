@@ -2,6 +2,8 @@ import {NextRequest,NextResponse} from 'next/server';
 import {GET as coreGET} from './route-core';
 import {buildRememberPlan} from '@/lib/champions/rememberPlan';
 import {championRoster,latestPatch} from '@/lib/champions/source';
+import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
+import {companionDnaBaseline} from '@/lib/server/companionDnaBaseline';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -54,12 +56,27 @@ export async function GET(req:NextRequest){
     adaptiveBuild:data?.teamPlan?.adaptiveBuild??data?.adaptiveBuild??null,
   };
 
+  let dnaBaseline={games:0,required:3,ready:false,role:String(data?.role||data?.plan?.role||'').toUpperCase()||null};
+  try{
+    const auth=req.headers.get('authorization')??'';
+    const token=/^Bearer\s+(.+)$/i.exec(auth.trim())?.[1]?.trim();
+    const device=token?await authenticateTrackerToken(token):null;
+    if(device)dnaBaseline=await companionDnaBaseline({
+      userId:device.userId,
+      riotAccountId:device.riotAccountId,
+      role:data?.role??data?.plan?.role??null,
+    });
+  }catch(error){
+    console.warn('[champion-plan] DNA baseline lookup failed',error);
+  }
+
   const teamPlan={
     ...data.teamPlan,
     resourceTarget:remember.resourceTarget,
     rememberPlan:remember,
     rememberPlanAccess:paid?'FULL':'SIMPLE',
+    dnaBaseline,
   };
 
-  return NextResponse.json({...data,teamPlan},{status:response.status});
+  return NextResponse.json({...data,dnaBaseline,teamPlan},{status:response.status});
 }
