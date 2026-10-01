@@ -285,10 +285,28 @@ export function buildAdaptiveItemPlan(input:{
     if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)return true;
     return false;
   };
+  const techPriority=(item:ItemRead)=>{
+    const flags=new Set(item.flags);
+    let value=item.context+item.score*.12;
+    // Prefer the most specific answer to the draft before a generic defensive fallback.
+    // QSS/cleanse should beat revive only when the enemy actually has removable CC;
+    // knock-ups/displacements alone never earn this bonus.
+    if(flags.has('CLEANSE')&&(profile.suppressions>=1||profile.cleanseableCc>=3))
+      value+=48+profile.cleanseableCc*6+profile.suppressions*14;
+    if(flags.has('ANTI_TANK')&&profile.tanks>=2)value+=32+profile.tanks*5;
+    if(flags.has('ANTI_HEAL')&&profile.healing>=2)value+=30+profile.healing*5;
+    if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)value+=28+profile.shielding*4;
+    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)
+      value+=16+(profile.divers+profile.assassins)*2;
+    if((flags.has('SUSTAIN')||item.lifesteal>0)&&profile.poke>=2)value+=14+profile.poke*2;
+    if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=22;
+    if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=22;
+    return value;
+  };
   const techRanked=compatibleNonBoots
     .filter(item=>!chosen.has(item.id)&&techRelevant(item))
-    .sort((a,b)=>(b.context+b.score*.18)-(a.context+a.score*.18));
-  const draftRead=techRanked.find(item=>item.context>=26)??null;
+    .sort((a,b)=>techPriority(b)-techPriority(a));
+  const draftRead=techRanked.find(item=>techPriority(item)>=32)??null;
   if(draftRead)chosen.add(draftRead.id);
 
   const finishRead=coreRanked.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.offense+b.defense*.18+b.utility*.12)-(a.offense+a.defense*.18+a.utility*.12))[0]??null;
