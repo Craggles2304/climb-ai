@@ -6,7 +6,6 @@ import {useAccount} from './AccountContext';
 import {useSubscription} from './SubscriptionContext';
 import {SessionBar} from './SessionBar';
 import {LivePregameMount} from './LivePregameMount';
-import {LiveFightReviewMount} from './LiveFightReviewMount';
 import {LiveCommandCenter} from './LiveCommandCenter';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {BetaReporter} from './BetaReporter';
@@ -22,18 +21,18 @@ type ProgressionPayload={
 
 const primary=[
   ['Overview','/dashboard','⌂','Your daily briefing'],
-  ['Match room','/live','◇','Prepare + connect'],
+  ['Match room','/live','◇','Prepare + play'],
+  ['My games','/analyse','◈','Review + learn'],
   ['My climb','/ilp','◎','Focus + development'],
-  ['Coach memory','/coach','✦','Ask + understand'],
-  ['My games','/analyse','◈','Reviews + evidence'],
-  ['Plans & unlocks','/pricing','◆','Coaching depth'],
+  ['Coach','/coach','✦','Memory + questions'],
+  ['Plans','/pricing','◆','Coaching depth'],
 ] as const;
 const mobile=[['Overview','/dashboard'],['Match','/live'],['Climb','/ilp'],['Coach','/coach'],['Games','/analyse']] as const;
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'YOUR CLIMB';
   if(path==='/session')return'NEXT GAME';
-  if(path==='/coach')return'MY COACH';
+  if(path==='/coach')return'COACH';
   if(path==='/live')return'COMPANION';
   if(path==='/analyse'||path.startsWith('/analyse/'))return'MY GAMES';
   if(path==='/ilp')return'MY PROGRESS';
@@ -163,7 +162,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         {primary.map(([name,href,icon])=>{
           const activeLink=isPrimaryActive(path,href);
           return <Link className={'nav-link '+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
-            <span aria-hidden="true">{icon}</span><span>{name}</span>{name==='Coach memory'&&tier==='PRO'&&<span className="nav-extra">PRO</span>}
+            <span aria-hidden="true">{icon}</span><span>{name}</span>{name==='Coach'&&tier==='PRO'&&<span className="nav-extra">PRO</span>}
           </Link>;
         })}
       </nav>
@@ -194,7 +193,7 @@ export function AppShell({children}:{children:React.ReactNode}){
       </header>
 
       <main id="content" tabIndex={-1}>
-        {live?<><LivePregameMount/><LiveCommandCenter/><LiveFightReviewMount/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{children}</div>}
+        {live?<><LivePregameMount/><LiveCommandCenter/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{children}</div>}
       </main>
     </div>
 
