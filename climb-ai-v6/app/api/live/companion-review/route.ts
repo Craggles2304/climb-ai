@@ -8,6 +8,7 @@ import {riotEnabled} from '@/lib/riot/client';
 import {buildPostGameSections,type FightReview,type ReviewMatch} from '@/lib/postGameReview';
 import {reviewMarkedMoments} from '@/lib/markedMomentReview';
 import {isNewRecentRiotMatch,riotCompanionReview} from '@/lib/riot/companionReviewFallback';
+import {companionDnaBaseline} from '@/lib/server/companionDnaBaseline';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -73,7 +74,24 @@ export async function GET(req:NextRequest){
 
   const latest:any=await latestLiveRead(device.userId,device.accountKey,{lean:true});
   const riotReview=await recentRiotReview(device,latest);
-  if(riotReview)return NextResponse.json({ok:true,ready:true,review:riotReview});
+  if(riotReview){
+    const baseline=await companionDnaBaseline({
+      userId:device.userId,
+      riotAccountId:device.riotAccountId,
+      role:(riotReview as any)?.match?.role??null,
+    });
+    const matchId=String((riotReview as any)?.matchId||'').trim()||null;
+    return NextResponse.json({
+      ok:true,
+      ready:true,
+      review:{
+        ...riotReview,
+        matchId,
+        dnaBaseline:baseline,
+        progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
+      },
+    });
+  }
   if(!latest||!['COMPLETE','ABORTED'].includes(String(latest.status)))return NextResponse.json({ok:true,ready:false},{status:202});
 
   const rankChange:RankChange|null=null;
@@ -100,11 +118,24 @@ export async function GET(req:NextRequest){
   });
   const developmentPlan=developmentPlanFromSync((latest.summary as any)?.learningPlanSync,latest.status);
   const markedMoments=reviewMarkedMoments(summary?.capture?.markedMoments,summary?.fightReviews,summary?.points,Number(snapshot?.gameTime||0));
+  const db=getSupabaseAdmin();
+  const {data:storedMatch}=db
+    ?await db.from('matches').select('id').eq('user_id',device.userId).eq('live_session_id',latest.sessionId).maybeSingle()
+    :{data:null};
+  const matchId=storedMatch?.id?String(storedMatch.id):null;
+  const dnaBaseline=await companionDnaBaseline({
+    userId:device.userId,
+    riotAccountId:device.riotAccountId,
+    role:match?.role??null,
+  });
 
   return NextResponse.json({
     ok:true,ready:true,
     review:{
       sessionId:latest.sessionId,
+      matchId,
+      progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
+      dnaBaseline,
       endedAt:latest.endedAt??latest.lastSeenAt??null,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
