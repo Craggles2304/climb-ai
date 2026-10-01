@@ -6,6 +6,9 @@ import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {getCurrentUser} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import {resolveLeagueEntitlement} from '@/lib/server/subscriptionAccess';
+import {historyCutoffIso,requiredTierForHistoryDate} from '@/lib/subscription';
+import {proAnalysisForTier} from '@/lib/tieredProAnalysis';
 
 const schema=z.object({matchId:z.string().min(1)});
 
@@ -64,25 +67,39 @@ export async function POST(req:Request){
     if(!user)return NextResponse.json({error:'Sign in to analyse your match.'},{status:401});
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({error:'Match analysis is unavailable right now.'},{status:503});
+    const tier=(await resolveLeagueEntitlement(user.id)).tier;
 
     const {data:row,error:matchError}=await db.from('matches')
       .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
       .eq('user_id',user.id).eq('id',matchId).maybeSingle();
     if(matchError){console.error('[analyse] match load failed',matchError);return NextResponse.json({error:'We could not load this match.'},{status:500})}
     if(!row)return NextResponse.json({error:'Match not found.'},{status:404});
+    const matchAt=String(row.occurred_at||row.created_at||'');
+    const cutoff=historyCutoffIso(tier);
+    if(cutoff&&Date.parse(matchAt)<Date.parse(cutoff)){
+      return NextResponse.json({
+        error:'This match is outside your current history window.',
+        upgradeRequired:true,
+        requiredTier:requiredTierForHistoryDate(matchAt),
+        currentTier:tier,
+      },{status:403});
+    }
 
     const {data:metric,error:metricError}=await db.from('match_metrics').select('*').eq('user_id',user.id).eq('match_id',row.id).maybeSingle();
     if(metricError){console.error('[analyse] metrics load failed',metricError);return NextResponse.json({error:'We could not load this match evidence.'},{status:500})}
 
     const {data:proRow,error:proError}=await db.from('op_match_analysis').select('analysis,evidence_sources').eq('user_id',user.id).eq('match_id',row.id).maybeSingle();
     if(proError){console.error('[analyse] PRO evidence load failed',proError);return NextResponse.json({error:'We could not load the coaching evidence.'},{status:500})}
-    const proAnalysis=proRow?.analysis&&typeof proRow.analysis==='object'?proRow.analysis as ProMatchAnalysis:undefined;
+    const rawProAnalysis=proRow?.analysis&&typeof proRow.analysis==='object'?proRow.analysis as ProMatchAnalysis:undefined;
+    const proAnalysis=proAnalysisForTier(rawProAnalysis,tier);
     const match=toMatch(row,metric,proAnalysis);
 
-    const {data:recentRows,error:recentError}=await db.from('matches')
+    let recentQuery=db.from('matches')
       .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
       .eq('user_id',user.id).eq('riot_account_id',row.riot_account_id).neq('id',row.id)
-      .in('result',['WIN','LOSS']).order('occurred_at',{ascending:false}).limit(5);
+      .in('result',['WIN','LOSS']);
+    if(cutoff)recentQuery=recentQuery.gte('occurred_at',cutoff);
+    const {data:recentRows,error:recentError}=await recentQuery.order('occurred_at',{ascending:false}).limit(5);
     if(recentError)console.error('[analyse] recent match load failed',recentError);
     const recentIds=(recentRows||[]).map((recent:any)=>recent.id);
     let recentMetrics:any[]=[];
