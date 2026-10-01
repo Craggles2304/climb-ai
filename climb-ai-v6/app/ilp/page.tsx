@@ -19,6 +19,7 @@ import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import type {Role} from '@/lib/types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -48,16 +49,20 @@ export default function PlayerDevelopmentCentre(){
     window.history.replaceState({},'',url.pathname+url.search);
   };
 
+  const allRoleMatches=useMemo(()=>matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role),[active.id,active.role]);
+  const baselineGames=useMemo(()=>dnaBaselineGameCount(allRoleMatches,active.role),[allRoleMatches,active.role]);
+  const baselineReady=dnaBaselineReady(baselineGames);
   const activeTasks=useMemo(()=>{
+    if(!baselineReady)return[];
     const live=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
     return tier==='FREE'?live.slice(0,1):live;
-  },[tasks,tier]);
+  },[tasks,tier,baselineReady]);
   const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
   const masteredAll=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
   const pausedAll=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
-  const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.role===active.role),[active.id,active.role,tier]);
+  const matches=useMemo(()=>filterHistoryForTier(allRoleMatches,tier),[allRoleMatches,tier]);
   const gameMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
   const gameLearning=useMemo(()=>selectedGame?tasks.flatMap(task=>{
     const attempt=(task.missionHistory??[]).find(item=>item.matchId===selectedGame);
@@ -75,7 +80,7 @@ export default function PlayerDevelopmentCentre(){
     setChecking(true);
     try{
       await refreshAccount();
-      setChanges(['Latest match data fetched. New evidence will be applied to your core mission and two support missions automatically.']);
+      setChanges([baselineReady?'Latest match data fetched. New evidence will be applied to your current challenges automatically.':'Latest match data fetched. Baseline progress will update when the tracked game is available.']);
     }finally{
       setChecking(false);
     }
@@ -85,7 +90,7 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-head">
       <div>
         <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
-        <h1>{tier==='FREE'?'One focus. Prove it.':'One core. Two support.'}</h1>
+        <h1>{!baselineReady?'Build your baseline.':tier==='FREE'?'One focus. Prove it.':'One core. Two support.'}</h1>
         <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
       </div>
       <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
@@ -94,13 +99,29 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-summary">
       <div className="ip-summary-main">
         <span>CURRENT PLAN</span>
-        <b>{activeTasks.length}/{tier==='FREE'?1:3} ACTIVE</b>
-        <small>{matches.length} {active.role.toLowerCase()} games · {missionRankBand(active.rank)} targets</small>
+        <b>{baselineReady?activeTasks.length+'/'+(tier==='FREE'?1:3)+' ACTIVE':Math.min(baselineGames,DNA_BASELINE_GAMES)+'/'+DNA_BASELINE_GAMES+' BASELINE'}</b>
+        <small>{baselineReady?matches.length+' '+active.role.toLowerCase()+' games · '+missionRankBand(active.rank)+' targets':'No personalised challenge until the third tracked game is complete'}</small>
       </div>
-      <div><span>PROVEN REPS</span><b>{banked}/{required||9}</b><small>tracked game evidence only</small></div>
+      <div><span>PROVEN REPS</span><b>{baselineReady?banked+'/'+(required||9):'0'}</b><small>{baselineReady?'tracked game evidence only':'starts after baseline'}</small></div>
       <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
       <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
     </section>
+
+    {!baselineReady&&<section className="ip-baseline panel panel-padding">
+      <div className="ip-baseline-copy">
+        <div className="eyebrow">DNA BASELINE · OBSERVATION ONLY</div>
+        <h2>Play three games before OP Climb tells you what to change.</h2>
+        <p>Games 1–3 teach the system your starting point. Your DNA stays at <b>0%</b> and no personalised challenge is shown yet, so one unusual game cannot define you.</p>
+      </div>
+      <div className="ip-baseline-track">
+        {[0,1,2].map(index=><div key={index} className={index<baselineGames?'done':index===baselineGames?'current':''}>
+          <i>{index<baselineGames?'✓':index+1}</i>
+          <span>GAME {index+1}</span>
+          <small>{index<baselineGames?'Observed':index===baselineGames?'Next':'Waiting'}</small>
+        </div>)}
+      </div>
+      <footer><b>{Math.max(0,DNA_BASELINE_GAMES-baselineGames)} game{Math.max(0,DNA_BASELINE_GAMES-baselineGames)===1?'':'s'} left</b><span>After game 3: DNA reveals → first challenges unlock → proven reps grow the strands.</span><Link className="btn primary" href="/live">TRACK NEXT GAME →</Link></footer>
+    </section>}
 
     {selectedGame&&<section className="ip-game-learning panel panel-padding">
       <div className="ip-game-learning-head">
@@ -194,7 +215,7 @@ export default function PlayerDevelopmentCentre(){
       </div>:selectedDomain?<section className="ip-empty">
         <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NO CURRENT MISSION</div>
         <h2>This strand is not in your active plan right now.</h2>
-        <p>{tier==='FREE'?'FREE keeps one measurable focus live at a time. You can still understand every DNA strand, but only your current focus becomes an active mission.':'OP CLIMB only puts a strand into My Climb when your game evidence makes it one of your current priorities.'}</p>
+        <p>{!baselineReady?'This strand stays at zero until the three-game observation baseline is complete.':tier==='FREE'?'FREE keeps one measurable focus live at a time. You can still understand every DNA strand, but only your current focus becomes an active mission.':'OP CLIMB only puts a strand into My Climb when your game evidence makes it one of your current priorities.'}</p>
         <button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW CURRENT PLAN</button>
       </section>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
