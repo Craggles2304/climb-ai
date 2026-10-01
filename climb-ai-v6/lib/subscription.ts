@@ -85,3 +85,28 @@ export function normalizeTier(value:unknown):SubscriptionTier{
 }
 export function hasTier(current:SubscriptionTier,required:SubscriptionTier){return TIER_RANK[current]>=TIER_RANK[required]}
 export function canUseMetric(current:SubscriptionTier,key:CoachingMetricKey){return hasTier(current,METRIC_TIER[key])}
+
+
+export function historyCutoffIso(tier:SubscriptionTier,now=Date.now()):string|null{
+  if(tier==='PRO')return null;
+  const days=PLAN_COPY[tier].historyDays;
+  return new Date(now-days*24*60*60*1000).toISOString();
+}
+
+export function filterHistoryForTier<T extends {createdAt:string}>(items:T[],tier:SubscriptionTier,now=Date.now()):T[]{
+  const cutoff=historyCutoffIso(tier,now);
+  if(!cutoff)return items;
+  const cutoffMs=Date.parse(cutoff);
+  return items.filter(item=>{
+    const at=Date.parse(String(item.createdAt||''));
+    return Number.isFinite(at)&&at>=cutoffMs;
+  });
+}
+
+export function historyWindowLabel(tier:SubscriptionTier){
+  return tier==='FREE'?'LAST 7 DAYS':tier==='PLUS'?'LAST 90 DAYS':'LONG-TERM HISTORY';
+}
+
+export function hasPersistentDevelopment(tier:SubscriptionTier){
+  return tier==='PRO';
+}
