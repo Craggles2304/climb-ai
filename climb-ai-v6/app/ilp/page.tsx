@@ -89,50 +89,25 @@ export default function PlayerDevelopmentCentre(){
     }
   };
 
+  if(!baselineReady)return <AppShell>
+    <MyClimbGameImpact
+      match={impactMatch}
+      learning={[]}
+      strengths={[]}
+      activeTasks={[]}
+      baselineGames={baselineGames}
+      baselineRequired={DNA_BASELINE_GAMES}
+    />
+  </AppShell>;
+
   return <AppShell>
-    {!baselineReady&&<>
-      <section className="ip-head">
-        <div>
-          <div className="eyebrow">PLAYER DEVELOPMENT PLAN</div>
-          <h1>Build your baseline.</h1>
-          <p>{active.gameName}{active.tagline} · {active.rank} · <b>{active.role}</b> · {historyWindowLabel(tier)}</p>
-        </div>
-        <button className="btn secondary" type="button" disabled={checking} onClick={()=>void refresh()}>{checking?'CHECKING…':'CHECK NEW GAMES'}</button>
-      </section>
-
-      <section className="ip-summary">
-        <div className="ip-summary-main">
-          <span>CURRENT PLAN</span>
-          <b>{Math.min(baselineGames,DNA_BASELINE_GAMES)+'/'+DNA_BASELINE_GAMES+' BASELINE'}</b>
-          <small>No personalised challenge until the third tracked game is complete</small>
-        </div>
-        <div><span>PROVEN REPS</span><b>0</b><small>starts after baseline</small></div>
-        <div><span>CLIMB LEVEL</span><b>LV {xp.level}</b><small>{xp.xp.toLocaleString()} XP · {xp.title}</small></div>
-        <div><span>PLAN</span><b>0%</b><small>starts after game 3</small></div>
-      </section>
-    </>}
-
-    {!baselineReady&&<section className="ip-baseline panel panel-padding">
-      <div className="ip-baseline-copy">
-        <div className="eyebrow">DNA BASELINE · OBSERVATION ONLY</div>
-        <h2>Play three games before OP Climb tells you what to change.</h2>
-        <p>Games 1–3 teach the system your starting point. Your DNA stays at <b>0%</b> and no personalised challenge is shown yet, so one unusual game cannot define you.</p>
-      </div>
-      <div className="ip-baseline-track">
-        {[0,1,2].map(index=><div key={index} className={index<baselineGames?'done':index===baselineGames?'current':''}>
-          <i>{index<baselineGames?'✓':index+1}</i>
-          <span>GAME {index+1}</span>
-          <small>{index<baselineGames?'Observed':index===baselineGames?'Next':'Waiting'}</small>
-        </div>)}
-      </div>
-      <footer><b>{Math.max(0,DNA_BASELINE_GAMES-baselineGames)} game{Math.max(0,DNA_BASELINE_GAMES-baselineGames)===1?'':'s'} left</b><span>After game 3: DNA reveals → first challenges unlock → proven reps grow the strands.</span><Link className="btn primary" href="/live">TRACK NEXT GAME →</Link></footer>
-    </section>}
-
-    {baselineReady&&impactMatch&&<MyClimbGameImpact
+    {impactMatch&&<MyClimbGameImpact
       match={impactMatch}
       learning={gameLearning}
       strengths={gameStrengths}
       activeTasks={activeTasks}
+      baselineGames={baselineGames}
+      baselineRequired={DNA_BASELINE_GAMES}
     />}
 
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
