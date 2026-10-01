@@ -5,7 +5,7 @@ import type {ILPTask} from '../lib/types';
 
 function task(id:string,status:ILPTask['status'],passes:number):ILPTask{
   return{
-    id,accountId:'a',title:'Mission',category:'FARMING',why:'',gameRule:'',metric:'csPerMin',target:'6+',progress:passes?100:0,status,source:'SYSTEM',evidence:[],
+    id,accountId:'a',title:'Mission',dnaDomain:'WAVES_CS',category:'FARMING',why:'',gameRule:'',metric:'csPerMin',target:'6+',progress:passes?100:0,status,source:'SYSTEM',evidence:[],
     missionHistory:Array.from({length:passes},(_,i)=>({matchId:id+'-'+i,at:new Date(2026,0,i+1).toISOString(),adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,source:'TRACKED' as const})),
     masteryRequired:3,
   };
