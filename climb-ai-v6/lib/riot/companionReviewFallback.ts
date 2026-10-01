@@ -23,7 +23,7 @@ export function riotCompanionReview(matchId:string,details:RiotMatchDetails,coac
     ?{title:weakest.label.toUpperCase(),rule:weakest.summary}
     :{title:'KEEP YOUR CURRENT MISSION',rule:'Build more observed evidence before changing your next-game focus.'};
   return{
-    sessionId:`RIOT-${matchId}`,endedAt:match.createdAt,partial:true,source:'RIOT_MATCH',coachLevel,rankChange:null,
+    sessionId:`RIOT-${matchId}`,matchId,endedAt:match.createdAt,partial:true,source:'RIOT_MATCH',coachLevel,rankChange:null,
     match:reviewMatch,doneWell:good,improve:critical,good,critical,nextFocus,
     neutral:[{title:'Evidence source',detail:'Riot match and timeline. Local Companion recording was unavailable for this game.'}],
     evidenceCount:measured.length,reviewFormat:'RIOT_FALLBACK',
