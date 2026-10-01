@@ -5,7 +5,7 @@ import {METRIC_SPECS} from '../lib/metrics';
 import type {ILPTask,Match} from '../lib/types';
 
 function task(metric:string,target='3 proven games'):ILPTask{
-  return{id:'t',accountId:'a',title:'Mission',category:'CONSISTENCY',why:'',gameRule:'',metric,target,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};
+  return{id:'t',accountId:'a',title:'Mission',dnaDomain:'CONSISTENCY',category:'CONSISTENCY',why:'',gameRule:'',metric,target,progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[]};
 }
 function match(rank:string,metrics:Record<string,number|undefined>,proAnalysis?:any):Match{
   return{
