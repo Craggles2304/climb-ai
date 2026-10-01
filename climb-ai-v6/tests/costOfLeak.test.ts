@@ -150,7 +150,7 @@ test('thresholds agree with the pass conditions in ilpEngine',()=>{
     assert.equal(benchmarkPass(metric,fail,'Gold IV'),false,`${metric}: ${fail} should miss the Gold bar`);
 
     const task:ILPTask={
-      id:'t1',accountId:'acct-1',title:'t',category:'FARMING',why:'',gameRule:'',
+      id:'t1',accountId:'acct-1',title:'t',dnaDomain:'WAVES_CS',category:'FARMING',why:'',gameRule:'',
       metric,target:'',progress:0,status:'ACTIVE',source:'SYSTEM',evidence:[],
       successfulGames:0,masteryRequired:3,
     };
