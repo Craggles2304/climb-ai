@@ -491,8 +491,19 @@ ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:t
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
-  const safePaths=new Set(['/live','/progress','/ilp','/champions/main']);
-  const target=safePaths.has(String(path||''))?String(path):'/live';
+  const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse']);
+  let target='/live';
+  try{
+    const parsed=new URL(String(path||'/live'),'https://opclimb.local');
+    if(safePaths.has(parsed.pathname)){
+      const query=new URLSearchParams();
+      if(parsed.pathname==='/ilp'){
+        const game=String(parsed.searchParams.get('game')||'').trim();
+        if(game)query.set('game',game.slice(0,160));
+      }
+      target=parsed.pathname+(query.size?'?'+query.toString():'');
+    }
+  }catch{}
   shell.openExternal(`${currentConfig().webUrl}${target}`);
   return{ok:true,path:target};
 });
