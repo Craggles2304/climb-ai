@@ -32,17 +32,19 @@ test('landing scroll has section-level visual rhythm instead of one repeated bac
 });
 
 
-test('authenticated League routes open as distinct esports scenes rather than repeated card pages',()=>{
-  assert.ok(shell.includes('op-route-scene'));
-  for(const tone of ['hq','coach','review','climb','match','lab','plans','system']){
-    assert.ok(shell.includes("tone:'"+tone+"'"),'missing scene tone '+tone);
-    assert.ok(css.includes('data-scene="'+tone+'"')||tone==='review'||tone==='hq','missing scene styling '+tone);
+test('authenticated League routes share one coherent player workspace with route-specific views',()=>{
+  assert.ok(shell.includes('authenticated-client-shell'));
+  assert.ok(shell.includes('className="sidebar"'));
+  assert.ok(shell.includes('className="topbar"'));
+  assert.ok(shell.includes("if(path==='/dashboard')return'YOUR CLIMB'"));
+  assert.ok(shell.includes("if(path==='/live')return'COMPANION'"));
+  assert.ok(shell.includes("if(path==='/ilp')return'MY CLIMB'"));
+  assert.ok(shell.includes("if(path==='/coach')return'COACH'"));
+  assert.ok(shell.includes("document.body.dataset.clientView=view"));
+  for(const view of ['overview','match-room','climb','coach-memory','plans']){
+    assert.ok(shell.includes("'"+view+"'"),'missing workspace view '+view);
   }
-  for(const phrase of ['NEXT GAME. ONE JOB.','ASK LESS. REMEMBER MORE.','WATCH THE DECISION. NOT THE KDA.','BUILD A PLAYER. NOT A STATLINE.','DRAFT. TEST. UNDERSTAND.']){
-    assert.ok(shell.includes(phrase),'missing scene copy '+phrase);
-  }
-  assert.ok(css.includes('.op-scene-radar'));
-  assert.ok(css.includes('.op-scene-signals'));
-  assert.ok(css.includes('@keyframes opSceneScan'));
-  assert.ok(css.includes("url('/assets/jinx-splash.jpg')"));
+  assert.ok(shell.includes('See my progress'));
+  assert.ok(clientCss.includes('data-client-view="match-room"'));
+  assert.ok(clientCss.includes('data-client-view="climb"'));
 });
