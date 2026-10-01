@@ -31,10 +31,13 @@ export default function PlayerDevelopmentCentre(){
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
+  const [selectedGame,setSelectedGame]=useState<string>('');
 
   useEffect(()=>{
-    const raw=new URLSearchParams(window.location.search).get('dna');
+    const params=new URLSearchParams(window.location.search);
+    const raw=params.get('dna');
     setSelectedDomain(DNA_DOMAINS.includes(raw as DnaDomain)?raw as DnaDomain:null);
+    setSelectedGame(params.get('game')||'');
   },[]);
 
   const chooseDomain=(domain:DnaDomain|null)=>{
@@ -54,6 +57,11 @@ export default function PlayerDevelopmentCentre(){
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=useMemo(()=>filterHistoryForTier(matchesFor(active.id),tier).filter(match=>match.role===active.role),[active.id,active.role,tier]);
+  const gameMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
+  const gameLearning=useMemo(()=>selectedGame?tasks.flatMap(task=>{
+    const attempt=(task.missionHistory??[]).find(item=>item.matchId===selectedGame);
+    return attempt?[{task,attempt,summary:missionSummary(task)}]:[];
+  }):[],[tasks,selectedGame]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
   const planProgress=activeTasks.length
@@ -92,6 +100,36 @@ export default function PlayerDevelopmentCentre(){
       <div><span>PLAN</span><b>{planProgress}%</b><small>{Math.max(0,xp.nextLevelXp-xp.xp).toLocaleString()} XP to level {xp.level+1}</small></div>
     </section>
 
+    {selectedGame&&<section className="ip-game-learning panel panel-padding">
+      <div className="ip-game-learning-head">
+        <div>
+          <div className="eyebrow">WHAT CHANGED THIS GAME</div>
+          <h2>{gameLearning.length?gameLearning.some(item=>item.attempt.banksPass)?'You made measurable learning progress.':'This game was reviewed, but no rep was banked.':'Your game is synced. Mission evidence is still processing.'}</h2>
+          <p>{gameMatch?`${gameMatch.champion} · ${gameMatch.result} · ${gameMatch.kills}/${gameMatch.deaths}/${gameMatch.assists}`:'Latest tracked game'} · Your Climb only moves when the behaviour is actually observed.</p>
+        </div>
+        <div className="ip-game-learning-actions">
+          {gameMatch&&<Link className="btn secondary" href={'/analyse/'+encodeURIComponent(gameMatch.id)}>REVIEW GAME</Link>}
+          <button className="btn secondary" type="button" onClick={()=>{
+            const url=new URL(window.location.href);
+            url.searchParams.delete('game');
+            window.history.replaceState({},'',url.pathname+url.search);
+            setSelectedGame('');
+          }}>CLOSE</button>
+        </div>
+      </div>
+      {gameLearning.length?<div className="ip-game-learning-grid">
+        {gameLearning.map(({task,attempt,summary})=><article key={task.id} style={strandStyle(task.dnaDomain)}>
+          <span>{dnaDomainLabel(task.dnaDomain)}</span>
+          <h3>{plainLanguageFocus(task).name}</h3>
+          <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ PROVEN REP BANKED':'○ NO REP BANKED'}</strong>
+          <p>{attemptMeaning(attempt.outcome,attempt.banksPass)}</p>
+          <div><b>{summary.confirmed}/{summary.required} proven reps</b><small>{learningStageLabel(summary.stage)}</small></div>
+        </article>)}
+      </div>:<div className="ip-game-learning-processing">
+        <span>ANALYSING</span>
+        <p>OP CLIMB has the match. It is waiting for the mission grader to finish attaching evidence to your current focus.</p>
+      </div>}
+    </section>}
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
@@ -210,8 +248,10 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
 
     <div className="ip-target">
       <div><span>HOW YOU PASS</span><b>{plain.success}</b></div>
-      <div><span>WHERE YOU'RE AT</span><b>{stageLabel(summary.stage)}</b></div>
+      <div><span>YOU ARE LEARNING TO</span><b>{learningStageLabel(summary.stage)}</b></div>
     </div>
+
+    <LearningPath stage={summary.stage}/>
 
     {sideMissions.length>0&&<div className="ip-sidequests">
       <div className="ip-sidequests-head">
@@ -264,12 +304,34 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   </article>;
 }
 
-function stageLabel(stage:string){
-  if(stage==='DISCOVER')return'NEW';
-  if(stage==='PRACTISE')return'PRACTISING';
-  if(stage==='REPEAT')return'REPEATING';
-  if(stage==='MASTERED')return'MASTERED';
+function learningStageLabel(stage:string){
+  if(stage==='DISCOVER')return'RECOGNISE THE SITUATION';
+  if(stage==='PRACTISE')return'EXECUTE THE DECISION';
+  if(stage==='REPEAT')return'REPEAT IT CONSISTENTLY';
+  if(stage==='MASTERED')return'HABIT MASTERED';
   return clean(stage);
+}
+
+function attemptMeaning(outcome:string,banksPass:boolean){
+  if(banksPass)return'You performed the behaviour strongly enough for this game to count toward mastery.';
+  if(outcome==='NO_REP')return'The relevant situation was not observed clearly enough, so the game does not count against you.';
+  if(outcome==='UNREWARDED')return'The situation occurred, but the behaviour did not clear the mission target this time.';
+  if(outcome==='UNEARNED')return'The end result looked acceptable, but the decision evidence was not strong enough to bank the habit.';
+  return'This game gave useful evidence, but not a proven rep.';
+}
+
+function LearningPath({stage}:{stage:string}){
+  const stages=[
+    ['DISCOVER','RECOGNISE'],
+    ['PRACTISE','EXECUTE'],
+    ['REPEAT','REPEAT'],
+    ['MASTERED','MASTERED'],
+  ] as const;
+  const active=Math.max(0,stages.findIndex(([key])=>key===stage));
+  return <div className="ip-learning-path">
+    <div><span>LEARNING PATH</span><b>{active+1}/4</b></div>
+    <ol>{stages.map(([key,label],index)=><li key={key} className={index<active?'done':index===active?'active':''}><i>{index<active?'✓':index+1}</i><span>{label}</span></li>)}</ol>
+  </div>;
 }
 
 function EvidenceCard({task,index}:{task:ILPTask;index:number}){
