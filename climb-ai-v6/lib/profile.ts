@@ -1,4 +1,5 @@
 import {ILPTask,IssueCategory,Role} from './types';
+import {dnaDomainForTask} from './dnaDomain';
 
 /**
  * The onboarded player.
@@ -115,6 +116,7 @@ export function firstPlan(profile:PlayerProfile):ILPTask[]{
     id:'ilp-first',
     accountId:profile.id,
     title:seed.title,
+    dnaDomain:dnaDomainForTask(seed),
     category:seed.category,
     why:seed.why,
     gameRule:seed.gameRule,
