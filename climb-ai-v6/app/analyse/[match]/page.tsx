@@ -1,6 +1,6 @@
 'use client';
 
-import {useEffect,useState} from 'react';
+import {useEffect,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {useParams} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
@@ -18,7 +18,8 @@ import type {Match} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
-import {dnaDomainLabel} from '@/lib/dnaDomain';
+import {DNA_DOMAIN_COLORS,dnaDomainLabel} from '@/lib/dnaDomain';
+import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -89,7 +90,8 @@ export default function Analysis(){
 
   const recent=matches.filter(m=>m.id!==match.id);
   const report=analyseMatch({...match,proAnalysis},recent);
-  const review=buildReview(match,report);
+  const review=buildReview({...match,proAnalysis},report);
+  const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
   const visible=detail.visiblePoints;
   const reviewPoints=detail.reviewPoints;
   const missionResults=tasks.flatMap(task=>{
@@ -116,6 +118,29 @@ export default function Analysis(){
         </article>;
       })}</div>
     </section>}
+    <section className="ar-strengths">
+      <div className="ar-strengths-head">
+        <div>
+          <div className="eyebrow">VERIFIED STRENGTHS · WHAT TO KEEP</div>
+          <h2>Good play counts too.</h2>
+          <p>These are not compliments. They are measurable decisions or outcomes that cleared a rank-relative or decision-evidence bar.</p>
+        </div>
+        <b>{strengths.length} VERIFIED</b>
+      </div>
+      {strengths.length?<div className="ar-strength-grid">
+        {strengths.slice(0,4).map(item=><article key={item.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.dnaDomain]} as CSSProperties)}>
+          <span>{dnaDomainLabel(item.dnaDomain)}</span>
+          <h3>{item.title}</h3>
+          <strong>{item.value}</strong>
+          <small>Target · {item.target}</small>
+          <p>{item.detail}</p>
+          <em>REPEAT THIS</em>
+        </article>)}
+      </div>:<div className="ar-strength-empty">
+        <b>No verified strength was strong enough to call yet.</b>
+        <p>OP CLIMB will not invent praise. Keep collecting games until a good behaviour clears a measurable evidence bar.</p>
+      </div>}
+    </section>
     <div className="grid five"><MetricCard label={detail.depth<=2?'SCORELINE':'KDA'} value={`${match.kills}/${match.deaths}/${match.assists}`}/>{detail.depth>=2&&<MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>} {detail.depth>=4&&<MetricCard label="GOLD/MIN" value={match.metrics.goldPerMin??'N/A'}/>} {detail.depth>=5&&<MetricCard label="KILL PARTICIPATION" value={pct(match.metrics.killParticipation)}/>} {detail.depth>=6&&<MetricCard label="DAMAGE SHARE" value={pct(match.metrics.damageShare)}/>}</div>
     {detail.depth>=3&&<div className="phase-grid" style={{marginTop:18}}><div className="glass card"><div className="eyebrow">LANE PHASE</div><div className="league-row"><span>CS @ 10</span><b>{match.metrics.csAt10??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>CS @ 15</span><b>{match.metrics.csAt15??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>Lane CS/min</span><b>{num(match.metrics.laneCsPerMin)}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Gold diff @ 15</span><b>{num(match.metrics.goldDiffAt15,'g')}</b></div>}{detail.depth>=6&&<div className="league-row"><span>XP diff @ 15</span><b>{num(match.metrics.xpDiffAt15)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Level @ 15</span><b>{match.metrics.levelAt15??'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">AFTER LANE</div><div className="league-row"><span>Post-15 CS/min</span><b>{num(match.metrics.post15CsPerMin)}</b></div>{detail.depth>=4&&<div className="league-row"><span>First item</span><b>{match.metrics.firstItemMinute?`${match.metrics.firstItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Second item</span><b>{match.metrics.secondItemMinute?`${match.metrics.secondItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Objective involvement</span><b>{pct(match.metrics.objectiveParticipation)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Items shown</span><b>{match.items?.join(' · ')||'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">DEATHS</div><div className="league-row"><span>After 20</span><b>{match.metrics.deathsPost20??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>Before 10</span><b>{match.metrics.deathsPre10??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>10–20</span><b>{match.metrics.deaths10to20??'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Solo deaths</span><b>{match.metrics.soloDeaths??'Unavailable'}</b></div>}{detail.depth>=6&&<div className="league-row"><span>Teamfight deaths</span><b>{match.metrics.teamfightDeaths??'Unavailable'}</b></div>}</div></div>}
     {detail.depth>=4&&<TurningPoints matchId={id}/>} 
