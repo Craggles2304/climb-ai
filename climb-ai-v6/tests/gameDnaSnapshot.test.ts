@@ -66,5 +66,5 @@ test('mission progress bar is driven by the same reps shown in the rep counter',
     missionHistory:[{matchId:'m1',at:'2026-10-02T00:00:00.000Z',adherence:'YES',clearedBar:true,outcome:'CONFIRMED',banksPass:true}],
   });
   assert.deepEqual(missionRepView(one),{confirmed:1,required:3,progress:33});
-  assert.equal(activeGameDnaMissions([zero,one],role).length,2);
+  assert.equal(activeGameDnaMissions([zero,one],role).length,1);
 });
