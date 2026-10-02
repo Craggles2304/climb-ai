@@ -5,18 +5,15 @@ import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaClientMissions,gameDn
 
 function task(overrides:Partial<ILPTask>&{id:string,title:string,metric:string}):ILPTask{
   return{
-    id:overrides.id,
     accountId:'acct',
-    title:overrides.title,
-    dnaDomain:overrides.dnaDomain??'LANING',
-    category:overrides.category??'LANING',
+    dnaDomain:'LANING',
+    category:'LANING',
     why:'',
     gameRule:'',
-    metric:overrides.metric,
     target:'',
-    progress:overrides.progress??0,
-    status:overrides.status??'ACTIVE',
-    source:overrides.source??'SYSTEM',
+    progress:0,
+    status:'ACTIVE',
+    source:'SYSTEM',
     evidence:[],
     ...overrides,
   } as ILPTask;
