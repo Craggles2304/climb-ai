@@ -13,6 +13,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
+import {dnaStrandLevel} from '@/lib/dnaLevel';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -56,6 +57,7 @@ export default function Coach(){
   const mastered=tasks.filter(task=>task.status==='MASTERED');
   const tierVisibleTasks=activeThree;
   const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
   const selectedStrandStyle=({'--strand-color':DNA_DOMAIN_COLORS[selectedDnaDomain]} as CSSProperties);
   const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
   const selectedMastered=tier==='PRO'?mastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
@@ -77,18 +79,18 @@ export default function Coach(){
         className={selectedDnaDomain===domain?'active':''}
         style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
         onClick={()=>setSelectedDnaDomain(domain)}
-      >{DNA_DOMAIN_LABELS[domain]}</button>)}
+      >{DNA_DOMAIN_LABELS[domain]} · LV {dnaLevels[domain].level}</button>)}
     </div>
     <div className="dna-strand-explainer">
       <div>
-        <span className="eyebrow">{DNA_DOMAIN_LABELS[selectedDnaDomain]}</span>
+        <span className="eyebrow">{DNA_DOMAIN_LABELS[selectedDnaDomain]} · LV {dnaLevels[selectedDnaDomain].level}</span>
         <h3>{selectedGuide.summary}</h3>
         <p>{selectedGuide.purpose}</p>
         <div className="dna-strand-subskills">{selectedGuide.subskills.map(skill=><span key={skill}>{skill}</span>)}</div>
       </div>
       <aside>
         <span>YOUR CURRENT PLAN</span>
-        <b>{selectedVisibleTasks.length?selectedVisibleTasks.length+' current signal'+(selectedVisibleTasks.length===1?'':'s'):'No current signal'}</b>
+        <b>LV {dnaLevels[selectedDnaDomain].level} · {dnaLevels[selectedDnaDomain].xpIntoLevel}/{dnaLevels[selectedDnaDomain].xpForNextLevel} DNA XP</b>
         <small>{!baselineReady
           ?`Baseline ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}. Challenges unlock after OP Climb has watched three real games.`
           :tier==='PRO'
@@ -133,7 +135,7 @@ export default function Coach(){
           <div>
             <div className="eyebrow">GAME DNA · PRO</div>
             <h2>The shape of the player you are becoming.</h2>
-            <p>Every strand comes from repeated match evidence and behaviours your coach is tracking over time.</p>
+            <p>Every strand has its own uncapped level. Master missions and bank clean games to earn permanent DNA XP without ever reaching a final ceiling.</p>
           </div>
           <div className="coach-dna-stats">
             <div><span>{baselineReady?'MASTERED':'BASELINE'}</span><b>{baselineReady?mastered.length:`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
