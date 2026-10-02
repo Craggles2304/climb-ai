@@ -181,8 +181,8 @@ export default function PlayerDevelopmentCentre(){
       {activeTasks.length>0&&<section className="ip-next">
         <div>
           <span>HOW THE PLAN MOVES</span>
-          <h2>Master one. Replace one.</h2>
-          <p>When repeated evidence proves a mission has stuck, it leaves the active plan and the next recurring limiter takes its place. One unusual game does not rewrite your plan.</p>
+          <h2>One mission at a time.</h2>
+          <p>Only the core mission asks you to track reps. The watchlist stays in the background until repeated evidence says one behaviour should become your next mission.</p>
         </div>
         <div className="ip-next-actions">
           <Link className="btn primary" href="/session">START 3-GAME BLOCK →</Link>
@@ -192,12 +192,7 @@ export default function PlayerDevelopmentCentre(){
     </div>}
 
     {tab==='EVIDENCE'&&<div className="ip-panel">
-      {displayTasks.length?<div className="ip-evidence-grid">
-        {displayTasks.map(task=>{
-          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
-          return <EvidenceCard key={task.id} task={task} index={Math.max(0,index)}/>;
-        })}
-      </div>:<section className="ip-empty"><h2>{selectedDomain?'No current '+DNA_DOMAIN_LABELS[selectedDomain]+' evidence.':'No active evidence yet.'}</h2><p>{selectedDomain?'This strand is not one of your current measurable priorities.':'Play tracked games to build the plan.'}</p></section>}
+      {displayCoreTask?<div className="ip-evidence-grid"><EvidenceCard task={displayCoreTask}/></div>:<section className="ip-empty"><h2>{selectedDomain?'No core mission in '+DNA_DOMAIN_LABELS[selectedDomain]+'.':'No core mission evidence yet.'}</h2><p>{selectedDomain?'A watched focus does not create a second rep tracker. Open the full plan to see your core mission.':'Play tracked games to build the plan.'}</p></section>}
     </div>}
 
     {tier==='PRO'&&tab==='HISTORY'&&<div className="ip-panel">
@@ -273,6 +268,19 @@ function MissionCard({task,pauseTask}:{task:ILPTask;pauseTask:(id:string)=>void}
   </article>;
 }
 
+function WatchFocusCard({task,index}:{task:ILPTask;index:number}){
+  const plain=plainLanguageFocus(task);
+  return <article className="habit ip-strand-item" style={{...strandStyle(task.dnaDomain),padding:14,border:'1px solid var(--border)',background:'rgba(255,255,255,.02)'}}>
+    <span className="habit-index">{index+1}</span>
+    <div style={{minWidth:0,flex:1}}>
+      <small className="ip-strand-label">{dnaDomainLabel(task.dnaDomain)} · WATCH FOCUS</small>
+      <h3>{plain.name}</h3>
+      <p>{plain.nextGame}</p>
+    </div>
+    <span className="tag">MONITORING</span>
+  </article>;
+}
+
 function learningStageLabel(stage:string){
   if(stage==='DISCOVER')return'RECOGNISE THE SITUATION';
   if(stage==='PRACTISE')return'EXECUTE THE DECISION';
@@ -303,12 +311,12 @@ function LearningPath({stage}:{stage:string}){
   </div>;
 }
 
-function EvidenceCard({task,index}:{task:ILPTask;index:number}){
+function EvidenceCard({task}:{task:ILPTask}){
   const summary=missionSummary(task);
   const recent=(task.missionHistory??[]).slice(-4).reverse();
   return <article className="ip-evidence-card" style={strandStyle(task.dnaDomain)}>
     <div className="ip-evidence-head">
-      <div><span>{index===0?'CORE MISSION':'SUPPORT 0'+index} · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
+      <div><span>CORE MISSION · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
@@ -322,7 +330,7 @@ function EvidenceCard({task,index}:{task:ILPTask;index:number}){
         <b>{clean(rep.outcome)}</b>
         <small>{clean(rep.adherence)} adherence</small>
       </div>)}
-    </div>:<div className="ip-no-reps">No reviewed mission reps yet.</div>}
+    </div>:<div className="ip-no-reps">No reviewed core-mission reps yet.</div>}
   </article>;
 }
 
