@@ -345,6 +345,16 @@ function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}
   </article>;
 }
 
+function dedupeArchiveTasks(tasks:ILPTask[]){
+  const map=new Map<string,ILPTask>();
+  tasks.forEach(task=>{
+    const key=task.title.toLowerCase()+'|'+task.metric.toLowerCase()+'|'+task.dnaDomain;
+    const prev=map.get(key);
+    if(!prev||taskFreshness(task)>=taskFreshness(prev))map.set(key,task);
+  });
+  return [...map.values()];
+}
+
 function Pips({passes,required}:{passes:number;required:number}){
   return <div className="ip-pips" aria-label={passes+' of '+required+' clean reps'}>
     {Array.from({length:required},(_,index)=><i key={index} className={index<passes?'on':''}/>)}
