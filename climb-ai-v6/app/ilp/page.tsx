@@ -144,20 +144,26 @@ export default function PlayerDevelopmentCentre(){
     </nav>
 
     {tab==='CURRENT'&&<div className="ip-panel">
-      {displayTasks.length?<div className="ip-mission-grid">
-        {displayTasks.map(task=>{
-          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
-          return <MissionCard key={task.id} task={task} index={Math.max(0,index)} role={active.role} pauseTask={pauseTask}/>;
-        })}
-      </div>:selectedDomain?<section className="ip-empty">
-        <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NO CURRENT MISSION</div>
-        <h2>This strand is not in your active plan right now.</h2>
-        <p>{!baselineReady?'This strand stays at zero until the three-game observation baseline is complete.':tier==='FREE'?'FREE keeps one measurable focus live at a time. You can still understand every DNA strand, but only your current focus becomes an active mission.':'OP CLIMB only puts a strand into My Climb when your game evidence makes it one of your current priorities.'}</p>
+      {(displayCoreTask||displayWatchTasks.length)?<>
+        {displayCoreTask&&<div className="ip-mission-grid"><MissionCard task={displayCoreTask} pauseTask={pauseTask}/></div>}
+        {displayWatchTasks.length>0&&<section className="panel panel-padding" style={{marginTop:16}}>
+          <div className="section-head">
+            <div><div className="eyebrow">WATCHLIST · NOT EXTRA MISSIONS</div><h2>What OP CLIMB is monitoring next.</h2></div>
+            <small>These do not need another checklist in your head. They only become the core mission if repeated evidence promotes them.</small>
+          </div>
+          <div style={{display:'grid',gap:10}}>
+            {displayWatchTasks.map((task,index)=><WatchFocusCard key={task.id} task={task} index={index}/>)}
+          </div>
+        </section>}
+      </>:selectedDomain?<section className="ip-empty">
+        <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NOT CURRENTLY PRIORITISED</div>
+        <h2>This strand is not in your plan right now.</h2>
+        <p>{tier==='FREE'?'FREE keeps one measurable core mission live at a time.':'OP CLIMB only promotes a strand when repeated evidence makes it important enough.'}</p>
         <button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW CURRENT PLAN</button>
       </section>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
         <h2>Play a tracked game.</h2>
-        <p>OP CLIMB needs real evidence before it chooses your current measurable focus.</p>
+        <p>OP CLIMB needs real evidence before it chooses your core mission.</p>
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
