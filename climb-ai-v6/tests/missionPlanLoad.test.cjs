@@ -19,7 +19,7 @@ test('My Climb never treats plan loading as zero active missions',()=>{
   assert.ok(context.includes('planError'));
   assert.ok(ilp.includes('LOADING YOUR PLAN'));
   assert.ok(ilp.includes('Your plan is still stored.'));
-  assert.ok(ilp.indexOf('if(!planReady)return')<ilp.indexOf('if(!baselineReady)return'));
+  assert.ok(ilp.indexOf('if(!planReady)return <AppShell>')<ilp.indexOf('if(!baselineReady)return <AppShell>'));
 });
 
 test('opening the mission plan can materialise a deferred local-first match once',()=>{
