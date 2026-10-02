@@ -13,10 +13,8 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
-import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
-import type {Role} from '@/lib/types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
@@ -206,13 +204,13 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 }
 
-function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role:Role;pauseTask:(id:string)=>void}){
+function MissionCard({task,pauseTask}:{task:ILPTask;pauseTask:(id:string)=>void}){
   const plain=plainLanguageFocus(task);
   const summary=missionSummary(task);
-  const sideMissions=awarenessMissions(task,role);
-  return <article className={'ip-mission '+(index===0?'primary':'secondary')} style={strandStyle(task.dnaDomain)}>
+  const repProgress=Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100);
+  return <article className="ip-mission primary" style={strandStyle(task.dnaDomain)}>
     <div className="ip-mission-top">
-      <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
+      <span>CORE MISSION · THE ONLY SCORED FOCUS</span>
       <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
     </div>
     <h2>{plain.name}</h2>
@@ -233,22 +231,8 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
 
     <LearningPath stage={summary.stage}/>
 
-    {sideMissions.length>0&&<div className="ip-sidequests">
-      <div className="ip-sidequests-head">
-        <div><span>SIDE MISSIONS</span><b>Keep these in your head too.</b></div>
-        <em>AWARENESS ONLY · NOT SCORED</em>
-      </div>
-      <div className="ip-sidequest-list">
-        {sideMissions.map((side,sideIndex)=><article key={side.id}>
-          <span>SIDE 0{sideIndex+1}</span>
-          <div><b>{side.name}</b><p>{side.meaning}</p><small>{side.cue}</small></div>
-        </article>)}
-      </div>
-      <footer>No XP · No pass/fail · Does not affect mastery</footer>
-    </div>}
-
     <div className="ip-progress">
-      <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
+      <div><AnimatedBar value={repProgress}/><b>{repProgress}%</b></div>
       <Pips passes={summary.confirmed} required={summary.required}/>
       <small>{summary.confirmed}/{summary.required} proven reps · +{XP_PER_PROVEN_REP} XP each · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
     </div>
