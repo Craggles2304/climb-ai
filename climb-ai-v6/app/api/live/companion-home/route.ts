@@ -1,11 +1,12 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
-import {companionDnaBaseline,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server/companionDnaBaseline';
+import {companionDnaRoleBaselines,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server/companionDnaBaseline';
 import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
 import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaStrands,missionRepView} from '@/lib/gameDnaSnapshot';
 import type {ILPTask,Role} from '@/lib/types';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
+import {LEAGUE_ROLES} from '@/lib/roleAwareLearning';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -34,9 +35,14 @@ export async function GET(req:NextRequest){
   if((tasksResult as any).error)return NextResponse.json({ok:false,error:'Could not load current missions.'},{status:503});
 
   const account=(accountResult as any).data??null;
-  const role=normalizeRole(account?.role);
+  const primaryRole=normalizeRole(account?.role);
+  const requestedRole=normalizeRole(req.nextUrl.searchParams.get('role'));
+  const role=requestedRole||primaryRole;
   const rank=[String(account?.rank_tier??'').trim(),String(account?.rank_division??'').trim()].filter(Boolean).join(' ')||'UNRANKED';
-  const baseline=await companionDnaBaseline({userId:device.userId,riotAccountId:device.riotAccountId,role});
+  const roleBaselines=await companionDnaRoleBaselines({userId:device.userId,riotAccountId:device.riotAccountId});
+  const baseline=role&&roleBaselines[role as Role]
+    ?roleBaselines[role as Role]
+    :{games:0,required:COMPANION_DNA_BASELINE_REQUIRED,ready:false,role:null};
   const storedTasks=((tasksResult as any).data??[])
     .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??''),updatedAt:row?.updated_at??null}))
     .filter((task:any)=>task?.id) as Array<ILPTask&{updatedAt?:string|null}>;
@@ -58,10 +64,14 @@ export async function GET(req:NextRequest){
       gameName:String(account?.game_name??'PLAYER'),
       tagline:String(account?.tagline??'').replace(/^#/,''),
       role:role||'—',
+      primaryRole:primaryRole||'—',
       rank,
       leaguePoints:Number(account?.league_points)||0,
     },
     tier,
+    selectedRole:role||primaryRole||'ADC',
+    primaryRole:primaryRole||role||'ADC',
+    roleProfiles:LEAGUE_ROLES.map(item=>({...roleBaselines[item]})),
     tierView:tier==='FREE'
       ?{label:'CURRENT SNAPSHOT',detail:'6 DNA missions · 7-day progress view',missionLimit:6,persistentMemory:false}
       :tier==='PLUS'

@@ -2,6 +2,7 @@ const {contextBridge,ipcRenderer}=require('electron');
 
 contextBridge.exposeInMainWorld('opCompanion',{
   getState:()=>ipcRenderer.invoke('companion:get-state'),
+  setDnaRole:(role)=>ipcRenderer.invoke('companion:set-dna-role',role),
   unpair:()=>ipcRenderer.invoke('companion:unpair'),
   restart:()=>ipcRenderer.invoke('companion:restart'),
   setAutoStart:(enabled)=>ipcRenderer.invoke('companion:auto-start',enabled),

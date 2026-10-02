@@ -57,3 +57,17 @@
 .player-upgrade span{display:block;margin-top:4px;color:#7d8b8f;font-size:9px;line-height:1.4}
 .player-upgrade button{flex:none;border-radius:0;color:#b6f66b;background:rgba(182,246,107,.04);border-color:rgba(182,246,107,.18);font:700 7px 'IBM Plex Mono',monospace;letter-spacing:.08em}
 @media(max-width:780px){.player-home-grid,.player-home-bottom{grid-template-columns:1fr}.player-home-hero{display:grid}.player-home-ready{width:max-content}.player-dna-row{grid-template-columns:115px minmax(0,1fr) 42px}}
+.player-role-switcher{display:grid;grid-template-columns:190px minmax(0,1fr);gap:10px;align-items:stretch;padding:11px 13px;border:1px solid rgba(255,255,255,.07);background:linear-gradient(135deg,rgba(182,246,107,.045),#0a1115)}
+.player-role-switcher>div:first-child{display:flex;flex-direction:column;justify-content:center;gap:3px}
+.player-role-switcher>div:first-child span{color:#9dff42;font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.13em}
+.player-role-switcher>div:first-child strong{font:800 16px 'Barlow Condensed',sans-serif}
+.player-role-switcher>div:first-child small{color:#69787c;font-size:8px;line-height:1.35}
+.player-role-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+.player-role-tabs button{position:relative;display:flex;min-width:0;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:0;background:#0c1418;color:#aab5b6}
+.player-role-tabs button strong{font:800 9px 'IBM Plex Mono',monospace;letter-spacing:.08em}
+.player-role-tabs button small{overflow:hidden;width:100%;text-overflow:ellipsis;white-space:nowrap;color:#667579;font:700 6px 'IBM Plex Mono',monospace}
+.player-role-tabs button.active{border-color:rgba(182,246,107,.5);background:rgba(182,246,107,.07);box-shadow:inset 0 -2px 0 #b6f66b;color:#f1f6f2}
+.player-role-tabs button.active small{color:#a8dd78}
+.player-role-tabs button.primary-role:after{content:'MAIN';position:absolute;right:5px;top:4px;color:#6c797c;font:800 5px 'IBM Plex Mono',monospace;letter-spacing:.09em}
+.player-role-tabs button:disabled{opacity:.55}
+@media(max-width:780px){.player-role-switcher{grid-template-columns:1fr}.player-role-tabs{grid-template-columns:repeat(5,minmax(72px,1fr));overflow-x:auto}.player-role-tabs button{min-width:72px}}

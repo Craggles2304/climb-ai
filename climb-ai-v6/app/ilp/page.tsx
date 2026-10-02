@@ -11,7 +11,7 @@ import {AnimatedBar} from '@/components/Motion';
 import {IlpExplainability} from '@/components/IlpExplainability';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
-import type {DnaDomain,ILPTask} from '@/lib/types';
+import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
@@ -19,9 +19,11 @@ import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDoma
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
+import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
+import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -30,19 +32,22 @@ const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domai
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
   const {tier}=useSubscription();
-  const {tasks,allTasks,refreshFromMatches,planReady,planError}=useLearningPlan();
+  const {tasks,allTasks,planReady,planError}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
   const [selectedGame,setSelectedGame]=useState<string>('');
+  const [viewRole,setViewRole]=useState<Role>(active.role);
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
     const raw=params.get('dna');
+    const role=params.get('role') as Role|null;
     setSelectedDomain(DNA_DOMAINS.includes(raw as DnaDomain)?raw as DnaDomain:null);
     setSelectedGame(params.get('game')||'');
-  },[]);
+    setViewRole(role&&LEAGUE_ROLES.includes(role)?role:active.role);
+  },[active.id,active.role]);
 
   const chooseDomain=(domain:DnaDomain|null)=>{
     setSelectedDomain(domain);
@@ -50,28 +55,40 @@ export default function PlayerDevelopmentCentre(){
     if(domain)url.searchParams.set('dna',domain);else url.searchParams.delete('dna');
     window.history.replaceState({},'',url.pathname+url.search);
   };
+  const chooseRole=(role:Role)=>{
+    setViewRole(role);
+    setSelectedGame('');
+    const url=new URL(window.location.href);
+    url.searchParams.set('role',role);
+    url.searchParams.delete('game');
+    window.history.replaceState({},'',url.pathname+url.search);
+  };
 
-  const allRoleMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);
-  const baselineGames=useMemo(()=>dnaBaselineGameCount(allRoleMatches,active.role),[allRoleMatches,active.role]);
+  const accountMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
+  const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
+  const allRoleMatches=accountMatches.filter(match=>match.role===viewRole);
+  const baselineGames=roleGameCounts[viewRole]??0;
   const baselineReady=dnaBaselineReady(baselineGames);
+  const accountTasks=allTasks[active.id]??tasks;
+  const roleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,viewRole)),[accountTasks,viewRole]);
   const activeTasks=useMemo(()=>{
     if(!baselineReady)return[];
-    return currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
-  },[tasks,active.role,baselineReady]);
+    return currentGameDnaMissions(roleTasks,viewRole).flatMap(({task})=>task?[task]:[]);
+  },[roleTasks,viewRole,baselineReady]);
   const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
-  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain,active.role)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
-  const masteredAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='MASTERED')),[tasks]);
-  const pausedAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='PAUSED')),[tasks]);
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(roleTasks,domain,viewRole)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[roleTasks,viewRole]);
+  const masteredAll=useMemo(()=>dedupeArchiveTasks(roleTasks.filter(task=>task.status==='MASTERED')),[roleTasks]);
+  const pausedAll=useMemo(()=>dedupeArchiveTasks(roleTasks.filter(task=>task.status==='PAUSED')),[roleTasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
   const selectedMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
   const impactMatch=selectedMatch??matches[0];
   const impactMatchId=impactMatch?.id??'';
-  const gameLearning=useMemo(()=>impactMatchId?tasks.flatMap(task=>{
+  const gameLearning=useMemo(()=>impactMatchId?roleTasks.flatMap(task=>{
     const attempt=(task.missionHistory??[]).find(item=>item.matchId===impactMatchId);
     return attempt?[{task,attempt,summary:missionSummary(task)}]:[];
-  }):[],[tasks,impactMatchId]);
+  }):[],[roleTasks,impactMatchId]);
   const gameStrengths=useMemo(()=>impactMatch?positiveEvidenceForMatch(impactMatch,active.rank):[],[impactMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
@@ -103,10 +120,11 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   if(!baselineReady)return <AppShell>
+    <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
     <section className="panel panel-padding" style={{marginBottom:18}}>
-      <div className="eyebrow">{active.role} GAME DNA · ROLE PROFILE</div>
+      <div className="eyebrow">{viewRole} GAME DNA · ROLE PROFILE</div>
       <h2>Your DNA is separate for every role.</h2>
-      <p className="muted">Only games played in {active.role} build this profile. TOP, JUNGLE, MID, ADC and SUPPORT each keep their own six strands, levels, missions and history.</p>
+      <p className="muted">Only games played in {viewRole} build this profile. TOP, JUNGLE, MID, ADC and SUPPORT each keep their own six strands, levels, missions and history.</p>
     </section>
     <MyClimbGameImpact
       match={impactMatch}
@@ -119,6 +137,7 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   return <AppShell>
+    <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
     {impactMatch&&<MyClimbGameImpact
       match={impactMatch}
       learning={gameLearning}
@@ -131,9 +150,9 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
-          <div className="eyebrow">{active.role} GAME DNA → MY CLIMB</div>
-          <h2>{selectedDomain?`${active.role} · ${DNA_DOMAIN_LABELS[selectedDomain]}`:`Your ${active.role} development plan`}</h2>
-          <p>{selectedDomain?`${DNA_DOMAIN_GUIDE[selectedDomain].summary} Only ${active.role} games progress this strand.`:`Game DNA is role-specific. Only games played in ${active.role} progress these six strands; every other role has its own separate DNA profile.`}</p>
+          <div className="eyebrow">{viewRole} GAME DNA → MY CLIMB</div>
+          <h2>{selectedDomain?`${viewRole} · ${DNA_DOMAIN_LABELS[selectedDomain]}`:`Your ${viewRole} development plan`}</h2>
+          <p>{selectedDomain?`${DNA_DOMAIN_GUIDE[selectedDomain].summary} Only ${viewRole} games progress this strand.`:`Game DNA is role-specific. Only games played in ${viewRole} progress these six strands; every other role has its own separate DNA profile.`}</p>
         </div>
         {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW FULL PLAN</button>}
       </div>
@@ -188,8 +207,8 @@ export default function PlayerDevelopmentCentre(){
       {activeTasks.length>0&&<section className="ip-next">
         <div>
           <span>HOW THE PLAN MOVES</span>
-          <h2>Six {active.role} strands. One mission on each.</h2>
-          <p>After every tracked {active.role} game, OP CLIMB checks all six missions. Games in other roles do not progress this profile. Reach 3/3 and that strand moves to its next mission.</p>
+          <h2>Six {viewRole} strands. One mission on each.</h2>
+          <p>After every tracked {viewRole} game, OP CLIMB checks all six missions. Games in other roles do not progress this profile. Reach 3/3 and that strand moves to its next mission.</p>
         </div>
         <div className="ip-next-actions">
           <Link className="btn primary" href="/live">TRACK NEXT GAME →</Link>

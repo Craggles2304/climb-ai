@@ -12,7 +12,7 @@ const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
 test('My Climb shows one tracked mission for each DNA strand',()=>{
-  assert.ok(ilp.includes('Six {active.role} strands. One mission on each.'));
+  assert.ok(ilp.includes('Six {viewRole} strands. One mission on each.'));
   assert.ok(ilp.includes('currentGameDnaMissions'));
   assert.ok(ilp.includes('6 active'));
   assert.ok(ilp.includes('games completed'));
@@ -36,8 +36,8 @@ test('Companion shows all six DNA missions with game trackers',()=>{
 
 test('Game DNA is visibly role-specific across web and Companion',()=>{
   assert.ok(ilp.includes('Game DNA is role-specific.'));
-  assert.ok(ilp.includes('Only games played in {active.role}'));
-  assert.ok(coach.includes('{active.role} GAME DNA · PRO'));
+  assert.ok(ilp.includes('Only games played in ${viewRole}'));
+  assert.ok(coach.includes('{dnaRole} GAME DNA · PRO'));
   assert.ok(coach.includes('every other role builds its own separate DNA'));
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
   assert.ok(companion.includes('playerDnaRoleTitle'));

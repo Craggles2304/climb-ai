@@ -12,7 +12,7 @@ const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
 let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
-let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='';
+let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null};
@@ -62,6 +62,8 @@ function setState(patch){
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(state.phase==='WAITING'&&previousPhase!=='WAITING'){
+    const detectedRole=normalizedRole(state.postGameReview?.match?.role||state.matchup?.role||state.matchup?.plan?.role);
+    if(['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(detectedRole))dnaViewRole=detectedRole;
     scheduleMissedReviewRecovery(4500);
     stopPlayerHomePoll();
     void pollPlayerHome();
@@ -93,18 +95,39 @@ function schedulePlayerHomePoll(delay=60_000){
   if(quitting||state.phase!=='WAITING'||!paired())return;
   playerHomeTimer=setTimeout(()=>{playerHomeTimer=null;void pollPlayerHome()},delay);
 }
-async function pollPlayerHome(){
-  if(playerHomeInFlight||state.phase!=='WAITING')return;
-  const cfg=currentConfig();if(!cfg.token)return;
+async function pollPlayerHome(roleOverride=dnaViewRole){
+  if(playerHomeInFlight||state.phase!=='WAITING')return false;
+  const cfg=currentConfig();if(!cfg.token)return false;
   playerHomeInFlight=true;
   const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
   try{
-    const response=await fetch(`${cfg.webUrl}/api/live/companion-home`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
+    const requested=normalizedRole(roleOverride);
+    const suffix=['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(requested)?`?role=${encodeURIComponent(requested)}`:'';
+    const response=await fetch(`${cfg.webUrl}/api/live/companion-home${suffix}`,{headers:{authorization:`Bearer ${cfg.token}`},signal:controller.signal});
     const body=await response.json().catch(()=>({}));
-    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
-    if(response.ok&&body?.ok&&state.phase==='WAITING')setState({playerHome:body});
+    if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return false}
+    if(response.ok&&body?.ok&&state.phase==='WAITING'){
+      dnaViewRole=normalizedRole(body.selectedRole||body.player?.role)||dnaViewRole;
+      setState({playerHome:body});
+      return true;
+    }
   }catch{}
   finally{clearTimeout(timeout);playerHomeInFlight=false;if(state.phase==='WAITING')schedulePlayerHomePoll()}
+  return false;
+}
+
+async function selectDnaRole(role){
+  const next=normalizedRole(role);
+  if(!['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(next))return{ok:false,error:'Unknown League role.'};
+  if(state.phase!=='WAITING')return{ok:false,error:'DNA role profiles can only be browsed while you are out of game.'};
+  dnaViewRole=next;
+  stopPlayerHomePoll();
+  if(playerHomeInFlight){
+    setTimeout(()=>{if(state.phase==='WAITING')void pollPlayerHome(next)},300);
+    return{ok:true,role:next};
+  }
+  await pollPlayerHome(next);
+  return{ok:true,role:next};
 }
 
 function stopChampionPlanPoll(){if(championPlanTimer){clearTimeout(championPlanTimer);championPlanTimer=null}}
@@ -512,6 +535,7 @@ function createTray(){tray=new Tray(appIcon().resize({width:24,height:24}));tray
 function applyAutoStart(enabled){const next=Boolean(enabled);try{app.setLoginItemSettings({openAtLogin:next,args:next?['--hidden']:[]})}catch{}const cfg=readConfig();cfg.autoStart=next;writeConfig(cfg);setState({autoStart:next})}
 
 ipcMain.handle('companion:get-state',()=>publicState());
+ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
 ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});

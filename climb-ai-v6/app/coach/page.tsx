@@ -7,13 +7,15 @@ import {useLearningPlan} from '@/components/LearningPlanContext';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
+import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {missionSummary} from '@/lib/missionLoop';
-import type {DnaDomain,IssueCategory,Match} from '@/lib/types';
+import type {DnaDomain,IssueCategory,Match,Role} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
-import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady as isDnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
+import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -51,17 +53,49 @@ function Message({m}:{m:Msg}){
 }
 
 export default function Coach(){
-  const {active}=useAccount();const {tier}=useSubscription();const allRoleMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);const matches=filterHistoryForTier(allRoleMatches,tier);const baselineGames=dnaBaselineGameCount(allRoleMatches,active.role);const baselineReady=dnaBaselineReady(baselineGames);const {tasks,addTask}=useLearningPlan();const rawActiveThree=currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);const activeThree=baselineReady?rawActiveThree:[];const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const [selectedDnaDomain,setSelectedDnaDomain]=useState<DnaDomain>('LANING');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(tasks,active.role),[tasks,active.role]);
-  const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(tasks,active.role),[tasks,active.role]);
+  const {active}=useAccount();
+  const {tier}=useSubscription();
+  const accountMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
+  const allRoleMatches=accountMatches.filter(match=>match.role===active.role);
+  const matches=filterHistoryForTier(allRoleMatches,tier);
+  const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
+  const baselineReady=isDnaBaselineReady(baselineGames);
+  const {tasks,allTasks,addTask}=useLearningPlan();
+  const rawActiveThree=currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
+  const activeThree=baselineReady?rawActiveThree:[];
+  const priorityTitle=activeThree[0]?.title;
+  const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);
+  const [q,setQ]=useState('');
+  const [pending,setPending]=useState(false);
+  const [messages,setMessages]=useState<Msg[]>([]);
+  const [tab,setTab]=useState<CoachTab>('DNA');
+  const [selectedDnaDomain,setSelectedDnaDomain]=useState<DnaDomain>('LANING');
+  const [dnaRole,setDnaRole]=useState<Role>(active.role);
+  const loadedAccount=useRef('');
+  const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);
+  const summary=useMemo(()=>recentSummary(matches),[matches]);
+  useEffect(()=>{const params=new URLSearchParams(window.location.search);const requested=params.get('role') as Role|null;setDnaRole(requested&&LEAGUE_ROLES.includes(requested)?requested:active.role)},[active.id,active.role]);
+  const chooseDnaRole=(role:Role)=>{setDnaRole(role);const url=new URL(window.location.href);url.searchParams.set('role',role);window.history.replaceState({},'',url.pathname+url.search)};
+
+  const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
+  const dnaBaselineGames=roleGameCounts[dnaRole]??0;
+  const dnaBaselineReady=isDnaBaselineReady(dnaBaselineGames);
+  const accountTasks=allTasks[active.id]??tasks;
+  const dnaRoleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,dnaRole)),[accountTasks,dnaRole]);
+  const dnaActiveTasks=useMemo(()=>dnaBaselineReady?currentGameDnaMissions(dnaRoleTasks,dnaRole).flatMap(({task})=>task?[task]:[]):[],[dnaRoleTasks,dnaRole,dnaBaselineReady]);
+  const dnaRoleMatches=accountMatches.filter(match=>match.role===dnaRole);
+  const dnaSummary=useMemo(()=>recentSummary(filterHistoryForTier(dnaRoleMatches,tier)),[dnaRoleMatches,tier]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(dnaRoleTasks,dnaRole),[dnaRoleTasks,dnaRole]);
+  const previewDnaMissions=dnaMissions;
   const mastered=tasks.filter(task=>task.status==='MASTERED');
-  const tierVisibleTasks=activeThree;
+  const dnaMastered=dnaRoleTasks.filter(task=>task.status==='MASTERED');
+  const tierVisibleTasks=dnaActiveTasks;
   const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
-  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain,active.role)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(dnaRoleTasks,domain,dnaRole)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[dnaRoleTasks,dnaRole]);
   const selectedStrandStyle=({'--strand-color':DNA_DOMAIN_COLORS[selectedDnaDomain]} as CSSProperties);
   const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
-  const selectedMastered=tier==='PRO'?mastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
-  const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
+  const selectedMastered=tier==='PRO'?dnaMastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
+  const primarySummary=dnaActiveTasks[0]?missionSummary(dnaActiveTasks[0]):null;
   const strandGuide=<section className="dna-strand-guide panel panel-padding" style={selectedStrandStyle}>
     <div className="section-head dna-strand-guide-head">
       <div>
@@ -91,14 +125,14 @@ export default function Coach(){
       <aside>
         <span>YOUR CURRENT PLAN</span>
         <b>LV {dnaLevels[selectedDnaDomain].level} · {dnaLevels[selectedDnaDomain].xpIntoLevel}/{dnaLevels[selectedDnaDomain].xpForNextLevel} DNA XP</b>
-        <small>{!baselineReady
-          ?`Baseline ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}. Challenges unlock after OP Climb has watched three real games.`
+        <small>{!dnaBaselineReady
+          ?`Baseline ${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}. Challenges unlock after OP Climb has watched three real games in ${dnaRole}.`
           :tier==='PRO'
             ?selectedMastered.length+' mastered habit'+(selectedMastered.length===1?'':'s')+' already stored in this strand.'
             :tier==='PLUS'
               ?'PLUS tracks the same six DNA missions with a longer development window. Long-term memory stays PRO.'
               :'FREE still shows all six DNA missions; the shorter history window is what changes by plan.'}</small>
-        <Link className="btn primary" href={`/ilp?dna=${selectedDnaDomain}`}>OPEN IN MY CLIMB →</Link>
+        <Link className="btn primary" href={`/ilp?role=${dnaRole}&dna=${selectedDnaDomain}`}>OPEN IN MY CLIMB →</Link>
       </aside>
     </div>
   </section>;
@@ -119,7 +153,7 @@ export default function Coach(){
 
     <nav className="coach-subtabs" aria-label="Coach sections">
       <button type="button" className={tab==='DNA'?'active':''} onClick={()=>setTab('DNA')}>
-        <span>01</span><div><b>{active.role} GAME DNA</b><small>Role-specific development</small></div>
+        <span>01</span><div><b>{dnaRole} GAME DNA</b><small>Flick between role profiles</small></div>
       </button>
       <button type="button" className={tab==='ASK'?'active':''} onClick={()=>setTab('ASK')}>
         <span>02</span><div><b>ASK COACH</b><small>One real question</small></div>
@@ -130,45 +164,46 @@ export default function Coach(){
     </nav>
 
     {tab==='DNA'&&<section className="coach-tab-panel coach-dna-first">
+      <DnaRoleSwitcher role={dnaRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseDnaRole}/>
       {tier==='PRO'?<>
         <div className="coach-tab-intro">
           <div>
-            <div className="eyebrow">{active.role} GAME DNA · PRO</div>
-            <h2>Your {active.role} development profile.</h2>
-            <p>Game DNA is role-specific. Only games played in {active.role} progress these six strands; every other role builds its own separate DNA, levels, missions and history.</p>
+            <div className="eyebrow">{dnaRole} GAME DNA · PRO</div>
+            <h2>Your {dnaRole} development profile.</h2>
+            <p>Game DNA is role-specific. Only games played in {dnaRole} progress these six strands; every other role builds its own separate DNA, levels, missions and history.</p>
           </div>
           <div className="coach-dna-stats">
-            <div><span>{baselineReady?'MASTERED':'BASELINE'}</span><b>{baselineReady?mastered.length:`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
-            <div><span>DNA MISSIONS</span><b>{baselineReady?activeThree.length+'/6':'0/6'}</b></div>
-            <div><span>SELECTED TRACKER</span><b>{baselineReady?`${primarySummary?.confirmed??0}/${primarySummary?.required??3}`:'0/3'}</b></div>
+            <div><span>{dnaBaselineReady?'MASTERED':'BASELINE'}</span><b>{dnaBaselineReady?dnaMastered.length:`${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
+            <div><span>DNA MISSIONS</span><b>{dnaBaselineReady?dnaActiveTasks.length+'/6':'0/6'}</b></div>
+            <div><span>SELECTED TRACKER</span><b>{dnaBaselineReady?`${primarySummary?.confirmed??0}/${primarySummary?.required??3}`:'0/3'}</b></div>
           </div>
         </div>
-        <ClientGameDna player={active.gameName+active.tagline} role={active.role} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+        <ClientGameDna player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
         {strandGuide}
         <div className="coach-dna-next panel panel-padding">
           <div>
             <div className="eyebrow">CURRENT EXPRESSION</div>
-            <h3>{baselineReady?(activeThree[0]?.title||'Build your first coaching strand'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h3>
-            <p>{baselineReady?(activeThree[0]?.gameRule||'Your next tracked game will keep shaping the challenges in your DNA.'):'Play normally. OP CLIMB is observing what you already do well and what repeats before it tells you what to change.'}</p>
+            <h3>{dnaBaselineReady?(dnaActiveTasks[0]?.title||'Build your first coaching strand'):`${dnaRole} baseline game ${Math.min(dnaBaselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h3>
+            <p>{dnaBaselineReady?(dnaActiveTasks[0]?.gameRule||'Your next tracked game will keep shaping the challenges in this role DNA.'):`Play ${dnaRole} normally. OP CLIMB is observing this role separately before it tells you what to change.`}</p>
           </div>
-          <Link className="btn primary" href="/ilp">Open My Climb →</Link>
+          <Link className="btn primary" href={`/ilp?role=${dnaRole}`}>Open My Climb →</Link>
         </div>
       </>:<>
         <div className="coach-tab-intro coach-dna-preview-intro">
           <div>
-            <div className="eyebrow">{active.role} GAME DNA · {tier} PREVIEW</div>
-            <h2>Your {active.role} DNA is separate from every other role.</h2>
+            <div className="eyebrow">{dnaRole} GAME DNA · {tier} PREVIEW</div>
+            <h2>Your {dnaRole} DNA is separate from every other role.</h2>
             <p>{tier==='PLUS'?'PLUS keeps the same six DNA missions with a deeper coaching window. PRO adds persistent memory across mastered missions.':'FREE still gives you one tracked mission on every DNA strand. PRO is what remembers mastered habits across time.'}</p>
           </div>
           <div className="coach-dna-stats">
             <div><span>HISTORY</span><b>{tier==='FREE'?'7D':'90D'}</b></div>
-            <div><span>{baselineReady?'ELIGIBLE GAMES':'BASELINE'}</span><b>{baselineReady?summary.games:`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
-            <div><span>MISSIONS</span><b>{baselineReady?activeThree.length+'/6':'0/6'}</b></div>
+            <div><span>{dnaBaselineReady?'ELIGIBLE GAMES':'BASELINE'}</span><b>{dnaBaselineReady?dnaSummary.games:`${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
+            <div><span>MISSIONS</span><b>{dnaBaselineReady?dnaActiveTasks.length+'/6':'0/6'}</b></div>
           </div>
         </div>
 
         <div className="coach-dna-preview-shell">
-          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={active.role} missions={previewDnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={dnaRole} missions={previewDnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
           <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
         </div>
 
@@ -177,8 +212,8 @@ export default function Coach(){
         <div className="coach-preview-grid coach-preview-grid-single">
           <section className="panel panel-padding coach-preview-current">
             <div className="eyebrow">WHAT IS LIVE RIGHT NOW</div>
-            <h3>{baselineReady?(activeThree[0]?.title||'Your first challenge is building'):`Build the baseline · ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</h3>
-            <p>{baselineReady?(activeThree[0]?.gameRule||'OP CLIMB will keep adapting this focus from your games.'):'No personalised challenge yet. The first three tracked games are observation so the challenge comes from your real play.'}</p>
+            <h3>{dnaBaselineReady?(dnaActiveTasks[0]?.title||'Your first challenge is building'):`Build the ${dnaRole} baseline · ${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</h3>
+            <p>{dnaBaselineReady?(dnaActiveTasks[0]?.gameRule||'OP CLIMB will keep adapting this focus from your games in this role.'):`No ${dnaRole} challenge yet. The first three ${dnaRole} games are observation so the challenge comes from your real play.`}</p>
             <div className="coach-preview-facts">
               <div><span>CURRENT PLAN</span><b>{tier}</b></div>
               <div><span>COACHING WINDOW</span><b>{historyWindowLabel(tier)}</b></div>
