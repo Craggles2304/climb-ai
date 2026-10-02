@@ -41,17 +41,20 @@ test('semantic duplicates keep one freshest task',()=>{
   assert.equal(canonical[0]?.progress,34);
 });
 
-test('Companion strands and client helix use the same fixed four-rung denominator',()=>{
+test('Companion strands and client helix use one mission per DNA strand',()=>{
   const rows=[
-    task({id:'a',title:'A',metric:'a',dnaDomain:'LANING',progress:17,roleScope:'ADC'}),
-    task({id:'b',title:'B',metric:'b',dnaDomain:'LANING',progress:33,roleScope:'ADC'}),
-    task({id:'c',title:'C',metric:'c',dnaDomain:'LANING',progress:12,roleScope:'ADC',status:'PAUSED'}),
+    task({
+      id:'a',title:'A',metric:'a',dnaDomain:'LANING',roleScope:'ADC',masteryRequired:3,
+      missionHistory:[{matchId:'m1',at:'2026-10-01T00:00:00.000Z',adherence:'TRACKED',clearedBar:true,outcome:'CONFIRMED',banksPass:true}],
+    }),
+    task({id:'b',title:'Old A',metric:'b',dnaDomain:'LANING',progress:99,roleScope:'ADC',status:'PAUSED'}),
   ];
   const client=gameDnaClientMissions(rows,role).filter(row=>row.c==='lane');
   const strand=gameDnaStrands(rows,role,true).find(row=>row.domain==='LANING');
-  assert.equal(client.length,4);
-  assert.equal(client.reduce((sum,row)=>sum+row.p,0),62);
-  assert.equal(strand?.progress,16);
+  assert.equal(client.length,1);
+  assert.equal(client[0]?.p,33);
+  assert.equal(strand?.progress,33);
+  assert.equal(strand?.activeCount,1);
 });
 
 test('mission progress bar is driven by the same reps shown in the rep counter',()=>{
@@ -63,5 +66,5 @@ test('mission progress bar is driven by the same reps shown in the rep counter',
     missionHistory:[{matchId:'m1',at:'2026-10-02T00:00:00.000Z',adherence:'YES',clearedBar:true,outcome:'CONFIRMED',banksPass:true}],
   });
   assert.deepEqual(missionRepView(one),{confirmed:1,required:3,progress:33});
-  assert.equal(activeGameDnaMissions([zero,one],role).length,2);
+  assert.equal(activeGameDnaMissions([zero,one],role).length,1);
 });

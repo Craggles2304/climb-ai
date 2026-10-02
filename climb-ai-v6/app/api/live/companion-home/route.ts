@@ -5,6 +5,7 @@ import {companionDnaBaseline,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server
 import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
 import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaStrands,missionRepView} from '@/lib/gameDnaSnapshot';
 import type {ILPTask,Role} from '@/lib/types';
+import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -40,10 +41,13 @@ export async function GET(req:NextRequest){
     .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??''),updatedAt:row?.updated_at??null}))
     .filter((task:any)=>task?.id) as Array<ILPTask&{updatedAt?:string|null}>;
   const roleKey=(role||null) as Role|null;
-  const allTasks=canonicalGameDnaTasks(storedTasks,roleKey);
+  const strandReady=roleKey&&account?.id
+    ?ensureOneMissionPerDnaStrand(storedTasks,String(account.id),roleKey).tasks
+    :storedTasks;
+  const allTasks=canonicalGameDnaTasks(strandReady,roleKey);
   const live=activeGameDnaMissions(allTasks,roleKey);
 
-  const missionLimit=tier==='FREE'?1:3;
+  const missionLimit=6;
   const missions=baseline.ready?live.slice(0,missionLimit).map(task=>missionView(task)):[];
   const dna=gameDnaStrands(allTasks,roleKey,baseline.ready);
   const masteredCount=allTasks.filter(task=>String(task.status??'').toUpperCase()==='MASTERED').length;
@@ -59,18 +63,18 @@ export async function GET(req:NextRequest){
     },
     tier,
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'1 core mission · 7-day progress view',missionLimit:1,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:'6 DNA missions · 7-day progress view',missionLimit:6,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'1 core mission · up to 2 watch focuses · 90-day progress view',missionLimit:3,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'1 core mission · up to 2 watch focuses · long-term learning memory',missionLimit:3,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:'6 DNA missions · 90-day progress view',missionLimit:6,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:'6 DNA missions · long-term learning memory',missionLimit:6,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     dna,
     missions,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
-      ?{tier:'PLUS',copy:'Unlock two background watch focuses and a 90-day development view.'}
+      ?{tier:'PLUS',copy:'Keep all six DNA missions and unlock the 90-day development view.'}
       :tier==='PLUS'
-        ?{tier:'PRO',copy:'Unlock long-term player memory, mastered habits and deeper learning history.'}
+        ?{tier:'PRO',copy:'Keep all six DNA missions and unlock long-term player memory and mastered-habit history.'}
         :null,
   });
 }

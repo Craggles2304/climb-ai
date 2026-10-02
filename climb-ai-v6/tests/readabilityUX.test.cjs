@@ -8,10 +8,11 @@ const impact=fs.readFileSync(path.join(root,'components','MyClimbGameImpact.tsx'
 const dashboard=fs.readFileSync(path.join(root,'app','dashboard','page.tsx'),'utf8');
 const css=fs.readFileSync(path.join(root,'app','visual-depth.css'),'utf8');
 
-test('My Climb makes one active mission dominant beside last-game evidence',()=>{
+test('My Climb makes the six DNA missions clear beside last-game evidence',()=>{
   assert.ok(ilp.includes('MyClimbGameImpact'));
-  assert.ok(impact.includes('activeTasks[0]'));
-  assert.ok(impact.includes('YOUR ACTIVE CLIMB MISSION'));
+  assert.ok(ilp.includes('currentGameDnaMissions'));
+  assert.ok(ilp.includes('Six strands. One mission on each.'));
+  assert.ok(impact.includes('DNA MISSION FROM THIS GAME'));
   assert.ok(impact.includes('WHAT CHANGED THIS GAME'));
   assert.ok(impact.includes('WHAT YOU DID WELL'));
   assert.ok(impact.includes('KEY MOMENTS'));
@@ -29,14 +30,12 @@ test('My Climb explains the game in readable language before technical proof',()
   assert.ok(css.includes('.mc-game-example')||css.includes('.mc-moment-list'));
 });
 
-test('dashboard leads with one next-game plan while retaining up to three server missions',()=>{
-  assert.ok(dashboard.includes('const planMissions=baselineReady?tasks.filter'));
-  assert.ok(dashboard.includes('.slice(0,3)'));
+test('dashboard keeps one spotlight while the underlying plan contains all six DNA missions',()=>{
+  assert.ok(dashboard.includes('currentGameDnaMissions(tasks,active.role)'));
   assert.ok(dashboard.includes('const activeMission=planMissions[0]??leadTask'));
   assert.ok(dashboard.includes('YOUR NEXT GAME PLAN'));
   assert.ok(dashboard.includes('plainLanguageFocus'));
   assert.ok(dashboard.includes('YOUR RANKED SNAPSHOT'));
-  assert.ok(css.includes('.overview-top'));
 });
 
 test('dashboard hierarchy cannot regress to three equal-priority mission cards',()=>{

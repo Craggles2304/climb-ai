@@ -109,4 +109,4 @@ jobs:
       - name: Mission hierarchy regressions
         run: node --test tests/missionHierarchy.test.cjs
       - name: Product regressions
-        run: node --import tsx --test tests/gameDnaSnapshot.test.ts tests/keyMoments.test.ts tests/lane.test.ts tests/mapMatch.test.ts tests/patchIntelligence.test.ts tests/learningModelVersion.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/publicPreview.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts tests/visualDepth.test.cjs tests/plainLanguageCoaching.test.ts tests/readabilityUX.test.cjs tests/missionPlanLoad.test.cjs
+        run: node --import tsx --test tests/dnaStrandMissions.test.ts tests/gameDnaSnapshot.test.ts tests/keyMoments.test.ts tests/lane.test.ts tests/mapMatch.test.ts tests/patchIntelligence.test.ts tests/learningModelVersion.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/publicPreview.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts tests/visualDepth.test.cjs tests/plainLanguageCoaching.test.ts tests/readabilityUX.test.cjs tests/missionPlanLoad.test.cjs

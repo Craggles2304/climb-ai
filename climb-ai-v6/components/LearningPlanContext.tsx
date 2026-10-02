@@ -4,12 +4,13 @@ import {ILPTask,ILPMissionAttempt,Role} from '@/lib/types';
 import {defaultILP} from '@/data/learning';
 import {useAccount,matchesFor} from './AccountContext';
 import {firstPlan,PROFILE_ACCOUNT_ID} from '@/lib/profile';
-import {ACTIVE_PLAN_SIZE,adaptAndRefill,createCoachTask,ensureFiveActive,isGameMeasurableTask,rankTasks,reviseTaskFromCoach} from '@/lib/ilpEngine';
+import {ACTIVE_PLAN_SIZE,adaptAndRefill,createCoachTask,isGameMeasurableTask,rankTasks,reviseTaskFromCoach} from '@/lib/ilpEngine';
 import {orderTasks,OrderedTask,orderingNote} from '@/lib/planOrder';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaDomainForTask,ensureDnaDomain} from '@/lib/dnaDomain';
+import {ensureOneMissionPerDnaStrand,isDnaStrandMission} from '@/lib/dnaStrandMissions';
 
 type CoachTaskInput={title:string;category:ILPTask['category'];why:string;gameRule:string;metric:string;target:string;source?:'COACH';priority?:number};
 type Ctx={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Record<string,ILPTask[]>;planReady:boolean;planError:string|null;addTask:(task:CoachTaskInput)=>void;replaceTask:(oldId:string,task:CoachTaskInput)=>void;pauseTask:(id:string)=>void;completeTask:(id:string)=>void;recordMissionResult:(taskId:string,attempt:ILPMissionAttempt)=>void;refreshFromMatches:()=>string[]};
@@ -23,17 +24,11 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
   const relevant=stamped.filter(task=>taskAppliesToRole(task,role));
   const foreign=stamped.filter(task=>!taskAppliesToRole(task,role));
   const roleMatches=matchesForRole(matches,role);
-  let next=[...relevant].map(task=>isLive(task)&&!isGameMeasurableTask(task,roleMatches)
-    ?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically because this mission cannot be proved from tracked match data.',history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:'Removed from the active plan because OP CLIMB cannot measure it reliably from game data.'}].slice(-12)}
+  const measurable=[...relevant].map(task=>isLive(task)&&!isDnaStrandMission(task)&&!isGameMeasurableTask(task,roleMatches)
+    ?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically because this legacy mission cannot be proved from tracked match data.',history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:'Archived before the six-strand DNA mission plan was built.'}].slice(-12)}
     :task);
-  const live=next.filter(isLive);
-  if(live.length>ACTIVE_PLAN_SIZE){
-    const ordered=orderTasks(live,roleMatches,rank).map(item=>item.task);
-    const keep=new Set(ordered.slice(0,ACTIVE_PLAN_SIZE).map(task=>task.id));
-    next=next.map(task=>isLive(task)&&!keep.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically to keep the ${role} development plan capped at three active missions.`,history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Retired from the ${role} three-mission plan during cleanup.`}].slice(-12)}:task);
-  }
-  const filled=ensureFiveActive(next,roleMatches,accountId,role,rank).tasks.map(task=>stampRole(task,role));
-  return[...foreign,...filled];
+  const strandPlan=ensureOneMissionPerDnaStrand(measurable,accountId,role);
+  return[...foreign,...strandPlan.tasks.map(task=>stampRole(task,role))];
 }
 
 async function loadCloudRows(accountId:string):Promise<CloudIlpRow[]|null>{
@@ -75,10 +70,10 @@ async function persistCloud(accountId:string,tasks:ILPTask[]):Promise<ILPTask[]|
 }
 export function LearningPlanProvider({children}:{children:React.ReactNode}){const {active,profile,authenticated,hydrated}=useAccount();const [allTasks,setAllTasks]=useState<Record<string,ILPTask[]>>({});const [planError,setPlanError]=useState<string|null>(null);
 const accountMatches=matchesFor(active.id);const roleAccountMatches=accountMatches.filter(match=>match.role===active.role);const matchSignature=roleAccountMatches.slice(0,5).map(m=>m.id).join('|');
-const refreshCloudNow=useCallback(async()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;const rows=await loadCloudRows(active.id);if(rows===null)return;const loaded=rows.map((row:any)=>({...row.payload,id:row.id,accountId:active.id})) as ILPTask[];const cleaned=loaded.length?normalisePlan(loaded,matchesFor(active.id),active.id,active.role,active.rank):[];setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:cleaned}))},[active.id,active.role,active.rank,authenticated,hydrated]);
+const refreshCloudNow=useCallback(async()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;const rows=await loadCloudRows(active.id);if(rows===null)return;const loaded=rows.map((row:any)=>({...row.payload,id:row.id,accountId:active.id})) as ILPTask[];const cleaned=normalisePlan(loaded,matchesFor(active.id),active.id,active.role,active.rank);setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:cleaned}))},[active.id,active.role,active.rank,authenticated,hydrated]);
 useEffect(()=>{if(!hydrated||authenticated)return;try{const raw=localStorage.getItem(KEY);setAllTasks(raw?JSON.parse(raw):defaultILP)}catch{setAllTasks(defaultILP)}},[authenticated,hydrated]);
 useEffect(()=>{if(!hydrated||!authenticated)return;setAllTasks({})},[authenticated,hydrated]);
-useEffect(()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;let cancelled=false;setPlanError(null);void(async()=>{const rows=await loadCloudRows(active.id);if(cancelled)return;if(rows===null){setPlanError('Your mission plan could not be loaded. Refresh the page to retry.');return}if(rows.length){const loaded=rows.map((row:any)=>({...row.payload,id:row.id,accountId:active.id})) as ILPTask[];const cleaned=normalisePlan(loaded,matchesFor(active.id),active.id,active.role,active.rank);const cloud=await persistCloud(active.id,cleaned);if(cancelled)return;const final=normalisePlan(cloud??cleaned,matchesFor(active.id),active.id,active.role,active.rank);setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:final}));return}const seed=active.isPrimary&&profile?firstPlan({...profile,id:active.id}):[];if(seed.length){const filled=normalisePlan(seed,matchesFor(active.id),active.id,active.role,active.rank);const cloud=await persistCloud(active.id,filled);if(cancelled)return;setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:normalisePlan(cloud??filled,matchesFor(active.id),active.id,active.role,active.rank)}));return}setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:[]}))})();return()=>{cancelled=true}},[active.id,active.isPrimary,active.role,active.rank,authenticated,hydrated,profile]);
+useEffect(()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;let cancelled=false;setPlanError(null);void(async()=>{const rows=await loadCloudRows(active.id);if(cancelled)return;if(rows===null){setPlanError('Your mission plan could not be loaded. Refresh the page to retry.');return}if(rows.length){const loaded=rows.map((row:any)=>({...row.payload,id:row.id,accountId:active.id})) as ILPTask[];const cleaned=normalisePlan(loaded,matchesFor(active.id),active.id,active.role,active.rank);const cloud=await persistCloud(active.id,cleaned);if(cancelled)return;const final=normalisePlan(cloud??cleaned,matchesFor(active.id),active.id,active.role,active.rank);setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:final}));return}const seed=active.isPrimary&&profile?firstPlan({...profile,id:active.id}):[];const filled=normalisePlan(seed,matchesFor(active.id),active.id,active.role,active.rank);const cloud=await persistCloud(active.id,filled);if(cancelled)return;setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:normalisePlan(cloud??filled,matchesFor(active.id),active.id,active.role,active.rank)}))})();return()=>{cancelled=true}},[active.id,active.isPrimary,active.role,active.rank,authenticated,hydrated,profile]);
 useEffect(()=>{if(!hydrated||!authenticated||!matchSignature||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;let cancelled=false;const pull=()=>{if(!cancelled)void refreshCloudNow()};pull();const retry1=setTimeout(pull,2500),retry2=setTimeout(pull,7000),retry3=setTimeout(pull,14000);return()=>{cancelled=true;clearTimeout(retry1);clearTimeout(retry2);clearTimeout(retry3)}},[active.id,authenticated,hydrated,matchSignature,refreshCloudNow]);
 useEffect(()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;const pull=()=>{if(document.visibilityState==='visible')void refreshCloudNow()};const onFocus=()=>void refreshCloudNow();window.addEventListener('focus',onFocus);document.addEventListener('visibilitychange',pull);return()=>{window.removeEventListener('focus',onFocus);document.removeEventListener('visibilitychange',pull)}},[active.id,authenticated,hydrated,refreshCloudNow]);
 const rawTasks=useMemo(()=>{const stored=allTasks[active.id];if(stored&&stored.length)return stored;if(!authenticated&&profile&&active.isPrimary)return firstPlan({...profile,id:active.id});return[]},[allTasks,active.id,active.isPrimary,authenticated,profile]);const planReady=hydrated&&(!authenticated||Object.prototype.hasOwnProperty.call(allTasks,active.id));const visibleTasks=useMemo(()=>rawTasks.filter(task=>taskAppliesToRole(task,active.role)),[rawTasks,active.role]);const ordering=useMemo(()=>orderTasks(visibleTasks,roleAccountMatches,active.rank),[visibleTasks,matchSignature,active.rank]);const tasks=useMemo(()=>ordering.map(o=>o.task),[ordering]);const orderNote=useMemo(()=>orderingNote(ordering),[ordering]);
