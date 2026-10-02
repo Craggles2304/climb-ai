@@ -12,6 +12,7 @@ import type {DnaDomain,IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
+import {gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -50,16 +51,7 @@ function Message({m}:{m:Msg}){
 
 export default function Coach(){
   const {active}=useAccount();const {tier}=useSubscription();const allRoleMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&match.role===active.role);const matches=filterHistoryForTier(allRoleMatches,tier);const baselineGames=dnaBaselineGameCount(allRoleMatches,active.role);const baselineReady=dnaBaselineReady(baselineGames);const {tasks,addTask}=useLearningPlan();const rawActiveThree=tasks.filter(t=>t.status!=='MASTERED'&&t.status!=='PAUSED').slice(0,3);const activeThree=baselineReady?rawActiveThree:[];const priorityTitle=activeThree[0]?.title;const detail=useMemo(()=>coachingLevelFor(active.rank),[active.rank]);const [q,setQ]=useState('');const [pending,setPending]=useState(false);const [messages,setMessages]=useState<Msg[]>([]);const [tab,setTab]=useState<CoachTab>('DNA');const [selectedDnaDomain,setSelectedDnaDomain]=useState<DnaDomain>('LANING');const loadedAccount=useRef('');const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);const summary=useMemo(()=>recentSummary(matches),[matches]);
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
-    const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
-      c:DNA_DOMAIN_GENE[domain],
-      n:task.title,
-      s:dnaTaskState(task),
-      p:dnaTaskProgress(task),
-    }));
-    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0,p:0});
-    return real;
-  }),[tasks]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(tasks,active.role),[tasks,active.role]);
   const previewDnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
     const allowed=tier==='FREE'?activeThree.slice(0,1):activeThree.slice(0,3);
     const live=allowed.filter(task=>task.dnaDomain===domain).slice(0,2).map(task=>({
