@@ -1,0 +1,429 @@
+import type {ChampionDetail} from './champions/ddragon';
+import {damageType} from './champions/ddragon';
+import type {DataDragonItemFull} from './champions/source';
+import {parseItemStats} from './champions/dps';
+import {bestBuild,toBuildItems} from './champions/build';
+import {isCompletedItem,isFinishedBoot} from './riot/items';
+
+export type AdaptiveBuildRole='TOP'|'JUNGLE'|'MID'|'ADC'|'SUPPORT'|'UNKNOWN';
+
+export interface AdaptiveBuildPlayer{
+  champion:string;
+  role?:string|null;
+  detail:ChampionDetail;
+}
+export interface AdaptiveBuildItem{
+  id:number;
+  name:string;
+  gold:number;
+  slot:'CORE'|'DRAFT'|'FINISH'|'BOOTS'|'SWAP';
+  score:number;
+  why:string;
+  flags:string[];
+}
+export interface AdaptiveEnemyProfile{
+  physical:number;magic:number;mixed:number;
+  armorAt11:number;magicResistAt11:number;
+  physicalThreatNames:string[];magicThreatNames:string[];diveThreatNames:string[];
+  physicalThreat:number;magicThreat:number;
+  tanks:number;divers:number;assassins:number;
+  hardCc:number;cleanseableCc:number;airborneCc:number;suppressions:number;
+  healing:number;shielding:number;poke:number;ranged:number;
+}
+export interface AdaptiveBuildPath{key:'STANDARD'|'VS_BURST'|'VS_TANKS'|'VS_HEALING';label:string;reason:string;items:AdaptiveBuildItem[]}
+export interface AdaptiveBuildPlan{
+  version:2;patch:string;champion:string;role:AdaptiveBuildRole;confidence:'HIGH'|'MEDIUM';
+  enemyProfile:AdaptiveEnemyProfile;read:string;core:AdaptiveBuildItem[];
+  draftItem:AdaptiveBuildItem|null;finish:AdaptiveBuildItem|null;boots:AdaptiveBuildItem|null;
+  swaps:AdaptiveBuildItem[];order:AdaptiveBuildItem[];paths:AdaptiveBuildPath[];lockedFrom:'CHAMP_SELECT';rule:string;boundary:string;
+}
+
+const CC=/\b(stuns?|roots?|snares?|knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|suppress(?:es|ed|ion)?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation)|pulls?|airborne)\b/i;
+const CLEANSEABLE_CC=/\b(stuns?|roots?|snares?|fears?|taunts?|charms?|silences?|sleeps?|immobiliz(?:e|es|ed|ing|ation))\b/i;
+const AIRBORNE_CC=/\b(knock(?:s|ed|ing)?(?:\s|-)?(?:back|up)?|pulls?|airborne)\b/i;
+const SUPPRESSION=/\b(suppress(?:es|ed|ion)?)\b/i;
+const HEAL=/\b(heals?|healing|restore(?:s|d)? health|regenerat|health restoration|drain)\b/i;
+const SHIELD=/\b(shield|shielding)\b/i;
+const DASH=/\b(dashes?|blinks?|leaps?|charges?|dives?|jumps?|teleports?)\b/i;
+const POKE=/\b(long range|long-range|poke|artillery|from range)\b/i;
+
+function clean(value:unknown){return String(value??'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim()}
+function normRole(value?:string|null):AdaptiveBuildRole{
+  const valueRole=clean(value).toUpperCase();
+  if(valueRole==='BOTTOM'||valueRole==='ADC')return'ADC';
+  if(valueRole==='UTILITY'||valueRole==='SUPPORT')return'SUPPORT';
+  if(valueRole==='MIDDLE'||valueRole==='MID')return'MID';
+  if(valueRole==='TOP'||valueRole==='JUNGLE')return valueRole;
+  return'UNKNOWN';
+}
+function detailText(detail:ChampionDetail){
+  return[
+    detail.passive?.name,(detail.passive as any)?.description,
+    ...(detail.spells??[]).flatMap((spell:any)=>[spell?.name,spell?.description,spell?.tooltip]),
+    ...(detail.allytips??[]),...(detail.enemytips??[]),
+  ].map(clean).filter(Boolean).join(' ');
+}
+function itemText(item:DataDragonItemFull){
+  return[item.name,(item as any).description,(item as any).plaintext,...(item.tags??[])].map(clean).filter(Boolean).join(' ').toLowerCase();
+}
+function finalBoot(item:DataDragonItemFull){return isFinishedBoot(item)&&(item.gold?.total??0)<=1600}
+function eligible(item:DataDragonItemFull,champion:string){
+  if(item.requiredChampion&&item.requiredChampion.toLowerCase()!==champion.toLowerCase())return false;
+  return isCompletedItem(item)||finalBoot(item);
+}
+function has(text:string,...terms:string[]){return terms.some(term=>text.includes(term))}
+function round(n:number){return Math.round(n*10)/10}
+
+function enemyProfile(enemies:AdaptiveBuildPlayer[]):AdaptiveEnemyProfile{
+  const out:AdaptiveEnemyProfile={
+    physical:0,magic:0,mixed:0,physicalThreat:0,magicThreat:0,armorAt11:0,magicResistAt11:0,
+    physicalThreatNames:[],magicThreatNames:[],diveThreatNames:[],
+    tanks:0,divers:0,assassins:0,
+    hardCc:0,cleanseableCc:0,airborneCc:0,suppressions:0,
+    healing:0,shielding:0,poke:0,ranged:0,
+  };
+  for(const enemy of enemies){
+    const detail=enemy.detail;
+    const type=damageType(detail.info);
+    const role=normRole(enemy.role);
+    const threatWeight=role==='ADC'?1.45:role==='MID'?1.35:role==='JUNGLE'?1.15:role==='TOP'?1.05:role==='SUPPORT'?0.72:1;
+    if(type==='PHYSICAL'){out.physical++;out.physicalThreat+=threatWeight;out.physicalThreatNames.push(detail.name)}
+    else if(type==='MAGIC'){out.magic++;out.magicThreat+=threatWeight;out.magicThreatNames.push(detail.name)}
+    else{
+      out.mixed++;
+      out.physicalThreat+=threatWeight*.5;
+      out.magicThreat+=threatWeight*.5;
+    }
+    const tags=detail.tags??[];
+    const text=detailText(detail);
+    const range=Number(detail.stats?.attackrange??0);
+    out.armorAt11+=Number(detail.stats?.armor??0)+10*Number(detail.stats?.armorperlevel??0);
+    out.magicResistAt11+=Number(detail.stats?.spellblock??0)+10*Number(detail.stats?.spellblockperlevel??0);
+    if(tags.includes('Tank'))out.tanks++;
+    if(tags.includes('Assassin'))out.assassins++;
+    if(tags.includes('Assassin')||(tags.includes('Fighter')&&range<400)||DASH.test(text)){out.divers++;out.diveThreatNames.push(detail.name)}
+    if(CC.test(text))out.hardCc++;
+    if(CLEANSEABLE_CC.test(text))out.cleanseableCc++;
+    if(AIRBORNE_CC.test(text))out.airborneCc++;
+    if(SUPPRESSION.test(text))out.suppressions++;
+    if(HEAL.test(text))out.healing++;
+    if(SHIELD.test(text))out.shielding++;
+    if(range>=500)out.ranged++;
+    if(range>=575||(tags.includes('Mage')&&POKE.test(text)))out.poke++;
+  }
+  out.physicalThreat=round(out.physicalThreat);
+  out.magicThreat=round(out.magicThreat);
+  out.armorAt11=round(out.armorAt11/Math.max(1,enemies.length));
+  out.magicResistAt11=round(out.magicResistAt11/Math.max(1,enemies.length));
+  return out;
+}
+function frontlineCount(players:AdaptiveBuildPlayer[]){
+  return players.filter(player=>{
+    const tags=player.detail.tags??[];
+    return tags.includes('Tank')||(tags.includes('Fighter')&&Number(player.detail.stats?.attackrange??0)<350);
+  }).length;
+}
+interface ItemRead{
+  id:number;item:DataDragonItemFull;text:string;flags:string[];
+  ad:number;ap:number;as:number;crit:number;hp:number;armor:number;mr:number;lifesteal:number;ms:number;
+  isBoots:boolean;offense:number;defense:number;utility:number;context:number;score:number;
+}
+function flagsFor(text:string){
+  const flags:string[]=[];
+  const add=(flag:string,condition:boolean)=>{if(condition)flags.push(flag)};
+  add('ANTI_TANK',has(text,'armor penetration','bonus armor','maximum health','max health','current health','percent health','health damage','shred'));
+  add('ARMOR_PEN',has(text,'armor penetration','bonus armor penetration','armor reduction','armor shred'));
+  add('MAGIC_PEN',has(text,'magic penetration','magic resist reduction','magic resistance reduction'));
+  add('ANTI_HEAL',has(text,'grievous wounds'));
+  add('ANTI_SHIELD',has(text,'shield reaver','reduce shields','reduces shields','damage to shields'));
+  add('CLEANSE',has(text,'quicksilver','remove all crowd control','removes all crowd control','cleanse'));
+  add('TENACITY',has(text,'tenacity'));
+  add('SPELL_SHIELD',has(text,'spell shield','blocks the next enemy ability'));
+  add('STASIS',has(text,'stasis'));
+  add('REVIVE',has(text,'revive','resurrect'));
+  add('LIFELINE',has(text,'lifeline'));
+  add('SUSTAIN',has(text,'omnivamp','life steal','lifesteal','heal for','healing from damage'));
+  add('ON_HIT',has(text,'on-hit','on hit'));
+  add('HEAL_SHIELD_POWER',has(text,'heal and shield power','healing and shielding'));
+  return flags;
+}
+function reasonFor(read:ItemRead,profile:AdaptiveEnemyProfile,role:AdaptiveBuildRole,you:ChampionDetail,allyFrontline:number){
+  const flags=new Set(read.flags);
+  if(flags.has('CLEANSE')&&(profile.suppressions>=1||profile.cleanseableCc>=3))return String(Math.max(profile.cleanseableCc,profile.suppressions))+' enemy kits have CC this item can actually remove: keep it as a situational answer, not a default purchase.';
+  if(flags.has('ANTI_HEAL')&&profile.healing>=2)return String(profile.healing)+' enemy kits have meaningful healing: this is the anti-heal slot.';
+  if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)return String(profile.shielding)+' enemy kits create shields: this helps your damage reach health instead.';
+  if(flags.has('ARMOR_PEN')&&(profile.tanks>=2||profile.armorAt11>=90))return'Enemy armour is high (about '+profile.armorAt11+' at level 11): this penetration helps keep damage relevant.';
+  if(flags.has('MAGIC_PEN')&&(profile.tanks>=2||profile.magicResistAt11>=72))return'Enemy magic resist is high (about '+profile.magicResistAt11+' at level 11): this penetration helps keep damage relevant.';
+  if(flags.has('ANTI_TANK')&&profile.tanks>=2)return String(profile.tanks)+' enemy frontliners/tanks: prioritises damage that keeps working into high durability.';
+  if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)return'Answers the '+profile.diveThreatNames.slice(0,2).join(' / ')+' dive: protects your uptime when they reach you.';
+  if(read.mr>0&&profile.magicThreat>profile.physicalThreat+.6)return'Answers magic damage from '+profile.magicThreatNames.slice(0,2).join(' / ')+' without changing your core plan.';
+  if(read.armor>0&&profile.physicalThreat>profile.magicThreat+.8)return'Answers physical damage from '+profile.physicalThreatNames.slice(0,2).join(' / ')+' without changing your core plan.';
+  if(flags.has('SUSTAIN')&&profile.poke>=2)return String(profile.poke)+' ranged/poke threats: sustain helps you arrive at fights with usable health.';
+  if((role==='TOP'||role==='JUNGLE'||role==='SUPPORT')&&allyFrontline===0&&(read.hp>0||read.armor>0||read.mr>0))return'Your team has no other clear frontliner: this helps your role absorb first contact.';
+  const style=(you.tags??[]).includes('Marksman')?'marksman':(you.tags??[]).includes('Mage')?'magic':(you.tags??[]).includes('Tank')?'frontline':'champion';
+  return'Strong '+style+' stat fit for '+you.name+' in the '+role+' role, with this draft included in the score.';
+}
+
+export function buildAdaptiveItemPlan(input:{
+  patch:string;you:ChampionDetail;role?:string|null;allies:AdaptiveBuildPlayer[];enemies:AdaptiveBuildPlayer[];
+  items:Record<string,DataDragonItemFull>;
+  popularItems?:{id:number;name:string}[]|null;
+  popularSource?:string|null;
+}):AdaptiveBuildPlan{
+  const role=normRole(input.role);
+  const you=input.you;
+  const profile=enemyProfile(input.enemies);
+  const allyFrontline=frontlineCount(input.allies.filter(player=>player.detail.name!==you.name));
+  const attack=Math.max(1,Number(you.info?.attack??1));
+  const magic=Math.max(1,Number(you.info?.magic??1));
+  const attackBias=attack/(attack+magic);
+  const magicBias=magic/(attack+magic);
+  const tags=you.tags??[];
+  const marksman=role==='ADC'||tags.includes('Marksman');
+  const tank=tags.includes('Tank')&&(role==='TOP'||role==='JUNGLE'||role==='SUPPORT');
+  const support=role==='SUPPORT';
+  const mage=tags.includes('Mage')||magicBias>.58;
+  const melee=Number(you.stats?.attackrange??0)<350;
+  const armorStacked=profile.tanks>=2||profile.armorAt11>=90;
+  const magicResistStacked=profile.tanks>=2||profile.magicResistAt11>=72;
+
+  const completed:Record<string,DataDragonItemFull>={};
+  for(const [id,item] of Object.entries(input.items))if(isCompletedItem(item))completed[id]=item;
+  const damageSeed=new Set<number>();
+  if(attackBias>=.5){
+    try{bestBuild(you.stats,11,toBuildItems(completed),4,140).items.forEach(item=>damageSeed.add(item.id))}catch{}
+  }
+
+  const reads:ItemRead[]=[];
+  for(const [idRaw,item] of Object.entries(input.items)){
+    if(!eligible(item,you.name))continue;
+    const id=Number(idRaw);if(!Number.isFinite(id))continue;
+    const stats=parseItemStats(item.stats);
+    const text=itemText(item);
+    const flags=flagsFor(text);
+    const isBoots=finalBoot(item);
+    const ad=stats.attackDamage,ap=stats.abilityPower,as=stats.attackSpeedRatio,crit=stats.critChance,hp=stats.health,armor=stats.armor,mr=stats.magicResist,lifesteal=stats.lifestealRatio,ms=stats.flatMoveSpeed+stats.percentMoveSpeed*100;
+    let offense=0,defense=0,utility=0,context=0;
+
+    if(marksman){
+      offense+=ad*1.35+as*95+crit*115+lifesteal*70+ap*magicBias*.25;
+      if(flags.includes('ON_HIT'))offense+=12;
+    }else if(mage){
+      offense+=ap*1.25+ad*attackBias*.35+as*attackBias*25;
+    }else{
+      offense+=ad*(1.05+attackBias*.45)+ap*(.8+magicBias*.45)+as*attackBias*45+crit*attackBias*55+lifesteal*45;
+    }
+
+    const durabilityNeed=tank?1.25:support?0.85:melee?0.5:0.22;
+    defense+=hp*.035*durabilityNeed+armor*.8*durabilityNeed+mr*.9*durabilityNeed;
+    if(support&&flags.includes('HEAL_SHIELD_POWER'))utility+=28;
+    if(support&&has(text,'ally','team','heal','shield','aura'))utility+=10;
+    if(role==='JUNGLE'&&has(text,'monster','jungle'))utility+=8;
+    if(ms>0)utility+=Math.min(10,ms*.12);
+    if(damageSeed.has(id))offense+=15;
+
+    if(armorStacked&&flags.includes('ANTI_TANK'))context+=30+profile.tanks*5;
+    if(magicResistStacked&&flags.includes('MAGIC_PEN'))context+=30+profile.tanks*5;
+    if(profile.healing>=2&&flags.includes('ANTI_HEAL'))context+=34+profile.healing*5;
+    if(profile.shielding>=2&&flags.includes('ANTI_SHIELD'))context+=28+profile.shielding*4;
+    if((profile.suppressions>=1||profile.cleanseableCc>=3)&&flags.includes('CLEANSE'))context+=28+profile.cleanseableCc*4+profile.suppressions*12;
+    if(profile.cleanseableCc>=2&&flags.includes('TENACITY'))context+=18+profile.cleanseableCc*3;
+    if((profile.divers+profile.assassins)>=2&&(flags.includes('STASIS')||flags.includes('REVIVE')||flags.includes('LIFELINE')||flags.includes('SPELL_SHIELD')))context+=32+(profile.divers+profile.assassins)*3;
+    if(profile.poke>=2&&(flags.includes('SUSTAIN')||lifesteal>0))context+=18+profile.poke*3;
+    if(profile.physicalThreat>=2.9&&armor>0)context+=armor*((tank||support)?0.7:0.28);
+    if(profile.magicThreat>=2.5&&mr>0)context+=mr*((tank||support)?0.78:0.32);
+    if((role==='TOP'||role==='JUNGLE'||role==='SUPPORT')&&allyFrontline===0&&(hp>0||armor>0||mr>0))context+=20;
+    if(isBoots){
+      if(profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8&&armor>0)context+=34;
+      if(profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5&&mr>0)context+=28;
+      if(profile.cleanseableCc>=3&&flags.includes('TENACITY'))context+=30;
+      if(marksman&&as>0&&profile.cleanseableCc<3&&(profile.divers+profile.assassins)<2)context+=28;
+    }
+
+    let score=offense+defense+utility+context;
+    if((item.gold?.total??0)>0)score+=Math.min(12,3000/(item.gold?.total??3000)*4);
+    reads.push({id,item,text,flags,ad,ap,as,crit,hp,armor,mr,lifesteal,ms,isBoots,offense,defense,utility,context,score});
+  }
+
+  const readById=new Map(reads.map(read=>[read.id,read]));
+  const popularReads=(input.popularItems??[])
+    .map(item=>readById.get(Number(item.id)))
+    .filter((item):item is ItemRead=>Boolean(item));
+  const popularNonBoots=popularReads.filter(item=>!item.isBoots);
+  const popularBoot=popularReads.find(item=>item.isBoots)??null;
+
+  const nonBoots=reads.filter(item=>!item.isBoots);
+  const relevantItem=(item:ItemRead)=>
+    (!item.flags.includes('ANTI_HEAL')||profile.healing>=2)&&
+    (!item.flags.includes('ANTI_SHIELD')||profile.shielding>=2)&&
+    (!item.flags.includes('ARMOR_PEN')||armorStacked)&&
+    (!item.flags.includes('MAGIC_PEN')||magicResistStacked);
+  const classCompatible=(item:ItemRead)=>{
+    if(tank)return item.hp>0||item.armor>0||item.mr>0;
+    if(support&&!tank)return item.ap>0||item.hp>0||item.mr>0||item.armor>0||item.flags.includes('HEAL_SHIELD_POWER')||item.utility>=10;
+    if(marksman)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT')||(magicBias>=.35&&item.ap>0);
+    if(mage)return item.ap>0||item.flags.includes('MAGIC_PEN');
+    if(attackBias>=.58)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT');
+    return item.ad>0||item.ap>0||item.as>0||item.crit>0;
+  };
+  const compatibleNonBoots=nonBoots.filter(item=>classCompatible(item)&&relevantItem(item));
+  const coreEligible=compatibleNonBoots.filter(item=>{
+    if(marksman)return item.ad>0||item.as>0||item.crit>0||item.flags.includes('ON_HIT');
+    if(tank)return item.hp>0||item.armor>0||item.mr>0;
+    if(support&&!tank)return item.ap>0||item.hp>0||item.flags.includes('HEAL_SHIELD_POWER')||item.utility>=10;
+    if(mage)return item.ap>0||item.flags.includes('MAGIC_PEN');
+    return item.ad>0||item.ap>0||item.hp>0;
+  });
+  const coreTechFlags=new Set(['CLEANSE','ANTI_HEAL','ANTI_SHIELD','ANTI_TANK','ARMOR_PEN','MAGIC_PEN','STASIS','REVIVE','SPELL_SHIELD']);
+  const coreRanked=[...coreEligible].sort((a,b)=>{
+    const aTech=a.flags.some(flag=>coreTechFlags.has(flag))?1:0;
+    const bTech=b.flags.some(flag=>coreTechFlags.has(flag))?1:0;
+    const aSeed=damageSeed.has(a.id)?28:0;
+    const bSeed=damageSeed.has(b.id)?28:0;
+    const aPopular=popularNonBoots.findIndex(item=>item.id===a.id);
+    const bPopular=popularNonBoots.findIndex(item=>item.id===b.id);
+    const aPopularBoost=aPopular>=0?110-Math.min(4,aPopular)*16:0;
+    const bPopularBoost=bPopular>=0?110-Math.min(4,bPopular)*16:0;
+    const aScore=a.offense+a.defense*.25+a.utility*.2+aSeed+aPopularBoost-aTech*30;
+    const bScore=b.offense+b.defense*.25+b.utility*.2+bSeed+bPopularBoost-bTech*30;
+    return bScore-aScore||b.score-a.score;
+  });
+
+  const chosen=new Set<number>();
+  const coreReads:ItemRead[]=[];
+  // A real current-patch, rank/role build is the anchor. Draft logic may
+  // change tech/boots/finish slots, but should not invent a new champion core.
+  for(const read of popularNonBoots){
+    if(chosen.has(read.id)||!coreEligible.some(item=>item.id===read.id))continue;
+    if(read.flags.some(flag=>coreTechFlags.has(flag)))continue;
+    coreReads.push(read);chosen.add(read.id);
+    if(coreReads.length===2)break;
+  }
+  for(const read of coreRanked){
+    if(coreReads.length>=2)break;
+    if(chosen.has(read.id))continue;
+    if(read.flags.some(flag=>coreTechFlags.has(flag)))continue;
+    coreReads.push(read);chosen.add(read.id);
+  }
+  if(coreReads.length<2){
+    for(const read of coreRanked){
+      if(chosen.has(read.id))continue;
+      if(read.flags.some(flag=>coreTechFlags.has(flag)))continue;
+      coreReads.push(read);chosen.add(read.id);
+      if(coreReads.length===2)break;
+    }
+  }
+
+  const techRelevant=(item:ItemRead)=>{
+    const flags=new Set(item.flags);
+    if(flags.has('ANTI_TANK')&&armorStacked)return true;
+    if(flags.has('MAGIC_PEN')&&magicResistStacked)return true;
+    if(flags.has('ANTI_HEAL')&&profile.healing>=2)return true;
+    if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)return true;
+    if(flags.has('CLEANSE')&&(profile.suppressions>=1||profile.cleanseableCc>=3))return true;
+    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)return true;
+    if((flags.has('SUSTAIN')||item.lifesteal>0)&&profile.poke>=2)return true;
+    if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)return true;
+    if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)return true;
+    return false;
+  };
+  const techPriority=(item:ItemRead)=>{
+    const flags=new Set(item.flags);
+    let value=item.context+item.score*.12;
+    // Prefer the most specific answer to the draft before a generic defensive fallback.
+    // QSS/cleanse should beat revive only when the enemy actually has removable CC;
+    // knock-ups/displacements alone never earn this bonus.
+    if(flags.has('CLEANSE')&&(profile.suppressions>=1||profile.cleanseableCc>=3))
+      value+=48+profile.cleanseableCc*6+profile.suppressions*14;
+    if(flags.has('ANTI_TANK')&&armorStacked)value+=32+profile.tanks*5;
+    if(flags.has('MAGIC_PEN')&&magicResistStacked)value+=32+profile.tanks*5;
+    if(flags.has('ANTI_HEAL')&&profile.healing>=2)value+=30+profile.healing*5;
+    if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)value+=28+profile.shielding*4;
+    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)
+      value+=16+(profile.divers+profile.assassins)*2;
+    if((flags.has('SUSTAIN')||item.lifesteal>0)&&profile.poke>=2)value+=14+profile.poke*2;
+    if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=22;
+    if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=22;
+    return value;
+  };
+  const techRanked=compatibleNonBoots
+    .filter(item=>!chosen.has(item.id)&&techRelevant(item))
+    .sort((a,b)=>techPriority(b)-techPriority(a));
+  const draftRead=techRanked.find(item=>techPriority(item)>=32)??null;
+  if(draftRead)chosen.add(draftRead.id);
+
+  const finishRead=popularNonBoots.find(item=>!chosen.has(item.id)&&coreEligible.some(core=>core.id===item.id)&&!item.flags.some(flag=>coreTechFlags.has(flag)))
+    ??coreRanked.filter(item=>!chosen.has(item.id)).sort((a,b)=>(b.offense+b.defense*.18+b.utility*.12)-(a.offense+a.defense*.18+a.utility*.12))[0]
+    ??null;
+  if(finishRead)chosen.add(finishRead.id);
+
+  const bootReads=reads.filter(item=>item.isBoots);
+  const bootScore=(item:ItemRead)=>{
+    let value=item.offense*.45+item.defense*.45+item.utility*.25;
+    if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=70;
+    if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=58;
+    if(item.flags.includes('TENACITY')&&profile.cleanseableCc>=3)value+=60;
+    if(marksman&&item.as>0&&profile.cleanseableCc<3&&!(profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8))value+=50;
+    return value;
+  };
+  const bestDraftBoot=[...bootReads].sort((a,b)=>bootScore(b)-bootScore(a))[0]??null;
+  const defensiveBootNeeded=
+    (profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)||
+    (profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)||
+    profile.cleanseableCc>=3;
+  const bootRead=defensiveBootNeeded?bestDraftBoot:(popularBoot??bestDraftBoot);
+
+  const itemOut=(read:ItemRead|null,slot:AdaptiveBuildItem['slot']):AdaptiveBuildItem|null=>read?{
+    id:read.id,name:read.item.name,gold:read.item.gold?.total??0,slot,score:round(read.score),
+    why:reasonFor(read,profile,role,you,allyFrontline),flags:read.flags,
+  }:null;
+  const core=coreReads.map(read=>itemOut(read,'CORE')!).filter(Boolean);
+  const draftItem=itemOut(draftRead,'DRAFT');
+  const finish=itemOut(finishRead,'FINISH');
+  const boots=itemOut(bootRead,'BOOTS');
+  const swaps=techRanked.filter(item=>!chosen.has(item.id)).slice(0,2).map(read=>itemOut(read,'SWAP')!).filter(Boolean);
+  const order=[...core,...(draftItem?[draftItem]:[]),...(finish?[finish]:[])];
+
+  const readParts=[
+    profile.tanks>=2?String(profile.tanks)+' durable frontliners':null,
+    profile.divers>=2?String(profile.divers)+' dive threats':null,
+    profile.cleanseableCc>=3?String(profile.cleanseableCc)+' cleanseable CC threats':profile.airborneCc>=2?String(profile.airborneCc)+' displacement/knock-up threats':null,
+    profile.healing>=2?String(profile.healing)+' healing kits':null,
+    profile.magicThreat>profile.physicalThreat+.6?'magic-leaning carry damage':profile.physicalThreat>profile.magicThreat+.8?'physical-leaning carry damage':'mixed carry damage',
+  ].filter(Boolean);
+
+  const unique=(items:(AdaptiveBuildItem|null|undefined)[])=>{
+    const seen=new Set<number>();const out:AdaptiveBuildItem[]=[];
+    for(const item of items){if(!item||seen.has(item.id))continue;seen.add(item.id);out.push(item)}
+    return out.slice(0,5);
+  };
+  const tech=(flag:string)=>compatibleNonBoots.filter(item=>item.flags.includes(flag)).sort((a,b)=>(b.context+b.score*.35)-(a.context+a.score*.35))[0]??null;
+  const physicalDefenseNeeded=profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8;
+  const magicDefenseNeeded=profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5;
+  const diveDefenseNeeded=profile.divers+profile.assassins>=2;
+  const defense=compatibleNonBoots.filter(item=>
+    (physicalDefenseNeeded&&item.armor>0)||
+    (magicDefenseNeeded&&item.mr>0)||
+    (diveDefenseNeeded&&item.flags.some(flag=>['STASIS','REVIVE','LIFELINE','SPELL_SHIELD'].includes(flag)))
+  ).sort((a,b)=>(b.context+b.defense+b.score*.25)-(a.context+a.defense+a.score*.25))[0]??null;
+  const burstItem=itemOut(defense,'DRAFT');
+  const tankItem=itemOut(attackBias>=.5?tech('ARMOR_PEN')??tech('ANTI_TANK'):tech('MAGIC_PEN')??tech('ANTI_TANK'),'DRAFT');
+  const healItem=itemOut(tech('ANTI_HEAL'),'DRAFT');
+  const standardItems=unique([...core,finish,boots,...(draftItem?[draftItem]:[])]);
+  const paths:AdaptiveBuildPath[]=[
+    {key:'STANDARD',label:'STANDARD',reason:'Best all-round path for your champion and this draft.',items:standardItems},
+  ];
+  if(burstItem&&(profile.divers+profile.assassins>=2||profile.hardCc>=2))paths.push({key:'VS_BURST',label:'VS BURST',reason:'More survival against dive, burst or hard catch while keeping your core intact.',items:unique([...core,burstItem,finish,boots])});
+  if(tankItem&&profile.tanks>=2)paths.push({key:'VS_TANKS',label:'VS TANKS',reason:'Keeps damage relevant into the enemy frontline.',items:unique([...core,tankItem,finish,boots])});
+  if(healItem&&profile.healing>=2)paths.push({key:'VS_HEALING',label:'VS HEALING',reason:'Adds anti-heal when the enemy draft contains repeated sustain.',items:unique([...core,healItem,finish,boots])});
+
+  return{
+    version:2,patch:input.patch,champion:you.name,role,
+    confidence:input.enemies.length>=5?'HIGH':'MEDIUM',
+    enemyProfile:profile,
+    read:[input.popularSource?'CORE · '+input.popularSource:null,...readParts].filter(Boolean).join(' · ')||'Draft still forming',
+    core,draftItem,finish,boots,swaps,order,paths,lockedFrom:'CHAMP_SELECT',
+    rule:'START FROM THE CURRENT-PATCH RANK/ROLE CORE. CHANGE BOOTS OR ADD A TECH ITEM ONLY WHEN THIS ENEMY DRAFT CREATES A SPECIFIC PROBLEM THAT THE ITEM ACTUALLY SOLVES.',
+    boundary:'LOCKED FROM CHAMP SELECT USING CURRENT-PATCH RIOT STATIC CHAMPION/ITEM DATA ONLY. IT DOES NOT READ LIVE GOLD, ENEMY PURCHASES OR IN-GAME STATE, AND IT WILL NOT CHANGE DURING THE MATCH.',
+  };
+}
