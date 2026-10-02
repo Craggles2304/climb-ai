@@ -3,6 +3,7 @@ import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import {adaptActiveFiveFromPostGameEvidence} from '@/lib/adaptiveIlpEvidence';
+import {ensureOneMissionPerDnaStrand,gradeDnaStrandMissionsFromHistory} from '@/lib/dnaStrandMissions';
 import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
@@ -111,12 +112,12 @@ function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,p
 async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const [historyResult,learningResult]=await Promise.all([
-    db.from('op_match_analysis').select('champion,role,created_at,patch,game_version,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
+    db.from('op_match_analysis').select('match_id,champion,role,created_at,patch,game_version,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
     db.from('op_player_learning_profiles').select('recent_change,role_profiles').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle(),
   ]);
   if(historyResult.error)throw new Error(historyResult.error.message);
   if(learningResult.error)throw new Error(learningResult.error.message);
-  const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),patch:row.patch?String(row.patch):null,gameVersion:row.game_version?String(row.game_version):null,analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
+  const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({matchId:row.match_id?String(row.match_id):null,champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),patch:row.patch?String(row.patch):null,gameVersion:row.game_version?String(row.game_version):null,analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
   const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
   const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
   const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
@@ -339,14 +340,17 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
 
   for(const role of LEAGUE_ROLES){
     const roleHistory=rowsForRole(history,role);
-    if(!roleHistory.length)continue;
-    const roleProfile=buildProLearningProfile(roleHistory);
+    if(!roleHistory.length&&role!==preferredRole)continue;
     const otherTasks=tasks.filter(task=>task.roleScope!==role);
     const roleTasks=tasks.filter(task=>task.roleScope===role);
-    const adapted=adaptActiveFiveFromPostGameEvidence({tasks:roleTasks,profile:roleProfile,history:roleHistory,accountId:riotAccountId,role});
-    const stamped=adapted.tasks.map(task=>({...task,roleScope:role,roleEvidence:[role]} as ILPTask));
+    const seeded=ensureOneMissionPerDnaStrand(roleTasks,riotAccountId,role);
+    const graded=gradeDnaStrandMissionsFromHistory(seeded.tasks,roleHistory);
+    const advanced=ensureOneMissionPerDnaStrand(graded.tasks,riotAccountId,role);
+    const stamped=advanced.tasks.map(task=>({...task,roleScope:role,roleEvidence:[role]} as ILPTask));
     tasks=[...otherTasks,...stamped];
-    changes.push(...adapted.changes.map(change=>`${role}: ${change}`));
+    changes.push(...seeded.changes.map(change=>`${role}: ${change}`));
+    changes.push(...graded.changes.map(change=>`${role}: ${change}`));
+    changes.push(...advanced.changes.map(change=>`${role}: ${change}`));
   }
 
   if(tasks.length){
@@ -354,13 +358,13 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
     const rows=tasks.map(task=>({user_id:userId,riot_account_id:riotAccountId,id:task.id,payload:{...task,accountId:riotAccountId},updated_at:now}));
     const {error:upsertError}=await db.from('ilp_tasks').upsert(rows,{onConflict:'user_id,riot_account_id,id'});if(upsertError)throw new Error(upsertError.message);
   }
-  if(changes.length)console.info('[pro-ilp] role-aware three-mission plan adapted',changes);
+  if(changes.length)console.info('[pro-ilp] six-strand DNA mission plan adapted',changes);
   return ilpSyncSnapshot(tasks,profile,changes,false,latestEvidenceRole??preferredRole);
 }
 
 function ilpSyncSnapshot(tasks:ILPTask[],profile:ProLearningProfile,changes:string[],reused:boolean,role:Role|null=null):PostGameIlpSyncResult{
   const active=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'&&taskAppliesToRole(task,role)).sort((a,b)=>Number(b.priority??50)-Number(a.priority??50));
-  const activeFive=active.slice(0,3).map(toPostGameMission);
+  const activeFive=active.slice(0,6).map(toPostGameMission);
   return{
     status:'COMPLETE',
     source:'POST_GAME_EVIDENCE',
