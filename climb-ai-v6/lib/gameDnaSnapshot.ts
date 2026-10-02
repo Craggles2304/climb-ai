@@ -74,12 +74,11 @@ export function canonicalGameDnaTasks(input:DnaTask[],role:Role|null|undefined){
 }
 
 function fourRows(tasks:DnaTask[],domain:DnaDomain){
-  const rows=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
-    task,
-    progress:dnaTaskProgress(task),
-    state:dnaTaskState(task),
-  }));
-  while(rows.length<4)rows.push({task:null as DnaTask|null,progress:0,state:0 as 0|1|2|3});
+  const rows:Array<{task:DnaTask|null;progress:number;state:0|1|2|3}>=tasks
+    .filter(task=>task.dnaDomain===domain)
+    .slice(0,4)
+    .map(task=>({task,progress:dnaTaskProgress(task),state:dnaTaskState(task)}));
+  while(rows.length<4)rows.push({task:null,progress:0,state:0});
   return rows;
 }
 
