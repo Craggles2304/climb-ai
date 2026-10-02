@@ -59,7 +59,7 @@ export default function PlayerDevelopmentCentre(){
     return currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
   },[tasks,active.role,baselineReady]);
   const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
-  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain,active.role)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
   const masteredAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='MASTERED')),[tasks]);
   const pausedAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='PAUSED')),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
