@@ -74,7 +74,8 @@ export default function Coach(){
   const loadedAccount=useRef('');
   const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);
   const summary=useMemo(()=>recentSummary(matches),[matches]);
-  useEffect(()=>{setDnaRole(active.role)},[active.id,active.role]);
+  useEffect(()=>{const params=new URLSearchParams(window.location.search);const requested=params.get('role') as Role|null;setDnaRole(requested&&LEAGUE_ROLES.includes(requested)?requested:active.role)},[active.id,active.role]);
+  const chooseDnaRole=(role:Role)=>{setDnaRole(role);const url=new URL(window.location.href);url.searchParams.set('role',role);window.history.replaceState({},'',url.pathname+url.search)};
 
   const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
   const dnaBaselineGames=roleGameCounts[dnaRole]??0;
@@ -163,7 +164,7 @@ export default function Coach(){
     </nav>
 
     {tab==='DNA'&&<section className="coach-tab-panel coach-dna-first">
-      <DnaRoleSwitcher role={dnaRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={setDnaRole}/>
+      <DnaRoleSwitcher role={dnaRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseDnaRole}/>
       {tier==='PRO'?<>
         <div className="coach-tab-intro">
           <div>
@@ -177,7 +178,7 @@ export default function Coach(){
             <div><span>SELECTED TRACKER</span><b>{dnaBaselineReady?`${primarySummary?.confirmed??0}/${primarySummary?.required??3}`:'0/3'}</b></div>
           </div>
         </div>
-        <ClientGameDna player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+        <ClientGameDna player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
         {strandGuide}
         <div className="coach-dna-next panel panel-padding">
           <div>
@@ -202,7 +203,7 @@ export default function Coach(){
         </div>
 
         <div className="coach-dna-preview-shell">
-          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={dnaRole} missions={previewDnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={dnaRole} missions={previewDnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
           <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
         </div>
 
