@@ -55,6 +55,7 @@ export interface ProLearningProfile{
 }
 
 export interface HistoryAnalysisRow{
+  matchId?:string|null;
   champion:string;
   role:string|null;
   createdAt:string;
