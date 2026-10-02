@@ -166,7 +166,7 @@
         <section id="op332Transfer" class="op332-transfer"><div class="op332-transfer-head"><span>CLIMB PROFILE · SKILL TRANSFER</span><div id="op332TransferStatus" class="op332-transfer-status">CHECKING GENERALISATION</div></div><div class="op332-transfer-grid"><article class="op332-transfer-card"><b>TEST</b><strong id="op332TransferName"></strong><p id="op332TransferContext"></p></article><article class="op332-transfer-card"><b>RESULT</b><strong id="op332TransferResult"></strong><p id="op332TransferNote"></p></article><article class="op332-transfer-card"><b>MEANING</b><strong id="op332TransferMeaning"></strong><p>Transfer is evidence that the principle survived a different condition; it is not proof that every future matchup is solved.</p></article></div><small id="op332TransferBoundary" class="op332-transfer-proof"></small></section>
         <section id="op332Response" class="op332-response"><div class="op332-response-head"><div><span>COACHING RESPONSE · DID THE CUE TRANSFER?</span><div id="op332ResponseStatus" class="op332-response-status">CHECKING TRAINED BEHAVIOUR</div></div></div><div class="op332-response-grid"><article class="op332-response-card"><b>PRE-GAME CUE</b><strong id="op332ResponseCue"></strong><p id="op332ResponseNote"></p></article><article class="op332-response-card"><b>VERIFIED RESPONSE</b><strong id="op332ResponseRate"></strong><p id="op332ResponseStats"></p></article></div><small id="op332ResponseBoundary" class="op332-response-proof"></small></section>
         <section class="op332-counter"><div class="op332-counter-head"><div><span>BETTER DECISION · ALTERNATIVE LINE</span><small id="op332CounterMeta">EVIDENCE-BOUNDED · NO GUARANTEED OUTCOME</small></div></div><div id="op332CounterList" class="op332-counter-list"></div></section>
-        <section class="op332-development"><div class="op332-development-head"><div><span>YOUR 3-MISSION PLAN</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy"></p><div id="op332DevList" class="op332-dev-list"></div></section>
+        <section class="op332-development"><div class="op332-development-head"><div><span>YOUR 6 DNA MISSIONS</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy"></p><div id="op332DevList" class="op332-dev-list"></div></section>
       </div></details>
       <div class="op332-actions"><button id="op332Ready" type="button" style="border-color:rgba(214,255,47,.34);background:rgba(214,255,47,.07);color:#eaff89">NEW GAME · BACK TO READY</button><button id="op332Journey" type="button" style="border-color:rgba(67,140,255,.30);color:#8fbaff">VIEW LEARNING JOURNEY</button><button id="op332Open" type="button">OPEN FULL REVIEW</button></div>`;
     const status=$('status');if(status)status.insertAdjacentElement('afterend',section);else document.querySelector('main')?.appendChild(section);
@@ -676,17 +676,20 @@
     if(!plan?.synced){
       const partial=clean(plan?.status)==='SKIPPED_PARTIAL';
       setText('op332DevStatus',partial?'PARTIAL RECORDING · PLAN KEPT':'PLAN SYNC UNAVAILABLE · EXISTING MISSIONS KEPT');
-      setText('op332DevCopy',partial?'Partial recordings can inform the match review, but they do not rewrite your three-mission plan.':'Your existing development missions stay intact if the post-game evidence sync cannot be verified.');
+      setText('op332DevCopy',partial?'Partial recordings can inform the match review, but they do not change your six DNA mission trackers.':'Your existing development missions stay intact if the post-game evidence sync cannot be verified.');
       return;
     }
-    setText('op332DevStatus',plan.changed?'3-MISSION PLAN UPDATED FROM REPEATED EVIDENCE':'3-MISSION PLAN CHECKED · NO MISSION REPLACED');
+    setText('op332DevStatus',plan.changed?'DNA MISSION TRACKERS UPDATED':'DNA MISSIONS CHECKED · NO NEW GAME BANKED');
     const changes=safeArray(plan.changes).map(clean).filter(Boolean);
-    setText('op332DevCopy',changes.length?changes.join(' · '):'This match has been checked against your learning history. One unusual game cannot replace or reopen a persistent development mission.');
-    safeArray(plan.activeFive).slice(0,3).forEach((mission,index)=>{
-      const card=document.createElement('article');card.className='op332-dev-card'+(index===0?' primary':'');
-      const number=document.createElement('small');number.textContent=index===0?'CORE MISSION':('SUPPORT 0'+index);
-      const title=document.createElement('b');title.textContent=clean(mission?.title)||'Development mission';
-      const progress=document.createElement('em');progress.textContent=Math.max(0,Math.min(100,Number(mission?.progress)||0))+'% · '+clean(mission?.status||'ACTIVE');
+    setText('op332DevCopy',changes.length?changes.join(' · '):'This match has been checked against all six DNA missions. Any strand that cleared its target banks one completed game.');
+    safeArray(plan.activeFive).slice(0,6).forEach(mission=>{
+      const card=document.createElement('article');card.className='op332-dev-card';
+      const number=document.createElement('small');number.textContent=(clean(mission?.dnaDomain)||'DNA').replaceAll('_',' ')+' · DNA MISSION';
+      const title=document.createElement('b');title.textContent=clean(mission?.title)||'DNA mission';
+      const progress=document.createElement('em');
+      const completed=Math.max(0,Number(mission?.completedGames)||0);
+      const required=Math.max(1,Number(mission?.requiredGames)||3);
+      progress.textContent=completed+'/'+required+' GAMES · '+clean(mission?.status||'ACTIVE');
       card.append(number,title,progress);root.appendChild(card);
     });
   }
