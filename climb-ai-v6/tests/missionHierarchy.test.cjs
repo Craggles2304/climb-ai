@@ -7,26 +7,27 @@ const root=path.join(__dirname,'..');
 const ilp=fs.readFileSync(path.join(root,'app','ilp','page.tsx'),'utf8');
 const legacyMissions=fs.readFileSync(path.join(root,'app','missions','page.tsx'),'utf8');
 const companion=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
+const api=fs.readFileSync(path.join(root,'app','api','live','companion-home','route.ts'),'utf8');
 
-test('My Climb has one scored mission and background watch focuses',()=>{
-  assert.ok(ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
-  assert.ok(ilp.includes('WATCHLIST · NOT EXTRA MISSIONS'));
-  assert.ok(ilp.includes('displayCoreTask'));
-  assert.ok(ilp.includes('displayWatchTasks'));
-  assert.ok(ilp.includes('AnimatedBar value={repProgress}'));
-  assert.ok(!ilp.includes('SIDE MISSIONS'));
-  assert.ok(!ilp.includes('SUPPORT 0'));
+test('My Climb shows one tracked mission for each DNA strand',()=>{
+  assert.ok(ilp.includes('Six strands. One mission on each.'));
+  assert.ok(ilp.includes('currentGameDnaMissions'));
+  assert.ok(ilp.includes('6 active'));
+  assert.ok(ilp.includes('games completed'));
+  assert.ok(!ilp.includes('WATCHLIST · NOT EXTRA MISSIONS'));
+  assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
 });
 
-test('legacy Mission Lab no longer creates a second mission workspace',()=>{
+test('legacy Mission Lab stays redirected into My Climb',()=>{
   assert.ok(legacyMissions.includes("redirect('/ilp')"));
   assert.ok(!legacyMissions.includes('Mission Lab'));
 });
 
-test('Companion distinguishes the core mission from watch focuses',()=>{
-  assert.ok(companion.includes("isCore?'CORE MISSION':'WATCH FOCUS'"));
-  assert.ok(companion.includes('No extra rep tracker.'));
-  assert.ok(companion.includes('CURRENT PLAN'));
-  assert.ok(!companion.includes('SUPPORT MISSION'));
-  assert.ok(!companion.includes('2 MORE ACTIVE MISSIONS'));
+test('Companion shows all six DNA missions with game trackers',()=>{
+  assert.ok(companion.includes("+' MISSION').toUpperCase()"));
+  assert.ok(companion.includes('3/3 moves this strand to its next mission.'));
+  assert.ok(companion.includes('One mission for every strand.'));
+  assert.ok(!companion.includes('WATCH FOCUS'));
+  assert.ok(!companion.includes('CORE MISSION'));
+  assert.ok(api.includes('const missionLimit=6'));
 });
