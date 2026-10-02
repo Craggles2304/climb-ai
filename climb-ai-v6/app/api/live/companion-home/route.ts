@@ -2,8 +2,9 @@ import {NextRequest,NextResponse} from 'next/server';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {companionDnaBaseline,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server/companionDnaBaseline';
-import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
+import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaStrands,missionRepView} from '@/lib/gameDnaSnapshot';
+import type {ILPTask,Role} from '@/lib/types';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -35,29 +36,17 @@ export async function GET(req:NextRequest){
   const role=normalizeRole(account?.role);
   const rank=[String(account?.rank_tier??'').trim(),String(account?.rank_division??'').trim()].filter(Boolean).join(' ')||'UNRANKED';
   const baseline=await companionDnaBaseline({userId:device.userId,riotAccountId:device.riotAccountId,role});
-  const allTasks=((tasksResult as any).data??[])
+  const storedTasks=((tasksResult as any).data??[])
     .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??''),updatedAt:row?.updated_at??null}))
-    .filter((task:any)=>task?.id);
-
-  const live=allTasks
-    .filter((task:any)=>!['MASTERED','PAUSED'].includes(String(task?.status??'ACTIVE').toUpperCase()))
-    .sort((a:any,b:any)=>(Number(b?.priority)||50)-(Number(a?.priority)||50)||(Number(a?.progress)||0)-(Number(b?.progress)||0));
+    .filter((task:any)=>task?.id) as Array<ILPTask&{updatedAt?:string|null}>;
+  const roleKey=(role||null) as Role|null;
+  const allTasks=canonicalGameDnaTasks(storedTasks,roleKey);
+  const live=activeGameDnaMissions(allTasks,roleKey);
 
   const missionLimit=tier==='FREE'?1:3;
-  const missions=baseline.ready?live.slice(0,missionLimit).map((task:any)=>missionView(task)):[];
-
-  const dna=DNA_DOMAINS.map(domain=>{
-    const related=allTasks.filter((task:any)=>String(task?.dnaDomain||'')===domain);
-    const progress=!baseline.ready||!related.length?0:Math.round(related.reduce((sum:number,task:any)=>{
-      const status=String(task?.status??'ACTIVE').toUpperCase();
-      return sum+(status==='MASTERED'?100:Math.max(0,Math.min(100,Number(task?.progress)||0)));
-    },0)/related.length);
-    const activeCount=live.filter((task:any)=>String(task?.dnaDomain||'')===domain).length;
-    const mastered=allTasks.filter((task:any)=>String(task?.dnaDomain||'')===domain&&String(task?.status??'').toUpperCase()==='MASTERED').length;
-    return{domain,label:DNA_DOMAIN_LABELS[domain],color:DNA_DOMAIN_COLORS[domain],progress,activeCount,mastered};
-  });
-
-  const masteredCount=allTasks.filter((task:any)=>String(task?.status??'').toUpperCase()==='MASTERED').length;
+  const missions=baseline.ready?live.slice(0,missionLimit).map(task=>missionView(task)):[];
+  const dna=gameDnaStrands(allTasks,roleKey,baseline.ready);
+  const masteredCount=allTasks.filter(task=>String(task.status??'').toUpperCase()==='MASTERED').length;
 
   return NextResponse.json({
     ok:true,
@@ -86,20 +75,18 @@ export async function GET(req:NextRequest){
   });
 }
 
-function missionView(task:any){
-  const history=Array.isArray(task?.missionHistory)?task.missionHistory:[];
-  const confirmed=history.filter((item:any)=>Boolean(item?.banksPass)).length;
-  const required=Math.max(1,Number(task?.masteryRequired)||3);
+function missionView(task:ILPTask){
+  const reps=missionRepView(task);
   return{
-    id:String(task?.id??''),
-    title:String(task?.title??'Current mission'),
-    domain:String(task?.dnaDomain??'CONSISTENCY'),
-    progress:Math.max(0,Math.min(100,Math.round(Number(task?.progress)||0))),
-    confirmed,
-    required,
-    gameRule:String(task?.gameRule??'').trim(),
-    target:String(task?.target??'').trim(),
-    status:String(task?.status??'ACTIVE').toUpperCase(),
+    id:String(task.id??''),
+    title:String(task.title??'Current mission'),
+    domain:String(task.dnaDomain??'CONSISTENCY'),
+    progress:reps.progress,
+    confirmed:reps.confirmed,
+    required:reps.required,
+    gameRule:String(task.gameRule??'').trim(),
+    target:String(task.target??'').trim(),
+    status:String(task.status??'ACTIVE').toUpperCase(),
   };
 }
 

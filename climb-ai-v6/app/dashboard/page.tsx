@@ -19,6 +19,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
+import {gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -165,16 +166,7 @@ export default function Home(){
   const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
   const missionProof=activeMission?missionSummary(activeMission):null;
   const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>DNA_DOMAINS.flatMap(domain=>{
-    const real=tasks.filter(task=>task.dnaDomain===domain).slice(0,4).map(task=>({
-      c:DNA_DOMAIN_GENE[domain],
-      n:task.title,
-      s:dnaTaskState(task),
-      p:dnaTaskProgress(task),
-    }));
-    while(real.length<4)real.push({c:DNA_DOMAIN_GENE[domain],n:`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,s:0,p:0});
-    return real;
-  }),[tasks]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(tasks,active.role),[tasks,active.role]);
   const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
   const learningMemories=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
 
