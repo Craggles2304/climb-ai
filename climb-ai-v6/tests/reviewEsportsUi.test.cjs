@@ -69,29 +69,29 @@ test('post-game review prefers the exact deep draft-coach plan and preserves pla
 });
 
 
-test('post-game review closes the loop into the server-authoritative three-mission plan',()=>{
+test('post-game review closes the loop into the server-authoritative six-strand DNA plan',()=>{
   assert.ok(learningRepo.includes('rebuildProLearningProfileWithIlp'));
   assert.ok(learningRepo.includes('PostGameIlpSyncResult'));
   assert.ok(learningRepo.includes("source:'POST_GAME_EVIDENCE'"));
-  assert.ok(learningRepo.includes('active.slice(0,3)'));
+  assert.ok(learningRepo.includes('active.slice(0,6)'));
   assert.ok(liveRepo.includes('syncLearningPlanForSession'));
   assert.ok(liveRepo.includes('analysisSignature'));
   assert.ok(liveRepo.includes('learningPlanSync'));
   assert.ok(liveRepo.includes("trigger,'FINALIZE'")||liveRepo.includes("'FINALIZE',proAnalysis"));
   assert.ok(reviewRoute.includes('developmentPlan'));
-  assert.ok(reviewRoute.includes('ONE_MATCH_CAN_PROGRESS EVIDENCE'));
+  assert.ok(reviewRoute.includes('EVERY TRACKED MATCH CAN BANK A GAME'));
 });
 
 test('Companion shows whether repeated evidence actually changed the development plan',()=>{
-  assert.ok(core.includes('YOUR 3-MISSION PLAN'));
-  assert.ok(core.includes('3-MISSION PLAN UPDATED FROM REPEATED EVIDENCE'));
-  assert.ok(core.includes('3-MISSION PLAN CHECKED · NO MISSION REPLACED'));
-  assert.ok(core.includes('One unusual game cannot replace or reopen a persistent development mission.'));
-  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,3)'));
+  assert.ok(core.includes('YOUR 6 DNA MISSIONS'));
+  assert.ok(core.includes('DNA MISSION TRACKERS UPDATED'));
+  assert.ok(core.includes('DNA MISSIONS CHECKED · NO NEW GAME BANKED'));
+  assert.ok(core.includes('checked against all six DNA missions'));
+  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,6)'));
   assert.ok(core.includes('renderDevelopmentPlan(review)'));
 });
 
-test('open web plan refreshes the server-owned three-mission plan after returning to the app',()=>{
+test('open web plan refreshes the server-owned six-strand DNA plan after returning to the app',()=>{
   assert.ok(learningContext.includes("window.addEventListener('focus',onFocus)"));
   assert.ok(learningContext.includes("document.addEventListener('visibilitychange',pull)"));
   assert.ok(learningContext.includes('refreshCloudNow()'));
