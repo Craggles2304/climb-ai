@@ -97,7 +97,7 @@ export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):
   const rows=currentGameDnaMissions(input,role);
   return rows.map(({domain,task})=>{
     const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
-    const level=dnaStrandLevel(tasks,domain);
+    const level=dnaStrandLevel(tasks,domain,role);
     return{
       c:DNA_DOMAIN_GENE[domain],
       n:task?.title??`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,
@@ -117,7 +117,7 @@ export function gameDnaStrands(input:DnaTask[],role:Role|null|undefined,baseline
     const task=currentForDomain(tasks,domain);
     const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
     const domainTasks=tasks.filter(row=>row.dnaDomain===domain);
-    const level=dnaStrandLevel(tasks,domain);
+    const level=dnaStrandLevel(tasks,domain,role);
     return{
       domain,
       label:DNA_DOMAIN_LABELS[domain],
