@@ -1,0 +1,86 @@
+{
+  "name": "op-climb-companion",
+  "version": "0.8.15",
+  "private": true,
+  "description": "OP CLIMB Windows companion for pre-game planning, local-first tracking and post-game coaching.",
+  "main": "electron/bootstrap.cjs",
+  "type": "module",
+  "scripts": {
+    "tracker": "node src/main.mjs",
+    "desktop": "electron .",
+    "build:win": "electron-builder --win nsis --x64"
+  },
+  "dependencies": {
+    "electron-updater": "6.6.2"
+  },
+  "devDependencies": {
+    "electron": "44.3.0",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "com.opclimb.companion",
+    "productName": "OP CLIMB Companion",
+    "artifactName": "OP-Climb-Companion-Setup.${ext}",
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://github.com/Craggles2304/climb-ai/releases/download/companion-beta"
+      }
+    ],
+    "protocols": [
+      {
+        "name": "OP CLIMB Companion Pairing",
+        "schemes": [
+          "opclimb"
+        ]
+      }
+    ],
+    "files": [
+      "electron/**/*",
+      "!electron/overlay.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "src/main.mjs",
+        "to": "tracker/main.mjs"
+      },
+      {
+        "from": "src/in-game-recovery.mjs",
+        "to": "tracker/in-game-recovery.mjs"
+      },
+      {
+        "from": "src/pregame-normalizer.mjs",
+        "to": "tracker/pregame-normalizer.mjs"
+      },
+      {
+        "from": "build/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": false,
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "OP CLIMB Companion",
+      "uninstallDisplayName": "OP CLIMB Companion",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
+  }
+}
