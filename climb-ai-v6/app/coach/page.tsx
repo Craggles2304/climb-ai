@@ -57,7 +57,7 @@ export default function Coach(){
   const mastered=tasks.filter(task=>task.status==='MASTERED');
   const tierVisibleTasks=activeThree;
   const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
-  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain,active.role)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
   const selectedStrandStyle=({'--strand-color':DNA_DOMAIN_COLORS[selectedDnaDomain]} as CSSProperties);
   const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
   const selectedMastered=tier==='PRO'?mastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
