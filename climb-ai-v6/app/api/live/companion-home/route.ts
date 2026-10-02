@@ -43,7 +43,7 @@ export async function GET(req:NextRequest){
   const allTasks=canonicalGameDnaTasks(storedTasks,roleKey);
   const live=activeGameDnaMissions(allTasks,roleKey);
 
-  const missionLimit=tier==='FREE'?1:3;
+  const missionLimit=6;
   const missions=baseline.ready?live.slice(0,missionLimit).map(task=>missionView(task)):[];
   const dna=gameDnaStrands(allTasks,roleKey,baseline.ready);
   const masteredCount=allTasks.filter(task=>String(task.status??'').toUpperCase()==='MASTERED').length;
@@ -59,18 +59,18 @@ export async function GET(req:NextRequest){
     },
     tier,
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'1 core mission · 7-day progress view',missionLimit:1,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:'6 DNA missions · 7-day progress view',missionLimit:6,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'1 core mission · up to 2 watch focuses · 90-day progress view',missionLimit:3,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'1 core mission · up to 2 watch focuses · long-term learning memory',missionLimit:3,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:'6 DNA missions · 90-day progress view',missionLimit:6,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:'6 DNA missions · long-term learning memory',missionLimit:6,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     dna,
     missions,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
-      ?{tier:'PLUS',copy:'Unlock two background watch focuses and a 90-day development view.'}
+      ?{tier:'PLUS',copy:'Keep all six DNA missions and unlock the 90-day development view.'}
       :tier==='PLUS'
-        ?{tier:'PRO',copy:'Unlock long-term player memory, mastered habits and deeper learning history.'}
+        ?{tier:'PRO',copy:'Keep all six DNA missions and unlock long-term player memory and mastered-habit history.'}
         :null,
   });
 }
