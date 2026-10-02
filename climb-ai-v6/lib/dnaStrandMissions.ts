@@ -1,4 +1,6 @@
 import type {DnaDomain,ILPTask,IssueCategory,Role} from './types';
+import type {CoachingMetricKey} from './subscription';
+import type {HistoryAnalysisRow} from './riot/proHistory';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
 
 type MissionTemplate={
@@ -23,20 +25,20 @@ export const DNA_STRAND_MISSION_SEQUENCES:Record<DnaDomain,MissionTemplate[]>={
       gameRule:'Before you commit, check health, items, levels and the escape route. If the visible state is red, back out instead of forcing it.',
     },
     {
-      title:'Reach 10 minutes clean',
-      category:'LANING',
-      metric:'deathsPre10',
-      target:'0 deaths before 10m · 3 proven games',
-      why:'A clean opening protects XP, waves and your first meaningful purchase.',
-      gameRule:'Before an early trade or all-in, make sure the wave, enemy position and your exit are all playable.',
+      title:'Choose fights from playable lane states',
+      category:'TRADING',
+      metric:'fight_selection',
+      target:THREE,
+      why:'Good laning means refusing trades and all-ins when the visible state is already against you.',
+      gameRule:'Before a lane fight, check health, numbers, cooldowns and the escape route. Only commit when the state is playable.',
     },
     {
-      title:'Own your lane economy',
-      category:'LANING',
-      metric:'laneCsPerMin',
-      target:'Rank target · 3 proven games',
-      why:'Reliable lane farm gives you item timings without needing the game to hand you kills.',
-      gameRule:'Protect valuable waves first and do not trade health for low-value poke when it costs the next wave.',
+      title:'Stop the lane mistake becoming a death',
+      category:'DEATHS',
+      metric:'death_control',
+      target:THREE,
+      why:'A lane error is recoverable until it turns into a free death that costs the next wave and reset.',
+      gameRule:'When a trade goes badly, protect the next safe state instead of forcing a second action immediately.',
     },
   ],
   WAVES_CS:[
@@ -49,20 +51,20 @@ export const DNA_STRAND_MISSION_SEQUENCES:Record<DnaDomain,MissionTemplate[]>={
       gameRule:'Before staying for one more wave, decide whether your current gold completes a useful buy and whether staying makes the next reset late.',
     },
     {
-      title:'Protect your second-item timing',
-      category:'ITEMISATION',
-      metric:'secondItemMinute',
-      target:'Rank target · 3 proven games',
-      why:'Second-item timing is a strong signal that waves, recalls and deaths are being managed cleanly.',
-      gameRule:'After every recall, identify the safest next wave and the purchase timing you are trying to protect.',
+      title:'Turn farm into real combat power',
+      category:'RESOURCE_COLLECTION',
+      metric:'resource_conversion',
+      target:THREE,
+      why:'Gold only helps when it is converted into items before the next meaningful fight.',
+      gameRule:'When you have a useful purchase available, take the reset before exposing yourself to another fight or risky wave.',
     },
     {
-      title:'Keep collecting after lane',
-      category:'RESOURCE_COLLECTION',
-      metric:'post15CsPerMin',
-      target:'Rank target · 3 proven games',
-      why:'Post-lane farm keeps your build moving when the map becomes chaotic.',
-      gameRule:'After every reset, check the objective timer, then take the safest available wave before grouping.',
+      title:'Use your power spike on time',
+      category:'ITEMISATION',
+      metric:'power_spike_conversion',
+      target:THREE,
+      why:'Good wave and reset decisions should create a window where your completed items actually influence the game.',
+      gameRule:'After completing a key item, protect the next wave and look for the first safe fight where that purchase matters.',
     },
   ],
   VISION_MAP:[
@@ -83,12 +85,12 @@ export const DNA_STRAND_MISSION_SEQUENCES:Record<DnaDomain,MissionTemplate[]>={
       gameRule:'If one champion or pattern catches you once, change one thing before you enter that situation again.',
     },
     {
-      title:'Be where the map matters',
+      title:'Keep adapting after the first read',
       category:'MAP_AWARENESS',
-      metric:'killParticipation',
-      target:'Rank target · 3 proven games',
-      why:'Useful map awareness should put you near the plays that actually matter.',
-      gameRule:'Before moving away from your current lane or wave, name the play you are moving toward and what you are giving up.',
+      metric:'opponent_adaptation',
+      target:THREE,
+      why:'Map awareness becomes reliable when the adjustment survives repeated threats and different situations.',
+      gameRule:'Once you identify the danger, keep changing your route, spacing or timing every time the same threat can reach you.',
     },
   ],
   OBJECTIVES:[
@@ -109,12 +111,12 @@ export const DNA_STRAND_MISSION_SEQUENCES:Record<DnaDomain,MissionTemplate[]>={
       gameRule:'Choose the last safe wave early, then stop farming and move when the objective setup demands it.',
     },
     {
-      title:'Be involved in objective plays',
+      title:'Convert the objective power window',
       category:'OBJECTIVES',
-      metric:'objectiveParticipation',
-      target:'Rank target · 3 proven games',
-      why:'Good setup should turn into actual involvement around the objectives that decide the map.',
-      gameRule:'Plan your reset and route around the next major objective so you are present before the first important contact.',
+      metric:'power_spike_conversion',
+      target:THREE,
+      why:'Objective control is stronger when your reset and item timing create a real power window before the contest.',
+      gameRule:'Before the objective setup, spend your gold and arrive ready to use the item or level advantage you created.',
     },
   ],
   TEAMFIGHTS:[
@@ -135,12 +137,12 @@ export const DNA_STRAND_MISSION_SEQUENCES:Record<DnaDomain,MissionTemplate[]>={
       gameRule:'Before committing, check numbers, health, items and position. Skip the fight when too many of those are against you.',
     },
     {
-      title:'Convert safety into damage',
-      category:'TEAMFIGHTING',
-      metric:'damageShare',
-      target:'Rank target · 3 proven games',
-      why:'Surviving matters because it should create more useful damage uptime.',
-      gameRule:'Once the first major threat is spent, step forward with your frontline and hit the closest safe target continuously.',
+      title:'Keep the carry alive through the fight',
+      category:'POSITIONING',
+      metric:'carry_preservation',
+      target:THREE,
+      why:'Teamfight value comes from surviving the dangerous moments while staying able to contribute.',
+      gameRule:'Track the threat that can remove you, keep a safe damage angle and do not trade your life for low-value access.',
     },
   ],
   CONSISTENCY:[
@@ -241,6 +243,21 @@ export function ensureOneMissionPerDnaStrand(tasks:ILPTask[],accountId:string,ro
 
     if(current)continue;
 
+    const paused=next
+      .filter(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&task.status==='PAUSED')
+      .sort((a,b)=>Number(b.id.split('-').at(-1)||0)-Number(a.id.split('-').at(-1)||0))[0];
+
+    if(paused){
+      next=next.map(task=>task.id===paused.id?{
+        ...task,
+        status:'ACTIVE' as const,
+        lastUpdatedReason:'Restored to the six-strand DNA plan. Each strand keeps one live mission until it is mastered.',
+        history:[...(task.history??[]),{at:new Date().toISOString(),type:'PROMOTED' as const,note:'Restored after removal of the old three-mission cap.'}].slice(-12),
+      }:task);
+      changes.push(`${DNA_DOMAIN_LABELS[domain]}: restored ${paused.title}`);
+      continue;
+    }
+
     const cycle=cycleFor(next,domain);
     const mission=createDnaStrandMission(accountId,role,domain,cycle);
     next.push(mission);
@@ -258,4 +275,65 @@ export function ensureOneMissionPerDnaStrand(tasks:ILPTask[],accountId:string,ro
   }
 
   return{tasks:next,changes};
+}
+
+function missionScoreTarget(task:ILPTask){
+  const score=String(task.target||'').match(/(\d+(?:\.\d+)?)\s*\+/);
+  return score?Number(score[1]):85;
+}
+
+export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:HistoryAnalysisRow[]){
+  const ordered=[...history].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
+  const changes:string[]=[];
+  const graded=tasks.map(task=>{
+    if(!isDnaStrandMission(task)||task.status==='MASTERED'||task.status==='PAUSED')return task;
+    const start=(task.history??[]).filter(event=>event.type==='PROMOTED').at(-1)?.at;
+    const startedAt=start&&Number.isFinite(Date.parse(start))?Date.parse(start):Number.NEGATIVE_INFINITY;
+    const existing=new Map((task.missionHistory??[]).map(attempt=>[attempt.matchId,attempt]));
+    const threshold=missionScoreTarget(task);
+
+    for(const row of ordered){
+      if(Date.parse(row.createdAt)<startedAt)continue;
+      const metric=row.analysis?.metrics?.[task.metric as CoachingMetricKey];
+      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number')continue;
+      const matchId=String(row.matchId||`analysis-${row.role||'role'}-${row.createdAt}-${row.champion}`);
+      if(existing.has(matchId))continue;
+      const pass=metric.score>=threshold;
+      existing.set(matchId,{
+        matchId,
+        at:row.createdAt,
+        adherence:'TRACKED',
+        clearedBar:pass,
+        outcome:pass?'CONFIRMED':'NO_REP',
+        banksPass:pass,
+        source:'TRACKED',
+      });
+    }
+
+    const attempts=[...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+    const required=Math.max(1,Number(task.masteryRequired)||3);
+    const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
+    const progress=Math.round(Math.min(required,confirmed)/required*100);
+    const mastered=confirmed>=required;
+    const status=mastered?'MASTERED' as const:attempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
+    if(mastered&&task.status!=='MASTERED')changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
+    return{
+      ...task,
+      progress,
+      metricProgress:progress,
+      missionProgress:progress,
+      status,
+      successfulGames:confirmed,
+      gamesObserved:attempts.length,
+      masteryRequired:required,
+      missionHistory:attempts,
+      lastUpdatedReason:mastered
+        ?`${confirmed}/${required} tracked games completed this DNA mission. Moving the strand to its next mission.`
+        :`${confirmed}/${required} tracked games completed this DNA mission.`,
+      history:mastered&&task.status!=='MASTERED'
+        ?[...(task.history??[]),{at:new Date().toISOString(),type:'MASTERED' as const,note:`${confirmed}/${required} tracked games completed the DNA strand mission.`}].slice(-12)
+        :task.history,
+    };
+  });
+  return{tasks:graded,changes};
 }
