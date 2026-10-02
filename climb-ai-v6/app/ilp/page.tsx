@@ -111,12 +111,12 @@ export default function PlayerDevelopmentCentre(){
       <div className="ip-dna-filter-head">
         <div>
           <div className="eyebrow">GAME DNA → MY CLIMB</div>
-          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'All current missions'}</h2>
-          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'Choose a DNA strand to see only the missions that are training that part of your game.'}</p>
+          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'Your development plan'}</h2>
+          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'One scored core mission sits at the centre. Up to two watch focuses stay in the background until they earn promotion.'}</p>
         </div>
-        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW ALL MISSIONS</button>}
+        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW FULL PLAN</button>}
       </div>
-      <div className="ip-dna-filter-tabs" aria-label="Filter missions by Game DNA strand">
+      <div className="ip-dna-filter-tabs" aria-label="Filter development plan by Game DNA strand">
         <button type="button" className={!selectedDomain?'active':''} onClick={()=>chooseDomain(null)}>ALL</button>
         {DNA_DOMAINS.map(domain=><button
           key={domain}
@@ -138,8 +138,8 @@ export default function PlayerDevelopmentCentre(){
     </section>}
 
     <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{displayTasks.length}{selectedDomain?' in '+DNA_DOMAIN_LABELS[selectedDomain]:''}</small></button>
-      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{selectedDomain?((displayCoreTask?1:0)+displayWatchTasks.length)+' in '+DNA_DOMAIN_LABELS[selectedDomain]:(coreTask?'1 core · '+watchTasks.length+' watched':'building')}</small></button>
+      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>CORE PROOF</b><small>why the main mission is here</small></button>
       {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
 
