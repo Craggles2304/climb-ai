@@ -1,6 +1,6 @@
 import type {DnaDomain,ILPTask,Role} from './types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS,ensureDnaDomain} from './dnaDomain';
-import {dnaTaskProgress,dnaTaskState} from './dnaGrowth';
+import {dnaTaskState} from './dnaGrowth';
 import {missionSummary} from './missionLoop';
 import {taskFreshness} from './ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from './roleAwareLearning';
@@ -73,46 +73,50 @@ export function canonicalGameDnaTasks(input:DnaTask[],role:Role|null|undefined){
   );
 }
 
-function fourRows(tasks:DnaTask[],domain:DnaDomain){
-  const rows:Array<{task:DnaTask|null;progress:number;state:0|1|2|3}>=tasks
-    .filter(task=>task.dnaDomain===domain)
-    .slice(0,4)
-    .map(task=>({task,progress:dnaTaskProgress(task),state:dnaTaskState(task)}));
-  while(rows.length<4)rows.push({task:null,progress:0,state:0});
-  return rows;
+function currentForDomain(tasks:DnaTask[],domain:DnaDomain){
+  return tasks
+    .filter(task=>task.dnaDomain===domain&&live(task))
+    .sort((a,b)=>(Number(b.priority)||50)-(Number(a.priority)||50)||freshness(b)-freshness(a))[0]??null;
+}
+
+export function currentGameDnaMissions(input:DnaTask[],role:Role|null|undefined){
+  const tasks=canonicalGameDnaTasks(input,role);
+  return DNA_DOMAINS.map(domain=>({domain,task:currentForDomain(tasks,domain)}));
 }
 
 export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):GameDnaClientMission[]{
-  const tasks=canonicalGameDnaTasks(input,role);
-  return DNA_DOMAINS.flatMap(domain=>fourRows(tasks,domain).map(row=>({
-    c:DNA_DOMAIN_GENE[domain],
-    n:row.task?.title??`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,
-    s:row.state,
-    p:row.progress,
-  })));
+  const rows=currentGameDnaMissions(input,role);
+  return rows.map(({domain,task})=>{
+    const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
+    return{
+      c:DNA_DOMAIN_GENE[domain],
+      n:task?.title??`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,
+      s:task?dnaTaskState(task):0,
+      p:reps.progress,
+    };
+  });
 }
 
 export function gameDnaStrands(input:DnaTask[],role:Role|null|undefined,baselineReady:boolean):GameDnaStrand[]{
   const tasks=canonicalGameDnaTasks(input,role);
   return DNA_DOMAINS.map(domain=>{
-    const rows=fourRows(tasks,domain);
-    const progress=baselineReady?Math.round(rows.reduce((sum,row)=>sum+row.progress,0)/4):0;
-    const domainTasks=tasks.filter(task=>task.dnaDomain===domain);
+    const task=currentForDomain(tasks,domain);
+    const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
+    const domainTasks=tasks.filter(row=>row.dnaDomain===domain);
     return{
       domain,
       label:DNA_DOMAIN_LABELS[domain],
       color:DNA_DOMAIN_COLORS[domain],
-      progress,
-      activeCount:domainTasks.filter(live).length,
-      mastered:domainTasks.filter(task=>String(task.status).toUpperCase()==='MASTERED').length,
+      progress:baselineReady?reps.progress:0,
+      activeCount:task?1:0,
+      mastered:domainTasks.filter(row=>String(row.status).toUpperCase()==='MASTERED').length,
     };
   });
 }
 
 export function activeGameDnaMissions(input:DnaTask[],role:Role|null|undefined){
-  return canonicalGameDnaTasks(input,role)
-    .filter(live)
-    .sort((a,b)=>(Number(b.priority)||50)-(Number(a.priority)||50)||freshness(b)-freshness(a));
+  return currentGameDnaMissions(input,role)
+    .flatMap(({task})=>task?[task]:[]);
 }
 
 export function missionRepView(task:ILPTask){
