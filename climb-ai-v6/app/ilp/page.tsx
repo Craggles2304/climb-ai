@@ -19,6 +19,7 @@ import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDoma
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
+import {taskFreshness} from '@/lib/ilpCloudMerge';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -56,9 +57,12 @@ export default function PlayerDevelopmentCentre(){
     const live=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
     return tier==='FREE'?live.slice(0,1):live;
   },[tasks,tier,baselineReady]);
-  const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
-  const masteredAll=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
-  const pausedAll=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
+  const coreTask=activeTasks[0]??null;
+  const watchTasks=activeTasks.slice(1);
+  const displayCoreTask=useMemo(()=>coreTask&&(!selectedDomain||coreTask.dnaDomain===selectedDomain)?coreTask:null,[coreTask,selectedDomain]);
+  const displayWatchTasks=useMemo(()=>selectedDomain?watchTasks.filter(task=>task.dnaDomain===selectedDomain):watchTasks,[watchTasks,selectedDomain]);
+  const masteredAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='MASTERED')),[tasks]);
+  const pausedAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='PAUSED')),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
@@ -72,11 +76,6 @@ export default function PlayerDevelopmentCentre(){
   const gameStrengths=useMemo(()=>impactMatch?positiveEvidenceForMatch(impactMatch,active.rank):[],[impactMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
-  const planProgress=activeTasks.length
-    ?Math.round(activeTasks.reduce((sum,task)=>sum+task.progress,0)/activeTasks.length)
-    :0;
-  const banked=activeTasks.reduce((sum,task)=>sum+missionSummary(task).confirmed,0);
-  const required=activeTasks.reduce((sum,task)=>sum+missionSummary(task).required,0);
   const refresh=async()=>{
     setChecking(true);
     try{
