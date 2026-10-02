@@ -43,16 +43,15 @@ export function MyClimbGameImpact({
   const required=Math.max(1,primarySummary?.required??3);
   const afterReps=primarySummary?.confirmed??0;
   const beforeReps=Math.max(0,afterReps-(primaryAttempt?.banksPass?1:0));
-  const afterProgress=Math.max(0,Math.min(100,Math.round(primaryTask?.progress??0)));
+  const afterProgress=Math.round(Math.min(required,afterReps)/required*100);
   const repDelta=primaryAttempt?.banksPass?Math.max(1,Math.round(100/required)):0;
   const beforeProgress=Math.max(0,afterProgress-repDelta);
   const dnaMoved=Boolean(primaryAttempt?.banksPass);
   const keyMoments=buildKeyMoments(match,strengths).slice(0,3);
   const dnaRows=DNA_DOMAINS.map(dnaDomain=>{
-    const related=activeTasks.filter(task=>task.dnaDomain===dnaDomain);
-    const progress=related.length
-      ?Math.round(related.reduce((sum,task)=>sum+Math.max(0,Math.min(100,task.status==='MASTERED'?100:Number(task.progress)||0)),0)/related.length)
-      :0;
+    const task=activeTasks.find(row=>row.dnaDomain===dnaDomain);
+    const summary=task?missionSummary(task):null;
+    const progress=summary?Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100):0;
     const touched=learning.some(item=>item.task.dnaDomain===dnaDomain&&item.attempt.banksPass);
     return{domain:dnaDomain,progress,touched};
   });
@@ -70,15 +69,15 @@ export function MyClimbGameImpact({
     <div className="mc-impact-strip">
       <article style={styleFor(domain)}>
         <span>{dnaDomainLabel(domain)}</span>
-        <small>CHALLENGE PROGRESS</small>
+        <small>MISSION TRACKER</small>
         <strong>{beforeProgress}% <i>→</i> <em>{afterProgress}%</em></strong>
         <b>{dnaMoved?`+${Math.max(0,afterProgress-beforeProgress)}% FROM THIS GAME`:'NO CHANGE THIS GAME'}</b>
       </article>
       <article style={styleFor(domain)}>
         <span>{primaryStrength?.subskill||clean(primaryTask?.category||'LEARNING')}</span>
-        <small>PROVEN REPS</small>
+        <small>COMPLETED GAMES</small>
         <strong>{beforeReps}/{required} <i>→</i> <em>{afterReps}/{required}</em></strong>
-        <b>{primaryAttempt?.banksPass?'✓ REP BANKED':'○ NO REP BANKED'}</b>
+        <b>{primaryAttempt?.banksPass?'✓ GAME BANKED':'○ NO GAME BANKED'}</b>
       </article>
       <article className="is-strength" style={styleFor(primaryStrength?.dnaDomain??domain)}>
         <span>STRENGTH CONFIRMED</span>
@@ -113,11 +112,11 @@ export function MyClimbGameImpact({
       </article>
 
       <article className="mc-mission panel" style={styleFor(domain)}>
-        <div className="mc-card-head"><div><span>YOUR ACTIVE CLIMB MISSION</span><h2>{primaryTask?plainLanguageFocus(primaryTask).name:'Your next challenge is building'}</h2></div><b>IN PROGRESS</b></div>
+        <div className="mc-card-head"><div><span>DNA MISSION FROM THIS GAME</span><h2>{primaryTask?plainLanguageFocus(primaryTask).name:'Your next challenge is building'}</h2></div><b>IN PROGRESS</b></div>
         {primaryTask&&primarySummary?<>
           <p className="mc-mission-rule">{plainLanguageFocus(primaryTask).nextGame}</p>
-          <div className="mc-mission-reps"><strong>{primarySummary.confirmed}/{primarySummary.required}</strong><span>PROVEN REPS</span><em>{primaryTask.progress}%</em></div>
-          <div className="mc-progressbar"><i style={{width:Math.max(0,Math.min(100,primaryTask.progress))+'%'}}/></div>
+          <div className="mc-mission-reps"><strong>{primarySummary.confirmed}/{primarySummary.required}</strong><span>COMPLETED GAMES</span><em>{Math.round(Math.min(primarySummary.required,primarySummary.confirmed)/Math.max(1,primarySummary.required)*100)}%</em></div>
+          <div className="mc-progressbar"><i style={{width:Math.round(Math.min(primarySummary.required,primarySummary.confirmed)/Math.max(1,primarySummary.required)*100)+'%'}}/></div>
           <MiniLearningPath stage={primarySummary.stage}/>
           <div className="mc-how-pass"><span>HOW YOU PASS</span><b>{plainLanguageFocus(primaryTask).success}</b></div>
         </>:<p className="muted">OP CLIMB is waiting for enough evidence to set the next measurable mission.</p>}
@@ -184,11 +183,11 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
         <strong>0%</strong><b>GREY UNTIL GAME 3</b>
       </article>
       <article className="baseline-card">
-        <span>CLIMB MISSION</span><small>PERSONALISED CHALLENGE</small>
-        <h3>LOCKED</h3><b>UNLOCKS AFTER BASELINE</b>
+        <span>DNA MISSIONS</span><small>ONE PER STRAND</small>
+        <h3>6 LOCKED</h3><b>UNLOCK AFTER BASELINE</b>
       </article>
       <article className="baseline-card">
-        <span>LEARNING</span><small>PROVEN REPS</small>
+        <span>LEARNING</span><small>COMPLETED GAMES</small>
         <h3>0</h3><b>STARTS AFTER GAME 3</b>
       </article>
     </div>
@@ -210,7 +209,7 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
       <article className="mc-mission panel baseline-panel">
         <div className="mc-card-head"><div><span>YOUR NEXT STEP</span><h2>Play normally.</h2></div><b>{safeGames}/{required}</b></div>
         <p className="mc-mission-rule">Do not change your play for OP CLIMB yet. The baseline needs your real habits before a challenge starts influencing them.</p>
-        <div className="mc-how-pass"><span>AFTER GAME 3</span><b>DNA reveals → first challenge unlocks → proven reps begin → strands grow from evidence.</b></div>
+        <div className="mc-how-pass"><span>AFTER GAME 3</span><b>DNA reveals → six strand missions unlock → completed games begin banking → each strand grows from evidence.</b></div>
         <Link className="btn primary" href="/live" style={{marginTop:14}}>TRACK NEXT GAME →</Link>
       </article>
 
