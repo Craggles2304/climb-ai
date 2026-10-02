@@ -19,7 +19,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
-import {gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
+import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -159,7 +159,7 @@ export default function Home(){
     return{games:championMatches.length,winRate:Math.round(wins/championMatches.length*100),kda:round1((kills+assists)/Math.max(1,deaths)),csPerMin:round1(cspm)};
   },[championMatches]);
 
-  const planMissions=baselineReady?tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3):[];
+  const planMissions=baselineReady?currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]):[];
 
   const recentMatches=matches.slice(0,3);
   const activeMission=planMissions[0]??leadTask;
