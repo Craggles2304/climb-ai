@@ -11,7 +11,7 @@ const css=fs.readFileSync(path.join(root,'app','visual-depth.css'),'utf8');
 test('My Climb makes the six DNA missions clear beside last-game evidence',()=>{
   assert.ok(ilp.includes('MyClimbGameImpact'));
   assert.ok(ilp.includes('currentGameDnaMissions'));
-  assert.ok(ilp.includes('Six strands. One mission on each.'));
+  assert.ok(ilp.includes('Six {active.role} strands. One mission on each.'));
   assert.ok(impact.includes('DNA MISSION FROM THIS GAME'));
   assert.ok(impact.includes('WHAT CHANGED THIS GAME'));
   assert.ok(impact.includes('WHAT YOU DID WELL'));
