@@ -28,7 +28,7 @@ const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domai
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
   const {tier}=useSubscription();
-  const {tasks,allTasks,refreshFromMatches,pauseTask}=useLearningPlan();
+  const {tasks,allTasks,refreshFromMatches,pauseTask,planReady,planError}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
@@ -85,6 +85,23 @@ export default function PlayerDevelopmentCentre(){
       setChecking(false);
     }
   };
+
+  if(!planReady)return <AppShell>
+    <section className="panel panel-padding">
+      <div className="eyebrow">LOADING YOUR PLAN</div>
+      <h2>Pulling your core mission…</h2>
+      <p className="muted">OP CLIMB is loading the evidence-backed plan already stored for this Riot account.</p>
+    </section>
+  </AppShell>;
+
+  if(planError)return <AppShell>
+    <section className="panel panel-padding">
+      <div className="eyebrow">PLAN LOAD ERROR</div>
+      <h2>Your plan is still stored.</h2>
+      <p className="muted">{planError}</p>
+      <button className="btn secondary" type="button" onClick={()=>window.location.reload()}>RETRY PLAN LOAD</button>
+    </section>
+  </AppShell>;
 
   if(!baselineReady)return <AppShell>
     <MyClimbGameImpact
@@ -177,186 +194,3 @@ export default function PlayerDevelopmentCentre(){
           </div>)}
         </div>
       </section>}
-
-      {activeTasks.length>0&&<section className="ip-next">
-        <div>
-          <span>HOW THE PLAN MOVES</span>
-          <h2>One mission at a time.</h2>
-          <p>Only the core mission asks you to track reps. The watchlist stays in the background until repeated evidence says one behaviour should become your next mission.</p>
-        </div>
-        <div className="ip-next-actions">
-          <Link className="btn primary" href="/session">START 3-GAME BLOCK →</Link>
-          <Link className="btn secondary" href="/live">OPEN TRACKING</Link>
-        </div>
-      </section>}
-    </div>}
-
-    {tab==='EVIDENCE'&&<div className="ip-panel">
-      {displayCoreTask?<div className="ip-evidence-grid"><EvidenceCard task={displayCoreTask}/></div>:<section className="ip-empty"><h2>{selectedDomain?'No core mission in '+DNA_DOMAIN_LABELS[selectedDomain]+'.':'No core mission evidence yet.'}</h2><p>{selectedDomain?'A watched focus does not create a second rep tracker. Open the full plan to see your core mission.':'Play tracked games to build the plan.'}</p></section>}
-    </div>}
-
-    {tier==='PRO'&&tab==='HISTORY'&&<div className="ip-panel">
-      <section className="ip-history-grid">
-        <Archive title="MASTERED" empty="Nothing mastered yet." tasks={mastered}/>
-        <Archive title="PAUSED" empty="No paused missions." tasks={paused}/>
-      </section>
-    </div>}
-  </AppShell>;
-}
-
-function MissionCard({task,pauseTask}:{task:ILPTask;pauseTask:(id:string)=>void}){
-  const plain=plainLanguageFocus(task);
-  const summary=missionSummary(task);
-  const repProgress=Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100);
-  return <article className="ip-mission primary" style={strandStyle(task.dnaDomain)}>
-    <div className="ip-mission-top">
-      <span>CORE MISSION · THE ONLY SCORED FOCUS</span>
-      <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
-    </div>
-    <h2>{plain.name}</h2>
-    <div className="ip-layman">
-      <span>WHAT THIS MEANS</span>
-      <p>{plain.meaning}</p>
-    </div>
-
-    <div className="ip-rule">
-      <span>YOUR JOB NEXT GAME</span>
-      <b>{plain.nextGame}</b>
-    </div>
-
-    <div className="ip-target">
-      <div><span>HOW YOU PASS</span><b>{plain.success}</b></div>
-      <div><span>YOU ARE LEARNING TO</span><b>{learningStageLabel(summary.stage)}</b></div>
-    </div>
-
-    <LearningPath stage={summary.stage}/>
-
-    <div className="ip-progress">
-      <div><AnimatedBar value={repProgress}/><b>{repProgress}%</b></div>
-      <Pips passes={summary.confirmed} required={summary.required}/>
-      <small>{summary.confirmed}/{summary.required} proven reps · +{XP_PER_PROVEN_REP} XP each · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
-    </div>
-
-    <div className="ip-xp-reward"><span>MISSION REWARD</span><b>+{XP_PER_MISSION_MASTERY} XP</b><small>when mastered · +{XP_PER_PROVEN_REP} XP per proven game</small></div>
-    <details className="ip-mission-details">
-      <summary>BREAK IT DOWN <span>WHY · WHAT · HOW YOU PASS</span></summary>
-      <div className="ip-mission-brief">
-        <section>
-          <span>01 · WHY THIS ONE</span>
-          <h3>Why it matters</h3>
-          <p>{plain.why}</p>
-        </section>
-        <section>
-          <span>02 · WHAT TO DO</span>
-          <h3>Remember one thing</h3>
-          <p>{plain.nextGame}</p>
-        </section>
-        <section>
-          <span>03 · HOW YOU PASS</span>
-          <h3>{plain.success}</h3>
-          <p>Each clean game banks one rep. Get {summary.required} clean reps and meet the tracking target to move this mission toward mastery.</p>
-        </section>
-        <section>
-          <span>04 · WHY IT IS STILL ACTIVE</span>
-          <h3>{summary.remaining?`${summary.remaining} proven rep${summary.remaining===1?'':'s'} still needed`:'Ready for a mastery check'}</h3>
-          <p>{task.lastUpdatedReason||task.evidence.at(-1)||'OP CLIMB is waiting for enough reliable match evidence to judge the pattern.'}</p>
-        </section>
-      </div>
-      <IlpExplainability task={task}/>
-      <button className="btn secondary" type="button" onClick={event=>{event.preventDefault();pauseTask(task.id)}}>PAUSE MISSION</button>
-    </details>
-  </article>;
-}
-
-function WatchFocusCard({task,index}:{task:ILPTask;index:number}){
-  const plain=plainLanguageFocus(task);
-  return <article className="habit ip-strand-item" style={{...strandStyle(task.dnaDomain),padding:14,border:'1px solid var(--border)',background:'rgba(255,255,255,.02)'}}>
-    <span className="habit-index">{index+1}</span>
-    <div style={{minWidth:0,flex:1}}>
-      <small className="ip-strand-label">{dnaDomainLabel(task.dnaDomain)} · WATCH FOCUS</small>
-      <h3>{plain.name}</h3>
-      <p>{plain.nextGame}</p>
-    </div>
-    <span className="tag">MONITORING</span>
-  </article>;
-}
-
-function learningStageLabel(stage:string){
-  if(stage==='DISCOVER')return'RECOGNISE THE SITUATION';
-  if(stage==='PRACTISE')return'EXECUTE THE DECISION';
-  if(stage==='REPEAT')return'REPEAT IT CONSISTENTLY';
-  if(stage==='MASTERED')return'HABIT MASTERED';
-  return clean(stage);
-}
-
-function attemptMeaning(outcome:string,banksPass:boolean){
-  if(banksPass)return'You performed the behaviour strongly enough for this game to count toward mastery.';
-  if(outcome==='NO_REP')return'The relevant situation was not observed clearly enough, so the game does not count against you.';
-  if(outcome==='UNREWARDED')return'The situation occurred, but the behaviour did not clear the mission target this time.';
-  if(outcome==='UNEARNED')return'The end result looked acceptable, but the decision evidence was not strong enough to bank the habit.';
-  return'This game gave useful evidence, but not a proven rep.';
-}
-
-function LearningPath({stage}:{stage:string}){
-  const stages=[
-    ['DISCOVER','RECOGNISE'],
-    ['PRACTISE','EXECUTE'],
-    ['REPEAT','REPEAT'],
-    ['MASTERED','MASTERED'],
-  ] as const;
-  const active=Math.max(0,stages.findIndex(([key])=>key===stage));
-  return <div className="ip-learning-path">
-    <div><span>LEARNING PATH</span><b>{active+1}/4</b></div>
-    <ol>{stages.map(([key,label],index)=><li key={key} className={index<active?'done':index===active?'active':''}><i>{index<active?'✓':index+1}</i><span>{label}</span></li>)}</ol>
-  </div>;
-}
-
-function EvidenceCard({task}:{task:ILPTask}){
-  const summary=missionSummary(task);
-  const recent=(task.missionHistory??[]).slice(-4).reverse();
-  return <article className="ip-evidence-card" style={strandStyle(task.dnaDomain)}>
-    <div className="ip-evidence-head">
-      <div><span>CORE MISSION · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
-      <b>{summary.stage}</b>
-    </div>
-    <IlpExplainability task={task}/>
-    <div className="ip-evidence-reason">
-      <span>LATEST READ</span>
-      <p>{task.lastUpdatedReason||'Evidence is still building.'}</p>
-    </div>
-    {recent.length>0?<div className="ip-rep-list">
-      {recent.map(rep=><div key={rep.matchId}>
-        <span className={rep.banksPass?'good':'watch'}>{rep.banksPass?'BANKED':'REVIEWED'}</span>
-        <b>{clean(rep.outcome)}</b>
-        <small>{clean(rep.adherence)} adherence</small>
-      </div>)}
-    </div>:<div className="ip-no-reps">No reviewed core-mission reps yet.</div>}
-  </article>;
-}
-
-function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}){
-  return <article className="ip-archive">
-    <div className="ip-archive-head"><span>{title}</span><b>{tasks.length}</b></div>
-    {tasks.length?<div>{tasks.map(task=><details key={task.id} className="ip-strand-history" style={strandStyle(task.dnaDomain)}>
-      <summary><b>{plainLanguageFocus(task).name}</b><span>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</span></summary>
-      <p>{task.lastUpdatedReason||task.evidence.at(-1)||'No additional evidence note.'}</p>
-      {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
-    </details>)}</div>:<p className="muted">{empty}</p>}
-  </article>;
-}
-
-function dedupeArchiveTasks(tasks:ILPTask[]){
-  const map=new Map<string,ILPTask>();
-  tasks.forEach(task=>{
-    const key=task.title.toLowerCase()+'|'+task.metric.toLowerCase()+'|'+task.dnaDomain;
-    const prev=map.get(key);
-    if(!prev||taskFreshness(task)>=taskFreshness(prev))map.set(key,task);
-  });
-  return [...map.values()];
-}
-
-function Pips({passes,required}:{passes:number;required:number}){
-  return <div className="ip-pips" aria-label={passes+' of '+required+' clean reps'}>
-    {Array.from({length:required},(_,index)=><i key={index} className={index<passes?'on':''}/>)}
-  </div>;
-}
