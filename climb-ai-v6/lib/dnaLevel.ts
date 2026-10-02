@@ -1,6 +1,7 @@
-import type {DnaDomain,ILPTask} from './types';
+import type {DnaDomain,ILPTask,Role} from './types';
 import {DNA_DOMAINS} from './dnaDomain';
 import {isDnaStrandMission} from './dnaStrandMissions';
+import {taskAppliesToRole} from './roleAwareLearning';
 
 export const DNA_XP_PER_COMPLETED_GAME=25;
 export const DNA_XP_PER_MASTERED_MISSION=100;
@@ -41,8 +42,8 @@ export function dnaLevelFromXp(totalXp:number){
   };
 }
 
-export function dnaStrandLevel(tasks:ILPTask[],domain:DnaDomain):DnaLevelProgress{
-  const strand=tasks.filter(task=>isDnaStrandMission(task)&&task.dnaDomain===domain);
+export function dnaStrandLevel(tasks:ILPTask[],domain:DnaDomain,role?:Role|null):DnaLevelProgress{
+  const strand=tasks.filter(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&taskAppliesToRole(task,role));
   const mastered=strand.filter(task=>String(task.status).toUpperCase()==='MASTERED');
   const live=strand.filter(task=>!['MASTERED','PAUSED'].includes(String(task.status).toUpperCase()));
   const current=live[0]??null;
@@ -59,6 +60,6 @@ export function dnaStrandLevel(tasks:ILPTask[],domain:DnaDomain):DnaLevelProgres
   };
 }
 
-export function dnaLevels(tasks:ILPTask[]){
-  return DNA_DOMAINS.map(domain=>dnaStrandLevel(tasks,domain));
+export function dnaLevels(tasks:ILPTask[],role?:Role|null){
+  return DNA_DOMAINS.map(domain=>dnaStrandLevel(tasks,domain,role));
 }
