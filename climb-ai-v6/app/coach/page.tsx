@@ -143,7 +143,7 @@ export default function Coach(){
             <div><span>SELECTED TRACKER</span><b>{baselineReady?`${primarySummary?.confirmed??0}/${primarySummary?.required??3}`:'0/3'}</b></div>
           </div>
         </div>
-        <ClientGameDna player={active.gameName+active.tagline} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+        <ClientGameDna player={active.gameName+active.tagline} role={active.role} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
         {strandGuide}
         <div className="coach-dna-next panel panel-padding">
           <div>
