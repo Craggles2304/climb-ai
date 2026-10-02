@@ -76,7 +76,7 @@ export default function Coach(){
         <div className="eyebrow">EXPLORE YOUR SIX STRANDS</div>
         <h3>What does each part of your DNA mean?</h3>
       </div>
-      <small>Choose a strand to understand it, then open the missions that train it.</small>
+      <small>Choose a strand to understand it, then see whether it is your core mission or something OP CLIMB is only watching.</small>
     </div>
     <div className="dna-strand-tabs" role="tablist" aria-label="Game DNA strands">
       {DNA_DOMAINS.map(domain=><button
@@ -98,13 +98,13 @@ export default function Coach(){
       </div>
       <aside>
         <span>YOUR CURRENT PLAN</span>
-        <b>{selectedVisibleTasks.length?selectedVisibleTasks.length+' active mission'+(selectedVisibleTasks.length===1?'':'s'):'No active mission'}</b>
+        <b>{selectedVisibleTasks.length?selectedVisibleTasks.length+' current signal'+(selectedVisibleTasks.length===1?'':'s'):'No current signal'}</b>
         <small>{!baselineReady
           ?`Baseline ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}. Challenges unlock after OP Climb has watched three real games.`
           :tier==='PRO'
-            ?selectedMastered.length+' mastered mission'+(selectedMastered.length===1?'':'s')+' already stored in this strand.'
+            ?selectedMastered.length+' mastered habit'+(selectedMastered.length===1?'':'s')+' already stored in this strand.'
             :tier==='PLUS'
-              ?'PLUS can show up to three current missions across the six strands. Long-term memory stays PRO.'
+              ?'PLUS keeps one core mission and can watch two extra priorities across the six strands. Long-term memory stays PRO.'
               :'FREE shows your single current focus. All six strand explanations stay open so the system still makes sense.'}</small>
         <Link className="btn primary" href={`/ilp?dna=${selectedDnaDomain}`}>OPEN IN MY CLIMB →</Link>
       </aside>
@@ -143,7 +143,7 @@ export default function Coach(){
           <div>
             <div className="eyebrow">GAME DNA · PRO</div>
             <h2>The shape of the player you are becoming.</h2>
-            <p>Every strand comes from real missions, repeated evidence and behaviours your coach is tracking over time.</p>
+            <p>Every strand comes from repeated match evidence and behaviours your coach is tracking over time.</p>
           </div>
           <div className="coach-dna-stats">
             <div><span>{baselineReady?'MASTERED':'BASELINE'}</span><b>{baselineReady?mastered.length:`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
