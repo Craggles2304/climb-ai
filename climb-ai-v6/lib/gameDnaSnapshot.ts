@@ -94,7 +94,8 @@ export function currentGameDnaMissions(input:DnaTask[],role:Role|null|undefined)
 }
 
 export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):GameDnaClientMission[]{
-  const rows=currentGameDnaMissions(input,role);
+  const tasks=canonicalGameDnaTasks(input,role);
+  const rows=DNA_DOMAINS.map(domain=>({domain,task:currentForDomain(tasks,domain)}));
   return rows.map(({domain,task})=>{
     const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
     const level=dnaStrandLevel(tasks,domain,role);
