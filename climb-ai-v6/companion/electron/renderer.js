@@ -144,13 +144,17 @@ function renderPlayerHome(home,visible){
     const label=document.createElement('div');
     label.className='player-dna-label';
     const dot=document.createElement('i');
-    const name=document.createElement('span');name.textContent=String(item.label||item.domain||'DNA');
+    const name=document.createElement('span');
+    name.textContent=String(item.label||item.domain||'DNA');
+    const xp=document.createElement('small');
+    xp.textContent=baselineReady?`${Number(item.xpIntoLevel)||0}/${Number(item.xpForNextLevel)||100} XP`:'LEVELS UNLOCK AFTER BASELINE';
+    name.appendChild(xp);
     label.append(dot,name);
 
     const track=document.createElement('div');track.className='player-dna-track';
-    const fill=document.createElement('i');fill.style.width=(baselineReady?clamp(Number(item.progress)||0,0,100):0)+'%';track.appendChild(fill);
+    const fill=document.createElement('i');fill.style.width=(baselineReady?clamp(Number(item.levelProgress)||0,0,100):0)+'%';track.appendChild(fill);
 
-    const value=document.createElement('b');value.textContent=(baselineReady?clamp(Number(item.progress)||0,0,100):0)+'%';
+    const value=document.createElement('b');value.textContent='LV '+(baselineReady?Math.max(1,Number(item.level)||1):1);
 
     row.append(label,track,value);
     dnaRoot.appendChild(row);
@@ -169,7 +173,7 @@ function renderPlayerHome(home,visible){
       const card=document.createElement('article');card.className='player-mission-card';
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=(String(dna?.label||mission.domain||'DNA')+' MISSION').toUpperCase();
+      const label=document.createElement('span');label.textContent=(String(dna?.label||mission.domain||'DNA')+' · LV '+Math.max(1,Number(dna?.level)||1)+' MISSION').toUpperCase();
       const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} GAMES`;
       top.append(label,reps);
       const title=document.createElement('h3');title.textContent=String(mission.title||'Current DNA mission');
@@ -192,7 +196,7 @@ function renderPlayerHome(home,visible){
   const memory=$('playerHomeMemory');
   if(tier==='PRO'){
     memory.className='player-memory pro';
-    memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Long-term learning memory is active. OP CLIMB can carry proven habits across games and choose what to learn next.</small>`;
+    memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Your six DNA levels are uncapped. Mastered missions and completed games keep adding permanent strand XP.</small>`;
   }else if(tier==='PLUS'){
     memory.className='player-memory plus';
     memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>All six DNA missions stay tracked together. Long-term mastered-habit memory unlocks with Pro.</small>';
