@@ -71,7 +71,7 @@ export async function GET(req:NextRequest){
     tier,
     selectedRole:role||primaryRole||'ADC',
     primaryRole:primaryRole||role||'ADC',
-    roleProfiles:LEAGUE_ROLES.map(item=>({role:item,...roleBaselines[item]})),
+    roleProfiles:LEAGUE_ROLES.map(item=>({...roleBaselines[item]})),
     tierView:tier==='FREE'
       ?{label:'CURRENT SNAPSHOT',detail:'6 DNA missions · 7-day progress view',missionLimit:6,persistentMemory:false}
       :tier==='PLUS'
