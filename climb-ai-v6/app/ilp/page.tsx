@@ -103,6 +103,11 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   if(!baselineReady)return <AppShell>
+    <section className="panel panel-padding" style={{marginBottom:18}}>
+      <div className="eyebrow">{active.role} GAME DNA · ROLE PROFILE</div>
+      <h2>Your DNA is separate for every role.</h2>
+      <p className="muted">Only games played in {active.role} build this profile. TOP, JUNGLE, MID, ADC and SUPPORT each keep their own six strands, levels, missions and history.</p>
+    </section>
     <MyClimbGameImpact
       match={impactMatch}
       learning={[]}
@@ -126,9 +131,9 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
-          <div className="eyebrow">GAME DNA → MY CLIMB</div>
-          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'Your development plan'}</h2>
-          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'Each DNA strand has one current mission. Every tracked game can bank a completion on any strand that clears its target.'}</p>
+          <div className="eyebrow">{active.role} GAME DNA → MY CLIMB</div>
+          <h2>{selectedDomain?`${active.role} · ${DNA_DOMAIN_LABELS[selectedDomain]}`:`Your ${active.role} development plan`}</h2>
+          <p>{selectedDomain?`${DNA_DOMAIN_GUIDE[selectedDomain].summary} Only ${active.role} games progress this strand.`:`Game DNA is role-specific. Only games played in ${active.role} progress these six strands; every other role has its own separate DNA profile.`}</p>
         </div>
         {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW FULL PLAN</button>}
       </div>
@@ -183,8 +188,8 @@ export default function PlayerDevelopmentCentre(){
       {activeTasks.length>0&&<section className="ip-next">
         <div>
           <span>HOW THE PLAN MOVES</span>
-          <h2>Six strands. One mission on each.</h2>
-          <p>After every tracked game, OP CLIMB checks all six missions. A mission banks a game when its target is met. Reach 3/3 and that strand moves to its next mission.</p>
+          <h2>Six {active.role} strands. One mission on each.</h2>
+          <p>After every tracked {active.role} game, OP CLIMB checks all six missions. Games in other roles do not progress this profile. Reach 3/3 and that strand moves to its next mission.</p>
         </div>
         <div className="ip-next-actions">
           <Link className="btn primary" href="/live">TRACK NEXT GAME →</Link>
