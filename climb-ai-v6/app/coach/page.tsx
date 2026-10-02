@@ -12,7 +12,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,IssueCategory,Match,Role} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
-import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady as isDnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
 import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
@@ -59,7 +59,7 @@ export default function Coach(){
   const allRoleMatches=accountMatches.filter(match=>match.role===active.role);
   const matches=filterHistoryForTier(allRoleMatches,tier);
   const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
-  const baselineReady=dnaBaselineReady(baselineGames);
+  const baselineReady=isDnaBaselineReady(baselineGames);
   const {tasks,allTasks,addTask}=useLearningPlan();
   const rawActiveThree=currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
   const activeThree=baselineReady?rawActiveThree:[];
@@ -79,7 +79,7 @@ export default function Coach(){
 
   const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
   const dnaBaselineGames=roleGameCounts[dnaRole]??0;
-  const dnaBaselineReady=dnaBaselineReady(dnaBaselineGames);
+  const dnaBaselineReady=isDnaBaselineReady(dnaBaselineGames);
   const accountTasks=allTasks[active.id]??tasks;
   const dnaRoleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,dnaRole)),[accountTasks,dnaRole]);
   const dnaActiveTasks=useMemo(()=>dnaBaselineReady?currentGameDnaMissions(dnaRoleTasks,dnaRole).flatMap(({task})=>task?[task]:[]):[],[dnaRoleTasks,dnaRole,dnaBaselineReady]);
