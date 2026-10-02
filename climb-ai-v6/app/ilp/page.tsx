@@ -21,6 +21,7 @@ import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dn
 import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {dnaStrandLevel} from '@/lib/dnaLevel';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -58,6 +59,7 @@ export default function PlayerDevelopmentCentre(){
     return currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
   },[tasks,active.role,baselineReady]);
   const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
+  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(tasks,domain)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[tasks]);
   const masteredAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='MASTERED')),[tasks]);
   const pausedAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='PAUSED')),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
@@ -138,7 +140,7 @@ export default function PlayerDevelopmentCentre(){
           className={selectedDomain===domain?'active':''}
           style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
           onClick={()=>chooseDomain(domain)}
-        >{DNA_DOMAIN_LABELS[domain]}</button>)}
+        >{DNA_DOMAIN_LABELS[domain]} · LV {dnaLevels[domain].level}</button>)}
       </div>
       {selectedDomain&&<div className="ip-dna-filter-detail">
         <p>{DNA_DOMAIN_GUIDE[selectedDomain].purpose}</p>
@@ -159,7 +161,7 @@ export default function PlayerDevelopmentCentre(){
 
     {tab==='CURRENT'&&<div className="ip-panel">
       {displayTasks.length?<div className="ip-mission-grid">
-        {displayTasks.map(task=><MissionCard key={task.id} task={task}/>)}
+        {displayTasks.map(task=><MissionCard key={task.id} task={task} level={dnaLevels[task.dnaDomain]}/>)}
       </div>:<section className="ip-empty">
         <div className="eyebrow">DNA PLAN BUILDING</div>
         <h2>{selectedDomain?'This strand is waiting for its next mission.':'Your six DNA missions are being built.'}</h2>
@@ -192,7 +194,7 @@ export default function PlayerDevelopmentCentre(){
 
     {tab==='EVIDENCE'&&<div className="ip-panel">
       {displayTasks.length?<div className="ip-evidence-grid">
-        {displayTasks.map(task=><EvidenceCard key={task.id} task={task}/>)}
+        {displayTasks.map(task=><EvidenceCard key={task.id} task={task} level={dnaLevels[task.dnaDomain]}/>)}
       </div>:<section className="ip-empty"><h2>No strand evidence yet.</h2><p>Complete tracked games to build the 0/3 → 3/3 mission history.</p></section>}
     </div>}
 
@@ -205,13 +207,13 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 }
 
-function MissionCard({task}:{task:ILPTask}){
+function MissionCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStrandLevel>}){
   const plain=plainLanguageFocus(task);
   const summary=missionSummary(task);
   const repProgress=Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100);
   return <article className="ip-mission primary" style={strandStyle(task.dnaDomain)}>
     <div className="ip-mission-top">
-      <span>{dnaDomainLabel(task.dnaDomain).toUpperCase()} · DNA MISSION</span>
+      <span>{dnaDomainLabel(task.dnaDomain).toUpperCase()} · LV {level.level} · DNA MISSION</span>
       <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
     </div>
     <h2>{plain.name}</h2>
@@ -255,7 +257,7 @@ function MissionCard({task}:{task:ILPTask}){
         <section>
           <span>03 · HOW YOU PASS</span>
           <h3>{plain.success}</h3>
-          <p>Each tracked game that clears the target banks one completion. Reach {summary.required}/{summary.required} and this DNA strand moves to its next mission.</p>
+          <p>Each tracked game that clears the target banks one completion. Reach {summary.required}/{summary.required} and this mission is mastered. Your {dnaDomainLabel(task.dnaDomain)} level is uncapped: {level.xpIntoLevel}/{level.xpForNextLevel} DNA XP toward LV {level.level+1}.</p>
         </section>
         <section>
           <span>04 · WHY IT IS STILL ACTIVE</span>
@@ -298,12 +300,12 @@ function LearningPath({stage}:{stage:string}){
   </div>;
 }
 
-function EvidenceCard({task}:{task:ILPTask}){
+function EvidenceCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStrandLevel>}){
   const summary=missionSummary(task);
   const recent=(task.missionHistory??[]).slice(-4).reverse();
   return <article className="ip-evidence-card" style={strandStyle(task.dnaDomain)}>
     <div className="ip-evidence-head">
-      <div><span>{dnaDomainLabel(task.dnaDomain).toUpperCase()} · DNA MISSION</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
+      <div><span>{dnaDomainLabel(task.dnaDomain).toUpperCase()} · LV {level.level} · DNA MISSION</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
