@@ -316,7 +316,7 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
     const progress=Math.round(Math.min(required,confirmed)/required*100);
     const mastered=confirmed>=required;
     const status=mastered?'MASTERED' as const:attempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
-    if(mastered&&task.status!=='MASTERED')changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
+    if(mastered)changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
     return{
       ...task,
       progress,
@@ -330,7 +330,7 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       lastUpdatedReason:mastered
         ?`${confirmed}/${required} tracked games completed this DNA mission. Moving the strand to its next mission.`
         :`${confirmed}/${required} tracked games completed this DNA mission.`,
-      history:mastered&&task.status!=='MASTERED'
+      history:mastered
         ?[...(task.history??[]),{at:new Date().toISOString(),type:'MASTERED' as const,note:`${confirmed}/${required} tracked games completed the DNA strand mission.`}].slice(-12)
         :task.history,
     };
