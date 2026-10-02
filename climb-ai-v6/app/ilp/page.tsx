@@ -13,14 +13,13 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,ILPTask} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
-import {awarenessMissions} from '@/lib/awarenessMissions';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
-import type {Role} from '@/lib/types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
+import {taskFreshness} from '@/lib/ilpCloudMerge';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -29,7 +28,7 @@ const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domai
 export default function PlayerDevelopmentCentre(){
   const {active,refresh:refreshAccount}=useAccount();
   const {tier}=useSubscription();
-  const {tasks,allTasks,refreshFromMatches,pauseTask}=useLearningPlan();
+  const {tasks,allTasks,refreshFromMatches,pauseTask,planReady,planError}=useLearningPlan();
   const [tab,setTab]=useState<Tab>('CURRENT');
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
@@ -58,9 +57,12 @@ export default function PlayerDevelopmentCentre(){
     const live=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').slice(0,3);
     return tier==='FREE'?live.slice(0,1):live;
   },[tasks,tier,baselineReady]);
-  const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
-  const masteredAll=useMemo(()=>tasks.filter(task=>task.status==='MASTERED'),[tasks]);
-  const pausedAll=useMemo(()=>tasks.filter(task=>task.status==='PAUSED'),[tasks]);
+  const coreTask=activeTasks[0]??null;
+  const watchTasks=activeTasks.slice(1);
+  const displayCoreTask=useMemo(()=>coreTask&&(!selectedDomain||coreTask.dnaDomain===selectedDomain)?coreTask:null,[coreTask,selectedDomain]);
+  const displayWatchTasks=useMemo(()=>selectedDomain?watchTasks.filter(task=>task.dnaDomain===selectedDomain):watchTasks,[watchTasks,selectedDomain]);
+  const masteredAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='MASTERED')),[tasks]);
+  const pausedAll=useMemo(()=>dedupeArchiveTasks(tasks.filter(task=>task.status==='PAUSED')),[tasks]);
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
@@ -74,11 +76,6 @@ export default function PlayerDevelopmentCentre(){
   const gameStrengths=useMemo(()=>impactMatch?positiveEvidenceForMatch(impactMatch,active.rank):[],[impactMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
-  const planProgress=activeTasks.length
-    ?Math.round(activeTasks.reduce((sum,task)=>sum+task.progress,0)/activeTasks.length)
-    :0;
-  const banked=activeTasks.reduce((sum,task)=>sum+missionSummary(task).confirmed,0);
-  const required=activeTasks.reduce((sum,task)=>sum+missionSummary(task).required,0);
   const refresh=async()=>{
     setChecking(true);
     try{
@@ -88,6 +85,23 @@ export default function PlayerDevelopmentCentre(){
       setChecking(false);
     }
   };
+
+  if(!planReady)return <AppShell>
+    <section className="panel panel-padding">
+      <div className="eyebrow">LOADING YOUR PLAN</div>
+      <h2>Pulling your core mission…</h2>
+      <p className="muted">OP CLIMB is loading the evidence-backed plan already stored for this Riot account.</p>
+    </section>
+  </AppShell>;
+
+  if(planError)return <AppShell>
+    <section className="panel panel-padding">
+      <div className="eyebrow">PLAN LOAD ERROR</div>
+      <h2>Your plan is still stored.</h2>
+      <p className="muted">{planError}</p>
+      <button className="btn secondary" type="button" onClick={()=>window.location.reload()}>RETRY PLAN LOAD</button>
+    </section>
+  </AppShell>;
 
   if(!baselineReady)return <AppShell>
     <MyClimbGameImpact
@@ -114,12 +128,12 @@ export default function PlayerDevelopmentCentre(){
       <div className="ip-dna-filter-head">
         <div>
           <div className="eyebrow">GAME DNA → MY CLIMB</div>
-          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'All current missions'}</h2>
-          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'Choose a DNA strand to see only the missions that are training that part of your game.'}</p>
+          <h2>{selectedDomain?DNA_DOMAIN_LABELS[selectedDomain]:'Your development plan'}</h2>
+          <p>{selectedDomain?DNA_DOMAIN_GUIDE[selectedDomain].summary:'One scored core mission sits at the centre. Up to two watch focuses stay in the background until they earn promotion.'}</p>
         </div>
-        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW ALL MISSIONS</button>}
+        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW FULL PLAN</button>}
       </div>
-      <div className="ip-dna-filter-tabs" aria-label="Filter missions by Game DNA strand">
+      <div className="ip-dna-filter-tabs" aria-label="Filter development plan by Game DNA strand">
         <button type="button" className={!selectedDomain?'active':''} onClick={()=>chooseDomain(null)}>ALL</button>
         {DNA_DOMAINS.map(domain=><button
           key={domain}
@@ -141,26 +155,32 @@ export default function PlayerDevelopmentCentre(){
     </section>}
 
     <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{displayTasks.length}{selectedDomain?' in '+DNA_DOMAIN_LABELS[selectedDomain]:''}</small></button>
-      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>EVIDENCE</b><small>why these are here</small></button>
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>CURRENT PLAN</b><small>{selectedDomain?((displayCoreTask?1:0)+displayWatchTasks.length)+' in '+DNA_DOMAIN_LABELS[selectedDomain]:(coreTask?'1 core · '+watchTasks.length+' watched':'building')}</small></button>
+      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>CORE PROOF</b><small>why the main mission is here</small></button>
       {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
 
     {tab==='CURRENT'&&<div className="ip-panel">
-      {displayTasks.length?<div className="ip-mission-grid">
-        {displayTasks.map(task=>{
-          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
-          return <MissionCard key={task.id} task={task} index={Math.max(0,index)} role={active.role} pauseTask={pauseTask}/>;
-        })}
-      </div>:selectedDomain?<section className="ip-empty">
-        <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NO CURRENT MISSION</div>
-        <h2>This strand is not in your active plan right now.</h2>
-        <p>{!baselineReady?'This strand stays at zero until the three-game observation baseline is complete.':tier==='FREE'?'FREE keeps one measurable focus live at a time. You can still understand every DNA strand, but only your current focus becomes an active mission.':'OP CLIMB only puts a strand into My Climb when your game evidence makes it one of your current priorities.'}</p>
+      {(displayCoreTask||displayWatchTasks.length)?<>
+        {displayCoreTask&&<div className="ip-mission-grid"><MissionCard task={displayCoreTask} pauseTask={pauseTask}/></div>}
+        {displayWatchTasks.length>0&&<section className="panel panel-padding" style={{marginTop:16}}>
+          <div className="section-head">
+            <div><div className="eyebrow">WATCHLIST · NOT EXTRA MISSIONS</div><h2>What OP CLIMB is monitoring next.</h2></div>
+            <small>These do not need another checklist in your head. They only become the core mission if repeated evidence promotes them.</small>
+          </div>
+          <div style={{display:'grid',gap:10}}>
+            {displayWatchTasks.map((task,index)=><WatchFocusCard key={task.id} task={task} index={index}/>)}
+          </div>
+        </section>}
+      </>:selectedDomain?<section className="ip-empty">
+        <div className="eyebrow">{DNA_DOMAIN_LABELS[selectedDomain].toUpperCase()} · NOT CURRENTLY PRIORITISED</div>
+        <h2>This strand is not in your plan right now.</h2>
+        <p>{tier==='FREE'?'FREE keeps one measurable core mission live at a time.':'OP CLIMB only promotes a strand when repeated evidence makes it important enough.'}</p>
         <button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW CURRENT PLAN</button>
       </section>:<section className="ip-empty">
         <div className="eyebrow">PLAN BUILDING</div>
         <h2>Play a tracked game.</h2>
-        <p>OP CLIMB needs real evidence before it chooses your current measurable focus.</p>
+        <p>OP CLIMB needs real evidence before it chooses your core mission.</p>
         <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
       </section>}
 
@@ -178,8 +198,8 @@ export default function PlayerDevelopmentCentre(){
       {activeTasks.length>0&&<section className="ip-next">
         <div>
           <span>HOW THE PLAN MOVES</span>
-          <h2>Master one. Replace one.</h2>
-          <p>When repeated evidence proves a mission has stuck, it leaves the active plan and the next recurring limiter takes its place. One unusual game does not rewrite your plan.</p>
+          <h2>One mission at a time.</h2>
+          <p>Only the core mission asks you to track reps. The watchlist stays in the background until repeated evidence says one behaviour should become your next mission.</p>
         </div>
         <div className="ip-next-actions">
           <Link className="btn primary" href="/session">START 3-GAME BLOCK →</Link>
@@ -189,12 +209,7 @@ export default function PlayerDevelopmentCentre(){
     </div>}
 
     {tab==='EVIDENCE'&&<div className="ip-panel">
-      {displayTasks.length?<div className="ip-evidence-grid">
-        {displayTasks.map(task=>{
-          const index=activeTasks.findIndex(activeTask=>activeTask.id===task.id);
-          return <EvidenceCard key={task.id} task={task} index={Math.max(0,index)}/>;
-        })}
-      </div>:<section className="ip-empty"><h2>{selectedDomain?'No current '+DNA_DOMAIN_LABELS[selectedDomain]+' evidence.':'No active evidence yet.'}</h2><p>{selectedDomain?'This strand is not one of your current measurable priorities.':'Play tracked games to build the plan.'}</p></section>}
+      {displayCoreTask?<div className="ip-evidence-grid"><EvidenceCard task={displayCoreTask}/></div>:<section className="ip-empty"><h2>{selectedDomain?'No core mission in '+DNA_DOMAIN_LABELS[selectedDomain]+'.':'No core mission evidence yet.'}</h2><p>{selectedDomain?'A watched focus does not create a second rep tracker. Open the full plan to see your core mission.':'Play tracked games to build the plan.'}</p></section>}
     </div>}
 
     {tier==='PRO'&&tab==='HISTORY'&&<div className="ip-panel">
@@ -206,13 +221,13 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 }
 
-function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role:Role;pauseTask:(id:string)=>void}){
+function MissionCard({task,pauseTask}:{task:ILPTask;pauseTask:(id:string)=>void}){
   const plain=plainLanguageFocus(task);
   const summary=missionSummary(task);
-  const sideMissions=awarenessMissions(task,role);
-  return <article className={'ip-mission '+(index===0?'primary':'secondary')} style={strandStyle(task.dnaDomain)}>
+  const repProgress=Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100);
+  return <article className="ip-mission primary" style={strandStyle(task.dnaDomain)}>
     <div className="ip-mission-top">
-      <span>{index===0?'CORE MISSION':'SUPPORT 0'+index}</span>
+      <span>CORE MISSION · THE ONLY SCORED FOCUS</span>
       <div className="ip-mission-meta"><MissionMeasurementBadge metric={task.metric} compact/><em>{dnaDomainLabel(task.dnaDomain)} · {clean(task.category)}</em></div>
     </div>
     <h2>{plain.name}</h2>
@@ -233,22 +248,8 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
 
     <LearningPath stage={summary.stage}/>
 
-    {sideMissions.length>0&&<div className="ip-sidequests">
-      <div className="ip-sidequests-head">
-        <div><span>SIDE MISSIONS</span><b>Keep these in your head too.</b></div>
-        <em>AWARENESS ONLY · NOT SCORED</em>
-      </div>
-      <div className="ip-sidequest-list">
-        {sideMissions.map((side,sideIndex)=><article key={side.id}>
-          <span>SIDE 0{sideIndex+1}</span>
-          <div><b>{side.name}</b><p>{side.meaning}</p><small>{side.cue}</small></div>
-        </article>)}
-      </div>
-      <footer>No XP · No pass/fail · Does not affect mastery</footer>
-    </div>}
-
     <div className="ip-progress">
-      <div><AnimatedBar value={task.progress}/><b>{task.progress}%</b></div>
+      <div><AnimatedBar value={repProgress}/><b>{repProgress}%</b></div>
       <Pips passes={summary.confirmed} required={summary.required}/>
       <small>{summary.confirmed}/{summary.required} proven reps · +{XP_PER_PROVEN_REP} XP each · {summary.remaining?summary.remaining+' still needed':'ready for mastery check'}</small>
     </div>
@@ -284,6 +285,19 @@ function MissionCard({task,index,role,pauseTask}:{task:ILPTask;index:number;role
   </article>;
 }
 
+function WatchFocusCard({task,index}:{task:ILPTask;index:number}){
+  const plain=plainLanguageFocus(task);
+  return <article className="habit ip-strand-item" style={{...strandStyle(task.dnaDomain),padding:14,border:'1px solid var(--border)',background:'rgba(255,255,255,.02)'}}>
+    <span className="habit-index">{index+1}</span>
+    <div style={{minWidth:0,flex:1}}>
+      <small className="ip-strand-label">{dnaDomainLabel(task.dnaDomain)} · WATCH FOCUS</small>
+      <h3>{plain.name}</h3>
+      <p>{plain.nextGame}</p>
+    </div>
+    <span className="tag">MONITORING</span>
+  </article>;
+}
+
 function learningStageLabel(stage:string){
   if(stage==='DISCOVER')return'RECOGNISE THE SITUATION';
   if(stage==='PRACTISE')return'EXECUTE THE DECISION';
@@ -314,12 +328,12 @@ function LearningPath({stage}:{stage:string}){
   </div>;
 }
 
-function EvidenceCard({task,index}:{task:ILPTask;index:number}){
+function EvidenceCard({task}:{task:ILPTask}){
   const summary=missionSummary(task);
   const recent=(task.missionHistory??[]).slice(-4).reverse();
   return <article className="ip-evidence-card" style={strandStyle(task.dnaDomain)}>
     <div className="ip-evidence-head">
-      <div><span>{index===0?'CORE MISSION':'SUPPORT 0'+index} · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
+      <div><span>CORE MISSION · {dnaDomainLabel(task.dnaDomain)}</span><h2>{plainLanguageFocus(task).name}</h2><MissionMeasurementBadge metric={task.metric} compact/></div>
       <b>{summary.stage}</b>
     </div>
     <IlpExplainability task={task}/>
@@ -333,7 +347,7 @@ function EvidenceCard({task,index}:{task:ILPTask;index:number}){
         <b>{clean(rep.outcome)}</b>
         <small>{clean(rep.adherence)} adherence</small>
       </div>)}
-    </div>:<div className="ip-no-reps">No reviewed mission reps yet.</div>}
+    </div>:<div className="ip-no-reps">No reviewed core-mission reps yet.</div>}
   </article>;
 }
 
@@ -346,6 +360,16 @@ function Archive({title,empty,tasks}:{title:string;empty:string;tasks:ILPTask[]}
       {task.status==='MASTERED'&&<IlpExplainability task={task} compact/>}
     </details>)}</div>:<p className="muted">{empty}</p>}
   </article>;
+}
+
+function dedupeArchiveTasks(tasks:ILPTask[]){
+  const map=new Map<string,ILPTask>();
+  tasks.forEach(task=>{
+    const key=task.title.toLowerCase()+'|'+task.metric.toLowerCase()+'|'+task.dnaDomain;
+    const prev=map.get(key);
+    if(!prev||taskFreshness(task)>=taskFreshness(prev))map.set(key,task);
+  });
+  return [...map.values()];
 }
 
 function Pips({passes,required}:{passes:number;required:number}){

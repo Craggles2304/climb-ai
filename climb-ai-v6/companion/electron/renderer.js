@@ -166,30 +166,43 @@ function renderPlayerHome(home,visible){
     const missions=safeArray(home.missions);
     missions.forEach((mission,index)=>{
       const dna=safeArray(home.dna).find(item=>String(item.domain)===String(mission.domain));
-      const card=document.createElement('article');card.className='player-mission-card';
+      const isCore=index===0;
+      const card=document.createElement('article');card.className='player-mission-card'+(isCore?'':' watch-focus');
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=index===0?'MAIN MISSION':'SUPPORT MISSION';
-      const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} REPS`;
-      top.append(label,reps);
-      const title=document.createElement('h3');title.textContent=String(mission.title||'Current mission');
-      const rule=document.createElement('p');rule.textContent=String(mission.gameRule||'Keep building evidence in your next game.');
-      const progress=document.createElement('div');progress.className='player-mission-progress';
-      const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
-      card.append(top,title,rule,progress);
+      const label=document.createElement('span');label.textContent=isCore?'CORE MISSION':'WATCH FOCUS';
+      top.appendChild(label);
+      if(isCore){
+        const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} REPS`;
+        top.appendChild(reps);
+      }else{
+        const watch=document.createElement('b');watch.textContent='MONITORING';
+        top.appendChild(watch);
+      }
+      const title=document.createElement('h3');title.textContent=String(mission.title||'Current focus');
+      const rule=document.createElement('p');rule.textContent=String(mission.gameRule||'OP CLIMB is monitoring this in the background.');
+      card.append(top,title,rule);
+      if(isCore){
+        const progress=document.createElement('div');progress.className='player-mission-progress';
+        const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
+        card.appendChild(progress);
+      }else{
+        const note=document.createElement('small');note.textContent='No extra rep tracker. This becomes the core mission only if repeated evidence promotes it.';
+        card.appendChild(note);
+      }
       missionRoot.appendChild(card);
     });
 
     const limit=Number(home.tierView?.missionLimit)||1;
     while(missionRoot.children.length<limit){
       const empty=document.createElement('article');empty.className='player-mission-card empty';
-      empty.innerHTML='<span>MISSION SLOT</span><h3>WAITING FOR EVIDENCE</h3><p>OP CLIMB will fill this when another repeatable priority is strong enough.</p>';
+      empty.innerHTML=missionRoot.children.length===0?'<span>CORE MISSION</span><h3>WAITING FOR EVIDENCE</h3><p>OP CLIMB will choose one scored focus when the evidence is strong enough.</p>':'<span>WATCH FOCUS</span><h3>WAITING FOR EVIDENCE</h3><p>No extra task yet. OP CLIMB will only add a watch focus when a repeated pattern deserves monitoring.</p>';
       missionRoot.appendChild(empty);
     }
 
     if(tier==='FREE'){
       const locked=document.createElement('article');locked.className='player-mission-card locked';
-      locked.innerHTML='<span>PLUS</span><h3>2 MORE ACTIVE MISSIONS</h3><p>Free keeps one clear focus live. Plus can hold up to three current development missions.</p>';
+      locked.innerHTML='<span>PLUS</span><h3>2 WATCH FOCUSES</h3><p>Free keeps one clear core mission. Plus can monitor two extra priorities in the background without giving you two more rep trackers.</p>';
       missionRoot.appendChild(locked);
     }
   }
@@ -200,10 +213,10 @@ function renderPlayerHome(home,visible){
     memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Long-term learning memory is active. OP CLIMB can carry proven habits across games and choose what to learn next.</small>`;
   }else if(tier==='PLUS'){
     memory.className='player-memory plus';
-    memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>Three current missions are available. Long-term mastered-habit memory unlocks with Pro.</small>';
+    memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>One core mission stays scored while up to two watch focuses are monitored in the background. Long-term mastered-habit memory unlocks with Pro.</small>';
   }else{
     memory.className='player-memory free';
-    memory.innerHTML='<span>FREE DEVELOPMENT VIEW</span><strong>ONE CLEAR FOCUS</strong><small>Your six DNA strands remain visible, with one active mission and a 7-day progress window.</small>';
+    memory.innerHTML='<span>FREE DEVELOPMENT VIEW</span><strong>ONE CLEAR FOCUS</strong><small>Your six DNA strands remain visible, with one scored core mission and a 7-day progress window.</small>';
   }
 
   const upgrade=$('playerHomeUpgrade');
@@ -236,7 +249,7 @@ function ensurePlayerHome(){
         <div id="playerHomeDna" class="player-dna-tree"></div>
       </section>
       <section class="player-missions-panel">
-        <div class="player-panel-head"><div><span>CURRENT MISSIONS</span><h3>What you are learning now.</h3></div></div>
+        <div class="player-panel-head"><div><span>CURRENT PLAN</span><h3>One mission. Two things we may watch.</h3></div></div>
         <div id="playerHomeMissions" class="player-mission-list"></div>
       </section>
     </div>
