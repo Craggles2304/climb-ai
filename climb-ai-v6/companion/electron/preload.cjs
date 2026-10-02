@@ -159,3 +159,251 @@ function midCommand(team,role){
   return commandFrom(team?.sidelane?.label,team?.sidelane?.summary,'CATCH WAVE → RECONNECT');
 }
 function objectiveCommand(team,role){
+  const fight=String(team?.teamfight?.label||'').toUpperCase();
+  let core='ARRIVE FIRST → KEEP FORMATION → DO NOT FACE-CHECK ALONE';
+  if(fight.includes('POKE'))core='ARRIVE FIRST → TAKE SPACE → POKE BEFORE COMMITTING';
+  else if(fight.includes('DIVE'))core='SWEEP FLANKS → ONE ENGAGE CALL → ENTER TOGETHER';
+  else if(fight.includes('PICK'))core='DENY VISION → FIND ONE PICK → FORCE THE 5V4';
+  else if(fight.includes('FRONT')||fight.includes('LAYERED'))core='ARRIVE FIRST → FRONT LINE OWNS THE CHOKE → CARRIES BEHIND';
+  if(role==='JUNGLE')return`SMITE READY → ${core}`;
+  return core;
+}
+function fightCommand(team){
+  const label=String(team?.teamfight?.label||'').toUpperCase();
+  if(label.includes('LAYERED'))return'FRONT LINE STARTS → DIVERS SECOND → CARRIES STAY SAFE';
+  if(label.includes('FRONT'))return'FRONT TO BACK → PROTECT CARRIES → HIT THE NEAREST SAFE TARGET';
+  if(label.includes('DIVE'))return'ONE CALL → ENTER TOGETHER → DELETE ONE TARGET';
+  if(label.includes('POKE'))return'POKE FIRST → COMMIT ONLY AFTER HP OR SPACE ADVANTAGE';
+  if(label.includes('PICK'))return'PICK FIRST → RESET OR TAKE THE 5V4';
+  return commandFrom(team?.teamfight?.label,team?.teamfight?.summary,'STAY CONNECTED → FIGHT ON ONE CALL');
+}
+function ourWinCommand(team,matchup){
+  const server=oneLine(team?.ourWinCondition,210);
+  if(server)return server;
+  const label=String(team?.teamfight?.label||'').toUpperCase();
+  const play=oneLine(team?.playAround,118);
+  const job=oneLine(team?.yourJob,118);
+  if(label.includes('FRONT')||label.includes('LAYERED'))return oneLine(`WIN CONNECTED FRONT-TO-BACK FIGHTS. ${play||job}`,150);
+  if(label.includes('DIVE'))return oneLine(`CREATE FIRST CONTACT, THEN ENTER TOGETHER ON ONE TARGET. ${play}`,150);
+  if(label.includes('POKE'))return'ARRIVE FIRST → TAKE SPACE → LOWER THEIR HP → COMMIT WITH THE ADVANTAGE → TAKE THE OBJECTIVE.';
+  if(label.includes('PICK'))return'CONTROL VISION → CATCH ONE PLAYER → USE THE 5V4 → TAKE THE OBJECTIVE INSTEAD OF CHASING.';
+  return oneLine(`ARRIVE FIRST → STAY CONNECTED → FIGHT ON ONE CALL → CONVERT TO THE OBJECTIVE. ${play||job||firstText(matchup?.winCondition)}`,180)||'CREATE THE FIRST CLEAN ADVANTAGE → STAY CONNECTED → CONVERT IT INTO THE OBJECTIVE.';
+}
+function theirWinCommand(team){return oneLine(team?.roleWinCondition?.lossCondition,150)||oneLine(team?.theirWinCondition,150)||'THEY FIND AN ISOLATED TARGET OR BREAK OUR FORMATION BEFORE THE FIGHT STARTS'}
+function phaseLabels(role){
+  if(role==='JUNGLE')return['01 · PATH','02 · PRESSURE','03 · OBJECTIVE','04 · FIGHT'];
+  if(role==='SUPPORT')return['01 · LANE','02 · ROAM / VISION','03 · OBJECTIVE','04 · FIGHT'];
+  return['01 · LANE','02 · MID GAME','03 · OBJECTIVE','04 · FIGHT'];
+}
+function renderRoleWin(team,set){
+  const plan=team?.roleWinCondition;
+  const steps=Array.isArray(plan?.steps)?plan.steps.slice(0,5):[];
+  if(steps.length!==5)return false;
+  set('opStrategyHeading',String(plan?.title||'YOUR WIN CONDITION').toUpperCase());
+  set('opCompPlan',oneLine(plan?.compPlan,70)||'PLAY THE DRAFT');
+  for(let i=0;i<5;i++){
+    set(`opRoleStepLabel${i+1}`,`${i+1} · ${String(steps[i]?.label||'STEP').toUpperCase()}`);
+    set(`opRoleStep${i+1}`,oneLine(steps[i]?.value,105)||'PLAY CLEAN');
+  }
+  return true;
+}
+function renderDeepRead(team,set){
+  const read=team?.compositionRead;
+  if(!read)return false;
+  set('opDeepContact',(Array.isArray(read.firstContact)&&read.firstContact.length?read.firstContact.join(' / '):'NO SINGLE FORCED ENGAGER').toUpperCase());
+  set('opDeepProtect',(Array.isArray(read.protectors)&&read.protectors.length?read.protectors.join(' / '):'PLAY THE TEAM FORMATION').toUpperCase());
+  set('opDeepThreat',(Array.isArray(read.enemyThreats)&&read.enemyThreats.length?read.enemyThreats.join(' / '):'THEIR FIRST CLEAN ENGAGE').toUpperCase());
+  set('opDeepGeometry',oneLine(read.fightGeometry,220)||'STAY CONNECTED THROUGH FIRST CONTACT.');
+  set('opDeepRule',oneLine(read.matchupRule,220)||'DENY THEIR CLEANEST FIGHT.');
+  return true;
+}
+
+function championAssetKey(name){
+  const clean=String(name||'').trim();
+  const special={
+    'Aurelion Sol':'AurelionSol',"Bel'Veth":'Belveth',"Cho'Gath":'Chogath','Dr. Mundo':'DrMundo',
+    'Jarvan IV':'JarvanIV',"Kai'Sa":'Kaisa',"Kha'Zix":'Khazix',"K'Sante":'KSante','LeBlanc':'Leblanc',
+    'Lee Sin':'LeeSin','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Nunu & Willump':'Nunu',
+    "Rek'Sai":'RekSai','Renata Glasc':'Renata','Tahm Kench':'TahmKench','Twisted Fate':'TwistedFate',
+    "Vel'Koz":'Velkoz','Wukong':'MonkeyKing','Xin Zhao':'XinZhao'
+  };
+  return special[clean]||clean.replace(/[^A-Za-z0-9]/g,'');
+}
+
+function renderTeamBoard(team,champion){
+  const threatNames=new Set((Array.isArray(team?.compositionRead?.enemyThreats)?team.compositionRead.enemyThreats:[]).map(value=>String(value||'').toUpperCase()));
+  const renderSide=(id,rows,ours)=>{
+    const root=document.getElementById(id);
+    if(!root)return;
+    root.replaceChildren();
+    const list=Array.isArray(rows)?rows.slice(0,5):[];
+    const values=list.length?list:Array.from({length:5},()=>null);
+    values.forEach((pick,index)=>{
+      const card=document.createElement('article');
+      const name=String(pick?.name||'PENDING').trim();
+      const role=normalizedRole(pick?.role||'')||['TOP','JUNGLE','MID','ADC','SUPPORT'][index]||'';
+      const mine=ours&&name&&champion&&name.toUpperCase()===champion.toUpperCase();
+      const threat=!ours&&threatNames.has(name.toUpperCase());
+      card.className='op-team-pick'+(mine?' you':'')+(threat?' threat':'');
+      const asset=championAssetKey(name);
+      if(asset&&name!=='PENDING'){
+        const img=document.createElement('img');
+        img.alt='';
+        img.src='https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/'+encodeURIComponent(asset)+'_0.jpg';
+        card.appendChild(img);
+      }
+      const copy=document.createElement('div');
+      const roleNode=document.createElement('span');roleNode.textContent=(threat?'THREAT · ':'')+(role||'ROLE');
+      const nameNode=document.createElement('b');nameNode.textContent=name||'PENDING';
+      copy.append(roleNode,nameNode);card.appendChild(copy);root.appendChild(card);
+    });
+  };
+  const ours=Array.isArray(team?.ourTeam)?team.ourTeam:team?.rememberPlan?.draftTeams?.ours||[];
+  const theirs=Array.isArray(team?.theirTeam)?team.theirTeam:team?.rememberPlan?.draftTeams?.theirs||[];
+  renderSide('opOurTeamPicks',ours,true);
+  renderSide('opTheirTeamPicks',theirs,false);
+  const ourState=document.getElementById('opOurTeamState');
+  const theirState=document.getElementById('opTheirTeamState');
+  if(ourState)ourState.textContent=ours.length>=5?'5/5 LOCKED':String(ours.length)+'/5 KNOWN';
+  if(theirState)theirState.textContent=theirs.length>=5?'5/5 LOCKED':String(theirs.length)+'/5 KNOWN';
+}
+
+function renderAdaptiveBuild(team){
+  const root=document.getElementById('opAdaptiveBuild');
+  const grid=document.getElementById('opAdaptiveBuildGrid');
+  const read=document.getElementById('opAdaptiveBuildRead');
+  const build=team?.adaptiveBuild||team?.rememberPlan?.adaptiveBuild||null;
+  if(!root||!grid)return false;
+
+  const unique=[];
+  const seen=new Set();
+  const add=item=>{if(!item||seen.has(item.id))return;seen.add(item.id);unique.push(item)};
+  (Array.isArray(build?.core)?build.core.slice(0,2):[]).forEach(add);
+  add(build?.draftItem||null);
+  add(build?.finish||null);
+  add(build?.boots||null);
+
+  root.classList.toggle('hidden',unique.length<2);
+  if(unique.length<2)return false;
+
+  grid.replaceChildren();
+  let coreIndex=0;
+  unique.slice(0,5).forEach(item=>{
+    const card=document.createElement('article');
+    card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'');
+    card.title=String(item?.why||'').trim();
+
+    const img=document.createElement('img');
+    img.alt='';
+    img.src='https://ddragon.leagueoflegends.com/cdn/'+encodeURIComponent(String(build?.patch||''))+'/img/item/'+String(item?.id)+'.png';
+
+    const copy=document.createElement('div');
+    const label=document.createElement('span');
+    if(item?.slot==='CORE'){coreIndex+=1;label.textContent='CORE '+String(coreIndex)}
+    else if(item?.slot==='DRAFT')label.textContent='DRAFT ANSWER';
+    else if(item?.slot==='FINISH')label.textContent='NEXT DAMAGE';
+    else if(item?.slot==='BOOTS')label.textContent='BOOTS';
+    else label.textContent=String(item?.slot||'ITEM');
+
+    const name=document.createElement('strong');
+    name.textContent=String(item?.name||'ITEM').toUpperCase();
+
+    const why=document.createElement('small');
+    why.textContent=oneLine(item?.why,82)||'Fits this champion and enemy draft.';
+
+    copy.append(label,name,why);card.append(img,copy);grid.appendChild(card);
+  });
+
+  if(read){
+    const draft=build?.draftItem
+      ?'DRAFT ANSWER · '+String(build.draftItem.name||'TECH')+' — '+String(build.draftItem.why||'')
+      :'NO FORCED TECH ITEM · KEEP THE CORE DAMAGE PATH';
+    read.textContent=[String(build?.read||'').toUpperCase(),draft.toUpperCase()].filter(Boolean).join('  //  ');
+  }
+  return true;
+}
+
+function renderMissionReminders(state){
+  installStrategyView();
+  const section=document.getElementById('opMissionReminders');
+  if(!section)return;
+  const phase=String(state?.phase||'');
+  const team=state?.teamPlan||null;
+  const matchup=state?.matchup?.plan||null;
+  const baseline=team?.dnaBaseline||null;
+  const baselineReady=baseline?.ready!==false;
+  const mission=baselineReady&&Array.isArray(team?.missionTips)?team.missionTips[0]||null:null;
+  const visible=['CHAMP_SELECT','RECORDING'].includes(phase)&&Boolean(team||matchup||mission);
+  section.classList.toggle('hidden',!visible);
+  section.classList.toggle('op-phase-live',phase==='RECORDING');
+  if(!visible)return;
+
+  const statusCopy=document.getElementById('statusCopy');
+  if(statusCopy&&phase==='RECORDING')statusCopy.textContent='Locked plan from champ select · recording your game · no reactive changes.';
+  const set=(id,value)=>{const node=document.getElementById(id);if(node)node.textContent=value};
+  const toggle=(id,hidden)=>document.getElementById(id)?.classList.toggle('hidden',hidden);
+  const role=roleFor(state,matchup);
+  const champion=String(state?.matchup?.champion||matchup?.you?.name||'YOU').trim().toUpperCase();
+  const access=team?.strategyAccess||{};
+  const paid=Boolean(access?.paidStrategy);
+  const labels=phaseLabels(role);
+  const hasRoleWin=paid&&renderRoleWin(team,set);
+  const hasDeep=Boolean(access?.deepStrategy)&&renderDeepRead(team,set);
+  const tier=String(access?.tier||team?.coachLevel?.tier||'FREE').toUpperCase();
+
+  if(!hasRoleWin)set('opStrategyHeading',paid?'HOW WE WIN THIS GAME':'YOUR SIMPLE GAME PLAN');
+  set('opMissionRank',access?.trialing?`${tier} TRIAL`:`${tier} COACH`);
+  set('opRole',role?`${champion} · ${role}`:`${champion} · ROLE NOT CONFIRMED`);
+  set('opOurIdentity',oneLine(team?.ourIdentity,40)||'FORMING');
+  set('opTheirIdentity',oneLine(team?.theirIdentity,40)||'FORMING');
+  renderTeamBoard(team,champion);
+  const threatNames=Array.isArray(team?.compositionRead?.enemyThreats)?team.compositionRead.enemyThreats:[];
+  set('opThreatNames',threatNames.length?'WATCH: '+threatNames.slice(0,3).join(' / ').toUpperCase():'');
+  set('opStep1Label',labels[0]);set('opStep2Label',labels[1]);set('opStep3Label',labels[2]);set('opStep4Label',labels[3]);
+  set('opYourJob',oneLine(team?.yourJob,125)||'PLAY YOUR ROLE INSIDE THE TEAM PLAN');
+  set('opEarly',openingCommand(team,matchup,role));
+  set('opMid',midCommand(team,role));
+  set('opObjective',objectiveCommand(team,role));
+  set('opFight',fightCommand(team));
+  const missionCard=document.querySelector('.op-mission');
+  const missionLabel=missionCard?.querySelector('span');
+  if(!baselineReady){
+    if(missionLabel)missionLabel.textContent='DNA BASELINE';
+    set('opMissionCue',`GAME ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))}/${Number(baseline?.required||3)} · PLAY NORMALLY. OP CLIMB IS LEARNING YOUR STARTING POINT.`);
+  }else{
+    if(missionLabel)missionLabel.textContent='YOUR CLIMB MISSION';
+    set('opMissionCue',oneLine(mission?.cue,100)||'STAY WITH YOUR CURRENT DEVELOPMENT FOCUS');
+  }
+  renderAdaptiveBuild(team);
+
+  toggle('opStrategyLock',paid);
+  toggle('opRoleWin',!hasRoleWin);
+  toggle('opCompPlanChip',!hasRoleWin);
+  toggle('opJob',false);
+  toggle('opSimpleFlow',hasRoleWin);
+  toggle('opPaidWin',!paid);
+  toggle('opPaidLoss',!paid);
+  toggle('opDeepRead',!hasDeep);
+  if(paid){
+    set('opYourWin',ourWinCommand(team,matchup));
+    set('opVsTeam',theirWinCommand(team));
+  }
+}
+
+function renderLevelUp(state){
+  installStrategyView();
+  const section=document.getElementById('opLevelUp');
+  const change=state?.postGameReview?.rankChange;
+  window.__opLastRankChange=change||null;
+  if(!section||String(state?.phase||'')!=='REVIEW'||!change?.movedUp){section?.classList.add('hidden');return}
+  const key=`${change.previous}|${change.current}`;
+  if(key===dismissedRankKey){section.classList.add('hidden');return}
+  const title=document.getElementById('opLevelTitle'),copy=document.getElementById('opLevelCopy'),route=document.getElementById('opLevelRoute'),tier=String(change.currentTier||'').toUpperCase();
+  if(title)title.textContent=change.coachingLayerChanged?`YOU'VE REACHED ${tier}`:`RANK UP · ${tier} ${String(change.currentDivision||'')}`.trim();
+  if(copy)copy.textContent=change.coachingLayerChanged?`Your Coach has levelled up with you. From your next game, OP CLIMB will use ${tier}-level detail automatically.`:`Nice step up. OP CLIMB recorded the division change automatically.`;
+  if(route)route.innerHTML=`<span>${escapeHtml(change.previous)}</span><span>→</span><b>${escapeHtml(change.current)}</b>`;
+  section.classList.remove('hidden');
+}
+function escapeHtml(value){return String(value||'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]))}
+function renderCompanionExtras(state){renderMissionReminders(state);renderLevelUp(state)}
+window.addEventListener('DOMContentLoaded',()=>{installStrategyView();ipcRenderer.invoke('companion:get-state').then(renderCompanionExtras).catch(()=>{});ipcRenderer.on('companion:state',(_event,state)=>renderCompanionExtras(state))});
