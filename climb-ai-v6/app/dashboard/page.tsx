@@ -12,6 +12,7 @@ import {FirstRun} from '@/components/FirstRun';
 import {LiveGameCard} from '@/components/LiveGameCard';
 import {ErrorBoundary} from '@/components/ErrorState';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
+import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {getMainChampion,setMainChampion} from '@/lib/mainChampion';
 import type {Match,Role} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
@@ -20,6 +21,7 @@ import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {DNA_DOMAINS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
+import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -127,9 +129,12 @@ export default function Home(){
   const matches=filterHistoryForTier(allTrackedMatches,tier);
   const baselineGames=useMemo(()=>dnaBaselineGameCount(allTrackedMatches,active.role),[allTrackedMatches,active.role]);
   const baselineReady=dnaBaselineReady(baselineGames);
-  const {tasks}=useLearningPlan();
+  const {tasks,allTasks}=useLearningPlan();
   const leadTask=baselineReady?tasks.find(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'):undefined;
   const [mainChampion,setMainChampionState]=useState<string>('');
+  const [dnaRole,setDnaRole]=useState<Role>(active.role);
+
+  useEffect(()=>{setDnaRole(active.role)},[active.id,active.role]);
 
   useEffect(()=>{
     const picked=getMainChampion()||active.champions?.[0]||'';
@@ -166,9 +171,15 @@ export default function Home(){
   const missionPlain=activeMission?plainLanguageFocus(activeMission):null;
   const missionProof=activeMission?missionSummary(activeMission):null;
   const currentWinRate=matches.length?Math.round(matches.filter(match=>match.result==='WIN').length/matches.length*100):0;
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(tasks,active.role),[tasks,active.role]);
+  const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(allTrackedMatches,role)])) as Record<Role,number>;
+  const dnaBaselineGames=roleGameCounts[dnaRole]??0;
+  const accountTasks=allTasks[active.id]??tasks;
+  const dnaRoleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,dnaRole)),[accountTasks,dnaRole]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(dnaRoleTasks,dnaRole),[dnaRoleTasks,dnaRole]);
   const masteredMemories=tasks.filter(task=>task.status==='MASTERED').length;
   const learningMemories=tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
+  const dnaMasteredMemories=dnaRoleTasks.filter(task=>task.status==='MASTERED').length;
+  const dnaLearningMemories=dnaRoleTasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED').length;
 
   return <AppShell>
     <TrackView event="dashboard_view" props={{state:isEmpty?'empty':'ready'}}/>
@@ -252,12 +263,13 @@ export default function Home(){
       </section>
 
       {tier==='PRO'?<section className="panel panel-padding memory-card" id="coach-memory">
-        <div className="eyebrow" style={{color:'var(--gold)'}}>{active.role} GAME DNA · PRO</div>
-        <h2>Your {active.role} development profile.</h2>
-        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} role={active.role} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
-        <div className="memory-mini"><span>Memories banked<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
-        <p>Only {active.role} games progress this DNA. Other roles keep separate strands, levels, missions and history.</p>
-        <Link className="btn gold" href="/coach">Open Coach →</Link>
+        <div className="eyebrow" style={{color:'var(--gold)'}}>{dnaRole} GAME DNA · PRO</div>
+        <h2>Flick between your role profiles.</h2>
+        <DnaRoleSwitcher compact role={dnaRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={setDnaRole}/>
+        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
+        <div className="memory-mini"><span>{dnaRole} memories banked<br/>Learning now</span><strong>{dnaMasteredMemories} <small>/ {dnaLearningMemories}</small></strong></div>
+        <p>Viewing {dnaRole} only. Changing this tab never changes your main role or merges progress from another role.</p>
+        <Link className="btn gold" href={`/coach?role=${dnaRole}`}>Open {dnaRole} Coach DNA →</Link>
       </section>:<section className="panel panel-padding memory-card memory-locked">
         <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY · PRO</div>
         <h2>A coach that remembers you.</h2>
