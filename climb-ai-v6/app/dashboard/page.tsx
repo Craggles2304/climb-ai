@@ -252,11 +252,11 @@ export default function Home(){
       </section>
 
       {tier==='PRO'?<section className="panel panel-padding memory-card" id="coach-memory">
-        <div className="eyebrow" style={{color:'var(--gold)'}}>YOUR GAME DNA · PRO</div>
-        <h2>Your coach shouldn’t start from zero.</h2>
-        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
+        <div className="eyebrow" style={{color:'var(--gold)'}}>{active.role} GAME DNA · PRO</div>
+        <h2>Your {active.role} development profile.</h2>
+        <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} role={active.role} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
         <div className="memory-mini"><span>Memories banked<br/>Learning now</span><strong>{masteredMemories} <small>/ {learningMemories}</small></strong></div>
-        <p>See the patterns your coach is carrying forward, what has stuck and what gets tested next.</p>
+        <p>Only {active.role} games progress this DNA. Other roles keep separate strands, levels, missions and history.</p>
         <Link className="btn gold" href="/coach">Open Coach →</Link>
       </section>:<section className="panel panel-padding memory-card memory-locked">
         <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY · PRO</div>

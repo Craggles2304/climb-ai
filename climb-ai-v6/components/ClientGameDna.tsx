@@ -16,6 +16,7 @@ export type ClientDnaMission={
 
 type Props={
   player:string;
+  role:string;
   missions:ClientDnaMission[];
   compact?:boolean;
   preview?:boolean;
@@ -27,14 +28,14 @@ type Props={
 declare global{
   interface Window{
     opDna?:{
-      panel:(input?:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>string;
+      panel:(input?:{player?:string;role?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>string;
       mount?:(root:HTMLElement)=>void;
-      configure?:(input:{player?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>void;
+      configure?:(input:{player?:string;role?:string;missions?:ClientDnaMission[];real?:boolean;preview?:boolean;tier?:string;baselineGames?:number;baselineRequired?:number})=>void;
     };
   }
 }
 
-export function ClientGameDna({player,missions,compact=false,preview=false,tier='PRO',baselineGames=3,baselineRequired=3}:Props){
+export function ClientGameDna({player,role,missions,compact=false,preview=false,tier='PRO',baselineGames=3,baselineRequired=3}:Props){
   const host=useRef<HTMLDivElement>(null);
   const [scriptReady,setScriptReady]=useState(false);
 
@@ -42,10 +43,10 @@ export function ClientGameDna({player,missions,compact=false,preview=false,tier=
     const api=window.opDna;
     const el=host.current;
     if(!api?.panel||!api.mount||!el)return;
-    el.innerHTML=api.panel({player,missions,real:true,preview,tier,baselineGames,baselineRequired});
+    el.innerHTML=api.panel({player,role,missions,real:true,preview,tier,baselineGames,baselineRequired});
     const root=el.querySelector<HTMLElement>('[data-dna]');
     if(root)api.mount(root);
-  },[player,missions,preview,tier,baselineGames,baselineRequired]);
+  },[player,role,missions,preview,tier,baselineGames,baselineRequired]);
 
   useEffect(()=>{
     if(window.opDna?.panel&&window.opDna?.mount){

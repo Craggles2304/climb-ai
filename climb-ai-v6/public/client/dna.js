@@ -29,6 +29,7 @@
   let previewMode = false;
   let previewTier = 'FREE';
   let playerLabel = 'KAI#EUW';
+  let roleLabel = 'ADC';
   let baselineGames = 3;
   let baselineRequired = 3;
   let baselineMode = false;
@@ -64,6 +65,7 @@
     previewMode=Boolean(input.preview);
     previewTier=String(input.tier||previewTier).toUpperCase().slice(0,12);
     playerLabel=String(input.player||playerLabel).slice(0,48);
+    roleLabel=String(input.role||roleLabel).trim().toUpperCase().slice(0,16)||'ROLE';
     baselineRequired=Math.max(1,Math.round(Number(input.baselineRequired)||3));
     const incomingBaselineGames=Number(input.baselineGames);
     baselineGames=Number.isFinite(incomingBaselineGames)?Math.max(0,Math.round(incomingBaselineGames)):baselineRequired;
@@ -133,15 +135,15 @@
     return `<section class="panel dna-panel${previewMode?' dna-is-preview':''}${baselineMode?' dna-baseline':''}" data-dna aria-labelledby="dna-title">
       <div class="dna-visual">
         <canvas class="dna-canvas" role="img" aria-label="${baselineMode?'Game DNA baseline at zero while the first three tracked games are observed.':previewMode?'Game DNA preview showing current eligible signals and locked future strands.':'Game DNA helix: six development strands that grow from proven learning evidence.'}"></canvas>
-        <span class="dna-cap">${previewMode?'GAME DNA PREVIEW':'GAME DNA'} <em>//</em> ${playerLabel}</span>
+        <span class="dna-cap">${previewMode?roleLabel+' GAME DNA PREVIEW':roleLabel+' GAME DNA'} <em>//</em> ${playerLabel}</span>
         <span class="dna-seq"><i></i>${baselineMode?`BASELINE ${Math.min(baselineGames,baselineRequired)}/${baselineRequired}`:previewMode?`${count(1)+count(2)} LIVE · ${count(0)} LOCKED`:`${missions.length} CHALLENGES SEQUENCED`}</span>
         <div class="dna-legend" aria-hidden="true">${baselineMode?'<span><i class="s0"></i>Baseline building</span>':previewMode?'<span><i class="s0"></i>Locked</span><span><i class="s1"></i>Current focus</span><span><i class="s2"></i>Current evidence</span><span><i class="s3"></i>PRO memory</span>':'<span><i class="s0"></i>Not started</span><span><i class="s1"></i>Learning</span><span><i class="s2"></i>Learned</span><span><i class="s3"></i>Memory</span>'}</div>
         <div class="dna-tip" hidden></div>
       </div>
       <div class="dna-side">
-        <div class="section-head"><span class="eyebrow accent">${baselineMode?'YOUR GAME DNA · BUILDING':previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?`${Math.min(baselineGames,baselineRequired)} / ${baselineRequired}`:previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
+        <div class="section-head"><span class="eyebrow accent">${baselineMode?roleLabel+' GAME DNA · BUILDING':previewMode?roleLabel+' GAME DNA · PREVIEW':roleLabel+' GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?`${Math.min(baselineGames,baselineRequired)} / ${baselineRequired}`:previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
         <h2 id="dna-title">${baselineMode?'Three games before your DNA begins.':previewMode?'See what your DNA could become.':'Your DNA levels never stop.'}</h2>
-        <p class="dna-intro">${baselineMode?'Games 1–3 are observation. OP CLIMB uses them to learn your starting habits and choose challenges from your actual play. Nothing is coloured in before there is enough evidence.':previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a permanent, uncapped development strand. Complete tracked games to master missions, earn DNA XP and keep leveling that strand without a ceiling.'}</p>
+        <p class="dna-intro">${baselineMode?`This is your ${roleLabel} DNA only. Games 1–3 in this role are observation. Other roles build separate DNA profiles.`:previewMode?`This preview is for ${roleLabel}. Each role has its own separate DNA, levels, missions and history.`:`This is your ${roleLabel} DNA only. Each role has separate strands, levels, missions and history; only games played in ${roleLabel} progress this profile.`}</p>
         <div data-dna-side>${sideHTML()}</div>
         ${previewMode?'<p class="footnote">Preview only: no persistent memories are being created on this plan.</p>':realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
       </div>

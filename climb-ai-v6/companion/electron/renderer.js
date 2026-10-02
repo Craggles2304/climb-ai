@@ -123,6 +123,7 @@ function renderPlayerHome(home,visible){
   const tier=String(home.tier||'FREE').toUpperCase();
   const baseline=home.baseline||{games:0,required:3,ready:false};
   const baselineReady=Boolean(baseline.ready);
+  const roleLabel=String(player.role||baseline.role||'ROLE').trim().toUpperCase()||'ROLE';
   const games=Math.max(0,Number(baseline.games||0));
   const required=Math.max(1,Number(baseline.required||3));
 
@@ -131,8 +132,12 @@ function renderPlayerHome(home,visible){
   $('playerHomeTier').textContent=tier;
   $('playerHomeView').textContent=String(home.tierView?.label||'PLAYER OVERVIEW');
   $('playerHomeViewCopy').textContent=baselineReady
-    ?String(home.tierView?.detail||'Your current development view.')
-    :`DNA baseline ${Math.min(games,required)}/${required} · your strands stay at 0% until game ${required}.`;
+    ?`${roleLabel} DNA only · only ${roleLabel} games progress these six strands. Other roles keep separate DNA profiles.`
+    :`${roleLabel} DNA baseline ${Math.min(games,required)}/${required} · only games played in ${roleLabel} count toward this role profile.`;
+  if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=`${roleLabel} GAME DNA`;
+  if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=`Your ${roleLabel} player shape.`;
+  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=`${roleLabel} DNA MISSIONS`;
+  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=`Only ${roleLabel} games progress these six strands.`;
 
   const dnaRoot=$('playerHomeDna');
   dnaRoot.replaceChildren();
@@ -173,7 +178,7 @@ function renderPlayerHome(home,visible){
       const card=document.createElement('article');card.className='player-mission-card';
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=(String(dna?.label||mission.domain||'DNA')+' · LV '+Math.max(1,Number(dna?.level)||1)+' MISSION').toUpperCase();
+      const label=document.createElement('span');label.textContent=(roleLabel+' · '+String(dna?.label||mission.domain||'DNA')+' · LV '+Math.max(1,Number(dna?.level)||1)+' MISSION').toUpperCase();
       const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} GAMES`;
       top.append(label,reps);
       const title=document.createElement('h3');title.textContent=String(mission.title||'Current DNA mission');
@@ -231,11 +236,11 @@ function ensurePlayerHome(){
     </header>
     <div class="player-home-grid">
       <section class="player-dna-panel">
-        <div class="player-panel-head"><div><span>YOUR GAME DNA</span><h3>Your player shape.</h3></div><button id="playerHomeOpenClimb" type="button">OPEN MY CLIMB ↗</button></div>
+        <div class="player-panel-head"><div><span id="playerDnaRoleTitle">ROLE GAME DNA</span><h3 id="playerDnaRoleSubtitle">Your role-specific player shape.</h3></div><button id="playerHomeOpenClimb" type="button">OPEN MY CLIMB ↗</button></div>
         <div id="playerHomeDna" class="player-dna-tree"></div>
       </section>
       <section class="player-missions-panel">
-        <div class="player-panel-head"><div><span>DNA MISSIONS</span><h3>One mission for every strand.</h3></div></div>
+        <div class="player-panel-head"><div><span id="playerMissionRoleTitle">ROLE DNA MISSIONS</span><h3 id="playerMissionRoleSubtitle">Only this role progresses these strands.</h3></div></div>
         <div id="playerHomeMissions" class="player-mission-list"></div>
       </section>
     </div>
