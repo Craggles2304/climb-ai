@@ -59,16 +59,16 @@ export async function GET(req:NextRequest){
     },
     tier,
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'1 active mission · 7-day progress view',missionLimit:1,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:'1 core mission · 7-day progress view',missionLimit:1,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'Up to 3 active missions · 90-day progress view',missionLimit:3,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'Up to 3 active missions · long-term learning memory',missionLimit:3,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:'1 core mission · up to 2 watch focuses · 90-day progress view',missionLimit:3,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:'1 core mission · up to 2 watch focuses · long-term learning memory',missionLimit:3,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     dna,
     missions,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
-      ?{tier:'PLUS',copy:'Unlock up to 3 active missions and a 90-day development view.'}
+      ?{tier:'PLUS',copy:'Unlock two background watch focuses and a 90-day development view.'}
       :tier==='PLUS'
         ?{tier:'PRO',copy:'Unlock long-term player memory, mastered habits and deeper learning history.'}
         :null,
