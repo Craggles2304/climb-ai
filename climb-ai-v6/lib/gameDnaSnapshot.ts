@@ -3,6 +3,7 @@ import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS,ensureDn
 import {missionSummary} from './missionLoop';
 import {taskFreshness} from './ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from './roleAwareLearning';
+import {dnaStrandLevel} from './dnaLevel';
 
 type DnaTask=ILPTask&{updatedAt?:string|null};
 
@@ -11,6 +12,10 @@ export type GameDnaClientMission={
   n:string;
   s:0|1|2|3;
   p:number;
+  level:number;
+  levelProgress:number;
+  xpIntoLevel:number;
+  xpForNextLevel:number;
 };
 
 export type GameDnaStrand={
@@ -20,6 +25,11 @@ export type GameDnaStrand={
   progress:number;
   activeCount:number;
   mastered:number;
+  level:number;
+  levelProgress:number;
+  totalXp:number;
+  xpIntoLevel:number;
+  xpForNextLevel:number;
 };
 
 function live(task:ILPTask){
@@ -84,14 +94,20 @@ export function currentGameDnaMissions(input:DnaTask[],role:Role|null|undefined)
 }
 
 export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):GameDnaClientMission[]{
-  const rows=currentGameDnaMissions(input,role);
+  const tasks=canonicalGameDnaTasks(input,role);
+  const rows=DNA_DOMAINS.map(domain=>({domain,task:currentForDomain(tasks,domain)}));
   return rows.map(({domain,task})=>{
     const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
+    const level=dnaStrandLevel(tasks,domain,role);
     return{
       c:DNA_DOMAIN_GENE[domain],
       n:task?.title??`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,
       s:task?(task.status==='MASTERED'?3:reps.confirmed>=reps.required?2:1):0,
       p:reps.progress,
+      level:level.level,
+      levelProgress:level.levelProgress,
+      xpIntoLevel:level.xpIntoLevel,
+      xpForNextLevel:level.xpForNextLevel,
     };
   });
 }
@@ -102,6 +118,7 @@ export function gameDnaStrands(input:DnaTask[],role:Role|null|undefined,baseline
     const task=currentForDomain(tasks,domain);
     const reps=task?missionRepView(task):{confirmed:0,required:3,progress:0};
     const domainTasks=tasks.filter(row=>row.dnaDomain===domain);
+    const level=dnaStrandLevel(tasks,domain,role);
     return{
       domain,
       label:DNA_DOMAIN_LABELS[domain],
@@ -109,6 +126,11 @@ export function gameDnaStrands(input:DnaTask[],role:Role|null|undefined,baseline
       progress:baselineReady?reps.progress:0,
       activeCount:task?1:0,
       mastered:domainTasks.filter(row=>String(row.status).toUpperCase()==='MASTERED').length,
+      level:baselineReady?level.level:1,
+      levelProgress:baselineReady?level.levelProgress:0,
+      totalXp:baselineReady?level.totalXp:0,
+      xpIntoLevel:baselineReady?level.xpIntoLevel:0,
+      xpForNextLevel:level.xpForNextLevel,
     };
   });
 }

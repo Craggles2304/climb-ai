@@ -8,6 +8,10 @@ export type ClientDnaMission={
   n:string;
   s:0|1|2|3;
   p?:number;
+  level?:number;
+  levelProgress?:number;
+  xpIntoLevel?:number;
+  xpForNextLevel?:number;
 };
 
 type Props={

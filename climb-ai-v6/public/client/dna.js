@@ -38,7 +38,7 @@
   const FLASH_MS = 1600;
   const reduce = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  const fresh = () => START.map(([c,n,s,p],i) => ({c, n, s, p: Number.isFinite(Number(p)) ? Math.max(0,Math.min(100,Number(p))) : Math.round((Number(s)||0)/3*100), t: s >= 2 ? i : -1}));
+  const fresh = () => START.map(([c,n,s,p,l,lp,xpi,xpn],i) => ({c, n, s, p: Number.isFinite(Number(p)) ? Math.max(0,Math.min(100,Number(p))) : Math.round((Number(s)||0)/3*100), l:Math.max(1,Math.round(Number(l)||1)), lp:Math.max(0,Math.min(100,Math.round(Number(lp)||0))), xpi:Math.max(0,Math.round(Number(xpi)||0)), xpn:Math.max(1,Math.round(Number(xpn)||100)), t: s >= 2 ? i : -1}));
   function load(){
     try{
       const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
@@ -58,7 +58,7 @@
     if(!input||!Array.isArray(input.missions))return;
     const rows=input.missions
       .filter(m=>m&&CATS.some(cat=>cat.id===m.c)&&typeof m.n==='string'&&[0,1,2,3].includes(Number(m.s)))
-      .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s),Number.isFinite(Number(m.p))?Math.max(0,Math.min(100,Number(m.p))):Math.round(Number(m.s)/3*100)]);
+      .map(m=>[m.c,String(m.n).slice(0,120),Number(m.s),Number.isFinite(Number(m.p))?Math.max(0,Math.min(100,Number(m.p))):Math.round(Number(m.s)/3*100),Math.max(1,Math.round(Number(m.level)||1)),Math.max(0,Math.min(100,Math.round(Number(m.levelProgress)||0))),Math.max(0,Math.round(Number(m.xpIntoLevel)||0)),Math.max(1,Math.round(Number(m.xpForNextLevel)||100))]);
     if(!rows.length)return;
     realMode=Boolean(input.real);
     previewMode=Boolean(input.preview);
@@ -79,14 +79,15 @@
   }
 
   const catOf = id => CATS.find(c => c.id === id);
+  const geneLevel = id => missions.find(m=>m.c===id) || {l:1,lp:0,xpi:0,xpn:100};
   const geneStrength = id => {
     if(baselineMode)return 0;
-    const ms = missions.filter(m => m.c === id);
-    return ms.length ? ms.reduce((a,m) => a + (Number.isFinite(m.p)?m.p:Math.round(m.s/3*100)), 0) / (ms.length * 100) : 0;
+    const m=geneLevel(id);
+    const level=Math.max(1,Number(m.l)||1);
+    const step=Math.max(0,Math.min(1,(Number(m.lp)||0)/100));
+    return Math.min(.92,.18+Math.log2(level+1)*.12+step*.18);
   };
-  const totalStrength = () => baselineMode ? 0 : (missions.length ? missions.reduce((a,m) => a + (Number.isFinite(m.p)?m.p:Math.round(m.s/3*100)), 0) / (missions.length * 100) : 0);
   const count = s => missions.filter(m => m.s === s).length;
-  const pct = v => Math.round(v * 100) + '%';
   function rgba(hex, a){
     const n = parseInt(hex.slice(1), 16);
     return `rgba(${n >> 16},${(n >> 8) & 255},${n & 255},${Math.max(0, Math.min(1, a))})`;
@@ -109,21 +110,21 @@
   function sideHTML(){
     if(baselineMode){
       const completed=Math.min(baselineGames,baselineRequired);
-      return `<div class="dna-strength"><b>0%</b><div><span>DNA strength</span><div class="dna-bar"><i style="width:0%"></i></div></div><small>${completed}/${baselineRequired} baseline games complete</small></div>
-        <div class="dna-genes">${CATS.map(g => `<button class="dna-gene" type="button" disabled style="--c:#7e898d;--s:0"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true"><i class="s0"></i><i class="s0"></i><i class="s0"></i><i class="s0"></i></span><b>0%</b></button>`).join('')}</div>
+      return `<div class="dna-strength"><b>LV 1</b><div><span>DNA levels</span><div class="dna-bar"><i style="width:0%"></i></div></div><small>${completed}/${baselineRequired} baseline games complete · levels unlock after baseline</small></div>
+        <div class="dna-genes">${CATS.map(g => `<button class="dna-gene" type="button" disabled style="--c:#7e898d;--s:0"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true"><i class="s0"></i></span><b>LV 1</b></button>`).join('')}</div>
         <div class="dna-detail" style="--c:#7e898d"><div class="dna-detail-top"><span class="dna-chip">BASELINE</span><span class="dna-state s0">${completed}/${baselineRequired} GAMES</span></div><h3>${completed===0?'Start with three real games.':completed<baselineRequired?'Keep playing. OP CLIMB is still learning you.':'Baseline ready.'}</h3><p>The first three tracked games are observation only. Your DNA stays at zero while OP CLIMB learns what you already do well, what repeats, and which challenges should come first.</p></div>`;
     }
     const m = missions[selected] || missions[0];
     const c = catOf(m.c);
-    const total = totalStrength();
     const done = count(3) === missions.length;
     const liveSignals=count(1)+count(2);
-    return `<div class="dna-strength"><b>${previewMode?liveSignals:pct(total)}</b><div><span>${previewMode?'live signals':'DNA strength'}</span><div class="dna-bar"><i style="width:${previewMode?Math.max(4,Math.round(total*100))+'%':pct(total)}"></i></div></div><small>${previewMode?`${count(0)} locked until PRO · ${previewTier} preview only`:`${count(3)} memories · ${count(2)} learned · ${count(1)} learning · ${count(0)} to go`}</small></div>
+    const selectedLevel=geneLevel(m.c);
+    return `<div class="dna-strength"><b>UNCAPPED</b><div><span>DNA levels</span><div class="dna-bar"><i style="width:${Math.max(4,Number(selectedLevel.lp)||0)}%"></i></div></div><small>Every strand levels independently · mission progress never means the strand is finished</small></div>
       <div class="dna-genes">${CATS.map(g => {
-        const ms = missions.filter(x => x.c === g.id), s = geneStrength(g.id), active = ms.some(x=>x.s>0);
-        return `<button class="dna-gene" type="button" data-dna-gene="${g.id}" aria-pressed="${focusGene === g.id}" style="--c:${g.color};--s:${s.toFixed(2)}" aria-label="${g.label}: ${previewMode?(active?'current signal':'locked preview'):`${pct(s)} strength, ${ms.filter(x => x.s === 3).length} memories`}"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint}</small></span><span class="dna-pips" aria-hidden="true">${ms.map(x => `<i class="s${x.s}"></i>`).join('')}</span><b>${previewMode?(active?'LIVE':'LOCKED'):pct(s)}</b></button>`;
+        const ms = missions.filter(x => x.c === g.id), s = geneStrength(g.id), active = ms.some(x=>x.s>0), level=geneLevel(g.id);
+        return `<button class="dna-gene" type="button" data-dna-gene="${g.id}" aria-pressed="${focusGene === g.id}" style="--c:${g.color};--s:${s.toFixed(2)}" aria-label="${g.label}: level ${level.l}, ${level.xpi} of ${level.xpn} XP to next level"><i class="dna-dot"></i><span class="dna-gene-name">${g.label}<small>${g.hint} · ${level.xpi}/${level.xpn} XP</small></span><span class="dna-pips" aria-hidden="true">${ms.map(x => `<i class="s${x.s}"></i>`).join('')}</span><b>LV ${level.l}</b></button>`;
       }).join('')}</div>
-      <div class="dna-detail" style="--c:${c.color}" aria-live="polite"><div class="dna-detail-top"><span class="dna-chip">${c.label}</span><span class="dna-state s${m.s}">${stateLabel(m.s)}</span></div><h3>${m.n}</h3><p>${evidence(m, selected)}</p></div>
+      <div class="dna-detail" style="--c:${c.color}" aria-live="polite"><div class="dna-detail-top"><span class="dna-chip">${c.label} · LV ${selectedLevel.l}</span><span class="dna-state s${m.s}">${Math.round(Number(m.p)||0)}% MISSION</span></div><h3>${m.n}</h3><p>${selectedLevel.xpi}/${selectedLevel.xpn} DNA XP to Level ${Number(selectedLevel.l)+1}. ${evidence(m, selected)}</p></div>
       ${realMode?'':`<div class="dna-actions"><button class="btn primary" type="button" data-dna-act="complete"${done ? ' disabled' : ''}>${done ? 'DNA fully written' : 'Complete a mission <span class="dna-demo">demo</span>'}</button><button class="btn btn-small" type="button" data-dna-act="reset">Reset</button></div>`}`;
   }
 
@@ -139,8 +140,8 @@
       </div>
       <div class="dna-side">
         <div class="section-head"><span class="eyebrow accent">${baselineMode?'YOUR GAME DNA · BUILDING':previewMode?'YOUR GAME DNA · PREVIEW':'YOUR GAME DNA · MEMORY'}</span><span class="tag gold">${baselineMode?`${Math.min(baselineGames,baselineRequired)} / ${baselineRequired}`:previewMode?previewTier+' PREVIEW':'Pro'}</span></div>
-        <h2 id="dna-title">${baselineMode?'Three games before your DNA begins.':previewMode?'See what your DNA could become.':'Every proven rep grows your DNA.'}</h2>
-        <p class="dna-intro">${baselineMode?'Games 1–3 are observation. OP CLIMB uses them to learn your starting habits and choose challenges from your actual play. Nothing is coloured in before there is enough evidence.':previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a part of your game. Challenges come from your own matches, and every proven rep adds visible growth. Mastered behaviours stay written into the strand.'}</p>
+        <h2 id="dna-title">${baselineMode?'Three games before your DNA begins.':previewMode?'See what your DNA could become.':'Your DNA levels never stop.'}</h2>
+        <p class="dna-intro">${baselineMode?'Games 1–3 are observation. OP CLIMB uses them to learn your starting habits and choose challenges from your actual play. Nothing is coloured in before there is enough evidence.':previewMode?'The live rungs use only what your current plan can genuinely see. The dim strands show the development map PRO can remember, retest and strengthen across games.':'Each colour is a permanent, uncapped development strand. Complete tracked games to master missions, earn DNA XP and keep leveling that strand without a ceiling.'}</p>
         <div data-dna-side>${sideHTML()}</div>
         ${previewMode?'<p class="footnote">Preview only: no persistent memories are being created on this plan.</p>':realMode?'<p class="footnote">Your Game DNA is built from your authenticated coaching missions and their real evidence state.</p>':'<p class="footnote">Example missions for the demo player. In the full product, missions come from your own games.</p>'}
       </div>
