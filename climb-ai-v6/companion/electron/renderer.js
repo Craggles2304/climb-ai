@@ -139,6 +139,35 @@ function renderPlayerHome(home,visible){
   if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=`${roleLabel} DNA MISSIONS`;
   if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=`Only ${roleLabel} games progress these six strands.`;
 
+  const roleRoot=$('playerDnaRoleSwitcher');
+  if(roleRoot){
+    roleRoot.replaceChildren();
+    const selected=String(home.selectedRole||roleLabel).toUpperCase();
+    const primary=String(home.primaryRole||player.primaryRole||roleLabel).toUpperCase();
+    const profiles=safeArray(home.roleProfiles);
+    profiles.forEach(profile=>{
+      const role=String(profile.role||'').toUpperCase();
+      if(!role)return;
+      const button=document.createElement('button');
+      button.type='button';
+      button.className=(role===selected?'active ':'')+(role===primary?'primary-role':'');
+      button.setAttribute('aria-pressed',String(role===selected));
+      const title=document.createElement('strong');title.textContent=role;
+      const gamesSeen=Math.max(0,Number(profile.games)||0);
+      const requiredGames=Math.max(1,Number(profile.required)||3);
+      const meta=document.createElement('small');
+      meta.textContent=(profile.ready?`${gamesSeen} GAMES`:`${Math.min(gamesSeen,requiredGames)}/${requiredGames} BASELINE`)+(role===primary?' · MAIN':'');
+      button.append(title,meta);
+      button.addEventListener('click',async()=>{
+        if(role===selected)return;
+        button.disabled=true;
+        const result=await window.opCompanion.setDnaRole(role).catch(()=>({ok:false}));
+        if(!result?.ok)button.disabled=false;
+      });
+      roleRoot.appendChild(button);
+    });
+  }
+
   const dnaRoot=$('playerHomeDna');
   dnaRoot.replaceChildren();
   safeArray(home.dna).forEach(item=>{
@@ -234,6 +263,10 @@ function ensurePlayerHome(){
       </div>
       <div class="player-home-ready"><i></i><span>READY FOR LEAGUE</span><small>Match detection armed</small></div>
     </header>
+    <section class="player-role-switcher">
+      <div><span>DNA ROLE PROFILE</span><strong>FLICK BETWEEN ROLES</strong><small>Viewing only · switching here never changes your main role or merges progress.</small></div>
+      <div id="playerDnaRoleSwitcher" class="player-role-tabs" role="tablist" aria-label="Game DNA roles"></div>
+    </section>
     <div class="player-home-grid">
       <section class="player-dna-panel">
         <div class="player-panel-head"><div><span id="playerDnaRoleTitle">ROLE GAME DNA</span><h3 id="playerDnaRoleSubtitle">Your role-specific player shape.</h3></div><button id="playerHomeOpenClimb" type="button">OPEN MY CLIMB ↗</button></div>
@@ -249,7 +282,7 @@ function ensurePlayerHome(){
       <article id="playerHomeUpgrade" class="player-upgrade hidden"><div><b>UNLOCK NEXT</b><span></span></div><button id="playerHomePlans" type="button">SEE PLANS ↗</button></article>
     </div>`;
   $('status').after(section);
-  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/ilp'));
+  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>{const role=String(current?.playerHome?.selectedRole||current?.playerHome?.player?.role||'').toUpperCase();window.opCompanion.openClimbPath(role?`/ilp?role=${encodeURIComponent(role)}`:'/ilp')});
   section.querySelector('#playerHomePlans')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/progress'));
   return section;
 }
