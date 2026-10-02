@@ -10,6 +10,7 @@ import {getBrowserClient} from '@/lib/supabase/client';
 import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaDomainForTask,ensureDnaDomain} from '@/lib/dnaDomain';
+import {ensureOneMissionPerDnaStrand,isDnaStrandMission} from '@/lib/dnaStrandMissions';
 
 type CoachTaskInput={title:string;category:ILPTask['category'];why:string;gameRule:string;metric:string;target:string;source?:'COACH';priority?:number};
 type Ctx={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Record<string,ILPTask[]>;planReady:boolean;planError:string|null;addTask:(task:CoachTaskInput)=>void;replaceTask:(oldId:string,task:CoachTaskInput)=>void;pauseTask:(id:string)=>void;completeTask:(id:string)=>void;recordMissionResult:(taskId:string,attempt:ILPMissionAttempt)=>void;refreshFromMatches:()=>string[]};
@@ -23,17 +24,11 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
   const relevant=stamped.filter(task=>taskAppliesToRole(task,role));
   const foreign=stamped.filter(task=>!taskAppliesToRole(task,role));
   const roleMatches=matchesForRole(matches,role);
-  let next=[...relevant].map(task=>isLive(task)&&!isGameMeasurableTask(task,roleMatches)
-    ?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically because this mission cannot be proved from tracked match data.',history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:'Removed from the active plan because OP CLIMB cannot measure it reliably from game data.'}].slice(-12)}
+  const measurable=[...relevant].map(task=>isLive(task)&&!isDnaStrandMission(task)&&!isGameMeasurableTask(task,roleMatches)
+    ?{...task,status:'PAUSED' as const,lastUpdatedReason:'Paused automatically because this legacy mission cannot be proved from tracked match data.',history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:'Archived before the six-strand DNA mission plan was built.'}].slice(-12)}
     :task);
-  const live=next.filter(isLive);
-  if(live.length>ACTIVE_PLAN_SIZE){
-    const ordered=orderTasks(live,roleMatches,rank).map(item=>item.task);
-    const keep=new Set(ordered.slice(0,ACTIVE_PLAN_SIZE).map(task=>task.id));
-    next=next.map(task=>isLive(task)&&!keep.has(task.id)?{...task,status:'PAUSED' as const,lastUpdatedReason:`Paused automatically to keep the ${role} development plan capped at three active missions.`,history:[...(task.history??[]),{at:new Date().toISOString(),type:'PAUSED' as const,note:`Retired from the ${role} three-mission plan during cleanup.`}].slice(-12)}:task);
-  }
-  const filled=ensureFiveActive(next,roleMatches,accountId,role,rank).tasks.map(task=>stampRole(task,role));
-  return[...foreign,...filled];
+  const strandPlan=ensureOneMissionPerDnaStrand(measurable,accountId,role);
+  return[...foreign,...strandPlan.tasks.map(task=>stampRole(task,role))];
 }
 
 async function loadCloudRows(accountId:string):Promise<CloudIlpRow[]|null>{
