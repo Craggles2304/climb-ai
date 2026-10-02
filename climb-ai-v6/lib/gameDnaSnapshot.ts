@@ -1,6 +1,5 @@
 import type {DnaDomain,ILPTask,Role} from './types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS,ensureDnaDomain} from './dnaDomain';
-import {dnaTaskState} from './dnaGrowth';
 import {missionSummary} from './missionLoop';
 import {taskFreshness} from './ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from './roleAwareLearning';
@@ -91,7 +90,7 @@ export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):
     return{
       c:DNA_DOMAIN_GENE[domain],
       n:task?.title??`Awaiting next ${DNA_DOMAIN_LABELS[domain]} mission`,
-      s:task?dnaTaskState(task):0,
+      s:task?(task.status==='MASTERED'?3:reps.confirmed>=reps.required?2:1):0,
       p:reps.progress,
     };
   });
