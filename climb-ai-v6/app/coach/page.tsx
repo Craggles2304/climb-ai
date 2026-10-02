@@ -119,7 +119,7 @@ export default function Coach(){
 
     <nav className="coach-subtabs" aria-label="Coach sections">
       <button type="button" className={tab==='DNA'?'active':''} onClick={()=>setTab('DNA')}>
-        <span>01</span><div><b>GAME DNA</b><small>Your development map</small></div>
+        <span>01</span><div><b>{active.role} GAME DNA</b><small>Role-specific development</small></div>
       </button>
       <button type="button" className={tab==='ASK'?'active':''} onClick={()=>setTab('ASK')}>
         <span>02</span><div><b>ASK COACH</b><small>One real question</small></div>
@@ -133,9 +133,9 @@ export default function Coach(){
       {tier==='PRO'?<>
         <div className="coach-tab-intro">
           <div>
-            <div className="eyebrow">GAME DNA · PRO</div>
-            <h2>The shape of the player you are becoming.</h2>
-            <p>Every strand has its own uncapped level. Master missions and bank clean games to earn permanent DNA XP without ever reaching a final ceiling.</p>
+            <div className="eyebrow">{active.role} GAME DNA · PRO</div>
+            <h2>Your {active.role} development profile.</h2>
+            <p>Game DNA is role-specific. Only games played in {active.role} progress these six strands; every other role builds its own separate DNA, levels, missions and history.</p>
           </div>
           <div className="coach-dna-stats">
             <div><span>{baselineReady?'MASTERED':'BASELINE'}</span><b>{baselineReady?mastered.length:`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
@@ -156,8 +156,8 @@ export default function Coach(){
       </>:<>
         <div className="coach-tab-intro coach-dna-preview-intro">
           <div>
-            <div className="eyebrow">GAME DNA · {tier} PREVIEW</div>
-            <h2>See what your DNA could become.</h2>
+            <div className="eyebrow">{active.role} GAME DNA · {tier} PREVIEW</div>
+            <h2>Your {active.role} DNA is separate from every other role.</h2>
             <p>{tier==='PLUS'?'PLUS keeps the same six DNA missions with a deeper coaching window. PRO adds persistent memory across mastered missions.':'FREE still gives you one tracked mission on every DNA strand. PRO is what remembers mastered habits across time.'}</p>
           </div>
           <div className="coach-dna-stats">
@@ -168,7 +168,7 @@ export default function Coach(){
         </div>
 
         <div className="coach-dna-preview-shell">
-          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} missions={previewDnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={active.role} missions={previewDnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
           <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
         </div>
 
