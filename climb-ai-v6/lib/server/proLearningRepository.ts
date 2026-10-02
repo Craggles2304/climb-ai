@@ -2,7 +2,6 @@ import 'server-only';
 import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
-import {adaptActiveFiveFromPostGameEvidence} from '@/lib/adaptiveIlpEvidence';
 import {ensureOneMissionPerDnaStrand,gradeDnaStrandMissionsFromHistory} from '@/lib/dnaStrandMissions';
 import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
@@ -35,6 +34,8 @@ export interface PostGameIlpMission{
   title:string;
   status:string;
   progress:number;
+  completedGames:number;
+  requiredGames:number;
   dnaDomain:DnaDomain;
   category:string;
   gameRule:string;
@@ -245,7 +246,7 @@ export async function rebuildAllLearningProfiles(){
 export async function rebuildProLearningProfile(userId:string,riotAccountId:string|null):Promise<ProLearningProfile|null>{
   if(!riotAccountId)return null;
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
-  await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] repeated-evidence three-mission plan sync failed',err));
+  await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] six-strand DNA mission sync failed',err));
   return built.profile;
 }
 
@@ -381,7 +382,10 @@ function ilpSyncSnapshot(tasks:ILPTask[],profile:ProLearningProfile,changes:stri
 }
 function toPostGameMission(task:ILPTask):PostGameIlpMission{
   const adaptive=(task as ILPTask&{adaptive?:{lastAction?:string}}).adaptive;
-  const stamped=ensureDnaDomain(task as ILPTask&{dnaDomain?:DnaDomain});return{id:stamped.id,title:stamped.title,status:String(stamped.status||'ACTIVE'),progress:Number(stamped.progress||0),dnaDomain:stamped.dnaDomain,category:String(stamped.category||'CONSISTENCY'),gameRule:stamped.gameRule,priority:Number(stamped.priority??50),source:String(stamped.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null,roleScope:stamped.roleScope??null};
+  const stamped=ensureDnaDomain(task as ILPTask&{dnaDomain?:DnaDomain});
+  const requiredGames=Math.max(1,Number(stamped.masteryRequired)||3);
+  const completedGames=Math.min(requiredGames,(stamped.missionHistory??[]).filter(attempt=>attempt.banksPass).length);
+  return{id:stamped.id,title:stamped.title,status:String(stamped.status||'ACTIVE'),progress:Number(stamped.progress||0),completedGames,requiredGames,dnaDomain:stamped.dnaDomain,category:String(stamped.category||'CONSISTENCY'),gameRule:stamped.gameRule,priority:Number(stamped.priority??50),source:String(stamped.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null,roleScope:stamped.roleScope??null};
 }
 
 function extractLeakRate(value:unknown){const match=String(value||'').match(/([\d.]+)/);return match?Number(match[1]):0}
