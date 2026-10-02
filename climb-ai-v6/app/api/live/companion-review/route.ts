@@ -228,10 +228,10 @@ export async function GET(req:NextRequest){
 }
 
 function developmentPlanFromSync(sync:any,status:unknown){
-  const policy='ONE_MATCH_CAN_PROGRESS EVIDENCE, BUT REPEATED EVIDENCE IS REQUIRED TO REPLACE OR REOPEN A DEVELOPMENT MISSION.';
+  const policy='EVERY TRACKED MATCH CAN BANK A GAME ON ANY DNA MISSION THAT CLEARS ITS TARGET. THREE COMPLETED GAMES MASTER THAT STRAND MISSION.';
   if(String(status)==='ABORTED')return{synced:false,status:'SKIPPED_PARTIAL',changed:false,changes:[],activeFive:[],primary:null,activeCount:0,gamesAnalyzed:0,policy};
   if(sync?.status==='COMPLETE'){
-    const activeFive=Array.isArray(sync.activeFive)?sync.activeFive.slice(0,5):[];
+    const activeFive=Array.isArray(sync.activeFive)?sync.activeFive.slice(0,6):[];
     return{
       synced:true,
       status:'COMPLETE',
