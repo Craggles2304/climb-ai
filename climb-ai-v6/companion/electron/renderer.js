@@ -211,23 +211,26 @@ function renderPlayerHome(home,visible){
   missionRoot.replaceChildren();
   if(!baselineReady){
     const card=document.createElement('article');card.className='player-mission-card baseline';
-    card.innerHTML=`<span>DNA BASELINE</span><h3>${Math.min(games,required)}/${required} GAMES OBSERVED</h3><p>Play normally. OP CLIMB is learning your starting habits before it gives you a personalised mission.</p><div class="player-baseline-dots">${[0,1,2].map(i=>`<i class="${i<games?'done':i===games?'current':''}">${i<games?'✓':i+1}</i>`).join('')}</div>`;
+    card.innerHTML=`<span>PROVISIONAL COACHING · NOT A DNA MISSION</span><h3>BASELINE ${Math.min(games,required)}/${required}</h3><p>Play normally. OP CLIMB is learning what repeats before it reveals your permanent DNA missions after game ${required}.</p><div class="player-baseline-dots">${[0,1,2].map(i=>`<i class="${i<games?'done':i===games?'current':''}">${i<games?'✓':i+1}</i>`).join('')}</div>`;
     missionRoot.appendChild(card);
   }else{
     const missions=safeArray(home.missions);
-    missions.forEach(mission=>{
+    missions.forEach((mission,index)=>{
       const dna=safeArray(home.dna).find(item=>String(item.domain)===String(mission.domain));
-      const card=document.createElement('article');card.className='player-mission-card';
+      const priority=Boolean(mission.priority||index===0);
+      const card=document.createElement('article');card.className='player-mission-card '+(priority?'priority':'background');
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=(roleLabel+' · '+String(dna?.label||mission.domain||'DNA')+' · LV '+Math.max(1,Number(dna?.level)||1)+' MISSION').toUpperCase();
-      const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} GAMES`;
+      const label=document.createElement('span');label.textContent=((priority?'PRIORITY MISSION':'BACKGROUND · TRACKED AUTOMATICALLY')+' · '+String(dna?.label||mission.domain||'DNA')).toUpperCase();
+      const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} PROVEN`;
       top.append(label,reps);
       const title=document.createElement('h3');title.textContent=String(mission.title||'Current DNA mission');
-      const rule=document.createElement('p');rule.textContent=String(mission.gameRule||'Play a tracked game to build evidence for this strand.');
+      const rule=document.createElement('p');rule.textContent=String(mission.nextGame||mission.gameRule||'Play a tracked game to build evidence for this strand.');
       const progress=document.createElement('div');progress.className='player-mission-progress';
       const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
-      const note=document.createElement('small');note.textContent='Each tracked game that clears this mission banks one completion. 3/3 moves this strand to its next mission.';
+      const note=document.createElement('small');note.textContent=priority
+        ?'FOCUS THIS NEXT GAME · OP CLIMB tracks all five other strand missions in the background.'
+        :'BACKGROUND TRACKING · You do not need to actively focus on this while your priority mission is selected.';
       card.append(top,title,rule,progress,note);
       missionRoot.appendChild(card);
     });
@@ -241,7 +244,10 @@ function renderPlayerHome(home,visible){
   }
 
   const memory=$('playerHomeMemory');
-  if(tier==='PRO'){
+  if(!baselineReady){
+    memory.className='player-memory baseline';
+    memory.innerHTML=`<span>BASELINE ${Math.min(games,required)}/${required}</span><strong>PERMANENT MISSIONS LOCKED</strong><small>Single-game coaching is provisional. Finish the role baseline before OP CLIMB creates your persistent DNA mission loop.</small>`;
+  }else if(tier==='PRO'){
     memory.className='player-memory pro';
     memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Your six DNA levels are uncapped. Mastered missions and completed games keep adding permanent strand XP.</small>`;
   }else if(tier==='PLUS'){
@@ -276,6 +282,10 @@ function ensurePlayerHome(){
       </div>
       <div class="player-home-ready"><i></i><span>READY FOR LEAGUE</span><small>Match detection armed</small></div>
     </header>
+    <section id="playerJourney" class="player-journey">
+      <div class="player-journey-step"><span id="playerJourneyStatus">YOUR NEXT STEP</span><b id="playerJourneyProgress"></b></div>
+      <div class="player-journey-copy"><strong id="playerJourneyTitle">Loading your journey…</strong><small id="playerJourneyBody">OP CLIMB is checking what comes next.</small></div>
+    </section>
     <section class="player-role-switcher">
       <div><span>DNA ROLE PROFILE</span><strong>FLICK BETWEEN ROLES</strong><small>Viewing only · switching here never changes your main role or merges progress.</small></div>
       <div id="playerDnaRoleSwitcher" class="player-role-tabs" role="tablist" aria-label="Game DNA roles"></div>
@@ -324,7 +334,10 @@ function renderQuietMode(state,visible){
   const champion=String(matchup?.champion||matchup?.plan?.you?.name||'').trim();
   const identity=[champion,role].filter(Boolean).join(' · ');
   $('quietIdentity').textContent=identity||'MATCH IN PROGRESS';
-  $('quietFocus').textContent='No live instructions. OP CLIMB is recording the match so your missions can be scored after the game.';
+  const baselineReady=state?.playerHome?.baseline?.ready!==false;
+  $('quietFocus').textContent=baselineReady
+    ?'No live instructions. OP CLIMB is recording quietly so your priority and background missions can be measured after the game.'
+    :'No live instructions. OP CLIMB is recording quietly so this game can build your baseline and provisional post-game coaching.';
 }
 
 function ensureQuietMode(){
@@ -339,7 +352,7 @@ function ensureQuietMode(){
       <div><div class="eyebrow">TRACKING ONLY · RECORDING</div><h2>MATCH IN PROGRESS</h2><p id="quietIdentity"></p></div>
       <span class="quiet-live"><i></i> RECORDING</span>
     </div>
-    <div class="quiet-focus"><span>WHAT OP CLIMB IS DOING</span><strong id="quietFocus">No live instructions. OP CLIMB is recording the match so your missions can be scored after the game.</strong></div>
+    <div class="quiet-focus"><span>WHAT OP CLIMB IS DOING</span><strong id="quietFocus">No live instructions. OP CLIMB is recording quietly and will coach you after the game.</strong></div>
     <div class="quiet-mark"><button id="markMoment" class="primary">MARK THIS MOMENT</button><span>Or press Ctrl+Shift+M during a match.</span><small id="markMomentResult" role="status"></small></div>
     <p class="quiet-boundary">Tracking only. No reactive shotcalling, no live performance grading and no new tactical advice during the match. Coaching resumes after the game.</p>`;
   $('status').after(section);
