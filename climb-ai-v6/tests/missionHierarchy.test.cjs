@@ -13,7 +13,7 @@ const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8'
 const appShell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8');
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
-test('My Climb shows one tracked mission for each DNA strand',()=>{
+test('My DNA shows one tracked mission for each DNA strand',()=>{
   assert.ok(ilp.includes('Six {viewRole} strands. One mission on each.'));
   assert.ok(ilp.includes('currentGameDnaMissions'));
   assert.ok(ilp.includes('6 active'));
@@ -22,7 +22,7 @@ test('My Climb shows one tracked mission for each DNA strand',()=>{
   assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
 });
 
-test('legacy Mission Lab stays redirected into My Climb',()=>{
+test('legacy Mission Lab stays redirected into My DNA',()=>{
   assert.ok(legacyMissions.includes("redirect('/ilp')"));
   assert.ok(!legacyMissions.includes('Mission Lab'));
 });
@@ -36,7 +36,7 @@ test('Companion shows all six DNA missions with game trackers',()=>{
   assert.ok(api.includes('const missionLimit=6'));
 });
 
-test('Game DNA stays role-specific in My Climb and Companion',()=>{
+test('Game DNA stays role-specific in My DNA and Companion',()=>{
   assert.ok(ilp.includes('Game DNA is role-specific.'));
   assert.ok(ilp.includes('Only games played in ${viewRole}'));
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
