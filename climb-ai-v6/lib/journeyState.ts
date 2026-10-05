@@ -15,6 +15,7 @@ export function buildJourneyState(input:{
   linked:boolean;
   online:boolean;
   baselineGames:number;
+  dnaRevealed?:boolean;
   focusName?:string|null;
   focusJob?:string|null;
   focusConfirmed?:number|null;
@@ -57,7 +58,7 @@ export function buildJourneyState(input:{
       progress:`${games}/${DNA_BASELINE_GAMES}`,
     };
   }
-  if(!input.focusName)return{
+  if(!input.dnaRevealed||!input.focusName)return{
     phase:'DNA_REVEAL',
     status:'STEP 3 OF 4 · DNA READY',
     title:'Your Game DNA is ready to reveal.',
