@@ -102,7 +102,7 @@ export default function Analysis(){
   return <AppShell>
     <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''}`}/>
     {missionResults.length>0&&<section className="ar-mission-update">
-      <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY PROGRESS →</Link></div>
+      <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link></div>
       <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
         const plain=plainLanguageFocus(task);
         const latest=(task.missionHistory??[]).at(-1)?.matchId===id;
@@ -222,16 +222,16 @@ export default function Analysis(){
             <p>OP CLIMB tracks this across {report.mission.gamesRequired} relevant games. Technical pass bar: {report.mission.target} {report.mission.unit}.</p>
           </details>
         </div>
-        <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>SEE MY PROGRESS →</Link>
+        <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link>
       </section>
     </section>
     <section className="glass card ar-review-finish" style={{marginTop:18}}>
       <div>
         <div className="eyebrow">REVIEW COMPLETE</div>
-        <h2>Your next stop is My Climb.</h2>
-        <p className="muted">The detailed review explains the game. My Climb is where the result becomes learning: strengths, proven reps, DNA growth and your next challenge.</p>
+        <h2>Your next stop is My DNA.</h2>
+        <p className="muted">The detailed review explains the game. My DNA is where that result becomes development: strand growth, proven reps, persistent habits and your next challenge.</p>
       </div>
-      <Link href={"/ilp?game="+encodeURIComponent(id)} className="btn primary">SEE MY PROGRESS →</Link>
+      <Link href={"/ilp?game="+encodeURIComponent(id)} className="btn primary">SEE MY DNA →</Link>
     </section>
     {detail.depth>=7&&<div className="glass card data-note" style={{marginTop:18}}><div className="eyebrow">DATA RELIABILITY</div><p className="muted">Scoreboard-only matches create a foundation grade from KDA, CS and duration. Exact recall quality, spacing, target selection and fight timing require Riot timeline, live telemetry or reviewed video evidence.</p></div>}
   </AppShell>;
