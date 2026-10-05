@@ -16,9 +16,7 @@ import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/ac
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
-import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {MyClimbGameImpact} from '@/components/MyClimbGameImpact';
 import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
@@ -37,7 +35,6 @@ export default function PlayerDevelopmentCentre(){
   const [changes,setChanges]=useState<string[]>([]);
   const [checking,setChecking]=useState(false);
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
-  const [selectedGame,setSelectedGame]=useState<string>('');
   const [viewRole,setViewRole]=useState<Role>(active.role);
 
   useEffect(()=>{
@@ -45,7 +42,6 @@ export default function PlayerDevelopmentCentre(){
     const raw=params.get('dna');
     const role=params.get('role') as Role|null;
     setSelectedDomain(DNA_DOMAINS.includes(raw as DnaDomain)?raw as DnaDomain:null);
-    setSelectedGame(params.get('game')||'');
     setViewRole(role&&LEAGUE_ROLES.includes(role)?role:active.role);
   },[active.id,active.role]);
 
@@ -57,7 +53,6 @@ export default function PlayerDevelopmentCentre(){
   };
   const chooseRole=(role:Role)=>{
     setViewRole(role);
-    setSelectedGame('');
     const url=new URL(window.location.href);
     url.searchParams.set('role',role);
     url.searchParams.delete('game');
@@ -82,14 +77,6 @@ export default function PlayerDevelopmentCentre(){
   const mastered=useMemo(()=>selectedDomain?masteredAll.filter(task=>task.dnaDomain===selectedDomain):masteredAll,[masteredAll,selectedDomain]);
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
-  const selectedMatch=useMemo(()=>selectedGame?matches.find(match=>match.id===selectedGame):undefined,[matches,selectedGame]);
-  const impactMatch=selectedMatch??matches[0];
-  const impactMatchId=impactMatch?.id??'';
-  const gameLearning=useMemo(()=>impactMatchId?roleTasks.flatMap(task=>{
-    const attempt=(task.missionHistory??[]).find(item=>item.matchId===impactMatchId);
-    return attempt?[{task,attempt,summary:missionSummary(task)}]:[];
-  }):[],[roleTasks,impactMatchId]);
-  const gameStrengths=useMemo(()=>impactMatch?positiveEvidenceForMatch(impactMatch,active.rank):[],[impactMatch,active.rank]);
   const xp=accountProgress(allTasks[active.id]??tasks);
 
   const refresh=async()=>{
@@ -126,26 +113,26 @@ export default function PlayerDevelopmentCentre(){
       <h2>Your DNA is separate for every role.</h2>
       <p className="muted">Only games played in {viewRole} build this profile. TOP, JUNGLE, MID, ADC and SUPPORT each keep their own six strands, levels, missions and history.</p>
     </section>
-    <MyClimbGameImpact
-      match={impactMatch}
-      learning={[]}
-      strengths={gameStrengths}
-      activeTasks={[]}
-      baselineGames={baselineGames}
-      baselineRequired={DNA_BASELINE_GAMES}
-    />
+    <section className="panel panel-padding">
+      <div className="eyebrow">{viewRole} · LONG-TERM DEVELOPMENT</div>
+      <h2>{baselineGames}/{DNA_BASELINE_GAMES} role games observed.</h2>
+      <p className="muted">Match Room now owns the immediate review for every game. My Climb waits for three {viewRole} games before it turns repeated evidence into persistent missions and Game DNA growth.</p>
+      <div className="mission-actions" style={{marginTop:18}}>
+        <Link className="btn primary" href="/live">OPEN LAST GAME IN MATCH ROOM →</Link>
+      </div>
+    </section>
   </AppShell>;
 
   return <AppShell>
     <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
-    {impactMatch&&<MyClimbGameImpact
-      match={impactMatch}
-      learning={gameLearning}
-      strengths={gameStrengths}
-      activeTasks={activeTasks}
-      baselineGames={baselineGames}
-      baselineRequired={DNA_BASELINE_GAMES}
-    />}
+    <section className="coach-climb-handoff" style={{marginBottom:18}}>
+      <div>
+        <div className="eyebrow">{viewRole} · LONG-TERM DEVELOPMENT</div>
+        <h3>My Climb tracks what repeats across games.</h3>
+        <p>For the latest match story, evidence and next-game coaching, use Match Room. This page is your persistent missions, DNA progress and mastery.</p>
+      </div>
+      <Link className="btn secondary" href="/live">OPEN MATCH ROOM →</Link>
+    </section>
 
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
