@@ -302,6 +302,12 @@ function learningStageLabel(stage:string){
   return clean(stage);
 }
 
+function proofClock(seconds:number){
+  const safe=Math.max(0,Math.round(Number(seconds)||0));
+  const minutes=Math.floor(safe/60);
+  return minutes+':'+String(safe%60).padStart(2,'0');
+}
+
 function attemptMeaning(outcome:string,banksPass:boolean){
   if(banksPass)return'You performed the behaviour strongly enough for this game to count toward mastery.';
   if(outcome==='NO_REP')return'The relevant situation was not observed clearly enough, so the game does not count against you.';
@@ -338,12 +344,42 @@ function EvidenceCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStra
       <p>{task.lastUpdatedReason||'Evidence is still building.'}</p>
     </div>
     {recent.length>0?<div className="ip-rep-list">
-      {recent.map(rep=><div key={rep.matchId}>
-        <span className={rep.banksPass?'good':'watch'}>{rep.banksPass?'BANKED':'REVIEWED'}</span>
-        <b>{clean(rep.outcome)}</b>
-        <small>{clean(rep.adherence)} adherence</small>
-      </div>)}
-    </div>:<div className="ip-no-reps">No tracked games have counted for this strand mission yet.</div>}
+      {recent.map(rep=>{
+        const proof=rep.evidenceV2;
+        const state=proof?.state??(rep.banksPass?'BANKED':rep.outcome==='NO_REP'?'NOT_OBSERVED':'MISSED');
+        const stateClass=state==='BANKED'?'good':'watch';
+        return <div key={rep.matchId}>
+          <span className={stateClass}>{clean(state)}</span>
+          <b>{proof?.observedValueLabel||clean(rep.outcome)}</b>
+          <small>{proof?proof.measurementSource.replaceAll('_',' ')+' · '+proof.confidence+' confidence':clean(rep.adherence)+' adherence'}</small>
+          {proof&&<details className="ip-mission-details">
+            <summary>SHOW THE PROOF <span>{proof.opportunities} opportunity{proof.opportunities===1?'':'ies'} · {proof.successes} success · {proof.misses} miss</span></summary>
+            <div className="ip-mission-brief">
+              <section>
+                <span>RESULT</span>
+                <h3>{clean(proof.state)}</h3>
+                <p>{proof.observedValueLabel} against {proof.targetLabel}. {proof.reason}</p>
+              </section>
+              <section>
+                <span>EVIDENCE SOURCE</span>
+                <h3>{proof.measurementSource.replaceAll('_',' ')}</h3>
+                <p>{proof.confidence} confidence · reconstructed from {proof.reconstruction.fields.join(' + ')||'the recorded match evidence'}.</p>
+              </section>
+              <section>
+                <span>RECORDED MOMENTS</span>
+                <h3>{proof.events.length?proof.events.length+' proof point'+(proof.events.length===1?'':'s'):'No valid opportunity observed'}</h3>
+                {proof.events.length?proof.events.map((event,index)=><p key={index}><b>{typeof event.atSeconds==='number'?proofClock(event.atSeconds)+' · ':''}{event.label}</b> — {event.detail}</p>):<p>This game stays neutral. It does not add a pass or a failure to the mission.</p>}
+              </section>
+              <section>
+                <span>RECONSTRUCTION</span>
+                <h3>How OP CLIMB reached the result</h3>
+                <p>{proof.reconstruction.formula}</p>
+              </section>
+            </div>
+          </details>}
+        </div>;
+      })}
+    </div>:<div className="ip-no-reps">No tracked games have created proof for this strand mission yet.</div>}
   </article>;
 }
 
