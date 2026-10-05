@@ -32,7 +32,7 @@ export function MyClimbGameImpact({
   baselineRequired?:number;
 }){
   const baselineReady=baselineGames>=baselineRequired;
-  if(!baselineReady)return <BaselineImpact match={match} games={baselineGames} required={baselineRequired}/>;
+  if(!baselineReady)return <BaselineImpact match={match} games={baselineGames} required={baselineRequired} strengths={strengths}/>;
   if(!match)return <section className="mc-impact"><div className="panel panel-padding"><div className="eyebrow">MY CLIMB</div><h2>Waiting for your first tracked game.</h2><p className="muted">OP CLIMB needs a completed match before it can show last-game impact.</p></div></section>;
   const primaryLearning=learning.find(item=>item.attempt.banksPass)??learning[0]??null;
   const primaryTask=primaryLearning?.task??activeTasks[0]??null;
@@ -158,10 +158,12 @@ export function MyClimbGameImpact({
   </section>;
 }
 
-function BaselineImpact({match,games,required}:{match?:Match;games:number;required:number}){
+function BaselineImpact({match,games,required,strengths}:{match?:Match;games:number;required:number;strengths:StrengthEvidence[]}){
   const safeGames=Math.max(0,Math.min(required,games));
   const left=Math.max(0,required-safeGames);
   const moments=(match?.moments??[]).slice(0,3);
+  const issues=baselineIssues(match);
+  const topIssue=issues[0]??null;
 
   return <section className="mc-impact mc-impact-baseline">
     <header className="mc-impact-hero">
@@ -170,7 +172,10 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
         <h1>BUILDING YOUR STARTING POINT.</h1>
         <p>{match?match.champion+' · '+(match.result==='WIN'?'VICTORY':'DEFEAT')+' · '+match.kills+'/'+match.deaths+'/'+match.assists+' · ':''}Game {safeGames} of {required} observed. OP CLIMB is collecting evidence before it tells you what to change.</p>
       </div>
-      <Link className="btn primary" href="/live">TRACK GAME {Math.min(safeGames+1,required)} →</Link>
+      <div className="mission-actions">
+        {match&&<Link className="btn secondary" href={'/analyse/'+encodeURIComponent(match.id)}>DETAILED REVIEW</Link>}
+        <Link className="btn primary" href="/live">TRACK ROLE GAME {Math.min(safeGames+1,required)} →</Link>
+      </div>
     </header>
 
     <div className="mc-impact-strip">
@@ -194,23 +199,29 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
 
     <div className="mc-impact-grid">
       <article className="mc-change panel baseline-panel">
-        <div className="mc-card-head"><div><span>WHAT HAPPENED LAST GAME</span><h2>{match?'Game recorded. Not judged yet.':'Waiting for a tracked game.'}</h2></div><b>OBSERVATION</b></div>
+        <div className="mc-card-head"><div><span>WHAT WENT WRONG LAST GAME</span><h2>{topIssue?topIssue.title:match?'No verified leak cleared the evidence bar.':'Waiting for a tracked game.'}</h2></div><b>{topIssue?'MEASURED':'OBSERVATION'}</b></div>
         <div className="mc-baseline-message">
           <strong>{match?match.champion+' · '+match.kills+'/'+match.deaths+'/'+match.assists:'NO MATCH YET'}</strong>
-          <p>OP CLIMB is deliberately not turning one or two games into a coaching conclusion. It is watching for what repeats across the first three games.</p>
+          <p>{topIssue?'This is a real single-game read. Long-term DNA and persistent missions still wait for three games in this role so one unusual match cannot become your identity.':'OP CLIMB will not invent a mistake when the evidence is not strong enough.'}</p>
+        </div>
+        <div className="mc-strength-list">
+          {issues.map(issue=><div key={issue.key}>
+            <i>!</i><div><span>{issue.clock?issue.clock+' · ':''}{issue.score}</span><b>{issue.title}</b><small>{issue.detail}</small></div><em>REVIEW</em>
+          </div>)}
+          {!issues.length&&match&&<p className="muted">Open the detailed review for the full recorded timeline. This match did not produce a reliable negative signal strong enough to headline here.</p>}
         </div>
         <div className="mc-baseline-steps">
           {[0,1,2].map(index=><div key={index} className={index<safeGames?'done':index===safeGames?'current':''}>
-            <i>{index<safeGames?'✓':index+1}</i><span>GAME {index+1}</span><small>{index<safeGames?'OBSERVED':index===safeGames?'NEXT':'WAITING'}</small>
+            <i>{index<safeGames?'✓':index+1}</i><span>ROLE GAME {index+1}</span><small>{index<safeGames?'OBSERVED':index===safeGames?'NEXT':'WAITING'}</small>
           </div>)}
         </div>
       </article>
 
       <article className="mc-mission panel baseline-panel">
-        <div className="mc-card-head"><div><span>YOUR NEXT STEP</span><h2>Play normally.</h2></div><b>{safeGames}/{required}</b></div>
-        <p className="mc-mission-rule">Do not change your play for OP CLIMB yet. The baseline needs your real habits before a challenge starts influencing them.</p>
-        <div className="mc-how-pass"><span>AFTER GAME 3</span><b>DNA reveals → six strand missions unlock → completed games begin banking → each strand grows from evidence.</b></div>
-        <Link className="btn primary" href="/live" style={{marginTop:14}}>TRACK NEXT GAME →</Link>
+        <div className="mc-card-head"><div><span>YOUR NEXT GAME FOCUS</span><h2>{topIssue?topIssue.title:'Play normally.'}</h2></div><b>{safeGames}/{required} ROLE GAMES</b></div>
+        <p className="mc-mission-rule">{topIssue?topIssue.action:'Keep playing normally until OP CLIMB has enough role-specific evidence to set a persistent challenge.'}</p>
+        <div className="mc-how-pass"><span>PROVISIONAL · SINGLE-GAME COACHING</span><b>This gives you something useful to work on now. It does not move Game DNA or become a long-term pattern until the role baseline is complete.</b></div>
+        <Link className="btn primary" href="/live" style={{marginTop:14}}>TRACK NEXT ROLE GAME →</Link>
       </article>
 
       <article className="mc-dna panel baseline-panel">
@@ -223,8 +234,13 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
       </article>
 
       <article className="mc-strengths panel baseline-panel">
-        <div className="mc-card-head"><div><span>WHAT YOU DID WELL · MEASURED</span><h2>Still observing.</h2></div><b>LOCKED</b></div>
-        <div className="mc-baseline-message"><strong>NO EARLY PRAISE OR CRITICISM</strong><p>OP CLIMB can record the match, but it waits for the third game before turning patterns into strengths or challenges.</p></div>
+        <div className="mc-card-head"><div><span>WHAT YOU DID WELL · MEASURED</span><h2>{strengths.length?'Keep these behaviours.':'Still observing.'}</h2></div><b>{strengths.length?strengths.length+' VERIFIED':'BUILDING'}</b></div>
+        <div className="mc-strength-list">
+          {strengths.slice(0,3).map(item=><div key={item.id} style={styleFor(item.dnaDomain)}>
+            <i>✓</i><div><span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span><b>{item.title}</b><small>{item.whatHappened}</small></div><em>VERIFIED</em>
+          </div>)}
+          {!strengths.length&&<div className="mc-baseline-message"><strong>NO VERIFIED STRENGTH YET</strong><p>The match is still reviewable; OP CLIMB simply did not find a positive behaviour strong enough to label as verified.</p></div>}
+        </div>
       </article>
 
       <article className="mc-moments panel baseline-panel">
@@ -239,6 +255,59 @@ function BaselineImpact({match,games,required}:{match?:Match;games:number;requir
       </article>
     </div>
   </section>;
+}
+
+type BaselineIssue={key:string;title:string;detail:string;score:string;clock:string;action:string};
+
+function baselineIssues(match?:Match):BaselineIssue[]{
+  const analysis=match?.proAnalysis;
+  if(!analysis)return[];
+  const severityRank:Record<string,number>={CRITICAL:0,MAJOR:1,ACTIVE:2,POLISH:3};
+  const out:BaselineIssue[]=[];
+  const leaks=[...(analysis.leakSignals??[])]
+    .filter(leak=>Number(leak.count)>0)
+    .sort((a,b)=>(severityRank[a.severity]??9)-(severityRank[b.severity]??9)||Number(b.count)-Number(a.count));
+  for(const leak of leaks){
+    const sec=leak.evidenceSeconds?.find(value=>Number.isFinite(value));
+    out.push({
+      key:'leak-'+leak.key,
+      title:leak.label,
+      detail:leak.detail,
+      score:leak.count+'× observed',
+      clock:typeof sec==='number'?clock(sec):'',
+      action:baselineAction(leak.key,leak.label),
+    });
+    if(out.length>=3)return out;
+  }
+  const metrics=Object.values(analysis.metrics??{})
+    .filter((metric):metric is NonNullable<typeof metric>=>Boolean(metric&&typeof metric.score==='number'&&(metric.status==='MEASURED'||metric.status==='DERIVED')&&metric.score<85))
+    .sort((a,b)=>(a.score??100)-(b.score??100));
+  for(const metric of metrics){
+    if(out.some(item=>item.title===metric.label))continue;
+    const sec=metric.evidence?.find(item=>typeof item?.atSeconds==='number')?.atSeconds;
+    const detail=metric.evidence?.[0]?.detail||metric.summary;
+    out.push({
+      key:'metric-'+metric.key,
+      title:metric.label,
+      detail,
+      score:Math.round(metric.score??0)+'/100',
+      clock:typeof sec==='number'?clock(sec):'',
+      action:baselineAction(metric.key,metric.label),
+    });
+    if(out.length>=3)break;
+  }
+  return out;
+}
+
+function baselineAction(key:string,label:string){
+  const value=(key+' '+label).toLowerCase();
+  if(value.includes('lead')||value.includes('thrown'))return 'When you are ahead, protect the advantage first: wait for the main enemy threat to be committed or covered before you extend for the next fight.';
+  if(value.includes('chain')||value.includes('recovery'))return 'After a death, rebuild one safe resource cycle before re-entering another fight. Do not turn one mistake into two.';
+  if(value.includes('reset')||value.includes('unspent')||value.includes('resource'))return 'Spend your gold before the next voluntary fight or objective window. Do not carry earned power in your pocket.';
+  if(value.includes('objective'))return 'Reset early enough to arrive alive, healthy and spent before the objective setup begins.';
+  if(value.includes('fight')||value.includes('red'))return 'Before committing, check numbers, visible level/item state and the main enemy engage threat. If the state is already bad, do not enter it.';
+  if(value.includes('farm')||value.includes('cs'))return 'After each recall, identify the safest high-value wave before grouping so your income does not collapse after lane.';
+  return 'Use the detailed-review timestamp as your recognition trigger next game: spot the same situation earlier and choose the safer repeatable decision.';
 }
 
 function MiniLearningPath({stage}:{stage:string}){
