@@ -9,6 +9,10 @@ import {buildPostGameSections,type FightReview,type ReviewMatch} from '@/lib/pos
 import {reviewMarkedMoments} from '@/lib/markedMomentReview';
 import {isNewRecentRiotMatch,riotCompanionReview} from '@/lib/riot/companionReviewFallback';
 import {companionDnaBaseline} from '@/lib/server/companionDnaBaseline';
+import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import type {ILPTask} from '@/lib/types';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -65,49 +69,65 @@ async function recentRiotReview(device:TrackerDevice,latest:any){
   return review;
 }
 
-async function learningSignalForMatch(userId:string,riotAccountId:string|null,matchId:string|null){
+async function missionEvidenceForMatch(userId:string,riotAccountId:string|null,matchId:string|null,roleValue:unknown){
   const db=getSupabaseAdmin();
-  if(!db||!riotAccountId||!matchId)return null;
+  const role=canonicalLeagueRole(roleValue);
+  if(!db||!riotAccountId||!matchId||!role)return{primary:null,missions:[]};
   const {data,error}=await db.from('ilp_tasks')
-    .select('id,payload')
+    .select('id,payload,updated_at')
     .eq('user_id',userId)
     .eq('riot_account_id',riotAccountId);
   if(error){
-    console.warn('[companion-review] learning signal lookup failed',error.message);
-    return null;
+    console.warn('[companion-review] mission evidence lookup failed',error.message);
+    return{primary:null,missions:[]};
   }
 
-  const rows=(data??[]).flatMap((row:any)=>{
-    const task=(row?.payload&&typeof row.payload==='object')?row.payload:{};
-    const history=Array.isArray(task?.missionHistory)?task.missionHistory:[];
-    const attempt=history.find((item:any)=>String(item?.matchId||'')===matchId);
-    if(!attempt)return[];
-    const confirmed=history.filter((item:any)=>Boolean(item?.banksPass)).length;
-    const required=Math.max(1,Number(task?.masteryRequired||3));
-    const mastered=String(task?.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
+  const stored=((data??[]).map((row:any)=>({
+    ...((row?.payload&&typeof row.payload==='object')?row.payload:{}),
+    id:String(row?.id??''),
+    updatedAt:row?.updated_at??null,
+  })).filter((task:any)=>task?.id)) as Array<ILPTask&{updatedAt?:string|null}>;
+  const strandTasks=ensureOneMissionPerDnaStrand(stored,riotAccountId,role).tasks;
+  const missions=currentGameDnaMissions(strandTasks,role).flatMap(({domain,task})=>{
+    if(!task)return[];
+    const history=Array.isArray(task.missionHistory)?task.missionHistory:[];
+    const attempt=history.find(item=>String(item?.matchId||'')===matchId);
+    const confirmed=history.filter(item=>Boolean(item?.banksPass)).length;
+    const required=Math.max(1,Number(task.masteryRequired||3));
+    const mastered=String(task.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
     const evidenceState=String(attempt?.evidenceV2?.state||(
-      attempt?.banksPass?'BANKED':String(attempt?.outcome||'')==='NO_REP'?'NOT_OBSERVED':'MISSED'
+      attempt?.banksPass?'BANKED':attempt?'MISSED':'NOT_OBSERVED'
     ));
+    const evidenceV2=attempt?.evidenceV2??null;
     return[{
-      missionId:String(row.id),
-      title:String(task?.title||'Current challenge'),
-      dnaDomain:String(task?.dnaDomain||'CONSISTENCY'),
-      banksPass:Boolean(attempt?.banksPass),
-      outcome:String(attempt?.outcome||'REVIEWED'),
+      missionId:String(task.id),
+      title:String(task.title||'Current DNA mission'),
+      dnaDomain:String(domain),
+      gameRule:String(task.gameRule||''),
+      target:String(task.target||''),
       evidenceState,
-      evidenceV2:attempt?.evidenceV2??null,
+      evidenceV2,
+      evidenceReason:String(evidenceV2?.reason||(
+        evidenceState==='BANKED'
+          ?'This game produced enough verified evidence to bank a rep.'
+          :evidenceState==='MISSED'
+            ?'This mission was observed, but the target was not cleared.'
+            :'This game did not expose enough reliable evidence to grade this mission.'
+      )),
       confirmed,
       required,
-      progress:Math.max(0,Math.min(100,Number(task?.progress||0))),
+      progress:Math.round(Math.min(required,confirmed)/required*100),
       mastered,
     }];
   });
 
-  if(!rows.length)return null;
-  const best=rows.find((item:any)=>item.mastered)||rows.find((item:any)=>item.banksPass)||rows[0];
+  const best=missions.find(item=>item.mastered)||missions.find(item=>item.evidenceState==='BANKED')||missions.find(item=>item.evidenceState==='MISSED')||missions[0]||null;
   return{
-    status:best.mastered?'MASTERED':best.evidenceState==='BANKED'?'REP_BANKED':best.evidenceState==='MISSED'?'REP_MISSED':'NOT_OBSERVED',
-    ...best,
+    primary:best?{
+      status:best.mastered?'MASTERED':best.evidenceState==='BANKED'?'REP_BANKED':best.evidenceState==='MISSED'?'REP_MISSED':'NOT_OBSERVED',
+      ...best,
+    }:null,
+    missions,
   };
 }
 
@@ -127,7 +147,8 @@ export async function GET(req:NextRequest){
       role:(riotReview as any)?.match?.role??null,
     });
     const matchId=String((riotReview as any)?.matchId||'').trim()||null;
-    const learningSignal=await learningSignalForMatch(device.userId,device.riotAccountId,matchId);
+    const missionEvidence=await missionEvidenceForMatch(device.userId,device.riotAccountId,matchId,(riotReview as any)?.match?.role??null);
+    const learningSignal=missionEvidence.primary;
     return NextResponse.json({
       ok:true,
       ready:true,
@@ -136,6 +157,7 @@ export async function GET(req:NextRequest){
         matchId,
         dnaBaseline:baseline,
         learningSignal,
+        missionEvidence:missionEvidence.missions,
         progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
       },
     });
@@ -176,7 +198,8 @@ export async function GET(req:NextRequest){
     riotAccountId:device.riotAccountId,
     role:match?.role??null,
   });
-  const learningSignal=await learningSignalForMatch(device.userId,device.riotAccountId,matchId);
+  const missionEvidence=await missionEvidenceForMatch(device.userId,device.riotAccountId,matchId,match?.role??null);
+  const learningSignal=missionEvidence.primary;
 
   return NextResponse.json({
     ok:true,ready:true,
@@ -186,6 +209,7 @@ export async function GET(req:NextRequest){
       progressPath:matchId?('/ilp?game='+encodeURIComponent(matchId)):'/ilp',
       dnaBaseline,
       learningSignal,
+      missionEvidence:missionEvidence.missions,
       endedAt:latest.endedAt??latest.lastSeenAt??null,
       partial:latest.status==='ABORTED',
       coachLevel:{rank,tier:coach.tier,depth:coach.depth,summary:coach.summary,reviewPoints:coach.reviewPoints},
