@@ -141,8 +141,22 @@ return <div className="match-room">
       <article className="panel panel-padding match-room-review-card">
         <div className="eyebrow">KEY MOMENTS</div>
         <h3>{lastGameMoments.length?'Where the game told the story.':'Still building timestamp evidence.'}</h3>
-        <div className="match-room-moment-list">
-          {lastGameMoments.map(moment=><div key={moment.key}><strong>{moment.clock}</strong><span><b>{moment.label}</b><small>{moment.detail}</small></span></div>)}
+        <div className="match-room-moment-list rich">
+          {lastGameMoments.map(moment=><article key={moment.key} className={'match-room-moment '+moment.verdict.toLowerCase()}>
+            <div className="match-room-moment-time">
+              <strong>{moment.clock}</strong>
+              <span>{moment.verdict==='GOOD'?'✓ GOOD':moment.verdict==='IMPROVE'?'! REVIEW':'• CONTEXT'}</span>
+            </div>
+            <div className="match-room-moment-body">
+              <div className="match-room-moment-head">
+                <div><small>{moment.behaviour} · {moment.confidence} CONFIDENCE</small><b>{moment.label}</b></div>
+              </div>
+              <p>{moment.detail}</p>
+              {moment.stats.length>0&&<div className="match-room-moment-stats">{moment.stats.map((stat,index)=><span key={index}>{stat}</span>)}</div>}
+              <div className="match-room-moment-why"><small>WHY IT MATTERED</small><p>{moment.consequence}</p></div>
+              {moment.nextTime&&<div className="match-room-moment-next"><small>NEXT TIME</small><p>{moment.nextTime}</p></div>}
+            </div>
+          </article>)}
           {!lastGameMoments.length&&<p>{lastGameAnalysisLoading?'Reading the full game evidence…':'No reliable timestamped coaching moments were available for this game.'}</p>}
         </div>
       </article>
@@ -212,29 +226,86 @@ return <div className="match-room">
 </div>;
 }
 
-type ReviewMoment={key:string;clock:string;label:string;detail:string};
+type ReviewMoment={
+  key:string;
+  atSeconds:number;
+  clock:string;
+  label:string;
+  detail:string;
+  verdict:'GOOD'|'IMPROVE'|'NEUTRAL';
+  behaviour:string;
+  confidence:string;
+  situation:string;
+  stats:string[];
+  consequence:string;
+  nextTime:string|null;
+};
 
 function reviewMoments(analysis?:ProMatchAnalysis):ReviewMoment[]{
   if(!analysis)return[];
+  const graphNodes=analysis.decisionGraph?.nodes??[];
+  if(graphNodes.length){
+    const scored=graphNodes.map(node=>{
+      const verdictWeight=node.verdict==='IMPROVE'?8:node.verdict==='GOOD'?5:2;
+      const confidenceWeight=node.confidence==='HIGH'?4:node.confidence==='MEDIUM'?2:0;
+      const counterfactualWeight=node.counterfactual?3:0;
+      const metricHits=Object.values(analysis.metrics??{}).flatMap(metric=>{
+        if(!metric)return[];
+        return (metric.evidence??[])
+          .filter(item=>typeof item.atSeconds==='number'&&Math.abs(item.atSeconds-node.atSeconds)<=8)
+          .map(item=>`${metric.label}: ${item.detail||item.label}`);
+      });
+      const stats=[...(node.evidence??[]),...metricHits]
+        .map(item=>String(item||'').trim())
+        .filter(Boolean)
+        .filter((item,index,array)=>array.indexOf(item)===index)
+        .slice(0,6);
+      return{
+        score:verdictWeight+confidenceWeight+counterfactualWeight+Math.min(3,stats.length),
+        row:{
+          key:node.id,
+          atSeconds:node.atSeconds,
+          clock:node.minuteLabel||clock(node.atSeconds),
+          label:node.title,
+          detail:node.decisionRead||node.situation,
+          verdict:node.verdict,
+          behaviour:node.behaviourLabel,
+          confidence:node.confidence,
+          situation:node.situation,
+          stats,
+          consequence:node.consequence,
+          nextTime:node.counterfactual?.alternative||node.coachingResponse?.cue||null,
+        } satisfies ReviewMoment,
+      };
+    });
+    const selected:typeof scored=[];
+    for(const candidate of scored.sort((a,b)=>b.score-a.score||a.row.atSeconds-b.row.atSeconds)){
+      if(selected.some(item=>Math.abs(item.row.atSeconds-candidate.row.atSeconds)<8))continue;
+      selected.push(candidate);
+      if(selected.length>=5)break;
+    }
+    return selected.map(item=>item.row).sort((a,b)=>a.atSeconds-b.atSeconds);
+  }
+
   const rows:ReviewMoment[]=[];
   for(const leak of analysis.leakSignals??[]){
     for(const seconds of leak.evidenceSeconds??[]){
       if(!Number.isFinite(seconds))continue;
-      rows.push({key:'leak-'+leak.key+'-'+seconds,clock:clock(seconds),label:leak.label,detail:leak.detail});
+      rows.push({key:'leak-'+leak.key+'-'+seconds,atSeconds:seconds,clock:clock(seconds),label:leak.label,detail:leak.detail,verdict:'IMPROVE',behaviour:'Decision review',confidence:'MEDIUM',situation:leak.detail,stats:[],consequence:leak.detail,nextTime:null});
     }
   }
   for(const metric of Object.values(analysis.metrics??{})){
     if(!metric)continue;
     for(const evidence of metric.evidence??[]){
       if(typeof evidence.atSeconds!=='number'||!Number.isFinite(evidence.atSeconds))continue;
-      rows.push({key:'metric-'+metric.key+'-'+evidence.atSeconds+'-'+evidence.label,clock:clock(evidence.atSeconds),label:evidence.label||metric.label,detail:evidence.detail||metric.summary});
+      rows.push({key:'metric-'+metric.key+'-'+evidence.atSeconds+'-'+evidence.label,atSeconds:evidence.atSeconds,clock:clock(evidence.atSeconds),label:evidence.label||metric.label,detail:evidence.detail||metric.summary,verdict:metric.score!==null&&metric.score!==undefined&&metric.score<60?'IMPROVE':'NEUTRAL',behaviour:metric.label,confidence:metric.confidence,situation:evidence.detail||metric.summary,stats:[metric.value].filter(Boolean),consequence:metric.summary,nextTime:null});
     }
   }
   const seen=new Set<string>();
   return rows
-    .sort((a,b)=>clockSeconds(a.clock)-clockSeconds(b.clock))
+    .sort((a,b)=>a.atSeconds-b.atSeconds)
     .filter(row=>{const key=row.clock+'|'+row.label+'|'+row.detail;if(seen.has(key))return false;seen.add(key);return true})
-    .slice(0,3);
+    .slice(0,5);
 }
 
 function clockSeconds(value:string){
