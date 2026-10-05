@@ -9,6 +9,7 @@ import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import type {Match,Role} from '@/lib/types';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 const CHAMPION_ASSET_IDS:Record<string,string>={
   Wukong:'MonkeyKing','Nunu & Willump':'Nunu','Renata Glasc':'Renata',"K'Sante":'KSante',"Cho'Gath":'Chogath',"Kai'Sa":'Kaisa',"Vel'Koz":'Velkoz',LeBlanc:'Leblanc',"Bel'Veth":'Belveth',"Rek'Sai":'RekSai',"Kog'Maw":'KogMaw','Dr. Mundo':'DrMundo','Master Yi':'MasterYi','Miss Fortune':'MissFortune','Jarvan IV':'JarvanIV','Lee Sin':'LeeSin','Aurelion Sol':'AurelionSol','Twisted Fate':'TwistedFate','Tahm Kench':'TahmKench','Xin Zhao':'XinZhao'
@@ -29,14 +30,14 @@ export default function MyGames(){
   const [champion,setChampion]=useState('ALL');
   const [visible,setVisible]=useState(10);
 
-  const champions=useMemo(()=>['ALL',...Array.from(new Set(matches.filter(m=>role==='ALL'||m.role===role).map(m=>m.champion)))],[matches,role]);
-  const filtered=useMemo(()=>matches.filter(m=>(role==='ALL'||m.role===role)&&(champion==='ALL'||m.champion===champion)),[matches,role,champion]);
+  const champions=useMemo(()=>['ALL',...Array.from(new Set(matches.filter(m=>role==='ALL'||canonicalLeagueRole(m.role)===role).map(m=>m.champion)))],[matches,role]);
+  const filtered=useMemo(()=>matches.filter(m=>(role==='ALL'||canonicalLeagueRole(m.role)===role)&&(champion==='ALL'||m.champion===champion)),[matches,role,champion]);
   useEffect(()=>{setVisible(10);if(champion!=='ALL'&&!champions.includes(champion))setChampion('ALL')},[role,champion,champions]);
 
   const previews=useMemo(()=>{
     const map=new Map<string,Preview>();
     for(const currentRole of ROLE_ORDER){
-      const roleMatches=matches.filter(match=>match.role===currentRole);
+      const roleMatches=matches.filter(match=>canonicalLeagueRole(match.role)===currentRole);
       roleMatches.forEach((match,index)=>{
         const report=analyseMatch(match,roleMatches.slice(index+1,index+6));
         map.set(match.id,{report,review:buildReview(match,report)});
