@@ -72,7 +72,10 @@ export default function PlayerDevelopmentCentre(){
     if(!baselineReady)return[];
     return currentGameDnaMissions(roleTasks,viewRole).flatMap(({task})=>task?[task]:[]);
   },[roleTasks,viewRole,baselineReady]);
-  const displayTasks=useMemo(()=>selectedDomain?activeTasks.filter(task=>task.dnaDomain===selectedDomain):activeTasks,[activeTasks,selectedDomain]);
+  const priorityTask=useMemo(()=>[...activeTasks].sort((a,b)=>(a.priority??99)-(b.priority??99))[0]??null,[activeTasks]);
+  const focusDomain=selectedDomain??priorityTask?.dnaDomain??null;
+  const focusTask=useMemo(()=>focusDomain?activeTasks.find(task=>task.dnaDomain===focusDomain)??null:null,[activeTasks,focusDomain]);
+  const displayTasks=useMemo(()=>focusTask?[focusTask]:[],[focusTask]);
   const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(roleTasks,domain,viewRole)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[roleTasks,viewRole]);
   const masteredAll=useMemo(()=>dedupeArchiveTasks(roleTasks.filter(task=>task.status==='MASTERED')),[roleTasks]);
   const pausedAll=useMemo(()=>dedupeArchiveTasks(roleTasks.filter(task=>task.status==='PAUSED')),[roleTasks]);
@@ -154,39 +157,13 @@ export default function PlayerDevelopmentCentre(){
       <ClientGameDna player={active.gameName+active.tagline} role={viewRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
     </section>
 
-    <section className="coach-climb-handoff" style={{marginBottom:18}}>
-      <div>
-        <div className="eyebrow">{viewRole} · WHAT YOUR DNA NEEDS NEXT</div>
-        <h3>Train one fix at a time. Measure all six.</h3>
-        <p>Match Room owns the individual game. My DNA owns what repeats across games: strand missions, proof, mastery and the habits OP CLIMB carries forward.</p>
-      </div>
-      <Link className="btn secondary" href="/live">OPEN MATCH ROOM →</Link>
-    </section>
-
-    <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
-      <div className="ip-dna-filter-head">
-        <div>
-          <div className="eyebrow">{viewRole} GAME DNA · DEVELOPMENT</div>
-          <h2>{selectedDomain?`${viewRole} · ${DNA_DOMAIN_LABELS[selectedDomain]}`:`Your ${viewRole} development plan`}</h2>
-          <p>{selectedDomain?`${DNA_DOMAIN_GUIDE[selectedDomain].summary} Only ${viewRole} games progress this strand.`:`Game DNA is role-specific. Only games played in ${viewRole} progress these six strands; every other role has its own separate DNA profile.`}</p>
-        </div>
-        {selectedDomain&&<button className="btn secondary" type="button" onClick={()=>chooseDomain(null)}>SHOW FULL PLAN</button>}
-      </div>
-      <div className="ip-dna-filter-tabs" aria-label="Filter development plan by Game DNA strand">
-        <button type="button" className={!selectedDomain?'active':''} onClick={()=>chooseDomain(null)}>ALL</button>
-        {DNA_DOMAINS.map(domain=><button
-          key={domain}
-          type="button"
-          className={selectedDomain===domain?'active':''}
-          style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
-          onClick={()=>chooseDomain(domain)}
-        >{DNA_DOMAIN_LABELS[domain]} · LV {dnaLevels[domain].level}</button>)}
-      </div>
-      {selectedDomain&&<div className="ip-dna-filter-detail">
-        <p>{DNA_DOMAIN_GUIDE[selectedDomain].purpose}</p>
-        <div>{DNA_DOMAIN_GUIDE[selectedDomain].subskills.map(skill=><span key={skill}>{skill}</span>)}</div>
-      </div>}
-    </section>
+    <MissionHub
+      tasks={activeTasks}
+      focusDomain={focusDomain}
+      levels={dnaLevels}
+      role={viewRole}
+      onSelect={chooseDomain}
+    />
 
     {changes.length>0&&<section className="ip-update">
       <div><span>PLAN UPDATED</span><b>{changes.length} CHANGE{changes.length===1?'':'S'}</b></div>
@@ -194,7 +171,7 @@ export default function PlayerDevelopmentCentre(){
     </section>}
 
     <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>DNA MISSIONS</b><small>{selectedDomain?displayTasks.length+' in '+DNA_DOMAIN_LABELS[selectedDomain]:activeTasks.length+'/6 active'}</small></button>
+      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>MISSION DETAIL</b><small>{focusDomain?DNA_DOMAIN_LABELS[focusDomain]:'current focus'}</small></button>
       <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>GAME PROOF</b><small>what counted on each strand</small></button>
       {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
@@ -245,6 +222,81 @@ export default function PlayerDevelopmentCentre(){
       </section>
     </div>}
   </AppShell>;
+}
+
+function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];focusDomain:DnaDomain|null;levels:Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>;role:Role;onSelect:(domain:DnaDomain)=>void}){
+  const focusTask=focusDomain?tasks.find(task=>task.dnaDomain===focusDomain)??null:null;
+  return <section className="dna-mission-hub" aria-label={role+' Game DNA missions'}>
+    <div className="dna-mission-hub-head">
+      <div>
+        <div className="eyebrow">YOUR 6 DNA MISSIONS</div>
+        <h2>Every strand has one job.</h2>
+        <p>You do not need to memorise six coaching reports. Each strand carries one simple behaviour to practise, and OP CLIMB checks it automatically in your tracked {role} games.</p>
+      </div>
+      <div className="dna-mission-how" aria-label="How missions work">
+        <span><b>1</b><small>DO</small><em>one clear behaviour</em></span>
+        <span><b>2</b><small>PROVE</small><em>bank it in tracked games</em></span>
+        <span><b>3</b><small>MASTER</small><em>3/3 → next mission</em></span>
+      </div>
+    </div>
+
+    <div className="dna-mission-rail" aria-label="Choose a DNA mission">
+      {DNA_DOMAINS.map(domain=>{
+        const task=tasks.find(item=>item.dnaDomain===domain);
+        if(!task)return <div key={domain} className="dna-mission-chip empty" style={strandStyle(domain)}><small>{DNA_DOMAIN_LABELS[domain]}</small><b>Building mission…</b></div>;
+        const plain=plainLanguageFocus(task);
+        const summary=missionSummary(task);
+        return <button
+          key={domain}
+          type="button"
+          className={'dna-mission-chip '+(focusDomain===domain?'active':'')}
+          style={strandStyle(domain)}
+          onClick={()=>onSelect(domain)}
+          aria-pressed={focusDomain===domain}
+        >
+          <small>{DNA_DOMAIN_LABELS[domain]} · LV {levels[domain].level}</small>
+          <b>{plain.name}</b>
+          <span>{summary.confirmed}/{summary.required} proven</span>
+        </button>;
+      })}
+    </div>
+
+    {focusTask?<MissionSpotlight task={focusTask} level={levels[focusTask.dnaDomain]} role={role}/>:<div className="dna-mission-spotlight empty">
+      <div><span>MISSION BUILDING</span><h3>Your next mission will appear here.</h3><p>Play another tracked {role} game so OP CLIMB can attach a measurable behaviour to this strand.</p></div>
+    </div>}
+  </section>;
+}
+
+function MissionSpotlight({task,level,role}:{task:ILPTask;level:ReturnType<typeof dnaStrandLevel>;role:Role}){
+  const plain=plainLanguageFocus(task);
+  const summary=missionSummary(task);
+  const repProgress=Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100);
+  return <article className="dna-mission-spotlight" style={strandStyle(task.dnaDomain)}>
+    <div className="dna-mission-spotlight-top">
+      <div>
+        <span>{dnaDomainLabel(task.dnaDomain).toUpperCase()} · LV {level.level} · YOUR MISSION</span>
+        <h2>{plain.name}</h2>
+      </div>
+      <div className="dna-mission-count"><b>{summary.confirmed}/{summary.required}</b><small>PROVEN GAMES</small></div>
+    </div>
+
+    <div className="dna-mission-explain">
+      <section><span>WHAT THIS MEANS</span><p>{plain.meaning}</p></section>
+      <section className="primary"><span>YOUR JOB NEXT GAME</span><p>{plain.nextGame}</p></section>
+      <section><span>WHY IT MATTERS</span><p>{plain.why}</p></section>
+      <section><span>HOW YOU PROVE IT</span><p>{plain.success}</p></section>
+    </div>
+
+    <div className="dna-mission-proof">
+      <div>
+        <span>MISSION PROGRESS</span>
+        <AnimatedBar value={repProgress}/>
+        <small>{summary.remaining?summary.remaining+' more proven '+role+' game'+(summary.remaining===1?'':'s')+' needed':'Mastery reached — the next strand mission can unlock.'}</small>
+      </div>
+      <Pips passes={summary.confirmed} required={summary.required}/>
+      <Link className="btn primary" href="/live">TAKE THIS INTO MY NEXT GAME →</Link>
+    </div>
+  </article>;
 }
 
 function MissionCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStrandLevel>}){
