@@ -286,19 +286,63 @@ export async function latestLiveReview(userId:string,accountKey:string){
   return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile,causalProfile,playerCoachingIdentity,skillTransferGraph,decisionPrincipleEngine,learningVelocity,adaptiveCoachingSession,playerReadCheckpoints:readCheckpoints};
 }
 
+export async function processQueuedPostGameSession(sessionId:string){
+  const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
+  const {data,error}=await db.from('live_telemetry_sessions')
+    .select('id,summary,patch,game_version')
+    .eq('id',sessionId).maybeSingle();
+  if(error)throw new Error(error.message);
+  if(!data)throw new Error('Queued post-game session no longer exists.');
+  const currentSummary=(data.summary&&typeof data.summary==='object')?data.summary as any:{};
+  if(currentSummary?.processing?.status==='COMPLETE')return{sessionId,reused:true};
+
+  let patch=data.patch as string|null,gameVersion=data.game_version as string|null;
+  if(!patch){
+    gameVersion=await latestPatch().catch(()=>null);
+    patch=canonicalLeaguePatch(gameVersion);
+  }
+  const {error:updateError}=await db.from('live_telemetry_sessions').update({
+    patch,
+    game_version:gameVersion,
+    patch_source:patch?'DATA_DRAGON_CURRENT_AT_RECORDING':'UNKNOWN',
+    summary:{...currentSummary,processing:{...(currentSummary?.processing??{}),status:'PROCESSING',startedAt:new Date().toISOString()}},
+  }).eq('id',sessionId);
+  if(updateError)throw new Error(updateError.message);
+
+  await finalizeSession(sessionId);
+  return{sessionId,reused:false};
+}
+
 async function finalizeSession(sessionId:string){
   const db=getSupabaseAdmin();if(!db)return;
   const [{data:session,error:sessionError},{data,error}]=await Promise.all([
-    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source').eq('id',sessionId).single(),
+    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source,summary').eq('id',sessionId).single(),
     db.from('live_telemetry_snapshots').select('payload').eq('session_id',sessionId).order('game_time',{ascending:true}),
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
-  const snapshots=(data??[]).map(row=>row.payload as LiveTelemetrySnapshot),summary=buildStrengthTimeline(snapshots);
-  const [lockedPlan,readCheckpoints]=await Promise.all([linkedDecisionPlan(sessionId),readCheckpointsForSession(sessionId)]);
-  const baseAnalysis=snapshots.length?buildLiveProAnalysis(snapshots,summary):null;
-  const proAnalysis=baseAnalysis?{...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints})}:null;
-  const storedSummary={...summary,proAnalysis,decisionGraph:proAnalysis?.decisionGraph??null,lockedPlanAvailable:Boolean(lockedPlan),riotEnrichment:{status:riotEnabled()?'PENDING':'DISABLED'}};
-  const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);if(!snapshots.length)return;
+  const existingSummary=(session.summary&&typeof session.summary==='object')?session.summary as any:{};
+  const embedded=Array.isArray(existingSummary?.capture?.keyframes)?existingSummary.capture.keyframes as LiveTelemetrySnapshot[]:[];
+  const snapshots=embedded.length?embedded:(data??[]).map(row=>row.payload as LiveTelemetrySnapshot);
+  if(!snapshots.length)throw new Error('Queued post-game session has no keyframes.');
+  const summary=buildStrengthTimeline(snapshots);
+  const embeddedReadCheckpoints=Array.isArray(existingSummary?.capture?.readCheckpoints)?existingSummary.capture.readCheckpoints:[];
+  const [lockedPlan,storedReadCheckpoints]=await Promise.all([
+    linkedDecisionPlan(sessionId),
+    embeddedReadCheckpoints.length?Promise.resolve([]):readCheckpointsForSession(sessionId),
+  ]);
+  const readCheckpoints=embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
+  const baseAnalysis=buildLiveProAnalysis(snapshots,summary);
+  const proAnalysis={...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints})};
+  const storedSummary={
+    ...existingSummary,
+    ...summary,
+    proAnalysis,
+    decisionGraph:proAnalysis?.decisionGraph??null,
+    lockedPlanAvailable:Boolean(lockedPlan),
+    riotEnrichment:existingSummary?.riotEnrichment??{status:riotEnabled()?'PENDING':'DISABLED'},
+    processing:{...(existingSummary?.processing??{}),status:'PROCESSING'},
+  };
+  const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);
 
   const reviewResult=await Promise.allSettled([persistReviewEvents(session,summary),persistLiveMatchWithRetry(session,snapshots,summary,proAnalysis),verifyObservedRiotIdentity(session.riot_account_id,snapshots[snapshots.length-1])]);
   for(const result of reviewResult)if(result.status==='rejected')console.warn('[live-finalize] secondary persistence failed',result.reason);
@@ -308,6 +352,11 @@ async function finalizeSession(sessionId:string){
     const persisted=await persistProMatchAnalysis({userId:session.user_id,riotAccountId:session.riot_account_id,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis,patch:session.patch??null,gameVersion:session.game_version??null}).catch(err=>{console.warn('[live-finalize] PRO analysis failed',err);return null});
     if(persisted)await syncLearningPlanForSession(session.id,session.user_id,session.riot_account_id,'FINALIZE',proAnalysis);
   }
+  const {data:latest}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();
+  const latestSummary=(latest?.summary&&typeof latest.summary==='object')?latest.summary as any:{};
+  await db.from('live_telemetry_sessions').update({
+    summary:{...latestSummary,processing:{...(latestSummary?.processing??{}),status:'COMPLETE',completedAt:new Date().toISOString()}},
+  }).eq('id',sessionId);
 }
 
 async function persistReviewEvents(session:any,summary:StrengthTimeline){const db=getSupabaseAdmin();if(!db||!summary.opportunities.length)return;await db.from('live_review_events').delete().eq('session_id',session.id);const {error}=await db.from('live_review_events').insert(summary.opportunities.map(window=>({user_id:session.user_id,riot_account_id:session.riot_account_id,session_id:session.id,game_time:window.atSeconds,event_type:window.type,opponent:window.opponent,confidence:window.confidence,headline:window.headline,detail:window.detail,evidence:{...window.evidence,score:window.score,limitation:window.limitation}})));if(error)throw new Error(error.message)}
