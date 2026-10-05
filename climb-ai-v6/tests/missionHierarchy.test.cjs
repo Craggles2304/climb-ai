@@ -27,13 +27,16 @@ test('legacy Mission Lab stays redirected into My DNA',()=>{
   assert.ok(!legacyMissions.includes('Mission Lab'));
 });
 
-test('Companion shows all six DNA missions with game trackers',()=>{
-  assert.ok(companion.includes("+' MISSION').toUpperCase()"));
-  assert.ok(companion.includes('3/3 moves this strand to its next mission.'));
-  assert.ok(companion.includes('Only ${roleLabel} games progress these six strands.'));
+test('Companion shows one priority mission plus five background-tracked DNA missions',()=>{
+  assert.ok(companion.includes('PRIORITY MISSION'));
+  assert.ok(companion.includes('BACKGROUND · TRACKED AUTOMATICALLY'));
+  assert.ok(companion.includes('FOCUS THIS NEXT GAME'));
+  assert.ok(companion.includes('No permanent DNA missions until baseline 3/3.'));
+  assert.ok(companion.includes('PROVISIONAL COACHING'));
   assert.ok(!companion.includes('WATCH FOCUS'));
   assert.ok(!companion.includes('CORE MISSION'));
   assert.ok(api.includes('const missionLimit=6'));
+  assert.ok(api.includes('priorityMission'));
 });
 
 test('Game DNA stays role-specific in My DNA and Companion',()=>{
@@ -42,7 +45,7 @@ test('Game DNA stays role-specific in My DNA and Companion',()=>{
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
   assert.ok(companion.includes('playerDnaRoleTitle'));
   assert.ok(companion.includes('only ${roleLabel} games progress these six strands'));
-  assert.ok(companion.includes("roleLabel+' · '+String(dna?.label"));
+  assert.ok(companion.includes("String(dna?.label||mission.domain||'DNA')"));
 });
 
 test('Coach is conversation-first and hands development back to My DNA',()=>{
