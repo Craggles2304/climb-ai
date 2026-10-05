@@ -251,12 +251,12 @@ export default function Analysis(){
     </section>
     </>}
 
-    {section==='stats'&&<>
+    {section==='stats'&&<div className="ar-stats-page">
     <div className="grid five"><MetricCard label={detail.depth<=2?'SCORELINE':'KDA'} value={`${match.kills}/${match.deaths}/${match.assists}`}/>{detail.depth>=2&&<MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>} {detail.depth>=4&&<MetricCard label="GOLD/MIN" value={match.metrics.goldPerMin??'N/A'}/>} {detail.depth>=5&&<MetricCard label="KILL PARTICIPATION" value={pct(match.metrics.killParticipation)}/>} {detail.depth>=6&&<MetricCard label="DAMAGE SHARE" value={pct(match.metrics.damageShare)}/>}</div>
     {detail.depth>=3&&<div className="phase-grid" style={{marginTop:18}}><div className="glass card"><div className="eyebrow">LANE PHASE</div><div className="league-row"><span>CS @ 10</span><b>{match.metrics.csAt10??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>CS @ 15</span><b>{match.metrics.csAt15??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>Lane CS/min</span><b>{num(match.metrics.laneCsPerMin)}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Gold diff @ 15</span><b>{num(match.metrics.goldDiffAt15,'g')}</b></div>}{detail.depth>=6&&<div className="league-row"><span>XP diff @ 15</span><b>{num(match.metrics.xpDiffAt15)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Level @ 15</span><b>{match.metrics.levelAt15??'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">AFTER LANE</div><div className="league-row"><span>Post-15 CS/min</span><b>{num(match.metrics.post15CsPerMin)}</b></div>{detail.depth>=4&&<div className="league-row"><span>First item</span><b>{match.metrics.firstItemMinute?`${match.metrics.firstItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Second item</span><b>{match.metrics.secondItemMinute?`${match.metrics.secondItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Objective involvement</span><b>{pct(match.metrics.objectiveParticipation)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Items shown</span><b>{match.items?.join(' · ')||'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">DEATHS</div><div className="league-row"><span>After 20</span><b>{match.metrics.deathsPost20??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>Before 10</span><b>{match.metrics.deathsPre10??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>10–20</span><b>{match.metrics.deaths10to20??'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Solo deaths</span><b>{match.metrics.soloDeaths??'Unavailable'}</b></div>}{detail.depth>=6&&<div className="league-row"><span>Teamfight deaths</span><b>{match.metrics.teamfightDeaths??'Unavailable'}</b></div>}</div></div>}
-    </>}
+    </div>}
 
-    {section==='evidence'&&<>
+    {section==='evidence'&&<div className="ar-evidence-page">
     {missionResults.length>0&&<section className="ar-mission-update">
       <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link></div>
       <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
@@ -307,7 +307,7 @@ export default function Analysis(){
       </div>}
     </section>
     {detail.depth>=7&&<div className="glass card data-note" style={{marginTop:18}}><div className="eyebrow">DATA RELIABILITY</div><p className="muted">Scoreboard-only matches create a foundation grade from KDA, CS and duration. Exact recall quality, spacing, target selection and fight timing require Riot timeline, live telemetry or reviewed video evidence.</p></div>}
-    </>}
+    </div>}
   </AppShell>;
 }
 
