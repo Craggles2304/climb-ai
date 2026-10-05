@@ -14,6 +14,7 @@ const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
 let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
+let pairingAuthInvalid=false;
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null};
 
@@ -57,6 +58,12 @@ function canPollChampionPlan(){return state.phase==='CHAMP_SELECT'||needsRecordi
 
 function setState(patch){
   const previousPhase=state.phase;
+  const requestedPhase=String(patch?.phase||'').toUpperCase();
+  if(requestedPhase==='AUTH_ERROR')pairingAuthInvalid=true;
+  if(requestedPhase==='SETUP'||requestedPhase==='STARTING')pairingAuthInvalid=false;
+  if(pairingAuthInvalid&&requestedPhase&&!['AUTH_ERROR','SETUP','STARTING'].includes(requestedPhase)){
+    patch={...patch,phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'};
+  }
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
@@ -494,6 +501,7 @@ async function handlePairUrl(rawUrl){
   setState({phase:'STARTING',detail:'Securely connecting this PC to OP CLIMB…'});
   const claimed=await redeemPairCode(code);if(!claimed.ok){setState({phase:'SETUP',detail:claimed.error||'Pairing failed.'});return}
   const cfg=readConfig();cfg.webUrl=DEFAULT_WEB;cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');writeConfig(cfg);
+  pairingAuthInvalid=false;
   recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null,postGameReview:null});stopTracker();startTracker();
 }
 
@@ -536,7 +544,7 @@ function applyAutoStart(enabled){const next=Boolean(enabled);try{app.setLoginIte
 
 ipcMain.handle('companion:get-state',()=>publicState());
 ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
