@@ -23,6 +23,34 @@ export interface AnalysisReport{matchId:string;performance:number;good:string[];
 export type ILPStatus='ACTIVE'|'EVIDENCE_BUILDING'|'MASTERED'|'PAUSED';
 export type ILPMissionAdherence='YES'|'PARTLY'|'NO'|'TRACKED';
 export type ILPMissionOutcome='CONFIRMED'|'UNREWARDED'|'UNEARNED'|'NO_REP';
+export type MissionEvidenceState='BANKED'|'MISSED'|'NOT_OBSERVED';
+export type MissionEvidenceConfidence='HIGH'|'MEDIUM'|'LOW';
+export interface MissionEvidenceEvent{
+  atSeconds?:number;
+  label:string;
+  detail:string;
+}
+export interface MissionEvidenceReceipt{
+  version:2;
+  state:MissionEvidenceState;
+  measurementSource:'LIVE_MEASURABLE'|'RIOT_POST_GAME'|'DECISION_EVIDENCE';
+  metric:string;
+  metricLabel:string;
+  observedValue:number|null;
+  observedValueLabel:string;
+  targetLabel:string;
+  confidence:MissionEvidenceConfidence;
+  opportunities:number;
+  successes:number;
+  misses:number;
+  events:MissionEvidenceEvent[];
+  reconstruction:{
+    kind:'MATCH_METRIC'|'PRO_METRIC';
+    fields:string[];
+    formula:string;
+  };
+  reason:string;
+}
 export interface ILPMissionAttempt{
   matchId:string;
   at:string;
@@ -31,6 +59,7 @@ export interface ILPMissionAttempt{
   outcome:ILPMissionOutcome;
   banksPass:boolean;
   source?:'TRACKED'|'REVIEWED';
+  evidenceV2?:MissionEvidenceReceipt;
 }
 export type ILPHistoryEvent='PROGRESS'|'COACH_EDIT'|'PROMOTED'|'MASTERED'|'PAUSED'|'MISSION';
 export interface ILPHistoryEntry{at:string;type:ILPHistoryEvent;note:string}
