@@ -679,17 +679,17 @@ function renderPostGameReview(review,phase){
     :learning?.status==='MASTERED'
       ?'HABIT MASTERED ✓'
       :learning?.status==='REP_BANKED'
-        ?'PROVEN REP BANKED ✓'
+        ?'PROVEN GAME ✓'
         :'YOUR PROGRESS IS READY';
 
   const intro=section.querySelector('.coach-review-intro');
   if(intro)intro.textContent=!baselineReady
-    ?`Game ${Math.min(baselineGames,baselineRequired)} of ${baselineRequired} is recorded. No personalised challenge yet — OP CLIMB is still building your starting DNA.`
+    ?`Game ${Math.min(baselineGames,baselineRequired)} of ${baselineRequired} is recorded. This is provisional coaching only — permanent DNA missions stay locked until baseline 3/3 and the DNA reveal.`
     :learning?.status==='REP_BANKED'
-      ?`That game counted toward “${learning.title}”. You now have ${learning.confirmed}/${learning.required} proven reps.`
+      ?`That game proved “${learning.title}”. You now have ${learning.confirmed}/${learning.required} proven games.`
       :learning?.status==='MASTERED'
         ?`You proved “${learning.title}” enough times for it to move into mastery.`
-        :'The game is measured. See what held, what needs work and what your next challenge is.';
+        :'The game is measured. See what held, what needs work and whether your priority mission was proven.';
 
   renderReviewList('simpleGood',review.doneWell||review.good,'✓');
   renderReviewList('simpleCritical',review.improve||review.critical,'!');
@@ -706,13 +706,13 @@ function renderPostGameReview(review,phase){
 
   const repCard=$('simpleRepSignal');
   if(repCard){
-    const title=learning?.status==='MASTERED'?'MASTERED ✓':learning?.status==='REP_BANKED'?'BANKED ✓':learning?.status==='REP_MISSED'?'MISSED':learning?.status==='NOT_OBSERVED'?'NOT OBSERVED':'EVIDENCE UPDATED';
+    const title=learning?.status==='MASTERED'?'MASTERED ✓':learning?.status==='REP_BANKED'?'PROVEN ✓':learning?.status==='REP_MISSED'?'MISSED':learning?.status==='NOT_OBSERVED'?'NOT OBSERVED':'EVIDENCE UPDATED';
     repCard.querySelector('strong').textContent=baselineReady?title:`${Math.min(baselineGames,baselineRequired)}/${baselineRequired} BASELINE`;
     repCard.querySelector('small').textContent=!baselineReady
-      ?`${Math.max(0,baselineRequired-baselineGames)} baseline game${Math.max(0,baselineRequired-baselineGames)===1?'':'s'} left before challenges unlock.`
+      ?`${Math.max(0,baselineRequired-baselineGames)} baseline game${Math.max(0,baselineRequired-baselineGames)===1?'':'s'} left before the DNA reveal.`
       :learning
-        ?`${learning.confirmed}/${learning.required} proven reps · ${learning.dnaDomain||'DNA'} · ${String(learning.evidenceState||'NOT_OBSERVED').replace('_',' ')}`
-        :'No mission rep was scored from this game.';
+        ?`${learning.confirmed}/${learning.required} proven games · ${learning.dnaDomain||'DNA'} · ${String(learning.evidenceState||'NOT_OBSERVED').replace('_',' ')}`
+        :'No mission was proven from this game.';
   }
 
   const dnaCard=$('simpleDnaSignal');
@@ -724,7 +724,7 @@ function renderPostGameReview(review,phase){
       :learning?.status==='REP_BANKED'||learning?.status==='MASTERED'
         ?`${learning.dnaDomain||primary?.dnaDomain||'DNA'} moved from verified learning evidence.`
         :primary
-          ?`${primary.dnaDomain||'DNA'} · current challenge progress`
+          ?`${primary.dnaDomain||'DNA'} · current mission progress`
           :'DNA will move when a behaviour is actually proven.';
   }
 
