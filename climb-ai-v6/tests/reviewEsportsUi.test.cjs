@@ -82,12 +82,17 @@ test('post-game review closes the loop into the server-authoritative six-strand 
   assert.ok(reviewRoute.includes('EVERY TRACKED MATCH CAN BANK A GAME'));
 });
 
-test('Companion shows whether repeated evidence actually changed the development plan',()=>{
-  assert.ok(core.includes('YOUR 6 DNA MISSIONS'));
-  assert.ok(core.includes('DNA MISSION TRACKERS UPDATED'));
-  assert.ok(core.includes('DNA MISSIONS CHECKED · NO NEW GAME BANKED'));
-  assert.ok(core.includes('checked against all six DNA missions'));
-  assert.ok(core.includes('safeArray(plan.activeFive).slice(0,6)'));
+test('Companion exposes all six DNA mission evidence states in the main post-game hierarchy',()=>{
+  assert.ok(reviewRoute.includes('missionEvidenceForMatch'));
+  assert.ok(reviewRoute.includes('missionEvidence:missionEvidence.missions'));
+  assert.ok(reviewRoute.includes("'BANKED'"));
+  assert.ok(reviewRoute.includes("'MISSED'"));
+  assert.ok(reviewRoute.includes("'NOT_OBSERVED'"));
+  assert.ok(core.includes('YOUR 6 DNA MISSIONS THIS GAME'));
+  assert.ok(core.includes("state==='BANKED'"));
+  assert.ok(core.includes("state==='MISSED'"));
+  assert.ok(core.includes("'NOT_OBSERVED'"));
+  assert.ok(core.includes('Only BANKED adds a proven rep.'));
   assert.ok(core.includes('renderDevelopmentPlan(review)'));
 });
 
@@ -178,15 +183,18 @@ test('post-game review scores the frozen Decision Pre-Mortem without treating un
 });
 
 
-test('post-game review links directly into the player Learning Journey',()=>{
+test('post-game review links to Match Room and My Climb with clear ownership',()=>{
   const main=fs.readFileSync(path.join(root,'companion','electron','main.cjs'),'utf8');
   const preload=fs.readFileSync(path.join(root,'companion','electron','preload.cjs'),'utf8');
-  assert.ok(core.includes('VIEW LEARNING JOURNEY'));
-  assert.ok(core.includes("openClimbPath?.('/progress')"));
+  assert.ok(core.includes('OPEN MATCH ROOM'));
+  assert.ok(core.includes("openClimbPath?.('/live')"));
+  assert.ok(core.includes('VIEW MY CLIMB'));
+  assert.ok(core.includes("openClimbPath?.('/ilp')"));
   assert.ok(preload.includes("openClimbPath:(path)=>ipcRenderer.invoke('companion:open-climb-path',path)"));
   assert.ok(main.includes("ipcMain.handle('companion:open-climb-path'"));
   const allowed=main.match(/const safePaths=new Set\(\[([^\]]+)\]\)/)?.[1]||'';
-  assert.ok(allowed.includes("'/progress'"));
+  assert.ok(allowed.includes("'/live'"));
+  assert.ok(allowed.includes("'/ilp'"));
 });
 
 
@@ -226,8 +234,8 @@ test('V5 transfer review only credits frozen novel decisions that actually occur
 });
 
 
-test('post-game review promotes five key decisions and collapses the evidence wall by default',()=>{
-  for(const label of ['BIGGEST WIN','BIGGEST REVIEW','NEXT-GAME RULE','KEY DECISIONS · 5 MAX','MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE','COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER']){
+test('post-game review mirrors Match Room hierarchy and collapses the evidence wall by default',()=>{
+  for(const label of ['MATCH ROOM · LAST GAME','YOUR LAST GAME','WHAT HURT YOU','WHAT YOU DID WELL','NEXT GAME · ONE THING','KEY MOMENTS · 5 MAX','YOUR 6 DNA MISSIONS THIS GAME','MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE','COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER']){
     assert.ok(core.includes(label),`missing compact review label: ${label}`);
   }
   assert.ok(core.includes('function selectKeyDecisions'));
