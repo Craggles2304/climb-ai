@@ -5,11 +5,11 @@ const path=require('node:path');
 
 const source=fs.readFileSync(path.join(__dirname,'..','companion','electron','preload.cjs'),'utf8');
 
-test('Companion leads with one explicit win condition and a connected match flow',()=>{
-  for(const phrase of ['HOW WE WIN THIS GAME','WIN CONDITION','YOUR JOB','01 · EARLY','02 · MID GAME','03 · OBJECTIVE','04 · FIGHT','THEY WIN IF','YOUR CLIMB MISSION']){
+test('Companion leads with a direct path to win instead of duplicate plan layers',()=>{
+  for(const phrase of ['YOUR PATH TO WIN','HOW WE WIN','HOW THEY WIN','YOUR JOB','1 · EARLY GAME','2 · SETUP','3 · FIGHT → CONVERT','BIGGEST THROW','YOUR CLIMB MISSION']){
     assert.ok(source.includes(phrase),`missing ${phrase}`);
   }
-  assert.ok(!source.includes('<span>WE WIN IF</span>'),'old duplicated win-condition card should not remain');
+  assert.ok(!source.includes('opRoleStepLabel5'),'desktop should condense the five-part engine to three visible actions');
 });
 
 test('jungle plan is role-specific instead of lane-generic',()=>{
