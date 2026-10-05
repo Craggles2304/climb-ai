@@ -17,6 +17,8 @@ type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUs
 type CoachResponse={answer?:string;error?:string;suggestion?:Suggestion;grounding?:string;factsUsed?:string[]};
 type HistoryTurn={role:'user'|'assistant';content:string};
 type CoachTab='ASK'|'MEMORY';
+type CoachMemoryItem={id:string;kind:string;topic:string;summary:string;metric:string|null;role:string|null;dnaDomain:string|null;memoryState:string|null;confidence:string|null;status:string;firstSeenAt:string;lastSeenAt:string;occurrences:number;evidence:any[]};
+type CoachMemoryPayload={ok:boolean;role:string|null;count:number;states:Record<string,number>;memories:CoachMemoryItem[];leagueMind:CoachMemoryItem|null;regression:CoachMemoryItem[];mastered:CoachMemoryItem[];transfer:CoachMemoryItem[]};
 
 const THREAD_KEY='op_climb_coach_thread_v1';
 const MAX_SAVED_MESSAGES=30;
@@ -64,6 +66,8 @@ export default function Coach(){
   const [pending,setPending]=useState(false);
   const [messages,setMessages]=useState<Msg[]>([]);
   const [tab,setTab]=useState<CoachTab>('ASK');
+  const [memorySnapshot,setMemorySnapshot]=useState<CoachMemoryPayload|null>(null);
+  const [memoryLoading,setMemoryLoading]=useState(false);
   const loadedAccount=useRef('');
   const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);
   const summary=useMemo(()=>recentSummary(matches),[matches]);
@@ -71,6 +75,16 @@ export default function Coach(){
   const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier,baselineGames)])},[active.id,priorityTitle,detail.tier,baselineGames]);
   useEffect(()=>{if(loadedAccount.current!==active.id||!messages.length)return;try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)))}catch{}},[active.id,messages]);
+  useEffect(()=>{
+    if(tab!=='MEMORY'||tier!=='PRO'||!UUID.test(active.id)){if(tab==='MEMORY')setMemorySnapshot(null);return}
+    let cancelled=false;setMemoryLoading(true);
+    fetch('/api/coach/memory?accountId='+encodeURIComponent(active.id)+'&role='+encodeURIComponent(active.role),{cache:'no-store'})
+      .then(async res=>{const body=await res.json();if(!res.ok)throw new Error(body?.error||'Coach Memory unavailable.');return body as CoachMemoryPayload})
+      .then(body=>{if(!cancelled)setMemorySnapshot(body)})
+      .catch(()=>{if(!cancelled)setMemorySnapshot(null)})
+      .finally(()=>{if(!cancelled)setMemoryLoading(false)});
+    return()=>{cancelled=true};
+  },[tab,tier,active.id,active.role]);
   async function send(t?:string){const text=(t??q).trim();if(!text||pending)return;const history=threadHistory(messages);const userMessage:Msg={who:'user',text};if(!baselineReady){const baselineMessage:Msg={who:'ai',text:`I’m still building your baseline. You have ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} tracked games. Play normally until game 3 is complete; then I’ll use those games to give you a personalised challenge instead of guessing early.`,grounding:'recent-match-and-ilp',factsUsed:['baseline_games','rank','role']};setQ('');setMessages(m=>[...m,userMessage,baselineMessage].slice(-MAX_SAVED_MESSAGES));return}const activeTaskContext=activeThree.map(task=>({title:task.title,dnaDomain:task.dnaDomain,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule}));const useTrend=isTrendQuestion(text)&&UUID.test(active.id);setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));try{const endpoint=useTrend?'/api/coach/trend':'/api/coach';const payload=useTrend?{message:text,history,accountId:active.id,requestedGames:requestedTrendGames(text),activeTasks:activeTaskContext,rank:active.rank,role:active.role}:{message:text,history,accountId:active.id,context:{rank:active.rank,role:active.role,mission:activeThree[0]?.title,champions:active.champions,activeTasks:activeTaskContext,recent:summary}};const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await res.json() as CoachResponse;if(!res.ok)throw new Error(body.error||'Coach request failed.');const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough from your games to answer that properly yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES))}catch(error){const errorMessage:Msg={who:'ai',text:`I can’t pull that game evidence right now. Keep your current focus: “${activeThree[0]?.title||'play one tracked game'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES))}finally{setPending(false)}}
   function applyProposal(index:number,task:Suggestion){addTask(task);setMessages(current=>current.map((m,i)=>i===index?{...m,applied:true}:m))}
   function resetThread(){const next:Msg[]=[welcome(activeThree[0]?.title,detail.tier,baselineGames)];setMessages(next);try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(next))}catch{}}
@@ -164,6 +178,31 @@ export default function Coach(){
           <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
         </header>
 
+        {memoryLoading&&<section className="panel panel-padding" style={{marginBottom:18}}>
+          <div className="eyebrow">LEAGUE MIND · SYNCING</div>
+          <h2>Updating what your coach remembers.</h2>
+          <p className="muted">Mission history, mastery, regression, retention and transfer evidence are being reconciled with your current {active.role} profile.</p>
+        </section>}
+
+        {memorySnapshot&&<section className="panel panel-padding" style={{marginBottom:18}}>
+          <div className="section-head">
+            <div><div className="eyebrow">LEAGUE MIND · {memorySnapshot.role||active.role}</div><h2>Your durable coaching model.</h2></div>
+            <span className="tag gold">{memorySnapshot.count} memories</span>
+          </div>
+          <p className="muted">{memorySnapshot.leagueMind?.summary||'Your long-term player model is building from repeated mission, retention and transfer evidence.'}</p>
+          <div className="vf-coach-context-stats" style={{marginTop:16}}>
+            <div><span>MASTERED / RETAINED</span><b>{memorySnapshot.mastered.length}</b><small>earned learning that stays remembered</small></div>
+            <div><span>REGRESSION WATCH</span><b>{memorySnapshot.regression.length}</b><small>previous learning currently slipping or due</small></div>
+            <div><span>TRANSFER MEMORY</span><b>{memorySnapshot.transfer.length}</b><small>tests across new champions or contexts</small></div>
+          </div>
+          <div className="memory-timeline" style={{marginTop:18}}>
+            {[...memorySnapshot.regression,...memorySnapshot.memories.filter(item=>!memorySnapshot.regression.some(r=>r.id===item.id)&&item.kind!=='PATTERN').slice(0,3),...memorySnapshot.mastered.slice(0,2)].slice(0,6).map(item=><div className="memory-event" key={item.id}>
+              <span>{String(item.memoryState||item.status||'MEMORY').replaceAll('_',' ')}</span>
+              <div><h3>{item.dnaDomain?item.dnaDomain.replaceAll('_',' ')+' · ':''}{item.topic.split(':').at(-1)?.replaceAll('_',' ')}</h3><p>{item.summary}</p><small className="muted">{item.confidence?item.confidence+' confidence · ':''}{item.occurrences} evidence update{item.occurrences===1?'':'s'}</small></div>
+            </div>)}
+          </div>
+        </section>}
+
         <div className="climb-grid coach-memory-summary">
           <section className="panel panel-padding">
             <div className="section-head"><h2>Current memory thread</h2><span className="tag gold">{mastered.length} mastered</span></div>
@@ -197,4 +236,3 @@ export default function Coach(){
   </AppShell>;
 
 }
-
