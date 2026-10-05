@@ -23,24 +23,20 @@ type ProgressionPayload={
 };
 
 const primary=[
-  ['Overview','/dashboard','⌂','Your daily briefing'],
-  ['Game DNA','/game-dna','⬡','Your player identity'],
-  ['Match room','/live','◇','Review + prepare + play'],
-  ['My games','/analyse','◈','Review + learn'],
-  ['My climb','/ilp','◎','Focus + development'],
-  ['Coach','/coach','✦','Memory + questions'],
-  ['Plans','/pricing','◆','Coaching depth'],
+  ['Home','/dashboard','⌂','What do I do next?'],
+  ['Match Room','/live','◇','Prepare → play → review'],
+  ['My DNA','/ilp','⬡','Your player identity'],
 ] as const;
-const mobile=[['Overview','/dashboard'],['DNA','/game-dna'],['Match','/live'],['Climb','/ilp'],['Coach','/coach']] as const;
+const mobile=[['Home','/dashboard'],['Match','/live'],['My DNA','/ilp']] as const;
 
 const routeTitle=(path:string)=>{
-  if(path==='/dashboard')return'YOUR CLIMB';
-  if(path==='/game-dna')return'GAME DNA';
+  if(path==='/dashboard')return'HOME';
+  if(path==='/game-dna')return'MY DNA';
   if(path==='/session')return'NEXT GAME';
   if(path==='/coach')return'COACH';
-  if(path==='/live')return'COMPANION';
+  if(path==='/live')return'MATCH ROOM';
   if(path==='/analyse'||path.startsWith('/analyse/'))return'MY GAMES';
-  if(path==='/ilp')return'MY CLIMB';
+  if(path==='/ilp')return'MY DNA';
   if(path==='/validation')return'VALIDATION LAB';
   if(path==='/advanced-statistics')return'ADVANCED';
   if(path==='/progress')return'ADVANCED PROGRESS';
@@ -57,7 +53,7 @@ const routeTitle=(path:string)=>{
   return'OP CLIMB';
 };
 function isPrimaryActive(path:string,href:string){
-  if(href==='/analyse')return path==='/analyse'||path.startsWith('/analyse/');
+  if(href==='/ilp')return path==='/ilp'||path==='/game-dna';
   return path===href;
 }
 function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void}){
@@ -111,6 +107,11 @@ export function AppShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
+  const topbarAction=path==='/live'
+    ?{label:'MY DNA',href:'/ilp'}
+    :path==='/ilp'||path==='/game-dna'
+      ?{label:'PLAY NEXT GAME',href:'/live'}
+      :{label:'OPEN MATCH ROOM',href:'/live'};
   const coaching=coachingLevelFor(active.rank);
   const [advancedOpen,setAdvancedOpen]=useState(false);
   const gatedLab=path.startsWith('/matchup-lab')&&coaching.depth<7;
@@ -125,7 +126,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     }
   },[]);
   useEffect(()=>{
-    const view=path==='/dashboard'?'overview':path==='/game-dna'?'game-dna':path==='/live'?'match-room':path==='/ilp'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
+    const view=path==='/dashboard'?'overview':path==='/live'?'match-room':path==='/ilp'||path==='/game-dna'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
     document.body.dataset.clientView=view;
     document.body.dataset.clientTier=tier.toLowerCase();
     return()=>{
@@ -214,7 +215,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
         <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
         <div className="topbar-right">
-          <Link className="btn primary btn-small site-cta" href="/ilp">See my progress</Link>
+          <Link className="btn primary btn-small site-cta" href={topbarAction.href}>{topbarAction.label}</Link>
           <span className="demo-badge">{tier} PLAN</span>
           <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
           <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
@@ -255,8 +256,8 @@ export function AppShell({children}:{children:React.ReactNode}){
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
       </div>
       <div className="op-learning-receipt-actions">
-        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE MY PROGRESS →</Link>
-        {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
+        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE MY DNA →</Link>
+        {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href="/live">REVIEW IN MATCH ROOM</Link>}
       </div>
     </aside>}
     <BetaReporter/>
