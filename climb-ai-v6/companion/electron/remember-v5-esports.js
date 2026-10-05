@@ -36,6 +36,7 @@
   let selectedContingency='PLAN_A';
   let lastCoachMeta={source:'local',quality:null,failure:null};
   let skippedIntentProbeId='';
+  let stableBotLane=null;
 
   const assetId=name=>ASSET_IDS[clean(name)]||clean(name).replace(/[^A-Za-z0-9]/g,'');
   const splash=name=>`https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${assetId(name)}_0.jpg`;
@@ -965,10 +966,23 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
     renderTeam('opRemOurTeam',resolvedOurs,'');
     renderTeam('opRemTheirTeam',resolvedEnemies,threats);
     renderCoachPath(coach?.steps);
-    const laneOpponents=(Array.isArray(coach?.laneOpponents)?coach.laneOpponents:[]).map(clean).filter(Boolean).slice(0,2);
-    const lane=clean(coach?.laneOpponent)||laneOpponents[0]||byRole(resolvedEnemies,resolvedRole);
-    const lanePartner=clean(coach?.lanePartner);
-    if((resolvedRole==='ADC'||resolvedRole==='SUPPORT')&&laneOpponents.length){
+    const incomingLaneOpponents=(Array.isArray(coach?.laneOpponents)?coach.laneOpponents:[]).map(clean).filter(Boolean).slice(0,2);
+    const incomingLanePartner=clean(coach?.lanePartner);
+    const botRole=resolvedRole==='ADC'||resolvedRole==='SUPPORT';
+    if(botRole&&incomingLanePartner&&incomingLaneOpponents.length>=2){
+      stableBotLane={
+        champion:clean(champion).toLowerCase(),
+        role:resolvedRole,
+        lanePartner:incomingLanePartner,
+        laneOpponents:[...incomingLaneOpponents],
+        laneOpponent:clean(coach?.laneOpponent)||incomingLaneOpponents[0],
+      };
+    }
+    const latched=botRole&&stableBotLane&&stableBotLane.champion===clean(champion).toLowerCase()&&stableBotLane.role===resolvedRole?stableBotLane:null;
+    const laneOpponents=incomingLaneOpponents.length>=2?incomingLaneOpponents:(latched?.laneOpponents||incomingLaneOpponents);
+    const lanePartner=incomingLanePartner||latched?.lanePartner||'';
+    const lane=clean(coach?.laneOpponent)||laneOpponents[0]||latched?.laneOpponent||byRole(resolvedEnemies,resolvedRole);
+    if(botRole&&laneOpponents.length){
       set('opRemMatchTitle',`${champion||'YOU'}${lanePartner?' + '+lanePartner:''} VS ${laneOpponents.join(' + ')}`);
     }else if(lane)set('opRemMatchTitle',`${champion||'YOU'} VS ${lane}`);
     else set('opRemMatchTitle',resolvedRole?'MATCHUP DETECTING':'ROLE / MATCHUP DETECTING');
@@ -1009,11 +1023,15 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
 
   async function requestCoach(signature,champion,userRole,ours,enemies){
     const fallback=localCoach(champion,userRole,ours,enemies);
-    applyCoach(fallback,champion,userRole,ours,enemies);
     if(lastCoachSignature===signature&&lastCoach){
       applyCoach(lastCoach,champion,userRole,ours,enemies);
       return;
     }
+    // Keep the last verified board stable while telemetry settles. The old
+    // ordering rendered the local solo-lane fallback before the verified 2v2
+    // coach on every heartbeat, which caused visible flicker.
+    if(lastCoach)applyCoach(lastCoach,champion,userRole,ours,enemies);
+    else applyCoach(fallback,champion,userRole,ours,enemies);
     const now=Date.now();
     if(lastCoachAttemptSignature===signature&&now-lastCoachAttemptAt<30000)return;
     if(coachInFlight||typeof window.opCompanion?.draftCoach!=='function'||ours.length<3||enemies.length<3)return;
@@ -1124,6 +1142,7 @@ body.op-remember-live .rem5-policy{font-size:6px;letter-spacing:.12em;color:#556
       lastPlaybook=null;
       selectedBranch='EVEN';
       skippedIntentProbeId='';
+      stableBotLane=null;
       lastCoachMeta={source:'local',quality:null,failure:null};
       renderPersonalTrap(null);
       renderCoachingStrategy(null);
