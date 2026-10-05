@@ -24,6 +24,7 @@ const refreshDevices=useCallback(async()=>{try{const response=await fetch('/api/
 useEffect(()=>{connectedTracked.current=false;recordingTracked.current=false;completedReviewTracked.current='';setSession(readClimbSession(active.id));const sync=()=>setSession(readClimbSession(active.id));window.addEventListener('storage',sync);return()=>window.removeEventListener('storage',sync)},[active.id]);useEffect(()=>{setDevicesLoaded(false);autoPairStarted.current=false;void refresh();const reviewTick=()=>{if(document.visibilityState==='visible'){void refreshReview();setSession(readClimbSession(active.id))}};const deviceTick=()=>{if(document.visibilityState==='visible')void refreshDevices()};const onVisibility=()=>{if(document.visibilityState==='visible')void refresh()};const reviewId=window.setInterval(reviewTick,10_000);const deviceId=window.setInterval(deviceTick,30_000);document.addEventListener('visibilitychange',onVisibility);return()=>{window.clearInterval(reviewId);window.clearInterval(deviceId);document.removeEventListener('visibilitychange',onVisibility)}},[active.id,refresh,refreshDevices,refreshReview]);
 useEffect(()=>{if(!pairCode)return;const tick=()=>{if(pairExpiresAt&&Date.now()>=new Date(pairExpiresAt).getTime()){setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('That pairing link expired. Choose Connect installed Companion to create a fresh one.');return}void refreshDevices()};tick();const id=window.setInterval(tick,3_000);return()=>window.clearInterval(id)},[pairCode,pairExpiresAt,refreshDevices]);useEffect(()=>{if(!pairCode||!pairStartedAt)return;const newPcOnline=devices.some(device=>{const createdAt=new Date(device.created_at).getTime();return Number.isFinite(createdAt)&&createdAt>=pairStartedAt-5_000&&recent(device.last_seen_at,6*60_000)});if(newPcOnline){setPairCode('');setPairExpiresAt('');setPairStartedAt(0);setMessage('Companion heartbeat confirmed. This PC is connected and ready for League.')}},[devices,pairStartedAt,pairCode]);
 const linked=devices.length>0,online=devices.some(device=>recent(device.last_seen_at,45_000)),lastDeviceSeenAt=devices.map(device=>device.last_seen_at).filter((value):value is string=>Boolean(value)).sort((a,b)=>Date.parse(b)-Date.parse(a))[0]??null,cloudDisconnected=Boolean(linked&&!online&&lastDeviceSeenAt&&!recent(lastDeviceSeenAt,5*60_000)),snapshot=review?.latestSnapshot??null,me=useMemo(()=>snapshot?findMe(snapshot):null,[snapshot]),ready=Boolean(review&&['COMPLETE','ABORTED'].includes(review.status)&&snapshot),recording=Boolean(review?.status==='ACTIVE'&&recent(review.lastSeenAt,90_000)),staleActive=Boolean(review?.status==='ACTIVE'&&!recent(review.lastSeenAt,90_000)),status=recording?'RECORDING':staleActive?'GAME DATA LOST':online?'READY FOR LEAGUE':cloudDisconnected?'CLOUD SYNC DISCONNECTED':linked?'COMPANION OFFLINE':'SETUP REQUIRED',csMin=me&&snapshot?((me.scores.creepScore/Math.max(snapshot.gameTime/60,1/60))).toFixed(1):'—';
+const postgameProcessing=Boolean(review&&['QUEUED','PROCESSING'].includes(String((review.summary as any)?.processing?.status??'')));
 useEffect(()=>{if(online&&!connectedTracked.current){connectedTracked.current=true;track('companion_connected',{accountId:active.id,deviceCount:devices.length})}},[online,active.id,devices.length]);
 useEffect(()=>{if(recording&&!recordingTracked.current){recordingTracked.current=true;track('companion_recording_started',{accountId:active.id,sessionActive:Boolean(session)})}else if(!recording){recordingTracked.current=false}},[recording,active.id,session]);
 useEffect(()=>{if(review?.status!=='COMPLETE')return;const signature=String(review.lastSeenAt||review.snapshotCount||'complete');if(completedReviewTracked.current===signature)return;completedReviewTracked.current=signature;track('companion_game_completed',{accountId:active.id,snapshotCount:review.snapshotCount,sessionActive:Boolean(session)});void refreshAccount()},[review?.status,review?.lastSeenAt,review?.snapshotCount,active.id,session,refreshAccount]);
@@ -59,11 +60,11 @@ useEffect(()=>{if(!hydrated||!devicesLoaded||!isOwnAccount||online||pairCode||bu
 return <div className="match-room">
   <header className="page-head">
     <div>
-      <div className="eyebrow">{recording?'MATCH ROOM · LIVE TRACKING':cloudDisconnected?'MATCH ROOM · CLOUD SYNC DISCONNECTED':latestMatch?'MATCH ROOM · LAST GAME':'MATCH ROOM · PREPARE → PLAY'}</div>
-      <h1>{recording?'Game in progress.':cloudDisconnected?'Your desktop and Match Room are out of sync.':latestMatch?latestMatch.champion+' · '+(latestMatch.result==='WIN'?'VICTORY':'DEFEAT'):'Know your job before you queue.'}</h1>
-      <p>{recording?'OP CLIMB is quietly collecting evidence. Coaching resumes when the game ends.':cloudDisconnected?'Your Companion may still be reading League locally, but this page is not receiving its heartbeat. Reconnect the installed Companion once; the review below is only the last cloud-synced game.':latestMatch?'See what happened, where it went wrong and the one thing to carry into your next game.':'One focus, one reminder, your champion context and a quiet Companion connection.'}</p>
+      <div className="eyebrow">{recording?'MATCH ROOM · LIVE TRACKING':postgameProcessing?'MATCH ROOM · GAME COMPLETE':cloudDisconnected?'MATCH ROOM · CLOUD SYNC DISCONNECTED':latestMatch?'MATCH ROOM · LAST GAME':'MATCH ROOM · PREPARE → PLAY'}</div>
+      <h1>{recording?'Game in progress.':postgameProcessing?'Your review is processing.':cloudDisconnected?'Your desktop and Match Room are out of sync.':latestMatch?latestMatch.champion+' · '+(latestMatch.result==='WIN'?'VICTORY':'DEFEAT'):'Know your job before you queue.'}</h1>
+      <p>{recording?'OP CLIMB is quietly collecting evidence. Coaching resumes when the game ends.':postgameProcessing?'The match is safely stored. OP CLIMB is building the review, evidence and learning updates in the post-game queue.':cloudDisconnected?'Your Companion may still be reading League locally, but this page is not receiving its heartbeat. Reconnect the installed Companion once; the review below is only the last cloud-synced game.':latestMatch?'See what happened, where it went wrong and the one thing to carry into your next game.':'One focus, one reminder, your champion context and a quiet Companion connection.'}</p>
     </div>
-    <span className={'match-room-state '+(recording?'recording':cloudDisconnected?'offline':latestMatch||online?'ready':'offline')}>{recording?'● TRACKING':cloudDisconnected?'○ RECONNECT':latestMatch?'● REVIEW READY':online?'● READY':'○ CONNECT'}</span>
+    <span className={'match-room-state '+(recording?'recording':postgameProcessing?'recording':cloudDisconnected?'offline':latestMatch||online?'ready':'offline')}>{recording?'● TRACKING':postgameProcessing?'● PROCESSING':cloudDisconnected?'○ RECONNECT':latestMatch?'● REVIEW READY':online?'● READY':'○ CONNECT'}</span>
   </header>
 
   {recording&&<section className="panel panel-padding match-room-live-stats">
@@ -98,7 +99,16 @@ return <div className="match-room">
     <button className="btn primary" type="button" disabled={busy||!isOwnAccount} onClick={()=>void pair()}>{busy?'CREATING SECURE PAIRING…':'RECONNECT INSTALLED COMPANION'}</button>
   </section>}
 
-  {!recording&&latestMatch&&lastGameReport&&lastGameReview&&<section className="match-room-last-game">
+  {postgameProcessing&&<section className="panel panel-padding match-room-complete">
+    <div>
+      <div className="eyebrow">GAME COMPLETE · PROCESSING</div>
+      <h2>Your match is safe. The heavy work is queued.</h2>
+      <p className="muted">Analysis, review events and learning updates now run outside the Companion upload request. This keeps game-end spikes stable when many players finish together.</p>
+    </div>
+    <span className="match-room-state recording">● QUEUED</span>
+  </section>}
+
+  {!recording&&!postgameProcessing&&latestMatch&&lastGameReport&&lastGameReview&&<section className="match-room-last-game">
     <article className="panel match-room-review-hero">
       <div>
         <div className="eyebrow">{cloudDisconnected?'LAST CLOUD-SYNCED GAME':'LAST GAME REVIEW'} · {canonicalLeagueRole(latestMatch.role)||latestMatch.role}</div>
