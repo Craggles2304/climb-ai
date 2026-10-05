@@ -21,6 +21,7 @@ import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import type {StrengthEvidence} from '@/lib/positiveEvidence';
 import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -94,13 +95,16 @@ export default function Analysis(){
   if(proLoading)return <AppShell><section className="glass card"><div className="eyebrow">COACHING EVIDENCE</div><h2>Reading the full game evidence…</h2><p className="muted">The review will appear once its coaching authority is resolved, so a scoreboard fallback cannot flash a different limiter first.</p></section></AppShell>;
 
   const matchRole=canonicalLeagueRole(match.role);
+  const reviewMatches=allMatches.some(item=>item.id===match.id)?allMatches:[...allMatches,match];
+  const baselineGames=dnaBaselineGameCount(reviewMatches,matchRole||active.role);
+  const baselineReady=dnaBaselineReady(baselineGames);
   const recent=matches.filter(m=>m.id!==match.id&&(!matchRole||canonicalLeagueRole(m.role)===matchRole));
   const report=analyseMatch({...match,proAnalysis},recent);
   const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
-  const missionResults=tasks.flatMap(task=>{
+  const missionResults=baselineReady?tasks.flatMap(task=>{
     const attempt=(task.missionHistory??[]).find(rep=>rep.matchId===id);
     return attempt?[{task,attempt}]:[];
-  });
+  }):[];
   const plainProblems=plainProblemCards(match,proAnalysis,report.primary.category,report.mission.dnaDomain).slice(0,2);
   const nextAction=plainNextAction(report.primary.category,match.opponent);
   const overviewStrength=strengths[0];
@@ -114,7 +118,7 @@ export default function Analysis(){
       <Link className={section==='overview'?'active':''} href={reviewBase}><b>OVERVIEW</b><small>what mattered</small></Link>
       <Link className={section==='coaching'?'active':''} href={reviewBase+'/coaching'}><b>COACHING</b><small>good · bad · next</small></Link>
       <Link className={section==='stats'?'active':''} href={reviewBase+'/stats'}><b>STATS</b><small>lane · economy · deaths</small></Link>
-      <Link className={section==='evidence'?'active':''} href={reviewBase+'/evidence'}><b>EVIDENCE</b><small>missions · proof</small></Link>
+      <Link className={section==='evidence'?'active':''} href={reviewBase+'/evidence'}><b>EVIDENCE</b><small>{baselineReady?'missions · proof':'baseline · observations'}</small></Link>
     </nav>
 
     {section==='overview'&&<>
@@ -146,9 +150,9 @@ export default function Analysis(){
         </article>
 
         <article className="ar-overview-card mission" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
-          <span>DNA CHECK</span>
-          <h3>{missionResults.length?passedMissionCount+'/'+missionResults.length+' mission checks passed':'No mission result attached'}</h3>
-          <p>{missionResults.length?'OP CLIMB checked this match against the DNA missions that were active when you played.':'This match still contributes to your wider player profile even without a banked mission rep.'}</p>
+          <span>{baselineReady?'DNA CHECK':'BASELINE STATUS'}</span>
+          <h3>{baselineReady?(missionResults.length?passedMissionCount+'/'+missionResults.length+' mission checks passed':'DNA active · no mission result attached'):`Baseline ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</h3>
+          <p>{baselineReady?(missionResults.length?'OP CLIMB checked this match against the DNA missions that were active when you played.':'This match still contributes evidence to your active Game DNA.'):`This game is part of your starting baseline. Permanent DNA missions unlock after game ${DNA_BASELINE_GAMES}.`}</p>
           <Link href={reviewBase+'/evidence'}>SEE EVIDENCE →</Link>
         </article>
       </div>
@@ -161,14 +165,14 @@ export default function Analysis(){
 
       <section className="ar-overview-action panel" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
         <div>
-          <span>NEXT GAME · ONE THING ONLY</span>
-          <small>{dnaDomainLabel(report.mission.dnaDomain)}</small>
+          <span>{baselineReady?'NEXT GAME · PRIORITY MISSION':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} · PROVISIONAL COACHING`}</span>
+          <small>{baselineReady?dnaDomainLabel(report.mission.dnaDomain):'NOT A PERMANENT DNA MISSION YET'}</small>
           <h2>{nextAction.title}</h2>
-          <p>{nextAction.action}</p>
+          <p>{baselineReady?nextAction.action:nextAction.action+' Use this as a useful single-game focus while you finish the baseline. OP CLIMB will only turn repeated evidence into permanent DNA missions after game '+DNA_BASELINE_GAMES+'.'}</p>
         </div>
         <div className="ar-overview-action-buttons">
           <Link className="btn secondary" href={reviewBase+'/coaching'}>WHY THIS? →</Link>
-          <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>TAKE IT TO MY DNA →</Link>
+          <Link className="btn primary" href={baselineReady?"/ilp?game="+encodeURIComponent(id):"/live"}>{baselineReady?'TAKE IT TO MY DNA →':`PLAY BASELINE GAME ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} →`}</Link>
         </div>
       </section>
     </>}
@@ -236,17 +240,17 @@ export default function Analysis(){
       <section className="ar-next-action panel" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
         <div className="ar-next-number">01</div>
         <div className="ar-next-copy">
-          <span>NEXT GAME · ONE THING ONLY</span>
-          <small>{dnaDomainLabel(report.mission.dnaDomain)}</small>
+          <span>{baselineReady?'NEXT GAME · PRIORITY MISSION':'PROVISIONAL COACHING · BASELINE ONLY'}</span>
+          <small>{baselineReady?dnaDomainLabel(report.mission.dnaDomain):`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</small>
           <h2>{nextAction.title}</h2>
           <p>{nextAction.action}</p>
           <div className="ar-next-example"><b>IN A REAL GAME</b><span>{nextAction.example}</span></div>
-          <details>
+          {baselineReady?<details>
             <summary>SHOW THE MEASUREMENT</summary>
             <p>OP CLIMB tracks this across {report.mission.gamesRequired} relevant games. Technical pass bar: {report.mission.target} {report.mission.unit}.</p>
-          </details>
+          </details>:<div className="ar-baseline-notice"><b>NOT A DNA MISSION YET</b><span>This advice comes from this match only. Finish game {DNA_BASELINE_GAMES} before OP CLIMB locks in your six persistent missions.</span></div>}
         </div>
-        <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link>
+        <Link className="btn primary" href={baselineReady?"/ilp?game="+encodeURIComponent(id):"/live"}>{baselineReady?'SEE MY DNA →':`PLAY BASELINE GAME ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} →`}</Link>
       </section>
     </section>
     </>}
@@ -257,6 +261,12 @@ export default function Analysis(){
     </div>}
 
     {section==='evidence'&&<div className="ar-evidence-page">
+    {!baselineReady&&<section className="ar-baseline-evidence panel">
+      <div className="eyebrow">BASELINE EVIDENCE · ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}</div>
+      <h2>Your missions are deliberately still locked.</h2>
+      <p>These observations are useful for reviewing this match, but OP CLIMB will not convert one or two games into your permanent player identity. Finish the three-game role baseline first.</p>
+      <Link className="btn primary" href="/live">PLAY BASELINE GAME {Math.min(baselineGames+1,DNA_BASELINE_GAMES)} →</Link>
+    </section>}
     {missionResults.length>0&&<section className="ar-mission-update">
       <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link></div>
       <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
