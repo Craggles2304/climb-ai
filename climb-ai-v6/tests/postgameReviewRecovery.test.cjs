@@ -41,6 +41,7 @@ const liveCenter=fs.readFileSync('components/LiveCommandCenter.tsx','utf8');
 const liveReview=fs.readFileSync('components/LiveFightReviewMount.tsx','utf8');
 const analysePage=fs.readFileSync('app/analyse/[match]/page.tsx','utf8');
 const analyseApi=fs.readFileSync('app/api/analyse/route.ts','utf8');
+const telemetryRoute=fs.readFileSync('app/api/live/telemetry/route.ts','utf8');
 
 
 test('Match Room never presents stale cloud state as the current game',()=>{
@@ -49,6 +50,14 @@ test('Match Room never presents stale cloud state as the current game',()=>{
   assert.ok(liveCenter.includes('SYNC BROKEN · LOCAL APP ≠ CLOUD MATCH ROOM'));
   assert.ok(liveCenter.includes('RECONNECT INSTALLED COMPANION'));
   assert.ok(liveCenter.includes('LAST CLOUD-SYNCED GAME'));
+});
+
+test('active Match Room visibly renders farm KDA gold items and refreshes quickly',()=>{
+  for(const label of ['LIVE MATCH DATA · TRACKING ONLY','GAME TIME','FARM','CS / MIN','KDA','CURRENT GOLD','CURRENT ITEMS']){
+    assert.ok(liveCenter.includes(label),`missing live stat label ${label}`);
+  }
+  assert.ok(liveCenter.includes('window.setInterval(reviewTick,10_000)'));
+  assert.ok(telemetryRoute.includes('const SNAPSHOT_SAMPLE_MS=10_000'));
 });
 
 test('completed live review exposes the saved match id through Match Room',()=>{
