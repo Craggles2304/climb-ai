@@ -149,65 +149,33 @@ export default function PlayerDevelopmentCentre(){
 
     <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
 
-    <section className="my-dna-stage" aria-label={`${viewRole} interactive Game DNA`}>
-      <div className="my-dna-stage-head">
-        <div><span>LIVE {viewRole} GAME DNA</span><strong>Your six-strand development profile</strong></div>
-        <small>Select a strand to understand the mission, evidence and growth behind it.</small>
-      </div>
-      <ClientGameDna player={active.gameName+active.tagline} role={viewRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
-    </section>
+    <div className="my-dna-workspace">
+      <section className="my-dna-stage" aria-label={`${viewRole} interactive Game DNA`}>
+        <div className="my-dna-stage-head">
+          <div><span>LIVE {viewRole} GAME DNA</span><strong>Your six-strand development profile</strong></div>
+          <small>Select a strand. Its mission opens beside your DNA.</small>
+        </div>
+        <ClientGameDna player={active.gameName+active.tagline} role={viewRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+      </section>
 
-    <MissionHub
-      tasks={activeTasks}
-      focusDomain={focusDomain}
-      levels={dnaLevels}
-      role={viewRole}
-      onSelect={chooseDomain}
-    />
+      <MissionHub
+        tasks={activeTasks}
+        focusDomain={focusDomain}
+        levels={dnaLevels}
+        role={viewRole}
+        onSelect={chooseDomain}
+      />
+    </div>
 
     {changes.length>0&&<section className="ip-update">
       <div><span>PLAN UPDATED</span><b>{changes.length} CHANGE{changes.length===1?'':'S'}</b></div>
       <details open><summary>WHAT CHANGED</summary>{changes.map(change=><p key={change}>{change}</p>)}</details>
     </section>}
 
-    <nav className="ip-tabs" aria-label="Development plan sections">
-      <button type="button" className={tab==='CURRENT'?'active':''} onClick={()=>setTab('CURRENT')}><b>MISSION DETAIL</b><small>{focusDomain?DNA_DOMAIN_LABELS[focusDomain]:'current focus'}</small></button>
-      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab('EVIDENCE')}><b>GAME PROOF</b><small>what counted on each strand</small></button>
-      {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab('HISTORY')}><b>HISTORY</b><small>{mastered.length} mastered · {paused.length} paused</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
+    <nav className="ip-tabs ip-tabs-optional" aria-label="Optional DNA detail">
+      <button type="button" className={tab==='EVIDENCE'?'active':''} onClick={()=>setTab(tab==='EVIDENCE'?'CURRENT':'EVIDENCE')}><b>GAME PROOF</b><small>{tab==='EVIDENCE'?'hide proof':'open proof for selected mission'}</small></button>
+      {tier==='PRO'?<button type="button" className={tab==='HISTORY'?'active':''} onClick={()=>setTab(tab==='HISTORY'?'CURRENT':'HISTORY')}><b>HISTORY</b><small>{tab==='HISTORY'?'hide history':mastered.length+' mastered · '+paused.length+' paused'}</small></button>:<Link className="ip-tab-lock" href="/pricing"><b>HISTORY 🔒</b><small>PRO persistent development</small></Link>}
     </nav>
-
-    {tab==='CURRENT'&&<div className="ip-panel">
-      {displayTasks.length?<div className="ip-mission-grid">
-        {displayTasks.map(task=><MissionCard key={task.id} task={task} level={dnaLevels[task.dnaDomain]}/>)}
-      </div>:<section className="ip-empty">
-        <div className="eyebrow">DNA PLAN BUILDING</div>
-        <h2>{selectedDomain?'This strand is waiting for its next mission.':'Your six DNA missions are being built.'}</h2>
-        <p>Play a tracked game and OP CLIMB will keep one measurable mission attached to each DNA strand.</p>
-        <Link className="btn primary" href="/live">OPEN COMPANION →</Link>
-      </section>}
-
-      {tier==='PRO'&&mastered.length>0&&<section className="panel panel-padding" style={{marginTop:18}}>
-        <div className="section-head"><div><div className="eyebrow">RECENTLY MASTERED</div><h2>Completed strand missions moved into memory.</h2></div><button className="text-btn" type="button" onClick={()=>setTab('HISTORY')}>View history →</button></div>
-        <div>
-          {mastered.slice(0,6).map(task=><div className="habit done ip-strand-item" style={strandStyle(task.dnaDomain)} key={task.id}>
-            <span className="habit-index">✓</span>
-            <div><small className="ip-strand-label">{dnaDomainLabel(task.dnaDomain)}</small><h3>{plainLanguageFocus(task).name}</h3><p>{task.gameRule}</p></div>
-            <span className="tag">Mastered</span>
-          </div>)}
-        </div>
-      </section>}
-
-      {activeTasks.length>0&&<section className="ip-next">
-        <div>
-          <span>HOW THE PLAN MOVES</span>
-          <h2>Six {viewRole} strands. One mission on each.</h2>
-          <p>After every tracked {viewRole} game, OP CLIMB checks all six missions. Games in other roles do not progress this profile. Reach 3/3 and that strand moves to its next mission.</p>
-        </div>
-        <div className="ip-next-actions">
-          <Link className="btn primary" href="/live">TRACK NEXT GAME →</Link>
-        </div>
-      </section>}
-    </div>}
 
     {tab==='EVIDENCE'&&<div className="ip-panel">
       {displayTasks.length?<div className="ip-evidence-grid">
