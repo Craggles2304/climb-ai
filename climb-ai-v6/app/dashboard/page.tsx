@@ -22,6 +22,11 @@ export default function Dashboard(){
   const {tasks,allTasks}=useLearningPlan();
   const [devices,setDevices]=useState<Device[]>([]);
   const [deviceLoaded,setDeviceLoaded]=useState(false);
+  const [dnaRevealed,setDnaRevealed]=useState(false);
+
+  useEffect(()=>{
+    try{setDnaRevealed(localStorage.getItem('op:dna-revealed:'+active.id+':'+active.role)==='1')}catch{setDnaRevealed(false)}
+  },[active.id,active.role]);
 
   useEffect(()=>{
     let stopped=false;
@@ -63,6 +68,7 @@ export default function Dashboard(){
     linked,
     online,
     baselineGames,
+    dnaRevealed,
     focusName:focusPlain?.name||focus?.title,
     focusJob:focusPlain?.nextGame||focus?.gameRule,
     focusConfirmed:focusProof?.confirmed,
