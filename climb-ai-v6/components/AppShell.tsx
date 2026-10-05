@@ -192,7 +192,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         {primary.map(([name,href,icon])=>{
           const activeLink=isPrimaryActive(path,href);
           return <Link className={'nav-link '+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
-            <span aria-hidden="true">{icon}</span><span>{name}</span>{name==='Coach'&&tier==='PRO'&&<span className="nav-extra">PRO</span>}
+            <span aria-hidden="true">{icon}</span><span>{name}</span>
           </Link>;
         })}
       </nav>
