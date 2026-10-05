@@ -8,7 +8,7 @@ import {ACTIVE_PLAN_SIZE,adaptAndRefill,createCoachTask,isGameMeasurableTask,ran
 import {orderTasks,OrderedTask,orderingNote} from '@/lib/planOrder';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpCloudMerge';
-import {stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {canonicalLeagueRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaDomainForTask,ensureDnaDomain} from '@/lib/dnaDomain';
 import {ensureOneMissionPerDnaStrand,isDnaStrandMission} from '@/lib/dnaStrandMissions';
 
@@ -17,7 +17,7 @@ type Ctx={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Recor
 const C=createContext<Ctx|null>(null);const KEY='climb_ilp_v6';const isLive=(task:ILPTask)=>task.status!=='MASTERED'&&task.status!=='PAUSED';
 function taskKey(task:ILPTask){return`${task.title.trim().toLowerCase()}::${task.metric.trim().toLowerCase()}::${task.dnaDomain}::${task.category}::${task.roleScope??'LEGACY'}`}
 function dedupeTasks(tasks:ILPTask[]){const map=new Map<string,ILPTask>();for(const task of tasks){const key=taskKey(task),existing=map.get(key);if(!existing||taskFreshness(task)>=taskFreshness(existing))map.set(key,task)}return[...map.values()]}
-function matchesForRole(matches:ReturnType<typeof matchesFor>,role:Role){return matches.filter(match=>match.role===role)}
+function matchesForRole(matches:ReturnType<typeof matchesFor>,role:Role){return matches.filter(match=>canonicalLeagueRole(match.role)===role)}
 function stampRole(task:ILPTask,role:Role):ILPTask{return task.roleScope?task:{...task,roleScope:role,roleEvidence:[role]}}
 function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,accountId:string,role:Role,rank?:string|null){
   const stamped=dedupeTasks(tasks.map(task=>ensureDnaDomain(task as ILPTask&{dnaDomain?:ILPTask['dnaDomain']}))).map(task=>stampLegacyTaskScope(task,role));
@@ -69,7 +69,7 @@ async function persistCloud(accountId:string,tasks:ILPTask[]):Promise<ILPTask[]|
   return reconciled.tasks;
 }
 export function LearningPlanProvider({children}:{children:React.ReactNode}){const {active,profile,authenticated,hydrated}=useAccount();const [allTasks,setAllTasks]=useState<Record<string,ILPTask[]>>({});const [planError,setPlanError]=useState<string|null>(null);
-const accountMatches=matchesFor(active.id);const roleAccountMatches=accountMatches.filter(match=>match.role===active.role);const matchSignature=roleAccountMatches.slice(0,5).map(m=>m.id).join('|');
+const accountMatches=matchesFor(active.id);const roleAccountMatches=matchesForRole(accountMatches,active.role);const matchSignature=roleAccountMatches.slice(0,5).map(m=>m.id).join('|');
 const refreshCloudNow=useCallback(async()=>{if(!hydrated||!authenticated||active.id===PROFILE_ACCOUNT_ID||active.id.startsWith('acct-'))return;const rows=await loadCloudRows(active.id);if(rows===null)return;const loaded=rows.map((row:any)=>({...row.payload,id:row.id,accountId:active.id})) as ILPTask[];const cleaned=normalisePlan(loaded,matchesFor(active.id),active.id,active.role,active.rank);setPlanError(null);setAllTasks(prev=>({...prev,[active.id]:cleaned}))},[active.id,active.role,active.rank,authenticated,hydrated]);
 useEffect(()=>{if(!hydrated||authenticated)return;try{const raw=localStorage.getItem(KEY);setAllTasks(raw?JSON.parse(raw):defaultILP)}catch{setAllTasks(defaultILP)}},[authenticated,hydrated]);
 useEffect(()=>{if(!hydrated||!authenticated)return;setAllTasks({})},[authenticated,hydrated]);
