@@ -20,7 +20,7 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=15_000;
-const RUNTIME_VERSION='2026.10.05.1';
+const RUNTIME_VERSION='2026.10.05.2';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
@@ -457,6 +457,8 @@ function loadPersistedSession(snapshot){
       lastGameTime:Math.max(lastGameTime,snapshot.gameTime),
       misses:0,
       keyframes:Array.isArray(saved.keyframes)?saved.keyframes.slice(-MAX_LOCAL_KEYFRAMES):[],
+      farmCheckpoints:saved.farmCheckpoints&&typeof saved.farmCheckpoints==='object'?saved.farmCheckpoints:{},
+      lastFarmCheckpointScanTime:num(saved.lastFarmCheckpointScanTime,lastGameTime),
       lastKeyframeGameTime:num(saved.lastKeyframeGameTime,-999),
       lastSignal:text(saved.lastSignal),
       lastSnapshot:snapshot,
@@ -471,6 +473,8 @@ function persistSession(snapshot){
       id:session.id,startedAt:session.startedAt,lastGameTime:session.lastGameTime,riotId:snapshot?.active?.riotId||null,
       championName:snapshot?.active?.championName||null,
       keyframes:session.keyframes??[],
+      farmCheckpoints:session.farmCheckpoints??{},
+      lastFarmCheckpointScanTime:session.lastFarmCheckpointScanTime??session.lastGameTime??-1,
       lastKeyframeGameTime:session.lastKeyframeGameTime??-999,
       lastSignal:session.lastSignal??'',
       savedAt:new Date().toISOString(),
@@ -556,6 +560,23 @@ function recordLocalKeyframe(snapshot,force=false){
     session.lastSignal=signal;
   }
 }
+function captureProtectedFarmCheckpoint(snapshot){
+  if(!session)return;
+  const current=num(snapshot?.gameTime,0);
+  const previous=num(session.lastFarmCheckpointScanTime,session.lastGameTime??current);
+  const checkpoints=session.farmCheckpoints&&typeof session.farmCheckpoints==='object'?session.farmCheckpoints:{};
+  for(const minute of [5,10,15,20]){
+    const seconds=minute*60;
+    const key=String(minute);
+    if(checkpoints[key])continue;
+    if(previous<seconds&&current>=seconds&&current<=seconds+30){
+      checkpoints[key]=snapshot;
+      console.log(`OVERPOWERED Companion: protected ${minute}:00 farm checkpoint captured.`);
+    }
+  }
+  session.farmCheckpoints=checkpoints;
+  session.lastFarmCheckpointScanTime=current;
+}
 
 
 async function startSession(snapshot){
@@ -570,6 +591,8 @@ async function startSession(snapshot){
     lastGameTime:snapshot.gameTime,
     misses:0,
     keyframes:[snapshot],
+    farmCheckpoints:{},
+    lastFarmCheckpointScanTime:snapshot.gameTime,
     lastKeyframeGameTime:snapshot.gameTime,
     lastSignal:snapshotSignal(snapshot),
     lastSnapshot:snapshot,
@@ -589,7 +612,8 @@ async function finishSession(reason){
     session=finished;
     recordLocalKeyframe(finished.lastSnapshot,true);
   }
-  const keyframes=thinKeyframes(finished.keyframes??[]);
+  const protectedFarmFrames=Object.values(finished.farmCheckpoints??{}).filter(Boolean);
+  const keyframes=thinKeyframes([...(finished.keyframes??[]),...protectedFarmFrames]);
   const envelope={
     type:'FINAL',
     clientSessionId:finished.id,
@@ -629,7 +653,9 @@ async function tick(){
   emitLiveMatchup(snapshot);
   if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
   if(!session)await startSession(snapshot);
-  session.misses=0;session.lastGameTime=snapshot.gameTime;
+  session.misses=0;
+  captureProtectedFarmCheckpoint(snapshot);
+  session.lastGameTime=snapshot.gameTime;
   recordLocalKeyframe(snapshot);
   await recoverInGamePlan(snapshot);
   persistSession(snapshot);
