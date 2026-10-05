@@ -223,6 +223,7 @@ function findLaneOpponentLive(snapshot:LiveTelemetrySnapshot,me:LiveTelemetryPla
   return snapshot.players.find(p=>p.team!==me.team&&p.team!=='UNKNOWN'&&p.position&&me.position&&p.position===me.position)??null;
 }
 function snapshotAtOrBefore(snapshots:LiveTelemetrySnapshot[],seconds:number){let best:LiveTelemetrySnapshot|null=null;for(const s of snapshots){if(s.gameTime<=seconds+2)best=s;else break}return best}
+function snapshotNear(snapshots:LiveTelemetrySnapshot[],seconds:number,toleranceSeconds=30){let best:LiveTelemetrySnapshot|null=null,bestDistance=Infinity;for(const s of snapshots){const distance=Math.abs(s.gameTime-seconds);if(distance<=toleranceSeconds&&distance<bestDistance){best=s;bestDistance=distance}}return best}
 function snapshotAfter(snapshots:LiveTelemetrySnapshot[],seconds:number){return snapshots.find(s=>s.gameTime>=seconds)??null}
 function healthPct(s:LiveTelemetrySnapshot|null){if(!s||!s.active.stats.currentHealth||!s.active.stats.maxHealth)return null;return s.active.stats.currentHealth/s.active.stats.maxHealth}
 function uniqueLiveEvents(snapshots:LiveTelemetrySnapshot[]){const map=new Map<string,LiveTelemetryEvent>();for(const s of snapshots)for(const e of s.events){const key=e.id!==null?`id:${e.id}`:`${e.name}:${round(e.time,1)}:${e.actor||''}:${e.target||''}`;map.set(key,e)}return[...map.values()].sort((a,b)=>a.time-b.time)}
@@ -247,7 +248,24 @@ function sameLivePlayer(a:LiveTelemetryPlayer,b:LiveTelemetryPlayer){return Bool
 
 function liveSurvivalValue(snapshots:LiveTelemetrySnapshot[],deaths:FightReview[],objectives:LiveTelemetryEvent[]){if(!deaths.length)return{score:100,value:'No reviewed deaths',status:'DERIVED' as ProMetricStatus,summary:'You preserved your life through every reviewed fight event.',evidence:[] as ProEvidence[]};let costly=0;const evidence:ProEvidence[]=[];for(const d of deaths){const nearObj=objectives.some(o=>o.time>=d.atSeconds&&o.time-d.atSeconds<=45);const s=snapshotAtOrBefore(snapshots,d.atSeconds),me=s?findMe(s):null;const team=s&&me?s.players.filter(p=>p.team===me.team).sort((a,b)=>b.itemGold-a.itemGold):[];const rank=me?team.findIndex(p=>sameLivePlayer(p,me))+1:0;const highGold=d.evidence.currentGold>=1200;if(nearObj||highGold||(rank>0&&rank<=2)){costly++;evidence.push(ev(d.atSeconds,'High-cost death',[nearObj?'major objective within 45s':'',highGold?`${Math.round(d.evidence.currentGold)}g unspent`:'',rank>0&&rank<=2?`#${rank} team item value`:'' ].filter(Boolean).join(' · ')))}}const score=clamp(100-deaths.length*5-costly*15);return{score,value:`${costly}/${deaths.length} high-cost deaths`,status:'DERIVED' as ProMetricStatus,summary:'Separates ordinary deaths from deaths that expose a large bank, team carry value or an upcoming objective window.',evidence:evidence.slice(0,6)}}
 
-function liveCsCurve(snapshots:LiveTelemetrySnapshot[]){const checkpoints=[5,10,15,20].map(min=>{const s=snapshotAtOrBefore(snapshots,min*60),me=s?findMe(s):null;return me?{min,cs:me.scores.creepScore}:null}).filter(Boolean) as {min:number;cs:number}[];if(checkpoints.length<2)return{score:null,value:'Building curve',status:'BUILDING' as ProMetricStatus,summary:'Not enough checkpoint coverage for a useful CS curve.',evidence:[] as ProEvidence[]};const rates=checkpoints.map(x=>x.cs/x.min);const consistency=Math.max(0,1-(Math.max(...rates)-Math.min(...rates))/Math.max(...rates,.1));const score=clamp(consistency*100);return{score,value:checkpoints.map(x=>`${x.min}m ${x.cs}`).join(' · '),status:'MEASURED' as ProMetricStatus,summary:'Tracks the shape of your farm instead of hiding lane collapse or recovery inside one final CS/min number.',evidence:checkpoints.map(x=>ev(x.min*60,`${x.min} minute CS`,`${x.cs} CS (${round(x.cs/x.min,1)}/min).`))}}
+function liveCsCurve(snapshots:LiveTelemetrySnapshot[]){
+  const checkpoints=[5,10,15,20].map(min=>{
+    const s=snapshotNear(snapshots,min*60,30),me=s?findMe(s):null;
+    return me?{min,atSeconds:s!.gameTime,cs:me.scores.creepScore}:null;
+  }).filter(Boolean) as {min:number;atSeconds:number;cs:number}[];
+  if(checkpoints.length<2)return{score:null,value:'Building curve',status:'BUILDING' as ProMetricStatus,summary:'Exact 5/10/15-minute farm checkpoints were not captured closely enough to grade the CS curve.',evidence:[] as ProEvidence[]};
+  for(let index=1;index<checkpoints.length;index++){
+    const previous=checkpoints[index-1],current=checkpoints[index];
+    const minutes=(current.atSeconds-previous.atSeconds)/60;
+    if(current.cs<previous.cs||minutes<=0||(current.cs-previous.cs)/minutes>20){
+      return{score:null,value:'Checkpoint coverage unreliable',status:'BUILDING' as ProMetricStatus,summary:'Farm checkpoints were inconsistent, so OP CLIMB will not score the CS curve from them.',evidence:[] as ProEvidence[]};
+    }
+  }
+  const rates=checkpoints.map(x=>x.cs/x.min);
+  const consistency=Math.max(0,1-(Math.max(...rates)-Math.min(...rates))/Math.max(...rates,.1));
+  const score=clamp(consistency*100);
+  return{score,value:checkpoints.map(x=>`${x.min}m ${x.cs}`).join(' · '),status:'MEASURED' as ProMetricStatus,summary:'Tracks the shape of your farm instead of hiding lane collapse or recovery inside one final CS/min number.',evidence:checkpoints.map(x=>ev(x.atSeconds,`${x.min} minute CS`,`${x.cs} CS (${round(x.cs/x.min,1)}/min).`))};
+}
 
 function liveItemTiming(snapshots:LiveTelemetrySnapshot[]){const mine=majorItemTimes(snapshots,true),theirs=majorItemTimes(snapshots,false);if(!mine.length||!theirs.length)return{score:null,value:'Building timing data',status:'BUILDING' as ProMetricStatus,summary:'A comparable major-item timing for the lane opponent was not reliably detected.',evidence:[] as ProEvidence[]};const diffs:number[]=[];const evidence:ProEvidence[]=[];for(let i=0;i<Math.min(3,mine.length,theirs.length);i++){const diff=theirs[i].atSeconds-mine[i].atSeconds;diffs.push(diff);evidence.push(ev(mine[i].atSeconds,`Item ${i+1} timing`,`${mine[i].label} arrived ${formatDelta(diff)} relative to the lane opponent's comparable major item.`))}const avg=diffs.reduce((a,b)=>a+b,0)/diffs.length;return{score:clamp(50+avg/12),value:`${formatDelta(avg)} avg`,status:'DERIVED' as ProMetricStatus,summary:'Compares when you and the same-role opponent first showed major completed-item purchases in tracker snapshots.',evidence}}
 function majorItemTimes(snapshots:LiveTelemetrySnapshot[],mine:boolean){const out:{atSeconds:number;label:string}[]=[];const seen=new Set<number>();for(const s of snapshots){const me=findMe(s),p=mine?me:findLaneOpponentLive(s,me);if(!p)continue;for(const item of p.items){if(item.price>=1600&&!seen.has(item.itemId)){seen.add(item.itemId);out.push({atSeconds:s.gameTime,label:item.displayName})}}}return dedupeTimes(out,20)}
