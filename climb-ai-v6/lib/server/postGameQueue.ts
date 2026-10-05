@@ -13,11 +13,12 @@ interface QueueJob{
 export async function drainPostGameQueue(input:{limit?:number;concurrency?:number;workerId?:string}={}){
   const db=getSupabaseAdmin();
   if(!db)throw new Error('Supabase is not configured.');
+  const client=db;
   const limit=Math.max(1,Math.min(30,Math.floor(input.limit??12)));
   const concurrency=Math.max(1,Math.min(6,Math.floor(input.concurrency??3)));
   const workerId=input.workerId??('vercel-'+randomUUID());
 
-  const {data,error}=await db.rpc('claim_live_postgame_jobs',{
+  const {data,error}=await client.rpc('claim_live_postgame_jobs',{
     p_worker_id:workerId,
     p_limit:limit,
   });
@@ -31,7 +32,7 @@ export async function drainPostGameQueue(input:{limit?:number;concurrency?:numbe
       if(!job)return;
       try{
         await processQueuedPostGameSession(job.session_id,(job.payload&&typeof job.payload==='object')?job.payload as any:undefined);
-        const {error:finishError}=await db.rpc('finish_live_postgame_job',{
+        const {error:finishError}=await client.rpc('finish_live_postgame_job',{
           p_job_id:job.id,
           p_ok:true,
           p_error:null,
@@ -43,7 +44,7 @@ export async function drainPostGameQueue(input:{limit?:number;concurrency?:numbe
         const message=error instanceof Error?error.message:String(error);
         console.error('[postgame-queue] job failed',job.id,job.session_id,message);
         try{
-          await db.rpc('finish_live_postgame_job',{
+          await client.rpc('finish_live_postgame_job',{
             p_job_id:job.id,
             p_ok:false,
             p_error:message,
