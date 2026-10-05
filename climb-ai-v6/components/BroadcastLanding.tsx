@@ -108,6 +108,32 @@ function ScoutingCard({result,busy,step,demoName}:{result:PreviewResponse|null;b
   </div>;
 }
 
+function DnaPreviewCard(){
+  const strands=[
+    ['LANING','72%','Trades · spacing · pressure'],
+    ['WAVES & CS','64%','Farm · crashes · resets'],
+    ['VISION & MAP','51%','Awareness · information'],
+    ['OBJECTIVES','58%','Setup · timing · priority'],
+    ['TEAMFIGHTS','76%','Positioning · target access'],
+    ['CONSISTENCY','43%','Repeatable decisions'],
+  ] as const;
+  return <div className={styles.dnaPreview} aria-label="Example Game DNA">
+    <div className={styles.dnaPreviewHead}>
+      <div><span>EXAMPLE GAME DNA</span><strong>ADC · PLAYER IDENTITY</strong></div>
+      <b>3-GAME BASELINE</b>
+    </div>
+    <div className={styles.dnaCore}><i/><span>GAME DNA</span><small>6 STRANDS · 1 PLAYER</small></div>
+    <div className={styles.dnaStrands}>
+      {strands.map(([name,value,detail],index)=><div className={styles.dnaStrand} key={name}>
+        <div><span><i data-strand={index}/>{name}</span><b>{value}</b></div>
+        <em><i style={{width:value}}/></em>
+        <small>{detail}</small>
+      </div>)}
+    </div>
+    <div className={styles.dnaMission}><span>NEXT DNA MISSION</span><strong>Protect your first reset</strong><p>Train one strand. Keep measuring all six.</p></div>
+  </div>;
+}
+
 export function BroadcastLanding(){
   const [riotId,setRiotId]=useState('');
   const [region,setRegion]=useState<(typeof REGIONS)[number]>('EUW');
@@ -206,34 +232,53 @@ export function BroadcastLanding(){
 
       <header className={styles.hero} id="report">
         <div>
-          <div className={styles.eyebrow}>Season 2026 · Split 3 is live</div>
-          <h1>Your games.<em className={styles.gold}>Your coach.</em></h1>
-          <p className={styles.lede}>Enter your Riot ID. We read your last 20 ranked games, find the one decision pattern worth fixing first, and turn it into a focused coaching plan.</p>
-          <form className={styles.lockin} onSubmit={submit}>
-            <input value={riotId} onChange={e=>setRiotId(e.target.value)} placeholder="Name#TAG" autoComplete="off" aria-label="Riot ID"/>
-            <select value={region} onChange={e=>setRegion(e.target.value as (typeof REGIONS)[number])} aria-label="Region">{REGIONS.map(item=><option key={item}>{item}</option>)}</select>
-            <button className={styles['lock-btn']} type="submit" disabled={busy||available===null}>Lock in</button>
-          </form>
-          {error&&<div className={styles.error}>{error} Showing the sample report instead.</div>}
-          <div className={styles.chips}><span>No card</span><span>No install to start</span><span>Result before sign-up</span></div>
+          <div className={styles.eyebrow}>GAME DNA · YOUR PLAYER IDENTITY</div>
+          <h1>Play 3 games.<em className={styles.gold}>Reveal your DNA.</em></h1>
+          <p className={styles.lede}>Install the OP CLIMB Companion, play three normal games in your role, and your Game DNA appears across six strands. From there, every game trains one weakness while measuring the whole player.</p>
+          <div className={styles.heroActions}>
+            <Link href="/signup" className={styles.heroPrimary}>START FREE →</Link>
+            <a href="#how-it-works" className={styles.heroSecondary}>SEE THE DNA LOOP</a>
+          </div>
+          <div className={styles.flowMini}>
+            <span><b>01</b> Connect Companion</span>
+            <span><b>02</b> Play 3 games</span>
+            <span><b>03</b> Reveal Game DNA</span>
+            <span><b>04</b> Train + evolve</span>
+          </div>
+          <div className={styles.chips}><span>6 DNA strands</span><span>Role-specific</span><span>One mission at a time</span></div>
           <a className={styles.clientLink} href="/client">Want to see inside first? Explore the interactive client →</a>
         </div>
 
-        <ScoutingCard result={result} busy={busy} step={step} demoName={demoName}/>
+        <DnaPreviewCard/>
       </header>
+
+      <section className={styles.previewTool} aria-label="Quick Riot ID preview">
+        <div className={styles.previewToolCopy}>
+          <div className={styles.eyebrow}>QUICK PREVIEW · OPTIONAL</div>
+          <h2>Want proof before you install?</h2>
+          <p>Use your Riot ID for a quick scouting preview. Your real Game DNA starts with the Companion and three tracked role games.</p>
+          <form className={styles.lockin} onSubmit={submit}>
+            <input value={riotId} onChange={e=>setRiotId(e.target.value)} placeholder="Name#TAG" autoComplete="off" aria-label="Riot ID"/>
+            <select value={region} onChange={e=>setRegion(e.target.value as (typeof REGIONS)[number])} aria-label="Region">{REGIONS.map(item=><option key={item}>{item}</option>)}</select>
+            <button className={styles['lock-btn']} type="submit" disabled={busy||available===null}>Preview</button>
+          </form>
+          {error&&<div className={styles.error}>{error} Showing the sample report instead.</div>}
+        </div>
+        <ScoutingCard result={result} busy={busy} step={step} demoName={demoName}/>
+      </section>
     </div>
 
     <section className={styles.section} id="how-it-works">
       <div className={styles.wrap}>
         <div className={styles['sec-head']}>
-          <div><div className={styles.eyebrow}>Your season arc</div><h2>It learns how you play.</h2></div>
-          <p>Stat sites show the same numbers every week. OP CLIMB keeps a record of your games, so the advice gets sharper the more you play.</p>
+          <div><div className={styles.eyebrow}>The DNA loop</div><h2>One clear journey. Every game.</h2></div>
+          <p>OP CLIMB is built around one loop: capture the game, understand the player, train one strand, then prove the change with new evidence.</p>
         </div>
         <div className={styles.arc}>
-          <div className={styles.wk}><div className={styles.node}><span>W1</span></div><h3>Baseline</h3><p>20 games scanned. Your weakest habit found.</p><q>“You die before 10 min in 40% of games.”</q></div>
-          <div className={styles.wk}><div className={styles.node}><span>W2</span></div><h3>First fix</h3><p>One focus, tracked every game you play.</p><q>“3 games in a row, no early deaths. Keep going.”</q></div>
-          <div className={styles.wk}><div className={styles.node}><span>W4</span></div><h3>Your pattern</h3><p>It spots when and why the mistakes happen.</p><q>“Your early deaths come after a lost bot-lane 2v2 at level 2 against engage supports.”</q></div>
-          <div className={styles.wk}><div className={styles.node}><span>W8</span></div><h3>Next rank</h3><p>The fix stuck, so it picks the next one.</p><q>“Next fix: rotate mid after first tower.”</q></div>
+          <div className={styles.wk}><div className={styles.node}><span>01</span></div><h3>Connect</h3><p>Pair the Windows Companion once.</p><q>“Your games now feed the same player model automatically.”</q></div>
+          <div className={styles.wk}><div className={styles.node}><span>02</span></div><h3>Play 3</h3><p>Play three normal games in your role.</p><q>“No gaming the system. We learn your real starting shape.”</q></div>
+          <div className={styles.wk}><div className={styles.node}><span>03</span></div><h3>Reveal DNA</h3><p>Six strands become your living player profile.</p><q>“Laning, waves, map, objectives, teamfights and consistency.”</q></div>
+          <div className={styles.wk}><div className={styles.node}><span>04</span></div><h3>Evolve</h3><p>Train one strand while every game measures all six.</p><q>“Prove the habit, level the strand, move to the next lesson.”</q></div>
         </div>
       </div>
     </section>
