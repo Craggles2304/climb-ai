@@ -1,6 +1,8 @@
 import 'server-only';
+import type {ILPTask,Role} from '@/lib/types';
+import {buildCoachMemoryCandidates,mergeCoachMemoryEvidence} from '@/lib/coachMemoryModel';
 
-export type LearningMemory={id:string;kind:string;topic:string;summary:string;metric:string|null;firstSeenAt:string;lastSeenAt:string;occurrences:number;status:string;evidence:any[]};
+export type LearningMemory={id:string;kind:string;topic:string;summary:string;metric:string|null;firstSeenAt:string;lastSeenAt:string;occurrences:number;status:string;evidence:any[];role:Role|'GLOBAL'|null;dnaDomain:string|null;memoryState:string|null;confidence:string|null};
 
 export async function createPersistentClimbSession(db:any,userId:string,accountId:string,mission:any){
  const missionSnapshot={id:String(mission.id),title:String(mission.title),metric:String(mission.metric),gameRule:String(mission.gameRule),target:String(mission.target),why:String(mission.why||''),priority:Number(mission.priority||0)};
@@ -26,7 +28,51 @@ export async function recordCompletedClimbSessionGame(db:any,input:{userId:strin
  return attached;
 }
 
-export async function rememberPlayerStatement(db:any,userId:string,accountId:string,message:string){const topic=detectTopic(message);if(!topic)return null;const now=new Date().toISOString(),memoryKey=`player-stated:${topic.topic}`;const {data:existing,error}=await db.from('op_coach_memories').select('*').eq('user_id',userId).eq('riot_account_id',accountId).eq('memory_key',memoryKey).maybeSingle();if(error)throw new Error(error.message);const evidence=[...((existing?.evidence as any[])??[]),{at:now,source:'coach',metric:topic.metric,text:message.slice(0,500)}].slice(-8);const row={user_id:userId,riot_account_id:accountId,memory_key:memoryKey,memory_type:'PLAYER_STATED',topic:topic.topic,summary:topic.summary,evidence,first_seen_at:existing?.first_seen_at??now,last_seen_at:now,occurrences:Number(existing?.occurrences??0)+1,status:'ACTIVE',updated_at:now};const {data,error:saveError}=await db.from('op_coach_memories').upsert(row,{onConflict:'user_id,riot_account_id,memory_key'}).select('*').single();if(saveError)throw new Error(saveError.message);return data}
-export async function loadCoachMemories(db:any,userId:string,accountId:string,limit=8):Promise<LearningMemory[]>{const {data,error}=await db.from('op_coach_memories').select('id,memory_type,topic,summary,first_seen_at,last_seen_at,occurrences,status,evidence').eq('user_id',userId).eq('riot_account_id',accountId).in('status',['ACTIVE','IMPROVING']).order('last_seen_at',{ascending:false}).limit(limit);if(error)throw new Error(error.message);return(data??[]).map((x:any)=>{const evidence=Array.isArray(x.evidence)?x.evidence:[];const metric=evidence.slice().reverse().find((item:any)=>item?.metric)?.metric??null;return{id:x.id,kind:x.memory_type,topic:x.topic,summary:x.summary,metric,firstSeenAt:x.first_seen_at,lastSeenAt:x.last_seen_at,occurrences:Number(x.occurrences||1),status:x.status,evidence}})}
+export async function rememberPlayerStatement(db:any,userId:string,accountId:string,message:string,role?:string|null){const topic=detectTopic(message);if(!topic)return null;const now=new Date().toISOString(),roleKey=String(role||'GLOBAL').toUpperCase(),memoryKey=`player-stated:${roleKey}:${topic.topic}`;const {data:existing,error}=await db.from('op_coach_memories').select('*').eq('user_id',userId).eq('riot_account_id',accountId).eq('memory_key',memoryKey).maybeSingle();if(error)throw new Error(error.message);const evidence=[...((existing?.evidence as any[])??[]),{at:now,source:'coach',metric:topic.metric,role:roleKey,text:message.slice(0,500)}].slice(-12);const row={user_id:userId,riot_account_id:accountId,memory_key:memoryKey,memory_type:'PLAYER_STATED',topic:topic.topic,summary:topic.summary,evidence,first_seen_at:existing?.first_seen_at??now,last_seen_at:now,occurrences:Number(existing?.occurrences??0)+1,status:'ACTIVE',updated_at:now};const {data,error:saveError}=await db.from('op_coach_memories').upsert(row,{onConflict:'user_id,riot_account_id,memory_key'}).select('*').single();if(saveError)throw new Error(saveError.message);return data}
+export async function loadCoachMemories(db:any,userId:string,accountId:string,limit=18,role?:Role|null):Promise<LearningMemory[]>{
+ const {data,error}=await db.from('op_coach_memories').select('id,memory_type,topic,summary,first_seen_at,last_seen_at,occurrences,status,evidence').eq('user_id',userId).eq('riot_account_id',accountId).in('status',['ACTIVE','IMPROVING','MASTERED']).order('last_seen_at',{ascending:false}).limit(80);
+ if(error)throw new Error(error.message);
+ const rows=(data??[]).map((x:any)=>{
+  const evidence=Array.isArray(x.evidence)?x.evidence:[];
+  const latest=[...evidence].reverse().find((item:any)=>item&&typeof item==='object')??{};
+  const metric=[...evidence].reverse().find((item:any)=>item?.metric)?.metric??null;
+  const memoryRole=String(latest?.role||'').toUpperCase();
+  return{id:x.id,kind:x.memory_type,topic:x.topic,summary:x.summary,metric,firstSeenAt:x.first_seen_at,lastSeenAt:x.last_seen_at,occurrences:Number(x.occurrences||1),status:x.status,evidence,role:(memoryRole||null) as Role|'GLOBAL'|null,dnaDomain:latest?.dnaDomain?String(latest.dnaDomain):null,memoryState:latest?.memoryState?String(latest.memoryState):null,confidence:latest?.confidence?String(latest.confidence):null};
+ });
+ return rows.filter((memory:any)=>!role||!memory.role||memory.role==='GLOBAL'||memory.role===role).slice(0,limit);
+}
+
+
+export async function syncDerivedCoachMemories(db:any,userId:string,accountId:string){
+ const now=new Date().toISOString();
+ const [taskResult,profileResult,existingResult]=await Promise.all([
+  db.from('ilp_tasks').select('payload,updated_at').eq('user_id',userId).eq('riot_account_id',accountId),
+  db.from('op_player_learning_profiles').select('role_profiles,recent_change').eq('user_id',userId).eq('riot_account_id',accountId).maybeSingle(),
+  db.from('op_coach_memories').select('memory_key,evidence,first_seen_at,occurrences,status').eq('user_id',userId).eq('riot_account_id',accountId).like('memory_key','derived:%'),
+ ]);
+ if(taskResult.error)throw new Error(taskResult.error.message);
+ if(profileResult.error)throw new Error(profileResult.error.message);
+ if(existingResult.error)throw new Error(existingResult.error.message);
+ const tasks=(taskResult.data??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),__updatedAt:row.updated_at})) as ILPTask[];
+ const roleProfiles=(profileResult.data?.role_profiles&&typeof profileResult.data.role_profiles==='object')?profileResult.data.role_profiles:{} as Record<string,any>;
+ const candidates=buildCoachMemoryCandidates({tasks,roleProfiles,globalRecentChange:profileResult.data?.recent_change??null,now});
+ if(!candidates.length)return{synced:0,changed:0};
+ const existing=new Map((existingResult.data??[]).map((row:any)=>[String(row.memory_key),row]));
+ let changed=0;
+ const rows=candidates.map(candidate=>{
+  const previous:any=existing.get(candidate.key);
+  const merged=mergeCoachMemoryEvidence((previous?.evidence as any[])??[],candidate.snapshot);
+  if(merged.changed)changed++;
+  return{
+   user_id:userId,riot_account_id:accountId,memory_key:candidate.key,memory_type:candidate.type,topic:candidate.topic,summary:candidate.summary,evidence:merged.evidence,
+   first_seen_at:previous?.first_seen_at??candidate.occurredAt,last_seen_at:candidate.occurredAt,
+   occurrences:merged.changed?Number(previous?.occurrences??0)+1:Number(previous?.occurrences??candidate.occurrences||1),
+   status:candidate.status,updated_at:now,
+  };
+ });
+ const {error}=await db.from('op_coach_memories').upsert(rows,{onConflict:'user_id,riot_account_id,memory_key'});
+ if(error)throw new Error(error.message);
+ return{synced:rows.length,changed};
+}
 
 function detectTopic(message:string){const m=message.toLowerCase();const rules=[[/panic|panicking|tilt|tilted|frustrat|angry|raging/,'playing_under_pressure','Player reports emotional or decision pressure affecting play.','red_state_fights'],[/fight|engag|go in|dive|overextend/,'fight_selection','Player reports uncertainty or mistakes around choosing fights.','fight_selection'],[/die|dying|death|caught/,'death_control','Player reports avoidable deaths or getting caught.','death_control'],[/farm|cs|creep/,'resource_collection','Player reports farming or resource collection difficulty.','cs_curve'],[/reset|recall|back timing/,'reset_timing','Player reports reset or recall timing difficulty.','reset_quality'],[/objective|dragon|baron|grub|herald/,'objective_readiness','Player reports objective setup or timing difficulty.','objective_readiness'],[/lead|throw|ahead/,'lead_protection','Player reports difficulty converting or protecting a lead.','lead_protection']];for(const [re,topic,summary,metric] of rules as any[])if(re.test(m))return{topic,summary,metric};return null}
