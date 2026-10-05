@@ -14,6 +14,11 @@ import {accountProgress,type AccountProgress} from '@/lib/accountXp';
 import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
+import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
+import {buildJourneyState} from '@/lib/journeyState';
 
 type ProgressionPayload={
   ok:boolean;
@@ -83,6 +88,8 @@ export function AppShell({children}:{children:React.ReactNode}){
   const {accounts,active,setActive}=useAccount();
   const {tier}=useSubscription();
   const {tasks,allTasks}=useLearningPlan();
+  const [journeyDevices,setJourneyDevices]=useState<Array<{account_key:string;last_seen_at:string|null}>>([]);
+  const [journeyDeviceLoaded,setJourneyDeviceLoaded]=useState(false);
   const fallbackXp=accountProgress(allTasks[active.id]??tasks);
   const [progression,setProgression]=useState<ProgressionPayload|null>(null);
   const [progressToast,setProgressToast]=useState<{title:string;body:string;kind:'XP'|'LEVEL'}|null>(null);
@@ -111,7 +118,30 @@ export function AppShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const live=path==='/live';
   const title=routeTitle(path);
-  const topbarAction=path==='/live'
+  const journeyMatches=useMemo(()=>matchesFor(active.id).filter(match=>match.durationSeconds>=300),[active.id,progression?.sync.latestMatchId]);
+  const journeyBaselineGames=dnaBaselineGameCount(journeyMatches,active.role);
+  const journeyBaselineReady=dnaBaselineReady(journeyBaselineGames);
+  const journeyAccountTasks=allTasks[active.id]??tasks;
+  const journeyRoleTasks=useMemo(()=>journeyAccountTasks.filter(task=>taskAppliesToRole(task,active.role)),[journeyAccountTasks,active.role]);
+  const journeyFocus=useMemo(()=>journeyBaselineReady
+    ?currentGameDnaMissions(journeyRoleTasks,active.role).flatMap(({task})=>task?[task]:[]).sort((a,b)=>(a.priority??99)-(b.priority??99))[0]??null
+    :null,[journeyBaselineReady,journeyRoleTasks,active.role]);
+  const journeyFocusPlain=journeyFocus?plainLanguageFocus(journeyFocus):null;
+  const journeyFocusSummary=journeyFocus?missionSummary(journeyFocus):null;
+  const journeyLinked=journeyDevices.length>0;
+  const journeyOnline=journeyDevices.some(device=>Boolean(device.last_seen_at&&Date.now()-Date.parse(device.last_seen_at)<90_000));
+  const journey=buildJourneyState({
+    deviceLoaded:journeyDeviceLoaded,
+    linked:journeyLinked,
+    online:journeyOnline,
+    baselineGames:journeyBaselineGames,
+    focusName:journeyFocusPlain?.name,
+    focusJob:journeyFocusPlain?.nextGame,
+    focusConfirmed:journeyFocusSummary?.confirmed,
+    focusRequired:journeyFocusSummary?.required,
+  });
+  const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
+  const topbarAction=coreJourneyRoute?null:path==='/live'
     ?{label:'MY DNA',href:'/ilp'}
     :path==='/ilp'||path==='/game-dna'
       ?{label:'PLAY NEXT GAME',href:'/live'}
@@ -141,6 +171,22 @@ export function AppShell({children}:{children:React.ReactNode}){
   useEffect(()=>setAdvancedOpen(false),[path]);
   useEffect(()=>{
     try{setSeenLearningMatch(localStorage.getItem('op:learning-receipt:seen:'+active.id)||'')}catch{setSeenLearningMatch('')}
+  },[active.id]);
+  useEffect(()=>{
+    let stopped=false;
+    const pull=async()=>{
+      try{
+        const response=await fetch('/api/live/pair',{cache:'no-store'});
+        if(!response.ok)return;
+        const body=await response.json();
+        if(stopped)return;
+        setJourneyDevices((body.devices??[]).filter((device:{account_key:string})=>device.account_key===active.id));
+      }catch{}finally{if(!stopped)setJourneyDeviceLoaded(true)}
+    };
+    setJourneyDeviceLoaded(false);
+    void pull();
+    const timer=window.setInterval(()=>void pull(),30_000);
+    return()=>{stopped=true;window.clearInterval(timer)};
   },[active.id]);
   useEffect(()=>{
     let stopped=false,busy=false;
@@ -220,12 +266,24 @@ export function AppShell({children}:{children:React.ReactNode}){
         <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
         <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
         <div className="topbar-right">
-          <Link className="btn primary btn-small site-cta" href={topbarAction.href}>{topbarAction.label}</Link>
+          {topbarAction&&<Link className="btn primary btn-small site-cta" href={topbarAction.href}>{topbarAction.label}</Link>}
           <span className="demo-badge">{tier} PLAN</span>
           <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
           <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
         </div>
       </header>
+
+      {coreJourneyRoute&&<section className={'op-journey-status phase-'+journey.phase.toLowerCase()} aria-label="Your OP CLIMB journey status">
+        <div className="op-journey-status-step">
+          <span>{journey.status}</span>
+          {journey.progress&&<b>{journey.progress}</b>}
+        </div>
+        <div className="op-journey-status-copy">
+          <strong>{journey.title}</strong>
+          <small>{journey.body}</small>
+        </div>
+        <Link className="btn primary" href={journey.href} aria-disabled={journey.phase==='CHECKING'}>{journey.cta}</Link>
+      </section>}
 
       <main id="content" tabIndex={-1}>
         {live?<><LivePregameMount/><LiveCommandCenter/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{children}</div>}
@@ -238,12 +296,20 @@ export function AppShell({children}:{children:React.ReactNode}){
       <b>{progressToast.title}</b>
       <small>{progressToast.body}</small>
     </div>}
-    {showLearningReceipt&&<aside className="op-learning-receipt" role="status" style={latestLearning[0]?({'--strand-color':DNA_DOMAIN_COLORS[latestLearning[0].task.dnaDomain]} as CSSProperties):undefined}>
+    {showLearningReceipt&&<aside className="op-learning-receipt" role="status" style={journeyFocus?({'--strand-color':DNA_DOMAIN_COLORS[journeyFocus.dnaDomain]} as CSSProperties):undefined}>
       <div className="op-learning-receipt-head">
-        <div><span>GAME COMPLETE · LEARNING UPDATED</span><strong>{progression?.sync.latestMatchChampion||'LATEST GAME'} · {progression?.sync.latestMatchRole||active.role}</strong></div>
+        <div><span>{journeyBaselineReady?'GAME COMPLETE · LEARNING UPDATED':'GAME COMPLETE · BASELINE UPDATED'}</span><strong>{progression?.sync.latestMatchChampion||'LATEST GAME'} · {progression?.sync.latestMatchRole||active.role}</strong></div>
         <button type="button" aria-label="Dismiss learning update" onClick={acknowledgeLearningMatch}>×</button>
       </div>
-      <div className="op-learning-receipt-body">
+      {!journeyBaselineReady?<div className="op-learning-receipt-body">
+        <h2>Baseline {Math.min(journeyBaselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} complete.</h2>
+        <p>This game is useful coaching evidence, but it is <strong>not a permanent DNA mission yet</strong>. Your six DNA missions unlock after game {DNA_BASELINE_GAMES}.</p>
+        <div className="op-learning-strength-count">PROVISIONAL COACHING ONLY · {DNA_BASELINE_GAMES-journeyBaselineGames} GAME{DNA_BASELINE_GAMES-journeyBaselineGames===1?'':'S'} UNTIL DNA REVEAL</div>
+      </div>:journeyBaselineGames===DNA_BASELINE_GAMES&&latestLearningMatchData&&canonicalLeagueRole(latestLearningMatchData.role)===active.role?<div className="op-learning-receipt-body">
+        <h2>Your Game DNA is ready.</h2>
+        <p>Baseline complete. Your six strands can now reveal their first missions, with one priority mission selected for your next game.</p>
+        <div className="op-learning-mastered">◆ 3/3 BASELINE COMPLETE · DNA UNLOCKED</div>
+      </div>:<div className="op-learning-receipt-body">
         <h2>{latestLearning.length
           ?latestLearning.some(item=>item.attempt.banksPass)
             ?'That game moved your Climb.'
@@ -252,17 +318,17 @@ export function AppShell({children}:{children:React.ReactNode}){
         {latestLearning.length?<div className="op-learning-receipt-missions">
           {latestLearning.slice(0,3).map(({task,attempt,summary})=><div key={task.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[task.dnaDomain]} as CSSProperties)}>
             <span>{DNA_DOMAIN_LABELS[task.dnaDomain]}</span>
-            <b>{task.title}</b>
-            <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ REP BANKED':'○ NO REP BANKED'}</strong>
-            <small>{summary.confirmed}/{summary.required} proven reps · {learningStageLabel(summary.stage)}</small>
+            <b>{plainLanguageFocus(task).name}</b>
+            <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ PROVEN GAME':'○ NOT PROVEN'}</strong>
+            <small>{summary.confirmed}/{summary.required} proven games · {learningStageLabel(summary.stage)}</small>
           </div>)}
         </div>:<p>Match data has synced. Mission evidence can take a short moment to finish processing.</p>}
         {latestStrengths.length>0&&<div className="op-learning-strength-count">✓ {latestStrengths.length} VERIFIED STRENGTH{latestStrengths.length===1?'':'S'} · GOOD PLAY MEASURED TOO</div>}
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
-      </div>
+      </div>}
       <div className="op-learning-receipt-actions">
-        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={'/ilp?game='+encodeURIComponent(latestLearningMatch||'')}>SEE MY DNA →</Link>
-        {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href="/live">REVIEW IN MATCH ROOM</Link>}
+        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={journeyBaselineReady?'/ilp':'/live'}>{journeyBaselineReady?'SEE MY DNA →':`PLAY BASELINE GAME ${Math.min(journeyBaselineGames+1,DNA_BASELINE_GAMES)} →`}</Link>
+        {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
       </div>
     </aside>}
     <BetaReporter/>
