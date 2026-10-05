@@ -57,7 +57,7 @@ test('active Match Room visibly renders farm KDA gold items and refreshes quickl
     assert.ok(liveCenter.includes(label),`missing live stat label ${label}`);
   }
   assert.ok(liveCenter.includes('window.setInterval(reviewTick,10_000)'));
-  assert.ok(telemetryRoute.includes('const SNAPSHOT_SAMPLE_MS=10_000'));
+  assert.ok(telemetryRoute.includes("claimLiveTelemetryIngest(device,envelope.clientSessionId,envelope.type==='SNAPSHOT')"));
 });
 
 test('completed live review exposes the saved match id through Match Room',()=>{
