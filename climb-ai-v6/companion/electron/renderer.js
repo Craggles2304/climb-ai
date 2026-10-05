@@ -126,13 +126,17 @@ function renderPlayerHome(home,visible){
   const roleLabel=String(player.role||baseline.role||'ROLE').trim().toUpperCase()||'ROLE';
   const games=Math.max(0,Number(baseline.games||0));
   const required=Math.max(1,Number(baseline.required||3));
-  const journey=home.journey||{
-    phase:baselineReady?'MISSION':'BASELINE',
-    status:baselineReady?'DNA ACTIVE':'BASELINE '+Math.min(games,required)+'/'+required,
-    title:baselineReady?'Your priority mission is ready.':'Play baseline game '+Math.min(games+1,required)+'.',
-    body:baselineReady?'Focus one mission. OP CLIMB tracks the other five automatically.':'Play normally. Coaching stays provisional until the three-game baseline is complete.',
-    progress:Math.min(games,required)+'/'+required,
-  };
+  let companionDnaRevealed=false;
+  try{companionDnaRevealed=localStorage.getItem('op:dna-revealed:'+roleLabel)==='1'}catch{}
+  const journey=baselineReady&&!companionDnaRevealed
+    ?{phase:'DNA_REVEAL',status:'DNA READY · 3/3',title:'Your Game DNA is ready to reveal.',body:'Open My DNA once to reveal your six strands and first priority mission.',progress:'3/3'}
+    :home.journey||{
+      phase:baselineReady?'MISSION':'BASELINE',
+      status:baselineReady?'DNA ACTIVE':'BASELINE '+Math.min(games,required)+'/'+required,
+      title:baselineReady?'Your priority mission is ready.':'Play baseline game '+Math.min(games+1,required)+'.',
+      body:baselineReady?'Focus one mission. OP CLIMB tracks the other five automatically.':'Play normally. Coaching stays provisional until the three-game baseline is complete.',
+      progress:Math.min(games,required)+'/'+required,
+    };
 
   $('playerHomeName').textContent=[player.gameName,player.tagline?'#'+player.tagline:''].filter(Boolean).join(' ');
   $('playerHomeRank').textContent=[player.rank,player.role].filter(Boolean).join(' · ')||'PLAYER PROFILE';
@@ -148,9 +152,10 @@ function renderPlayerHome(home,visible){
   const journeyCard=$('playerJourney');
   if(journeyCard)journeyCard.className='player-journey phase-'+String(journey.phase||'MISSION').toLowerCase();
   if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=roleLabel+' GAME DNA';
-  if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=baselineReady?'Your '+roleLabel+' player shape.':'Locked until the three-game role baseline is complete.';
-  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=baselineReady?roleLabel+' PRIORITY + BACKGROUND MISSIONS':'PROVISIONAL COACHING';
-  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=baselineReady?'Focus one. OP CLIMB tracks all six automatically.':'No permanent DNA missions until baseline 3/3.';
+  if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=!baselineReady?'Locked until the three-game role baseline is complete.':!companionDnaRevealed?'Baseline complete. Reveal your DNA to start the mission loop.':'Your '+roleLabel+' player shape.';
+  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' PRIORITY + BACKGROUND MISSIONS';
+  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=!baselineReady?'No permanent DNA missions until baseline 3/3.':!companionDnaRevealed?'Reveal your player identity before training missions.':'Focus one. OP CLIMB tracks all six automatically.';
+  if($('playerHomeOpenClimb'))$('playerHomeOpenClimb').textContent=baselineReady&&!companionDnaRevealed?'REVEAL MY DNA ↗':'OPEN MY DNA ↗';
 
   const roleRoot=$('playerDnaRoleSwitcher');
   if(roleRoot){
@@ -213,6 +218,10 @@ function renderPlayerHome(home,visible){
     const card=document.createElement('article');card.className='player-mission-card baseline';
     card.innerHTML=`<span>PROVISIONAL COACHING · NOT A DNA MISSION</span><h3>BASELINE ${Math.min(games,required)}/${required}</h3><p>Play normally. OP CLIMB is learning what repeats before it reveals your permanent DNA missions after game ${required}.</p><div class="player-baseline-dots">${[0,1,2].map(i=>`<i class="${i<games?'done':i===games?'current':''}">${i<games?'✓':i+1}</i>`).join('')}</div>`;
     missionRoot.appendChild(card);
+  }else if(!companionDnaRevealed){
+    const card=document.createElement('article');card.className='player-mission-card reveal';
+    card.innerHTML='<span>GAME DNA READY · 3/3</span><h3>REVEAL YOUR PLAYER IDENTITY</h3><p>Your baseline is complete. Open My DNA to reveal all six strands and the one priority mission to focus next.</p><small>Nothing to memorise yet · reveal first, then OP CLIMB gives you one clear job.</small>';
+    missionRoot.appendChild(card);
   }else{
     const missions=safeArray(home.missions);
     missions.forEach((mission,index)=>{
@@ -247,6 +256,9 @@ function renderPlayerHome(home,visible){
   if(!baselineReady){
     memory.className='player-memory baseline';
     memory.innerHTML=`<span>BASELINE ${Math.min(games,required)}/${required}</span><strong>PERMANENT MISSIONS LOCKED</strong><small>Single-game coaching is provisional. Finish the role baseline before OP CLIMB creates your persistent DNA mission loop.</small>`;
+  }else if(!companionDnaRevealed){
+    memory.className='player-memory reveal';
+    memory.innerHTML='<span>DNA READY · 3/3</span><strong>REVEAL FIRST</strong><small>Your missions are ready behind the reveal. Open My DNA once, then the Companion will show one priority mission and five background missions.</small>';
   }else if(tier==='PRO'){
     memory.className='player-memory pro';
     memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Your six DNA levels are uncapped. Mastered missions and completed games keep adding permanent strand XP.</small>`;
@@ -259,7 +271,7 @@ function renderPlayerHome(home,visible){
   }
 
   const upgrade=$('playerHomeUpgrade');
-  if(home.upgrade&&baselineReady){
+  if(home.upgrade&&baselineReady&&companionDnaRevealed){
     upgrade.classList.remove('hidden');
     upgrade.querySelector('b').textContent='UNLOCK '+String(home.upgrade.tier||'NEXT');
     upgrade.querySelector('span').textContent=String(home.upgrade.copy||'');
@@ -305,7 +317,7 @@ function ensurePlayerHome(){
       <article id="playerHomeUpgrade" class="player-upgrade hidden"><div><b>UNLOCK NEXT</b><span></span></div><button id="playerHomePlans" type="button">SEE PLANS ↗</button></article>
     </div>`;
   $('status').after(section);
-  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>{const role=String(current?.playerHome?.selectedRole||current?.playerHome?.player?.role||'').toUpperCase();window.opCompanion.openClimbPath(role?`/ilp?role=${encodeURIComponent(role)}`:'/ilp')});
+  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>{const role=String(current?.playerHome?.selectedRole||current?.playerHome?.player?.role||'').toUpperCase();const baseline=current?.playerHome?.baseline;if(baseline?.ready&&role){try{localStorage.setItem('op:dna-revealed:'+role,'1')}catch{}}window.opCompanion.openClimbPath(role?`/ilp?role=${encodeURIComponent(role)}`:'/ilp')});
   section.querySelector('#playerHomePlans')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/progress'));
   return section;
 }
