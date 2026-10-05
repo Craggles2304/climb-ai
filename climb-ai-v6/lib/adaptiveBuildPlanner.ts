@@ -64,10 +64,23 @@ function detailText(detail:ChampionDetail){
 function itemText(item:DataDragonItemFull){
   return[item.name,(item as any).description,(item as any).plaintext,...(item.tags??[])].map(clean).filter(Boolean).join(' ').toLowerCase();
 }
-function finalBoot(item:DataDragonItemFull){
-  return(item.tags??[]).includes('Boots')&&(!item.into||item.into.length===0)&&(item.gold?.total??0)>=800;
+function isBootItem(item:DataDragonItemFull){return(item.tags??[]).includes('Boots')}
+function standardBoot(item:DataDragonItemFull){
+  if(!isBootItem(item))return false;
+  const onRift=item.maps?.['11']===true;
+  const purchasable=item.gold?.purchasable!==false&&(item as any).inStore!==false;
+  const total=Number(item.gold?.total??0);
+  const parents=(item.from??[]).map(String);
+  const namedTierTwo=/Berserker|Plated Steelcaps|Mercury|Boots of Swiftness|Ionian Boots|Sorcerer|Synchronized Souls/i.test(String(item.name||''));
+  // Only recommend the normal tier-2 boot a player can actually plan to buy.
+  // Conditional late-game upgrades (for example Armored Advance / Chainlaced
+  // Crushers) are not a champ-select purchase and must never replace the base boot.
+  return onRift&&purchasable&&total>=800&&(parents.includes('1001')||namedTierTwo);
 }
-function eligible(item:DataDragonItemFull){return isCompletedItem(item)||finalBoot(item)}
+function eligible(item:DataDragonItemFull){
+  if(isBootItem(item))return standardBoot(item);
+  return isCompletedItem(item);
+}
 function has(text:string,...terms:string[]){return terms.some(term=>text.includes(term))}
 function round(n:number){return Math.round(n*10)/10}
 
@@ -189,7 +202,7 @@ export function buildAdaptiveItemPlan(input:{
     const stats=parseItemStats(item.stats);
     const text=itemText(item);
     const flags=flagsFor(text);
-    const isBoots=finalBoot(item);
+    const isBoots=standardBoot(item);
     const ad=stats.attackDamage,ap=stats.abilityPower,as=stats.attackSpeedRatio,crit=stats.critChance,hp=stats.health,armor=stats.armor,mr=stats.magicResist,lifesteal=stats.lifestealRatio,ms=stats.flatMoveSpeed+stats.percentMoveSpeed*100;
     let offense=0,defense=0,utility=0,context=0;
 
@@ -301,7 +314,15 @@ export function buildAdaptiveItemPlan(input:{
     if(flags.has('ANTI_HEAL')&&profile.healing>=2)return true;
     if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)return true;
     if(flags.has('CLEANSE')&&(profile.suppressions>=1||profile.cleanseableCc>=3))return true;
-    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)return true;
+    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)return true;
+    if(flags.has('LIFELINE')&&(profile.divers+profile.assassins)>=2){
+      // Lifeline items are not interchangeable. Maw-like MR answers only make
+      // sense when magic burst is genuinely material; do not recommend one
+      // merely because the enemy has several divers.
+      if(item.mr>0)return profile.magicThreat>=2.5&&profile.magicThreat>=profile.physicalThreat*.8;
+      if(item.armor>0)return profile.physicalThreat>=2.8&&profile.physicalThreat>=profile.magicThreat*.9;
+      return marksman&&(item.ad>0||item.as>0||item.crit>0);
+    }
     if((flags.has('SUSTAIN')||item.lifesteal>0)&&profile.poke>=2)return true;
     if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)return true;
     if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)return true;
@@ -318,8 +339,15 @@ export function buildAdaptiveItemPlan(input:{
     if(flags.has('ANTI_TANK')&&profile.tanks>=2)value+=32+profile.tanks*5;
     if(flags.has('ANTI_HEAL')&&profile.healing>=2)value+=30+profile.healing*5;
     if(flags.has('ANTI_SHIELD')&&profile.shielding>=2)value+=28+profile.shielding*4;
-    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('LIFELINE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)
+    if((flags.has('STASIS')||flags.has('REVIVE')||flags.has('SPELL_SHIELD'))&&(profile.divers+profile.assassins)>=2)
       value+=16+(profile.divers+profile.assassins)*2;
+    if(flags.has('LIFELINE')&&(profile.divers+profile.assassins)>=2){
+      const fitsMagic=item.mr>0&&profile.magicThreat>=2.5&&profile.magicThreat>=profile.physicalThreat*.8;
+      const fitsPhysical=item.armor>0&&profile.physicalThreat>=2.8&&profile.physicalThreat>=profile.magicThreat*.9;
+      const neutralCarry=item.mr===0&&item.armor===0&&marksman&&(item.ad>0||item.as>0||item.crit>0);
+      if(fitsMagic||fitsPhysical||neutralCarry)value+=18+(profile.divers+profile.assassins)*2;
+      else value-=45;
+    }
     if((flags.has('SUSTAIN')||item.lifesteal>0)&&profile.poke>=2)value+=14+profile.poke*2;
     if(item.armor>0&&profile.physicalThreat>=3.0&&profile.physicalThreat>profile.magicThreat+.8)value+=22;
     if(item.mr>0&&profile.magicThreat>=2.6&&profile.magicThreat>profile.physicalThreat+.5)value+=22;
@@ -328,7 +356,8 @@ export function buildAdaptiveItemPlan(input:{
   const techRanked=compatibleNonBoots
     .filter(item=>!chosen.has(item.id)&&techRelevant(item))
     .sort((a,b)=>techPriority(b)-techPriority(a));
-  const draftRead=techRanked.find(item=>techPriority(item)>=32)??null;
+  const draftThreshold=marksman?48:32;
+  const draftRead=techRanked.find(item=>techPriority(item)>=draftThreshold)??null;
   if(draftRead)chosen.add(draftRead.id);
 
   const finishRead=popularNonBoots.find(item=>!chosen.has(item.id)&&coreEligible.some(core=>core.id===item.id)&&!item.flags.some(flag=>coreTechFlags.has(flag)))
@@ -361,7 +390,8 @@ export function buildAdaptiveItemPlan(input:{
   const finish=itemOut(finishRead,'FINISH');
   const boots=itemOut(bootRead,'BOOTS');
   const swaps=techRanked.filter(item=>!chosen.has(item.id)).slice(0,2).map(read=>itemOut(read,'SWAP')!).filter(Boolean);
-  const order=[...core,...(draftItem?[draftItem]:[]),...(finish?[finish]:[])];
+  // Tech is a conditional flex slot, not an implied third-item purchase.
+  const order=[...core,...(finish?[finish]:[]),...(draftItem?[draftItem]:[])];
 
   const readParts=[
     profile.tanks>=2?String(profile.tanks)+' durable frontliners':null,
