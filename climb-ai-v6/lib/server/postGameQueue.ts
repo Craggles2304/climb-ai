@@ -42,11 +42,13 @@ export async function drainPostGameQueue(input:{limit?:number;concurrency?:numbe
         failed++;
         const message=error instanceof Error?error.message:String(error);
         console.error('[postgame-queue] job failed',job.id,job.session_id,message);
-        await db.rpc('finish_live_postgame_job',{
-          p_job_id:job.id,
-          p_ok:false,
-          p_error:message,
-        }).catch(()=>null);
+        try{
+          await db.rpc('finish_live_postgame_job',{
+            p_job_id:job.id,
+            p_ok:false,
+            p_error:message,
+          });
+        }catch{}
       }
     }
   }
