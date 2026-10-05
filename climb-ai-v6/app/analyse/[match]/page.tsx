@@ -79,7 +79,35 @@ export default function Analysis(){
 
   if(cachedHistoricalMatch||serverHistoryLock){
     const required=serverHistoryLock??requiredTierForHistoryDate(cachedHistoricalMatch!.createdAt);
-    return <AppShell>
+    return <AppShell><section className="glass card">
+      <div className="eyebrow">HISTORY LIMIT · {tier}</div>
+      <h2>This match sits outside {historyWindowLabel(tier).toLowerCase()}.</h2>
+      <p className="muted">{required==='PLUS'?'PLUS unlocks match history up to 90 days.':'PRO unlocks long-term match history and persistent development context.'}</p>
+      <div className="hero-actions"><Link className="btn primary" href="/pricing">SEE {required} →</Link><Link className="btn secondary" href="/analyse">BACK TO MY GAMES</Link></div>
+    </section></AppShell>;
+  }
+
+  if(!cachedMatch&&(serverLoading||serverCheckedId!==id))return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading the saved match…</h2><p className="muted">Opening the server copy directly so a newly completed Companion game cannot be blocked by stale browser state.</p></section></AppShell>;
+
+  if(!match)return <AppShell><PageHead title="Match not found" subtitle="This review is not attached to the active Riot account."/><section className="glass card"><p className="muted">Switch back to the account that played this game or open a match from Analyse.</p><Link className="btn primary" href="/analyse">OPEN ANALYSE</Link></section></AppShell>;
+
+  if(proLoading)return <AppShell><section className="glass card"><div className="eyebrow">COACHING EVIDENCE</div><h2>Reading the full game evidence…</h2><p className="muted">The review will appear once its coaching authority is resolved, so a scoreboard fallback cannot flash a different limiter first.</p></section></AppShell>;
+
+  const matchRole=canonicalLeagueRole(match.role);
+  const recent=matches.filter(m=>m.id!==match.id&&(!matchRole||canonicalLeagueRole(m.role)===matchRole));
+  const report=analyseMatch({...match,proAnalysis},recent);
+  const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
+  const missionResults=tasks.flatMap(task=>{
+    const attempt=(task.missionHistory??[]).find(rep=>rep.matchId===id);
+    return attempt?[{task,attempt}]:[];
+  });
+  const plainProblems=plainProblemCards(match,proAnalysis,report.primary.category,report.mission.dnaDomain).slice(0,2);
+  const nextAction=plainNextAction(report.primary.category,match.opponent);
+  const overviewStrength=strengths[0];
+  const overviewProblem=plainProblems[0];
+  const passedMissionCount=missionResults.filter(item=>item.attempt.banksPass).length;
+
+  return <AppShell>
     <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''} · ${section.toUpperCase()}`}/>
 
     <nav className="ar-subnav" aria-label="Match review pages">
