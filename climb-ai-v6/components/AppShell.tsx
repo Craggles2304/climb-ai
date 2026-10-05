@@ -24,10 +24,10 @@ type ProgressionPayload={
 
 const primary=[
   ['Home','/dashboard','⌂','What do I do next?'],
-  ['Match Room','/live','◇','Prepare → play → review'],
   ['My DNA','/ilp','⬡','Your player identity'],
+  ['Match Room','/live','◇','Prepare → play → review'],
 ] as const;
-const mobile=[['Home','/dashboard'],['Match','/live'],['My DNA','/ilp']] as const;
+const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Match','/live']] as const;
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'HOME';
@@ -191,7 +191,7 @@ export function AppShell({children}:{children:React.ReactNode}){
       <nav aria-label="Main navigation">
         {primary.map(([name,href,icon])=>{
           const activeLink=isPrimaryActive(path,href);
-          return <Link className={'nav-link '+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
+          return <Link className={'nav-link '+(href==='/ilp'?'nav-link-dna ':'')+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
             <span aria-hidden="true">{icon}</span><span>{name}</span>
           </Link>;
         })}
