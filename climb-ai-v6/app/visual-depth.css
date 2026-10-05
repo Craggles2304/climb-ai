@@ -6051,3 +6051,271 @@ body[data-op-area="hq"] .hq-mission-why p{
   .ar-coach-body h3{font-size:23px}
   .ar-coach-explain p,.ar-game-example p{font-size:14px}
 }
+
+
+/* Match review accessibility pass — no microcopy on player-facing review pages */
+.ar-subnav a{padding:12px 14px}
+.ar-subnav b{font-size:14px;line-height:1.1}
+.ar-subnav small{font-size:12px;line-height:1.35}
+
+.ar-overview-story p,
+.ar-story p{
+  font-size:16px;
+  line-height:1.65
+}
+.ar-overview-story aside small,
+.ar-story aside small{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-overview-story aside b,
+.ar-story aside b{
+  font-size:22px;
+  line-height:1.3
+}
+
+.ar-overview-card{padding:18px}
+.ar-overview-card>span,
+.ar-overview-action>div>span{
+  font-size:11px;
+  line-height:1.25
+}
+.ar-overview-card h3{
+  font-size:26px;
+  line-height:1.08
+}
+.ar-overview-card p{
+  font-size:16px;
+  line-height:1.6
+}
+.ar-overview-card a{
+  margin-top:14px;
+  font-size:12px;
+  line-height:1.2
+}
+.ar-overview-action>div>small{
+  font-size:12px;
+  line-height:1.3
+}
+.ar-overview-action h2{
+  font-size:clamp(32px,3.4vw,46px)
+}
+.ar-overview-action p{
+  font-size:16px;
+  line-height:1.6
+}
+
+.ar-review-subheading>strong{
+  min-width:104px;
+  min-height:48px;
+  font-size:17px
+}
+.ar-review-subheading>div>span{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-review-subheading h2{
+  font-size:32px
+}
+.ar-review-subheading>b{
+  font-size:11px
+}
+
+.ar-coach-card{
+  grid-template-columns:46px minmax(0,1fr);
+  padding:20px;
+  gap:16px
+}
+.ar-coach-index{
+  width:42px;
+  height:42px;
+  font-size:12px
+}
+.ar-card-kicker>span{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-dna-tag{
+  padding:5px 8px;
+  font-size:11px;
+  line-height:1.2
+}
+.ar-coach-body h3{
+  margin:9px 0 16px;
+  font-size:28px;
+  line-height:1.08
+}
+.ar-coach-explain{
+  margin-top:12px;
+  padding-left:12px
+}
+.ar-coach-explain b,
+.ar-game-example b,
+.ar-next-example b{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-coach-explain p{
+  margin-top:7px;
+  font-size:16px;
+  line-height:1.65
+}
+.ar-game-example{
+  margin-top:12px;
+  padding:14px 15px
+}
+.ar-game-example strong{
+  font-size:14px
+}
+.ar-game-example p{
+  margin-top:8px;
+  font-size:15px;
+  line-height:1.6
+}
+.ar-coach-empty{
+  font-size:16px
+}
+.ar-coach-empty p{
+  font-size:15px;
+  line-height:1.6
+}
+
+.ar-next-number{
+  font-size:20px
+}
+.ar-next-copy>span{
+  font-size:11px
+}
+.ar-next-copy small{
+  font-size:13px
+}
+.ar-next-copy h2{
+  font-size:38px
+}
+.ar-next-copy>p{
+  font-size:16px;
+  line-height:1.65
+}
+.ar-next-example span{
+  margin-top:6px;
+  font-size:15px;
+  line-height:1.6
+}
+.ar-next-copy summary{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-next-copy details p{
+  font-size:14px;
+  line-height:1.6
+}
+
+.ar-stats-page .label{
+  font-size:12px;
+  line-height:1.3
+}
+.ar-stats-page .eyebrow{
+  font-size:12px;
+  line-height:1.3
+}
+.ar-stats-page .league-row{
+  padding:13px 0
+}
+.ar-stats-page .league-row span{
+  font-size:15px;
+  line-height:1.45
+}
+.ar-stats-page .league-row b{
+  font-size:16px;
+  line-height:1.3
+}
+
+.ar-evidence-page .eyebrow{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-evidence-page .ar-mission-update-head h2{
+  font-size:34px
+}
+.ar-evidence-page .ar-mission-update-head>a{
+  font-size:11px
+}
+.ar-evidence-page .ar-mission-update-grid article{
+  padding:15px
+}
+.ar-evidence-page .ar-mission-update-grid span{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-evidence-page .ar-mission-update-grid b{
+  font-size:22px;
+  line-height:1.15
+}
+.ar-evidence-page .ar-mission-update-grid strong{
+  font-size:12px;
+  line-height:1.2
+}
+.ar-evidence-page .ar-mission-update-grid small{
+  font-size:14px;
+  line-height:1.5
+}
+.ar-evidence-page .ar-strengths-head h2{
+  font-size:40px
+}
+.ar-evidence-page .ar-strengths-head p{
+  font-size:16px;
+  line-height:1.6
+}
+.ar-evidence-page .ar-strengths-head>b{
+  font-size:11px
+}
+.ar-evidence-page .ar-strength-grid article{
+  padding:16px
+}
+.ar-evidence-page .ar-strength-grid article>span{
+  font-size:11px;
+  line-height:1.3
+}
+.ar-evidence-page .ar-strength-grid h3{
+  font-size:25px;
+  line-height:1.1
+}
+.ar-evidence-page .ar-strength-simple b{
+  font-size:11px
+}
+.ar-evidence-page .ar-strength-grid p{
+  font-size:15px;
+  line-height:1.6
+}
+.ar-evidence-page .ar-strength-grid small{
+  font-size:12px;
+  line-height:1.45
+}
+.ar-evidence-page .ar-strength-grid em{
+  font-size:11px
+}
+.ar-evidence-page .ar-strength-proof summary{
+  font-size:12px
+}
+.ar-evidence-page .data-note p{
+  font-size:15px;
+  line-height:1.6
+}
+
+@media(max-width:760px){
+  .ar-subnav b{font-size:13px}
+  .ar-subnav small{font-size:11px}
+  .ar-overview-story p,
+  .ar-story p,
+  .ar-overview-card p,
+  .ar-overview-action p,
+  .ar-coach-explain p,
+  .ar-next-copy>p,
+  .ar-evidence-page .ar-strength-grid p{
+    font-size:16px
+  }
+  .ar-game-example p,
+  .ar-next-example span{
+    font-size:15px
+  }
+}
