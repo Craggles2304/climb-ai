@@ -106,6 +106,9 @@ create index if not exists live_postgame_jobs_ready_idx
   on public.live_postgame_jobs(status,available_at,created_at)
   where status in ('PENDING','PROCESSING');
 
+create index if not exists live_postgame_jobs_user_idx
+  on public.live_postgame_jobs(user_id);
+
 create or replace function public.claim_live_postgame_jobs(p_worker_id text,p_limit integer default 12)
 returns setof public.live_postgame_jobs
 language plpgsql
