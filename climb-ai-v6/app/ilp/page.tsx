@@ -18,8 +18,9 @@ import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
+import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
-import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
 import {canonicalLeagueRole,LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
@@ -66,6 +67,7 @@ export default function PlayerDevelopmentCentre(){
   const baselineReady=dnaBaselineReady(baselineGames);
   const accountTasks=allTasks[active.id]??tasks;
   const roleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,viewRole)),[accountTasks,viewRole]);
+  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(roleTasks,viewRole),[roleTasks,viewRole]);
   const activeTasks=useMemo(()=>{
     if(!baselineReady)return[];
     return currentGameDnaMissions(roleTasks,viewRole).flatMap(({task})=>task?[task]:[]);
@@ -107,29 +109,56 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   if(!baselineReady)return <AppShell>
-    <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
-    <section className="panel panel-padding" style={{marginBottom:18}}>
-      <div className="eyebrow">{viewRole} GAME DNA · ROLE PROFILE</div>
-      <h2>Your DNA is separate for every role.</h2>
-      <p className="muted">Only games played in {viewRole} build this profile. TOP, JUNGLE, MID, ADC and SUPPORT each keep their own six strands, levels, missions and history.</p>
-    </section>
-    <section className="panel panel-padding">
-      <div className="eyebrow">{viewRole} · LONG-TERM DEVELOPMENT</div>
-      <h2>{baselineGames}/{DNA_BASELINE_GAMES} role games observed.</h2>
-      <p className="muted">Match Room now owns the immediate review for every game. My Climb waits for three {viewRole} games before it turns repeated evidence into persistent missions and Game DNA growth.</p>
-      <div className="mission-actions" style={{marginTop:18}}>
-        <Link className="btn primary" href="/live">OPEN LAST GAME IN MATCH ROOM →</Link>
+    <header className="my-dna-hero">
+      <div>
+        <div className="eyebrow">MY DNA · {viewRole} PLAYER IDENTITY</div>
+        <h1>Your game starts here.</h1>
+        <p>Six strands will become your living player profile. OP CLIMB keeps them at zero until it has seen three real {viewRole} games, so your DNA is earned from evidence rather than guessed.</p>
       </div>
+      <Link className="btn primary" href="/live">PLAY BASELINE GAME {Math.min(baselineGames+1,DNA_BASELINE_GAMES)} →</Link>
+    </header>
+
+    <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
+
+    <section className="my-dna-stage" aria-label={`${viewRole} Game DNA baseline`}>
+      <div className="my-dna-stage-head">
+        <div><span>GAME DNA · BUILDING</span><strong>{baselineGames}/{DNA_BASELINE_GAMES} games observed</strong></div>
+        <small>Play normally. Your first three role games establish the starting shape.</small>
+      </div>
+      <ClientGameDna player={active.gameName+active.tagline} role={viewRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+    </section>
+
+    <section className="op-dna-baseline-callout panel">
+      <div><span>WHAT HAPPENS NEXT</span><h2>Finish the baseline → reveal your first real fix.</h2><p>After game three, OP CLIMB turns repeated evidence into six strand missions and tells you which one to carry into the next game.</p></div>
+      <Link className="btn secondary" href="/live">OPEN MATCH ROOM →</Link>
     </section>
   </AppShell>;
 
   return <AppShell>
+    <header className="my-dna-hero">
+      <div>
+        <div className="eyebrow">MY DNA · YOUR PLAYER IDENTITY</div>
+        <h1>This is the player your decisions are building.</h1>
+        <p>Game DNA is the centre of OP CLIMB. Every tracked {viewRole} game updates the evidence behind these six strands, while missions turn the weakest behaviours into something you can actually train.</p>
+      </div>
+      <Link className="btn primary" href="/live">PLAY NEXT GAME →</Link>
+    </header>
+
     <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
+
+    <section className="my-dna-stage" aria-label={`${viewRole} interactive Game DNA`}>
+      <div className="my-dna-stage-head">
+        <div><span>LIVE {viewRole} GAME DNA</span><strong>Your six-strand development profile</strong></div>
+        <small>Select a strand to understand the mission, evidence and growth behind it.</small>
+      </div>
+      <ClientGameDna player={active.gameName+active.tagline} role={viewRole} missions={dnaMissions} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+    </section>
+
     <section className="coach-climb-handoff" style={{marginBottom:18}}>
       <div>
-        <div className="eyebrow">{viewRole} · LONG-TERM DEVELOPMENT</div>
-        <h3>My Climb tracks what repeats across games.</h3>
-        <p>For the latest match story, evidence and next-game coaching, use Match Room. This page is your persistent missions, DNA progress and mastery.</p>
+        <div className="eyebrow">{viewRole} · WHAT YOUR DNA NEEDS NEXT</div>
+        <h3>Train one fix at a time. Measure all six.</h3>
+        <p>Match Room owns the individual game. My DNA owns what repeats across games: strand missions, proof, mastery and the habits OP CLIMB carries forward.</p>
       </div>
       <Link className="btn secondary" href="/live">OPEN MATCH ROOM →</Link>
     </section>
@@ -137,7 +166,7 @@ export default function PlayerDevelopmentCentre(){
     <section className="ip-dna-filter panel panel-padding" style={selectedDomain?({'--strand-color':DNA_DOMAIN_COLORS[selectedDomain]} as CSSProperties):undefined}>
       <div className="ip-dna-filter-head">
         <div>
-          <div className="eyebrow">{viewRole} GAME DNA → MY CLIMB</div>
+          <div className="eyebrow">{viewRole} GAME DNA · DEVELOPMENT</div>
           <h2>{selectedDomain?`${viewRole} · ${DNA_DOMAIN_LABELS[selectedDomain]}`:`Your ${viewRole} development plan`}</h2>
           <p>{selectedDomain?`${DNA_DOMAIN_GUIDE[selectedDomain].summary} Only ${viewRole} games progress this strand.`:`Game DNA is role-specific. Only games played in ${viewRole} progress these six strands; every other role has its own separate DNA profile.`}</p>
         </div>
