@@ -120,9 +120,9 @@ export default function Coach(){
         </div>
       </header>
 
-      <section className="coach-climb-handoff" aria-label="My Climb handoff">
+      <section className="coach-climb-handoff" aria-label="My DNA handoff">
         <div>
-          <div className="eyebrow">YOUR PLAN LIVES IN MY CLIMB</div>
+          <div className="eyebrow">YOUR DEVELOPMENT LIVES IN MY DNA</div>
           <h3>{activeThree[0]?.title||'Your next tracked focus will appear there'}</h3>
           <p>Coach helps you understand and choose. My Climb is where your Game DNA, six missions, proven reps, and level progress live.</p>
         </div>
@@ -176,7 +176,7 @@ export default function Coach(){
             <h2>What your coach carries forward.</h2>
             <p>This is the part of OP CLIMB that stops every new game from becoming a blank slate.</p>
           </div>
-          <Link className="btn btn-small" href="/ilp">Open My Climb →</Link>
+          <Link className="btn btn-small" href="/ilp">Open My DNA →</Link>
         </header>
 
         {memoryLoading&&<section className="panel panel-padding" style={{marginBottom:18}}>
