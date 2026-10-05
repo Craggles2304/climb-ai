@@ -9,6 +9,7 @@ import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {resolveLeagueEntitlement} from '@/lib/server/subscriptionAccess';
 import {historyCutoffIso,requiredTierForHistoryDate} from '@/lib/subscription';
 import {proAnalysisForTier} from '@/lib/tieredProAnalysis';
+import {reconcileFarmEvidence} from '@/lib/riot/reconcileFarmEvidence';
 
 const schema=z.object({matchId:z.string().min(1)});
 
@@ -92,7 +93,7 @@ export async function POST(req:Request){
     if(proError){console.error('[analyse] PRO evidence load failed',proError);return NextResponse.json({error:'We could not load the coaching evidence.'},{status:500})}
     const rawProAnalysis=proRow?.analysis&&typeof proRow.analysis==='object'?proRow.analysis as ProMatchAnalysis:undefined;
     const proAnalysis=proAnalysisForTier(rawProAnalysis,tier);
-    const match=toMatch(row,metric,proAnalysis);
+    const match=reconcileFarmEvidence(toMatch(row,metric,proAnalysis));
 
     let recentQuery=db.from('matches')
       .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
