@@ -5848,3 +5848,206 @@ body[data-op-area="hq"] .hq-mission-why p{
   }
   .ar-overview-action-buttons .btn{justify-content:center}
 }
+
+
+/* Match review readability + semantic GOOD / NEEDS WORK hierarchy */
+.ar-subnav b{font-size:12px}
+.ar-subnav small{font-size:11px;line-height:1.25}
+
+.ar-overview-story p{font-size:15px;line-height:1.6}
+.ar-overview-story aside small{font-size:10px}
+.ar-overview-story aside b{font-size:20px;line-height:1.25}
+.ar-overview-card h3{font-size:23px;line-height:1.08}
+.ar-overview-card p{font-size:14px;line-height:1.55}
+.ar-overview-card a{font-size:10px}
+.ar-overview-action>div>span{font-size:10px}
+.ar-overview-action>div>small{font-size:10px}
+.ar-overview-action p{font-size:15px;line-height:1.55}
+.ar-overview-metrics .label{font-size:11px}
+.ar-overview-metrics .metric{font-size:clamp(28px,3vw,40px)}
+
+.ar-review-subheading{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:14px;
+  align-items:center;
+  min-height:72px;
+  padding:12px 14px;
+  border:1px solid rgba(255,255,255,.08);
+  background:#0b1215
+}
+.ar-review-subheading>strong{
+  display:grid;
+  place-items:center;
+  min-width:92px;
+  min-height:44px;
+  padding:8px 12px;
+  font:950 15px/1 var(--font-display,'Barlow Condensed',sans-serif);
+  letter-spacing:.06em
+}
+.ar-review-subheading>div>span{
+  display:block;
+  font:900 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em
+}
+.ar-review-subheading h2{
+  margin:5px 0 0;
+  font-size:30px;
+  line-height:.95
+}
+.ar-review-subheading>b{
+  font:900 10px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em
+}
+.ar-review-subheading.good{
+  border-color:rgba(182,246,107,.34);
+  background:linear-gradient(90deg,rgba(182,246,107,.085),rgba(8,14,18,.96))
+}
+.ar-review-subheading.good>strong{
+  color:#071006;
+  background:#b6f66b;
+  box-shadow:0 0 22px rgba(182,246,107,.12)
+}
+.ar-review-subheading.good>div>span,
+.ar-review-subheading.good>b{color:#b6f66b}
+.ar-review-subheading.bad{
+  border-color:rgba(255,119,117,.34);
+  background:linear-gradient(90deg,rgba(255,119,117,.085),rgba(8,14,18,.96))
+}
+.ar-review-subheading.bad>strong{
+  color:#160707;
+  background:#ff7775;
+  box-shadow:0 0 22px rgba(255,119,117,.11)
+}
+.ar-review-subheading.bad>div>span,
+.ar-review-subheading.bad>b{color:#ff8d8a}
+
+.ar-helped,.ar-hurt{gap:12px}
+.ar-coach-card{
+  padding:18px;
+  gap:14px;
+  background:#0b1216
+}
+.ar-coach-card.good{
+  border-color:rgba(182,246,107,.25);
+  background:linear-gradient(145deg,rgba(182,246,107,.035),#091014);
+  box-shadow:inset 3px 0 0 rgba(182,246,107,.7)
+}
+.ar-coach-card.bad{
+  border-color:rgba(255,119,117,.28);
+  background:linear-gradient(145deg,rgba(255,119,117,.045),#091014);
+  box-shadow:inset 3px 0 0 rgba(255,119,117,.78)
+}
+.ar-coach-card.good .ar-coach-index{
+  border-color:rgba(182,246,107,.45);
+  color:#b6f66b
+}
+.ar-coach-card.bad .ar-coach-index{
+  border-color:rgba(255,119,117,.48);
+  color:#ff8d8a
+}
+.ar-card-kicker{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  flex-wrap:wrap
+}
+.ar-card-kicker>span{
+  color:#9dff42;
+  font:900 10px/1.2 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.1em
+}
+.ar-coach-card.bad .ar-card-kicker>span{color:#ff8d8a}
+.ar-dna-tag{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  padding:4px 6px;
+  border:1px solid color-mix(in srgb,var(--strand-color) 55%,rgba(255,255,255,.08));
+  background:color-mix(in srgb,var(--strand-color) 9%,transparent);
+  color:var(--strand-color);
+  font:900 9px/1 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.07em;
+  text-transform:uppercase
+}
+.ar-coach-body h3{
+  margin:8px 0 14px;
+  font-size:25px;
+  line-height:1.06
+}
+.ar-coach-explain b,
+.ar-game-example b,
+.ar-next-example b{
+  font-size:9px
+}
+.ar-coach-explain p{
+  margin-top:6px;
+  font-size:14px;
+  line-height:1.55
+}
+.ar-game-example{padding:12px 13px}
+.ar-game-example strong{font-size:13px}
+.ar-game-example p{
+  margin-top:7px;
+  font-size:13px;
+  line-height:1.5
+}
+.ar-next-copy small{font-size:11px}
+.ar-next-copy h2{font-size:34px}
+.ar-next-copy>p{font-size:15px;line-height:1.55}
+.ar-next-example span{font-size:13px;line-height:1.5}
+.ar-next-copy summary{font-size:9px}
+.ar-next-copy details p{font-size:12px;line-height:1.5}
+.ar-story p{font-size:15px}
+.ar-story aside small{font-size:9px}
+.ar-story aside b{font-size:20px}
+
+.ar-stats-page .label{font-size:11px}
+.ar-stats-page .metric{font-size:clamp(28px,3vw,40px)}
+.ar-stats-page .eyebrow{font-size:10px}
+.ar-stats-page .league-row{
+  padding:10px 0;
+  gap:12px
+}
+.ar-stats-page .league-row span{
+  font-size:13px;
+  line-height:1.35
+}
+.ar-stats-page .league-row b{
+  font-size:14px;
+  line-height:1.2
+}
+
+.ar-evidence-page .ar-mission-update-head h2{font-size:30px}
+.ar-evidence-page .ar-mission-update-grid span{font-size:9px}
+.ar-evidence-page .ar-mission-update-grid b{font-size:19px}
+.ar-evidence-page .ar-mission-update-grid strong{font-size:10px}
+.ar-evidence-page .ar-mission-update-grid small{font-size:11px;line-height:1.4}
+.ar-evidence-page .ar-strengths-head h2{font-size:38px}
+.ar-evidence-page .ar-strengths-head p{font-size:14px;line-height:1.55}
+.ar-evidence-page .ar-strength-grid article>span{font-size:9px}
+.ar-evidence-page .ar-strength-grid h3{font-size:22px}
+.ar-evidence-page .ar-strength-grid small{font-size:10px}
+.ar-evidence-page .ar-strength-grid p{font-size:13px;line-height:1.5}
+.ar-evidence-page .ar-strength-grid em{font-size:9px}
+.ar-evidence-page .ar-strength-simple b{font-size:9px}
+.ar-evidence-page .ar-strength-proof summary{font-size:10px}
+.ar-evidence-page .data-note p{font-size:13px;line-height:1.5}
+
+@media(max-width:960px){
+  .ar-review-subheading{grid-template-columns:auto 1fr}
+  .ar-review-subheading>b{grid-column:2}
+}
+@media(max-width:680px){
+  .ar-subnav b{font-size:11px}
+  .ar-subnav small{font-size:10px}
+  .ar-review-subheading{
+    grid-template-columns:1fr;
+    gap:8px
+  }
+  .ar-review-subheading>b{grid-column:auto}
+  .ar-review-subheading>strong{width:max-content;min-width:0}
+  .ar-review-subheading h2{font-size:27px}
+  .ar-coach-body h3{font-size:23px}
+  .ar-coach-explain p,.ar-game-example p{font-size:14px}
+}
