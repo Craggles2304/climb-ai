@@ -19,10 +19,12 @@ test('full matches remain local-first until one compact FINAL bundle',()=>{
   assert.ok(route.includes('z.array(snapshotSchema).min(1).max(12)'));
 });
 
-test('Supabase stores derived evidence instead of raw keyframe history',()=>{
-  assert.ok(repoFile.includes("captureMode:'LOCAL_FIRST_V1'"));
+test('Supabase keeps FINAL keyframes temporary while permanent session state stores derived evidence',()=>{
+  assert.ok(repoFile.includes("captureMode:'LOCAL_FIRST_QUEUE_V1'"));
   assert.ok(repoFile.includes('latestSnapshot:snapshots[snapshots.length-1]'));
   assert.equal(repoFile.includes('keyframes:snapshots'),false);
+  assert.ok(repoFile.includes('payload:envelope'));
+  assert.ok(repoFile.includes('processQueuedPostGameSession'));
   assert.ok(readModel.includes('capture?.latestSnapshot'));
 });
 
