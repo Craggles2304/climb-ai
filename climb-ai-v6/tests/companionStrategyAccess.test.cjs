@@ -33,7 +33,7 @@ test('PRO alone receives the deep composition interaction graph',()=>{
   assert.ok(route.includes("const deepStrategy=hasTier(tier,'PRO')"));
   assert.ok(route.includes('strategyAccess.deepStrategy'));
   assert.ok(route.includes('compositionRead:null'));
-  assert.ok(preload.includes('PRO · WHY THIS PLAN WORKS'));
+  assert.ok(preload.includes('WHY THIS PLAN WORKS +'));
   assert.ok(preload.includes("Boolean(access?.deepStrategy)&&renderDeepRead(team,set)"));
   assert.match(preload,/toggle\('opDeepRead',!hasDeep\)/);
 });
@@ -43,12 +43,12 @@ test('active trial entitlement receives paid match strategy',()=>{
   assert.ok(route.includes("trialing:paidStrategy&&status==='trialing'"));
 });
 
-test('Companion keeps a simple free plan while paid match read exposes a direct path to win',()=>{
+test('Companion keeps a simple free plan while paid match read exposes a compact win path',()=>{
   assert.ok(preload.includes('YOUR SIMPLE GAME PLAN'));
   assert.ok(preload.includes('PLUS MATCH READ'));
-  assert.ok(preload.includes('HOW WE WIN'));
-  assert.ok(preload.includes('HOW THEY WIN'));
-  assert.ok(preload.includes('BIGGEST THROW'));
+  assert.ok(preload.includes('WIN CONDITION'));
+  assert.ok(preload.includes('THEY WANT'));
+  assert.ok(preload.includes("DON'T"));
   assert.ok(preload.includes('opRoleWin'));
   assert.ok(preload.includes('opBiggestThrow'));
   assert.match(preload,/toggle\('opPaidWin',!paid\)/);
