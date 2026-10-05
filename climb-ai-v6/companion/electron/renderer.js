@@ -126,6 +126,13 @@ function renderPlayerHome(home,visible){
   const roleLabel=String(player.role||baseline.role||'ROLE').trim().toUpperCase()||'ROLE';
   const games=Math.max(0,Number(baseline.games||0));
   const required=Math.max(1,Number(baseline.required||3));
+  const journey=home.journey||{
+    phase:baselineReady?'MISSION':'BASELINE',
+    status:baselineReady?'DNA ACTIVE':'BASELINE '+Math.min(games,required)+'/'+required,
+    title:baselineReady?'Your priority mission is ready.':'Play baseline game '+Math.min(games+1,required)+'.',
+    body:baselineReady?'Focus one mission. OP CLIMB tracks the other five automatically.':'Play normally. Coaching stays provisional until the three-game baseline is complete.',
+    progress:Math.min(games,required)+'/'+required,
+  };
 
   $('playerHomeName').textContent=[player.gameName,player.tagline?'#'+player.tagline:''].filter(Boolean).join(' ');
   $('playerHomeRank').textContent=[player.rank,player.role].filter(Boolean).join(' · ')||'PLAYER PROFILE';
@@ -134,10 +141,16 @@ function renderPlayerHome(home,visible){
   $('playerHomeViewCopy').textContent=baselineReady
     ?`${roleLabel} DNA only · only ${roleLabel} games progress these six strands. Other roles keep separate DNA profiles.`
     :`${roleLabel} DNA baseline ${Math.min(games,required)}/${required} · only games played in ${roleLabel} count toward this role profile.`;
-  if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=`${roleLabel} GAME DNA`;
-  if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=`Your ${roleLabel} player shape.`;
-  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=`${roleLabel} DNA MISSIONS`;
-  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=`Only ${roleLabel} games progress these six strands.`;
+  if($('playerJourneyStatus'))$('playerJourneyStatus').textContent=String(journey.status||'YOUR NEXT STEP');
+  if($('playerJourneyProgress'))$('playerJourneyProgress').textContent=String(journey.progress||'');
+  if($('playerJourneyTitle'))$('playerJourneyTitle').textContent=String(journey.title||'Keep climbing.');
+  if($('playerJourneyBody'))$('playerJourneyBody').textContent=String(journey.body||'OP CLIMB will keep the next step clear.');
+  const journeyCard=$('playerJourney');
+  if(journeyCard)journeyCard.className='player-journey phase-'+String(journey.phase||'MISSION').toLowerCase();
+  if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=roleLabel+' GAME DNA';
+  if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=baselineReady?'Your '+roleLabel+' player shape.':'Locked until the three-game role baseline is complete.';
+  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=baselineReady?roleLabel+' PRIORITY + BACKGROUND MISSIONS':'PROVISIONAL COACHING';
+  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=baselineReady?'Focus one. OP CLIMB tracks all six automatically.':'No permanent DNA missions until baseline 3/3.';
 
   const roleRoot=$('playerDnaRoleSwitcher');
   if(roleRoot){
