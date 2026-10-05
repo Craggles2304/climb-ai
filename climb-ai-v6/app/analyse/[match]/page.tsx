@@ -2,7 +2,7 @@
 
 import {useEffect,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
-import {useParams} from 'next/navigation';
+import {useParams,usePathname} from 'next/navigation';
 import {AppShell} from '@/components/AppShell';
 import {MetricCard,PageHead} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
@@ -24,9 +24,11 @@ import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
+type ReviewSection='overview'|'coaching'|'stats'|'evidence';
 
 export default function Analysis(){
   const params=useParams<{match:string}>();
+  const pathname=usePathname();
   const {active,hydrated}=useAccount();
   const {tier}=useSubscription();
   const {tasks}=useLearningPlan();
@@ -35,6 +37,9 @@ export default function Analysis(){
   const [serverCheckedId,setServerCheckedId]=useState('');
   const [serverHistoryLock,setServerHistoryLock]=useState<SubscriptionTier|null>(null);
   const id=String(params.match||'');
+  const pathTail=pathname.split('/').filter(Boolean).at(-1)??'';
+  const section:ReviewSection=pathTail==='coaching'||pathTail==='stats'||pathTail==='evidence'?pathTail:'overview';
+  const reviewBase='/analyse/'+encodeURIComponent(id);
   const allMatches=matchesFor(active.id);
   const matches=filterHistoryForTier(allMatches,tier);
   const cachedMatch=matches.find(m=>m.id===id);
@@ -74,84 +79,73 @@ export default function Analysis(){
 
   if(cachedHistoricalMatch||serverHistoryLock){
     const required=serverHistoryLock??requiredTierForHistoryDate(cachedHistoricalMatch!.createdAt);
-    return <AppShell><section className="glass card">
-      <div className="eyebrow">HISTORY LIMIT · {tier}</div>
-      <h2>This match sits outside {historyWindowLabel(tier).toLowerCase()}.</h2>
-      <p className="muted">{required==='PLUS'?'PLUS unlocks match history up to 90 days.':'PRO unlocks long-term match history and persistent development context.'}</p>
-      <div className="hero-actions"><Link className="btn primary" href="/pricing">SEE {required} →</Link><Link className="btn secondary" href="/analyse">BACK TO MY GAMES</Link></div>
-    </section></AppShell>;
-  }
+    return <AppShell>
+    <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''} · ${section.toUpperCase()}`}/>
 
-  if(!cachedMatch&&(serverLoading||serverCheckedId!==id))return <AppShell><section className="glass card"><div className="eyebrow">MATCH REVIEW</div><h2>Loading the saved match…</h2><p className="muted">Opening the server copy directly so a newly completed Companion game cannot be blocked by stale browser state.</p></section></AppShell>;
+    <nav className="ar-subnav" aria-label="Match review pages">
+      <Link className={section==='overview'?'active':''} href={reviewBase}><b>OVERVIEW</b><small>what mattered</small></Link>
+      <Link className={section==='coaching'?'active':''} href={reviewBase+'/coaching'}><b>COACHING</b><small>good · bad · next</small></Link>
+      <Link className={section==='stats'?'active':''} href={reviewBase+'/stats'}><b>STATS</b><small>lane · economy · deaths</small></Link>
+      <Link className={section==='evidence'?'active':''} href={reviewBase+'/evidence'}><b>EVIDENCE</b><small>missions · proof</small></Link>
+    </nav>
 
-  if(!match)return <AppShell><PageHead title="Match not found" subtitle="This review is not attached to the active Riot account."/><section className="glass card"><p className="muted">Switch back to the account that played this game or open a match from Analyse.</p><Link className="btn primary" href="/analyse">OPEN ANALYSE</Link></section></AppShell>;
-
-  if(proLoading)return <AppShell><section className="glass card"><div className="eyebrow">COACHING EVIDENCE</div><h2>Reading the full game evidence…</h2><p className="muted">The review will appear once its coaching authority is resolved, so a scoreboard fallback cannot flash a different limiter first.</p></section></AppShell>;
-
-  const matchRole=canonicalLeagueRole(match.role);
-  const recent=matches.filter(m=>m.id!==match.id&&(!matchRole||canonicalLeagueRole(m.role)===matchRole));
-  const report=analyseMatch({...match,proAnalysis},recent);
-  const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
-  const missionResults=tasks.flatMap(task=>{
-    const attempt=(task.missionHistory??[]).find(rep=>rep.matchId===id);
-    return attempt?[{task,attempt}]:[];
-  });
-  const plainProblems=plainProblemCards(match,proAnalysis,report.primary.category,report.mission.dnaDomain).slice(0,2);
-  const nextAction=plainNextAction(report.primary.category,match.opponent);
-
-  return <AppShell>
-    <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''}`}/>
-    {missionResults.length>0&&<section className="ar-mission-update">
-      <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link></div>
-      <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
-        const plain=plainLanguageFocus(task);
-        const latest=(task.missionHistory??[]).at(-1)?.matchId===id;
-        const mastered=task.status==='MASTERED'&&latest&&attempt.banksPass;
-        const xp=attempt.banksPass?XP_PER_PROVEN_REP+(mastered?XP_PER_MISSION_MASTERY:0):0;
-        return <article key={task.id}>
-          <span>{attempt.banksPass?'PROVEN REP':'REVIEWED GAME'}</span>
-          <b>{plain.name}</b>
-          <MissionMeasurementBadge metric={task.metric} compact/>
-          <strong className={attempt.banksPass?'good':'watch'}>{mastered?'MASTERED ✓':attempt.banksPass?'PASS ✓':'NOT BANKED'}</strong>
-          <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'rep banked')):'The metric did not clear the proof bar this game.'}</small>
-        </article>;
-      })}</div>
-    </section>}
-    <section className="ar-strengths">
-      <div className="ar-strengths-head">
+    {section==='overview'&&<>
+      <section className="ar-overview-story panel">
         <div>
-          <div className="eyebrow">VERIFIED STRENGTHS · WHAT TO KEEP</div>
-          <h2>Good play counts too.</h2>
-          <p>These are not compliments. They are measurable decisions or outcomes that cleared a rank-relative or decision-evidence bar.</p>
+          <span>YOUR GAME IN PLAIN ENGLISH</span>
+          <h2>{plainStoryHeadline(match,strengths.length,plainProblems.length)}</h2>
+          <p>{plainStoryText(match,strengths,overviewProblem?.title||plainProblemTitle(report.primary.category))}</p>
         </div>
-        <b>{strengths.length} VERIFIED</b>
+        <aside>
+          <small>ONE THING TO CHANGE</small>
+          <b>{overviewProblem?.title||plainProblemTitle(report.primary.category)}</b>
+        </aside>
+      </section>
+
+      <div className="ar-overview-grid">
+        <article className="ar-overview-card good" style={overviewStrength?({'--strand-color':DNA_DOMAIN_COLORS[overviewStrength.dnaDomain]} as CSSProperties):undefined}>
+          <span>KEEP</span>
+          <h3>{overviewStrength?plainStrengthTitle(overviewStrength):'Keep collecting clean evidence'}</h3>
+          <p>{overviewStrength?overviewStrength.whatHappened:'No positive pattern cleared the verification bar strongly enough in this match.'}</p>
+          <Link href={reviewBase+'/coaching'}>SEE COACHING →</Link>
+        </article>
+
+        <article className="ar-overview-card bad" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
+          <span>FIX</span>
+          <h3>{overviewProblem?.title||plainProblemTitle(report.primary.category)}</h3>
+          <p>{overviewProblem?.what||plainProblemWhat(report.primary.category,match.opponent)}</p>
+          <Link href={reviewBase+'/coaching'}>SEE WHY →</Link>
+        </article>
+
+        <article className="ar-overview-card mission" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
+          <span>DNA CHECK</span>
+          <h3>{missionResults.length?passedMissionCount+'/'+missionResults.length+' mission checks passed':'No mission result attached'}</h3>
+          <p>{missionResults.length?'OP CLIMB checked this match against the DNA missions that were active when you played.':'This match still contributes to your wider player profile even without a banked mission rep.'}</p>
+          <Link href={reviewBase+'/evidence'}>SEE EVIDENCE →</Link>
+        </article>
       </div>
-      {strengths.length?<div className="ar-strength-grid">
-        {strengths.slice(0,4).map(item=><article key={item.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.dnaDomain]} as CSSProperties)}>
-          <span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span>
-          <h3>{item.title}</h3>
-          <div className="ar-strength-simple">
-            <b>WHAT YOU DID</b>
-            <p>{item.whatHappened}</p>
-          </div>
-          <div className="ar-strength-simple">
-            <b>WHY IT MATTERED</b>
-            <p>{item.whyItMattered}</p>
-          </div>
-          <em>REPEAT THIS</em>
-          <details className="ar-strength-proof">
-            <summary>SHOW THE PROOF</summary>
-            <div><span>{item.technicalLabel}</span><strong>{item.value}</strong><small>Bar · {item.target} · {item.confidence} confidence</small></div>
-            {item.proof.length>0&&<ul>{item.proof.map(line=><li key={line}>{line}</li>)}</ul>}
-          </details>
-        </article>)}
-      </div>:<div className="ar-strength-empty">
-        <b>No verified strength was strong enough to call yet.</b>
-        <p>OP CLIMB will not invent praise. Keep collecting games until a good behaviour clears a measurable evidence bar.</p>
-      </div>}
-    </section>
-    <div className="grid five"><MetricCard label={detail.depth<=2?'SCORELINE':'KDA'} value={`${match.kills}/${match.deaths}/${match.assists}`}/>{detail.depth>=2&&<MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>} {detail.depth>=4&&<MetricCard label="GOLD/MIN" value={match.metrics.goldPerMin??'N/A'}/>} {detail.depth>=5&&<MetricCard label="KILL PARTICIPATION" value={pct(match.metrics.killParticipation)}/>} {detail.depth>=6&&<MetricCard label="DAMAGE SHARE" value={pct(match.metrics.damageShare)}/>}</div>
-    {detail.depth>=3&&<div className="phase-grid" style={{marginTop:18}}><div className="glass card"><div className="eyebrow">LANE PHASE</div><div className="league-row"><span>CS @ 10</span><b>{match.metrics.csAt10??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>CS @ 15</span><b>{match.metrics.csAt15??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>Lane CS/min</span><b>{num(match.metrics.laneCsPerMin)}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Gold diff @ 15</span><b>{num(match.metrics.goldDiffAt15,'g')}</b></div>}{detail.depth>=6&&<div className="league-row"><span>XP diff @ 15</span><b>{num(match.metrics.xpDiffAt15)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Level @ 15</span><b>{match.metrics.levelAt15??'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">AFTER LANE</div><div className="league-row"><span>Post-15 CS/min</span><b>{num(match.metrics.post15CsPerMin)}</b></div>{detail.depth>=4&&<div className="league-row"><span>First item</span><b>{match.metrics.firstItemMinute?`${match.metrics.firstItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Second item</span><b>{match.metrics.secondItemMinute?`${match.metrics.secondItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Objective involvement</span><b>{pct(match.metrics.objectiveParticipation)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Items shown</span><b>{match.items?.join(' · ')||'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">DEATHS</div><div className="league-row"><span>After 20</span><b>{match.metrics.deathsPost20??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>Before 10</span><b>{match.metrics.deathsPre10??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>10–20</span><b>{match.metrics.deaths10to20??'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Solo deaths</span><b>{match.metrics.soloDeaths??'Unavailable'}</b></div>}{detail.depth>=6&&<div className="league-row"><span>Teamfight deaths</span><b>{match.metrics.teamfightDeaths??'Unavailable'}</b></div>}</div></div>}
+
+      <div className="ar-overview-metrics">
+        <MetricCard label="KDA" value={`${match.kills}/${match.deaths}/${match.assists}`}/>
+        <MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>
+        <MetricCard label={detail.depth>=5?'KILL PARTICIPATION':'RESULT'} value={detail.depth>=5?pct(match.metrics.killParticipation):match.result}/>
+      </div>
+
+      <section className="ar-overview-action panel" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
+        <div>
+          <span>NEXT GAME · ONE THING ONLY</span>
+          <small>{dnaDomainLabel(report.mission.dnaDomain)}</small>
+          <h2>{nextAction.title}</h2>
+          <p>{nextAction.action}</p>
+        </div>
+        <div className="ar-overview-action-buttons">
+          <Link className="btn secondary" href={reviewBase+'/coaching'}>WHY THIS? →</Link>
+          <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>TAKE IT TO MY DNA →</Link>
+        </div>
+      </section>
+    </>}
+
+    {section==='coaching'&&<>
     <section className="ar-plain-coach">
       <header className="ar-story panel">
         <div>
@@ -225,15 +219,65 @@ export default function Analysis(){
         <Link className="btn primary" href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link>
       </section>
     </section>
-    <section className="glass card ar-review-finish" style={{marginTop:18}}>
-      <div>
-        <div className="eyebrow">REVIEW COMPLETE</div>
-        <h2>Your next stop is My DNA.</h2>
-        <p className="muted">The detailed review explains the game. My DNA is where that result becomes development: strand growth, proven reps, persistent habits and your next challenge.</p>
+    </>}
+
+    {section==='stats'&&<>
+    <div className="grid five"><MetricCard label={detail.depth<=2?'SCORELINE':'KDA'} value={`${match.kills}/${match.deaths}/${match.assists}`}/>{detail.depth>=2&&<MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>} {detail.depth>=4&&<MetricCard label="GOLD/MIN" value={match.metrics.goldPerMin??'N/A'}/>} {detail.depth>=5&&<MetricCard label="KILL PARTICIPATION" value={pct(match.metrics.killParticipation)}/>} {detail.depth>=6&&<MetricCard label="DAMAGE SHARE" value={pct(match.metrics.damageShare)}/>}</div>
+    {detail.depth>=3&&<div className="phase-grid" style={{marginTop:18}}><div className="glass card"><div className="eyebrow">LANE PHASE</div><div className="league-row"><span>CS @ 10</span><b>{match.metrics.csAt10??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>CS @ 15</span><b>{match.metrics.csAt15??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>Lane CS/min</span><b>{num(match.metrics.laneCsPerMin)}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Gold diff @ 15</span><b>{num(match.metrics.goldDiffAt15,'g')}</b></div>}{detail.depth>=6&&<div className="league-row"><span>XP diff @ 15</span><b>{num(match.metrics.xpDiffAt15)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Level @ 15</span><b>{match.metrics.levelAt15??'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">AFTER LANE</div><div className="league-row"><span>Post-15 CS/min</span><b>{num(match.metrics.post15CsPerMin)}</b></div>{detail.depth>=4&&<div className="league-row"><span>First item</span><b>{match.metrics.firstItemMinute?`${match.metrics.firstItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Second item</span><b>{match.metrics.secondItemMinute?`${match.metrics.secondItemMinute.toFixed(1)}m`:'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Objective involvement</span><b>{pct(match.metrics.objectiveParticipation)}</b></div>}{detail.depth>=7&&<div className="league-row"><span>Items shown</span><b>{match.items?.join(' · ')||'Unavailable'}</b></div>}</div><div className="glass card"><div className="eyebrow">DEATHS</div><div className="league-row"><span>After 20</span><b>{match.metrics.deathsPost20??'Unavailable'}</b></div>{detail.depth>=4&&<div className="league-row"><span>Before 10</span><b>{match.metrics.deathsPre10??'Unavailable'}</b></div>}{detail.depth>=4&&<div className="league-row"><span>10–20</span><b>{match.metrics.deaths10to20??'Unavailable'}</b></div>}{detail.depth>=5&&<div className="league-row"><span>Solo deaths</span><b>{match.metrics.soloDeaths??'Unavailable'}</b></div>}{detail.depth>=6&&<div className="league-row"><span>Teamfight deaths</span><b>{match.metrics.teamfightDeaths??'Unavailable'}</b></div>}</div></div>}
+    </>}
+
+    {section==='evidence'&&<>
+    {missionResults.length>0&&<section className="ar-mission-update">
+      <div className="ar-mission-update-head"><div><div className="eyebrow">MISSION UPDATE</div><h2>This game counted.</h2></div><Link href={"/ilp?game="+encodeURIComponent(id)}>SEE MY DNA →</Link></div>
+      <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
+        const plain=plainLanguageFocus(task);
+        const latest=(task.missionHistory??[]).at(-1)?.matchId===id;
+        const mastered=task.status==='MASTERED'&&latest&&attempt.banksPass;
+        const xp=attempt.banksPass?XP_PER_PROVEN_REP+(mastered?XP_PER_MISSION_MASTERY:0):0;
+        return <article key={task.id}>
+          <span>{attempt.banksPass?'PROVEN REP':'REVIEWED GAME'}</span>
+          <b>{plain.name}</b>
+          <MissionMeasurementBadge metric={task.metric} compact/>
+          <strong className={attempt.banksPass?'good':'watch'}>{mastered?'MASTERED ✓':attempt.banksPass?'PASS ✓':'NOT BANKED'}</strong>
+          <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'rep banked')):'The metric did not clear the proof bar this game.'}</small>
+        </article>;
+      })}</div>
+    </section>}
+    <section className="ar-strengths">
+      <div className="ar-strengths-head">
+        <div>
+          <div className="eyebrow">VERIFIED STRENGTHS · WHAT TO KEEP</div>
+          <h2>Good play counts too.</h2>
+          <p>These are not compliments. They are measurable decisions or outcomes that cleared a rank-relative or decision-evidence bar.</p>
+        </div>
+        <b>{strengths.length} VERIFIED</b>
       </div>
-      <Link href={"/ilp?game="+encodeURIComponent(id)} className="btn primary">SEE MY DNA →</Link>
+      {strengths.length?<div className="ar-strength-grid">
+        {strengths.slice(0,4).map(item=><article key={item.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.dnaDomain]} as CSSProperties)}>
+          <span>{dnaDomainLabel(item.dnaDomain)} → {item.subskill}</span>
+          <h3>{item.title}</h3>
+          <div className="ar-strength-simple">
+            <b>WHAT YOU DID</b>
+            <p>{item.whatHappened}</p>
+          </div>
+          <div className="ar-strength-simple">
+            <b>WHY IT MATTERED</b>
+            <p>{item.whyItMattered}</p>
+          </div>
+          <em>REPEAT THIS</em>
+          <details className="ar-strength-proof">
+            <summary>SHOW THE PROOF</summary>
+            <div><span>{item.technicalLabel}</span><strong>{item.value}</strong><small>Bar · {item.target} · {item.confidence} confidence</small></div>
+            {item.proof.length>0&&<ul>{item.proof.map(line=><li key={line}>{line}</li>)}</ul>}
+          </details>
+        </article>)}
+      </div>:<div className="ar-strength-empty">
+        <b>No verified strength was strong enough to call yet.</b>
+        <p>OP CLIMB will not invent praise. Keep collecting games until a good behaviour clears a measurable evidence bar.</p>
+      </div>}
     </section>
     {detail.depth>=7&&<div className="glass card data-note" style={{marginTop:18}}><div className="eyebrow">DATA RELIABILITY</div><p className="muted">Scoreboard-only matches create a foundation grade from KDA, CS and duration. Exact recall quality, spacing, target selection and fight timing require Riot timeline, live telemetry or reviewed video evidence.</p></div>}
+    </>}
   </AppShell>;
 }
 
