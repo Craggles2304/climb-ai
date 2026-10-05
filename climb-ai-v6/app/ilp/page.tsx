@@ -96,9 +96,9 @@ export default function PlayerDevelopmentCentre(){
 
   if(!planReady)return <AppShell>
     <section className="panel panel-padding">
-      <div className="eyebrow">LOADING YOUR PLAN</div>
-      <h2>Pulling your six DNA missions…</h2>
-      <p className="muted">OP CLIMB is loading one tracked mission for each Game DNA strand.</p>
+      <div className="eyebrow">LOADING YOUR PLAYER PLAN</div>
+      <h2>Checking your DNA journey…</h2>
+      <p className="muted">Before the three-game baseline finishes, OP CLIMB only shows provisional coaching. Permanent DNA missions appear after the reveal.</p>
     </section>
   </AppShell>;
 
