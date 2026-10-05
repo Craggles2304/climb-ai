@@ -26,6 +26,17 @@ test('compact keyframes preserve farm checkpoints instead of relabelling stale s
   assert.ok(tracker.includes('nearest(seconds)'));
 });
 
+test('farm checkpoints are protected separately from ordinary keyframes',()=>{
+  assert.ok(tracker.includes('captureProtectedFarmCheckpoint(snapshot)'));
+  assert.ok(tracker.includes('for(const minute of [5,10,15,20])'));
+  assert.ok(tracker.includes('previous<seconds&&current>=seconds&&current<=seconds+30'));
+  assert.ok(tracker.includes('farmCheckpoints:session.farmCheckpoints??{}'));
+  assert.ok(tracker.includes('farmCheckpoints:saved.farmCheckpoints'));
+  assert.ok(tracker.includes('lastFarmCheckpointScanTime'));
+  assert.ok(tracker.includes('Object.values(finished.farmCheckpoints??{})'));
+  assert.ok(tracker.includes('...(finished.keyframes??[]),...protectedFarmFrames'));
+});
+
 test('Supabase keeps FINAL keyframes temporary while permanent session state stores derived evidence',()=>{
   assert.ok(repoFile.includes("captureMode:'LOCAL_FIRST_QUEUE_V1'"));
   assert.ok(repoFile.includes('latestSnapshot:snapshots[snapshots.length-1]'));
