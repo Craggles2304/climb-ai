@@ -80,3 +80,20 @@
 .game-context-filters select{width:100%;border:1px solid rgba(255,255,255,.08);background:#080d12;color:#eef2f5;border-radius:10px;padding:9px 10px}
 .game-context-filters>small{grid-column:1/-1;color:#68757c;font-size:9px}
 @media(max-width:720px){.game-context-filters{grid-template-columns:1fr}.focus-streak{align-items:flex-start;flex-direction:column}}
+
+
+/* DNA-first signed-in journey */
+.op-home-head-dna h1{max-width:860px;font-size:clamp(42px,6vw,72px)!important;line-height:.92!important}
+.op-home-head-dna p{max-width:760px;font-size:15px}
+.op-home-dna-primary{position:relative;overflow:hidden;border-color:rgba(182,246,107,.28)!important;box-shadow:0 28px 90px rgba(0,0,0,.38),0 0 0 1px rgba(182,246,107,.06) inset}
+.op-home-dna-primary::before{content:"GAME DNA";position:absolute;right:-18px;top:48%;transform:rotate(-90deg) translateY(-50%);transform-origin:center;font:800 clamp(54px,8vw,118px)/1 var(--font-display);letter-spacing:.06em;color:rgba(255,255,255,.025);pointer-events:none}
+.op-home-dna-primary .op-home-dna-head h2{font-size:clamp(34px,4.8vw,58px)!important;line-height:.96!important;max-width:820px}
+.op-home-dna-primary .op-home-dna-stage{min-height:460px}
+.op-home-dna-legend{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;margin:14px 0 4px}
+.op-home-dna-legend span{display:flex;align-items:center;gap:7px;min-height:38px;padding:8px 9px;border:1px solid rgba(255,255,255,.07);background:rgba(4,9,13,.56);font-size:9px;font-weight:900;letter-spacing:.05em;color:#a8b5ba}
+.op-home-dna-legend span i{width:8px;height:8px;flex:none;border-radius:50%;background:var(--strand-color);box-shadow:0 0 11px var(--strand-color)}
+.nav-link.nav-link-dna{position:relative;border-color:rgba(182,246,107,.13)}
+.nav-link.nav-link-dna::after{content:"CORE";margin-left:auto;font-size:7px;letter-spacing:.12em;font-weight:950;color:#b6f66b}
+.nav-link.nav-link-dna.active::after{content:"DNA"}
+@media(max-width:1000px){.op-home-dna-legend{grid-template-columns:repeat(3,minmax(0,1fr))}.op-home-dna-primary .op-home-dna-stage{min-height:380px}}
+@media(max-width:620px){.op-home-dna-legend{grid-template-columns:1fr 1fr}.op-home-dna-primary .op-home-dna-stage{min-height:320px}}
