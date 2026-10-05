@@ -194,39 +194,46 @@ html body{
 }
 #simplePregamePill.good{animation:es-glow 2.4s ease-in-out infinite;color:#07120a !important;background:var(--es-lime) !important}
 
-/* job + plan: two mission cards */
-#simplePregame > div:nth-child(2) article{
+/* direct path-to-win hierarchy */
+.simple-pregame-win-grid{
+  display:grid;grid-template-columns:1.2fr 1fr;gap:12px;margin-top:18px
+}
+.simple-pregame-win-grid article,.simple-pregame-job,.simple-pregame-throw,.simple-pregame-mission,.simple-pregame-actions{
   position:relative;border:0 !important;border-radius:0 !important;padding:18px 20px 18px 22px !important;
   background:linear-gradient(180deg,rgba(255,255,255,.05),rgba(255,255,255,.012)) !important;
-  clip-path:var(--es-cut-shape);
-  box-shadow:inset 0 0 0 1px var(--es-line);
+  clip-path:var(--es-cut-shape);box-shadow:inset 0 0 0 1px var(--es-line)
 }
-#simplePregame > div:nth-child(2) article::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-lime)}
-#simplePregame > div:nth-child(2) article:nth-child(2)::before{background:var(--es-blue)}
-#simplePregame > div:nth-child(2) article .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.22em !important}
-#simplePregame > div:nth-child(2) article:nth-child(1) .eyebrow{color:var(--es-lime) !important}
-#simplePregame > div:nth-child(2) article:nth-child(2) .eyebrow{color:var(--es-blue) !important}
-#simplePregame > div:nth-child(2) article strong{font-family:var(--es-display);font-weight:700;font-size:26px !important;line-height:1.08 !important;letter-spacing:.012em;text-transform:uppercase}
-#simplePregameLead{letter-spacing:.06em !important;color:#fff}
-
-/* REMEMBER THIS — three big numbered orders */
-#simplePregame > div:nth-child(3){
-  position:relative;border:0 !important;border-radius:0 !important;padding:18px 22px !important;
-  background:linear-gradient(180deg,rgba(214,255,47,.05),transparent) !important;
-  clip-path:var(--es-cut-shape);box-shadow:inset 0 0 0 1px var(--es-line);
+.simple-pregame-win-grid article::before,.simple-pregame-job::before,.simple-pregame-throw::before,.simple-pregame-mission::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;background:var(--es-lime)
 }
-#simplePregame > div:nth-child(3) > .eyebrow{font-family:var(--es-mono) !important;letter-spacing:.24em !important;color:var(--es-lime) !important}
-#simplePregameRules{gap:0 !important;margin-top:8px !important}
-#simplePregameRules > div{
-  grid-template-columns:54px minmax(0,1fr) !important;align-items:center !important;gap:12px !important;
-  padding:11px 0;border-top:1px solid var(--es-line);
+.simple-pregame-loss::before,.simple-pregame-throw::before{background:var(--es-red) !important}
+.simple-pregame-job::before{background:var(--es-blue) !important}
+.simple-pregame-mission::before{background:#b890ff !important}
+.simple-pregame-win-grid .eyebrow,.simple-pregame-job .eyebrow,.simple-pregame-throw .eyebrow,.simple-pregame-mission .eyebrow,.simple-pregame-actions>.eyebrow{
+  font-family:var(--es-mono) !important;letter-spacing:.22em !important
 }
-#simplePregameRules > div:first-child{border-top:0}
-#simplePregameRules > div > b{
-  font-family:var(--es-display);font-weight:800;font-style:italic;font-size:46px;line-height:.9;opacity:1 !important;
-  color:transparent;-webkit-text-stroke:1.5px var(--es-lime);letter-spacing:.01em;
+.simple-pregame-win .eyebrow{color:var(--es-lime) !important}
+.simple-pregame-loss .eyebrow,.simple-pregame-throw .eyebrow{color:var(--es-red) !important}
+.simple-pregame-job .eyebrow{color:var(--es-blue) !important}
+.simple-pregame-mission .eyebrow{color:#b890ff !important}
+.simple-pregame-win-grid strong,.simple-pregame-job strong,.simple-pregame-throw strong,.simple-pregame-mission strong{
+  display:block;margin-top:7px;font-family:var(--es-display);font-weight:700;font-size:22px;line-height:1.12;letter-spacing:.012em;text-transform:uppercase
 }
-#simplePregameRules > div > strong{font-size:16px;line-height:1.35 !important;font-weight:600}
+.simple-pregame-job,.simple-pregame-throw,.simple-pregame-mission{margin-top:12px}
+.simple-pregame-actions{margin-top:12px;background:linear-gradient(180deg,rgba(214,255,47,.05),transparent) !important}
+.simple-pregame-actions>.eyebrow{color:var(--es-lime) !important}
+#simplePregameRules{display:grid;gap:0 !important;margin-top:8px !important}
+.simple-winning-action{
+  display:grid !important;grid-template-columns:54px minmax(0,1fr) !important;align-items:center !important;gap:12px !important;
+  padding:12px 0;border-top:1px solid var(--es-line)
+}
+.simple-winning-action:first-child{border-top:0}
+.simple-winning-action>b{
+  font-family:var(--es-display);font-weight:800;font-style:italic;font-size:46px;line-height:.9;
+  color:transparent;-webkit-text-stroke:1.5px var(--es-lime)
+}
+.simple-winning-action span{display:block;font:700 9px var(--es-mono);letter-spacing:.16em;color:#839198;text-transform:uppercase;margin-bottom:4px}
+.simple-winning-action strong{display:block;font-size:16px;line-height:1.35;font-weight:650}
 #simplePregameExtra{border-radius:0 !important;clip-path:var(--es-cut-shape-sm);border-color:var(--es-line) !important}
 #simplePregameMore,#simplePregameFull{font-family:var(--es-mono);letter-spacing:.14em;border-radius:0 !important;clip-path:var(--es-cut-shape-sm)}
 
@@ -319,8 +326,9 @@ body #simplePostgameReview{
   .es-tile{width:44px;height:46px}
   #draftOurPicks > div > strong,#draftTheirPicks > div > strong{font-size:19px}
   #simplePregame > div:first-child{min-height:160px;padding:20px !important}
-  #simplePregameRules > div{grid-template-columns:44px minmax(0,1fr) !important}
-  #simplePregameRules > div > b{font-size:38px}
+  .simple-pregame-win-grid{grid-template-columns:1fr}
+  .simple-winning-action{grid-template-columns:44px minmax(0,1fr) !important}
+  .simple-winning-action>b{font-size:38px}
   #simplePostgameReview .coach-review-head,#simplePostgameReview .coach-review-intro,#simplePostgameReview .coach-review-grid,#simplePostgameReview .coach-review-actions{padding-left:18px;padding-right:18px}
   #simplePostgameReview .coach-review-next{margin-left:18px;margin-right:18px}
 }
