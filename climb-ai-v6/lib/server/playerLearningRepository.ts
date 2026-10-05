@@ -66,7 +66,7 @@ export async function syncDerivedCoachMemories(db:any,userId:string,accountId:st
   return{
    user_id:userId,riot_account_id:accountId,memory_key:candidate.key,memory_type:candidate.type,topic:candidate.topic,summary:candidate.summary,evidence:merged.evidence,
    first_seen_at:previous?.first_seen_at??candidate.occurredAt,last_seen_at:candidate.occurredAt,
-   occurrences:merged.changed?Number(previous?.occurrences??0)+1:Number(previous?.occurrences??candidate.occurrences||1),
+   occurrences:merged.changed?Number(previous?.occurrences??0)+1:Number(previous?.occurrences??candidate.occurrences??1),
    status:candidate.status,updated_at:now,
   };
  });
