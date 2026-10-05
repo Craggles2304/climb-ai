@@ -375,18 +375,24 @@ function renderPregame(matchup,teamPlan,draft,visible){
     :`DNA BASELINE · ${Math.min(Number(baseline?.games||0),Number(baseline?.required||3))}/${Number(baseline?.required||3)}`;
   $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:provisional?`${you} preview`:`${you} game plan`;
   $('simplePregameSummary').textContent=!baselineReady
-    ?`Observation game ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))} of ${Number(baseline?.required||3)}. Play normally — no personalised learning challenge is active yet.`
+    ?`Observation game ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))} of ${Number(baseline?.required||3)}. The match plan stays simple while OP CLIMB learns your starting point.`
     :provisional
-      ?'Preview only — change your hover freely. OP CLIMB will freeze and enrich the final plan when you lock in.'
-      :(plan.laneEdge?.summary||'Keep the plan simple and play the first clean advantage.');
+      ?'Preview only — the path to win will freeze when you lock in and sharpen as the full draft appears.'
+      :'Read this once: how we win, how they win, your job, three actions and the one throw to avoid.';
+  $('simplePregameHowWin').textContent=directWinPath(teamPlan,plan);
+  $('simplePregameHowLose').textContent=directLossPath(teamPlan);
   $('simplePregameJob').textContent=teamPlan?.yourJob||fallbackJob(role);
-  $('simplePregameLead').textContent=leadPathFor(activeCoachLevel.depth);
+  $('simplePregameThrow').textContent=String(teamPlan?.biggestThrow||teamPlan?.roleWinCondition?.lossCondition||'Do not break formation for a low-value chase.');
+  const mission=baselineReady?safeArray(teamPlan?.missionTips)[0]||null:null;
+  $('simplePregameMission').textContent=baselineReady
+    ?String(mission?.cue||mission?.title||'Keep your current development focus separate from the match win condition.')
+    :`BASELINE ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))}/${Number(baseline?.required||3)} · PLAY NORMALLY`;
   const pill=$('simplePregamePill');
   if(pill){
     pill.textContent=provisional?'PREVIEW':'PLAN LOCKED';
     pill.classList.toggle('good',!provisional);
   }
-  renderSimpleRules(rules.slice(0,ruleCap));
+  renderWinningActions(directWinningActions(teamPlan,rules.slice(0,ruleCap),role));
   renderPregameExtra(plan,teamPlan);
 }
 
@@ -493,17 +499,20 @@ function ensureSimplePregame(){
   section.id='simplePregame';
   section.className='hidden';
   section.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
+    <div class="simple-pregame-hero" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
       <div><div class="eyebrow" id="simplePregameTier">COACH</div><h2 id="simplePregameTitle" style="font-size:clamp(28px,5vw,44px);margin:6px 0 8px;letter-spacing:-.04em"></h2><p id="simplePregameSummary" style="margin:0;opacity:.72;line-height:1.5;max-width:720px"></p></div>
       <span id="simplePregamePill" class="pill good">GAME PLAN</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-top:18px">
-      <article style="border:1px solid rgba(214,255,47,.24);border-radius:16px;padding:17px"><div class="eyebrow">YOUR JOB</div><strong id="simplePregameJob" style="display:block;font-size:18px;line-height:1.35;margin-top:7px"></strong></article>
-      <article style="border:1px solid rgba(67,140,255,.24);border-radius:16px;padding:17px"><div class="eyebrow">SIMPLE PLAN</div><strong id="simplePregameLead" style="display:block;font-size:18px;line-height:1.35;margin-top:7px"></strong></article>
+    <div class="simple-pregame-win-grid">
+      <article class="simple-pregame-win"><div class="eyebrow">HOW WE WIN</div><strong id="simplePregameHowWin"></strong></article>
+      <article class="simple-pregame-loss"><div class="eyebrow">HOW THEY WIN</div><strong id="simplePregameHowLose"></strong></article>
     </div>
-    <div style="margin-top:14px;border:1px solid rgba(255,255,255,.09);border-radius:16px;padding:17px"><div class="eyebrow">REMEMBER THIS</div><div id="simplePregameRules" style="display:grid;gap:9px;margin-top:10px"></div></div>
-    <div id="simplePregameExtra" class="hidden" style="margin-top:12px;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;background:rgba(255,255,255,.02)"><div class="eyebrow">MORE DETAIL FOR YOUR LEVEL</div><div id="simplePregameExtraList" style="display:grid;gap:9px;margin-top:10px"></div></div>
-    <div style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button id="simplePregameMore" class="ghost">MORE DETAIL</button><button id="simplePregameFull" class="ghost">OPEN FULL ANALYSIS</button></div>`;
+    <article class="simple-pregame-job"><div class="eyebrow">YOUR JOB</div><strong id="simplePregameJob"></strong></article>
+    <section class="simple-pregame-actions"><div class="eyebrow">YOUR 3 WINNING ACTIONS</div><div id="simplePregameRules"></div></section>
+    <article class="simple-pregame-throw"><div class="eyebrow">BIGGEST THROW</div><strong id="simplePregameThrow"></strong></article>
+    <article class="simple-pregame-mission"><div class="eyebrow">YOUR DEVELOPMENT JOB · SEPARATE FROM THE MATCH PLAN</div><strong id="simplePregameMission"></strong></article>
+    <div id="simplePregameExtra" class="hidden" style="margin-top:12px;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;background:rgba(255,255,255,.02)"><div class="eyebrow">DEEPER MATCH DETAIL</div><div id="simplePregameExtraList" style="display:grid;gap:9px;margin-top:10px"></div></div>
+    <div class="simple-pregame-actions-row" style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button id="simplePregameMore" class="ghost">MORE DETAIL</button><button id="simplePregameFull" class="ghost">OPEN FULL ANALYSIS</button></div>`;
   const ready=$('matchupReady');
   box.insertBefore(section,ready||null);
   $('simplePregameMore').addEventListener('click',()=>{pregameExpanded=!pregameExpanded;syncPregameExtra()});
@@ -511,17 +520,49 @@ function ensureSimplePregame(){
   return section;
 }
 
-function renderSimpleRules(rules){
+function directWinPath(teamPlan,plan){
+  const roleWin=teamPlan?.roleWinCondition||null;
+  const steps=safeArray(roleWin?.steps);
+  if(steps.length===5){
+    const shape=String(roleWin?.compPlan||teamPlan?.teamfight?.label||'PLAY THE DRAFT').trim();
+    const fight=String(steps[3]?.value||'').trim();
+    const convert=String(steps[4]?.value||'').trim();
+    return [shape,fight,convert].filter(Boolean).join(' → ');
+  }
+  const fallback=String(teamPlan?.ourWinCondition||safeArray(plan?.winCondition)[0]||teamPlan?.teamfight?.summary||'Create the first clean advantage, stay connected and convert it into the objective.').trim();
+  return fallback;
+}
+
+function directLossPath(teamPlan){
+  return String(teamPlan?.theirWinCondition||teamPlan?.roleWinCondition?.lossCondition||'They isolate a target or break your formation before the fight starts.').trim();
+}
+
+function directWinningActions(teamPlan,rules,role){
+  const steps=safeArray(teamPlan?.roleWinCondition?.steps);
+  if(steps.length===5){
+    const firstLabel=role==='JUNGLE'?'EARLY PATH':role==='SUPPORT'?'LANE':'EARLY GAME';
+    return[
+      {label:firstLabel,value:String(steps[0]?.value||'PLAY CLEAN')},
+      {label:'SETUP',value:[steps[1]?.value,steps[2]?.value].filter(Boolean).join(' → ')},
+      {label:'FIGHT → CONVERT',value:[steps[3]?.value,steps[4]?.value].filter(Boolean).join(' → ')},
+    ];
+  }
+  const fallback=(rules.length?rules:['Play clean.','Arrive before the important fight.','Win the fight, take the objective, then reset.']).slice(0,3);
+  return fallback.map((value,index)=>({label:['EARLY GAME','SETUP','FIGHT → CONVERT'][index],value:String(value)}));
+}
+
+function renderWinningActions(actions){
   const root=$('simplePregameRules');
   if(!root)return;
   root.replaceChildren();
-  const values=rules.length?rules:['Play the simple plan and avoid forcing the first bad fight.'];
-  values.forEach((rule,index)=>{
+  safeArray(actions).slice(0,3).forEach((action,index)=>{
     const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:28px minmax(0,1fr);gap:9px;align-items:start';
-    const n=document.createElement('b');n.textContent=String(index+1).padStart(2,'0');n.style.opacity='.55';
-    const text=document.createElement('strong');text.textContent=String(rule);text.style.lineHeight='1.4';
-    row.append(n,text);root.appendChild(row);
+    row.className='simple-winning-action';
+    const n=document.createElement('b');n.textContent=String(index+1).padStart(2,'0');
+    const copy=document.createElement('div');
+    const label=document.createElement('span');label.textContent=String(action?.label||'ACTION');
+    const text=document.createElement('strong');text.textContent=String(action?.value||'PLAY CLEAN');
+    copy.append(label,text);row.append(n,copy);root.appendChild(row);
   });
 }
 
