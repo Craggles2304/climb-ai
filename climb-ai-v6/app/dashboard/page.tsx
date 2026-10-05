@@ -269,7 +269,7 @@ export default function Home(){
         <div className="dashboard-dna-preview"><ClientGameDna compact player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/></div>
         <div className="memory-mini"><span>{dnaRole} memories banked<br/>Learning now</span><strong>{dnaMasteredMemories} <small>/ {dnaLearningMemories}</small></strong></div>
         <p>Viewing {dnaRole} only. Changing this tab never changes your main role or merges progress from another role.</p>
-        <Link className="btn gold" href={`/coach?role=${dnaRole}`}>Open {dnaRole} Coach DNA →</Link>
+        <Link className="btn gold" href={`/game-dna?role=${dnaRole}`}>Open interactive {dnaRole} DNA →</Link>
       </section>:<section className="panel panel-padding memory-card memory-locked">
         <div className="eyebrow" style={{color:'var(--gold)'}}>COACH MEMORY · PRO</div>
         <h2>A coach that remembers you.</h2>
@@ -286,3 +286,4 @@ export default function Home(){
     </section>
   </AppShell>;
 }
+

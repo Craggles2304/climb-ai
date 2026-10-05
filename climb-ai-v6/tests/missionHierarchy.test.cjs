@@ -9,6 +9,8 @@ const legacyMissions=fs.readFileSync(path.join(root,'app','missions','page.tsx')
 const companion=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
 const api=fs.readFileSync(path.join(root,'app','api','live','companion-home','route.ts'),'utf8');
 const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
+const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8');
+const appShell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8');
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
 test('My Climb shows one tracked mission for each DNA strand',()=>{
@@ -43,13 +45,22 @@ test('Game DNA stays role-specific in My Climb and Companion',()=>{
   assert.ok(companion.includes("roleLabel+' · '+String(dna?.label"));
 });
 
-test('Coach is conversation-first and hands progression off to My Climb',()=>{
+test('Coach is conversation-first and keeps progression out of the conversation view',()=>{
   assert.ok(coach.includes("useState<CoachTab>('ASK')"));
   assert.ok(coach.includes('COACH · DIAGNOSE AND DECIDE'));
-  assert.ok(coach.includes('OPEN MY CLIMB'));
+  assert.ok(coach.includes('OPEN GAME DNA'));
   assert.ok(coach.includes('YOUR PLAN LIVES IN MY CLIMB'));
-  assert.ok(coach.includes('DNA · missions · reps · levels'));
+  assert.ok(coach.includes('Your interactive player identity'));
   assert.ok(!coach.includes("tab==='DNA'"));
   assert.ok(!coach.includes('<ClientGameDna'));
+});
+
+test('interactive Game DNA is a first-class product page',()=>{
+  assert.ok(gameDna.includes('<ClientGameDna'));
+  assert.ok(gameDna.includes('GAME DNA · YOUR PLAYER IDENTITY'));
+  assert.ok(gameDna.includes('<DnaRoleSwitcher'));
+  assert.ok(gameDna.includes('gameDnaClientMissions'));
+  assert.ok(appShell.includes("['Game DNA','/game-dna'"));
+  assert.ok(coach.includes('href="/game-dna"'));
 });
 

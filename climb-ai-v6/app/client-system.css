@@ -762,12 +762,37 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .coach-dna-lock{min-height:300px;display:flex;flex-direction:column;justify-content:center}
 .coach-memory-locked,.pro-memory-gate{margin-top:0!important}
 
+/* Game DNA — first-class product destination */
+.dna-page-hero{
+  display:flex;align-items:flex-end;justify-content:space-between;gap:28px;margin-bottom:20px;padding:10px 0 6px
+}
+.dna-page-hero h1{font-size:clamp(44px,6vw,76px);line-height:.92;max-width:900px;margin:8px 0 12px}
+.dna-page-hero p{max-width:790px;margin:0;color:var(--muted);font-size:15px;line-height:1.65}
+.dna-page-hero-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;flex:none}
+.dna-page-stage{margin-top:18px;border:1px solid rgba(46,199,255,.3);background:radial-gradient(circle at 50% 20%,rgba(46,199,255,.08),transparent 46%),#060b0e;box-shadow:0 0 42px rgba(46,199,255,.06)}
+.dna-page-stage-head{display:flex;align-items:center;justify-content:space-between;gap:20px;padding:14px 18px;border-bottom:1px solid rgba(46,199,255,.2)}
+.dna-page-stage-head>div{display:grid;gap:4px}
+.dna-page-stage-head span{font:600 9px var(--mono);letter-spacing:.13em;color:#5dd8ff}
+.dna-page-stage-head strong{font:700 20px var(--display);letter-spacing:.025em}
+.dna-page-stage-head small{max-width:440px;color:var(--dim);text-align:right;line-height:1.45}
+.dna-page-stage .client-original-dna-host{margin:0}
+.dna-page-stage .dna-panel{margin:0;border:0;background-color:transparent}
+.dna-page-loop{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;margin-top:18px;border:1px solid var(--line);background:var(--line)}
+.dna-page-loop>div{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;padding:18px;background:#0d1418}
+.dna-page-loop span{grid-row:1/3;font:800 34px/1 var(--display);color:#263941}
+.dna-page-loop strong{font:800 18px var(--display);color:var(--mint)}
+.dna-page-loop p{margin:0;color:var(--muted);line-height:1.45}
+
 @media(max-width:760px){
   .coach-hub-head,.coach-tab-intro,.coach-dna-next{align-items:flex-start;flex-direction:column}
   .coach-subtabs{grid-template-columns:1fr}
   .coach-subtabs button,.coach-subtabs a{border-right:0;border-bottom:1px solid var(--line);min-height:58px}
   .coach-subtabs>*:last-child{border-bottom:0}
   .coach-climb-handoff{align-items:flex-start;flex-direction:column}
+  .dna-page-hero,.dna-page-stage-head{align-items:flex-start;flex-direction:column}
+  .dna-page-hero-actions{justify-content:flex-start}
+  .dna-page-stage-head small{text-align:left}
+  .dna-page-loop{grid-template-columns:1fr}
   .coach-dna-stats{width:100%;grid-template-columns:repeat(3,1fr)}
 }
 

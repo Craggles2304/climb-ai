@@ -24,16 +24,18 @@ type ProgressionPayload={
 
 const primary=[
   ['Overview','/dashboard','⌂','Your daily briefing'],
+  ['Game DNA','/game-dna','⬡','Your player identity'],
   ['Match room','/live','◇','Prepare + play'],
   ['My games','/analyse','◈','Review + learn'],
   ['My climb','/ilp','◎','Focus + development'],
   ['Coach','/coach','✦','Memory + questions'],
   ['Plans','/pricing','◆','Coaching depth'],
 ] as const;
-const mobile=[['Overview','/dashboard'],['Match','/live'],['Climb','/ilp'],['Coach','/coach'],['Games','/analyse']] as const;
+const mobile=[['Overview','/dashboard'],['DNA','/game-dna'],['Match','/live'],['Climb','/ilp'],['Coach','/coach']] as const;
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'YOUR CLIMB';
+  if(path==='/game-dna')return'GAME DNA';
   if(path==='/session')return'NEXT GAME';
   if(path==='/coach')return'COACH';
   if(path==='/live')return'COMPANION';
@@ -123,7 +125,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     }
   },[]);
   useEffect(()=>{
-    const view=path==='/dashboard'?'overview':path==='/live'?'match-room':path==='/ilp'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
+    const view=path==='/dashboard'?'overview':path==='/game-dna'?'game-dna':path==='/live'?'match-room':path==='/ilp'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
     document.body.dataset.clientView=view;
     document.body.dataset.clientTier=tier.toLowerCase();
     return()=>{
@@ -290,3 +292,4 @@ function learningStageLabel(stage:string){
   if(stage==='MASTERED')return'MASTERED';
   return stage;
 }
+
