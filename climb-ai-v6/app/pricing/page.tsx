@@ -62,7 +62,7 @@ export default function Pricing(){
             <div className="pricing-card-why">{position.why}</div>
             <div style={{marginTop:18}}>
               {plan==='FREE'
-                ?current?<Link href="/dashboard" className="btn secondary">OPEN MY CLIMB</Link>:<span className="pricing-included">INCLUDED IN {tier}</span>
+                ?current?<Link href="/dashboard" className="btn secondary">OPEN HOME</Link>:<span className="pricing-included">INCLUDED IN {tier}</span>
                 :current
                   ?<BillingPortalButton label="MANAGE CURRENT PLAN"/>
                   :included
