@@ -7,6 +7,7 @@ import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaStrands,missionRepVie
 import type {ILPTask,Role} from '@/lib/types';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
 import {LEAGUE_ROLES} from '@/lib/roleAwareLearning';
+import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
@@ -54,7 +55,9 @@ export async function GET(req:NextRequest){
   const live=activeGameDnaMissions(allTasks,roleKey);
 
   const missionLimit=6;
-  const missions=baseline.ready?live.slice(0,missionLimit).map(task=>missionView(task)):[];
+  const orderedLive=[...live].sort((a,b)=>(a.priority??99)-(b.priority??99));
+  const missions=baseline.ready?orderedLive.slice(0,missionLimit).map((task,index)=>missionView(task,index===0)):[];
+  const priorityMission=missions.find(mission=>mission.priority)??missions[0]??null;
   const dna=gameDnaStrands(allTasks,roleKey,baseline.ready);
   const masteredCount=allTasks.filter(task=>String(task.status??'').toUpperCase()==='MASTERED').length;
 
@@ -78,8 +81,14 @@ export async function GET(req:NextRequest){
         ?{label:'DEEPER DEVELOPMENT',detail:'6 DNA missions · 90-day progress view',missionLimit:6,persistentMemory:false}
         :{label:'PLAYER MEMORY',detail:'6 DNA missions · long-term learning memory',missionLimit:6,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
+    journey:baseline.ready
+      ?priorityMission
+        ?{phase:'MISSION',status:'DNA ACTIVE · PRIORITY MISSION',title:priorityMission.title,body:priorityMission.nextGame,progress:priorityMission.confirmed+'/'+priorityMission.required+' proven',cta:'PLAY NEXT REP'}
+        :{phase:'DNA_REVEAL',status:'DNA READY',title:'Your Game DNA is ready.',body:'Open My DNA to reveal your six strands and first priority mission.',progress:'3/3',cta:'REVEAL MY DNA'}
+      :{phase:'BASELINE',status:'BASELINE '+Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,title:baseline.games?'Play baseline game '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)+'.':'Play your first baseline game.',body:'Play normally. Coaching is provisional until the three-game role baseline is complete.',progress:Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,cta:'PLAY BASELINE GAME '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)},
     dna,
     missions,
+    priorityMission,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
       ?{tier:'PLUS',copy:'Keep all six DNA missions and unlock the 90-day development view.'}
@@ -89,18 +98,23 @@ export async function GET(req:NextRequest){
   });
 }
 
-function missionView(task:ILPTask){
+function missionView(task:ILPTask,priority=false){
   const reps=missionRepView(task);
+  const plain=plainLanguageFocus(task);
   return{
     id:String(task.id??''),
-    title:String(task.title??'Current mission'),
+    title:String(plain.name||task.title||'Current mission'),
     domain:String(task.dnaDomain??'CONSISTENCY'),
     progress:reps.progress,
     confirmed:reps.confirmed,
     required:reps.required,
     gameRule:String(task.gameRule??'').trim(),
+    nextGame:String(plain.nextGame||task.gameRule||'').trim(),
+    meaning:String(plain.meaning||'').trim(),
+    success:String(plain.success||task.target||'').trim(),
     target:String(task.target??'').trim(),
     status:String(task.status??'ACTIVE').toUpperCase(),
+    priority,
   };
 }
 
