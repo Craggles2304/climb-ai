@@ -130,7 +130,6 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     capture:{
       mode:'LOCAL_FIRST_QUEUE_V1',
       count:snapshots.length,
-      keyframes:snapshots,
       latestSnapshot:snapshots[snapshots.length-1]??null,
       readCheckpoints:envelope.readCheckpoints??[],
       markedMoments:envelope.markedMoments??[],
@@ -173,6 +172,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     riot_account_id:device.riotAccountId,
     status:'PENDING',
     available_at:now,
+    payload:envelope,
     updated_at:now,
   },{onConflict:'session_id',ignoreDuplicates:true});
   if(queueError)throw new Error(queueError.message);
@@ -287,7 +287,7 @@ export async function latestLiveReview(userId:string,accountKey:string){
   return{sessionId:session.id,status:session.status,startedAt:session.started_at,endedAt:session.ended_at,lastSeenAt:session.last_seen_at,snapshotCount:normalized.length,latestSnapshot:normalized[normalized.length-1]??null,summary:finalSummary,proAnalysis,historyProfile,causalProfile,playerCoachingIdentity,skillTransferGraph,decisionPrincipleEngine,learningVelocity,adaptiveCoachingSession,playerReadCheckpoints:readCheckpoints};
 }
 
-export async function processQueuedPostGameSession(sessionId:string){
+export async function processQueuedPostGameSession(sessionId:string,envelope?:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
   const {data,error}=await db.from('live_telemetry_sessions')
     .select('id,summary,patch,game_version')
@@ -310,11 +310,11 @@ export async function processQueuedPostGameSession(sessionId:string){
   }).eq('id',sessionId);
   if(updateError)throw new Error(updateError.message);
 
-  await finalizeSession(sessionId);
+  await finalizeSession(sessionId,envelope);
   return{sessionId,reused:false};
 }
 
-async function finalizeSession(sessionId:string){
+async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)return;
   const [{data:session,error:sessionError},{data,error}]=await Promise.all([
     db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source,summary').eq('id',sessionId).single(),
@@ -322,16 +322,17 @@ async function finalizeSession(sessionId:string){
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
   const existingSummary=(session.summary&&typeof session.summary==='object')?session.summary as any:{};
-  const embedded=Array.isArray(existingSummary?.capture?.keyframes)?existingSummary.capture.keyframes as LiveTelemetrySnapshot[]:[];
-  const snapshots=embedded.length?embedded:(data??[]).map(row=>row.payload as LiveTelemetrySnapshot);
+  const queuedSnapshots=[...(queuedEnvelope?.snapshots??[])].sort((a,b)=>a.gameTime-b.gameTime);
+  const snapshots=queuedSnapshots.length?queuedSnapshots:(data??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   if(!snapshots.length)throw new Error('Queued post-game session has no keyframes.');
   const summary=buildStrengthTimeline(snapshots);
+  const queuedReadCheckpoints=Array.isArray(queuedEnvelope?.readCheckpoints)?queuedEnvelope?.readCheckpoints??[]:[];
   const embeddedReadCheckpoints=Array.isArray(existingSummary?.capture?.readCheckpoints)?existingSummary.capture.readCheckpoints:[];
   const [lockedPlan,storedReadCheckpoints]=await Promise.all([
     linkedDecisionPlan(sessionId),
-    embeddedReadCheckpoints.length?Promise.resolve([]):readCheckpointsForSession(sessionId),
+    queuedReadCheckpoints.length||embeddedReadCheckpoints.length?Promise.resolve([]):readCheckpointsForSession(sessionId),
   ]);
-  const readCheckpoints=embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
+  const readCheckpoints=queuedReadCheckpoints.length?queuedReadCheckpoints:embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
   const baseAnalysis=buildLiveProAnalysis(snapshots,summary);
   const proAnalysis={...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints})};
   const storedSummary={
