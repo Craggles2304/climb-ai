@@ -107,6 +107,6 @@ jobs:
       - name: Combat engine regressions
         run: node --import tsx --test tests/costOfLeak.test.ts tests/damage.test.ts tests/dps.test.ts tests/duel.test.ts tests/duelInteractions.test.ts tests/effects.test.ts tests/formula.test.ts tests/importSpells.test.ts tests/items.test.ts tests/trades.test.ts
       - name: Mission hierarchy regressions
-        run: node --test tests/missionHierarchy.test.cjs tests/journeyUiContract.test.cjs tests/dnaRoleSwitcher.test.cjs tests/dnaClientRuntime.test.cjs
+        run: node --test tests/missionHierarchy.test.cjs tests/journeyUiContract.test.cjs tests/keyMomentRichReview.test.cjs tests/dnaRoleSwitcher.test.cjs tests/dnaClientRuntime.test.cjs
       - name: Product regressions
         run: node --import tsx --test tests/coachMemoryModel.test.ts tests/dnaLevel.test.ts tests/dnaStrandMissions.test.ts tests/farmEvidenceReliability.test.ts tests/gameDnaSnapshot.test.ts tests/journeyFoolproof.test.ts tests/keyMoments.test.ts tests/lane.test.ts tests/mapMatch.test.ts tests/patchIntelligence.test.ts tests/learningModelVersion.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/publicPreview.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts tests/visualDepth.test.cjs tests/plainLanguageCoaching.test.ts tests/readabilityUX.test.cjs tests/missionPlanLoad.test.cjs
