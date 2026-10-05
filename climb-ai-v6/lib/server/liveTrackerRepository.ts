@@ -163,6 +163,16 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
       .select('id').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
     if(existingError)throw new Error(existingError.message);
     sessionId=(existing?.id as string|undefined)??null;
+    if(sessionId){
+      const {error:updateExistingError}=await db.from('live_telemetry_sessions').update({
+        last_seen_at:now,
+        status:'COMPLETE',
+        ended_at:envelope.endedAt??now,
+        metadata:{deviceName:device.deviceName,captureMode:'LOCAL_FIRST_QUEUE_V1',captureCount:snapshots.length},
+        summary,
+      }).eq('id',sessionId);
+      if(updateExistingError)throw new Error(updateExistingError.message);
+    }
   }else sessionId=(data?.id as string|undefined)??null;
   if(!sessionId)throw new Error('Completed match bundle could not be queued.');
 
@@ -187,8 +197,18 @@ export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelop
   else{const patch:Record<string,unknown>={last_seen_at:now};if(envelope.type==='END'){patch.status='COMPLETE';patch.ended_at=envelope.endedAt??now}const {error}=await db.from('live_telemetry_sessions').update(patch).eq('id',sessionId);if(error)throw new Error(error.message)}
   if(!sessionId)throw new Error('Live session could not be created.');
   if(envelope.type==='SNAPSHOT'&&envelope.snapshot){const {error}=await db.from('live_telemetry_snapshots').insert({session_id:sessionId,game_time:envelope.snapshot.gameTime,payload:envelope.snapshot});if(error)throw new Error(error.message)}
-  if(envelope.type==='END')await finalizeSession(sessionId);
-  return{sessionId};
+  if(envelope.type==='END'){
+    const {error:queueError}=await db.from('live_postgame_jobs').upsert({
+      session_id:sessionId,
+      user_id:device.userId,
+      riot_account_id:device.riotAccountId,
+      status:'PENDING',
+      available_at:now,
+      updated_at:now,
+    },{onConflict:'session_id',ignoreDuplicates:true});
+    if(queueError)throw new Error(queueError.message);
+  }
+  return{sessionId,queued:envelope.type==='END'};
 }
 
 export async function materializeDeferredLocalMatch(userId:string,accountKey:string){
