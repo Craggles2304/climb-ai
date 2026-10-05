@@ -16,7 +16,7 @@ import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
-import {taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
 
