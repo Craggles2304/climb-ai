@@ -242,7 +242,7 @@ export default function Home(){
       </div>
       <div className="loop-grid">
         <Link className="panel loop-card" href="/live"><span className="loop-number">01</span><span className="metric-icon">⚔</span><h3>Know your win condition</h3><p>A plan for the lane, the fight and your job.</p><span className="link-label">Prepare your next game →</span></Link>
-        <Link className="panel loop-card" href="/analyse"><span className="loop-number">02</span><span className="metric-icon">▣</span><h3>Find the turning point</h3><p>One decision to understand. Not twenty graphs.</p><span className="link-label">Review your last game →</span></Link>
+        <Link className="panel loop-card" href="/live"><span className="loop-number">02</span><span className="metric-icon">▣</span><h3>Review the last game</h3><p>What happened, what hurt you and the one thing to carry forward.</p><span className="link-label">Open Match Room →</span></Link>
         <Link className="panel loop-card" href="#coach-memory"><span className="loop-number">03</span><span className="metric-icon">◎</span><h3>Make the habit stick</h3><p>A coach that remembers and tests your progress.</p><span className="link-label">Explore coaching memory →</span></Link>
       </div>
     </section>
