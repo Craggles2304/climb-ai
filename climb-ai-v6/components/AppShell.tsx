@@ -23,9 +23,11 @@ type ProgressionPayload={
 };
 
 const primary=[
-  ['Home','/dashboard','⌂','What do I do next?'],
+  ['Home','/dashboard','⌂','Your next step'],
   ['My DNA','/ilp','⬡','Your player identity'],
-  ['Match Room','/live','◇','Prepare → play → review'],
+  ['Match Room','/live','◇','Prepare · play · review'],
+  ['My Games','/analyse','▤','Past games and evidence'],
+  ['Coach','/coach','◎','Ask why · understand more'],
 ] as const;
 const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Match','/live']] as const;
 
@@ -54,6 +56,8 @@ const routeTitle=(path:string)=>{
 };
 function isPrimaryActive(path:string,href:string){
   if(href==='/ilp')return path==='/ilp'||path==='/game-dna';
+  if(href==='/analyse')return path==='/analyse'||path.startsWith('/analyse/');
+  if(href==='/coach')return path==='/coach';
   return path===href;
 }
 function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void}){
@@ -189,10 +193,11 @@ export function AppShell({children}:{children:React.ReactNode}){
       <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
       <p className="nav-caption">YOUR WORKSPACE</p>
       <nav aria-label="Main navigation">
-        {primary.map(([name,href,icon])=>{
+        {primary.map(([name,href,icon,hint])=>{
           const activeLink=isPrimaryActive(path,href);
           return <Link className={'nav-link '+(href==='/ilp'?'nav-link-dna ':'')+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
-            <span aria-hidden="true">{icon}</span><span>{name}</span>
+            <span className="nav-link-icon" aria-hidden="true">{icon}</span>
+            <span className="nav-link-copy"><b>{name}</b><small>{hint}</small></span>
           </Link>;
         })}
       </nav>
