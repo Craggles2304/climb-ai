@@ -85,12 +85,17 @@ async function learningSignalForMatch(userId:string,riotAccountId:string|null,ma
     const confirmed=history.filter((item:any)=>Boolean(item?.banksPass)).length;
     const required=Math.max(1,Number(task?.masteryRequired||3));
     const mastered=String(task?.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
+    const evidenceState=String(attempt?.evidenceV2?.state||(
+      attempt?.banksPass?'BANKED':String(attempt?.outcome||'')==='NO_REP'?'NOT_OBSERVED':'MISSED'
+    ));
     return[{
       missionId:String(row.id),
       title:String(task?.title||'Current challenge'),
       dnaDomain:String(task?.dnaDomain||'CONSISTENCY'),
       banksPass:Boolean(attempt?.banksPass),
       outcome:String(attempt?.outcome||'REVIEWED'),
+      evidenceState,
+      evidenceV2:attempt?.evidenceV2??null,
       confirmed,
       required,
       progress:Math.max(0,Math.min(100,Number(task?.progress||0))),
@@ -101,7 +106,7 @@ async function learningSignalForMatch(userId:string,riotAccountId:string|null,ma
   if(!rows.length)return null;
   const best=rows.find((item:any)=>item.mastered)||rows.find((item:any)=>item.banksPass)||rows[0];
   return{
-    status:best.mastered?'MASTERED':best.banksPass?'REP_BANKED':'NO_REP',
+    status:best.mastered?'MASTERED':best.evidenceState==='BANKED'?'REP_BANKED':best.evidenceState==='MISSED'?'REP_MISSED':'NOT_OBSERVED',
     ...best,
   };
 }
