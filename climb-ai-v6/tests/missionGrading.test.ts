@@ -26,6 +26,10 @@ test('the same game can pass Gold and miss Master because one rank-aware grader 
   assert.equal(master.passed,false);
   assert.match(gold.targetLabel,/GOLD target/);
   assert.match(master.targetLabel,/MASTER target/);
+  assert.equal(gold.evidenceV2.state,'BANKED');
+  assert.equal(master.evidenceV2.state,'MISSED');
+  assert.equal(gold.evidenceV2.opportunities,1);
+  assert.equal(master.evidenceV2.misses,1);
 });
 
 test('mission measurement source is explicit',()=>{
@@ -38,6 +42,8 @@ test('Riot post-game missions never guess when the completed metric is absent',(
   const grade=gradeMissionGame(task('damageShare'),match('Gold II',{}),'Gold II');
   assert.equal(grade.available,false);
   assert.equal(grade.source,'RIOT_POST_GAME');
+  assert.equal(grade.evidenceV2.state,'NOT_OBSERVED');
+  assert.equal(grade.evidenceV2.opportunities,0);
   assert.match(grade.reason,/completed Riot metric/i);
 });
 
@@ -51,6 +57,9 @@ test('decision evidence is graded from the persisted PRO score',()=>{
   assert.equal(grade.available,true);
   assert.equal(grade.passed,true);
   assert.equal(grade.source,'DECISION_EVIDENCE');
+  assert.equal(grade.evidenceV2.state,'BANKED');
+  assert.equal(grade.evidenceV2.confidence,'HIGH');
+  assert.equal(grade.evidenceV2.reconstruction.kind,'PRO_METRIC');
 });
 
 test('METRIC_SPECS contains display metadata, not a second grading threshold',()=>{
