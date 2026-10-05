@@ -1,4 +1,5 @@
 import type {ILPTask,Match,Role} from './types';
+import {canonicalLeagueRole} from './roleAwareLearning';
 
 export const DNA_BASELINE_GAMES=3;
 
@@ -6,7 +7,7 @@ export function dnaBaselineGameCount(matches:Match[],role?:Role){
   const ids=new Set<string>();
   for(const match of matches){
     if(match.durationSeconds<300)continue;
-    if(role&&match.role!==role)continue;
+    if(role&&canonicalLeagueRole(match.role)!==role)continue;
     ids.add(match.id);
   }
   return ids.size;
