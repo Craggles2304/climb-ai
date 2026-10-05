@@ -106,8 +106,8 @@ export default function Coach(){
       <button type="button" className={tab==='MEMORY'?'active':''} onClick={()=>setTab('MEMORY')}>
         <span>02</span><div><b>COACH MEMORY</b><small>What carries forward</small></div>
       </button>
-      <Link className="coach-climb-link" href="/game-dna">
-        <span>⬡</span><div><b>OPEN GAME DNA</b><small>Your interactive player identity</small></div>
+      <Link className="coach-climb-link" href="/ilp">
+        <span>⬡</span><div><b>OPEN MY DNA</b><small>Your interactive player identity</small></div>
       </Link>
     </nav>
 
