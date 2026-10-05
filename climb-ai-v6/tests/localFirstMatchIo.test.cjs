@@ -19,6 +19,13 @@ test('full matches remain local-first until one compact FINAL bundle',()=>{
   assert.ok(route.includes('z.array(snapshotSchema).min(1).max(12)'));
 });
 
+test('compact keyframes preserve farm checkpoints instead of relabelling stale snapshots',()=>{
+  assert.ok(tracker.includes('Math.floor(num(snapshot?.gameTime,0)/300)'));
+  assert.ok(tracker.includes('Math.floor(num(me?.scores?.creepScore,0)/20)'));
+  assert.ok(tracker.includes('[300,600,900,1200]'));
+  assert.ok(tracker.includes('nearest(seconds)'));
+});
+
 test('Supabase keeps FINAL keyframes temporary while permanent session state stores derived evidence',()=>{
   assert.ok(repoFile.includes("captureMode:'LOCAL_FIRST_QUEUE_V1'"));
   assert.ok(repoFile.includes('latestSnapshot:snapshots[snapshots.length-1]'));
