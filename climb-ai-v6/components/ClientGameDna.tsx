@@ -60,7 +60,7 @@ export function ClientGameDna({player,role,missions,compact=false,preview=false,
   },[scriptReady,render]);
 
   return <>
-    <Script src="/client/dna.js" strategy="afterInteractive" onLoad={()=>setScriptReady(true)}/>
+    <Script src="/client/dna.js?v=20261005a" strategy="afterInteractive" onLoad={()=>setScriptReady(true)}/>
     <div ref={host} className={(compact?"client-original-dna-host dna-preview-compact":"client-original-dna-host")+(preview?" dna-preview-mode":"")}/>
   </>;
 }
