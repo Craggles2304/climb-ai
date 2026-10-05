@@ -1209,3 +1209,95 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .dna-mission-spotlight-top{flex-direction:column}
   .dna-mission-count{width:100%;text-align:left}
 }
+
+
+/* My DNA desktop workspace — profile and mission live together, not in a long vertical stack */
+.my-dna-workspace{
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) minmax(380px,.85fr);
+  gap:14px;
+  align-items:start;
+  margin-bottom:14px
+}
+.my-dna-workspace .my-dna-stage,
+.my-dna-workspace .dna-mission-hub{margin:0}
+.my-dna-workspace .my-dna-stage{
+  position:sticky;
+  top:72px
+}
+.my-dna-workspace .dna-mission-hub{
+  min-width:0;
+  padding:16px
+}
+.my-dna-workspace .dna-mission-hub-head{
+  grid-template-columns:1fr;
+  gap:12px;
+  margin-bottom:12px
+}
+.my-dna-workspace .dna-mission-hub-head p{font-size:11px}
+.my-dna-workspace .dna-mission-how{
+  min-width:0;
+  grid-template-columns:repeat(3,minmax(0,1fr))
+}
+.my-dna-workspace .dna-mission-how span{padding:8px}
+.my-dna-workspace .dna-mission-how em{font-size:8px}
+.my-dna-workspace .dna-mission-rail{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:5px
+}
+.my-dna-workspace .dna-mission-chip{
+  padding:9px
+}
+.my-dna-workspace .dna-mission-chip b{font-size:12px}
+.my-dna-workspace .dna-mission-explain{
+  grid-template-columns:1fr 1fr
+}
+.my-dna-workspace .dna-mission-explain p{
+  font-size:10px
+}
+.my-dna-workspace .dna-mission-proof{
+  grid-template-columns:1fr;
+  gap:10px
+}
+.my-dna-workspace .dna-mission-proof .btn{
+  width:100%;
+  justify-content:center
+}
+.my-dna-workspace .dna-mission-count{
+  min-width:88px
+}
+.ip-tabs-optional{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  max-width:620px;
+  margin:8px 0 0 auto
+}
+
+@media(max-width:1120px){
+  .my-dna-workspace{
+    grid-template-columns:1fr
+  }
+  .my-dna-workspace .my-dna-stage{
+    position:static
+  }
+  .my-dna-workspace .dna-mission-rail{
+    grid-template-columns:repeat(3,minmax(0,1fr))
+  }
+  .my-dna-workspace .dna-mission-proof{
+    grid-template-columns:minmax(0,1fr) auto auto
+  }
+}
+@media(max-width:760px){
+  .my-dna-workspace .dna-mission-rail{
+    grid-template-columns:repeat(2,minmax(0,1fr))
+  }
+  .my-dna-workspace .dna-mission-explain{
+    grid-template-columns:1fr
+  }
+  .my-dna-workspace .dna-mission-proof{
+    grid-template-columns:1fr
+  }
+  .ip-tabs-optional{
+    max-width:none;
+    margin-top:8px
+  }
+}
