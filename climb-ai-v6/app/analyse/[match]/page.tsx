@@ -200,7 +200,7 @@ export default function Analysis(){
               return <article className="ar-coach-card good" key={item.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.dnaDomain]} as CSSProperties)}>
                 <div className="ar-coach-index">{String(index+1).padStart(2,'0')}</div>
                 <div className="ar-coach-body">
-                  <span>THIS HELPED</span>
+                  <div className="ar-card-kicker"><span>THIS HELPED</span><small className="ar-dna-tag">{dnaDomainLabel(item.dnaDomain)}</small></div>
                   <h3>{plainStrengthTitle(item)}</h3>
                   <div className="ar-coach-explain"><b>WHAT HAPPENED</b><p>{item.whatHappened}</p></div>
                   <div className="ar-game-example"><div>{example.clock&&<strong>{example.clock}</strong>}<b>EXAMPLE FROM YOUR GAME</b></div><p>{example.text}</p></div>
@@ -222,7 +222,7 @@ export default function Analysis(){
             {plainProblems.map((item,index)=><article className="ar-coach-card bad" key={item.key} style={({ '--strand-color':DNA_DOMAIN_COLORS[item.domain]} as CSSProperties)}>
               <div className="ar-coach-index">{String(index+1).padStart(2,'0')}</div>
               <div className="ar-coach-body">
-                <span>THIS COST YOU</span>
+                <div className="ar-card-kicker"><span>THIS COST YOU</span><small className="ar-dna-tag">{dnaDomainLabel(item.domain)}</small></div>
                 <h3>{item.title}</h3>
                 <div className="ar-coach-explain"><b>WHAT HAPPENED</b><p>{item.what}</p></div>
                 <div className="ar-game-example"><div>{item.clock&&<strong>{item.clock}</strong>}<b>EXAMPLE FROM YOUR GAME</b></div><p>{item.example}</p></div>
