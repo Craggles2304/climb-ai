@@ -20,6 +20,7 @@ import {DNA_DOMAIN_COLORS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import type {StrengthEvidence} from '@/lib/positiveEvidence';
 import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -87,7 +88,8 @@ export default function Analysis(){
 
   if(proLoading)return <AppShell><section className="glass card"><div className="eyebrow">COACHING EVIDENCE</div><h2>Reading the full game evidence…</h2><p className="muted">The review will appear once its coaching authority is resolved, so a scoreboard fallback cannot flash a different limiter first.</p></section></AppShell>;
 
-  const recent=matches.filter(m=>m.id!==match.id);
+  const matchRole=canonicalLeagueRole(match.role);
+  const recent=matches.filter(m=>m.id!==match.id&&(!matchRole||canonicalLeagueRole(m.role)===matchRole));
   const report=analyseMatch({...match,proAnalysis},recent);
   const strengths=positiveEvidenceForMatch({...match,proAnalysis},active.rank);
   const missionResults=tasks.flatMap(task=>{
