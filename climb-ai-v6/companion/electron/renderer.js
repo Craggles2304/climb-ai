@@ -259,7 +259,7 @@ function renderPlayerHome(home,visible){
   }
 
   const upgrade=$('playerHomeUpgrade');
-  if(home.upgrade){
+  if(home.upgrade&&baselineReady){
     upgrade.classList.remove('hidden');
     upgrade.querySelector('b').textContent='UNLOCK '+String(home.upgrade.tier||'NEXT');
     upgrade.querySelector('span').textContent=String(home.upgrade.copy||'');
