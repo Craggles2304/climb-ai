@@ -711,7 +711,7 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .match-room-review-hero{display:flex;align-items:flex-end;justify-content:space-between;gap:24px;padding:28px;border-color:#5b4a45;background:radial-gradient(circle at 85% 10%,rgba(249,149,148,.10),transparent 34%),linear-gradient(145deg,#211719,#11191d)}
 .match-room-review-hero h2{font-size:clamp(34px,4vw,54px);line-height:.98;margin:10px 0 8px;max-width:850px}
 .match-room-review-hero p{margin:0;color:#c8d0ce}
-.match-room-review-stats{display:grid;grid-template-columns:repeat(3,minmax(88px,1fr));gap:8px;min-width:320px}
+.match-room-review-stats{display:grid;grid-template-columns:repeat(4,minmax(82px,1fr));gap:8px;min-width:410px}
 .match-room-review-stats span{padding:12px;border:1px solid var(--line);background:#0c1215;text-align:center}
 .match-room-review-stats small{display:block;font:500 8px var(--mono);letter-spacing:.1em;color:var(--dim)}
 .match-room-review-stats b{display:block;margin-top:5px;font:800 20px var(--display)}
