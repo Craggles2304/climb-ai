@@ -56,7 +56,7 @@ test('post-game decision evidence banks completed games on the matching strand',
   const started=lane.history?.find(event=>event.type==='PROMOTED')?.at??'2026-10-01T00:00:00.000Z';
   const later=new Date(Date.parse(started)+60_000).toISOString();
   const history:any[]=[
-    {matchId:'m1',champion:'Jinx',role:'ADC',createdAt:later,analysis:{version:1,metrics:{red_state_fights:{key:'red_state_fights',label:'RED STATE',score:90,status:'DERIVED'}},leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'MEDIUM'}}},
+    {matchId:'m1',champion:'Jinx',role:'ADC',createdAt:later,analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics:{red_state_fights:{key:'red_state_fights',label:'RED STATE',score:90,value:'90/100',status:'DERIVED',confidence:'HIGH',sources:['LIVE_TELEMETRY'],summary:'One clean game.',evidence:[{atSeconds:620,label:'Lane fight',detail:'Playable state respected.'}]}},leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'MEDIUM'}}},
   ];
   const graded=gradeDnaStrandMissionsFromHistory(first,history).tasks;
   const updated=graded.find(task=>task.id===lane.id)!;
@@ -64,4 +64,27 @@ test('post-game decision evidence banks completed games on the matching strand',
   assert.equal(updated.gamesObserved,1);
   assert.equal(updated.progress,33);
   assert.equal(updated.missionHistory?.[0]?.banksPass,true);
+  assert.equal(updated.missionHistory?.[0]?.evidenceV2?.state,'BANKED');
+  assert.equal(updated.missionHistory?.[0]?.evidenceV2?.events[0]?.atSeconds,620);
+});
+
+test('a measured miss is MISSED while missing evidence is neutral NOT OBSERVED',()=>{
+  const first=ensureOneMissionPerDnaStrand([],'acct',role).tasks;
+  const lane=first.find(task=>task.dnaDomain==='LANING')!;
+  const started=lane.history?.find(event=>event.type==='PROMOTED')?.at??'2026-10-01T00:00:00.000Z';
+  const t1=new Date(Date.parse(started)+60_000).toISOString();
+  const t2=new Date(Date.parse(started)+120_000).toISOString();
+  const history:any[]=[
+    {matchId:'miss',champion:'Jinx',role:'ADC',createdAt:t1,analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics:{red_state_fights:{key:'red_state_fights',label:'RED STATE',score:61,value:'61/100',status:'DERIVED',confidence:'HIGH',sources:['LIVE_TELEMETRY'],summary:'Target missed.',evidence:[{atSeconds:540,label:'Red-state death',detail:'Enemy-favoured state accepted.'}]}},leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'MEDIUM'}}},
+    {matchId:'neutral',champion:'Jinx',role:'ADC',createdAt:t2,analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics:{red_state_fights:{key:'red_state_fights',label:'RED STATE',score:null,value:'Building',status:'BUILDING',confidence:'LOW',sources:['LIVE_TELEMETRY'],summary:'No sample.',evidence:[]}},leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'LOW'}}},
+  ];
+  const graded=gradeDnaStrandMissionsFromHistory(first,history).tasks;
+  const updated=graded.find(task=>task.id===lane.id)!;
+  assert.equal(updated.successfulGames,0);
+  assert.equal(updated.gamesObserved,1);
+  assert.equal(updated.progress,0);
+  assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='miss')?.outcome,'UNREWARDED');
+  assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='miss')?.evidenceV2?.state,'MISSED');
+  assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='neutral')?.outcome,'NO_REP');
+  assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='neutral')?.evidenceV2?.state,'NOT_OBSERVED');
 });
