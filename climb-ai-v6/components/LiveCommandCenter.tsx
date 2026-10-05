@@ -156,7 +156,7 @@ return <div className="match-room">
 
     <div className="match-room-review-actions">
       <Link className="btn primary" href={'/analyse/'+encodeURIComponent(latestMatch.id)}>OPEN FULL GAME REVIEW →</Link>
-      <Link className="btn secondary" href="/ilp">SEE LONG-TERM DEVELOPMENT</Link>
+      <Link className="btn secondary" href="/ilp">SEE MY DNA</Link>
     </div>
   </section>}
 
@@ -176,7 +176,7 @@ return <div className="match-room">
       <p className="muted">Your champion-specific plan stays separate from the coaching focus so you are not carrying five different jobs into queue.</p>
       <div className="mission-actions" style={{marginTop:18}}>
         <Link className="btn" href="/champions/main">Open champion plan →</Link>
-        <Link className="btn" href="/ilp">{baselineReady?'Why this focus?':'How the baseline works'}</Link>
+        <Link className="btn" href="/ilp">{baselineReady?'Open My DNA':'How DNA baseline works'}</Link>
       </div>
     </section>
 
