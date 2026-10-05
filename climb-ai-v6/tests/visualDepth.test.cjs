@@ -36,15 +36,15 @@ test('authenticated League routes share one coherent player workspace with route
   assert.ok(shell.includes('authenticated-client-shell'));
   assert.ok(shell.includes('className="sidebar"'));
   assert.ok(shell.includes('className="topbar"'));
-  assert.ok(shell.includes("if(path==='/dashboard')return'YOUR CLIMB'"));
-  assert.ok(shell.includes("if(path==='/live')return'COMPANION'"));
-  assert.ok(shell.includes("if(path==='/ilp')return'MY CLIMB'"));
+  assert.ok(shell.includes("if(path==='/dashboard')return'HOME'"));
+  assert.ok(shell.includes("if(path==='/live')return'MATCH ROOM'"));
+  assert.ok(shell.includes("if(path==='/ilp')return'MY DNA'"));
   assert.ok(shell.includes("if(path==='/coach')return'COACH'"));
   assert.ok(shell.includes("document.body.dataset.clientView=view"));
   for(const view of ['overview','match-room','climb','coach-memory','plans']){
     assert.ok(shell.includes("'"+view+"'"),'missing workspace view '+view);
   }
-  assert.ok(shell.includes('See my progress'));
+  assert.ok(shell.includes("{label:'MY DNA',href:'/ilp'}"));
   assert.ok(clientCss.includes('data-client-view="match-room"'));
   assert.ok(clientCss.includes('data-client-view="climb"'));
 });
