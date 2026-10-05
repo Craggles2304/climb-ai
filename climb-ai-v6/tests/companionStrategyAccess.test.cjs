@@ -43,13 +43,16 @@ test('active trial entitlement receives paid match strategy',()=>{
   assert.ok(route.includes("trialing:paidStrategy&&status==='trialing'"));
 });
 
-test('Companion keeps simple plan visible while paid structured match read is gated',()=>{
+test('Companion keeps a simple free plan while paid match read exposes a direct path to win',()=>{
   assert.ok(preload.includes('YOUR SIMPLE GAME PLAN'));
   assert.ok(preload.includes('PLUS MATCH READ'));
-  assert.ok(preload.includes('OUR WIN CONDITION'));
-  assert.ok(preload.includes('THEY WIN IF'));
+  assert.ok(preload.includes('HOW WE WIN'));
+  assert.ok(preload.includes('HOW THEY WIN'));
+  assert.ok(preload.includes('BIGGEST THROW'));
   assert.ok(preload.includes('opRoleWin'));
+  assert.ok(preload.includes('opBiggestThrow'));
   assert.match(preload,/toggle\('opPaidWin',!paid\)/);
   assert.match(preload,/toggle\('opPaidLoss',!paid\)/);
+  assert.match(preload,/toggle\('opBiggestThrowCard',!paid\)/);
   assert.match(preload,/toggle\('opSimpleFlow',hasRoleWin\)/);
 });
