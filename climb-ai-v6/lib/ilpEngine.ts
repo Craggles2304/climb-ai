@@ -148,10 +148,11 @@ export function adaptILP(tasks:ILPTask[],matches:Match[],rank?:string|null):{tas
     const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
     const masteryRequired=t.masteryRequired||3;
     const missionProgress=clamp(confirmed/masteryRequired*100);
+    const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
     const metricProgress=e.progress;
-    const progress=attempts.length?clamp(metricProgress*.7+missionProgress*.3):metricProgress;
+    const progress=observedAttempts.length?clamp(metricProgress*.7+missionProgress*.3):metricProgress;
     const successfulGames=confirmed;
-    const gamesObserved=attempts.length;
+    const gamesObserved=observedAttempts.length;
     const threshold=masteryMetricThreshold(rankedTask,recent);
     const mastered=confirmed>=masteryRequired&&metricProgress>=threshold;
     const status=mastered?'MASTERED' as const:progress>=55?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
