@@ -9,20 +9,20 @@ const dashboard=fs.readFileSync(path.join(root,'app','dashboard','page.tsx'),'ut
 const liveCenter=fs.readFileSync(path.join(root,'components','LiveCommandCenter.tsx'),'utf8');
 const css=fs.readFileSync(path.join(root,'app','visual-depth.css'),'utf8');
 
-test('My Climb owns long-term DNA while Match Room owns last-game evidence',()=>{
+test('My DNA owns long-term development while Match Room owns the game',()=>{
   assert.ok(ilp.includes('currentGameDnaMissions'));
-  assert.ok(ilp.includes('Six {viewRole} strands. One mission on each.'));
-  assert.ok(ilp.includes('LONG-TERM DEVELOPMENT'));
-  assert.ok(ilp.includes('Match Room now owns the immediate review for every game.'));
+  assert.ok(ilp.includes('<ClientGameDna'));
+  assert.ok(ilp.includes('MY DNA · YOUR PLAYER IDENTITY'));
+  assert.ok(ilp.includes('Game DNA is the centre of OP CLIMB.'));
   assert.ok(liveCenter.includes('MATCH ROOM · LAST GAME'));
   assert.ok(liveCenter.includes('WHAT HURT YOU'));
   assert.ok(liveCenter.includes('WHAT YOU DID WELL'));
   assert.ok(liveCenter.includes('KEY MOMENTS'));
   assert.ok(liveCenter.includes('NEXT GAME · ONE THING'));
-  assert.ok(liveCenter.includes('SEE LONG-TERM DEVELOPMENT'));
+  assert.ok(liveCenter.includes('SEE MY DNA'));
 });
 
-test('My Climb explains the game in readable language before technical proof',()=>{
+test('My DNA explains development in readable language before technical proof',()=>{
   assert.ok(impact.includes('WHAT YOU DID'));
   assert.ok(impact.includes('WHY IT MATTERED'));
   assert.ok(impact.includes('HOW YOU PASS'));
@@ -32,19 +32,22 @@ test('My Climb explains the game in readable language before technical proof',()
   assert.ok(css.includes('.mc-game-example')||css.includes('.mc-moment-list'));
 });
 
-test('dashboard keeps one spotlight while the underlying plan contains all six DNA missions',()=>{
-  assert.ok(dashboard.includes('currentGameDnaMissions(tasks,active.role)'));
-  assert.ok(dashboard.includes('const activeMission=planMissions[0]??leadTask'));
-  assert.ok(dashboard.includes('YOUR NEXT GAME PLAN'));
+test('Home leads with one next step and makes Game DNA the dominant feature',()=>{
+  assert.ok(dashboard.includes('Know exactly what to do next.'));
+  assert.ok(dashboard.includes('YOUR CLIMB PATH'));
+  assert.ok(dashboard.includes('GAME DNA · THE HEART OF OP CLIMB'));
+  assert.ok(dashboard.includes('<ClientGameDna'));
+  assert.ok(dashboard.includes('CURRENT FIX'));
   assert.ok(dashboard.includes('plainLanguageFocus'));
-  assert.ok(dashboard.includes('YOUR RANKED SNAPSHOT'));
+  assert.ok(dashboard.includes('PLAY THE NEXT REP →'));
 });
 
-test('dashboard hierarchy cannot regress to three equal-priority mission cards',()=>{
-  assert.ok(!dashboard.includes('hq-game-missions'));
-  assert.ok(dashboard.includes('activeMission=planMissions[0]??leadTask'));
-  assert.ok(dashboard.includes('missionPlain=activeMission?plainLanguageFocus(activeMission):null'));
-  assert.ok(css.includes('.mission'));
+test('Home cannot regress into a feature directory',()=>{
+  assert.ok(!dashboard.includes('YOUR RANKED SNAPSHOT'));
+  assert.ok(!dashboard.includes('THE OP COACHING LOOP'));
+  assert.ok(!dashboard.includes('Every game has a lesson.'));
+  assert.ok(dashboard.includes('op-next-step'));
+  assert.ok(dashboard.includes('op-home-dna'));
 });
 
 test('coach is a readable workspace rather than neon chat bubbles across the whole screen',()=>{
