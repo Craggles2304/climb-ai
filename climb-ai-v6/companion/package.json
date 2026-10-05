@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.8.25",
+  "version": "0.8.26",
   "private": true,
   "description": "OP CLIMB Windows companion for pre-game planning, local-first tracking and post-game coaching.",
   "main": "electron/bootstrap.cjs",
