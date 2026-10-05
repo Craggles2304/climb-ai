@@ -6319,3 +6319,44 @@ body[data-op-area="hq"] .hq-mission-why p{
     font-size:15px
   }
 }
+
+
+/* Baseline review clarity — useful coaching without pretending it is a permanent mission */
+.ar-baseline-notice,
+.ar-baseline-evidence{
+  border:1px solid rgba(126,201,255,.26);
+  background:linear-gradient(145deg,rgba(126,201,255,.055),rgba(8,14,18,.96));
+}
+.ar-baseline-notice{
+  display:grid;
+  gap:6px;
+  margin-top:12px;
+  padding:12px 14px
+}
+.ar-baseline-notice b{
+  color:#7ec9ff;
+  font:900 11px/1.25 var(--font-mono,'IBM Plex Mono',monospace);
+  letter-spacing:.08em
+}
+.ar-baseline-notice span{
+  color:#c8d4d5;
+  font-size:14px;
+  line-height:1.55
+}
+.ar-baseline-evidence{
+  margin-bottom:14px;
+  padding:18px
+}
+.ar-baseline-evidence .eyebrow{color:#7ec9ff}
+.ar-baseline-evidence h2{
+  margin:6px 0 8px;
+  font-size:34px;
+  line-height:1
+}
+.ar-baseline-evidence p{
+  margin:0 0 14px;
+  max-width:780px;
+  color:#c0cbcd;
+  font-size:15px;
+  line-height:1.6
+}
