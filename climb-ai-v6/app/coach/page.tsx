@@ -1,27 +1,22 @@
 'use client';
-import {useEffect,useMemo,useRef,useState,type CSSProperties} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {useSubscription} from '@/components/SubscriptionContext';
-import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
-import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
-import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
+import {filterHistoryForTier} from '@/lib/subscription';
 import {missionSummary} from '@/lib/missionLoop';
-import type {DnaDomain,IssueCategory,Match,Role} from '@/lib/types';
+import type {IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
-import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
-import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady as isDnaBaselineReady,dnaTaskProgress,dnaTaskState} from '@/lib/dnaGrowth';
-import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
-import {dnaStrandLevel} from '@/lib/dnaLevel';
-import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady as isDnaBaselineReady} from '@/lib/dnaGrowth';
+import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
 type CoachResponse={answer?:string;error?:string;suggestion?:Suggestion;grounding?:string;factsUsed?:string[]};
 type HistoryTurn={role:'user'|'assistant';content:string};
-type CoachTab='DNA'|'ASK'|'MEMORY';
+type CoachTab='ASK'|'MEMORY';
 
 const THREAD_KEY='op_climb_coach_thread_v1';
 const MAX_SAVED_MESSAGES=30;
@@ -60,7 +55,7 @@ export default function Coach(){
   const matches=filterHistoryForTier(allRoleMatches,tier);
   const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
   const baselineReady=isDnaBaselineReady(baselineGames);
-  const {tasks,allTasks,addTask}=useLearningPlan();
+  const {tasks,addTask}=useLearningPlan();
   const rawActiveThree=currentGameDnaMissions(tasks,active.role).flatMap(({task})=>task?[task]:[]);
   const activeThree=baselineReady?rawActiveThree:[];
   const priorityTitle=activeThree[0]?.title;
@@ -68,74 +63,12 @@ export default function Coach(){
   const [q,setQ]=useState('');
   const [pending,setPending]=useState(false);
   const [messages,setMessages]=useState<Msg[]>([]);
-  const [tab,setTab]=useState<CoachTab>('DNA');
-  const [selectedDnaDomain,setSelectedDnaDomain]=useState<DnaDomain>('LANING');
-  const [dnaRole,setDnaRole]=useState<Role>(active.role);
+  const [tab,setTab]=useState<CoachTab>('ASK');
   const loadedAccount=useRef('');
   const context=useMemo(()=>`${active.gameName}${active.tagline} · ${active.rank} · ${active.role}`,[active]);
   const summary=useMemo(()=>recentSummary(matches),[matches]);
-  useEffect(()=>{const params=new URLSearchParams(window.location.search);const requested=params.get('role') as Role|null;setDnaRole(requested&&LEAGUE_ROLES.includes(requested)?requested:active.role)},[active.id,active.role]);
-  const chooseDnaRole=(role:Role)=>{setDnaRole(role);const url=new URL(window.location.href);url.searchParams.set('role',role);window.history.replaceState({},'',url.pathname+url.search)};
-
-  const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
-  const dnaBaselineGames=roleGameCounts[dnaRole]??0;
-  const dnaBaselineReady=isDnaBaselineReady(dnaBaselineGames);
-  const accountTasks=allTasks[active.id]??tasks;
-  const dnaRoleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,dnaRole)),[accountTasks,dnaRole]);
-  const dnaActiveTasks=useMemo(()=>dnaBaselineReady?currentGameDnaMissions(dnaRoleTasks,dnaRole).flatMap(({task})=>task?[task]:[]):[],[dnaRoleTasks,dnaRole,dnaBaselineReady]);
-  const dnaRoleMatches=accountMatches.filter(match=>match.role===dnaRole);
-  const dnaSummary=useMemo(()=>recentSummary(filterHistoryForTier(dnaRoleMatches,tier)),[dnaRoleMatches,tier]);
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(dnaRoleTasks,dnaRole),[dnaRoleTasks,dnaRole]);
-  const previewDnaMissions=dnaMissions;
   const mastered=tasks.filter(task=>task.status==='MASTERED');
-  const dnaMastered=dnaRoleTasks.filter(task=>task.status==='MASTERED');
-  const tierVisibleTasks=dnaActiveTasks;
-  const selectedGuide=DNA_DOMAIN_GUIDE[selectedDnaDomain];
-  const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(dnaRoleTasks,domain,dnaRole)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[dnaRoleTasks,dnaRole]);
-  const selectedStrandStyle=({'--strand-color':DNA_DOMAIN_COLORS[selectedDnaDomain]} as CSSProperties);
-  const selectedVisibleTasks=tierVisibleTasks.filter(task=>task.dnaDomain===selectedDnaDomain);
-  const selectedMastered=tier==='PRO'?dnaMastered.filter(task=>task.dnaDomain===selectedDnaDomain):[];
-  const primarySummary=dnaActiveTasks[0]?missionSummary(dnaActiveTasks[0]):null;
-  const strandGuide=<section className="dna-strand-guide panel panel-padding" style={selectedStrandStyle}>
-    <div className="section-head dna-strand-guide-head">
-      <div>
-        <div className="eyebrow">EXPLORE YOUR SIX STRANDS</div>
-        <h3>What does each part of your DNA mean?</h3>
-      </div>
-      <small>Choose a strand to understand it, then see the one mission currently attached to that part of your Game DNA.</small>
-    </div>
-    <div className="dna-strand-tabs" role="tablist" aria-label="Game DNA strands">
-      {DNA_DOMAINS.map(domain=><button
-        key={domain}
-        type="button"
-        role="tab"
-        aria-selected={selectedDnaDomain===domain}
-        className={selectedDnaDomain===domain?'active':''}
-        style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}
-        onClick={()=>setSelectedDnaDomain(domain)}
-      >{DNA_DOMAIN_LABELS[domain]} · LV {dnaLevels[domain].level}</button>)}
-    </div>
-    <div className="dna-strand-explainer">
-      <div>
-        <span className="eyebrow">{DNA_DOMAIN_LABELS[selectedDnaDomain]} · LV {dnaLevels[selectedDnaDomain].level}</span>
-        <h3>{selectedGuide.summary}</h3>
-        <p>{selectedGuide.purpose}</p>
-        <div className="dna-strand-subskills">{selectedGuide.subskills.map(skill=><span key={skill}>{skill}</span>)}</div>
-      </div>
-      <aside>
-        <span>YOUR CURRENT PLAN</span>
-        <b>LV {dnaLevels[selectedDnaDomain].level} · {dnaLevels[selectedDnaDomain].xpIntoLevel}/{dnaLevels[selectedDnaDomain].xpForNextLevel} DNA XP</b>
-        <small>{!dnaBaselineReady
-          ?`Baseline ${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}. Challenges unlock after OP Climb has watched three real games in ${dnaRole}.`
-          :tier==='PRO'
-            ?selectedMastered.length+' mastered habit'+(selectedMastered.length===1?'':'s')+' already stored in this strand.'
-            :tier==='PLUS'
-              ?'PLUS tracks the same six DNA missions with a longer development window. Long-term memory stays PRO.'
-              :'FREE still shows all six DNA missions; the shorter history window is what changes by plan.'}</small>
-        <Link className="btn primary" href={`/ilp?role=${dnaRole}&dna=${selectedDnaDomain}`}>OPEN IN MY CLIMB →</Link>
-      </aside>
-    </div>
-  </section>;
+  const primarySummary=activeThree[0]?missionSummary(activeThree[0]):null;
   useEffect(()=>{if(loadedAccount.current===active.id)return;let restored:Msg[]=[];try{const raw=localStorage.getItem(`${THREAD_KEY}:${active.id}`);if(raw)restored=validStoredMessages(JSON.parse(raw))}catch{}loadedAccount.current=active.id;setMessages(restored.length?restored:[welcome(priorityTitle,detail.tier,baselineGames)])},[active.id,priorityTitle,detail.tier,baselineGames]);
   useEffect(()=>{if(loadedAccount.current!==active.id||!messages.length)return;try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(messages.slice(-MAX_SAVED_MESSAGES)))}catch{}},[active.id,messages]);
   async function send(t?:string){const text=(t??q).trim();if(!text||pending)return;const history=threadHistory(messages);const userMessage:Msg={who:'user',text};if(!baselineReady){const baselineMessage:Msg={who:'ai',text:`I’m still building your baseline. You have ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} tracked games. Play normally until game 3 is complete; then I’ll use those games to give you a personalised challenge instead of guessing early.`,grounding:'recent-match-and-ilp',factsUsed:['baseline_games','rank','role']};setQ('');setMessages(m=>[...m,userMessage,baselineMessage].slice(-MAX_SAVED_MESSAGES));return}const activeTaskContext=activeThree.map(task=>({title:task.title,dnaDomain:task.dnaDomain,category:task.category,metric:task.metric,progress:task.progress,target:task.target,gameRule:task.gameRule}));const useTrend=isTrendQuestion(text)&&UUID.test(active.id);setQ('');setPending(true);setMessages(m=>[...m,userMessage].slice(-MAX_SAVED_MESSAGES));try{const endpoint=useTrend?'/api/coach/trend':'/api/coach';const payload=useTrend?{message:text,history,accountId:active.id,requestedGames:requestedTrendGames(text),activeTasks:activeTaskContext,rank:active.rank,role:active.role}:{message:text,history,accountId:active.id,context:{rank:active.rank,role:active.role,mission:activeThree[0]?.title,champions:active.champions,activeTasks:activeTaskContext,recent:summary}};const res=await fetch(endpoint,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});const body=await res.json() as CoachResponse;if(!res.ok)throw new Error(body.error||'Coach request failed.');const aiMessage:Msg={who:'ai',text:body.answer||'I do not have enough from your games to answer that properly yet.',task:body.suggestion,grounding:body.grounding,factsUsed:body.factsUsed};setMessages(m=>[...m,aiMessage].slice(-MAX_SAVED_MESSAGES))}catch(error){const errorMessage:Msg={who:'ai',text:`I can’t pull that game evidence right now. Keep your current focus: “${activeThree[0]?.title||'play one tracked game'}”. ${error instanceof Error?error.message:''}`,grounding:'ilp-and-profile',factsUsed:['active_ilp_tasks']};setMessages(m=>[...m,errorMessage].slice(-MAX_SAVED_MESSAGES))}finally{setPending(false)}}
@@ -144,96 +77,24 @@ export default function Coach(){
   return <AppShell>
     <header className="coach-hub-head">
       <div>
-        <div className="eyebrow">COACH · YOUR DEVELOPMENT SYSTEM</div>
-        <h1>Your game. Remembered.</h1>
-        <p>See your Game DNA, ask your coach, then inspect the memories shaping what comes next.</p>
+        <div className="eyebrow">COACH · DIAGNOSE AND DECIDE</div>
+        <h1>Turn game evidence into one clear decision.</h1>
+        <p>Ask what happened, understand why it matters, and leave with a rule for your next game.</p>
       </div>
       <Link className="btn btn-small" href="/live">Prepare next game →</Link>
     </header>
 
     <nav className="coach-subtabs" aria-label="Coach sections">
-      <button type="button" className={tab==='DNA'?'active':''} onClick={()=>setTab('DNA')}>
-        <span>01</span><div><b>{dnaRole} GAME DNA</b><small>Flick between role profiles</small></div>
-      </button>
       <button type="button" className={tab==='ASK'?'active':''} onClick={()=>setTab('ASK')}>
-        <span>02</span><div><b>ASK COACH</b><small>One real question</small></div>
+        <span>01</span><div><b>ASK COACH</b><small>Diagnose one real question</small></div>
       </button>
       <button type="button" className={tab==='MEMORY'?'active':''} onClick={()=>setTab('MEMORY')}>
-        <span>03</span><div><b>MEMORY</b><small>What carries forward</small></div>
+        <span>02</span><div><b>COACH MEMORY</b><small>What carries forward</small></div>
       </button>
+      <Link className="coach-climb-link" href="/ilp">
+        <span>↗</span><div><b>OPEN MY CLIMB</b><small>DNA · missions · reps · levels</small></div>
+      </Link>
     </nav>
-
-    {tab==='DNA'&&<section className="coach-tab-panel coach-dna-first">
-      <DnaRoleSwitcher role={dnaRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseDnaRole}/>
-      {tier==='PRO'?<>
-        <div className="coach-tab-intro">
-          <div>
-            <div className="eyebrow">{dnaRole} GAME DNA · PRO</div>
-            <h2>Your {dnaRole} development profile.</h2>
-            <p>Game DNA is role-specific. Only games played in {dnaRole} progress these six strands; every other role builds its own separate DNA, levels, missions and history.</p>
-          </div>
-          <div className="coach-dna-stats">
-            <div><span>{dnaBaselineReady?'MASTERED':'BASELINE'}</span><b>{dnaBaselineReady?dnaMastered.length:`${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
-            <div><span>DNA MISSIONS</span><b>{dnaBaselineReady?dnaActiveTasks.length+'/6':'0/6'}</b></div>
-            <div><span>SELECTED TRACKER</span><b>{dnaBaselineReady?`${primarySummary?.confirmed??0}/${primarySummary?.required??3}`:'0/3'}</b></div>
-          </div>
-        </div>
-        <ClientGameDna player={active.gameName+active.tagline} role={dnaRole} missions={dnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
-        {strandGuide}
-        <div className="coach-dna-next panel panel-padding">
-          <div>
-            <div className="eyebrow">CURRENT EXPRESSION</div>
-            <h3>{dnaBaselineReady?(dnaActiveTasks[0]?.title||'Build your first coaching strand'):`${dnaRole} baseline game ${Math.min(dnaBaselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h3>
-            <p>{dnaBaselineReady?(dnaActiveTasks[0]?.gameRule||'Your next tracked game will keep shaping the challenges in this role DNA.'):`Play ${dnaRole} normally. OP CLIMB is observing this role separately before it tells you what to change.`}</p>
-          </div>
-          <Link className="btn primary" href={`/ilp?role=${dnaRole}`}>Open My Climb →</Link>
-        </div>
-      </>:<>
-        <div className="coach-tab-intro coach-dna-preview-intro">
-          <div>
-            <div className="eyebrow">{dnaRole} GAME DNA · {tier} PREVIEW</div>
-            <h2>Your {dnaRole} DNA is separate from every other role.</h2>
-            <p>{tier==='PLUS'?'PLUS keeps the same six DNA missions with a deeper coaching window. PRO adds persistent memory across mastered missions.':'FREE still gives you one tracked mission on every DNA strand. PRO is what remembers mastered habits across time.'}</p>
-          </div>
-          <div className="coach-dna-stats">
-            <div><span>HISTORY</span><b>{tier==='FREE'?'7D':'90D'}</b></div>
-            <div><span>{dnaBaselineReady?'ELIGIBLE GAMES':'BASELINE'}</span><b>{dnaBaselineReady?dnaSummary.games:`${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
-            <div><span>MISSIONS</span><b>{dnaBaselineReady?dnaActiveTasks.length+'/6':'0/6'}</b></div>
-          </div>
-        </div>
-
-        <div className="coach-dna-preview-shell">
-          <ClientGameDna preview tier={tier} player={active.gameName+active.tagline} role={dnaRole} missions={previewDnaMissions} baselineGames={dnaBaselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
-          <div className="coach-dna-preview-ribbon"><span>{tier} PREVIEW</span><strong>Persistent memory is not active.</strong></div>
-        </div>
-
-        {strandGuide}
-
-        <div className="coach-preview-grid coach-preview-grid-single">
-          <section className="panel panel-padding coach-preview-current">
-            <div className="eyebrow">WHAT IS LIVE RIGHT NOW</div>
-            <h3>{dnaBaselineReady?(dnaActiveTasks[0]?.title||'Your first challenge is building'):`Build the ${dnaRole} baseline · ${Math.min(dnaBaselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</h3>
-            <p>{dnaBaselineReady?(dnaActiveTasks[0]?.gameRule||'OP CLIMB will keep adapting this focus from your games in this role.'):`No ${dnaRole} challenge yet. The first three ${dnaRole} games are observation so the challenge comes from your real play.`}</p>
-            <div className="coach-preview-facts">
-              <div><span>CURRENT PLAN</span><b>{tier}</b></div>
-              <div><span>COACHING WINDOW</span><b>{historyWindowLabel(tier)}</b></div>
-              <div><span>VISIBLE MISSIONS</span><b>6 STRANDS</b></div>
-              <div><span>FIX LADDER</span><b>{tier==='FREE'?'2 stages':'4 stages'}</b></div>
-            </div>
-          </section>
-
-        </div>
-
-        <section className="coach-preview-upgrade panel panel-padding">
-          <div>
-            <div className="eyebrow">WHY PRO CHANGES THIS</div>
-            <h3>Your DNA hasn’t started remembering yet.</h3>
-            <p>{tier==='FREE'?'FREE tracks all six strand missions. PRO remembers which mastered habits continue to hold across games, matchups and time.':'PLUS tracks the same six strand missions across a longer window. PRO connects those games into recurring patterns, transfer tests and long-term development.'}</p>
-          </div>
-          <Link className="btn gold" href="/pricing">UNLOCK A COACH THAT REMEMBERS →</Link>
-        </section>
-      </>}
-    </section>}
 
     {tab==='ASK'&&<section className="coach-tab-panel">
       <header className="page-head coach-inner-head">
@@ -243,6 +104,15 @@ export default function Coach(){
           <p>Your answer uses your current focus and the match evidence your plan allows.</p>
         </div>
       </header>
+
+      <section className="coach-climb-handoff" aria-label="My Climb handoff">
+        <div>
+          <div className="eyebrow">YOUR PLAN LIVES IN MY CLIMB</div>
+          <h3>{activeThree[0]?.title||'Your next tracked focus will appear there'}</h3>
+          <p>Coach helps you understand and choose. My Climb is where your Game DNA, six missions, proven reps, and level progress live.</p>
+        </div>
+        <Link className="btn secondary" href="/ilp">VIEW MY CLIMB →</Link>
+      </section>
 
       <section className="vf-coach-context">
         <div className="vf-coach-focus-card">
@@ -327,3 +197,4 @@ export default function Coach(){
   </AppShell>;
 
 }
+

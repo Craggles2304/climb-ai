@@ -710,7 +710,7 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 }
 
 
-/* Coach workspace tabs — DNA first */
+/* Coach workspace tabs — conversation first, progression in My Climb */
 .coach-hub-head{
   display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:18px
 }
@@ -720,22 +720,24 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .coach-subtabs{
   display:grid;grid-template-columns:repeat(3,minmax(0,1fr));border:1px solid var(--line);background:#0d1418;margin-bottom:22px
 }
-.coach-subtabs button{
+.coach-subtabs button,.coach-subtabs a{
   appearance:none;border:0;border-right:1px solid var(--line);background:transparent;color:var(--muted);
   min-height:68px;padding:12px 15px;display:grid;grid-template-columns:30px 1fr;gap:10px;align-items:center;
-  text-align:left;cursor:pointer;position:relative
+  text-align:left;cursor:pointer;position:relative;text-decoration:none
 }
-.coach-subtabs button:last-child{border-right:0}
-.coach-subtabs button:hover{background:#141e23;color:var(--text)}
+.coach-subtabs>*:last-child{border-right:0}
+.coach-subtabs button:hover,.coach-subtabs a:hover{background:#141e23;color:var(--text)}
 .coach-subtabs button.active{background:linear-gradient(90deg,rgba(182,246,107,.11),rgba(182,246,107,.025));color:var(--text)}
 .coach-subtabs button.active:before{
   content:'';position:absolute;left:0;right:0;top:-1px;height:2px;background:var(--mint)
 }
-.coach-subtabs button>span{font:600 10px var(--mono);color:var(--dim)}
+.coach-subtabs button>span,.coach-subtabs a>span{font:600 10px var(--mono);color:var(--dim)}
 .coach-subtabs button.active>span{color:var(--mint)}
-.coach-subtabs button div{display:grid;gap:3px}
-.coach-subtabs button b{font:700 15px var(--display);letter-spacing:.03em}
-.coach-subtabs button small{font-size:9px;color:var(--dim)}
+.coach-subtabs button div,.coach-subtabs a div{display:grid;gap:3px}
+.coach-subtabs button b,.coach-subtabs a b{font:700 15px var(--display);letter-spacing:.03em}
+.coach-subtabs button small,.coach-subtabs a small{font-size:9px;color:var(--dim)}
+.coach-climb-link{background:linear-gradient(90deg,rgba(93,216,255,.07),rgba(93,216,255,.015))!important}
+.coach-climb-link>span{color:#5dd8ff!important;font-size:15px!important}
 
 .coach-tab-panel{display:grid;gap:18px}
 .coach-tab-intro{
@@ -751,14 +753,21 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .coach-dna-next h3{font-size:28px;margin:8px 0 5px}
 .coach-dna-next p{margin:0;color:var(--muted);max-width:760px}
 .coach-inner-head{margin-bottom:0!important}
+.coach-climb-handoff{
+  display:flex;align-items:center;justify-content:space-between;gap:20px;padding:18px 20px;
+  border:1px solid rgba(93,216,255,.28);background:linear-gradient(100deg,rgba(93,216,255,.08),rgba(93,216,255,.015))
+}
+.coach-climb-handoff h3{margin:5px 0 4px;font-size:22px}
+.coach-climb-handoff p{margin:0;color:var(--muted);line-height:1.5;max-width:780px}
 .coach-dna-lock{min-height:300px;display:flex;flex-direction:column;justify-content:center}
 .coach-memory-locked,.pro-memory-gate{margin-top:0!important}
 
 @media(max-width:760px){
   .coach-hub-head,.coach-tab-intro,.coach-dna-next{align-items:flex-start;flex-direction:column}
   .coach-subtabs{grid-template-columns:1fr}
-  .coach-subtabs button{border-right:0;border-bottom:1px solid var(--line);min-height:58px}
-  .coach-subtabs button:last-child{border-bottom:0}
+  .coach-subtabs button,.coach-subtabs a{border-right:0;border-bottom:1px solid var(--line);min-height:58px}
+  .coach-subtabs>*:last-child{border-bottom:0}
+  .coach-climb-handoff{align-items:flex-start;flex-direction:column}
   .coach-dna-stats{width:100%;grid-template-columns:repeat(3,1fr)}
 }
 
@@ -911,3 +920,4 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .dna-strand-tabs,.ip-dna-filter-tabs{grid-template-columns:repeat(2,1fr)}
   .dna-strand-explainer h3,.ip-dna-filter-head h2{font-size:25px}
 }
+

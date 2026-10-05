@@ -34,13 +34,22 @@ test('Companion shows all six DNA missions with game trackers',()=>{
   assert.ok(api.includes('const missionLimit=6'));
 });
 
-test('Game DNA is visibly role-specific across web and Companion',()=>{
+test('Game DNA stays role-specific in My Climb and Companion',()=>{
   assert.ok(ilp.includes('Game DNA is role-specific.'));
   assert.ok(ilp.includes('Only games played in ${viewRole}'));
-  assert.ok(coach.includes('{dnaRole} GAME DNA · PRO'));
-  assert.ok(coach.includes('every other role builds its own separate DNA'));
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
   assert.ok(companion.includes('playerDnaRoleTitle'));
   assert.ok(companion.includes('only ${roleLabel} games progress these six strands'));
   assert.ok(companion.includes("roleLabel+' · '+String(dna?.label"));
 });
+
+test('Coach is conversation-first and hands progression off to My Climb',()=>{
+  assert.ok(coach.includes("useState<CoachTab>('ASK')"));
+  assert.ok(coach.includes('COACH · DIAGNOSE AND DECIDE'));
+  assert.ok(coach.includes('OPEN MY CLIMB'));
+  assert.ok(coach.includes('YOUR PLAN LIVES IN MY CLIMB'));
+  assert.ok(coach.includes('DNA · missions · reps · levels'));
+  assert.ok(!coach.includes("tab==='DNA'"));
+  assert.ok(!coach.includes('<ClientGameDna'));
+});
+
