@@ -202,7 +202,7 @@ export default function Home(){
         <div className="mission-copy">
           <div className="eyebrow">◎ YOUR NEXT GAME PLAN</div>
           <h2>{baselineReady?(missionPlain?.name||'Build the next'):'Build your baseline'}<br/><em>{baselineReady?(activeMission?'rep.':'useful focus.'):`${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} games.`}</em></h2>
-          <p><strong>{baselineReady?(missionPlain?.success||'Your next tracked game creates the next useful rep.'):'Play normally for three tracked games.'}</strong><br/>{baselineReady?(missionPlain?.why||'OP CLIMB turns your real match evidence into one clear decision to carry into queue.'):'OP CLIMB is observing before it gives you personalised challenges. Your DNA stays at 0% until the baseline is complete.'}</p>
+          <p><strong>{baselineReady?(missionPlain?.success||'Your next tracked game creates the next useful rep.'):`Play normally for three tracked ${active.role} games.`}</strong><br/>{baselineReady?(missionPlain?.why||'OP CLIMB turns your real match evidence into one clear decision to carry into queue.'):'OP CLIMB is observing before it gives you personalised challenges. Your DNA stays at 0% until the baseline is complete.'}</p>
           <div className="mission-actions">
             <Link className="btn primary" href="/live">Open my match plan →</Link>
             <Link className="pin-btn" href="/ilp" aria-label="Open my climb">⌖</Link>
@@ -251,7 +251,7 @@ export default function Home(){
       <section className="panel panel-padding">
         <div className="section-head"><h2>Every game has a lesson.</h2><Link className="text-btn" href="/analyse">Match review →</Link></div>
         <div className="match-list">
-          {recentMatches.length?recentMatches.map(match=><Link href="/analyse" className={'match-row '+(match.result==='WIN'?'':'loss')} key={match.id}>
+          {recentMatches.length?recentMatches.map(match=><Link href={'/analyse/'+encodeURIComponent(match.id)} className={'match-row '+(match.result==='WIN'?'':'loss')} key={match.id}>
             <span className="result-line"/>
             <span className="champion-avatar" style={{backgroundImage:`url(${championSplash(match.champion)})`}}/>
             <span className="match-name"><strong><span className="match-result">{match.result==='WIN'?'VICTORY':'DEFEAT'}</span>{match.champion}</strong><small>{match.role} · tracked match</small></span>
