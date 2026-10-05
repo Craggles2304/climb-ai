@@ -24,7 +24,10 @@ function champion(name:string,tags:string[],attack:number,magic:number,range:num
   };
 }
 function item(name:string,gold:number,stats:Record<string,number>,description:string,tags:string[]=[]):DataDragonItemFull{
-  return{name,gold:{total:gold},stats,description,plaintext:description,from:['1000'],maps:{'11':true},tags} as DataDragonItemFull;
+  return{
+    name,gold:{total:gold,purchasable:true},stats,description,plaintext:description,
+    from:tags.includes('Boots')?['1001']:['1000'],maps:{'11':true},tags,inStore:true,
+  } as DataDragonItemFull;
 }
 const items:Record<string,DataDragonItemFull>={
   '10001':item('Crit Engine',3000,{FlatPhysicalDamageMod:70,FlatCritChanceMod:.25},'Critical strike damage item',['Damage','CriticalStrike']),
@@ -34,14 +37,45 @@ const items:Record<string,DataDragonItemFull>={
   '10005':item('Execution Blade',2800,{FlatPhysicalDamageMod:40,FlatCritChanceMod:.25},'Applies Grievous Wounds to enemies.',['Damage']),
   '10006':item('Spell Guard',2900,{FlatPhysicalDamageMod:45,FlatSpellBlockMod:40},'Lifeline spell shield against magic damage.',['Damage','SpellBlock']),
   '10007':item('Armor Guard',2800,{FlatPhysicalDamageMod:40,FlatArmorMod:45},'Revive after taking lethal physical damage.',['Damage','Armor']),
+  '10008':item('Magic Lifeline',3000,{FlatPhysicalDamageMod:55,FlatSpellBlockMod:40},'Lifeline grants a shield against magic damage.',['Damage','SpellBlock']),
   '20001':item('Steel Boots',1100,{FlatArmorMod:25},'Reduces damage from basic attacks.',['Boots','Armor']),
   '20002':item('Mercury Boots',1100,{FlatSpellBlockMod:25},'Grants magic resistance and tenacity.',['Boots','SpellBlock']),
   '20003':item('Attack Speed Boots',1100,{PercentAttackSpeedMod:.30},'Attack speed boots.',['Boots','AttackSpeed']),
+  '20004':{
+    ...item('Armored Advance',1600,{FlatArmorMod:35},'Conditional upgraded plated boots.',['Boots','Armor']),
+    from:['20001'],
+  } as DataDragonItemFull,
 };
 
 const aphelios=champion('Aphelios',['Marksman'],9,1,550);
 const ally=(name:string)=>({champion:name,role:'TOP',detail:champion(name,['Fighter'],7,3,175)});
 const enemy=(detail:ChampionDetail,role:string)=>({champion:detail.name,role,detail});
+
+
+test('conditional tier-3 boot upgrades never replace the normal purchasable boot in champ select',()=>{
+  const physical=Array.from({length:5},(_,i)=>enemy(champion('AD'+i,['Fighter'],9,1,175),'TOP'));
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],enemies:physical,items,
+  });
+  assert.equal(plan.boots?.name,'Steel Boots');
+  assert.notEqual(plan.boots?.name,'Armored Advance');
+});
+
+test('physical-heavy dive does not force an MR lifeline just because several enemies can reach the ADC',()=>{
+  const enemies=[
+    enemy(champion('Trynd',['Fighter'],9,1,175,'Dashes to the target.'),'TOP'),
+    enemy(champion('Kayn',['Fighter','Assassin'],9,2,175,'Dashes through terrain.'),'JUNGLE'),
+    enemy(champion('Kat',['Assassin'],5,8,125,'Blinks to a target.'),'MID'),
+    enemy(champion('Ashe',['Marksman'],9,1,600),'ADC'),
+    enemy(champion('Naut',['Tank','Support'],2,4,175,'Roots and knocks up enemies.'),'SUPPORT'),
+  ];
+  const plan=buildAdaptiveItemPlan({
+    patch:'test',you:aphelios,role:'ADC',
+    allies:[{champion:'Aphelios',role:'ADC',detail:aphelios}],enemies,items,
+  });
+  assert.notEqual(plan.draftItem?.name,'Magic Lifeline',JSON.stringify(plan.draftItem));
+});
 
 test('same ADC gets an anti-tank draft item into a tank-heavy enemy team',()=>{
   const tanks=['TankA','TankB','TankC'].map(name=>champion(name,['Tank'],3,4,175,'Very durable frontliner with high health and armor.'));
