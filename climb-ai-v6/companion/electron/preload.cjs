@@ -37,10 +37,12 @@ function installStrategyView(){
   v3.textContent=`
 #opMissionReminders{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:9px;margin-top:12px;padding:18px;border:1px solid rgba(182,246,107,.16);border-left:3px solid #b6f66b;background:radial-gradient(680px 260px at 88% 0,rgba(0,245,212,.055),transparent 68%),linear-gradient(145deg,#0d161a,#081014);box-shadow:0 22px 58px rgba(0,0,0,.22)}
 #opMissionReminders>.op-head,#opMissionReminders>.op-draft,#opMissionReminders>.op-team-board,#opMissionReminders>.op-paid-lock,#opMissionReminders>.op-rolewin,#opMissionReminders>.op-flow,#opMissionReminders>.op-deep,#opMissionReminders>.op-build,#opMissionReminders>.op-foot{grid-column:1/-1}
-#opMissionReminders>.op-winhero{grid-column:1/9;margin:0;min-height:112px;padding:18px;border:1px solid rgba(182,246,107,.26);border-left:3px solid #b6f66b;background:radial-gradient(380px 160px at 0 0,rgba(182,246,107,.08),transparent 75%),#0a1216}
-#opMissionReminders>.op-job{grid-column:1/9;margin:0;min-height:112px;padding:18px;border:1px solid rgba(46,199,255,.2);border-left:3px solid #2ec7ff;background:radial-gradient(360px 150px at 0 0,rgba(46,199,255,.065),transparent 74%),#0a1216}
-#opMissionReminders>.op-danger{grid-column:9/-1;margin:0;grid-row:auto/span 1;min-height:112px;padding:18px;border:1px solid rgba(255,61,113,.2);border-left:3px solid #ff3d71;background:radial-gradient(300px 140px at 100% 0,rgba(255,61,113,.07),transparent 72%),#0a1115}
-#opMissionReminders>.op-mission{grid-column:9/-1;margin:0;min-height:112px;padding:18px;border:1px solid rgba(164,107,255,.22);border-left:3px solid #a46bff;background:radial-gradient(300px 140px at 100% 0,rgba(164,107,255,.07),transparent 72%),#0a1115}
+#opMissionReminders>.op-winhero{grid-column:1/-1;margin:0;min-height:78px;padding:15px 18px;border:1px solid rgba(182,246,107,.26);border-left:3px solid #b6f66b;background:radial-gradient(520px 120px at 0 0,rgba(182,246,107,.08),transparent 75%),#0a1216}
+#opMissionReminders>.op-job{grid-column:1/7;margin:0;min-height:86px;padding:16px 18px;border:1px solid rgba(46,199,255,.2);border-left:3px solid #2ec7ff;background:radial-gradient(360px 130px at 0 0,rgba(46,199,255,.065),transparent 74%),#0a1216}
+#opMissionReminders>.op-danger{margin:0;min-height:86px;padding:14px 15px;border:1px solid rgba(255,61,113,.2);border-left:3px solid #ff3d71;background:radial-gradient(260px 110px at 100% 0,rgba(255,61,113,.07),transparent 72%),#0a1115}
+#opMissionReminders>#opPaidLoss{grid-column:7/10}
+#opMissionReminders>#opBiggestThrowCard{grid-column:10/-1}
+#opMissionReminders>.op-mission{grid-column:1/-1;margin:0;min-height:0;padding:11px 14px;border:1px solid rgba(164,107,255,.22);border-left:3px solid #a46bff;background:rgba(164,107,255,.035)}
 .op-head{grid-column:1/-1!important;margin:0;padding-bottom:11px;border-bottom:1px solid rgba(255,255,255,.06);align-items:center}
 .op-kicker{color:#b6f66b}.op-head h3{font:800 clamp(28px,4vw,43px)/.95 'Barlow Condensed',sans-serif;letter-spacing:-.035em;color:#f1f6f4}.op-rank{border-color:rgba(182,246,107,.3);background:rgba(182,246,107,.045)}
 .op-draft{margin:0;gap:6px}.op-chip{padding:6px 8px;background:#0b1317;border-color:rgba(255,255,255,.07)}.op-chip.role{border-color:rgba(182,246,107,.28)}
@@ -49,12 +51,12 @@ function installStrategyView(){
 .op-team-label{display:flex;justify-content:space-between;gap:10px;margin-bottom:8px;font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.12em;color:#6f7e83}.op-team-side.ours .op-team-label b{color:#2ec7ff}.op-team-side.theirs .op-team-label b{color:#ff718f}
 .op-team-picks{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:5px}.op-team-pick{min-width:0;padding:7px 6px;border:1px solid rgba(255,255,255,.055);background:#0c1519}.op-team-pick span{display:block;color:#64747a;font:700 6px 'IBM Plex Mono',monospace;letter-spacing:.08em}.op-team-pick b{display:block;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#e1e9e7;font-size:9px}.op-team-pick.you{border-color:rgba(182,246,107,.3);box-shadow:inset 0 -2px 0 #b6f66b}.op-team-vs{display:grid;place-items:center;color:#b6f66b;font:900 10px 'IBM Plex Mono',monospace}
 .op-paid-lock{margin:0;padding:9px 11px}.op-paid-lock strong{font-size:10px}.op-paid-lock small{display:none}
-.op-winhero span,.op-job span,.op-danger span,.op-mission span{font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.14em}.op-winhero strong{margin-top:7px;font-size:18px;line-height:1.24}.op-job strong{margin-top:7px;font:800 26px/1.08 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#eff5f3}.op-danger strong{font-size:12px;line-height:1.42}.op-danger small{display:block;margin-top:7px;color:#ff8ca3;font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.08em}.op-mission span{color:#b795ff}.op-mission strong{font-size:12px;line-height:1.42}
-.op-rolewin{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px;margin:0}.op-role-step{min-height:92px;padding:11px;border-radius:0}.op-role-step:before{background:linear-gradient(180deg,#b6f66b,#00f5d4)}.op-role-step span{font-size:6px}.op-role-step strong{font-size:10px;line-height:1.34}
+.op-winhero span,.op-job span,.op-danger span,.op-mission span{font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.14em}.op-winhero strong{margin-top:7px;font:800 25px/1.08 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#f2f7f5}.op-job strong{margin-top:7px;font:800 30px/1.02 'Barlow Condensed',sans-serif;text-transform:uppercase;color:#eff5f3}.op-danger strong{font-size:12px;line-height:1.32}.op-danger small{display:block;margin-top:6px;color:#ff8ca3;font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.08em}.op-mission span{color:#b795ff}.op-mission strong{font-size:11px;line-height:1.3}
+.op-rolewin{grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:0}.op-role-step{min-height:78px;padding:13px 14px;border-radius:0}.op-role-step:before{background:linear-gradient(180deg,#b6f66b,#00f5d4)}.op-role-step span{font-size:7px}.op-role-step strong{font-size:13px;line-height:1.28}.op-role-step:not(:last-child):after{content:'→';position:absolute;right:-10px;top:50%;transform:translateY(-50%);z-index:2;color:#b6f66b;font:900 14px 'IBM Plex Mono',monospace}
 .op-flow{margin:0}.op-step{border-radius:0}
-.op-deep{margin:0}.op-deep summary{color:#a46bff}.op-deep-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
-.op-build{margin:0;padding:14px;border-color:rgba(255,178,30,.2);border-left:3px solid #ffb21e;background:radial-gradient(520px 160px at 100% 0,rgba(255,178,30,.055),transparent 72%),#091115}.op-build-head span{color:#ffb21e;font-size:8px}.op-build-head small{font-size:7px}.op-build-read{margin-top:8px;color:#a7b3b5;font-size:8px;line-height:1.45}
-.op-build-grid{grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.op-build-card{grid-template-columns:34px minmax(0,1fr);padding:9px;min-height:62px}.op-build-card.draft{border-color:rgba(255,178,30,.42);box-shadow:inset 0 -2px 0 #ffb21e}.op-build-card img{width:34px;height:34px}.op-build-card span{font-size:6px}.op-build-card strong{font-size:9px}.op-build-card small{display:block;margin-top:3px;color:#718086;font-size:7px;line-height:1.3}
+.op-deep{margin:0;opacity:.78}.op-deep summary{color:#8290a0;padding:9px 0;font-size:7px}.op-deep[open]{opacity:1}.op-deep-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+.op-build{margin:0;padding:12px 13px;border-color:rgba(255,178,30,.2);border-left:3px solid #ffb21e;background:#091115}.op-build-head span{color:#ffb21e;font-size:8px}.op-build-head small{font-size:7px}.op-build-read{margin-top:6px;color:#66747a;font-size:7px;line-height:1.3}.op-build-flex{margin-top:7px;padding:7px 9px;border:1px dashed rgba(255,178,30,.22);color:#d8b56c;font:800 7px/1.35 'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase}
+.op-build-grid{grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}.op-build-card{grid-template-columns:38px minmax(0,1fr);padding:8px 9px;min-height:56px}.op-build-card img{width:38px;height:38px}.op-build-card span{font-size:6px}.op-build-card strong{font-size:10px}
 .op-foot{margin:0;padding-top:5px}.op-phase-live .op-kicker{color:#ff3d71}.op-phase-live{border-left-color:#ff3d71!important}.op-phase-live .op-rank{border-color:rgba(255,61,113,.28)}.op-phase-live .op-head:after{content:'LIVE · RECORDING';margin-left:auto;padding:6px 8px;border:1px solid rgba(255,61,113,.25);color:#ff718f;font:800 7px 'IBM Plex Mono',monospace;letter-spacing:.11em}
 @media(max-width:920px){#opMissionReminders>.op-winhero,#opMissionReminders>.op-job,#opMissionReminders>.op-danger,#opMissionReminders>.op-mission{grid-column:1/-1}.op-team-board{grid-template-columns:1fr}.op-team-vs{min-height:20px}.op-build-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:650px){.op-team-picks,.op-rolewin,.op-build-grid{grid-template-columns:1fr 1fr}.op-deep-grid{grid-template-columns:1fr}.op-head h3{font-size:27px}}
@@ -82,11 +84,11 @@ function installStrategyView(){
       <section class="op-team-side theirs"><div class="op-team-label"><span>THEIR TEAM</span><b id="opTheirTeamState">FORMING</b></div><div id="opTheirTeamPicks" class="op-team-picks"></div></section>
     </div>
     <article id="opStrategyLock" class="op-paid-lock hidden"><span>PLUS MATCH READ</span><strong>ROLE WIN CONDITION + LOSS CONDITION</strong><small>PLUS, PRO and active trials unlock the full 5v5 role read. Your simple role plan stays available on FREE.</small></article>
-    <article id="opPaidWin" class="op-winhero"><span>HOW WE WIN</span><strong id="opYourWin">BUILD THE FIRST CLEAN ADVANTAGE, THEN CONVERT IT.</strong></article>
+    <article id="opPaidWin" class="op-winhero"><span>WIN CONDITION</span><strong id="opYourWin">ARRIVE FIRST → STAY CONNECTED → WIN THE FIGHT → OBJECTIVE</strong></article>
     <div id="opRoleWin" class="op-rolewin hidden">
-      <article class="op-role-step"><span id="opRoleStepLabel1">1 · EARLY GAME</span><strong id="opRoleStep1"></strong></article>
-      <article class="op-role-step"><span id="opRoleStepLabel2">2 · SETUP</span><strong id="opRoleStep2"></strong></article>
-      <article class="op-role-step"><span id="opRoleStepLabel3">3 · FIGHT → CONVERT</span><strong id="opRoleStep3"></strong></article>
+      <article class="op-role-step"><span id="opRoleStepLabel1">1 · BUILD EDGE</span><strong id="opRoleStep1"></strong></article>
+      <article class="op-role-step"><span id="opRoleStepLabel2">2 · CONNECT</span><strong id="opRoleStep2"></strong></article>
+      <article class="op-role-step"><span id="opRoleStepLabel3">3 · CASH OUT</span><strong id="opRoleStep3"></strong></article>
     </div>
     <article id="opJob" class="op-job"><span>YOUR JOB</span><strong id="opYourJob">PLAY YOUR ROLE INSIDE THE TEAM PLAN.</strong></article>
     <div id="opSimpleFlow" class="op-flow">
@@ -95,10 +97,17 @@ function installStrategyView(){
       <article class="op-step"><span id="opStep3Label">03 · OBJECTIVE</span><strong id="opObjective">SET UP FIRST</strong></article>
       <article class="op-step"><span id="opStep4Label">04 · FIGHT</span><strong id="opFight">PLAY THE FORMATION</strong></article>
     </div>
-    <article id="opPaidLoss" class="op-danger"><span>HOW THEY WIN</span><strong id="opVsTeam">WE GIVE THEM THE FIGHT THEY WANT.</strong><small id="opThreatNames"></small></article>
-    <article id="opBiggestThrowCard" class="op-danger"><span>BIGGEST THROW</span><strong id="opBiggestThrow">DO NOT BREAK FORMATION FOR A LOW-VALUE CHASE.</strong></article>
+    <article id="opPaidLoss" class="op-danger"><span>THEY WANT</span><strong id="opVsTeam">BREAK YOUR FORMATION.</strong><small id="opThreatNames"></small></article>
+    <article id="opBiggestThrowCard" class="op-danger"><span>DON'T</span><strong id="opBiggestThrow">CHASE PAST YOUR SAFE LINE.</strong></article>
+    <section id="opAdaptiveBuild" class="op-build hidden">
+      <div class="op-build-head"><span>BUILD</span><small>CURRENT PATCH · DRAFT-AWARE</small></div>
+      <div id="opAdaptiveBuildGrid" class="op-build-grid"></div>
+      <div id="opAdaptiveBuildFlex" class="op-build-flex"></div>
+      <div id="opAdaptiveBuildRead" class="op-build-read"></div>
+    </section>
+    <div class="op-mission"><span>CLIMB MISSION</span><strong id="opMissionCue"></strong></div>
     <details id="opDeepRead" class="op-deep hidden">
-      <summary>PRO · WHY THIS PLAN WORKS</summary>
+      <summary>WHY THIS PLAN WORKS +</summary>
       <div class="op-deep-grid">
         <article class="op-deep-card"><span>FIRST CONTACT</span><strong id="opDeepContact"></strong></article>
         <article class="op-deep-card"><span>YOUR PROTECTION</span><strong id="opDeepProtect"></strong></article>
@@ -107,12 +116,6 @@ function installStrategyView(){
       <div class="op-deep-rule"><b>FIGHT SHAPE · </b><span id="opDeepGeometry"></span></div>
       <div class="op-deep-rule"><b>DENY THEIR PLAN · </b><span id="opDeepRule"></span></div>
     </details>
-    <div class="op-mission"><span>YOUR CLIMB MISSION</span><strong id="opMissionCue"></strong></div>
-    <section id="opAdaptiveBuild" class="op-build hidden">
-      <div class="op-build-head"><span>BUILD FOR THIS GAME</span><small>DRAFT-FIT · CURRENT PATCH</small></div>
-      <div id="opAdaptiveBuildGrid" class="op-build-grid"></div>
-      <div id="opAdaptiveBuildRead" class="op-build-read"></div>
-    </section>
     <div class="op-foot">READ IT ONCE · CLOSE THE COMPANION · PLAY THE PLAN · REVIEW IT AFTER THE GAME</div>`;
   const status=document.getElementById('status');
   if(status)status.insertAdjacentElement('afterend',section);else document.querySelector('main')?.appendChild(section);
