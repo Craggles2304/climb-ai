@@ -37,6 +37,15 @@ test('desktop consumes authoritative tracker state instead of relying only on pr
   assert.ok(desktop.includes("Date.now()-lastLocalChampSelectAt<15_000"));
 });
 
+
+test('auth rejection is sticky until the Companion is explicitly paired again',()=>{
+  assert.ok(desktop.includes('let pairingAuthInvalid=false'));
+  assert.ok(desktop.includes("if(requestedPhase==='AUTH_ERROR')pairingAuthInvalid=true"));
+  assert.ok(desktop.includes("!['AUTH_ERROR','SETUP','STARTING'].includes(requestedPhase)"));
+  assert.ok(desktop.includes("phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'"));
+  assert.ok(desktop.includes('pairingAuthInvalid=false;'));
+});
+
 test('desktop self-heals match end when a prose end log is missed',()=>{
   assert.ok(desktop.includes("if(state.phase==='RECORDING'){"));
   assert.ok(desktop.includes("setState({phase:'UPLOADING'"));
