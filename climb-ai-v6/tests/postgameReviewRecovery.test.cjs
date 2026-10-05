@@ -42,6 +42,15 @@ const liveReview=fs.readFileSync('components/LiveFightReviewMount.tsx','utf8');
 const analysePage=fs.readFileSync('app/analyse/[match]/page.tsx','utf8');
 const analyseApi=fs.readFileSync('app/api/analyse/route.ts','utf8');
 
+
+test('Match Room never presents stale cloud state as the current game',()=>{
+  assert.ok(liveCenter.includes('cloudDisconnected'));
+  assert.ok(liveCenter.includes('MATCH ROOM · CLOUD SYNC DISCONNECTED'));
+  assert.ok(liveCenter.includes('SYNC BROKEN · LOCAL APP ≠ CLOUD MATCH ROOM'));
+  assert.ok(liveCenter.includes('RECONNECT INSTALLED COMPANION'));
+  assert.ok(liveCenter.includes('LAST CLOUD-SYNCED GAME'));
+});
+
 test('completed live review exposes the saved match id through Match Room',()=>{
   assert.ok(liveRead.includes("db.from('matches').select('id').eq('live_session_id',session.id)"));
   assert.ok(liveRead.includes('matchId=(matchRow as any)?.data?.id??null'));
