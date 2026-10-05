@@ -185,3 +185,35 @@
   .player-journey-step{min-width:0}
   .player-mission-card.priority h3{font-size:20px}
 }
+
+.player-mission-card.reveal{
+  padding:18px;
+  border-color:rgba(182,246,107,.45);
+  background:linear-gradient(145deg,rgba(182,246,107,.095),#081014);
+  box-shadow:inset 4px 0 0 #b6f66b
+}
+.player-mission-card.reveal>span{
+  color:#b6f66b;
+  font-size:9px
+}
+.player-mission-card.reveal h3{
+  margin:8px 0 7px;
+  font-size:23px
+}
+.player-mission-card.reveal p{
+  color:#d8e2e0!important;
+  font-size:12px;
+  line-height:1.55
+}
+.player-mission-card.reveal>small{
+  display:block;
+  margin-top:10px;
+  color:#95a4a8;
+  font-size:9px;
+  line-height:1.45
+}
+.player-memory.reveal{
+  border-color:rgba(182,246,107,.28);
+  background:linear-gradient(145deg,rgba(182,246,107,.065),#0a1115)
+}
+.player-memory.reveal>span{color:#b6f66b}
