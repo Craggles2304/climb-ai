@@ -25,7 +25,7 @@ type ProgressionPayload={
 const primary=[
   ['Overview','/dashboard','⌂','Your daily briefing'],
   ['Game DNA','/game-dna','⬡','Your player identity'],
-  ['Match room','/live','◇','Prepare + play'],
+  ['Match room','/live','◇','Review + prepare + play'],
   ['My games','/analyse','◈','Review + learn'],
   ['My climb','/ilp','◎','Focus + development'],
   ['Coach','/coach','✦','Memory + questions'],
