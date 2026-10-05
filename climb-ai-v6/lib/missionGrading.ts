@@ -119,7 +119,7 @@ export function gradeMissionGame(task:Pick<ILPTask,'metric'|'target'>,match:Matc
   };
 }
 
-function notObservedReceipt(metric:string,source:MissionMeasurementSource,targetLabel:string,reason:string):MissionEvidenceReceipt{
+export function notObservedReceipt(metric:string,source:MissionMeasurementSource,targetLabel:string,reason:string):MissionEvidenceReceipt{
   return{
     version:2,state:'NOT_OBSERVED',measurementSource:source,metric,metricLabel:metric,
     observedValue:null,observedValueLabel:'NOT OBSERVED',targetLabel,confidence:'LOW',
