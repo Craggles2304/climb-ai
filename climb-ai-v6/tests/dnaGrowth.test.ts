@@ -17,6 +17,14 @@ test('Game DNA remains in baseline until three valid games in the active role',(
   assert.equal(dnaBaselineReady(3),true);
 });
 
+test('Riot position aliases count toward the correct role baseline',()=>{
+  const bottom=game('bottom','BOTTOM' as Match['role']);
+  const utility=game('utility','UTILITY' as Match['role']);
+  assert.equal(dnaBaselineGameCount([bottom],'ADC'),1);
+  assert.equal(dnaBaselineGameCount([utility],'SUPPORT'),1);
+  assert.equal(dnaBaselineGameCount([bottom,utility],'ADC'),1);
+});
+
 test('DNA growth uses mission progress continuously and mastery locks at 100',()=>{
   const learning={status:'ACTIVE',progress:37} as ILPTask;
   assert.equal(dnaTaskState(learning),1);
