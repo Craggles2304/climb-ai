@@ -2,7 +2,7 @@ import type {DnaDomain,ILPTask,IssueCategory,Role} from './types';
 import type {CoachingMetricKey} from './subscription';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
-import {proMetricReceipt} from './missionGrading';
+import {notObservedReceipt,proMetricReceipt} from './missionGrading';
 
 type MissionTemplate={
   title:string;
@@ -296,9 +296,23 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
     for(const row of ordered){
       if(Date.parse(row.createdAt)<startedAt)continue;
       const metric=row.analysis?.metrics?.[task.metric as CoachingMetricKey];
-      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number')continue;
       const matchId=String(row.matchId||`analysis-${row.role||'role'}-${row.createdAt}-${row.champion}`);
       if(existing.has(matchId))continue;
+      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
+        const targetLabel=`${threshold}+ decision score · 3 proven games`;
+        const reason='This tracked game did not expose enough recorded decision evidence to grade this mission.';
+        existing.set(matchId,{
+          matchId,
+          at:row.createdAt,
+          adherence:'TRACKED',
+          clearedBar:false,
+          outcome:'NO_REP',
+          banksPass:false,
+          source:'TRACKED',
+          evidenceV2:notObservedReceipt(task.metric,'DECISION_EVIDENCE',targetLabel,reason),
+        });
+        continue;
+      }
       const pass=metric.score>=threshold;
       const valueLabel=`${Math.round(metric.score)}/100`;
       const targetLabel=`${threshold}+ decision score · 3 proven games`;
@@ -327,11 +341,12 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
     }
 
     const attempts=[...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+    const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
     const required=Math.max(1,Number(task.masteryRequired)||3);
     const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
     const progress=Math.round(Math.min(required,confirmed)/required*100);
     const mastered=confirmed>=required;
-    const status=mastered?'MASTERED' as const:attempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
+    const status=mastered?'MASTERED' as const:observedAttempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
     if(mastered)changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
     return{
       ...task,
@@ -340,7 +355,7 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       missionProgress:progress,
       status,
       successfulGames:confirmed,
-      gamesObserved:attempts.length,
+      gamesObserved:observedAttempts.length,
       masteryRequired:required,
       missionHistory:attempts,
       lastUpdatedReason:mastered
