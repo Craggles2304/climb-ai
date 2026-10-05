@@ -44,7 +44,7 @@ test('desktop renderer shows a live draft board instead of a repeated lock promp
     assert.ok(renderer.includes(text),text);
   }
   assert.ok(renderer.includes("champion?'HOVERING':'CHOOSING'"));
-  assert.ok(renderer.includes("Preview only — change your hover freely."));
+  assert.ok(renderer.includes("Preview only — the path to win will freeze when you lock in and sharpen as the full draft appears."));
 });
 
 test('web champ select follows draft changes at a Nano-safe cadence and labels hover state',()=>{
