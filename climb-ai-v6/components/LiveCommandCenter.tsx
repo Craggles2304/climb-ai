@@ -116,7 +116,8 @@ return <div className="match-room">
         <p>{latestMatch.champion} · {latestMatch.kills}/{latestMatch.deaths}/{latestMatch.assists} · {clock(latestMatch.durationSeconds)} · {latestMatch.result==='WIN'?'Victory':'Defeat'}</p>
       </div>
       <div className="match-room-review-stats">
-        <span><small>CS / MIN</small><b>{Number.isFinite(latestMatch.metrics.csPerMin)?latestMatch.metrics.csPerMin.toFixed(1):'—'}</b></span>
+        <span><small>FARM</small><b>{Number.isFinite(latestMatch.metrics.cs)?Math.round(latestMatch.metrics.cs):'—'} CS</b></span>
+        <span><small>CS / MIN</small><b>{Number.isFinite(latestMatch.metrics.csPerMin)?latestMatch.metrics.csPerMin.toFixed(2):'—'}</b></span>
         <span><small>DEATHS</small><b>{latestMatch.deaths}</b></span>
         <span><small>ROLE</small><b>{canonicalLeagueRole(latestMatch.role)||latestMatch.role}</b></span>
       </div>
