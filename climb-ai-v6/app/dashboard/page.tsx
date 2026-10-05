@@ -12,6 +12,7 @@ import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {buildJourneyState} from '@/lib/journeyState';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
@@ -57,17 +58,16 @@ export default function Dashboard(){
   const online=devices.some(device=>recent(device.last_seen_at));
   const latest=matches[0]??null;
 
-  const next=!deviceLoaded
-    ?{eyebrow:'CHECKING YOUR SETUP',title:'Finding your Companion…',body:'OP CLIMB is checking the one thing you need to do next.',cta:'CHECKING…',href:'/live'}
-    :!linked
-      ?{eyebrow:'STEP 1 · CONNECT',title:'Connect your Companion.',body:'Pair the Windows Companion once. After that, OP CLIMB follows your games automatically.',cta:'CONNECT COMPANION →',href:'/live'}
-      :!online
-        ?{eyebrow:'COMPANION OFFLINE',title:'Reconnect before you queue.',body:'Your PC is paired, but OP CLIMB is not receiving a live heartbeat right now.',cta:'OPEN MATCH ROOM →',href:'/live'}
-        :!baselineReady
-          ?{eyebrow:'STEP 2 · BUILD YOUR DNA',title:`Play baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}.`,body:`Play normally as ${active.role}. OP CLIMB is learning your real starting shape before it gives you a personalised fix.`,cta:'OPEN MATCH ROOM →',href:'/live'}
-          :focus
-            ?{eyebrow:'YOUR NEXT STEP',title:focusPlain?.name||focus.title,body:focusPlain?.nextGame||focus.gameRule,cta:'PLAY THE NEXT REP →',href:'/live'}
-            :{eyebrow:'YOUR NEXT STEP',title:'Your DNA is ready for its next challenge.',body:'Open Match Room and OP CLIMB will attach the next evidence-backed job to your game.',cta:'OPEN MATCH ROOM →',href:'/live'};
+  const next=buildJourneyState({
+    deviceLoaded,
+    linked,
+    online,
+    baselineGames,
+    focusName:focusPlain?.name||focus?.title,
+    focusJob:focusPlain?.nextGame||focus?.gameRule,
+    focusConfirmed:focusProof?.confirmed,
+    focusRequired:focusProof?.required,
+  });
 
   const missionProven=Boolean(focusProof&&focusProof.confirmed>=focusProof.required);
   const steps=[
@@ -117,7 +117,7 @@ export default function Dashboard(){
 
     <section className="op-next-step">
       <div>
-        <span>{next.eyebrow}</span>
+        <span>{next.status}</span>
         <h2>{next.title}</h2>
         <p>{next.body}</p>
       </div>
