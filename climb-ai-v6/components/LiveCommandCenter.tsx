@@ -147,24 +147,24 @@ return <div className="match-room">
       </article>
 
       <article className="panel panel-padding match-room-review-card is-next">
-        <div className="eyebrow">NEXT GAME · ONE THING</div>
-        <h3>{lastGameReport.mission.title}</h3>
-        <p>{lastGameReview.mission.rule}</p>
-        <div className="match-room-pass-bar"><span>WE'LL KNOW IT'S IMPROVING WHEN</span><b>{lastGameReview.mission.target}</b></div>
+        <div className="eyebrow">{baselineReady?'NEXT GAME · PRIORITY MISSION':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} · PROVISIONAL COACHING`}</div>
+        <h3>{baselineReady?(focusMission?.title||lastGameReport.mission.title):lastGameReport.mission.title}</h3>
+        <p>{baselineReady?(focusMission?.gameRule||lastGameReview.mission.rule):lastGameReview.mission.rule+' This is coaching from this game only — not a permanent DNA mission yet.'}</p>
+        <div className="match-room-pass-bar"><span>{baselineReady?"WE'LL KNOW IT'S IMPROVING WHEN":'PERMANENT MISSIONS UNLOCK'}</span><b>{baselineReady?lastGameReview.mission.target:'AFTER BASELINE 3/3'}</b></div>
       </article>
     </div>
 
     <div className="match-room-review-actions">
       <Link className="btn primary" href={'/analyse/'+encodeURIComponent(latestMatch.id)}>OPEN FULL GAME REVIEW →</Link>
-      <Link className="btn secondary" href="/ilp">SEE MY DNA</Link>
+      <Link className="btn secondary" href="/ilp">{baselineReady?'SEE MY DNA':'SEE BASELINE STATUS'}</Link>
     </div>
   </section>}
 
 
   <section className="match-room-focus panel">
     <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT MATCH · YOUR ONE FOCUS':'NEXT MATCH · DNA BASELINE'}</div>
-    <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your first challenge is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
-    <p>{recording?'OP CLIMB is recording the evidence you entered the match with. It will not add live tactical advice.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your evidence-backed challenge.'):'Play normally. OP CLIMB is learning your starting habits before it gives you a personalised challenge.'}</p>
+    <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your priority mission is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
+    <p>{recording?'OP CLIMB is recording the evidence you entered the match with. It will not add live tactical advice.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your priority mission.'):'Play normally. OP CLIMB is building your baseline. Permanent DNA missions unlock after game 3.'}</p>
     {!recording&&<div className="match-room-cue"><span>REMEMBER</span><strong>{baselineReady?(focusMission?.gameRule||session?.gameRule||'One decision. Keep it simple.'):'Do not change your play for the system yet — give it a real baseline.'}</strong></div>}
     {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
   </section>
