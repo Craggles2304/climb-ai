@@ -262,7 +262,7 @@ export default function Analysis(){
 
     {section==='evidence'&&<div className="ar-evidence-page">
     {!baselineReady&&<section className="ar-baseline-evidence panel">
-      <div className="eyebrow">BASELINE EVIDENCE · ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}</div>
+      <div className="eyebrow">BASELINE EVIDENCE · {Math.min(baselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES}</div>
       <h2>Your missions are deliberately still locked.</h2>
       <p>These observations are useful for reviewing this match, but OP CLIMB will not convert one or two games into your permanent player identity. Finish the three-game role baseline first.</p>
       <Link className="btn primary" href="/live">PLAY BASELINE GAME {Math.min(baselineGames+1,DNA_BASELINE_GAMES)} →</Link>
@@ -275,11 +275,11 @@ export default function Analysis(){
         const mastered=task.status==='MASTERED'&&latest&&attempt.banksPass;
         const xp=attempt.banksPass?XP_PER_PROVEN_REP+(mastered?XP_PER_MISSION_MASTERY:0):0;
         return <article key={task.id}>
-          <span>{attempt.banksPass?'PROVEN REP':'REVIEWED GAME'}</span>
+          <span>{attempt.banksPass?'PROVEN GAME':'REVIEWED GAME'}</span>
           <b>{plain.name}</b>
           <MissionMeasurementBadge metric={task.metric} compact/>
           <strong className={attempt.banksPass?'good':'watch'}>{mastered?'MASTERED ✓':attempt.banksPass?'PASS ✓':'NOT BANKED'}</strong>
-          <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'rep banked')):'The metric did not clear the proof bar this game.'}</small>
+          <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'proven game banked')):'The metric did not clear the proof bar this game.'}</small>
         </article>;
       })}</div>
     </section>}
