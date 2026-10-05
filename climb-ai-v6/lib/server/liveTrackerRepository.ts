@@ -83,6 +83,28 @@ export async function authenticateTrackerToken(token:string):Promise<TrackerDevi
   return lookup;
 }
 
+export async function claimLiveTelemetryIngest(device:TrackerDevice,clientSessionId:string,isSnapshot:boolean){
+  const db=getSupabaseAdmin();
+  if(!db)throw new Error('Supabase is not configured.');
+  const {data,error}=await db.rpc('claim_live_telemetry_ingest',{
+    p_device_id:device.id,
+    p_client_session_id:clientSessionId,
+    p_is_snapshot:isSnapshot,
+    p_limit:30,
+    p_window_seconds:60,
+    p_sample_seconds:10,
+  });
+  if(error)throw new Error(error.message);
+  const result=(data&&typeof data==='object')?data as Record<string,unknown>:{};
+  return{
+    allowed:result.allowed!==false,
+    sampleAccepted:result.sampleAccepted!==false,
+    reason:String(result.reason??'OK'),
+    count:Number(result.count??0),
+    limit:Number(result.limit??30),
+  };
+}
+
 export async function recordLiveReadCheckpoint(device:TrackerDevice,input:{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
   const {data:session,error:sessionError}=await db.from('live_telemetry_sessions').select('id').eq('device_id',device.id).eq('user_id',device.userId).eq('status','ACTIVE').order('started_at',{ascending:false}).limit(1).maybeSingle();
@@ -104,22 +126,18 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
   if(!snapshots.length)throw new Error('Completed match bundle requires at least one keyframe.');
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
   const now=new Date().toISOString();
-  const strength=buildStrengthTimeline(snapshots);
-  const proAnalysis=buildLiveProAnalysis(snapshots,strength);
-  const gameVersion=await latestPatch().catch(()=>null),patch=canonicalLeaguePatch(gameVersion);
   const summary={
-    ...strength,
-    proAnalysis,
-    decisionGraph:(proAnalysis as any)?.decisionGraph??null,
     capture:{
-      mode:'LOCAL_FIRST_V1',
+      mode:'LOCAL_FIRST_QUEUE_V1',
       count:snapshots.length,
+      keyframes:snapshots,
       latestSnapshot:snapshots[snapshots.length-1]??null,
       readCheckpoints:envelope.readCheckpoints??[],
       markedMoments:envelope.markedMoments??[],
       persistedAt:now,
     },
-    riotEnrichment:{status:riotEnabled()?'DEFERRED':'DISABLED'},
+    processing:{status:'QUEUED',queuedAt:now},
+    riotEnrichment:{status:'DEFERRED'},
     learningPlanSync:{status:'DEFERRED'},
   };
   const payload={
@@ -132,24 +150,33 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     last_seen_at:now,
     status:'COMPLETE',
     ended_at:envelope.endedAt??now,
-    patch,
-    game_version:gameVersion,
-    patch_source:patch?'DATA_DRAGON_CURRENT_AT_RECORDING':'UNKNOWN',
-    metadata:{deviceName:device.deviceName,captureMode:'LOCAL_FIRST_V1',captureCount:snapshots.length},
+    patch:null,
+    game_version:null,
+    patch_source:'UNKNOWN',
+    metadata:{deviceName:device.deviceName,captureMode:'LOCAL_FIRST_QUEUE_V1',captureCount:snapshots.length},
     summary,
   };
+  let sessionId:string|null=null;
   const {data,error}=await db.from('live_telemetry_sessions').insert(payload).select('id').single();
   if(error){
-    if(error.code==='23505'){
-      const {data:existing,error:existingError}=await db.from('live_telemetry_sessions')
-        .select('id').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
-      if(existingError)throw new Error(existingError.message);
-      if(existing?.id)return{sessionId:existing.id as string};
-    }
-    throw new Error(error.message);
-  }
-  if(!data?.id)throw new Error('Completed match bundle could not be stored.');
-  return{sessionId:data.id as string};
+    if(error.code!=='23505')throw new Error(error.message);
+    const {data:existing,error:existingError}=await db.from('live_telemetry_sessions')
+      .select('id').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
+    if(existingError)throw new Error(existingError.message);
+    sessionId=(existing?.id as string|undefined)??null;
+  }else sessionId=(data?.id as string|undefined)??null;
+  if(!sessionId)throw new Error('Completed match bundle could not be queued.');
+
+  const {error:queueError}=await db.from('live_postgame_jobs').upsert({
+    session_id:sessionId,
+    user_id:device.userId,
+    riot_account_id:device.riotAccountId,
+    status:'PENDING',
+    available_at:now,
+    updated_at:now,
+  },{onConflict:'session_id',ignoreDuplicates:true});
+  if(queueError)throw new Error(queueError.message);
+  return{sessionId,queued:true,processing:'QUEUED'};
 }
 
 export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelope){
