@@ -42,11 +42,13 @@ const liveReview=fs.readFileSync('components/LiveFightReviewMount.tsx','utf8');
 const analysePage=fs.readFileSync('app/analyse/[match]/page.tsx','utf8');
 const analyseApi=fs.readFileSync('app/api/analyse/route.ts','utf8');
 
-test('completed live review exposes the saved match id for full analysis',()=>{
+test('completed live review exposes the saved match id through Match Room',()=>{
   assert.ok(liveRead.includes("db.from('matches').select('id').eq('live_session_id',session.id)"));
   assert.ok(liveRead.includes('matchId=(matchRow as any)?.data?.id??null'));
-  assert.ok(liveCenter.includes('SEE MY PROGRESS →'));
-  assert.ok(liveCenter.includes('DETAILED MATCH REVIEW'));
+  assert.ok(liveCenter.includes('MATCH ROOM · LAST GAME'));
+  assert.ok(liveCenter.includes('OPEN FULL GAME REVIEW →'));
+  assert.ok(liveCenter.includes("href={'/analyse/'+encodeURIComponent(latestMatch.id)}"));
+  assert.ok(liveCenter.includes('SEE LONG-TERM DEVELOPMENT'));
   assert.ok(liveReview.includes('OPEN FULL MATCH REVIEW →'));
 });
 
