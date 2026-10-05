@@ -20,7 +20,7 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=15_000;
-const RUNTIME_VERSION='2026.09.29.3';
+const RUNTIME_VERSION='2026.10.05.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
@@ -516,19 +516,33 @@ function snapshotSignal(snapshot){
   return[
     me?.scores?.kills??0,me?.scores?.deaths??0,me?.scores?.assists??0,
     me?.isDead?1:0,me?.level??0,Math.floor(num(me?.itemGold,0)/900),eventKey,
+    Math.floor(num(snapshot?.gameTime,0)/300),
+    Math.floor(num(me?.scores?.creepScore,0)/20),
   ].join(':');
 }
 function thinKeyframes(frames){
   const ordered=[...frames].filter(Boolean).sort((a,b)=>num(a?.gameTime,0)-num(b?.gameTime,0));
   const deduped=ordered.filter((frame,index)=>index===0||Math.abs(num(frame?.gameTime,0)-num(ordered[index-1]?.gameTime,0))>=1);
   if(deduped.length<=MAX_LOCAL_KEYFRAMES)return deduped;
-  const result=[];
-  for(let i=0;i<MAX_LOCAL_KEYFRAMES;i++){
-    const index=Math.round(i*(deduped.length-1)/(MAX_LOCAL_KEYFRAMES-1));
-    const frame=deduped[index];
-    if(frame&&!result.includes(frame))result.push(frame);
+  const selected=[];
+  const add=frame=>{if(frame&&!selected.includes(frame))selected.push(frame)};
+  const nearest=(seconds,tolerance=30)=>{
+    let best=null,bestDistance=Infinity;
+    for(const frame of deduped){
+      const distance=Math.abs(num(frame?.gameTime,0)-seconds);
+      if(distance<=tolerance&&distance<bestDistance){best=frame;bestDistance=distance}
+    }
+    return best;
+  };
+  add(deduped[0]);
+  for(const seconds of [300,600,900,1200])add(nearest(seconds));
+  add(deduped[deduped.length-1]);
+  const remaining=Math.max(0,MAX_LOCAL_KEYFRAMES-selected.length);
+  for(let i=0;i<remaining;i++){
+    const index=Math.round((i+1)*(deduped.length-1)/(remaining+1));
+    add(deduped[index]);
   }
-  return result;
+  return selected.sort((a,b)=>num(a?.gameTime,0)-num(b?.gameTime,0)).slice(0,MAX_LOCAL_KEYFRAMES);
 }
 function recordLocalKeyframe(snapshot,force=false){
   if(!session)return;
