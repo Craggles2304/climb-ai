@@ -176,28 +176,35 @@ function fightCommand(team){
   if(label.includes('PICK'))return'PICK FIRST → RESET OR TAKE THE 5V4';
   return commandFrom(team?.teamfight?.label,team?.teamfight?.summary,'STAY CONNECTED → FIGHT ON ONE CALL');
 }
-function ourWinCommand(team,matchup){
-  const rolePlan=team?.roleWinCondition;
-  const steps=Array.isArray(rolePlan?.steps)?rolePlan.steps:[];
-  if(steps.length===5){
-    const shape=oneLine(rolePlan?.compPlan,70)||'PLAY THE DRAFT';
-    const fight=oneLine(steps[3]?.value,95);
-    const convert=oneLine(steps[4]?.value,95);
-    return [shape,fight,convert].filter(Boolean).join(' → ');
-  }
-  const server=oneLine(team?.ourWinCondition,180);
-  if(server)return server;
-  const label=String(team?.teamfight?.label||'').toUpperCase();
-  const play=oneLine(team?.playAround,118);
-  const job=oneLine(team?.yourJob,118);
-  if(label.includes('FRONT')||label.includes('LAYERED'))return oneLine(`WIN CONNECTED FRONT-TO-BACK FIGHTS. ${play||job}`,150);
-  if(label.includes('DIVE'))return oneLine(`CREATE FIRST CONTACT, THEN ENTER TOGETHER ON ONE TARGET. ${play}`,150);
-  if(label.includes('POKE'))return'ARRIVE FIRST → TAKE SPACE → LOWER THEIR HP → COMMIT WITH THE ADVANTAGE → TAKE THE OBJECTIVE.';
-  if(label.includes('PICK'))return'CONTROL VISION → CATCH ONE PLAYER → USE THE 5V4 → TAKE THE OBJECTIVE INSTEAD OF CHASING.';
-  return oneLine(`ARRIVE FIRST → STAY CONNECTED → FIGHT ON ONE CALL → CONVERT TO THE OBJECTIVE. ${play||job||firstText(matchup?.winCondition)}`,180)||'CREATE THE FIRST CLEAN ADVANTAGE → STAY CONNECTED → CONVERT IT INTO THE OBJECTIVE.';
+function compactNames(values,max=2){
+  const list=Array.isArray(values)?values.map(value=>String(value||'').trim()).filter(Boolean):[];
+  if(!list.length)return'';
+  return list.slice(0,max).join(' / ').toUpperCase()+(list.length>max?' +'+String(list.length-max):'');
 }
-function theirWinCommand(team){return oneLine(team?.theirWinCondition,150)||oneLine(team?.roleWinCondition?.lossCondition,150)||'THEY FIND AN ISOLATED TARGET OR BREAK OUR FORMATION BEFORE THE FIGHT STARTS'}
-function biggestThrowCommand(team){return oneLine(team?.biggestThrow,170)||oneLine(team?.roleWinCondition?.lossCondition,170)||'BREAKING FORMATION FOR A LOW-VALUE CHASE'}
+function ourWinCommand(team,matchup){
+  const shape=String(team?.roleWinCondition?.compPlan||team?.teamfight?.label||'').toUpperCase();
+  if(shape.includes('POKE'))return'POKE FIRST → FORCE THEM TO ENTER → CLEAN UP → OBJECTIVE';
+  if(shape.includes('FRONT'))return'HOLD FORMATION → LET THEM ENTER → FRONT-TO-BACK → OBJECTIVE';
+  if(shape.includes('DIVE'))return'CREATE FIRST CONTACT → DIVE TOGETHER → OBJECTIVE';
+  if(shape.includes('PICK'))return'CONTROL VISION → FIND ONE PICK → 5V4 → OBJECTIVE';
+  return'ARRIVE FIRST → STAY CONNECTED → WIN THE FIGHT → OBJECTIVE';
+}
+function theirWinCommand(team){
+  const identity=String(team?.theirIdentity||'').toUpperCase();
+  if(identity.includes('DIVE'))return'BACK-LINE ACCESS → COLLAPSE ON YOUR CARRY';
+  if(identity.includes('POKE'))return'CHIP YOU DOWN → FORCE YOU TO ENTER LOW';
+  if(identity.includes('FRONT'))return'STABLE FRONT-TO-BACK 5V5';
+  if(identity.includes('PICK')||identity.includes('BURST'))return'ISOLATE ONE TARGET → FORCE THE 5V4';
+  return oneLine(team?.theirWinCondition,88)||'BREAK YOUR FORMATION BEFORE THE FIGHT';
+}
+function biggestThrowCommand(team){
+  const raw=String(team?.biggestThrow||team?.roleWinCondition?.lossCondition||'').toUpperCase();
+  if(/WALK|PAST|SAFE DAMAGE|LOWER-HEALTH/.test(raw))return'STEP PAST PEEL TO REACH A LOW-HP TARGET';
+  if(/SPLIT|FORMATION/.test(raw))return'BREAK FORMATION / LEAVE YOUR PEEL';
+  if(/STAGGER|EARLY/.test(raw))return'ENTER ALONE BEFORE YOUR TEAM CAN FOLLOW';
+  if(/FULL HEALTH|POKE/.test(raw))return'FORCE BEFORE YOUR POKE CREATES AN EDGE';
+  return oneLine(raw,88)||'CHASE AFTER THE FIGHT IS ALREADY WON';
+}
 function phaseLabels(role){
   if(role==='JUNGLE')return['01 · PATH','02 · PRESSURE','03 · OBJECTIVE','04 · FIGHT'];
   if(role==='SUPPORT')return['01 · LANE','02 · ROAM / VISION','03 · OBJECTIVE','04 · FIGHT'];
@@ -207,14 +214,47 @@ function renderRoleWin(team,set){
   const plan=team?.roleWinCondition;
   const steps=Array.isArray(plan?.steps)?plan.steps.slice(0,5):[];
   if(steps.length!==5)return false;
-  set('opStrategyHeading','YOUR PATH TO WIN');
+  const role=String(plan?.role||'').toUpperCase();
+  const protect=compactNames(team?.compositionRead?.protectors,2)||'YOUR FRONT LINE';
+  const threats=compactNames(team?.compositionRead?.enemyThreats,2)||'THEIR ACCESS';
+  set('opStrategyHeading','WIN THIS GAME');
   set('opCompPlan',oneLine(plan?.compPlan,70)||'PLAY THE DRAFT');
-  set('opRoleStepLabel1','1 · EARLY GAME');
-  set('opRoleStep1',oneLine(steps[0]?.value,115)||'PLAY CLEAN');
-  set('opRoleStepLabel2','2 · SETUP');
-  set('opRoleStep2',oneLine([steps[1]?.value,steps[2]?.value].filter(Boolean).join(' → '),145)||'SET UP THE FIGHT');
-  set('opRoleStepLabel3','3 · FIGHT → CONVERT');
-  set('opRoleStep3',oneLine([steps[3]?.value,steps[4]?.value].filter(Boolean).join(' → '),155)||'WIN THE FIGHT → TAKE THE OBJECTIVE');
+  if(role==='ADC'){
+    set('opRoleStepLabel1','1 · GET PAID');
+    set('opRoleStep1','FARM → CORE ITEMS');
+    set('opRoleStepLabel2','2 · STAY SAFE');
+    set('opRoleStep2',`PLAY BEHIND ${protect} → MAKE ${threats} CROSS THEM`);
+    set('opRoleStepLabel3','3 · CASH OUT');
+    set('opRoleStep3','SURVIVE FIRST ACCESS → HIT CLOSEST SAFE TARGET → OBJECTIVE');
+  }else if(role==='JUNGLE'){
+    set('opRoleStepLabel1','1 · TEMPO');
+    set('opRoleStep1','CLEAR CLEAN → MOVE ONLY WITH LANE CONNECTION');
+    set('opRoleStepLabel2','2 · SET THE MAP');
+    set('opRoleStep2','RESET → ARRIVE FIRST → CONTROL THE NEXT OBJECTIVE');
+    set('opRoleStepLabel3','3 · CASH OUT');
+    set('opRoleStep3','ONE CLEAN FIGHT → OBJECTIVE → RESET');
+  }else if(role==='SUPPORT'){
+    set('opRoleStepLabel1','1 · CREATE SPACE');
+    set('opRoleStep1','WIN LANE SPACE → KEEP YOUR CARRY PLAYABLE');
+    set('opRoleStepLabel2','2 · SET THE MAP');
+    set('opRoleStep2','MOVE WITH JUNGLE → VISION FIRST → RECONNECT');
+    set('opRoleStepLabel3','3 · CASH OUT');
+    set('opRoleStep3','ENGAGE OR PEEL → WON FIGHT → OBJECTIVE');
+  }else if(role==='MID'){
+    set('opRoleStepLabel1','1 · OWN MID');
+    set('opRoleStep1','CATCH WAVE → KEEP FIRST MOVE');
+    set('opRoleStepLabel2','2 · CONNECT');
+    set('opRoleStep2','MOVE WITH YOUR ENGAGE → ARRIVE BEFORE THEIR MID');
+    set('opRoleStepLabel3','3 · CASH OUT');
+    set('opRoleStep3','WIN ONE FIGHT → OBJECTIVE → RESET');
+  }else{
+    set('opRoleStepLabel1','1 · BUILD EDGE');
+    set('opRoleStep1',oneLine(steps[0]?.value,72)||'PLAY CLEAN');
+    set('opRoleStepLabel2','2 · CONNECT');
+    set('opRoleStep2',oneLine(steps[1]?.value,72)||'SET UP THE FIGHT');
+    set('opRoleStepLabel3','3 · CASH OUT');
+    set('opRoleStep3','WIN THE FIGHT → TAKE THE OBJECTIVE');
+  }
   return true;
 }
 function renderDeepRead(team,set){
@@ -289,18 +329,17 @@ function renderAdaptiveBuild(team){
   const seen=new Set();
   const add=item=>{if(!item||seen.has(item.id))return;seen.add(item.id);unique.push(item)};
   (Array.isArray(build?.core)?build.core.slice(0,2):[]).forEach(add);
-  add(build?.draftItem||null);
-  add(build?.finish||null);
   add(build?.boots||null);
+  add(build?.finish||null);
 
   root.classList.toggle('hidden',unique.length<2);
   if(unique.length<2)return false;
 
   grid.replaceChildren();
   let coreIndex=0;
-  unique.slice(0,5).forEach(item=>{
+  unique.slice(0,4).forEach(item=>{
     const card=document.createElement('article');
-    card.className='op-build-card'+(item?.slot==='DRAFT'?' draft':'');
+    card.className='op-build-card';
     card.title=String(item?.why||'').trim();
 
     const img=document.createElement('img');
@@ -310,25 +349,24 @@ function renderAdaptiveBuild(team){
     const copy=document.createElement('div');
     const label=document.createElement('span');
     if(item?.slot==='CORE'){coreIndex+=1;label.textContent='CORE '+String(coreIndex)}
-    else if(item?.slot==='DRAFT')label.textContent='DRAFT ANSWER';
-    else if(item?.slot==='FINISH')label.textContent='NEXT DAMAGE';
+    else if(item?.slot==='FINISH')label.textContent='NEXT';
     else if(item?.slot==='BOOTS')label.textContent='BOOTS';
     else label.textContent=String(item?.slot||'ITEM');
 
     const name=document.createElement('strong');
     name.textContent=String(item?.name||'ITEM').toUpperCase();
-
-    const why=document.createElement('small');
-    why.textContent=oneLine(item?.why,82)||'Fits this champion and enemy draft.';
-
-    copy.append(label,name,why);card.append(img,copy);grid.appendChild(card);
+    copy.append(label,name);card.append(img,copy);grid.appendChild(card);
   });
 
+  const flex=document.getElementById('opAdaptiveBuildFlex');
+  if(flex){
+    flex.textContent=build?.draftItem
+      ?'FLEX IF NEEDED · '+String(build.draftItem.name||'TECH').toUpperCase()+' — '+oneLine(build.draftItem.why,84).toUpperCase()
+      :'NO FORCED TECH · KEEP THE CORE PATH';
+  }
   if(read){
-    const draft=build?.draftItem
-      ?'DRAFT ANSWER · '+String(build.draftItem.name||'TECH')+' — '+String(build.draftItem.why||'')
-      :'NO FORCED TECH ITEM · KEEP THE CORE DAMAGE PATH';
-    read.textContent=[String(build?.read||'').toUpperCase(),draft.toUpperCase()].filter(Boolean).join('  //  ');
+    const source=String(build?.read||'').match(/CORE · ([^·]+)/i)?.[1]?.trim();
+    read.textContent=(source?'CORE DATA · '+source.toUpperCase():'CURRENT-PATCH CORE')+' · TECH IS CONDITIONAL, NOT A FIXED THIRD ITEM';
   }
   return true;
 }
@@ -388,7 +426,7 @@ function renderMissionReminders(state){
 
   toggle('opStrategyLock',paid);
   toggle('opRoleWin',!hasRoleWin);
-  toggle('opCompPlanChip',!hasRoleWin);
+  toggle('opCompPlanChip',true);
   toggle('opJob',false);
   toggle('opSimpleFlow',hasRoleWin);
   toggle('opPaidWin',!paid);
