@@ -1392,3 +1392,101 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .my-dna-workspace .dna-mission-explain p{font-size:15px}
   .dna-mission-explain section.primary p{font-size:16px}
 }
+
+
+/* Global player journey — one status, one explanation, one next action */
+.op-journey-status{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr) auto;
+  gap:16px;
+  align-items:center;
+  margin:10px 16px 0;
+  padding:12px 14px;
+  border:1px solid rgba(182,246,107,.2);
+  background:
+    linear-gradient(90deg,rgba(182,246,107,.055),rgba(7,12,15,.96) 42%),
+    #071015
+}
+.op-journey-status-step{
+  display:grid;
+  gap:5px;
+  min-width:160px
+}
+.op-journey-status-step span{
+  color:#b6f66b;
+  font:900 10px/1.25 var(--mono);
+  letter-spacing:.09em
+}
+.op-journey-status-step b{
+  color:#eef4f3;
+  font:900 22px/1 var(--display)
+}
+.op-journey-status-copy{
+  min-width:0
+}
+.op-journey-status-copy strong{
+  display:block;
+  color:#f4f8f7;
+  font:900 20px/1.05 var(--display)
+}
+.op-journey-status-copy small{
+  display:block;
+  margin-top:5px;
+  max-width:850px;
+  color:#9cadb0;
+  font-size:13px;
+  line-height:1.45
+}
+.op-journey-status.phase-baseline{
+  border-color:rgba(126,201,255,.24);
+  background:linear-gradient(90deg,rgba(126,201,255,.06),rgba(7,12,15,.96) 42%),#071015
+}
+.op-journey-status.phase-baseline .op-journey-status-step span{color:#7ec9ff}
+.op-journey-status.phase-dna_reveal{
+  border-color:rgba(182,246,107,.34);
+  box-shadow:inset 3px 0 0 #b6f66b
+}
+.op-journey-status.phase-mission{
+  box-shadow:inset 3px 0 0 #b6f66b
+}
+.op-journey-status.phase-connect,
+.op-journey-status.phase-reconnect{
+  border-color:rgba(255,190,92,.28);
+  background:linear-gradient(90deg,rgba(255,190,92,.055),rgba(7,12,15,.96) 42%),#071015
+}
+.op-journey-status.phase-connect .op-journey-status-step span,
+.op-journey-status.phase-reconnect .op-journey-status-step span{color:#ffbe5c}
+
+@media(max-width:900px){
+  .op-journey-status{
+    grid-template-columns:1fr auto;
+    gap:10px 14px
+  }
+  .op-journey-status-step{
+    min-width:0
+  }
+  .op-journey-status-copy{
+    grid-column:1/-1;
+    grid-row:2
+  }
+  .op-journey-status>.btn{
+    grid-column:2;
+    grid-row:1;
+    white-space:nowrap
+  }
+}
+@media(max-width:680px){
+  .op-journey-status{
+    grid-template-columns:1fr;
+    margin:8px 10px 0;
+    padding:12px
+  }
+  .op-journey-status-copy,
+  .op-journey-status>.btn{
+    grid-column:auto;
+    grid-row:auto
+  }
+  .op-journey-status-copy strong{font-size:19px}
+  .op-journey-status-copy small{font-size:13px}
+  .op-journey-status>.btn{width:100%;justify-content:center}
+}
