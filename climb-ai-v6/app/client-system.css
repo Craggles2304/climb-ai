@@ -1301,3 +1301,94 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
     margin-top:8px
   }
 }
+
+
+/* My DNA readability pass — coaching information must be readable at a glance */
+.dna-mission-hub .eyebrow{
+  font-size:10px;
+  line-height:1.25;
+  letter-spacing:.12em
+}
+.dna-mission-hub-head p,
+.my-dna-workspace .dna-mission-hub-head p{
+  font-size:14px;
+  line-height:1.55;
+  color:#aebdbf
+}
+.dna-mission-how small{
+  font-size:10px;
+  line-height:1.2
+}
+.dna-mission-how em,
+.my-dna-workspace .dna-mission-how em{
+  margin-top:6px;
+  font-size:11px;
+  line-height:1.35;
+  color:#93a2a6
+}
+.dna-mission-how b{
+  font-size:11px
+}
+.dna-mission-chip small{
+  font-size:9px;
+  line-height:1.25
+}
+.dna-mission-chip b,
+.my-dna-workspace .dna-mission-chip b{
+  margin-top:8px;
+  font-size:15px;
+  line-height:1.08
+}
+.dna-mission-chip span{
+  margin-top:7px;
+  font-size:11px;
+  line-height:1.2;
+  color:#91a2a7
+}
+.dna-mission-spotlight-top>div>span,
+.dna-mission-proof>div>span{
+  font-size:10px;
+  line-height:1.25
+}
+.dna-mission-count small{
+  font-size:9px;
+  line-height:1.2
+}
+.dna-mission-explain span{
+  font-size:10px;
+  line-height:1.25
+}
+.dna-mission-explain p,
+.my-dna-workspace .dna-mission-explain p{
+  margin-top:9px;
+  font-size:14px;
+  line-height:1.55;
+  color:#d5dfde
+}
+.dna-mission-explain section.primary p{
+  font-size:15px;
+  line-height:1.52;
+  font-weight:750;
+  color:#fff
+}
+.dna-mission-explain section{
+  padding:14px
+}
+.dna-mission-proof small{
+  font-size:11px;
+  line-height:1.45;
+  color:#93a2a6
+}
+.dna-mission-proof .btn{
+  font-size:11px
+}
+
+@media(max-width:760px){
+  .dna-mission-hub-head p,
+  .my-dna-workspace .dna-mission-hub-head p{font-size:14px}
+  .dna-mission-chip b,
+  .my-dna-workspace .dna-mission-chip b{font-size:15px}
+  .dna-mission-explain p,
+  .my-dna-workspace .dna-mission-explain p{font-size:15px}
+  .dna-mission-explain section.primary p{font-size:16px}
+}
