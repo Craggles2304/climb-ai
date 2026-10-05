@@ -11,7 +11,7 @@ import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapsho
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
-import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
@@ -69,25 +69,51 @@ export default function Dashboard(){
             ?{eyebrow:'YOUR NEXT STEP',title:focusPlain?.name||focus.title,body:focusPlain?.nextGame||focus.gameRule,cta:'PLAY THE NEXT REP →',href:'/live'}
             :{eyebrow:'YOUR NEXT STEP',title:'Your DNA is ready for its next challenge.',body:'Open Match Room and OP CLIMB will attach the next evidence-backed job to your game.',cta:'OPEN MATCH ROOM →',href:'/live'};
 
+  const missionProven=Boolean(focusProof&&focusProof.confirmed>=focusProof.required);
   const steps=[
-    {label:'CONNECT',done:linked,active:!linked},
-    {label:'BASELINE',done:baselineReady,active:linked&&!baselineReady},
-    {label:'FIND FIX',done:baselineReady&&Boolean(focus),active:baselineReady&&!focus},
-    {label:'PROVE IT',done:Boolean(focusProof&&focusProof.confirmed>=focusProof.required),active:Boolean(focus&&focusProof&&focusProof.confirmed<focusProof.required)},
-    {label:'EVOLVE',done:mastered>0,active:Boolean(focusProof&&focusProof.confirmed>=focusProof.required&&mastered===0)},
+    {label:'CONNECT COMPANION',done:linked,active:!linked},
+    {label:'PLAY 3 GAMES',done:baselineReady,active:linked&&!baselineReady},
+    {label:'REVEAL DNA',done:baselineReady,active:false},
+    {label:'TRAIN ONE STRAND',done:missionProven,active:Boolean(baselineReady&&focus&&!missionProven)},
+    {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
   ];
 
   return <AppShell>
-    <header className="op-home-head">
+    <header className="op-home-head op-home-head-dna">
       <div>
-        <div className="eyebrow">HOME · {active.gameName}{active.tagline}</div>
-        <h1>Know exactly what to do next.</h1>
-        <p>Connect. Build your DNA. Fix one thing. Prove it in games. Evolve the player.</p>
+        <div className="eyebrow">GAME DNA · {active.gameName}{active.tagline}</div>
+        <h1>Your games build your player identity.</h1>
+        <p>Six strands. One living profile. Every tracked game gives OP CLIMB more evidence about the player you are becoming.</p>
       </div>
       <span className={'op-home-connection '+(online?'is-online':linked?'is-paired':'')}>
         <i/>{online?'COMPANION LIVE':linked?'COMPANION PAIRED':'COMPANION NOT CONNECTED'}
       </span>
     </header>
+
+    <section className="op-home-dna op-home-dna-primary">
+      <div className="op-home-dna-head">
+        <div>
+          <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
+          <h2>{baselineReady?'This is how you actually play.':'Play three games. Reveal your DNA.'}</h2>
+          <p>{baselineReady
+            ?`Your live ${active.role} profile measures six parts of your game. Missions train the weakest strand while every match keeps measuring the whole player.`
+            :`Connect the Companion and play ${DNA_BASELINE_GAMES} normal ${active.role} games. OP CLIMB keeps the profile neutral until it has enough evidence to reveal your real starting shape.`}</p>
+        </div>
+        <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
+      </div>
+      <div className="op-home-dna-legend" aria-label="Six Game DNA strands">
+        {DNA_DOMAINS.map(domain=><span key={domain} style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}><i/>{DNA_DOMAIN_LABELS[domain]}</span>)}
+      </div>
+      <div className="op-home-dna-stage">
+        <ClientGameDna
+          player={active.gameName+active.tagline}
+          role={active.role}
+          missions={dnaMissions}
+          baselineGames={baselineGames}
+          baselineRequired={DNA_BASELINE_GAMES}
+        />
+      </div>
+    </section>
 
     <section className="op-next-step">
       <div>
@@ -99,34 +125,12 @@ export default function Dashboard(){
     </section>
 
     <section className="op-climb-path" aria-label="Your OP CLIMB journey">
-      <div className="op-climb-path-head"><span>YOUR CLIMB PATH</span><b>{baselineReady?'DNA ACTIVE':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
+      <div className="op-climb-path-head"><span>THE DNA LOOP</span><b>{baselineReady?'DNA ACTIVE':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
       <ol>
         {steps.map((step,index)=><li key={step.label} className={step.done?'done':step.active?'active':''}>
           <i>{step.done?'✓':index+1}</i><span>{step.label}</span>
         </li>)}
       </ol>
-    </section>
-
-    <section className="op-home-dna">
-      <div className="op-home-dna-head">
-        <div>
-          <div className="eyebrow">GAME DNA · THE HEART OF OP CLIMB</div>
-          <h2>Your decisions become your player identity.</h2>
-          <p>{baselineReady
-            ?`This is your live ${active.role} development profile. Every tracked game can strengthen, expose or evolve one of the six strands.`
-            :`Your ${active.role} DNA is building. Complete ${DNA_BASELINE_GAMES} real role games before OP CLIMB colours the profile and starts judging habits.`}</p>
-        </div>
-        <Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link>
-      </div>
-      <div className="op-home-dna-stage">
-        <ClientGameDna
-          player={active.gameName+active.tagline}
-          role={active.role}
-          missions={dnaMissions}
-          baselineGames={baselineGames}
-          baselineRequired={DNA_BASELINE_GAMES}
-        />
-      </div>
     </section>
 
     <section className="op-home-focus-grid">
