@@ -25,17 +25,18 @@ test('every League role has a five-part role-specific win condition',()=>{
   }
 });
 
-test('paid Companion condenses the five-part engine into three winning actions',()=>{
+test('paid Companion condenses the five-part engine into three visible commands',()=>{
   assert.ok(preloadSource.includes('opRoleStepLabel1'));
   assert.ok(preloadSource.includes('opRoleStepLabel2'));
   assert.ok(preloadSource.includes('opRoleStepLabel3'));
-  assert.ok(preloadSource.includes("'2 · SETUP'"));
-  assert.ok(preloadSource.includes("'3 · FIGHT → CONVERT'"));
+  assert.ok(preloadSource.includes("'1 · GET PAID'"));
+  assert.ok(preloadSource.includes("'2 · STAY SAFE'"));
+  assert.ok(preloadSource.includes("'3 · CASH OUT'"));
   assert.ok(preloadSource.includes('steps.length!==5'));
-  assert.ok(preloadSource.includes('HOW WE WIN'));
-  assert.ok(preloadSource.includes('HOW THEY WIN'));
-  assert.ok(preloadSource.includes('BIGGEST THROW'));
-  assert.ok(preloadSource.includes('YOUR CLIMB MISSION'));
+  assert.ok(preloadSource.includes('WIN CONDITION'));
+  assert.ok(preloadSource.includes('THEY WANT'));
+  assert.ok(preloadSource.includes("DON'T"));
+  assert.ok(preloadSource.includes('CLIMB MISSION'));
 });
 
 test('FREE never receives the paid structured role read',()=>{
