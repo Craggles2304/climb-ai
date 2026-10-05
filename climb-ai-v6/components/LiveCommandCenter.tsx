@@ -11,6 +11,12 @@ import {readClimbSession,sessionGames as gamesInSession,type ClimbSessionState} 
 import {track} from '@/lib/analytics';
 import {MissionMeasurementBadge} from './MissionMeasurementBadge';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
+import {useProMatch} from './useProMatch';
+import {analyseMatch} from '@/lib/engine';
+import {buildReview} from '@/lib/review';
+import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
 type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};type Item={itemId:number;displayName:string;count:number;price:number};type Player={summonerName:string;riotId:string|null;championName:string;team:string;level:number;position:string|null;itemGold:number;items:Item[];scores:{kills:number;deaths:number;assists:number;creepScore:number;wardScore:number}};type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;championName:string;position:string|null;currentGold:number};players:Player[]};type Review={matchId?:string|null;status:string;lastSeenAt:string|null;snapshotCount:number;latestSnapshot:Snapshot|null};
 export function LiveCommandCenter(){const {active,isOwnAccount,profile,hydrated,refresh:refreshAccount}=useAccount();const {tasks}=useLearningPlan();const detail=coachingLevelFor(active.rank);const [devices,setDevices]=useState<Device[]>([]);const [devicesLoaded,setDevicesLoaded]=useState(false);const [review,setReview]=useState<Review|null>(null);const [pairCode,setPairCode]=useState('');const [pairExpiresAt,setPairExpiresAt]=useState('');const [pairStartedAt,setPairStartedAt]=useState(0);const [deviceName,setDeviceName]=useState('My Windows PC');const [busy,setBusy]=useState(false);const [message,setMessage]=useState('');const [session,setSession]=useState<ClimbSessionState|null>(null);const autoPairStarted=useRef(false);const connectedTracked=useRef(false);const recordingTracked=useRef(false);const completedReviewTracked=useRef('');
@@ -21,21 +27,100 @@ const linked=devices.length>0,online=devices.some(device=>recent(device.last_see
 useEffect(()=>{if(online&&!connectedTracked.current){connectedTracked.current=true;track('companion_connected',{accountId:active.id,deviceCount:devices.length})}},[online,active.id,devices.length]);
 useEffect(()=>{if(recording&&!recordingTracked.current){recordingTracked.current=true;track('companion_recording_started',{accountId:active.id,sessionActive:Boolean(session)})}else if(!recording){recordingTracked.current=false}},[recording,active.id,session]);
 useEffect(()=>{if(review?.status!=='COMPLETE')return;const signature=String(review.lastSeenAt||review.snapshotCount||'complete');if(completedReviewTracked.current===signature)return;completedReviewTracked.current=signature;track('companion_game_completed',{accountId:active.id,snapshotCount:review.snapshotCount,sessionActive:Boolean(session)});void refreshAccount()},[review?.status,review?.lastSeenAt,review?.snapshotCount,active.id,session,refreshAccount]);
-const accountMatches=matchesFor(active.id);const baselineGames=dnaBaselineGameCount(accountMatches,active.role);const baselineReady=dnaBaselineReady(baselineGames);const climbGames=session?gamesInSession(session,accountMatches):[];const sessionTask=session?tasks.find(task=>task.id===session.taskId):undefined;const activeMissions=baselineReady?tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'):[];const trackingMissions=[...(sessionTask?[sessionTask]:[]),...activeMissions.filter(task=>task.id!==sessionTask?.id)].slice(0,3);const nextGame=Math.min((climbGames.length+1),session?.targetGames||3);const latestSessionGame=climbGames.at(-1);const latestEvidence=sessionTask&&latestSessionGame?missionEvidence(sessionTask,latestSessionGame,active.rank):null;const focusMission=baselineReady?(sessionTask??activeMissions[0]??null):null;
+const accountMatches=matchesFor(active.id);
+const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
+const baselineReady=dnaBaselineReady(baselineGames);
+const climbGames=session?gamesInSession(session,accountMatches):[];
+const sessionTask=session?tasks.find(task=>task.id===session.taskId):undefined;
+const activeMissions=baselineReady?tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'):[];
+const trackingMissions=[...(sessionTask?[sessionTask]:[]),...activeMissions.filter(task=>task.id!==sessionTask?.id)].slice(0,3);
+const nextGame=Math.min((climbGames.length+1),session?.targetGames||3);
+const latestSessionGame=climbGames.at(-1);
+const latestEvidence=sessionTask&&latestSessionGame?missionEvidence(sessionTask,latestSessionGame,active.rank):null;
+const focusMission=baselineReady?(sessionTask??activeMissions[0]??null):null;
+
+const latestMatch=useMemo(()=>[...accountMatches]
+  .filter(match=>match.durationSeconds>=300)
+  .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0],[accountMatches]);
+const embeddedLastGameAnalysis=latestMatch?.proAnalysis;
+const {analysis:fetchedLastGameAnalysis,loading:lastGameAnalysisLoading}=useProMatch(embeddedLastGameAnalysis?undefined:latestMatch?.id);
+const lastGameAnalysis=embeddedLastGameAnalysis??fetchedLastGameAnalysis??undefined;
+const lastGameRole=canonicalLeagueRole(latestMatch?.role);
+const lastGameHistory=useMemo(()=>latestMatch?[...accountMatches]
+  .filter(match=>match.id!==latestMatch.id&&(!lastGameRole||canonicalLeagueRole(match.role)===lastGameRole))
+  .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))
+  .slice(0,5):[],[accountMatches,latestMatch?.id,lastGameRole]);
+const lastGameReport=useMemo(()=>latestMatch?analyseMatch({...latestMatch,proAnalysis:lastGameAnalysis},lastGameHistory):null,[latestMatch,lastGameAnalysis,lastGameHistory]);
+const lastGameReview=useMemo(()=>latestMatch&&lastGameReport?buildReview({...latestMatch,proAnalysis:lastGameAnalysis},lastGameReport,active.rank):null,[latestMatch,lastGameAnalysis,lastGameReport,active.rank]);
+const lastGameStrengths=useMemo(()=>latestMatch?positiveEvidenceForMatch({...latestMatch,proAnalysis:lastGameAnalysis},active.rank):[],[latestMatch,lastGameAnalysis,active.rank]);
+const lastGameMoments=useMemo(()=>reviewMoments(lastGameAnalysis),[lastGameAnalysis]);
 async function pair(source:'manual'|'auto'='manual'){if(!isOwnAccount){setMessage('Switch to your own Riot account before pairing.');return}const startedAt=Date.now();track('companion_pair_started',{accountId:active.id,source});setBusy(true);setMessage('');setPairCode('');setPairExpiresAt('');setPairStartedAt(startedAt);try{const res=await fetch('/api/live/pair/code',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({accountId:active.id,deviceName,riotProfile:{gameName:active.gameName,tagline:active.tagline,region:active.region,role:active.role,rank:active.rank,champions:active.champions??[],frustration:profile?.frustration??''}})});const body=await res.json();if(!res.ok){setPairStartedAt(0);setMessage(body.error||'Pairing failed.');return}setPairCode(body.code||'');setPairExpiresAt(body.expiresAt||'');setMessage('Secure pairing ready. If the Companion is already installed, use Open Companion & Connect below — no reinstall is needed.')}catch{setPairStartedAt(0);setMessage('Could not reach the pairing service.')}finally{setBusy(false)}}
 useEffect(()=>{if(!hydrated||!devicesLoaded||!isOwnAccount||online||pairCode||busy||autoPairStarted.current)return;autoPairStarted.current=true;setMessage('Installed Companion detected. Creating a secure one-time pairing…');void pair('auto')},[hydrated,devicesLoaded,isOwnAccount,online,pairCode,busy,active.id]);
 return <div className="match-room">
   <header className="page-head">
     <div>
-      <div className="eyebrow">MATCH ROOM · PREPARE → PLAY</div>
-      <h1>Know your job before you queue.</h1>
-      <p>One focus, one reminder, your champion context and a quiet Companion connection.</p>
+      <div className="eyebrow">{recording?'MATCH ROOM · LIVE TRACKING':latestMatch?'MATCH ROOM · LAST GAME':'MATCH ROOM · PREPARE → PLAY'}</div>
+      <h1>{recording?'Game in progress.':latestMatch?latestMatch.champion+' · '+(latestMatch.result==='WIN'?'VICTORY':'DEFEAT'):'Know your job before you queue.'}</h1>
+      <p>{recording?'OP CLIMB is quietly collecting evidence. Coaching resumes when the game ends.':latestMatch?'See what happened, where it went wrong and the one thing to carry into your next game.':'One focus, one reminder, your champion context and a quiet Companion connection.'}</p>
     </div>
-    <span className={'match-room-state '+(recording?'recording':online?'ready':'offline')}>{recording?'● TRACKING':online?'● READY':'○ CONNECT'}</span>
+    <span className={'match-room-state '+(recording?'recording':latestMatch||online?'ready':'offline')}>{recording?'● TRACKING':latestMatch?'● REVIEW READY':online?'● READY':'○ CONNECT'}</span>
   </header>
 
+  {!recording&&latestMatch&&lastGameReport&&lastGameReview&&<section className="match-room-last-game">
+    <article className="panel match-room-review-hero">
+      <div>
+        <div className="eyebrow">LAST GAME REVIEW · {canonicalLeagueRole(latestMatch.role)||latestMatch.role}</div>
+        <h2>{lastGameReview.headline}</h2>
+        <p>{latestMatch.champion} · {latestMatch.kills}/{latestMatch.deaths}/{latestMatch.assists} · {clock(latestMatch.durationSeconds)} · {latestMatch.result==='WIN'?'Victory':'Defeat'}</p>
+      </div>
+      <div className="match-room-review-stats">
+        <span><small>CS / MIN</small><b>{Number.isFinite(latestMatch.metrics.csPerMin)?latestMatch.metrics.csPerMin.toFixed(1):'—'}</b></span>
+        <span><small>DEATHS</small><b>{latestMatch.deaths}</b></span>
+        <span><small>ROLE</small><b>{canonicalLeagueRole(latestMatch.role)||latestMatch.role}</b></span>
+      </div>
+    </article>
+
+    <div className="match-room-review-grid">
+      <article className="panel panel-padding match-room-review-card is-problem">
+        <div className="eyebrow">WHAT HURT YOU</div>
+        <h3>{lastGameReview.biggestMistake.title}</h3>
+        <p>{lastGameReport.primary.inference}</p>
+        <div className="match-room-proof-list">
+          {lastGameReview.biggestMistake.evidence.slice(0,3).map((line,index)=><div key={index}><span>{String(index+1).padStart(2,'0')}</span><b>{line}</b></div>)}
+        </div>
+      </article>
+
+      <article className="panel panel-padding match-room-review-card is-strength">
+        <div className="eyebrow">WHAT YOU DID WELL</div>
+        {lastGameStrengths.length?<>{lastGameStrengths.slice(0,2).map(item=><div className="match-room-strength" key={item.id}><span>✓ {item.subskill}</span><h3>{item.title}</h3><p>{item.whatHappened}</p></div>)}</>:<><h3>No verified strength yet.</h3><p>OP CLIMB will not invent praise. It only calls a strength when the evidence clears the bar.</p></>}
+      </article>
+
+      <article className="panel panel-padding match-room-review-card">
+        <div className="eyebrow">KEY MOMENTS</div>
+        <h3>{lastGameMoments.length?'Where the game told the story.':'Still building timestamp evidence.'}</h3>
+        <div className="match-room-moment-list">
+          {lastGameMoments.map(moment=><div key={moment.key}><strong>{moment.clock}</strong><span><b>{moment.label}</b><small>{moment.detail}</small></span></div>)}
+          {!lastGameMoments.length&&<p>{lastGameAnalysisLoading?'Reading the full game evidence…':'No reliable timestamped coaching moments were available for this game.'}</p>}
+        </div>
+      </article>
+
+      <article className="panel panel-padding match-room-review-card is-next">
+        <div className="eyebrow">NEXT GAME · ONE THING</div>
+        <h3>{lastGameReport.mission.title}</h3>
+        <p>{lastGameReview.mission.rule}</p>
+        <div className="match-room-pass-bar"><span>WE'LL KNOW IT'S IMPROVING WHEN</span><b>{lastGameReview.mission.target}</b></div>
+      </article>
+    </div>
+
+    <div className="match-room-review-actions">
+      <Link className="btn primary" href={'/analyse/'+encodeURIComponent(latestMatch.id)}>OPEN FULL GAME REVIEW →</Link>
+      <Link className="btn secondary" href="/ilp">SEE LONG-TERM DEVELOPMENT</Link>
+    </div>
+  </section>}
+
+
   <section className="match-room-focus panel">
-    <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'YOUR ONE FOCUS':'DNA BASELINE · OBSERVATION'}</div>
+    <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT MATCH · YOUR ONE FOCUS':'NEXT MATCH · DNA BASELINE'}</div>
     <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your first challenge is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
     <p>{recording?'OP CLIMB is recording the evidence you entered the match with. It will not add live tactical advice.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your evidence-backed challenge.'):'Play normally. OP CLIMB is learning your starting habits before it gives you a personalised challenge.'}</p>
     {!recording&&<div className="match-room-cue"><span>REMEMBER</span><strong>{baselineReady?(focusMission?.gameRule||session?.gameRule||'One decision. Keep it simple.'):'Do not change your play for the system yet — give it a real baseline.'}</strong></div>}
@@ -61,11 +146,10 @@ return <div className="match-room">
     </section>
   </div>
 
-  {ready&&review?.matchId&&<section className="panel panel-padding match-room-complete">
-    <div><div className="eyebrow">GAME COMPLETE</div><h2>See what changed.</h2><p className="muted">My Climb shows what you did well, whether your challenge counted, how your DNA moved and what to take into the next game.</p></div>
+  {ready&&review?.matchId&&review.matchId!==latestMatch?.id&&<section className="panel panel-padding match-room-complete">
+    <div><div className="eyebrow">GAME COMPLETE · PROCESSING</div><h2>Your latest review is being attached.</h2><p className="muted">The match has ended. OP CLIMB is turning the recorded evidence into the Match Room review above.</p></div>
     <div className="mission-actions">
-      <Link className="btn primary" href={'/ilp?game='+encodeURIComponent(review.matchId)}>SEE MY PROGRESS →</Link>
-      <Link className="btn secondary" href={'/analyse/'+encodeURIComponent(review.matchId)}>DETAILED MATCH REVIEW</Link>
+      <Link className="btn secondary" href={'/analyse/'+encodeURIComponent(review.matchId)}>OPEN SAVED MATCH</Link>
     </div>
   </section>}
 
@@ -83,5 +167,35 @@ return <div className="match-room">
     </div>
   </details>
 </div>;
+}
+
+type ReviewMoment={key:string;clock:string;label:string;detail:string};
+
+function reviewMoments(analysis?:ProMatchAnalysis):ReviewMoment[]{
+  if(!analysis)return[];
+  const rows:ReviewMoment[]=[];
+  for(const leak of analysis.leakSignals??[]){
+    for(const seconds of leak.evidenceSeconds??[]){
+      if(!Number.isFinite(seconds))continue;
+      rows.push({key:'leak-'+leak.key+'-'+seconds,clock:clock(seconds),label:leak.label,detail:leak.detail});
+    }
+  }
+  for(const metric of Object.values(analysis.metrics??{})){
+    if(!metric)continue;
+    for(const evidence of metric.evidence??[]){
+      if(typeof evidence.atSeconds!=='number'||!Number.isFinite(evidence.atSeconds))continue;
+      rows.push({key:'metric-'+metric.key+'-'+evidence.atSeconds+'-'+evidence.label,clock:clock(evidence.atSeconds),label:evidence.label||metric.label,detail:evidence.detail||metric.summary});
+    }
+  }
+  const seen=new Set<string>();
+  return rows
+    .sort((a,b)=>clockSeconds(a.clock)-clockSeconds(b.clock))
+    .filter(row=>{const key=row.clock+'|'+row.label+'|'+row.detail;if(seen.has(key))return false;seen.add(key);return true})
+    .slice(0,3);
+}
+
+function clockSeconds(value:string){
+  const [m,s]=value.split(':').map(Number);
+  return (Number.isFinite(m)?m:0)*60+(Number.isFinite(s)?s:0);
 }
 function Mini({label,value}:{label:string;value:string}){return <div className="glass op-live-metric"><div className="eyebrow">{label}</div><strong>{value}</strong></div>}function findMe(s:Snapshot){return s.players.find(p=>Boolean(s.active.riotId&&p.riotId===s.active.riotId))||s.players.find(p=>p.summonerName===s.active.summonerName)||s.players.find(p=>p.championName===s.active.championName)||null}function role(v:string|null){const x=(v||'').toUpperCase();return x==='BOTTOM'?'ADC':x||'ROLE UNKNOWN'}function clock(sec:number){const n=Math.max(0,Math.round(sec));return `${Math.floor(n/60)}:${String(n%60).padStart(2,'0')}`}function recent(value:string|null,ms:number){if(!value)return false;return Date.now()-new Date(value).getTime()<=ms}
