@@ -11,6 +11,7 @@ import type {IssueCategory,Match} from '@/lib/types';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady as isDnaBaselineReady} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 
 type Suggestion={title:string;category:IssueCategory;why:string;gameRule:string;metric:string;target:string;source:'COACH';priority?:number};
 type Msg={who:'user'|'ai';text:string;task?:Suggestion;grounding?:string;factsUsed?:string[];applied?:boolean};
@@ -53,7 +54,7 @@ export default function Coach(){
   const {active}=useAccount();
   const {tier}=useSubscription();
   const accountMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
-  const allRoleMatches=accountMatches.filter(match=>match.role===active.role);
+  const allRoleMatches=accountMatches.filter(match=>canonicalLeagueRole(match.role)===active.role);
   const matches=filterHistoryForTier(allRoleMatches,tier);
   const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
   const baselineReady=isDnaBaselineReady(baselineGames);
