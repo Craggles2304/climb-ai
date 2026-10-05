@@ -7,6 +7,7 @@ const root=path.join(__dirname,'..');
 const hud=fs.readFileSync(path.join(root,'companion','electron','remember-v3.js'),'utf8');
 const matchup=fs.readFileSync(path.join(root,'companion','electron','remember-v3-matchup.js'),'utf8');
 const esports=fs.readFileSync(path.join(root,'companion','electron','remember-v5-esports.js'),'utf8');
+const focus=fs.readFileSync(path.join(root,'companion','electron','remember-v14-focus-layout.js'),'utf8');
 const liveRoster=fs.readFileSync(path.join(root,'companion','electron','live-roster.cjs'),'utf8');
 const bootstrap=fs.readFileSync(path.join(root,'companion','electron','bootstrap.cjs'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
@@ -206,6 +207,28 @@ test('bot-lane coach renders both lane opponents and resolved server role',()=>{
   assert.ok(draftCoach.includes("For ADC/SUPPORT, treat the lane as a DUO matchup"));
   assert.ok(draftCoach.includes("SURVIVE FIRST DIVE → FREE-HIT"));
   assert.ok(draftCoach.includes("TARGET ACCESSIBILITY BEATS TARGET PRESTIGE"));
+});
+
+test('verified bot lane is latched and never overwritten by the local solo-lane fallback each heartbeat',()=>{
+  assert.ok(esports.includes('let stableBotLane=null'));
+  assert.ok(esports.includes('incomingLanePartner&&incomingLaneOpponents.length>=2'));
+  assert.ok(esports.includes('latched?.laneOpponents'));
+  assert.ok(esports.includes('if(lastCoach)applyCoach(lastCoach'));
+  const requestStart=esports.indexOf('async function requestCoach');
+  const cached=esports.indexOf('if(lastCoachSignature===signature&&lastCoach)',requestStart);
+  const fallbackApply=esports.indexOf('else applyCoach(fallback',requestStart);
+  assert.ok(cached>=0&&fallbackApply>cached,'verified coach must win before fallback can render');
+});
+
+test('live build strip never treats tech as the fixed third item and downgrades conditional boots',()=>{
+  assert.ok(focus.includes("const BASE_BOOT_BY_UPGRADE={"));
+  assert.ok(focus.includes("'ARMORED ADVANCE':{id:3047,name:'Plated Steelcaps'}"));
+  assert.ok(focus.includes("const items=[...core,boot,finish].filter(Boolean)"));
+  assert.ok(focus.includes('FLEX IF NEEDED · '));
+  assert.ok(focus.includes('NO FORCED TECH ITEM · KEEP THE CORE PATH'));
+  assert.ok(focus.includes("name.includes('MAW OF MALMORTIUS')"));
+  assert.ok(focus.includes("magic>=2.5&&magic>=physical*.8"));
+  assert.ok(!focus.includes("build?.core.slice(0,2):[]),build?.draftItem||null,build?.boots||null"));
 });
 
 
