@@ -6,18 +6,20 @@ const root=path.join(__dirname,'..');
 const ilp=fs.readFileSync(path.join(root,'app','ilp','page.tsx'),'utf8');
 const impact=fs.readFileSync(path.join(root,'components','MyClimbGameImpact.tsx'),'utf8');
 const dashboard=fs.readFileSync(path.join(root,'app','dashboard','page.tsx'),'utf8');
+const liveCenter=fs.readFileSync(path.join(root,'components','LiveCommandCenter.tsx'),'utf8');
 const css=fs.readFileSync(path.join(root,'app','visual-depth.css'),'utf8');
 
-test('My Climb makes the six DNA missions clear beside last-game evidence',()=>{
-  assert.ok(ilp.includes('MyClimbGameImpact'));
+test('My Climb owns long-term DNA while Match Room owns last-game evidence',()=>{
   assert.ok(ilp.includes('currentGameDnaMissions'));
   assert.ok(ilp.includes('Six {viewRole} strands. One mission on each.'));
-  assert.ok(impact.includes('DNA MISSION FROM THIS GAME'));
-  assert.ok(impact.includes('WHAT CHANGED THIS GAME'));
-  assert.ok(impact.includes('WHAT YOU DID WELL'));
-  assert.ok(impact.includes('KEY MOMENTS'));
-  assert.ok(css.includes('.mc-impact-grid{'));
-  assert.ok(css.includes('.mc-mission{'));
+  assert.ok(ilp.includes('LONG-TERM DEVELOPMENT'));
+  assert.ok(ilp.includes('Match Room now owns the immediate review for every game.'));
+  assert.ok(liveCenter.includes('MATCH ROOM · LAST GAME'));
+  assert.ok(liveCenter.includes('WHAT HURT YOU'));
+  assert.ok(liveCenter.includes('WHAT YOU DID WELL'));
+  assert.ok(liveCenter.includes('KEY MOMENTS'));
+  assert.ok(liveCenter.includes('NEXT GAME · ONE THING'));
+  assert.ok(liveCenter.includes('SEE LONG-TERM DEVELOPMENT'));
 });
 
 test('My Climb explains the game in readable language before technical proof',()=>{
