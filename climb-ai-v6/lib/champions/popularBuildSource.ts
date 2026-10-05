@@ -126,9 +126,9 @@ function parseBuildSet(
   const sets=(raw as {itemSets?:Record<string,unknown>}).itemSets;
   if(!sets||typeof sets!=='object')return null;
 
-  const coreEntry=firstEntry(sets.itemSet3)
-    ??firstEntry(sets.itemSet4)
-    ??firstEntry(sets.itemSet5);
+  const coreEntry=mostPlayedEntry(sets.itemSet3)
+    ??mostPlayedEntry(sets.itemSet4)
+    ??mostPlayedEntry(sets.itemSet5);
   if(!coreEntry)return null;
 
   let legendaryPath=itemIds(coreEntry).slice(0,3);
@@ -140,12 +140,16 @@ function parseBuildSet(
   const fifth=popularExtension(sets.itemSet5,legendaryPath);
   if(fifth)legendaryPath=[...legendaryPath,fifth.id];
 
-  const bootCandidates=[
+  const bootRows=[
     ...entries(sets.itemBootSet1),
     ...entries(sets.itemBootSet2),
     ...entries(sets.itemBootSet3),
-  ].slice(0,24).flatMap(itemIds);
-  const bootId=bootCandidates.find(id=>isBoot(catalogue.find(item=>item.id===id)));
+  ].sort((a,b)=>(Number(b[1])||0)-(Number(a[1])||0));
+  let bootId:number|undefined;
+  for(const row of bootRows){
+    const candidate=itemIds(row).find(id=>isBoot(catalogue.find(item=>item.id===id)));
+    if(candidate!==undefined){bootId=candidate;break}
+  }
 
   const ordered=bootId&&legendaryPath.length
     ?[legendaryPath[0],bootId,...legendaryPath.slice(1)]
@@ -171,25 +175,26 @@ function entries(value:unknown):ItemSetEntry[]{
   return Array.isArray(value)?value.filter(Array.isArray) as ItemSetEntry[]:[];
 }
 
-function firstEntry(value:unknown):ItemSetEntry|null{
-  return entries(value)[0]??null;
+function mostPlayedEntry(value:unknown):ItemSetEntry|null{
+  return [...entries(value)].sort((a,b)=>(Number(b[1])||0)-(Number(a[1])||0))[0]??null;
 }
 
 function popularExtension(value:unknown,current:number[]):{id:number;picks:number}|null{
-  const rows=entries(value);
+  const rows=[...entries(value)].sort((a,b)=>(Number(b[1])||0)-(Number(a[1])||0));
   let fallback:{id:number;picks:number}|null=null;
+  let exactBest:{id:number;picks:number}|null=null;
   for(const row of rows){
     const ids=itemIds(row);
     const picks=Number(row[1])||0;
     const exact=current.every((id,index)=>ids[index]===id);
     const candidate=ids.find(id=>!current.includes(id));
-    if(candidate!==undefined&&!fallback)fallback={id:candidate,picks};
+    if(candidate!==undefined&&(!fallback||picks>fallback.picks))fallback={id:candidate,picks};
     if(exact&&ids.length>current.length){
       const id=ids[current.length];
-      if(Number.isFinite(id))return{id,picks};
+      if(Number.isFinite(id)&&(!exactBest||picks>exactBest.picks))exactBest={id,picks};
     }
   }
-  return fallback;
+  return exactBest??fallback;
 }
 
 function itemIds(entry:ItemSetEntry):number[]{
@@ -201,7 +206,9 @@ function itemIds(entry:ItemSetEntry):number[]{
 
 function isBoot(item:BuildItem|undefined){
   if(!item)return false;
-  return /boots|shoes|greaves|caps|crushers|sorcerer|ionian/i.test(item.name);
+  const name=String(item.name||'');
+  if(/Armored Advance|Chainlaced Crushers|Gunmetal Greaves|Spellslinger's Shoes|Crimson Lucidity|Forever Forward/i.test(name))return false;
+  return /Plated Steelcaps|Mercury's Treads|Berserker's Greaves|Boots of Swiftness|Sorcerer's Shoes|Ionian Boots/i.test(name);
 }
 
 function laneFor(role?:string){
