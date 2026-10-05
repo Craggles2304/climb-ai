@@ -2,6 +2,7 @@ import type {DnaDomain,ILPTask,IssueCategory,Role} from './types';
 import type {CoachingMetricKey} from './subscription';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
+import {proMetricReceipt} from './missionGrading';
 
 type MissionTemplate={
   title:string;
@@ -299,14 +300,29 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       const matchId=String(row.matchId||`analysis-${row.role||'role'}-${row.createdAt}-${row.champion}`);
       if(existing.has(matchId))continue;
       const pass=metric.score>=threshold;
+      const valueLabel=`${Math.round(metric.score)}/100`;
+      const targetLabel=`${threshold}+ decision score · 3 proven games`;
+      const reason=`${metric.label}: ${valueLabel} from ${metric.sources.join(' + ')} evidence.`;
       existing.set(matchId,{
         matchId,
         at:row.createdAt,
         adherence:'TRACKED',
         clearedBar:pass,
-        outcome:pass?'CONFIRMED':'NO_REP',
+        outcome:pass?'CONFIRMED':'UNREWARDED',
         banksPass:pass,
         source:'TRACKED',
+        evidenceV2:proMetricReceipt({
+          metric:task.metric,
+          metricLabel:metric.label,
+          score:metric.score,
+          valueLabel,
+          targetLabel,
+          passed:pass,
+          confidence:metric.confidence,
+          sources:metric.sources,
+          evidence:metric.evidence,
+          reason,
+        }),
       });
     }
 
