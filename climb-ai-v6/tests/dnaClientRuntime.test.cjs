@@ -12,3 +12,12 @@ test('Game DNA canvas defines every strength helper it executes',()=>{
   const firstUse=dna.indexOf('totalStrength()');
   assert.ok(definition>=0&&definition<firstUse,'totalStrength must be defined before the draw loop executes it');
 });
+
+test('wide Coach DNA HUD defines its percentage formatter before drawing strand strength',()=>{
+  assert.ok(dna.includes('const pct = value =>'));
+  assert.ok(dna.includes('ctx.fillText(pct(s), W - 14, yc)'));
+  const definition=dna.indexOf('const pct = value =>');
+  const firstUse=dna.indexOf('pct(s)');
+  assert.ok(definition>=0&&definition<firstUse,'pct must be defined before the wide Coach canvas HUD renders');
+});
+
