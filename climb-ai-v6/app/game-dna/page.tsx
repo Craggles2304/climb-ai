@@ -41,12 +41,12 @@ export default function GameDnaPage(){
     <header className="dna-page-hero">
       <div>
         <div className="eyebrow">GAME DNA · YOUR PLAYER IDENTITY</div>
-        <h1>See the player your decisions are building.</h1>
-        <p>Six connected strands turn your tracked games into a living development profile. Explore the tree, switch role profiles, and watch proven habits reshape your DNA.</p>
+        <h1>Your DNA is your OP CLIMB identity.</h1>
+        <p>Six connected strands turn every tracked role game into a living player profile. This is the core of OP CLIMB: play, prove the decision, evolve the strand.</p>
       </div>
       <div className="dna-page-hero-actions">
         <Link className="btn primary" href="/live">TRACK NEXT GAME →</Link>
-        <Link className="btn secondary" href={`/ilp?role=${viewRole}`}>OPEN MY CLIMB</Link>
+        <Link className="btn secondary" href={`/ilp?role=${viewRole}`}>OPEN MY DNA</Link>
       </div>
     </header>
 
