@@ -189,8 +189,9 @@ export default function Analysis(){
 
       <div className="ar-coach-columns">
         <section className="ar-helped">
-          <div className="ar-coach-section-head">
-            <div><span>WHAT HELPED YOU</span><h2>Keep doing these.</h2></div>
+          <div className="ar-review-subheading good">
+            <strong>GOOD</strong>
+            <div><span>WHAT HELPED YOU</span><h2>Keep these in your game.</h2></div>
             <b>{Math.min(3,strengths.length)} EXAMPLE{Math.min(3,strengths.length)===1?'':'S'}</b>
           </div>
           <div className="ar-coach-card-list">
@@ -212,8 +213,9 @@ export default function Analysis(){
         </section>
 
         <section className="ar-hurt">
-          <div className="ar-coach-section-head">
-            <div><span>WHAT HURT YOU</span><h2>Change these next.</h2></div>
+          <div className="ar-review-subheading bad">
+            <strong>NEEDS WORK</strong>
+            <div><span>WHAT HURT YOU</span><h2>Fix these next.</h2></div>
             <b>{plainProblems.length} PATTERN{plainProblems.length===1?'':'S'}</b>
           </div>
           <div className="ar-coach-card-list">
