@@ -13,10 +13,12 @@ const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8'
 const appShell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8');
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
-test('My DNA shows one tracked mission for each DNA strand',()=>{
-  assert.ok(ilp.includes('Six {viewRole} strands. One mission on each.'));
+test('My DNA shows six strand missions but makes one selected mission easy to understand',()=>{
+  assert.ok(ilp.includes('YOUR 6 DNA MISSIONS'));
+  assert.ok(ilp.includes('Every strand has one job.'));
   assert.ok(ilp.includes('currentGameDnaMissions'));
-  assert.ok(ilp.includes('6 active'));
+  assert.ok(ilp.includes('YOUR JOB NEXT GAME'));
+  assert.ok(ilp.includes('HOW YOU PROVE IT'));
   assert.ok(ilp.includes('games completed'));
   assert.ok(!ilp.includes('WATCHLIST · NOT EXTRA MISSIONS'));
   assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
