@@ -66,7 +66,7 @@ test('completed live review exposes the saved match id through Match Room',()=>{
   assert.ok(liveCenter.includes('MATCH ROOM · LAST GAME'));
   assert.ok(liveCenter.includes('OPEN FULL GAME REVIEW →'));
   assert.ok(liveCenter.includes("href={'/analyse/'+encodeURIComponent(latestMatch.id)}"));
-  assert.ok(liveCenter.includes('SEE LONG-TERM DEVELOPMENT'));
+  assert.ok(liveCenter.includes('SEE MY DNA'));
   assert.ok(liveReview.includes('OPEN FULL MATCH REVIEW →'));
 });
 
