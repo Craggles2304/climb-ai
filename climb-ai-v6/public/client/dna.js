@@ -89,6 +89,7 @@
     const step=Math.max(0,Math.min(1,(Number(m.lp)||0)/100));
     return Math.min(.92,.18+Math.log2(level+1)*.12+step*.18);
   };
+  const totalStrength = () => baselineMode ? 0 : CATS.reduce((sum,g)=>sum+geneStrength(g.id),0)/Math.max(1,CATS.length);
   const count = s => missions.filter(m => m.s === s).length;
   function rgba(hex, a){
     const n = parseInt(hex.slice(1), 16);
