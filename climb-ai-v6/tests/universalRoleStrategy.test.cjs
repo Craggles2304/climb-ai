@@ -25,11 +25,16 @@ test('every League role has a five-part role-specific win condition',()=>{
   }
 });
 
-test('paid Companion renders exactly five role-win cards and a loss condition',()=>{
-  assert.ok(preloadSource.includes('opRoleStepLabel5'));
-  assert.ok(preloadSource.includes('opRoleStep5'));
-  assert.ok(preloadSource.includes('team?.roleWinCondition?.lossCondition'));
+test('paid Companion condenses the five-part engine into three winning actions',()=>{
+  assert.ok(preloadSource.includes('opRoleStepLabel1'));
+  assert.ok(preloadSource.includes('opRoleStepLabel2'));
+  assert.ok(preloadSource.includes('opRoleStepLabel3'));
+  assert.ok(preloadSource.includes("'2 · SETUP'"));
+  assert.ok(preloadSource.includes("'3 · FIGHT → CONVERT'"));
   assert.ok(preloadSource.includes('steps.length!==5'));
+  assert.ok(preloadSource.includes('HOW WE WIN'));
+  assert.ok(preloadSource.includes('HOW THEY WIN'));
+  assert.ok(preloadSource.includes('BIGGEST THROW'));
   assert.ok(preloadSource.includes('YOUR CLIMB MISSION'));
 });
 
