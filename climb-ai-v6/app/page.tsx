@@ -4,7 +4,7 @@ import {TrackView} from '@/components/TrackView';
 
 export const metadata:Metadata={
   title:{absolute:'OP CLIMB — Your Games. Your Coach.'},
-  description:'Personal League of Legends coaching built from your own ranked evidence: one repeated pattern, one next-game focus, and proof across future games.',
+  description:'Play three tracked League of Legends games, reveal your six-strand Game DNA, then train one measurable habit at a time as every new game evolves your player profile.',
   alternates:{canonical:'/'},
 };
 
