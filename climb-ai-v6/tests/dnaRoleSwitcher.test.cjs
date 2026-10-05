@@ -19,10 +19,12 @@ test('web DNA role switcher is viewing-only and covers all five League roles',()
   assert.ok(switcher.includes('primaryRole'));
 });
 
-test('Coach and My Climb derive DNA from the selected role without changing the account role',()=>{
-  assert.ok(coach.includes('const [dnaRole,setDnaRole]'));
-  assert.ok(coach.includes('taskAppliesToRole(task,dnaRole)'));
-  assert.ok(coach.includes('<DnaRoleSwitcher role={dnaRole}'));
+test('Game DNA and My Climb derive DNA from the selected role without changing the account role',()=>{
+  const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8');
+  assert.ok(gameDna.includes('const [viewRole,setViewRole]'));
+  assert.ok(gameDna.includes('taskAppliesToRole(task,viewRole)'));
+  assert.ok(gameDna.includes('<DnaRoleSwitcher'));
+  assert.ok(coach.includes('href="/game-dna"'));
   assert.ok(ilp.includes('const [viewRole,setViewRole]'));
   assert.ok(ilp.includes('taskAppliesToRole(task,viewRole)'));
   assert.ok(ilp.includes('<DnaRoleSwitcher role={viewRole}'));

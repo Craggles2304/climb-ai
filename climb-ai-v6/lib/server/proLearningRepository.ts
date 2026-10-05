@@ -26,6 +26,7 @@ import {CURRENT_LEARNING_MODEL_VERSION,buildLearningModelHealth,learningModelNee
 import {LEAGUE_ROLES,buildRoleAwareLearningSummary,canonicalLeagueRole,globalLearningRows,rowsForRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {benchmarkTargetText} from '@/lib/rankMissionBenchmarks';
 import {ensureDnaDomain} from '@/lib/dnaDomain';
+import {syncDerivedCoachMemories} from './playerLearningRepository';
 
 export interface PersistProAnalysisInput{userId:string;riotAccountId:string|null;sessionId:string|null;matchId:string|null;externalMatchId?:string|null;champion:string;role:string|null;analysis:ProMatchAnalysis;patch?:string|null;gameVersion?:string|null;patchContext?:Record<string,unknown>}
 
@@ -207,7 +208,10 @@ export async function ensureLearningModelCurrent(userId:string,riotAccountId:str
   if(!running){
     running=(async()=>{
       const built=await buildAndSaveProLearningProfile(userId,riotAccountId);
-      if(built)await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync after self-heal failed',err));
+      if(built){
+        await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync after self-heal failed',err));
+        await syncDerivedCoachMemories(db,userId,riotAccountId).catch(err=>console.warn('[coach-memory] sync after self-heal failed',err));
+      }
     })().finally(()=>currentRebuilds.delete(key));
     currentRebuilds.set(key,running);
   }
@@ -230,7 +234,10 @@ export async function rebuildAllLearningProfiles(){
     if(!userId||!riotAccountId)continue;
     try{
       const built=await buildAndSaveProLearningProfile(userId,riotAccountId);
-      if(built)await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync during full rebuild failed',err));
+      if(built){
+        await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[learning-model] ILP sync during full rebuild failed',err));
+        await syncDerivedCoachMemories(db,userId,riotAccountId).catch(err=>console.warn('[coach-memory] sync during full rebuild failed',err));
+      }
       const {data:stored,error:storedError}=await db.from('op_player_learning_profiles')
         .select('learning_model_health').eq('user_id',userId).eq('riot_account_id',riotAccountId).single();
       if(storedError)throw new Error(storedError.message);
@@ -247,6 +254,7 @@ export async function rebuildProLearningProfile(userId:string,riotAccountId:stri
   if(!riotAccountId)return null;
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
   await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows).catch(err=>console.warn('[pro-ilp] six-strand DNA mission sync failed',err));
+  const db=getSupabaseAdmin();if(db)await syncDerivedCoachMemories(db,userId,riotAccountId).catch(err=>console.warn('[coach-memory] post-game sync failed',err));
   return built.profile;
 }
 
@@ -254,6 +262,7 @@ export async function rebuildProLearningProfileWithIlp(userId:string,riotAccount
   if(!riotAccountId)return null;
   const built=await buildAndSaveProLearningProfile(userId,riotAccountId);if(!built)return null;
   const ilp=await syncRepeatedEvidenceToIlp(userId,riotAccountId,built.profile,built.rows);
+  const db=getSupabaseAdmin();if(db)await syncDerivedCoachMemories(db,userId,riotAccountId).catch(err=>console.warn('[coach-memory] post-game sync failed',err));
   return{profile:built.profile,ilp};
 }
 
