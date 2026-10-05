@@ -4,6 +4,7 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 const dna=fs.readFileSync(path.join(__dirname,'..','public','client','dna.js'),'utf8');
+const component=fs.readFileSync(path.join(__dirname,'..','components','ClientGameDna.tsx'),'utf8');
 
 test('Game DNA canvas defines every strength helper it executes',()=>{
   assert.ok(dna.includes('const totalStrength = () =>'));
@@ -19,5 +20,9 @@ test('wide Coach DNA HUD defines its percentage formatter before drawing strand 
   const definition=dna.indexOf('const pct = value =>');
   const firstUse=dna.indexOf('pct(s)');
   assert.ok(definition>=0&&definition<firstUse,'pct must be defined before the wide Coach canvas HUD renders');
+});
+
+test('Coach and Dashboard request the post-fix Game DNA runtime',()=>{
+  assert.ok(component.includes('/client/dna.js?v=20261005b'));
 });
 
