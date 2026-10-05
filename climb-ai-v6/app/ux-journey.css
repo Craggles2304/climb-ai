@@ -97,3 +97,19 @@
 .nav-link.nav-link-dna.active::after{content:"DNA"}
 @media(max-width:1000px){.op-home-dna-legend{grid-template-columns:repeat(3,minmax(0,1fr))}.op-home-dna-primary .op-home-dna-stage{min-height:380px}}
 @media(max-width:620px){.op-home-dna-legend{grid-template-columns:1fr 1fr}.op-home-dna-primary .op-home-dna-stage{min-height:320px}}
+
+
+/* Sidebar information architecture */
+.nav-link{align-items:flex-start}
+.nav-link-icon{width:18px;flex:none;text-align:center;margin-top:2px}
+.nav-link-copy{display:flex;min-width:0;flex:1;flex-direction:column;gap:2px}
+.nav-link-copy b{font-size:13px;line-height:1.15;color:inherit}
+.nav-link-copy small{font-size:8px;line-height:1.25;color:#69777e;letter-spacing:.02em}
+.nav-link.active .nav-link-copy small{color:#91a29a}
+.nav-link.nav-link-dna{padding-block:14px;background:linear-gradient(90deg,rgba(182,246,107,.075),rgba(86,217,184,.015))}
+.nav-link.nav-link-dna .nav-link-copy b{font-size:14px}
+.nav-link.nav-link-dna .nav-link-copy small{color:#9fb98d}
+@media(max-width:1040px){
+  .nav-link-copy small{display:none}
+  .nav-link.nav-link-dna{padding-block:12px}
+}
