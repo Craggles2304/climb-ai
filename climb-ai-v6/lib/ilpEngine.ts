@@ -66,11 +66,6 @@ case'damageShare':{const xs=direct('damageShare');if(!xs.length)return{progress:
 case'killParticipation':{const xs=direct('killParticipation');if(!xs.length)return{progress:task.progress,passed:false,note:'Kill-participation evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/.68*100),passed:a>=.65,note:`Recent kill participation: ${Math.round(a*100)}%.`,hasEvidence:true}}
 case'visionScore':{const xs=direct('visionScore');if(!xs.length)return{progress:task.progress,passed:false,note:'Vision evidence is not available yet.',hasEvidence:false};const a=avg(xs);return{progress:clamp(a/45*100),passed:a>=40,note:`Recent vision score: ${a.toFixed(0)} per game.`,hasEvidence:true}}
 case'clipReview':return{progress:task.progress,passed:task.progress>=100,note:task.progress>=100?'Required clip review completed.':'Needs one reviewed gameplay clip.',hasEvidence:task.progress>0};case'objectivePreparation':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed objective-setup decisions or companion telemetry.',hasEvidence:task.progress>0};case'mapCheck':return{progress:task.progress,passed:task.progress>=100,note:'Requires reviewed map-check evidence.',hasEvidence:task.progress>0};default:return{progress:task.progress,passed:false,note:'This task needs manual review or richer telemetry.',hasEvidence:false}}}
-function matchPass(task:ILPTask,match:Match,rank?:string|null):boolean|null{
-  const grade=gradeMissionGame(task,match,rank);
-  return grade.available?grade.passed:null;
-}
-
 function automaticAttempts(task:ILPTask,matches:Match[],rank?:string|null){
   const existing=new Map(
     (task.missionHistory??[])
@@ -81,16 +76,17 @@ function automaticAttempts(task:ILPTask,matches:Match[],rank?:string|null){
   const startedAt=startEvent?.at?Date.parse(startEvent.at):Number.NEGATIVE_INFINITY;
   for(const match of matches){
     if(Date.parse(match.createdAt)<startedAt||existing.has(match.id))continue;
-    const pass=matchPass(task,match,rank);
-    if(pass===null)continue;
+    const grade=gradeMissionGame(task,match,rank);
+    const evidenceState=grade.evidenceV2.state;
     existing.set(match.id,{
       matchId:match.id,
       at:match.createdAt,
       adherence:'TRACKED',
-      clearedBar:pass,
-      outcome:pass?'CONFIRMED':'NO_REP',
-      banksPass:pass,
+      clearedBar:grade.passed,
+      outcome:evidenceState==='BANKED'?'CONFIRMED':evidenceState==='MISSED'?'UNREWARDED':'NO_REP',
+      banksPass:evidenceState==='BANKED',
       source:'TRACKED',
+      evidenceV2:grade.evidenceV2,
     });
   }
   return [...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
