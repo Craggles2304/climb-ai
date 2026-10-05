@@ -627,12 +627,12 @@ function renderPostGameReview(review,phase){
 
   const repCard=$('simpleRepSignal');
   if(repCard){
-    const title=learning?.status==='MASTERED'?'MASTERED ✓':learning?.status==='REP_BANKED'?'REP BANKED ✓':learning?.status==='NO_REP'?'KEEP WORKING':'EVIDENCE UPDATED';
+    const title=learning?.status==='MASTERED'?'MASTERED ✓':learning?.status==='REP_BANKED'?'BANKED ✓':learning?.status==='REP_MISSED'?'MISSED':learning?.status==='NOT_OBSERVED'?'NOT OBSERVED':'EVIDENCE UPDATED';
     repCard.querySelector('strong').textContent=baselineReady?title:`${Math.min(baselineGames,baselineRequired)}/${baselineRequired} BASELINE`;
     repCard.querySelector('small').textContent=!baselineReady
       ?`${Math.max(0,baselineRequired-baselineGames)} baseline game${Math.max(0,baselineRequired-baselineGames)===1?'':'s'} left before challenges unlock.`
       :learning
-        ?`${learning.confirmed}/${learning.required} proven reps · ${learning.dnaDomain||'DNA'}`
+        ?`${learning.confirmed}/${learning.required} proven reps · ${learning.dnaDomain||'DNA'} · ${String(learning.evidenceState||'NOT_OBSERVED').replace('_',' ')}`
         :'No mission rep was scored from this game.';
   }
 
@@ -658,7 +658,7 @@ function renderPostGameReview(review,phase){
   }
 
   const progressButton=$('simpleOpenProgress');
-  if(progressButton)progressButton.textContent=baselineReady?'SEE MY PROGRESS →':'SEE BASELINE →';
+  if(progressButton)progressButton.textContent='OPEN MATCH ROOM →';
 
   syncCoachReviewEvidence();
   window.__opRenderedReviewSessionId=String(review.sessionId||'');
@@ -691,8 +691,7 @@ function ensureReviewSection(){
   $('status').after(section);
   $('simpleReviewEvidence').addEventListener('click',()=>{coachReviewEvidenceOpen=!coachReviewEvidenceOpen;syncCoachReviewEvidence()});
   $('simpleOpenProgress').addEventListener('click',()=>{
-    const path=String(current?.postGameReview?.progressPath||'/ilp');
-    window.opCompanion.openClimbPath(path);
+    window.opCompanion.openClimbPath('/live');
   });
   return section;
 }
