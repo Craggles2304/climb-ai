@@ -71,3 +71,117 @@
 .player-role-tabs button.primary-role:after{content:'MAIN';position:absolute;right:5px;top:4px;color:#6c797c;font:800 5px 'IBM Plex Mono',monospace;letter-spacing:.09em}
 .player-role-tabs button:disabled{opacity:.55}
 @media(max-width:780px){.player-role-switcher{grid-template-columns:1fr}.player-role-tabs{grid-template-columns:repeat(5,minmax(72px,1fr));overflow-x:auto}.player-role-tabs button{min-width:72px}}
+
+
+/* Foolproof player journey: one status, one priority mission, five background missions */
+.player-journey{
+  display:grid;
+  grid-template-columns:auto minmax(0,1fr);
+  gap:14px;
+  align-items:center;
+  padding:13px 15px;
+  border:1px solid rgba(182,246,107,.22);
+  background:linear-gradient(90deg,rgba(182,246,107,.06),rgba(8,16,20,.96) 48%),#081014
+}
+.player-journey-step{
+  display:grid;
+  gap:5px;
+  min-width:150px
+}
+.player-journey-step span{
+  color:#b6f66b;
+  font:900 9px/1.25 'IBM Plex Mono',monospace;
+  letter-spacing:.09em
+}
+.player-journey-step b{
+  color:#f2f7f4;
+  font:900 22px/1 'Barlow Condensed',sans-serif
+}
+.player-journey-copy strong{
+  display:block;
+  color:#f4f8f7;
+  font:900 21px/1.05 'Barlow Condensed',sans-serif
+}
+.player-journey-copy small{
+  display:block;
+  margin-top:5px;
+  color:#95a4a8;
+  font-size:11px;
+  line-height:1.45
+}
+.player-journey.phase-baseline{
+  border-color:rgba(126,201,255,.24);
+  background:linear-gradient(90deg,rgba(126,201,255,.06),rgba(8,16,20,.96) 48%),#081014
+}
+.player-journey.phase-baseline .player-journey-step span{color:#7ec9ff}
+.player-journey.phase-dna_reveal{
+  border-color:rgba(182,246,107,.4);
+  box-shadow:inset 3px 0 0 #b6f66b
+}
+.player-journey.phase-mission{
+  box-shadow:inset 3px 0 0 #b6f66b
+}
+
+.player-mission-card.priority{
+  padding:16px;
+  border-color:color-mix(in srgb,var(--mission-color) 55%,rgba(255,255,255,.08));
+  background:linear-gradient(145deg,color-mix(in srgb,var(--mission-color) 11%,#0a1216),#081014);
+  box-shadow:inset 4px 0 0 var(--mission-color),0 0 24px color-mix(in srgb,var(--mission-color) 7%,transparent)
+}
+.player-mission-card.priority .player-mission-top span{
+  font-size:9px;
+  letter-spacing:.14em
+}
+.player-mission-card.priority .player-mission-top b{
+  color:#dce5e3;
+  font-size:8px
+}
+.player-mission-card.priority h3{
+  margin:8px 0 7px;
+  font-size:22px;
+  line-height:1
+}
+.player-mission-card.priority p{
+  color:#d5dfde!important;
+  font-size:12px;
+  line-height:1.5
+}
+.player-mission-card.priority>small{
+  display:block;
+  margin-top:9px;
+  color:#b9c7c5;
+  font-size:9px;
+  line-height:1.45
+}
+
+.player-mission-card.background{
+  opacity:.78;
+  box-shadow:inset 2px 0 0 color-mix(in srgb,var(--mission-color) 42%,transparent)
+}
+.player-mission-card.background .player-mission-top span{
+  color:#849398
+}
+.player-mission-card.background h3{
+  font-size:14px
+}
+.player-mission-card.background p{
+  font-size:9px!important
+}
+.player-mission-card.background>small{
+  display:block;
+  margin-top:7px;
+  color:#6f7e82;
+  font-size:8px;
+  line-height:1.4
+}
+.player-memory.baseline{
+  border-color:rgba(126,201,255,.2);
+  background:linear-gradient(145deg,rgba(126,201,255,.05),#0a1115)
+}
+.player-memory.baseline>span{color:#7ec9ff}
+
+@media(max-width:780px){
+  .player-journey{grid-template-columns:1fr}
+  .player-journey-step{min-width:0}
+  .player-mission-card.priority h3{font-size:20px}
+}
