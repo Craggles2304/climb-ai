@@ -23,7 +23,7 @@ import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
 import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
-import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {canonicalLeagueRole,LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
 const clean=(value:string)=>value.replaceAll('_',' ');
@@ -66,7 +66,7 @@ export default function PlayerDevelopmentCentre(){
 
   const accountMatches=matchesFor(active.id).filter(match=>match.durationSeconds>=300);
   const roleGameCounts=Object.fromEntries(LEAGUE_ROLES.map(role=>[role,dnaBaselineGameCount(accountMatches,role)])) as Record<Role,number>;
-  const allRoleMatches=accountMatches.filter(match=>match.role===viewRole);
+  const allRoleMatches=accountMatches.filter(match=>canonicalLeagueRole(match.role)===viewRole);
   const baselineGames=roleGameCounts[viewRole]??0;
   const baselineReady=dnaBaselineReady(baselineGames);
   const accountTasks=allTasks[active.id]??tasks;
@@ -129,7 +129,7 @@ export default function PlayerDevelopmentCentre(){
     <MyClimbGameImpact
       match={impactMatch}
       learning={[]}
-      strengths={[]}
+      strengths={gameStrengths}
       activeTasks={[]}
       baselineGames={baselineGames}
       baselineRequired={DNA_BASELINE_GAMES}
