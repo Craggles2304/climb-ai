@@ -217,6 +217,7 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error)throw new Error(error.message);if(!session)return null;
   const capture=(session.summary as any)?.capture;
+  const queueProcessing=['QUEUED','PROCESSING'].includes(String((session.summary as any)?.processing?.status??''));
   const embedded=Array.isArray(capture?.keyframes)
     ?(capture.keyframes as LiveTelemetrySnapshot[])
     :(capture?.latestSnapshot?[capture.latestSnapshot as LiveTelemetrySnapshot]:[]);
@@ -239,10 +240,10 @@ export async function latestLiveReview(userId:string,accountKey:string){
   const readCheckpoints=embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
   let proAnalysis:ProMatchAnalysis|null=((session.summary as any)?.proAnalysis as ProMatchAnalysis|null)??await getProMatchAnalysisBySession(session.id).catch(()=>null);
   let recoveredMatchId=await findMatchIdForSession(session.id);
-  if(session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId){
+  if(!queueProcessing&&session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId){
     recoveredMatchId=await persistLiveMatchWithRetry({...session,user_id:userId},normalized,strength,proAnalysis).catch(err=>{console.warn('[live-review] missing match self-heal failed',err);return null});
   }
-  if(normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
+  if(!queueProcessing&&normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
     const base=buildLiveProAnalysis(normalized,strength);
     proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan,readCheckpoints})};
     if(session.status==='COMPLETE'){
@@ -259,14 +260,14 @@ export async function latestLiveReview(userId:string,accountKey:string){
   }
 
   const enrichment=(session.summary as any)?.riotEnrichment;
-  if(session.status==='COMPLETE'&&normalized.length&&strength&&riotEnabled()&&enrichment?.status!=='COMPLETE'&&enrichment?.status!=='NO_MATCH'){
+  if(!queueProcessing&&session.status==='COMPLETE'&&normalized.length&&strength&&riotEnabled()&&enrichment?.status!=='COMPLETE'&&enrichment?.status!=='NO_MATCH'){
     try{
       const enriched=await enrichLiveSessionFromRiot(session,normalized,strength,proAnalysis??buildLiveProAnalysis(normalized,strength));
       if(enriched)proAnalysis=enriched;
     }catch(err){console.warn('[riot-enrich] lazy enrichment failed',err)}
   }
   let learningPlanSync=(session.summary as any)?.learningPlanSync??null;
-  if(session.status==='COMPLETE'&&proAnalysis&&session.riot_account_id&&learningPlanSync?.status!=='COMPLETE'){
+  if(!queueProcessing&&session.status==='COMPLETE'&&proAnalysis&&session.riot_account_id&&learningPlanSync?.status!=='COMPLETE'){
     await syncLearningPlanForSession(session.id,userId,session.riot_account_id,'REVIEW_ENSURE',proAnalysis);
     learningPlanSync=await sessionLearningPlanStatus(session.id);
   }else if(!learningPlanSync){
