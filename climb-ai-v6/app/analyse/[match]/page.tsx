@@ -159,7 +159,8 @@ export default function Analysis(){
 
       <div className="ar-overview-metrics">
         <MetricCard label="KDA" value={`${match.kills}/${match.deaths}/${match.assists}`}/>
-        <MetricCard label="CS/MIN" value={match.metrics.csPerMin.toFixed(1)}/>
+        <MetricCard label="FARM" value={Number.isFinite(match.metrics.cs)?Math.round(match.metrics.cs)+' CS':'—'}/>
+        <MetricCard label="CS/MIN" value={Number.isFinite(match.metrics.csPerMin)?match.metrics.csPerMin.toFixed(2):'—'}/>
         <MetricCard label={detail.depth>=5?'KILL PARTICIPATION':'RESULT'} value={detail.depth>=5?pct(match.metrics.killParticipation):match.result}/>
       </div>
 
