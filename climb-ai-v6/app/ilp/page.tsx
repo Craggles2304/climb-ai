@@ -353,7 +353,7 @@ function EvidenceCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStra
           <b>{proof?.observedValueLabel||clean(rep.outcome)}</b>
           <small>{proof?proof.measurementSource.replaceAll('_',' ')+' · '+proof.confidence+' confidence':clean(rep.adherence)+' adherence'}</small>
           {proof&&<details className="ip-mission-details">
-            <summary>SHOW THE PROOF <span>{proof.opportunities} opportunity{proof.opportunities===1?'':'ies'} · {proof.successes} success · {proof.misses} miss</span></summary>
+            <summary>SHOW THE PROOF <span>{proof.opportunities} {proof.opportunities===1?'opportunity':'opportunities'} · {proof.successes} {proof.successes===1?'success':'successes'} · {proof.misses} {proof.misses===1?'miss':'misses'}</span></summary>
             <div className="ip-mission-brief">
               <section>
                 <span>RESULT</span>
