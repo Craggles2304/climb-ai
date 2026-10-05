@@ -90,6 +90,7 @@ export function AppShell({children}:{children:React.ReactNode}){
   const {tasks,allTasks}=useLearningPlan();
   const [journeyDevices,setJourneyDevices]=useState<Array<{account_key:string;last_seen_at:string|null}>>([]);
   const [journeyDeviceLoaded,setJourneyDeviceLoaded]=useState(false);
+  const [journeyDnaRevealed,setJourneyDnaRevealed]=useState(false);
   const fallbackXp=accountProgress(allTasks[active.id]??tasks);
   const [progression,setProgression]=useState<ProgressionPayload|null>(null);
   const [progressToast,setProgressToast]=useState<{title:string;body:string;kind:'XP'|'LEVEL'}|null>(null);
@@ -135,12 +136,21 @@ export function AppShell({children}:{children:React.ReactNode}){
     linked:journeyLinked,
     online:journeyOnline,
     baselineGames:journeyBaselineGames,
+    dnaRevealed:journeyDnaRevealed,
     focusName:journeyFocusPlain?.name,
     focusJob:journeyFocusPlain?.nextGame,
     focusConfirmed:journeyFocusSummary?.confirmed,
     focusRequired:journeyFocusSummary?.required,
   });
   const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
+  useEffect(()=>{
+    try{setJourneyDnaRevealed(localStorage.getItem('op:dna-revealed:'+active.id+':'+active.role)==='1')}catch{setJourneyDnaRevealed(false)}
+  },[active.id,active.role]);
+  useEffect(()=>{
+    if(!journeyBaselineReady||(path!=='/ilp'&&path!=='/game-dna'))return;
+    try{localStorage.setItem('op:dna-revealed:'+active.id+':'+active.role,'1')}catch{}
+    setJourneyDnaRevealed(true);
+  },[journeyBaselineReady,path,active.id,active.role]);
   const topbarAction=coreJourneyRoute?null:path==='/live'
     ?{label:'MY DNA',href:'/ilp'}
     :path==='/ilp'||path==='/game-dna'
@@ -327,7 +337,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         {latestLearningEvents.some(item=>item.kind==='MISSION_MASTERED')&&<div className="op-learning-mastered">◆ HABIT MASTERED — moved into development history.</div>}
       </div>}
       <div className="op-learning-receipt-actions">
-        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={journeyBaselineReady?'/ilp':'/live'}>{journeyBaselineReady?'SEE MY DNA →':`PLAY BASELINE GAME ${Math.min(journeyBaselineGames+1,DNA_BASELINE_GAMES)} →`}</Link>
+        <Link className="btn primary" onClick={acknowledgeLearningMatch} href={journeyBaselineReady?'/ilp':'/live'}>{journeyBaselineReady?(journeyDnaRevealed?'SEE MY DNA →':'REVEAL MY DNA →'):`PLAY BASELINE GAME ${Math.min(journeyBaselineGames+1,DNA_BASELINE_GAMES)} →`}</Link>
         {latestLearningMatch&&<Link className="btn secondary" onClick={acknowledgeLearningMatch} href={'/analyse/'+encodeURIComponent(latestLearningMatch)}>REVIEW THIS GAME</Link>}
       </div>
     </aside>}
