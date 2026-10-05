@@ -7,6 +7,7 @@ interface QueueJob{
   id:number;
   session_id:string;
   attempts:number;
+  payload:unknown;
 }
 
 export async function drainPostGameQueue(input:{limit?:number;concurrency?:number;workerId?:string}={}){
@@ -29,7 +30,7 @@ export async function drainPostGameQueue(input:{limit?:number;concurrency?:numbe
       const job=jobs[cursor++];
       if(!job)return;
       try{
-        await processQueuedPostGameSession(job.session_id);
+        await processQueuedPostGameSession(job.session_id,(job.payload&&typeof job.payload==='object')?job.payload as any:undefined);
         const {error:finishError}=await db.rpc('finish_live_postgame_job',{
           p_job_id:job.id,
           p_ok:true,
