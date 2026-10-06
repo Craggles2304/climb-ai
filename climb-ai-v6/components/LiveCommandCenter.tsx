@@ -61,8 +61,8 @@ return <div className="match-room">
   <header className="page-head">
     <div>
       <div className="eyebrow">{recording?'MATCH ROOM · LIVE TRACKING':postgameProcessing?'MATCH ROOM · GAME COMPLETE':cloudDisconnected?'MATCH ROOM · CLOUD SYNC DISCONNECTED':latestMatch?'MATCH ROOM · LAST GAME':'MATCH ROOM · PREPARE → PLAY'}</div>
-      <h1>{recording?'Game in progress.':postgameProcessing?'Your review is processing.':cloudDisconnected?'Your desktop and Match Room are out of sync.':latestMatch?latestMatch.champion+' · '+(latestMatch.result==='WIN'?'VICTORY':'DEFEAT'):'Know your job before you queue.'}</h1>
-      <p>{recording?'OP CLIMB is quietly collecting evidence. Coaching resumes when the game ends.':postgameProcessing?'The match is safely stored. OP CLIMB is building the review, evidence and learning updates in the post-game queue.':cloudDisconnected?'Your Companion may still be reading League locally, but this page is not receiving its heartbeat. Reconnect the installed Companion once; the review below is only the last cloud-synced game.':latestMatch?'See what happened, where it went wrong and the one thing to carry into your next game.':'One focus, one reminder, your champion context and a quiet Companion connection.'}</p>
+      <h1>{recording?'Game in progress.':postgameProcessing?'Your review is processing.':cloudDisconnected?'Reconnect your Companion.':latestMatch?'Your Match Room':'Ready for your next game.'}</h1>
+      <p>{recording?'Your Companion is recording match evidence. Review and coaching resume after the game.':postgameProcessing?'Your match is saved. The post-game review is on its way.':cloudDisconnected?'Your Companion has stopped sending updates to this page. Reconnect it below to restore match tracking.':latestMatch?'Your next focus and the evidence from your last game, in one place.':'Connect the Companion, keep one focus in mind, and play normally.'}</p>
     </div>
     <span className={'match-room-state '+(recording?'recording':postgameProcessing?'recording':cloudDisconnected?'offline':latestMatch||online?'ready':'offline')}>{recording?'● TRACKING':postgameProcessing?'● PROCESSING':cloudDisconnected?'○ RECONNECT':latestMatch?'● REVIEW READY':online?'● READY':'○ CONNECT'}</span>
   </header>
@@ -108,6 +108,18 @@ return <div className="match-room">
     <span className="match-room-state recording">● QUEUED</span>
   </section>}
 
+  <section className="match-room-focus panel">
+    <div className="match-room-focus-copy">
+      <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT GAME · PRIORITY MISSION':'NEXT MATCH · DNA BASELINE · PROVISIONAL COACHING'}</div>
+      <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your priority mission is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
+      <p>{recording?'OP CLIMB is recording the evidence you entered the match with. Coaching resumes after the game.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your priority mission.'):'Play normally. PERMANENT MISSIONS UNLOCK AFTER GAME 3.'}</p>
+    </div>
+    <div className="match-room-focus-side">
+      {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
+      {!recording&&<Link className="btn primary" href="/ilp">{baselineReady?'SEE YOUR MISSION →':'SEE DNA BASELINE →'}</Link>}
+    </div>
+  </section>
+
   {!recording&&!postgameProcessing&&latestMatch&&lastGameReport&&lastGameReview&&<section className="match-room-last-game">
     <article className="panel match-room-review-hero">
       <div>
@@ -138,7 +150,9 @@ return <div className="match-room">
         {lastGameStrengths.length?<>{lastGameStrengths.slice(0,2).map(item=><div className="match-room-strength" key={item.id}><span>✓ {item.subskill}</span><h3>{item.title}</h3><p>{item.whatHappened}</p></div>)}</>:<><h3>No verified strength yet.</h3><p>OP CLIMB will not invent praise. It only calls a strength when the evidence clears the bar.</p></>}
       </article>
 
-      <article className="panel panel-padding match-room-review-card">
+      <details className="panel panel-padding match-room-review-card match-room-moments">
+        <summary><span><span className="eyebrow">KEY MOMENTS</span><strong>{lastGameMoments.length?`${lastGameMoments.length} moments from your last game`:'Timestamp evidence is still building'}</strong></span><span className="match-room-expand">VIEW TIMELINE <span aria-hidden="true">⌄</span></span></summary>
+        <div className="match-room-moments-content">
         <div className="eyebrow">KEY MOMENTS</div>
         <h3>{lastGameMoments.length?'Where the game told the story.':'Still building timestamp evidence.'}</h3>
         <div className="match-room-moment-list rich">
@@ -159,14 +173,8 @@ return <div className="match-room">
           </article>)}
           {!lastGameMoments.length&&<p>{lastGameAnalysisLoading?'Reading the full game evidence…':'No reliable timestamped coaching moments were available for this game.'}</p>}
         </div>
-      </article>
-
-      <article className="panel panel-padding match-room-review-card is-next">
-        <div className="eyebrow">{baselineReady?'NEXT GAME · PRIORITY MISSION':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} · PROVISIONAL COACHING`}</div>
-        <h3>{baselineReady?(focusMission?.title||lastGameReport.mission.title):lastGameReport.mission.title}</h3>
-        <p>{baselineReady?(focusMission?.gameRule||lastGameReview.mission.rule):lastGameReview.mission.rule+' This is coaching from this game only — not a permanent DNA mission yet.'}</p>
-        <div className="match-room-pass-bar"><span>{baselineReady?"WE'LL KNOW IT'S IMPROVING WHEN":'PERMANENT MISSIONS UNLOCK'}</span><b>{baselineReady?lastGameReview.mission.target:'AFTER BASELINE 3/3'}</b></div>
-      </article>
+        </div>
+      </details>
     </div>
 
     <div className="match-room-review-actions">
@@ -175,14 +183,6 @@ return <div className="match-room">
     </div>
   </section>}
 
-
-  <section className="match-room-focus panel">
-    <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT MATCH · YOUR ONE FOCUS':'NEXT MATCH · DNA BASELINE'}</div>
-    <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your priority mission is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
-    <p>{recording?'OP CLIMB is recording the evidence you entered the match with. It will not add live tactical advice.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your priority mission.'):'Play normally. OP CLIMB is building your baseline. Permanent DNA missions unlock after game 3.'}</p>
-    {!recording&&<div className="match-room-cue"><span>REMEMBER</span><strong>{baselineReady?(focusMission?.gameRule||session?.gameRule||'One decision. Keep it simple.'):'Do not change your play for the system yet — give it a real baseline.'}</strong></div>}
-    {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
-  </section>
 
   <div className="match-room-grid">
     <section className="panel panel-padding">
