@@ -18,7 +18,7 @@ test('My DNA owns long-term development while Match Room owns the game',()=>{
   assert.ok(liveCenter.includes('WHAT HURT YOU'));
   assert.ok(liveCenter.includes('WHAT YOU DID WELL'));
   assert.ok(liveCenter.includes('KEY MOMENTS'));
-  assert.ok(liveCenter.includes('NEXT GAME · ONE THING'));
+  assert.ok(liveCenter.includes('NEXT GAME · PRIORITY MISSION'));
   assert.ok(liveCenter.includes('SEE MY DNA'));
 });
 
@@ -33,13 +33,13 @@ test('My DNA explains development in readable language before technical proof',(
 });
 
 test('Home leads with one next step and makes Game DNA the dominant feature',()=>{
-  assert.ok(dashboard.includes('Know exactly what to do next.'));
-  assert.ok(dashboard.includes('YOUR CLIMB PATH'));
-  assert.ok(dashboard.includes('GAME DNA · THE HEART OF OP CLIMB'));
+  assert.ok(dashboard.includes('Your games build your player identity.'));
+  assert.ok(dashboard.includes('THE DNA LOOP'));
+  assert.ok(dashboard.includes('YOUR GAME DNA · THE CENTRE OF OP CLIMB'));
   assert.ok(dashboard.includes('<ClientGameDna'));
   assert.ok(dashboard.includes('CURRENT FIX'));
   assert.ok(dashboard.includes('plainLanguageFocus'));
-  assert.ok(dashboard.includes('PLAY THE NEXT REP →'));
+  assert.ok(dashboard.includes('YOUR JOB NEXT GAME'));
 });
 
 test('Home cannot regress into a feature directory',()=>{

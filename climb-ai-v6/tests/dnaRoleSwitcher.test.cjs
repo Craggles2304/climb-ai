@@ -31,7 +31,7 @@ test('My DNA is the single web DNA destination and role switching never changes 
 
 test('Home shows the primary-role DNA while My DNA owns role browsing',()=>{
   assert.ok(dashboard.includes('gameDnaClientMissions(roleTasks,active.role)'));
-  assert.ok(dashboard.includes('GAME DNA · THE HEART OF OP CLIMB'));
+  assert.ok(dashboard.includes('YOUR GAME DNA · THE CENTRE OF OP CLIMB'));
   assert.ok(dashboard.includes('role={active.role}'));
   assert.ok(!dashboard.includes('setDnaRole'));
 });

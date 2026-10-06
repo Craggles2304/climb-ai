@@ -42,8 +42,8 @@ test('Companion shows one priority mission plus five background-tracked DNA miss
 });
 
 test('Game DNA stays role-specific in My DNA and Companion',()=>{
-  assert.ok(ilp.includes('Game DNA is role-specific.'));
-  assert.ok(ilp.includes('Only games played in ${viewRole}'));
+  assert.ok(ilp.includes('Every tracked {viewRole} game updates the evidence behind these six strands'));
+  assert.ok(ilp.includes('accountMatches.filter(match=>canonicalLeagueRole(match.role)===viewRole)'));
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
   assert.ok(companion.includes('playerDnaRoleTitle'));
   assert.ok(companion.includes('only ${roleLabel} games progress these six strands'));

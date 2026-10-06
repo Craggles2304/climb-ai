@@ -17,7 +17,7 @@ test('mission plan loads through authenticated server route',()=>{
 test('My Climb never treats plan loading as zero active missions',()=>{
   assert.ok(context.includes('planReady'));
   assert.ok(context.includes('planError'));
-  assert.ok(ilp.includes('LOADING YOUR PLAN'));
+  assert.ok(ilp.includes('LOADING YOUR PLAYER PLAN'));
   assert.ok(ilp.includes('Your plan is still stored.'));
   assert.ok(ilp.indexOf('if(!planReady)return <AppShell>')<ilp.indexOf('if(!baselineReady)return <AppShell>'));
 });
