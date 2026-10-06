@@ -1,0 +1,70 @@
+name: Build Signed TFT Overwolf Companion
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-signed-tft-companion:
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: climb-ai-v6/companion
+    env:
+      OW_CLI_EMAIL: ${{ secrets.OW_CLI_EMAIL }}
+      OW_CLI_API_KEY: ${{ secrets.OW_CLI_API_KEY }}
+      OW_BUILD_KEY: ${{ secrets.OW_BUILD_KEY }}
+      WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+      WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Verify TFT signing prerequisites
+        shell: pwsh
+        run: |
+          $missing = @()
+          foreach ($key in @('OW_CLI_EMAIL','OW_CLI_API_KEY','OW_BUILD_KEY','WIN_CSC_LINK','WIN_CSC_KEY_PASSWORD')) {
+            if ([string]::IsNullOrWhiteSpace((Get-Item -Path "Env:$key" -ErrorAction SilentlyContinue).Value)) {
+              $missing += $key
+            }
+          }
+          if ($missing.Count -gt 0) {
+            throw "Signed TFT Companion is not releasable yet. Missing GitHub Actions secrets: $($missing -join ', ')"
+          }
+
+      - name: Install Companion dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Build Overwolf GEP-enabled Windows installer
+        run: npm run build:ow
+
+      - name: Verify signed installer assets
+        shell: pwsh
+        run: |
+          $required = @(
+            'dist/OP-Climb-Companion-Setup.exe',
+            'dist/OP-Climb-Companion-Setup.exe.blockmap',
+            'dist/latest.yml'
+          )
+          foreach ($file in $required) {
+            if (-not (Test-Path $file)) { throw "Missing signed TFT Companion asset: $file" }
+          }
+
+      - name: Upload signed TFT Companion artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: op-climb-tft-overwolf-companion-windows
+          path: |
+            climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe
+            climb-ai-v6/companion/dist/OP-Climb-Companion-Setup.exe.blockmap
+            climb-ai-v6/companion/dist/latest.yml
+          if-no-files-found: error
