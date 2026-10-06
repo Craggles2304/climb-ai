@@ -570,7 +570,7 @@ ipcMain.handle('companion:restart',()=>{stopTracker();stopTftRecorder();startTra
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
-  const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse']);
+  const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse','/tft/timeline']);
   let target='/live';
   try{
     const parsed=new URL(String(path||'/live'),'https://opclimb.local');
