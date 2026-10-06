@@ -15,7 +15,7 @@ export default function TftDecisionLab(){
   const [upgradesNeeded,setUpgradesNeeded]=useState(2);
   const result=useMemo(()=>analyseDecisionReplay({stage,hp,gold,level,boardStrength,streak,contested,upgradesNeeded}),[stage,hp,gold,level,boardStrength,streak,contested,upgradesNeeded]);
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">POST-GAME / PRACTICE TOOL</div><h1>DECISION REPLAY LAB</h1><p className="muted" style={{maxWidth:820}}>Rebuild a past decision point and test the principle behind it. This is a retrospective training simulator—not a live game assistant. It never reads your current match or changes recommendations from live board actions.</p>
 
     <section style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) minmax(300px,.8fr)',gap:16,marginTop:20}}>
