@@ -6,7 +6,7 @@ import {useLearningPlan} from './LearningPlanContext';
 import {PageHead} from './UI';
 import {WindowsTrackerInstaller} from './WindowsTrackerInstaller';
 import {coachingLevelFor} from '@/lib/coachingLevel';
-import {missionEvidence} from '@/lib/missionLoop';
+import {missionEvidence,missionSummary} from '@/lib/missionLoop';
 import {readClimbSession,sessionGames as gamesInSession,type ClimbSessionState} from '@/lib/climbSession';
 import {track} from '@/lib/analytics';
 import {MissionMeasurementBadge} from './MissionMeasurementBadge';
@@ -16,6 +16,10 @@ import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
+import {currentGameDnaMissions,missionRepView} from '@/lib/gameDnaSnapshot';
+import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {missionComparisonForMatch} from '@/lib/missionComparison';
+import type {CSSProperties} from 'react';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
 type Device={id:string;account_key:string;device_name:string;created_at:string;last_seen_at:string|null};type Item={itemId:number;displayName:string;count:number;price:number};type Player={summonerName:string;riotId:string|null;championName:string;team:string;level:number;position:string|null;itemGold:number;items:Item[];scores:{kills:number;deaths:number;assists:number;creepScore:number;wardScore:number}};type Snapshot={gameTime:number;active:{summonerName:string;riotId:string|null;championName:string;position:string|null;currentGold:number};players:Player[]};type Review={matchId?:string|null;status:string;lastSeenAt:string|null;snapshotCount:number;latestSnapshot:Snapshot|null;summary?:{processing?:{status?:string|null}|null}|null};
@@ -43,6 +47,8 @@ const focusMission=baselineReady?(sessionTask??activeMissions[0]??null):null;
 const latestMatch=useMemo(()=>[...accountMatches]
   .filter(match=>match.durationSeconds>=300)
   .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0],[accountMatches]);
+const dnaMissions=baselineReady?currentGameDnaMissions(tasks,active.role):[];
+const latestMissionMatch=canonicalLeagueRole(latestMatch?.role)===active.role?latestMatch:null;
 const embeddedLastGameAnalysis=latestMatch?.proAnalysis;
 const {analysis:fetchedLastGameAnalysis,loading:lastGameAnalysisLoading}=useProMatch(embeddedLastGameAnalysis?undefined:latestMatch?.id);
 const lastGameAnalysis=embeddedLastGameAnalysis??fetchedLastGameAnalysis??undefined;
@@ -118,6 +124,27 @@ return <div className="match-room">
       {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
       {!recording&&<Link className="btn primary" href="/ilp">{baselineReady?'SEE YOUR MISSION →':'SEE DNA BASELINE →'}</Link>}
     </div>
+  </section>
+
+  <section className="panel match-room-missions" aria-label="Your six DNA missions">
+    <div className="match-room-missions-head">
+      <div><div className="eyebrow">YOUR SIX DNA MISSIONS</div><h2>Where you stand</h2><p>{recording?'Your previous results stay visible while this game is being recorded.':latestMissionMatch?`Compared with your last ${active.role} game. Only confirmed results move the trackers.`:'Your mission results will appear after a tracked game is reviewed.'}</p></div>
+      <Link className="btn secondary" href="/missions">OPEN ALL MISSIONS →</Link>
+    </div>
+    {!baselineReady?<div className="match-room-missions-baseline">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} {active.role} GAMES · Permanent missions unlock after game {DNA_BASELINE_GAMES}.</div>:
+    <div className="match-room-missions-grid">{dnaMissions.map(({domain,task})=>{
+      const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
+      if(!task)return <div className="match-room-mission-row" key={domain} style={style}><div className="match-room-mission-main"><span>{DNA_DOMAIN_LABELS[domain]}</span><strong>Mission building</strong></div><span className="match-room-mission-result neutral">NOT OBSERVED</span></div>;
+      const summary=missionSummary(task);
+      const rep=missionRepView(task);
+      const comparison=missionComparisonForMatch(task,latestMissionMatch?.id);
+      const result=recording?'IN GAME':postgameProcessing?'REVIEW PENDING':!latestMissionMatch?'NO ROLE GAME':comparison.result;
+      return <div className="match-room-mission-row" key={domain} style={style}>
+        <div className="match-room-mission-main"><span>{DNA_DOMAIN_LABELS[domain]}</span><strong>{task.title}</strong><small>{summary.confirmed}/{summary.required} proven games</small></div>
+        <div className="match-room-mission-track" role="progressbar" aria-label={`${DNA_DOMAIN_LABELS[domain]} mission progress`} aria-valuenow={Math.min(summary.confirmed,summary.required)} aria-valuemin={0} aria-valuemax={summary.required}><span style={{width:`${rep.progress}%`}}/></div>
+        <div className="match-room-mission-comparison"><span className={'match-room-mission-result '+(result==='PROVEN'?'proven':result==='NEEDS WORK'?'missed':'neutral')}>{result}</span><small>{recording?'Current game results appear after review.':postgameProcessing?'This game is still being reviewed. The tracker shows earlier proven games.':comparison.detail}</small></div>
+      </div>;
+    })}</div>}
   </section>
 
   {!recording&&!postgameProcessing&&latestMatch&&lastGameReport&&lastGameReview&&<section className="match-room-last-game">

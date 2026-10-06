@@ -1667,3 +1667,25 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
 .missions-baseline .btn{justify-self:start}
 @media(max-width:900px){.missions-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.missions-head{align-items:start;flex-direction:column}.missions-card{padding:20px}.missions-evidence{grid-template-columns:1fr}.missions-meaning{min-height:0}}
+
+.match-room-missions{padding:24px;display:grid;gap:18px}
+.match-room-missions-head{display:flex;justify-content:space-between;align-items:center;gap:20px}
+.match-room-missions-head h2{font-size:clamp(29px,3vw,39px);line-height:1.05;margin:6px 0}
+.match-room-missions-head p{color:var(--muted);line-height:1.5;margin:0}
+.match-room-missions-head .btn{flex:none}
+.match-room-missions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.match-room-mission-row{display:grid;grid-template-columns:minmax(0,1fr) 82px minmax(115px,.75fr);align-items:center;gap:14px;padding:14px 16px;border:1px solid var(--line);border-left:3px solid var(--mission-color);background:#0b1316}
+.match-room-mission-main{display:grid;gap:4px;min-width:0}
+.match-room-mission-main>span{color:var(--mission-color);font:700 9px var(--mono);letter-spacing:.08em;text-transform:uppercase}
+.match-room-mission-main strong{font-size:16px;line-height:1.2}
+.match-room-mission-main small,.match-room-mission-comparison small{color:var(--muted);font-size:11px;line-height:1.35}
+.match-room-mission-track{height:7px;background:#293438;overflow:hidden}
+.match-room-mission-track>span{display:block;height:100%;background:var(--mission-color)}
+.match-room-mission-comparison{display:grid;gap:5px;min-width:0}
+.match-room-mission-result{font:700 9px var(--mono);letter-spacing:.07em;white-space:nowrap}
+.match-room-mission-result.proven{color:var(--mint)}
+.match-room-mission-result.missed{color:#f99594}
+.match-room-mission-result.neutral{color:var(--muted)}
+.match-room-missions-baseline{padding:18px;border:1px solid var(--line);color:var(--muted);font:700 11px/1.5 var(--mono)}
+@media(max-width:1050px){.match-room-missions-grid{grid-template-columns:1fr}}
+@media(max-width:650px){.match-room-missions{padding:20px}.match-room-missions-head{align-items:flex-start;flex-direction:column}.match-room-mission-row{grid-template-columns:minmax(0,1fr) 90px}.match-room-mission-comparison{grid-column:1/-1}.match-room-mission-comparison small{max-width:100%}}
