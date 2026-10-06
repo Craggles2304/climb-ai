@@ -67,51 +67,97 @@ export default function TftHome(){
     }catch(err){setMessage(err instanceof Error?err.message:'TFT sync failed.')}finally{setSyncing(false)}
   };
 
-  return <TftShell><main className="container section">
-    <div className="eyebrow">OP CLIMB · TEAMFIGHT TACTICS</div>
-    <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
-      <div><h1 style={{marginBottom:8}}>TACTICIAN DEVELOPMENT HQ</h1><p className="muted" style={{maxWidth:790}}>TFT CLIMB can run without a Riot API key. The advanced path learns from your own decision evidence, then turns repeated leaks into five active development missions.</p></div>
-      {syncAvailable?<button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>:<span className="op-tier op-tier-plus">NO-API MODE ACTIVE</span>}
+  return <TftShell><main className="tft-page">
+    <section className="tft-hero">
+      <div className="tft-hero-copy">
+        <div className="eyebrow">OP CLIMB · TEAMFIGHT TACTICS</div>
+        <h1>YOUR TFT CLIMB STARTS WITH YOUR DECISIONS.</h1>
+        <p>Same coaching system as League. Your Companion records the game, TFT DNA turns repeated decisions into a player profile, and Decision Twin chooses what you should train next.</p>
+        <div className="tft-hero-actions">
+          <Link className="btn primary" href="/tft/coach">OPEN MY TFT DNA →</Link>
+          <Link className="btn secondary" href="/tft/timeline">REVIEW LAST GAME</Link>
+          {syncAvailable?<button className="btn secondary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>:null}
+        </div>
+      </div>
+      <div className="tft-hero-side">
+        <div className="tft-hero-signal primary"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong></div>
+        <div className="tft-hero-signal"><span>PRIMARY LEAK</span><strong>{profile.primaryLeak?.label||read.title}</strong></div>
+        <div className="tft-hero-signal"><span>MODEL CONFIDENCE</span><strong>{profile.confidence}%</strong></div>
+      </div>
+    </section>
+
+    <section className="tft-path" aria-label="TFT climb flow">
+      <div className="tft-path-head"><span>YOUR TFT CLIMB</span><b>ONE CLEAR LOOP</b></div>
+      <ol>
+        <li className="done"><i>1</i><span>COMPANION</span></li>
+        <li className={matches.length?'done':'active'}><i>2</i><span>PLAY TFT</span></li>
+        <li className={matches.length?'done':''}><i>3</i><span>REVIEW TIMELINE</span></li>
+        <li className={matches.length?'active':''}><i>4</i><span>TRAIN DNA</span></li>
+        <li><i>5</i><span>PROVE TRANSFER</span></li>
+      </ol>
+    </section>
+
+    {message&&<div className="glass card" style={{marginBottom:14,padding:14}}><b>{message}</b></div>}
+
+    <section className="tft-stat-strip">
+      <div className="tft-stat"><span>TACTICIAN GRADE</span><b>{profile.grade??'—'}</b><small>{profile.confidence}% evidence confidence</small></div>
+      <div className="tft-stat"><span>TFT RANK</span><b>{rank}</b><small>{syncAvailable?'Riot profile':'Connect sync to populate'}</small></div>
+      <div className="tft-stat"><span>AVG PLACE</span><b>{summary.games?summary.averagePlacement.toFixed(2):'—'}</b><small>{summary.games?'last '+summary.games+' tracked games':'No games yet'}</small></div>
+      <div className="tft-stat"><span>TOP 4</span><b>{summary.games?Math.round(summary.top4Rate*100)+'%':'—'}</b><small>Outcome context</small></div>
+      <div className="tft-stat"><span>1ST PLACE</span><b>{summary.games?Math.round(summary.winRate*100)+'%':'—'}</b><small>Conversion context</small></div>
+      <div className="tft-stat"><span>PLAN</span><b>{tftTier}</b><small>Shared across League + TFT</small></div>
+    </section>
+
+    <div className="tft-section-head">
+      <div><div className="eyebrow">YOUR NEXT DEVELOPMENT ACTION</div><h2>ONE FIX, NOT TEN TOOLS.</h2><p>OP CLIMB should tell you where to go next. The labs sit underneath the coaching loop instead of competing with it.</p></div>
+      <Link href="/tft/coach" className="btn primary">VIEW MY DEVELOPMENT →</Link>
     </div>
 
-    <section className="glass card" style={{marginTop:16,padding:14}}><div className="eyebrow">LIVE SET STATUS</div><b>Set 18 · Enchanted Wilds · Patch 18.2 is the current system baseline.</b><p className="muted" style={{margin:'4px 0 0'}}>Roll Lab measures economy, Augment Lab reviews contextual choices, Pivot Planner measures transition burden, and Carry Builder plus Item Finder use the current Patch 18.2 champion-performance snapshot.</p></section>
-    {syncAvailable===false&&<section className="glass card" style={{marginTop:12,padding:14,display:'grid',gridTemplateColumns:'1fr auto',gap:14,alignItems:'center'}}><div><div className="eyebrow">RIOT KEY NOT REQUIRED</div><b>The coaching loop is fully usable without automatic history.</b><p className="muted" style={{margin:'4px 0 0'}}>Measure a roll decision, rebuild an augment choice, plan a pivot from the actual board, log the finished game, review the decision, and let the profile detect repeated economy, tempo, flexibility, positioning and conversion leaks.</p></div><Link href="/tft/transition-planner" className="btn secondary">OPEN PIVOT PLANNER</Link></section>}
-    {message&&<div className="glass card" style={{marginTop:16,padding:14}}><b>{message}</b></div>}
-
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:12,marginTop:22}}>
-      <div className="glass card"><div className="eyebrow">TACTICIAN GRADE</div><h2>{profile.grade??'—'}</h2><span className="muted">{profile.confidence}% confidence</span></div>
-      <div className="glass card"><div className="eyebrow">TFT RANK</div><h2>{rank}</h2><span className="muted">Riot sync only</span></div>
-      <div className="glass card"><div className="eyebrow">AVG PLACE</div><h2>{summary.games?summary.averagePlacement.toFixed(2):'—'}</h2><span className="muted">last {summary.games} tracked</span></div>
-      <div className="glass card"><div className="eyebrow">TOP 4</div><h2>{summary.games?`${Math.round(summary.top4Rate*100)}%`:'—'}</h2></div>
-      <div className="glass card"><div className="eyebrow">1ST PLACE</div><h2>{summary.games?`${Math.round(summary.winRate*100)}%`:'—'}</h2></div>
-      <div className="glass card"><div className="eyebrow">SHARED PLAN</div><h2>{tftTier}</h2><Link href="/tft/pricing" className="text-link">VIEW OP CLIMB PLAN →</Link></div>
+    <section className="tft-focus-grid">
+      <article className="tft-focus">
+        <span>CURRENT TFT FIX</span>
+        <h2>{profile.primaryLeak?.label||read.title}</h2>
+        <p>{profile.primaryLeak?.rationale||read.detail}</p>
+        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{profile.primaryLeak?profile.ilp.find(task=>task.skill===profile.primaryLeak?.key)?.target||read.target:read.target}</b></div>
+      </article>
+      <aside className="tft-grade"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong><small>{profile.confidence}% confidence<br/>built from tracked decision evidence</small></aside>
     </section>
 
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12,marginTop:16}}>
-      <Link href="/tft/game-plan" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">BEFORE QUEUE</div><h3>LOCK GAME PLAN</h3><p className="muted">Set economy, stabilise, flex and positioning rules before the result exists.</p></Link>
-      <Link href="/tft/roll-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">SET 18 ECONOMY ENGINE</div><h3>ROLL NOW, LEVEL FIRST OR HOLD?</h3><p className="muted">Model current shop odds, contested copies, pool depletion, XP cost and gold thresholds for a 2★ or 3★ target.</p></Link>
-      <Link href="/tft/item-finder" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">SET 18 ITEM ENGINE</div><h3>COMPONENT → CARRY PATHS</h3><p className="muted">Turn the components you actually own into three current Patch 18.2 carry directions, craft-now options and flex-preserving slams.</p></Link>
-      <Link href="/tft/augment-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">SET 18 DECISION ENGINE</div><h3>AUGMENT DECISION LAB</h3><p className="muted">Rebuild the three choices, import Board Lab context and compare immediate power, scaling, flexibility, synergy and commitment risk.</p></Link>
-      <Link href="/tft/carry-builder" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">SET 18 META CORE</div><h3>CARRY + TEAM SHELL BUILDER</h3><p className="muted">Build around Ashe, Draven, Kog’Maw, Ahri or Master Yi with current standard-item cores, alternatives and clearly-labelled high-roll packages.</p></Link>
-      <Link href="/tft/transition-planner" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">TRANSITION ENGINE</div><h3>CURRENT BOARD → TARGET CORE</h3><p className="muted">See exactly what stays, what leaves, which traits change, who holds the carry items, the minimum purchase floor and whether the pivot should happen in one move or layers.</p></Link>
-      <Link href="/tft/board-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">BOARD STRENGTH ENGINE</div><h3>BUILD + SCORE THE BOARD</h3><p className="muted">Place units, stars and items on a 4×7 board and expose structural leaks before reviewing the decision.</p></Link>
-      <Link href="/tft/decision-lab" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">AFTER GAME / PRACTICE</div><h3>DECISION REPLAY</h3><p className="muted">Rebuild a past board state and test the principle behind hold, level, roll or pivot.</p></Link>
-      <Link href="/tft/coach" className="glass card" style={{textDecoration:'none'}}><div className="eyebrow">LONG-TERM MODEL</div><h3>TACTICIAN PROFILE + ILP</h3><p className="muted">Five skill scores, confidence and five adaptive development missions.</p></Link>
+    <div className="tft-section-head">
+      <div><div className="eyebrow">CORE COACHING</div><h2>THE PARTS THAT MOVE YOUR CLIMB.</h2><p>These are the primary destinations. Everything else is a specialist lab when you need it.</p></div>
+    </div>
+    <section className="tft-core-grid">
+      <Link href="/tft/coach" className="tft-core-card"><span className="tft-card-number">01 · PLAYER MODEL</span><h3>MY TFT DNA</h3><p>Six decision domains, recurring patterns, missions and transfer progress.</p><span className="tft-card-link">OPEN DNA →</span></Link>
+      <Link href="/tft/timeline" className="tft-core-card"><span className="tft-card-number">02 · POST-GAME</span><h3>DECISION TIMELINE</h3><p>See the rounds where economy, stabilisation and board progression actually changed the game.</p><span className="tft-card-link">REVIEW GAME →</span></Link>
+      <Link href="/tft/game-plan" className="tft-core-card"><span className="tft-card-number">03 · BEFORE QUEUE</span><h3>GAME PLAN</h3><p>Lock simple rules before the result exists so the post-game review can compare intention with execution.</p><span className="tft-card-link">SET PLAN →</span></Link>
+      <Link href="/tft/decision-lab" className="tft-core-card"><span className="tft-card-number">04 · DECISION TWIN</span><h3>REPLAY A DECISION</h3><p>Rebuild a key spot and test the principle behind hold, level, roll or pivot.</p><span className="tft-card-link">OPEN LAB →</span></Link>
+      <Link href="/tft/transition-planner" className="tft-core-card"><span className="tft-card-number">05 · FLEXIBILITY</span><h3>PIVOT PLANNER</h3><p>Turn the board you have into a realistic target without pretending every game follows a comp sheet.</p><span className="tft-card-link">PLAN PIVOT →</span></Link>
+      <Link href="/tft/roll-lab" className="tft-core-card"><span className="tft-card-number">06 · ECONOMY</span><h3>ROLL LAB</h3><p>Model shop odds, pool pressure and the cost of rolling versus levelling.</p><span className="tft-card-link">OPEN ROLL LAB →</span></Link>
     </section>
 
-    <ManualTftMatchForm riotAccountId={active.id} disabled={!authenticated} onSaved={load}/>
-
-    <section className="glass card" style={{marginTop:18}}>
-      <div className="eyebrow">CURRENT TFT FIX</div><h2>{read.title}</h2><p>{read.detail}</p><div className="cue-row"><span>NEXT TARGET</span><b>{read.target}</b></div>
-      {profile.primaryLeak&&<div className="cue-row" style={{marginTop:8}}><span>PROFILE PRIORITY</span><b>{profile.primaryLeak.label} · {profile.primaryLeak.score??'—'}/100 · {profile.primaryLeak.confidence}% confidence</b></div>}
-      {tftTier==='FREE'&&<p className="muted" style={{fontSize:12,marginTop:12}}>The same Free, Plus and Pro plan applies across League and TFT.</p>}
+    <div className="tft-section-head">
+      <div><div className="eyebrow">LATEST EVIDENCE</div><h2>YOUR LAST GAMES.</h2><p>Results give context. Decision evidence explains why the result happened.</p></div>
+      <Link href="/tft/matches" className="text-link">ALL MATCHES →</Link>
+    </div>
+    <section className="glass card" style={{padding:22}}>
+      {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><h3>NO TFT EVIDENCE YET</h3><p className="muted">Play normally with the Companion running. Your first recorded games will start building the profile.</p></div>:<div style={{display:'grid',gap:0}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'13px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}><strong style={{fontSize:24}}>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11,marginTop:3}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left · {m.decisionReview?'Decision Review ready':'scoreboard context'}</div></div><span className="muted" style={{fontSize:11}}>{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
     </section>
 
-    <section style={{display:'grid',gridTemplateColumns:'minmax(0,1.5fr) minmax(260px,.7fr)',gap:16,marginTop:18}}>
-      <div className="glass card"><div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}><div><div className="eyebrow">RECENT BOARDS</div><h2>LATEST TFT RESULTS</h2></div><Link href="/tft/matches" className="text-link">ALL MATCHES →</Link></div>
-        {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><p className="muted">No TFT evidence yet. Log your next finished game above. Five games is enough to start producing a useful baseline.</p></div>:<div style={{display:'grid',gap:8}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px 1fr auto',gap:12,alignItems:'center',padding:'11px 0',borderBottom:'1px solid rgba(255,255,255,.08)'}}><strong>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left · {m.decisionReview?'reviewed':'scoreboard only'}</div></div><span className="muted">{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
+    <details className="glass card" style={{marginTop:14,padding:18}}>
+      <summary style={{cursor:'pointer',fontWeight:800}}>MORE TFT LABS</summary>
+      <div className="tft-core-grid" style={{marginTop:14}}>
+        <Link href="/tft/item-finder" className="tft-core-card"><span className="tft-card-number">ITEMS</span><h3>ITEM FINDER</h3><p>Component-to-carry directions and flex-preserving slams.</p></Link>
+        <Link href="/tft/augment-lab" className="tft-core-card"><span className="tft-card-number">AUGMENTS</span><h3>AUGMENT LAB</h3><p>Compare immediate strength, scaling, synergy and commitment risk.</p></Link>
+        <Link href="/tft/carry-builder" className="tft-core-card"><span className="tft-card-number">BOARD CORE</span><h3>CARRY BUILDER</h3><p>Build a coherent shell around your chosen carry.</p></Link>
+        <Link href="/tft/board-lab" className="tft-core-card"><span className="tft-card-number">BOARD QUALITY</span><h3>BOARD LAB</h3><p>Score units, stars, items and structural board strength.</p></Link>
+        <Link href="/tft/board-compare" className="tft-core-card"><span className="tft-card-number">COMPARE</span><h3>BOARD COMPARE</h3><p>Compare two board states without losing the context of the transition.</p></Link>
+        <Link href="/tft/set-lab" className="tft-core-card"><span className="tft-card-number">SET KNOWLEDGE</span><h3>SET LAB</h3><p>Practice set-specific knowledge separately from your long-term decision identity.</p></Link>
       </div>
-      <div className="glass card"><div className="eyebrow">NO-KEY TOOLKIT</div><h3>STATIC + SCENARIO TOOLS</h3><p className="muted">Current system math and Riot static data do not require a Riot match API key.</p><Link className="btn primary" href="/tft/transition-planner">OPEN PIVOT PLANNER</Link><Link className="btn secondary" href="/tft/roll-lab" style={{marginTop:8}}>OPEN ROLL LAB</Link><Link className="btn secondary" href="/tft/augment-lab" style={{marginTop:8}}>OPEN AUGMENT LAB</Link><Link className="btn secondary" href="/tft/item-finder" style={{marginTop:8}}>OPEN ITEM FINDER</Link><Link className="btn secondary" href="/tft/carry-builder" style={{marginTop:8}}>OPEN CARRY BUILDER</Link><Link className="btn secondary" href="/tft/board-lab" style={{marginTop:8}}>OPEN BOARD LAB</Link><Link className="btn secondary" href="/tft/coach" style={{marginTop:8}}>OPEN TFT COACH</Link></div>
-    </section>
+    </details>
+
+    <details className="glass card" style={{marginTop:14,padding:18}}>
+      <summary style={{cursor:'pointer',fontWeight:800}}>MANUAL MATCH ENTRY / FALLBACK</summary>
+      <div style={{marginTop:14}}><ManualTftMatchForm riotAccountId={active.id} disabled={!authenticated} onSaved={load}/></div>
+    </details>
   </main></TftShell>;
 }
