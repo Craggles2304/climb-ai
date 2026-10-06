@@ -68,7 +68,7 @@ export default function TftHome(){
   };
 
   return <TftShell><main className="container section">
-    <div className="eyebrow">SEPARATE PRODUCT · TFT CLIMB</div>
+    <div className="eyebrow">OP CLIMB · TEAMFIGHT TACTICS</div>
     <div style={{display:'flex',justifyContent:'space-between',gap:18,alignItems:'flex-end',flexWrap:'wrap'}}>
       <div><h1 style={{marginBottom:8}}>TACTICIAN DEVELOPMENT HQ</h1><p className="muted" style={{maxWidth:790}}>TFT CLIMB can run without a Riot API key. The advanced path learns from your own decision evidence, then turns repeated leaks into five active development missions.</p></div>
       {syncAvailable?<button className="btn primary" onClick={sync} disabled={syncing||!authenticated}>{syncing?'SYNCING TFT…':'SYNC TFT MATCHES'}</button>:<span className="op-tier op-tier-plus">NO-API MODE ACTIVE</span>}
@@ -84,7 +84,7 @@ export default function TftHome(){
       <div className="glass card"><div className="eyebrow">AVG PLACE</div><h2>{summary.games?summary.averagePlacement.toFixed(2):'—'}</h2><span className="muted">last {summary.games} tracked</span></div>
       <div className="glass card"><div className="eyebrow">TOP 4</div><h2>{summary.games?`${Math.round(summary.top4Rate*100)}%`:'—'}</h2></div>
       <div className="glass card"><div className="eyebrow">1ST PLACE</div><h2>{summary.games?`${Math.round(summary.winRate*100)}%`:'—'}</h2></div>
-      <div className="glass card"><div className="eyebrow">TFT ACCESS</div><h2>{tftTier}</h2><Link href="/tft/pricing" className="text-link">MANAGE TFT PLAN →</Link></div>
+      <div className="glass card"><div className="eyebrow">SHARED PLAN</div><h2>{tftTier}</h2><Link href="/tft/pricing" className="text-link">VIEW OP CLIMB PLAN →</Link></div>
     </section>
 
     <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:12,marginTop:16}}>
@@ -104,7 +104,7 @@ export default function TftHome(){
     <section className="glass card" style={{marginTop:18}}>
       <div className="eyebrow">CURRENT TFT FIX</div><h2>{read.title}</h2><p>{read.detail}</p><div className="cue-row"><span>NEXT TARGET</span><b>{read.target}</b></div>
       {profile.primaryLeak&&<div className="cue-row" style={{marginTop:8}}><span>PROFILE PRIORITY</span><b>{profile.primaryLeak.label} · {profile.primaryLeak.score??'—'}/100 · {profile.primaryLeak.confidence}% confidence</b></div>}
-      {tftTier==='FREE'&&<p className="muted" style={{fontSize:12,marginTop:12}}>FREE keeps the baseline coaching loop. TFT PLUS/PRO can later add longer memory, set-specific benchmarking and deeper comp/augment clustering independently from League access.</p>}
+      {tftTier==='FREE'&&<p className="muted" style={{fontSize:12,marginTop:12}}>The same Free, Plus and Pro plan applies across League and TFT.</p>}
     </section>
 
     <section style={{display:'grid',gridTemplateColumns:'minmax(0,1.5fr) minmax(260px,.7fr)',gap:16,marginTop:18}}>

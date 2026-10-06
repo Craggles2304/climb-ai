@@ -23,9 +23,24 @@ export default function TftCoach(){
   const profile=useMemo(()=>buildTacticianProfile(matches),[matches]);
   const spread=matches.length?Math.max(...matches.map(m=>m.placement))-Math.min(...matches.map(m=>m.placement)):0;
   const nextAction=profile.primaryLeak?profile.ilp.find(task=>task.skill===profile.primaryLeak?.key)?.target||read.target:read.target;
+  const dna=[
+    {name:'Economy',skill:profile.skills.find(s=>s.key==='ECONOMY')},
+    {name:'Tempo',skill:profile.skills.find(s=>s.key==='TEMPO')},
+    {name:'Board Building',skill:null},
+    {name:'Flexibility',skill:profile.skills.find(s=>s.key==='FLEXIBILITY')},
+    {name:'Items & Augments',skill:null},
+    {name:'Endgame Decisions',skill:profile.skills.find(s=>s.key==='CONVERSION')},
+  ];
+  const reviewed=matches.filter(m=>m.decisionReview);
+  const recurring=[
+    {name:'Late stabilisation',count:reviewed.filter(m=>m.decisionReview?.rollTiming==='LATE').length},
+    {name:'Forced contested line',count:reviewed.filter(m=>m.decisionReview?.pivotQuality==='FORCED_CONTESTED').length},
+    {name:'Held components',count:reviewed.filter(m=>m.decisionReview?.itemChoice==='GREEDY_COMPONENTS').length},
+  ].filter(x=>x.count>=2);
 
   return <TftShell><main className="container section">
-    <div className="eyebrow">ADVANCED TFT DEVELOPMENT COACH</div><h1>BUILD THE TACTICIAN, NOT JUST THE COMP.</h1><p className="muted" style={{maxWidth:820}}>OP CLIMB separates five trainable skills and attaches confidence to every score. Missing evidence stays unknown; the system does not pretend placement alone proves why you won or lost.</p>
+    <div className="eyebrow">ADVANCED TFT DEVELOPMENT COACH</div><h1>BUILD THE TACTICIAN, NOT JUST THE COMP.</h1><p className="muted" style={{maxWidth:820}}>Six TFT DNA domains track your development. Unmeasured decisions stay NOT OBSERVED.</p>
+    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:18}}>{dna.map(d=><article className="glass card" key={d.name}><div className="eyebrow">TFT DNA</div><h3>{d.name}</h3><strong>{d.skill?.score??'NOT OBSERVED'}</strong><p className="muted" style={{fontSize:11}}>{d.skill?.score!=null?`${d.skill.confidence}% confidence · ${d.skill.evidenceCount} evidence hits`:'Local decision evidence is needed before scoring.'}</p></article>)}</section>
 
     <section style={{display:'grid',gridTemplateColumns:'minmax(250px,.7fr) minmax(0,1.3fr)',gap:16,marginTop:20}}>
       <div className="glass card">
@@ -60,6 +75,8 @@ export default function TftCoach(){
         <div style={{textAlign:'right'}}><b>{task.progress}/{task.goal}</b><div className="muted" style={{fontSize:10}}>EVIDENCE HITS</div></div>
       </div>)}</div>
     </section>
+    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">DECISION TWIN · COACH MEMORY</div><h2>RECURRING PATTERNS</h2>{recurring.length?recurring.map(x=><p key={x.name}><b>{x.name}</b> · observed in {x.count} reviewed games</p>):<p className="muted">NOT OBSERVED — at least two explicit reviews are needed to identify a recurring decision pattern.</p>}<Link href="/tft/timeline" className="btn secondary">OPEN POST-GAME TIMELINE</Link></section>
+    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">TRANSFER TEST · PRINCIPLE OWNED</div><h2>PROVE THE RULE IN A NEW GAME</h2><p className="muted">Apply the current mission in a different comp or lobby, then record the decision in Decision Replay. Principle Owned remains unverified until repeated evidence shows transfer across contexts.</p><Link href="/tft/decision-lab" className="btn secondary">OPEN TRANSFER PRACTICE</Link></section>
 
     <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:14,marginTop:16}}>
       <div className="glass card"><div className="eyebrow">CONSISTENCY</div><h2>{matches.length?`${spread} places`:'—'}</h2><p className="muted">Placement spread across the tracked sample.</p></div>
@@ -68,6 +85,6 @@ export default function TftCoach(){
       <div className="glass card"><div className="eyebrow">DATA DEPTH</div><h2>{loading?'…':matches.filter(m=>m.decisionReview).length}</h2><p className="muted">Games with structured Decision Review evidence.</p></div>
     </section>
 
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">ACCESS DEPTH</div><h3>TFT {tftTier}</h3>{tftTier==='FREE'?<p className="muted">FREE can build the core profile and five missions. Paid TFT tiers can later add longer memory, set-specific benchmarking and deeper comp/augment clustering without sharing League entitlements.</p>:<p className="muted">Your paid TFT entitlement remains separate from League access.</p>}</section>
+    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">SHARED ACCESS</div><h3>OP CLIMB {tftTier}</h3><p className="muted">Your plan covers both League and TFT.</p></section>
   </main></TftShell>;
 }

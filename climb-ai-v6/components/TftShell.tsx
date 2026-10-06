@@ -18,6 +18,7 @@ const items=[
   ['Decision Lab','/tft/decision-lab','◈'],
   ['Set Lab','/tft/set-lab','★'],
   ['Match History','/tft/matches','◇'],
+  ['Timeline','/tft/timeline','◷'],
   ['TFT Coach','/tft/coach','✦'],
   ['TFT Subscription','/tft/pricing','◆'],
 ] as const;
@@ -26,7 +27,7 @@ export function TftShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const {active}=useAccount();
   const {tftTier}=useSubscription();
-  const title=path==='/tft'?'TFT HQ':path.includes('game-plan')?'GAME PLAN':path.includes('item-finder')?'ITEM FINDER':path.includes('augment-lab')?'AUGMENT LAB':path.includes('roll-lab')?'ROLL ODDS LAB':path.includes('carry-builder')?'CARRY BUILDER':path.includes('transition-planner')?'PIVOT PLANNER':path.includes('board-compare')?'BOARD COMPARE':path.includes('board-lab')?'BOARD LAB':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
+  const title=path==='/tft'?'TFT HQ':path.includes('timeline')?'TIMELINE':path.includes('game-plan')?'GAME PLAN':path.includes('item-finder')?'ITEM FINDER':path.includes('augment-lab')?'AUGMENT LAB':path.includes('roll-lab')?'ROLL ODDS LAB':path.includes('carry-builder')?'CARRY BUILDER':path.includes('transition-planner')?'PIVOT PLANNER':path.includes('board-compare')?'BOARD COMPARE':path.includes('board-lab')?'BOARD LAB':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
   return <div className="app-layout op-shell">
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">

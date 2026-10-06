@@ -247,6 +247,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
       </Link>
       <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
+      <div className="game-switch"><Link href="/dashboard" aria-current="page">LEAGUE</Link><Link href="/tft">TFT</Link></div>
       <p className="nav-caption">YOUR WORKSPACE</p>
       <nav aria-label="Main navigation">
         {primary.map(([name,href,icon,hint])=>{
@@ -256,6 +257,7 @@ export function AppShell({children}:{children:React.ReactNode}){
             <span className="nav-link-copy"><b>{name}</b><small>{hint}</small></span>
           </Link>;
         })}
+
       </nav>
       <div className="sidebar-bottom">
         <SidebarTierStep tier={tier}/>

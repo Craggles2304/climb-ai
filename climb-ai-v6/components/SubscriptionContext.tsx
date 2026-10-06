@@ -1,7 +1,7 @@
 'use client';
 import {createContext,useContext,useEffect,useMemo,useState} from 'react';
 import {getBrowserClient} from '@/lib/supabase/client';
-import {normalizeTier,SubscriptionProduct,SubscriptionTier} from '@/lib/subscription';
+import {normalizeTier,SubscriptionProduct,SubscriptionTier,TIER_RANK} from '@/lib/subscription';
 
 type Ctx={
   tier:SubscriptionTier;
@@ -53,8 +53,11 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
         const row=live.find((item:any)=>String(item.product).toUpperCase()===product);
         return row?normalizeTier(row.tier):fallback;
       };
-      setLolTier(productTier('LOL',legacyLeagueTier));
-      setTftTier(productTier('TFT','FREE'));
+      const leagueTier=productTier('LOL',legacyLeagueTier);
+      const oldTftTier=productTier('TFT','FREE');
+      const sharedTier=TIER_RANK[oldTftTier]>TIER_RANK[leagueTier]?oldTftTier:leagueTier;
+      setLolTier(sharedTier);
+      setTftTier(sharedTier);
     }finally{setLoading(false)}
   };
   useEffect(()=>{void refresh()},[]);
