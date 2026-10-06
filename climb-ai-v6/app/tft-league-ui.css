@@ -363,3 +363,54 @@ body[data-op-area="tft"] .tft-page .text-link{color:var(--tft-purple)}
   .tft-section-head,.tft-dna-stage-head,.tft-mission-board-head,.tft-timeline-head{align-items:flex-start;flex-direction:column}
   .tft-dna-stage-head small{text-align:left}
 }
+
+
+/* Lift every specialist TFT route into the same visual language, even before
+   its bespoke content layout is migrated. */
+body[data-op-area="tft"] .op-screen-frame>.container.section,
+body[data-op-area="tft"] .op-screen-frame>main.container.section{
+  width:min(1180px,calc(100% - 32px));
+  margin:auto;
+  padding:34px 0 84px;
+}
+body[data-op-area="tft"] .container.section>h1{
+  max-width:900px;
+  margin:7px 0 11px;
+  font:800 clamp(42px,5.2vw,68px)/.92 var(--display);
+  letter-spacing:-.045em;
+}
+body[data-op-area="tft"] .container.section>.eyebrow+ h1 + .muted{
+  max-width:820px!important;
+  color:#a8b6b8;
+  font-size:14px;
+  line-height:1.58;
+}
+body[data-op-area="tft"] .container.section .glass.card{
+  border-radius:0;
+  border-color:rgba(255,255,255,.09);
+  background:
+    radial-gradient(circle at 100% 0%,rgba(183,164,239,.055),transparent 32%),
+    linear-gradient(145deg,rgba(255,255,255,.027),rgba(255,255,255,.012));
+  box-shadow:0 16px 44px rgba(0,0,0,.18);
+}
+body[data-op-area="tft"] .container.section .glass.card:hover{
+  border-color:rgba(183,164,239,.27);
+}
+body[data-op-area="tft"] .container.section .glass.card h2{
+  font-size:clamp(26px,3vw,40px);
+  line-height:.98;
+}
+body[data-op-area="tft"] .container.section .glass.card h3{
+  font-size:24px;
+  line-height:1;
+}
+body[data-op-area="tft"] .container.section .cue-row{
+  border-color:rgba(255,255,255,.07);
+}
+body[data-op-area="tft"] .container.section .cue-row span{
+  color:var(--tft-purple);
+}
+body[data-op-area="tft"] .container.section details.glass.card>summary{
+  font:800 13px var(--display);
+  letter-spacing:.04em;
+}
