@@ -99,6 +99,8 @@ function render(state){
   $('statusTitle').textContent=phaseTitle(phase);
   $('statusCopy').textContent=phaseCopy(current);
   $('trackerState').textContent=current.trackerRunning?'Running':'Stopped';
+  const tft=current.tftRecorder||{};
+  if($('tftRecorderState'))$('tftRecorderState').textContent=tft.state==='RECORDING'?'Recording':tft.state==='READY'?'Review ready':tft.state==='PROCESSING'?'Reviewing':tft.state==='ERROR'?'Needs attention':tft.available?'Armed':'Unavailable';
   $('modeState').textContent=modeLabel(phase);
   $('statusPill').textContent=modeLabel(phase).toUpperCase();
   $('statusPill').classList.toggle('good',['WAITING','CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase));
