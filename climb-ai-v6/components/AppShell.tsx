@@ -30,11 +30,12 @@ type ProgressionPayload={
 const primary=[
   ['Home','/dashboard','⌂','Your next step'],
   ['My DNA','/ilp','⬡','Your player identity'],
+  ['Missions','/missions','✦','Six DNA trackers'],
   ['Match Room','/live','◇','Prepare · play · review'],
   ['My Games','/analyse','▤','Past games and evidence'],
   ['Coach','/coach','◎','Ask why · understand more'],
 ] as const;
-const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Match','/live']] as const;
+const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Missions','/missions'],['Match','/live']] as const;
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'HOME';
@@ -51,7 +52,7 @@ const routeTitle=(path:string)=>{
   if(path.startsWith('/matchup-lab'))return'ADVANCED MATCHUP';
   if(path==='/champions/main')return'MY MAIN CHAMP';
   if(path.startsWith('/champions'))return'CHAMPIONS';
-  if(path==='/missions')return'MISSION LAB';
+  if(path==='/missions')return'MISSIONS';
   if(path==='/uploads')return'ADD A GAME';
   if(path==='/account')return'ACCOUNT';
   if(path==='/billing')return'SUBSCRIPTION';
@@ -142,7 +143,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     focusConfirmed:journeyFocusSummary?.confirmed,
     focusRequired:journeyFocusSummary?.required,
   });
-  const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
+  const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/missions'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
   useEffect(()=>{
     try{setJourneyDnaRevealed(localStorage.getItem('op:dna-revealed:'+active.id+':'+active.role)==='1')}catch{setJourneyDnaRevealed(false)}
   },[active.id,active.role]);
