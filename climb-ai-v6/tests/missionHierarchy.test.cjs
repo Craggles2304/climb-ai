@@ -28,8 +28,8 @@ test('Missions page shows six current DNA strands with evidence-backed trackers'
   assert.ok(missionsPage.includes('currentGameDnaMissions'));
   assert.ok(missionsPage.includes('missions.map(({domain,task},index)'));
   assert.ok(missionsPage.includes('missionRepView(task)'));
-  assert.ok(missionsPage.includes('missionEvidence(task,latestMatch,active.rank)'));
-  assert.ok(missionsPage.includes('NOT OBSERVED'));
+  assert.ok(missionsPage.includes('missionComparisonForMatch(task,latestMatch?.id)'));
+  assert.ok(missionsPage.includes('comparison.result'));
   assert.ok(appShell.includes("['Missions','/missions'"));
 });
 

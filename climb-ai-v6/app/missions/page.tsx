@@ -9,7 +9,8 @@ import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,missionRepView} from '@/lib/gameDnaSnapshot';
-import {missionEvidence,missionSummary} from '@/lib/missionLoop';
+import {missionSummary} from '@/lib/missionLoop';
+import {missionComparisonForMatch} from '@/lib/missionComparison';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
@@ -39,7 +40,7 @@ export default function Missions(){
       const plain=plainLanguageFocus(task);
       const summary=missionSummary(task);
       const rep=missionRepView(task);
-      const evidence=missionEvidence(task,latestMatch,active.rank);
+      const comparison=missionComparisonForMatch(task,latestMatch?.id);
       return <article className="panel missions-card" key={domain} style={style}>
         <div className="missions-card-top"><span>{String(index+1).padStart(2,'0')} · {DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><MissionMeasurementBadge metric={task.metric} compact/></div>
         <h2>{plain.name}</h2><p className="missions-meaning">{plain.meaning}</p>
@@ -48,7 +49,7 @@ export default function Missions(){
         <div className="missions-track" role="progressbar" aria-label={`${DNA_DOMAIN_LABELS[domain]} mission progress`} aria-valuenow={Math.min(summary.confirmed,summary.required)} aria-valuemin={0} aria-valuemax={summary.required}><span style={{width:`${rep.progress}%`}}/></div>
         <div className="missions-pips" aria-hidden="true">{Array.from({length:summary.required},(_,i)=><span className={i<summary.confirmed?'complete':''} key={i}/>)}</div>
         <p className="missions-progress-note">{summary.remaining?`${summary.remaining} more proven game${summary.remaining===1?'':'s'} to master this mission.`:'Mastery target reached. Your next strand mission will follow.'}</p>
-        <div className="missions-evidence"><span>LATEST GAME</span><strong>{evidence.available?(evidence.clearedBar?'TARGET MET':'KEEP WORKING'):'NOT OBSERVED'}</strong><small>{evidence.reason}</small></div>
+        <div className="missions-evidence"><span>LATEST GAME</span><strong>{comparison.result}</strong><small>{comparison.detail}</small></div>
         <Link href={`/ilp?dna=${domain}`} className="text-link">OPEN STRAND DETAILS →</Link>
       </article>;
     })}</div>}
