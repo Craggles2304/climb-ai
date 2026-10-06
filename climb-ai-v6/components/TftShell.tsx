@@ -5,29 +5,56 @@ import {useAccount} from './AccountContext';
 import {useSubscription} from './SubscriptionContext';
 import {Wordmark} from './UI';
 
-const items=[
+const coreItems=[
   ['TFT HQ','/tft','⌂'],
+  ['My TFT DNA','/tft/coach','✦'],
+  ['Post-Game Timeline','/tft/timeline','◷'],
+  ['Match History','/tft/matches','◇'],
+] as const;
+
+const labItems=[
   ['Game Plan','/tft/game-plan','◎'],
-  ['Item Finder','/tft/item-finder','◫'],
-  ['Augment Lab','/tft/augment-lab','✣'],
   ['Roll Lab','/tft/roll-lab','％'],
-  ['Carry Builder','/tft/carry-builder','♛'],
   ['Pivot Planner','/tft/transition-planner','↯'],
   ['Board Lab','/tft/board-lab','⬡'],
+  ['Item Finder','/tft/item-finder','◫'],
+  ['Augment Lab','/tft/augment-lab','✣'],
+  ['Carry Builder','/tft/carry-builder','♛'],
   ['Board Compare','/tft/board-compare','⇄'],
   ['Decision Lab','/tft/decision-lab','◈'],
   ['Set Lab','/tft/set-lab','★'],
-  ['Match History','/tft/matches','◇'],
-  ['Timeline','/tft/timeline','◷'],
-  ['TFT Coach','/tft/coach','✦'],
-  ['TFT Subscription','/tft/pricing','◆'],
 ] as const;
+
+const titleFor=(path:string)=>{
+  if(path==='/tft')return'TFT HQ';
+  if(path.includes('timeline'))return'POST-GAME TIMELINE';
+  if(path.includes('game-plan'))return'GAME PLAN';
+  if(path.includes('item-finder'))return'ITEM FINDER';
+  if(path.includes('augment-lab'))return'AUGMENT LAB';
+  if(path.includes('roll-lab'))return'ROLL LAB';
+  if(path.includes('carry-builder'))return'CARRY BUILDER';
+  if(path.includes('transition-planner'))return'PIVOT PLANNER';
+  if(path.includes('board-compare'))return'BOARD COMPARE';
+  if(path.includes('board-lab'))return'BOARD LAB';
+  if(path.includes('decision-lab'))return'DECISION LAB';
+  if(path.includes('set-lab'))return'SET LAB';
+  if(path.includes('matches'))return'MATCH HISTORY';
+  if(path.includes('coach'))return'MY TFT DNA';
+  return'TFT ACCESS';
+};
 
 export function TftShell({children}:{children:React.ReactNode}){
   const path=usePathname();
   const {active}=useAccount();
   const {tftTier}=useSubscription();
-  const title=path==='/tft'?'TFT HQ':path.includes('timeline')?'TIMELINE':path.includes('game-plan')?'GAME PLAN':path.includes('item-finder')?'ITEM FINDER':path.includes('augment-lab')?'AUGMENT LAB':path.includes('roll-lab')?'ROLL ODDS LAB':path.includes('carry-builder')?'CARRY BUILDER':path.includes('transition-planner')?'PIVOT PLANNER':path.includes('board-compare')?'BOARD COMPARE':path.includes('board-lab')?'BOARD LAB':path.includes('decision-lab')?'DECISION LAB':path.includes('set-lab')?'SET LAB':path.includes('matches')?'MATCH HISTORY':path.includes('coach')?'TFT COACH':'TFT ACCESS';
+  const title=titleFor(path);
+  const nav=(items:readonly (readonly [string,string,string])[])=>items.map(([name,href,icon])=>{
+    const isActive=path===href;
+    return <Link className={isActive?'active-nav':''} key={href} href={href}>
+      <span className="op-nav-icon">{icon}</span><span>{name}</span>{isActive&&<i/>}
+    </Link>;
+  });
+
   return <div className="app-layout op-shell">
     <aside className="sidebar op-sidebar">
       <div className="op-brand-block">
@@ -43,38 +70,44 @@ export function TftShell({children}:{children:React.ReactNode}){
       <div className="account-switch op-account-card">
         <div className="op-player-kicker"><span>TACTICIAN</span><i/></div>
         <strong style={{display:'block',fontSize:14}}>{active.gameName}{active.tagline}</strong>
-        <div className="op-account-meta"><strong>{active.region}</strong><span>Shared Riot identity</span></div>
+        <div className="op-account-meta"><strong>{active.region}</strong><span>One Riot identity · two climbs</span></div>
       </div>
 
       <nav className="op-nav" aria-label="TFT navigation">
         <div className="op-nav-group">
-          <div className="op-nav-label"><span>TFT CLIMB</span></div>
-          {items.map(([name,href,icon])=>{const isActive=path===href;return <Link className={isActive?'active-nav':''} key={href} href={href}><span className="op-nav-icon">{icon}</span><span>{name}</span>{isActive&&<i/>}</Link>})}
+          <div className="op-nav-label"><span>YOUR TFT CLIMB</span></div>
+          {nav(coreItems)}
         </div>
         <div className="op-nav-group">
-          <div className="op-nav-label"><span>PRODUCT</span></div>
+          <div className="op-nav-label"><span>COACHING LABS</span></div>
+          {nav(labItems)}
+        </div>
+        <div className="op-nav-group">
+          <div className="op-nav-label"><span>ACCOUNT</span></div>
+          <Link href="/tft/pricing"><span className="op-nav-icon">◆</span><span>Plan & Access</span></Link>
           <Link href="/dashboard"><span className="op-nav-icon">↩</span><span>League of Legends</span></Link>
           <Link href="/account"><span className="op-nav-icon">◉</span><span>Riot Accounts</span></Link>
         </div>
       </nav>
 
       <div className="glass card" style={{padding:14,marginTop:16}}>
-        <div className="eyebrow">RIOT-SAFE COACHING</div>
-        <p className="muted" style={{fontSize:11,margin:'8px 0 0'}}>TFT CLIMB focuses on post-game learning, practice scenarios and static prep. It does not adaptively tell you what to buy, roll, position or select during a live game.</p>
+        <div className="eyebrow">MATCH RECORDER</div>
+        <b style={{display:'block',marginTop:5}}>Record quietly. Coach afterwards.</b>
+        <p className="muted" style={{fontSize:11,margin:'6px 0 0'}}>Your own TFT evidence builds the timeline and DNA. Live prescriptive coaching stays off.</p>
       </div>
     </aside>
 
     <main className="app-main op-main">
       <header className="op-broadcast-hud">
-        <div className="op-hud-brand"><span className="op-hud-mark">TFT</span><div><small>OP CLIMB · TACTICIAN DEVELOPMENT</small><strong>{title}</strong></div></div>
+        <div className="op-hud-brand"><span className="op-hud-mark">TFT</span><div><small>OP CLIMB · DECISION TWIN</small><strong>{title}</strong></div></div>
         <div className="op-hud-player">
           <div><small>RIOT ID</small><strong>{active.gameName}{active.tagline}</strong></div>
           <div><small>REGION</small><strong>{active.region}</strong></div>
-          <div><small>TFT ACCESS</small><strong className={tftTier==='PRO'?'volt':''}>{tftTier}</strong></div>
-          <span className="op-hud-state"><i/>POST-GAME SYSTEM</span>
+          <div><small>PLAN</small><strong className={tftTier==='PRO'?'volt':''}>{tftTier}</strong></div>
+          <span className="op-hud-state"><i/>TFT COACHING ONLINE</span>
         </div>
       </header>
-      <div className="op-energy-rail"><i/><span>TFT CLIMB // READ THE ITEMS. REVIEW THE AUGMENT. MEASURE THE ROLL. PLAN THE PIVOT. BUILD THE BOARD.</span></div>
+      <div className="op-energy-rail"><i/><span>TFT // RECORD THE DECISION · FIND THE PATTERN · TRAIN THE PRINCIPLE · PROVE THE TRANSFER.</span></div>
       <div className="op-screen-frame">{children}</div>
     </main>
   </div>;
