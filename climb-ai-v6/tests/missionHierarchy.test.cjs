@@ -5,7 +5,7 @@ const path=require('node:path');
 const root=path.join(__dirname,'..');
 
 const ilp=fs.readFileSync(path.join(root,'app','ilp','page.tsx'),'utf8');
-const legacyMissions=fs.readFileSync(path.join(root,'app','missions','page.tsx'),'utf8');
+const missionsPage=fs.readFileSync(path.join(root,'app','missions','page.tsx'),'utf8');
 const companion=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
 const api=fs.readFileSync(path.join(root,'app','api','live','companion-home','route.ts'),'utf8');
 const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
@@ -24,9 +24,13 @@ test('My DNA shows six strand missions but makes one selected mission easy to un
   assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
 });
 
-test('legacy Mission Lab stays redirected into My DNA',()=>{
-  assert.ok(legacyMissions.includes("redirect('/ilp')"));
-  assert.ok(!legacyMissions.includes('Mission Lab'));
+test('Missions page shows six current DNA strands with evidence-backed trackers',()=>{
+  assert.ok(missionsPage.includes('currentGameDnaMissions'));
+  assert.ok(missionsPage.includes('missions.map(({domain,task},index)'));
+  assert.ok(missionsPage.includes('missionRepView(task)'));
+  assert.ok(missionsPage.includes('missionEvidence(task,latestMatch,active.rank)'));
+  assert.ok(missionsPage.includes('NOT OBSERVED'));
+  assert.ok(appShell.includes("['Missions','/missions'"));
 });
 
 test('Companion shows one priority mission plus five background-tracked DNA missions',()=>{
