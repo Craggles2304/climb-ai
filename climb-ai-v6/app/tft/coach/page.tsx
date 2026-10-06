@@ -38,53 +38,97 @@ export default function TftCoach(){
     {name:'Held components',count:reviewed.filter(m=>m.decisionReview?.itemChoice==='GREEDY_COMPONENTS').length},
   ].filter(x=>x.count>=2);
 
-  return <TftShell><main className="container section">
-    <div className="eyebrow">ADVANCED TFT DEVELOPMENT COACH</div><h1>BUILD THE TACTICIAN, NOT JUST THE COMP.</h1><p className="muted" style={{maxWidth:820}}>Six TFT DNA domains track your development. Unmeasured decisions stay NOT OBSERVED.</p>
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:18}}>{dna.map(d=><article className="glass card" key={d.name}><div className="eyebrow">TFT DNA</div><h3>{d.name}</h3><strong>{d.skill?.score??'NOT OBSERVED'}</strong><p className="muted" style={{fontSize:11}}>{d.skill?.score!=null?`${d.skill.confidence}% confidence · ${d.skill.evidenceCount} evidence hits`:'Local decision evidence is needed before scoring.'}</p></article>)}</section>
-
-    <section style={{display:'grid',gridTemplateColumns:'minmax(250px,.7fr) minmax(0,1.3fr)',gap:16,marginTop:20}}>
-      <div className="glass card">
-        <div className="eyebrow">TACTICIAN GRADE</div>
-        <div style={{display:'flex',alignItems:'baseline',gap:10,marginTop:6}}><h1 style={{fontSize:54,margin:0}}>{profile.grade??'—'}</h1><b>/100</b></div>
-        <div className="cue-row"><span>MODEL CONFIDENCE</span><b>{profile.confidence}%</b></div>
-        <p className="muted" style={{fontSize:12}}>This is an explicit coaching grade from tracked evidence, not Riot MMR and not a prediction of hidden rank.</p>
+  return <TftShell><main className="tft-page">
+    <section className="tft-hero">
+      <div className="tft-hero-copy">
+        <div className="eyebrow">MY TFT DNA · YOUR TACTICIAN IDENTITY</div>
+        <h1>THIS IS THE PLAYER YOUR DECISIONS ARE BUILDING.</h1>
+        <p>Like League My DNA, TFT is organised around six strands, one priority mission and proof over future games. The point is not to memorise comps — it is to build decision habits that transfer.</p>
+        <div className="tft-hero-actions">
+          <Link className="btn primary" href="/tft/timeline">REVIEW LAST GAME →</Link>
+          <Link className="btn secondary" href="/tft/game-plan">SET NEXT GAME PLAN</Link>
+        </div>
       </div>
-      <div className="glass card">
-        <div className="eyebrow">PRIMARY DEVELOPMENT LEAK</div>
-        <h2>{profile.primaryLeak?profile.primaryLeak.label:read.title}</h2>
+      <div className="tft-hero-side">
+        <div className="tft-hero-signal primary"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong></div>
+        <div className="tft-hero-signal"><span>PRIMARY LEAK</span><strong>{profile.primaryLeak?.label||read.title}</strong></div>
+        <div className="tft-hero-signal"><span>DECISION REVIEWS</span><strong>{loading?'…':reviewed.length}</strong></div>
+      </div>
+    </section>
+
+    <section className="tft-dna-stage" aria-label="TFT Game DNA">
+      <div className="tft-dna-stage-head">
+        <div><span>LIVE TFT GAME DNA</span><strong>Your six-strand decision profile</strong></div>
+        <small>Each strand is evidence-backed. When the Companion cannot prove a decision, it stays NOT OBSERVED.</small>
+      </div>
+      <div className="tft-dna-grid">
+        {dna.map(d=><article className="tft-dna-card" key={d.name}>
+          <small>{d.name.toUpperCase()}</small>
+          <h3>{d.name}</h3>
+          <span className="tft-dna-score">{d.skill?.score??'—'}</span>
+          <div className="tft-dna-meter"><i style={{width:(d.skill?.score??0)+'%'}}/></div>
+          <p>{d.skill?.score!=null?d.skill.confidence+'% confidence · '+d.skill.evidenceCount+' evidence hits':'NOT OBSERVED · more local decision evidence needed'}</p>
+        </article>)}
+      </div>
+    </section>
+
+    <section className="tft-focus-grid">
+      <article className="tft-focus">
+        <span>PRIORITY TFT MISSION</span>
+        <h2>{profile.primaryLeak?.label||read.title}</h2>
         <p>{profile.primaryLeak?.rationale||read.detail}</p>
-        <div className="cue-row"><span>NEXT ACTION</span><b>{nextAction}</b></div>
+        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{nextAction}</b></div>
+      </article>
+      <aside className="tft-grade">
+        <span>TACTICIAN GRADE</span>
+        <strong>{profile.grade??'—'}</strong>
+        <small>{profile.confidence}% confidence<br/>not Riot MMR · not a hidden-rank guess</small>
+      </aside>
+    </section>
+
+    <section className="tft-mission-board">
+      <div className="tft-mission-board-head">
+        <div><div className="eyebrow">YOUR ACTIVE DEVELOPMENT</div><h2>5 TFT MISSIONS</h2></div>
+        <Link href="/tft/decision-lab" className="btn secondary">OPEN DECISION LAB</Link>
+      </div>
+      <div className="tft-mission-list">
+        {profile.ilp.map(task=><article className="tft-mission" key={task.id}>
+          <div className="eyebrow">#{task.priority} · {task.skill}</div>
+          <strong>{task.title}</strong>
+          <p>{task.target}</p>
+          <div className="tft-mission-meta"><span>PROGRESS</span><b>{task.progress}/{task.goal}</b></div>
+        </article>)}
       </div>
     </section>
 
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:12,marginTop:16}}>
-      {profile.skills.map(skill=><div className="glass card" key={skill.key} style={{padding:16}}>
-        <div className="eyebrow">{skill.label.toUpperCase()}</div>
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'baseline',gap:8}}><h2 style={{margin:'6px 0'}}>{skill.score??'—'}</h2><span className="op-tier op-tier-free">{scoreTone(skill.score)}</span></div>
-        <div style={{height:7,borderRadius:99,background:'rgba(255,255,255,.08)',overflow:'hidden'}}><div style={{height:'100%',width:`${skill.score||0}%`,background:'currentColor'}}/></div>
-        <div className="cue-row" style={{marginTop:10}}><span>CONFIDENCE</span><b>{skill.confidence}%</b></div>
-        <p className="muted" style={{fontSize:11,minHeight:48}}>{skill.rationale}</p>
-      </div>)}
+    <div className="tft-section-head">
+      <div><div className="eyebrow">DECISION TWIN · COACH MEMORY</div><h2>WHAT KEEPS REPEATING?</h2><p>Repeated mistakes become patterns. Patterns become missions. Missions only graduate when the behaviour transfers into a different context.</p></div>
+    </div>
+    <section className="tft-review-grid">
+      <article className="tft-review-card fix">
+        <div className="eyebrow">RECURRING PATTERNS</div>
+        <h3>{recurring.length?recurring[0].name:'NOT OBSERVED YET'}</h3>
+        {recurring.length?recurring.map(x=><p key={x.name}><b>{x.name}</b> · observed in {x.count} reviewed games</p>):<p>At least two explicit reviews are needed before Decision Twin calls something a recurring pattern.</p>}
+        <Link href="/tft/timeline" className="text-link">OPEN POST-GAME PROOF →</Link>
+      </article>
+      <article className="tft-review-card good">
+        <div className="eyebrow">TRANSFER TEST · PRINCIPLE OWNED</div>
+        <h3>PROVE THE RULE IN A NEW GAME.</h3>
+        <p>Apply the same decision principle in a different comp, economy state or lobby. One familiar success is local mastery; repeated success across new contexts is principle ownership.</p>
+        <Link href="/tft/decision-lab" className="text-link">OPEN TRANSFER PRACTICE →</Link>
+      </article>
     </section>
 
-    <section className="glass card" style={{marginTop:16}}>
-      <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'end',flexWrap:'wrap'}}><div><div className="eyebrow">ADAPTIVE TFT ILP</div><h2>5 ACTIVE DEVELOPMENT MISSIONS</h2></div><Link href="/tft/decision-lab" className="btn secondary">OPEN DECISION REPLAY LAB</Link></div>
-      <div style={{display:'grid',gap:10,marginTop:14}}>{profile.ilp.map(task=><div key={task.id} style={{display:'grid',gridTemplateColumns:'52px minmax(0,1fr) 110px',gap:12,alignItems:'center',padding:'13px 0',borderTop:'1px solid rgba(255,255,255,.08)'}}>
-        <div style={{fontSize:22,fontWeight:900}}>#{task.priority}</div>
-        <div><div className="eyebrow">{task.skill}</div><b>{task.title}</b><p className="muted" style={{fontSize:11,margin:'4px 0 0'}}>{task.target}</p></div>
-        <div style={{textAlign:'right'}}><b>{task.progress}/{task.goal}</b><div className="muted" style={{fontSize:10}}>EVIDENCE HITS</div></div>
-      </div>)}</div>
+    <div className="tft-section-head">
+      <div><div className="eyebrow">SUPPORTING CONTEXT</div><h2>RESULTS WITHOUT CONFUSING THEM FOR SKILL.</h2><p>Placement is context. Decision evidence is what drives the coaching model.</p></div>
+    </div>
+    <section className="tft-stat-strip">
+      <div className="tft-stat"><span>CONSISTENCY</span><b>{matches.length?spread+' places':'—'}</b><small>placement spread</small></div>
+      <div className="tft-stat"><span>RECENT FORM</span><b>{summary.games?summary.recentForm.toFixed(2):'—'}</b><small>latest five average</small></div>
+      <div className="tft-stat"><span>TOP-4 RATE</span><b>{summary.games?Math.round(summary.top4Rate*100)+'%':'—'}</b><small>outcome context</small></div>
+      <div className="tft-stat"><span>DECISION DEPTH</span><b>{loading?'…':reviewed.length}</b><small>structured reviews</small></div>
+      <div className="tft-stat"><span>PATTERNS</span><b>{recurring.length}</b><small>repeated leaks found</small></div>
+      <div className="tft-stat"><span>ACCESS</span><b>{tftTier}</b><small>League + TFT</small></div>
     </section>
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">DECISION TWIN · COACH MEMORY</div><h2>RECURRING PATTERNS</h2>{recurring.length?recurring.map(x=><p key={x.name}><b>{x.name}</b> · observed in {x.count} reviewed games</p>):<p className="muted">NOT OBSERVED — at least two explicit reviews are needed to identify a recurring decision pattern.</p>}<Link href="/tft/timeline" className="btn secondary">OPEN POST-GAME TIMELINE</Link></section>
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">TRANSFER TEST · PRINCIPLE OWNED</div><h2>PROVE THE RULE IN A NEW GAME</h2><p className="muted">Apply the current mission in a different comp or lobby, then record the decision in Decision Replay. Principle Owned remains unverified until repeated evidence shows transfer across contexts.</p><Link href="/tft/decision-lab" className="btn secondary">OPEN TRANSFER PRACTICE</Link></section>
-
-    <section style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:14,marginTop:16}}>
-      <div className="glass card"><div className="eyebrow">CONSISTENCY</div><h2>{matches.length?`${spread} places`:'—'}</h2><p className="muted">Placement spread across the tracked sample.</p></div>
-      <div className="glass card"><div className="eyebrow">RECENT FORM</div><h2>{summary.games?summary.recentForm.toFixed(2):'—'}</h2><p className="muted">Average placement across the latest five tracked games.</p></div>
-      <div className="glass card"><div className="eyebrow">TOP-4 RATE</div><h2>{summary.games?`${Math.round(summary.top4Rate*100)}%`:'—'}</h2><p className="muted">Outcome context only; never treated as hidden MMR.</p></div>
-      <div className="glass card"><div className="eyebrow">DATA DEPTH</div><h2>{loading?'…':matches.filter(m=>m.decisionReview).length}</h2><p className="muted">Games with structured Decision Review evidence.</p></div>
-    </section>
-
-    <section className="glass card" style={{marginTop:16}}><div className="eyebrow">SHARED ACCESS</div><h3>OP CLIMB {tftTier}</h3><p className="muted">Your plan covers both League and TFT.</p></section>
   </main></TftShell>;
 }
