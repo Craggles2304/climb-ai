@@ -414,3 +414,274 @@ body[data-op-area="tft"] .container.section details.glass.card>summary{
   font:800 13px var(--display);
   letter-spacing:.04em;
 }
+
+
+/* Coaching labs — one visual grammar across every TFT decision tool */
+.tft-lab-surface{
+  background:
+    linear-gradient(180deg,rgba(183,164,239,.025),transparent 220px),
+    #080d10;
+}
+.tft-lab-page{
+  max-width:1120px!important;
+  padding-top:30px!important;
+}
+.tft-lab-page>.eyebrow:first-child{
+  margin-bottom:8px;
+  color:var(--tft-purple)!important;
+}
+.tft-lab-page>h1{
+  margin:0 0 10px!important;
+  max-width:880px!important;
+  font-size:clamp(40px,5vw,64px)!important;
+  line-height:.92!important;
+}
+.tft-lab-page>p.muted{
+  max-width:760px!important;
+  margin:0 0 24px!important;
+  color:#9eadb1!important;
+  font-size:14px!important;
+  line-height:1.58!important;
+}
+
+.tft-lab-page section{
+  margin-top:12px!important;
+}
+.tft-lab-page .glass.card{
+  padding:18px!important;
+  border-radius:0!important;
+  border-color:rgba(255,255,255,.075)!important;
+  background:
+    linear-gradient(145deg,rgba(255,255,255,.018),rgba(255,255,255,.007)),
+    #0b1215!important;
+  box-shadow:none!important;
+}
+.tft-lab-page .glass.card::before{
+  height:1px!important;
+  opacity:.55!important;
+}
+.tft-lab-page .glass.card:hover{
+  transform:none!important;
+  border-color:rgba(183,164,239,.18)!important;
+  box-shadow:none!important;
+}
+.tft-lab-page .glass.card>.eyebrow:first-child,
+.tft-lab-page .glass.card>div>.eyebrow:first-child{
+  color:#8c9ca0!important;
+}
+.tft-lab-page .glass.card h1{
+  font-size:clamp(30px,3.8vw,48px)!important;
+  margin:5px 0 8px!important;
+}
+.tft-lab-page .glass.card h2{
+  margin:5px 0 8px!important;
+  font-size:clamp(25px,3vw,38px)!important;
+  line-height:.98!important;
+}
+.tft-lab-page .glass.card h3{
+  margin:5px 0 7px!important;
+  font-size:22px!important;
+}
+.tft-lab-page .glass.card p{
+  line-height:1.5;
+}
+.tft-lab-page .muted{
+  color:#89999e;
+}
+
+.tft-lab-page label{
+  display:grid!important;
+  gap:6px!important;
+  color:#dbe3e2;
+  font-size:12px;
+  font-weight:600;
+}
+.tft-lab-page label>.eyebrow,
+.tft-lab-page label>span.eyebrow{
+  margin:0!important;
+  color:#829397!important;
+  font-size:8px!important;
+}
+.tft-lab-page input:not([type="checkbox"]):not([type="radio"]),
+.tft-lab-page select,
+.tft-lab-page textarea{
+  width:100%;
+  min-height:42px;
+  margin:0!important;
+  padding:10px 11px!important;
+  border:1px solid #29353a!important;
+  border-radius:0!important;
+  outline:none;
+  background:#081014!important;
+  color:#eef3f2!important;
+  box-shadow:none!important;
+}
+.tft-lab-page textarea{
+  min-height:76px;
+  resize:vertical;
+  line-height:1.45;
+}
+.tft-lab-page input:focus,
+.tft-lab-page select:focus,
+.tft-lab-page textarea:focus{
+  border-color:rgba(183,164,239,.65)!important;
+  box-shadow:0 0 0 2px rgba(183,164,239,.08)!important;
+}
+.tft-lab-page input::placeholder,
+.tft-lab-page textarea::placeholder{
+  color:#59686d;
+}
+
+.tft-lab-page .btn{
+  min-height:40px!important;
+  padding:10px 13px!important;
+  border-radius:0!important;
+  font:800 11px var(--display)!important;
+  letter-spacing:.04em!important;
+}
+.tft-lab-page .btn.primary{
+  background:var(--tft-purple)!important;
+  border:1px solid var(--tft-purple)!important;
+  color:#0a0f12!important;
+}
+.tft-lab-page .btn.secondary{
+  background:#0b1316!important;
+  border:1px solid #334147!important;
+  color:#c7d2d2!important;
+}
+.tft-lab-page .btn.secondary:hover{
+  border-color:rgba(183,164,239,.42)!important;
+  color:#fff!important;
+}
+
+.tft-lab-page [style*="borderRadius"]{
+  border-radius:0!important;
+}
+.tft-lab-page [style*="gridTemplateColumns"]{
+  gap:10px!important;
+}
+.tft-lab-page [style*="background:'rgba(255,255,255,.04)'"],
+.tft-lab-page [style*="background: 'rgba(255,255,255,.04)'"],
+.tft-lab-page [style*="background:'rgba(255,255,255,.03)'"],
+.tft-lab-page [style*="background: 'rgba(255,255,255,.03)'"]{
+  background:#0a1114!important;
+}
+
+.tft-lab-page .cue-row{
+  grid-template-columns:minmax(88px,.42fr) minmax(0,1fr)!important;
+  gap:12px!important;
+  padding:10px 0!important;
+  border-bottom:1px solid rgba(255,255,255,.055)!important;
+}
+.tft-lab-page .cue-row span{
+  color:#73858a!important;
+  font-size:8px!important;
+}
+.tft-lab-page .cue-row b{
+  color:#e4ebea!important;
+  font-size:13px!important;
+}
+
+.tft-lab-page .op-tier{
+  border-radius:0!important;
+  padding:5px 7px!important;
+  font-size:8px!important;
+  letter-spacing:.08em!important;
+}
+
+.tft-lab-page section>div[style*="display:'flex'"],
+.tft-lab-page section>div[style*="display: 'flex'"]{
+  row-gap:8px!important;
+}
+
+.tft-lab-page details.glass.card{
+  padding:0!important;
+  overflow:hidden;
+}
+.tft-lab-page details.glass.card>summary{
+  padding:14px 16px!important;
+  border-bottom:1px solid transparent;
+  color:#cfd8d7;
+  font:800 12px var(--display)!important;
+  letter-spacing:.04em;
+}
+.tft-lab-page details.glass.card[open]>summary{
+  border-bottom-color:rgba(255,255,255,.07);
+  background:rgba(183,164,239,.035);
+}
+.tft-lab-page details.glass.card>*:not(summary){
+  margin-left:16px!important;
+  margin-right:16px!important;
+}
+.tft-lab-page details.glass.card>*:last-child{
+  margin-bottom:16px!important;
+}
+
+.tft-lab-page table{
+  border-collapse:collapse!important;
+}
+.tft-lab-page th{
+  padding:9px 10px!important;
+  color:#718187!important;
+  background:#091014!important;
+  font:700 8px var(--mono)!important;
+  letter-spacing:.08em!important;
+}
+.tft-lab-page td{
+  padding:10px!important;
+  border-color:rgba(255,255,255,.055)!important;
+  font-size:12px!important;
+}
+
+/* Quiet the setup area, make the verdict/result area visually dominant. */
+.tft-lab-page>section:first-of-type{
+  border-color:rgba(255,255,255,.08)!important;
+  background:#0a1114!important;
+}
+.tft-lab-page>section:first-of-type::before{
+  background:linear-gradient(90deg,#54656a,transparent 68%)!important;
+}
+.tft-lab-page>section:nth-of-type(n+2) .eyebrow{
+  letter-spacing:.11em!important;
+}
+
+/* Option/tile buttons inside labs become compact selectors rather than floating cards. */
+.tft-lab-page button:not(.btn):not(.text-link){
+  border-radius:0!important;
+}
+.tft-lab-page button[style*="textAlign:'left'"],
+.tft-lab-page button[style*="textAlign: 'left'"]{
+  min-height:64px!important;
+  padding:10px!important;
+  border:1px solid #2b383d!important;
+  background:#091114!important;
+  color:#dbe4e3!important;
+}
+.tft-lab-page button[style*="textAlign:'left'"]:hover,
+.tft-lab-page button[style*="textAlign: 'left'"]:hover{
+  border-color:rgba(183,164,239,.4)!important;
+  background:rgba(183,164,239,.035)!important;
+}
+
+/* Keep visual boards readable while removing extra chrome. */
+body[data-op-path="/tft/board-lab"] .tft-lab-page .glass.card,
+body[data-op-path="/tft/board-compare"] .tft-lab-page .glass.card{
+  background:#091114!important;
+}
+body[data-op-path="/tft/set-lab"] .tft-lab-page>section:last-of-type{
+  gap:8px!important;
+}
+body[data-op-path="/tft/set-lab"] .tft-lab-page>section:last-of-type .glass.card{
+  min-height:170px!important;
+  padding:13px!important;
+}
+
+@media(max-width:760px){
+  .tft-lab-page{
+    width:min(100% - 22px,1120px)!important;
+    padding-top:22px!important;
+  }
+  .tft-lab-page>h1{font-size:40px!important}
+  .tft-lab-page .glass.card{padding:14px!important}
+  .tft-lab-page .cue-row{grid-template-columns:1fr!important;gap:3px!important}
+}
