@@ -90,7 +90,7 @@ export default function TftCarryBuilder(){
     try{localStorage.setItem('op_tft_board_lab_v1',JSON.stringify(payload));setStatus(`${profile.champion} shell loaded into Board Lab with ${selectedBuild.label}.`);router.push('/tft/board-lab');}catch{setStatus('Could not save the shell in this browser.');}
   };
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">PATCH-AWARE META STARTING POINTS · STATIC PREP</div>
     <h1>TFT CARRY BUILDER</h1>
     <p className="muted" style={{maxWidth:940}}>Start with the champion you want to play around. OP CLIMB separates current standard-item meta cores from strong alternatives and fun/high-roll lines, then builds a trait-aware support shell from the current Riot static set data.</p>
