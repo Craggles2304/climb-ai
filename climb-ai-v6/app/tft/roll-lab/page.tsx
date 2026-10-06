@@ -44,7 +44,7 @@ export default function TftRollLab(){
 
   const verdictLabel=comparison.verdict==='LEVEL_FIRST_EDGE'?'LEVEL FIRST HAS THE MATH EDGE':comparison.verdict==='ROLL_NOW_EDGE'?'ROLLING HERE HAS THE MATH EDGE':comparison.verdict==='NO_LEVEL_OPTION'?'ROLL / HOLD ONLY':'CLOSE TRADE-OFF';
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">SET {TFT_ROLL_SET} · PATCH {TFT_ROLL_PATCH} · PRACTICE / POST-GAME MODEL</div>
     <h1>ECONOMY + ROLL ODDS LAB</h1>
     <p className="muted" style={{maxWidth:980}}>Rebuild a shop decision and quantify it. OP CLIMB models your level, target cost, shared-pool pressure, copies needed, total spendable gold and XP cost to compare rolling now against leveling first. Target purchases are charged from the same budget as refreshes.</p>
