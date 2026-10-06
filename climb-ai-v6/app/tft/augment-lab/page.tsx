@@ -59,7 +59,7 @@ export default function TftAugmentLab(){
     }catch{setStatus('The saved Board Lab state could not be read.');}
   };
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">SET {TFT_AUGMENT_SET} · PATCH {TFT_AUGMENT_PATCH} · PRACTICE / POST-GAME RECONSTRUCTION</div>
     <h1>AUGMENT DECISION LAB</h1>
     <p className="muted" style={{maxWidth:980}}>Rebuild an augment choice after the game or in a practice scenario. OP CLIMB scores the three options against your stage, HP, economy, board strength, carry direction, active traits and items—without pretending a global average-placement table knows your board better than the actual context.</p>
