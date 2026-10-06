@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "tracker": "node src/main.mjs",
-    "desktop": "ow-electron .",
-    "build:win": "ow-electron-builder --publish=never",
+    "desktop": "electron .",
+    "build:win": "electron-builder --win nsis --x64",
     "desktop:ow": "ow-electron .",
     "build:ow": "ow-electron-builder --publish=never",
     "desktop:plain": "electron .",
