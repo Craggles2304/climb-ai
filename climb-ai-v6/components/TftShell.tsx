@@ -48,6 +48,7 @@ export function TftShell({children}:{children:React.ReactNode}){
   const {active}=useAccount();
   const {tftTier}=useSubscription();
   const title=titleFor(path);
+  const isLab=['/tft/game-plan','/tft/roll-lab','/tft/transition-planner','/tft/board-lab','/tft/item-finder','/tft/augment-lab','/tft/carry-builder','/tft/board-compare','/tft/decision-lab','/tft/set-lab'].some(route=>path===route);
   const nav=(items:readonly (readonly [string,string,string])[])=>items.map(([name,href,icon])=>{
     const isActive=path===href;
     return <Link className={isActive?'active-nav':''} key={href} href={href}>
@@ -108,7 +109,7 @@ export function TftShell({children}:{children:React.ReactNode}){
         </div>
       </header>
       <div className="op-energy-rail"><i/><span>TFT // RECORD THE DECISION · FIND THE PATTERN · TRAIN THE PRINCIPLE · PROVE THE TRANSFER.</span></div>
-      <div className="op-screen-frame">{children}</div>
+      <div className={`op-screen-frame ${isLab?'tft-lab-surface':''}`}>{children}</div>
     </main>
   </div>;
 }
