@@ -101,7 +101,8 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
     const config=cfg();
     if(!config.token||!config.webUrl)throw Object.assign(new Error('Pair this PC to OP CLIMB first.'),{status:401});
     const controller=new AbortController();
-    const timer=setTimeout(()=>controller.abort(),8000);
+    const timeoutMs=body?.action==='END'?20000:8000;
+    const timer=setTimeout(()=>controller.abort(),timeoutMs);
     try{
       const response=await fetch(`${String(config.webUrl).replace(/\/$/,'')}/api/live/telemetry`,{
         method:'POST',
