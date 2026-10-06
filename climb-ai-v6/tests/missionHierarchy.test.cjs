@@ -6,6 +6,7 @@ const root=path.join(__dirname,'..');
 
 const ilp=fs.readFileSync(path.join(root,'app','ilp','page.tsx'),'utf8');
 const missionsPage=fs.readFileSync(path.join(root,'app','missions','page.tsx'),'utf8');
+const missionDetail=fs.readFileSync(path.join(root,'app','missions','[domain]','page.tsx'),'utf8');
 const companion=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
 const api=fs.readFileSync(path.join(root,'app','api','live','companion-home','route.ts'),'utf8');
 const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
@@ -31,6 +32,16 @@ test('Missions page shows six current DNA strands with evidence-backed trackers'
   assert.ok(missionsPage.includes('missionComparisonForMatch(task,latestMatch?.id)'));
   assert.ok(missionsPage.includes('comparison.result'));
   assert.ok(appShell.includes("['Missions','/missions'"));
+});
+
+test('every strand opens a focused mission page with a completion outline',()=>{
+  assert.ok(missionsPage.includes('href={missionDomainPath(domain)}'));
+  for(const heading of ['OVERVIEW','YOUR GOAL','HOW TO COMPLETE IT','YOUR PROGRESS','LATEST GAME EVIDENCE']){
+    assert.ok(missionDetail.includes(heading));
+  }
+  assert.ok(missionDetail.includes('missionComparisonForMatch(task,latestMatch?.id)'));
+  assert.ok(missionDetail.includes('task.target'));
+  assert.ok(missionDetail.includes('summary?.confirmed'));
 });
 
 test('Companion shows one priority mission plus five background-tracked DNA missions',()=>{

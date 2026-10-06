@@ -5,7 +5,6 @@ import type {CSSProperties} from 'react';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
-import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {currentGameDnaMissions,missionRepView} from '@/lib/gameDnaSnapshot';
@@ -13,6 +12,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import {missionComparisonForMatch} from '@/lib/missionComparison';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
+import {missionDomainPath} from '@/lib/missionDomainPath';
 
 export default function Missions(){
   const {active}=useAccount();
@@ -36,22 +36,19 @@ export default function Missions(){
     !baselineReady?<section className="panel panel-padding missions-baseline"><div className="eyebrow">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} GAMES</div><h2>Your six missions unlock after the baseline.</h2><p>Play normally for {DNA_BASELINE_GAMES-baselineGames} more tracked {active.role} game{DNA_BASELINE_GAMES-baselineGames===1?'':'s'}. OP CLIMB needs that evidence before assigning permanent strand missions.</p><div className="missions-track" role="progressbar" aria-label="DNA baseline games" aria-valuenow={baselineGames} aria-valuemin={0} aria-valuemax={DNA_BASELINE_GAMES}><span style={{width:`${baselineGames/DNA_BASELINE_GAMES*100}%`}}/></div><Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link></section>:
     <div className="missions-grid">{missions.map(({domain,task},index)=>{
       const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
-      if(!task)return <article className="panel missions-card missions-card-empty" key={domain} style={style}><div className="missions-card-top"><span>{String(index+1).padStart(2,'0')} · {DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><span>AWAITING EVIDENCE</span></div><h2>Mission building</h2><p>OP CLIMB has not found a reliable, measurable mission for this strand yet.</p><Link href={`/ilp?dna=${domain}`} className="text-link">VIEW DNA STRAND →</Link></article>;
+      if(!task)return <Link className="panel missions-overview-card missions-card-empty" href={missionDomainPath(domain)} key={domain} style={style}><span>{String(index+1).padStart(2,'0')} · {DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><h2>Mission building</h2><p>Awaiting enough evidence to set a measurable mission.</p><b>OPEN STRAND →</b></Link>;
       const plain=plainLanguageFocus(task);
       const summary=missionSummary(task);
       const rep=missionRepView(task);
       const comparison=missionComparisonForMatch(task,latestMatch?.id);
-      return <article className="panel missions-card" key={domain} style={style}>
-        <div className="missions-card-top"><span>{String(index+1).padStart(2,'0')} · {DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><MissionMeasurementBadge metric={task.metric} compact/></div>
-        <h2>{plain.name}</h2><p className="missions-meaning">{plain.meaning}</p>
-        <div className="missions-job"><span>YOUR JOB NEXT GAME</span><strong>{plain.nextGame}</strong></div>
-        <div className="missions-progress-head"><span>PROVEN GAMES</span><strong>{summary.confirmed}/{summary.required}</strong></div>
+      return <Link className="panel missions-overview-card" href={missionDomainPath(domain)} key={domain} style={style}>
+        <span>{String(index+1).padStart(2,'0')} · {DNA_DOMAIN_LABELS[domain].toUpperCase()}</span>
+        <h2>{plain.name}</h2>
+        <p>{plain.meaning}</p>
+        <div className="missions-overview-meta"><strong>{summary.confirmed}/{summary.required} proven games</strong><em>{comparison.result}</em></div>
         <div className="missions-track" role="progressbar" aria-label={`${DNA_DOMAIN_LABELS[domain]} mission progress`} aria-valuenow={Math.min(summary.confirmed,summary.required)} aria-valuemin={0} aria-valuemax={summary.required}><span style={{width:`${rep.progress}%`}}/></div>
-        <div className="missions-pips" aria-hidden="true">{Array.from({length:summary.required},(_,i)=><span className={i<summary.confirmed?'complete':''} key={i}/>)}</div>
-        <p className="missions-progress-note">{summary.remaining?`${summary.remaining} more proven game${summary.remaining===1?'':'s'} to master this mission.`:'Mastery target reached. Your next strand mission will follow.'}</p>
-        <div className="missions-evidence"><span>LATEST GAME</span><strong>{comparison.result}</strong><small>{comparison.detail}</small></div>
-        <Link href={`/ilp?dna=${domain}`} className="text-link">OPEN STRAND DETAILS →</Link>
-      </article>;
+        <b>OPEN MISSION →</b>
+      </Link>;
     })}</div>}
   </main></AppShell>;
 }
