@@ -90,7 +90,7 @@ export default function TftTransitionPlanner(){
     router.push('/tft/carry-builder');
   };
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">SET {TFT_META_SET} · PATCH {TFT_META_PATCH} · STATIC PREP / POST-GAME RECONSTRUCTION</div>
     <h1>COMP PIVOT + TRANSITION PLANNER</h1>
     <p className="muted" style={{maxWidth:980}}>Start with the board you actually had, choose the carry/core you wanted to reach, then measure the transition itself. OP CLIMB separates <b>how much stronger the target looks</b> from <b>how dangerous it is to get there</b>.</p>
