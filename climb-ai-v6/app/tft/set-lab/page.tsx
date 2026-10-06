@@ -21,7 +21,7 @@ export default function TftSetLab(){
   const entries=useMemo(()=>{const all=data?.[tab]||[];const q=query.trim().toLowerCase();return (q?all.filter(x=>`${x.name} ${x.description}`.toLowerCase().includes(q)):all).slice(0,160)},[data,tab,query]);
   const toggle=(name:string)=>setPlan(prev=>{const next=prev.includes(name)?prev.filter(x=>x!==name):[...prev,name].slice(-20);try{localStorage.setItem(PLAN_KEY,JSON.stringify(next))}catch{}return next});
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">NO API KEY REQUIRED · RIOT DATA DRAGON</div>
     <h1>TFT SET LAB</h1>
     <p className="muted" style={{maxWidth:820}}>Search the current static TFT library and build a preparation shortlist. This is patch data, not live-match scouting or adaptive in-game advice.</p>
