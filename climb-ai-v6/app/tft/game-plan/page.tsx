@@ -25,7 +25,7 @@ export default function TftGamePlanPage(){
   };
   const clear=()=>{localStorage.removeItem(PLAN_KEY);setLocked(null);setDraft(empty);setMessage('Plan cleared.');};
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">STATIC PRE-GAME PREPARATION</div><h1>LOCK THE RULES BEFORE THE RESULT.</h1><p className="muted" style={{maxWidth:820}}>Choose the decision rules you want to execute before queueing. After the game, your review records whether you actually followed them. OP CLIMB can then separate planning quality from execution quality without reading the live game.</p>
 
     {locked&&<section className="glass card" style={{marginTop:18}}>
