@@ -19,6 +19,7 @@ import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {currentGameDnaMissions,missionRepView} from '@/lib/gameDnaSnapshot';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {missionComparisonForMatch} from '@/lib/missionComparison';
+import {missionDomainPath} from '@/lib/missionDomainPath';
 import type {CSSProperties} from 'react';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 
@@ -140,7 +141,7 @@ return <div className="match-room">
       const comparison=missionComparisonForMatch(task,latestMissionMatch?.id);
       const result=recording?'IN GAME':postgameProcessing?'REVIEW PENDING':!latestMissionMatch?'NO ROLE GAME':comparison.result;
       return <div className="match-room-mission-row" key={domain} style={style}>
-        <div className="match-room-mission-main"><span>{DNA_DOMAIN_LABELS[domain]}</span><strong>{task.title}</strong><small>{summary.confirmed}/{summary.required} proven games</small></div>
+        <div className="match-room-mission-main"><span>{DNA_DOMAIN_LABELS[domain]}</span><Link href={missionDomainPath(domain)}>{task.title} →</Link><small>{summary.confirmed}/{summary.required} proven games</small></div>
         <div className="match-room-mission-track" role="progressbar" aria-label={`${DNA_DOMAIN_LABELS[domain]} mission progress`} aria-valuenow={Math.min(summary.confirmed,summary.required)} aria-valuemin={0} aria-valuemax={summary.required}><span style={{width:`${rep.progress}%`}}/></div>
         <div className="match-room-mission-comparison"><span className={'match-room-mission-result '+(result==='PROVEN'?'proven':result==='NEEDS WORK'?'missed':'neutral')}>{result}</span><small>{recording?'Current game results appear after review.':postgameProcessing?'This game is still being reviewed. The tracker shows earlier proven games.':comparison.detail}</small></div>
       </div>;
