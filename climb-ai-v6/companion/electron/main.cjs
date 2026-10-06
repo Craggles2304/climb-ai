@@ -4,6 +4,7 @@ const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
 const {championRoster,championGuide}=require('./champion-hub-data.cjs');
 const {draftFromLocalContext,freshestDraft}=require('./live-draft.cjs');
+const {startTftRecorder:startTftGepRecorder}=require('./tft-recorder.cjs');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
@@ -11,12 +12,12 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
-let mainWindow=null,tray=null,tracker=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
+let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
 let pairingAuthInvalid=false;
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null};
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -481,6 +482,26 @@ function startTracker(){
   });
 }
 
+function stopTftRecorder(){
+  if(tftRecorder){try{tftRecorder.stop?.()}catch{}tftRecorder=null}
+  setState({tftRecorder:{available:Boolean(app?.overwolf?.packages?.gep),state:'STOPPED',detail:'TFT recorder stopped.'}});
+}
+function startTftRecorder(){
+  if(!paired())return;
+  if(tftRecorder)return;
+  try{
+    tftRecorder=startTftGepRecorder({
+      app,
+      getConfig:()=>{const config=currentConfig();return{webUrl:config.webUrl,token:config.token}},
+      log:(line,kind)=>addLog(line,kind),
+      onStatus:status=>setState({tftRecorder:status}),
+    });
+  }catch(err){
+    addLog(`TFT recorder failed to start: ${err?.message||err}`,'error');
+    setState({tftRecorder:{available:false,state:'ERROR',detail:'TFT recorder could not start.'}});
+  }
+}
+
 async function redeemPairCode(rawCode){
   const code=String(rawCode||'').trim().toUpperCase();if(code.replace(/[^A-Z0-9]/g,'').length!==12)return{ok:false,error:'The pairing link is invalid. Create a new pairing from OP CLIMB.'};
   const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
@@ -502,7 +523,7 @@ async function handlePairUrl(rawUrl){
   const claimed=await redeemPairCode(code);if(!claimed.ok){setState({phase:'SETUP',detail:claimed.error||'Pairing failed.'});return}
   const cfg=readConfig();cfg.webUrl=DEFAULT_WEB;cfg.tokenCipher=safeStorage.encryptString(claimed.token).toString('base64');writeConfig(cfg);
   pairingAuthInvalid=false;
-  recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null,postGameReview:null});stopTracker();startTracker();
+  recentLogs=[];matchupSignature='';setState({matchup:null,teamPlan:null,postGameReview:null});stopTracker();stopTftRecorder();startTracker();startTftRecorder();
 }
 
 function trackerHome(){return process.env.LOCALAPPDATA?path.join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):path.join(configDir(),'tracker')}
@@ -544,8 +565,8 @@ function applyAutoStart(enabled){const next=Boolean(enabled);try{app.setLoginIte
 
 ipcMain.handle('companion:get-state',()=>publicState());
 ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
-ipcMain.handle('companion:unpair',()=>{stopTracker();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
-ipcMain.handle('companion:restart',()=>{stopTracker();startTracker();return{ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();stopTftRecorder();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
+ipcMain.handle('companion:restart',()=>{stopTracker();stopTftRecorder();startTracker();startTftRecorder();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
@@ -574,10 +595,10 @@ ipcMain.handle('companion:mark-moment',()=>markMoment());
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});
-app.on('before-quit',()=>{quitting=true;try{globalShortcut.unregisterAll()}catch{}stopTracker()});app.on('window-all-closed',()=>{});
+app.on('before-quit',()=>{quitting=true;try{globalShortcut.unregisterAll()}catch{}stopTftRecorder();stopTracker()});app.on('window-all-closed',()=>{});
 app.whenReady().then(()=>{
   const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
   try{globalShortcut.register('CommandOrControl+Shift+M',()=>markMoment())}catch{}
-  if(initialLink)void handlePairUrl(initialLink);else if(state.paired)startTracker();else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
+  if(initialLink)void handlePairUrl(initialLink);else if(state.paired){startTracker();startTftRecorder()}else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
 });
