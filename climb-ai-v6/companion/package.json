@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.8.29",
+  "version": "0.8.30",
   "private": true,
   "description": "OP CLIMB Windows companion for pre-game planning, local-first tracking and post-game coaching.",
   "main": "electron/bootstrap.cjs",
@@ -8,14 +8,18 @@
   "scripts": {
     "tracker": "node src/main.mjs",
     "desktop": "electron .",
-    "build:win": "electron-builder --win nsis --x64"
+    "build:win": "electron-builder --win nsis --x64",
+    "desktop:ow": "ow-electron .",
+    "build:ow": "ow-electron-builder --publish=never"
   },
   "dependencies": {
     "electron-updater": "6.6.2"
   },
   "devDependencies": {
     "electron": "44.3.0",
-    "electron-builder": "26.15.3"
+    "electron-builder": "26.15.3",
+    "@overwolf/ow-electron": "42.11.4",
+    "@overwolf/ow-electron-builder": "26.9.3"
   },
   "build": {
     "appId": "com.opclimb.companion",
@@ -82,5 +86,13 @@
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico"
     }
+  },
+  "author": {
+    "name": "OP CLIMB"
+  },
+  "overwolf": {
+    "packages": [
+      "gep"
+    ]
   }
 }
