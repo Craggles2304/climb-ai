@@ -93,7 +93,7 @@ export default function TftBoardLab(){
     updateUnit(activeUnit.id,{items:next.filter(Boolean).slice(0,3)});
   };
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">PATCH-AWARE PRACTICE TOOL · NO LIVE BOARD READING</div>
     <h1>TFT BOARD LAB</h1>
     <p className="muted" style={{maxWidth:900}}>Build a board from current Riot static data, place every unit, assign stars/roles/items and reconstruct the decision state. OP CLIMB scores structural strength and explains the weakest axis; it does <b>not</b> claim an exact fight win percentage.</p>
