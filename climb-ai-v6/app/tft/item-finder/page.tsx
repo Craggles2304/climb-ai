@@ -35,7 +35,7 @@ export default function TftItemFinder(){
     router.push('/tft/carry-builder');
   };
 
-  return <TftShell><main className="container section">
+  return <TftShell><main className="container section tft-lab-page">
     <div className="eyebrow">ITEM-FIRST FLEX ENGINE · STATIC PREP</div>
     <h1>COMPONENT → CARRY FINDER</h1>
     <p className="muted" style={{maxWidth:930}}>Tell OP CLIMB what components and completed items you actually have. It ranks current Set 18 carry directions your bag naturally supports, shows what can be slammed now, and keeps three viable paths open instead of forcing one comp from Stage 2.</p>
