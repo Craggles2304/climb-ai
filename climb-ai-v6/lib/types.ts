@@ -68,6 +68,8 @@ export interface ILPTask{
   priority?:number;successfulGames?:number;gamesObserved?:number;masteryRequired?:number;lastUpdatedReason?:string;history?:Array<{at:string;type:ILPHistoryEvent|string;note:string}>;
   missionHistory?:ILPMissionAttempt[];metricProgress?:number;missionProgress?:number;
   roleScope?:Role|'GLOBAL';roleEvidence?:Role[];
+  /** Exactly two current DNA strand missions may be unlocked for scored progression at once. */
+  dnaFocusUnlocked?:boolean;
 }
 export interface ChampionPlan{ champion:string; role:Role; rankBand:string; identity:string; lanePlan:string[]; farmPlan:string[]; teamfightPlan:string[]; sideLanePlan:string[]; powerSpikes:string[]; commonLeaks:string[]; rankFocus:string[]; build:{label:string;items:string[];boots:string;note:string;sourceLabel:string;sourceUrl?:string}; runes:{primary:string;secondary:string;note:string}; }
 export interface LiveTelemetrySnapshot{accountId:string;gameTime:number;championName?:string;level?:number;currentGold?:number;cs?:number;kills?:number;deaths?:number;assists?:number;events?:{name:string;time:number}[];receivedAt:string}
