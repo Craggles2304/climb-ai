@@ -155,8 +155,8 @@ function renderPlayerHome(home,visible){
   if(journeyCard)journeyCard.className='player-journey phase-'+String(journey.phase||'MISSION').toLowerCase();
   if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=roleLabel+' GAME DNA';
   if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=!baselineReady?'Locked until the three-game role baseline is complete.':!companionDnaRevealed?'Baseline complete. Reveal your DNA to start the mission loop.':'Your '+roleLabel+' player shape.';
-  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' TWO GAME MISSIONS';
-  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=!baselineReady?'No permanent DNA missions until baseline 3/3.':!companionDnaRevealed?'Reveal your player identity before training missions.':'Focus on two. The other four DNA strands stay in the background and do not score this game.';
+  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' TWO UNLOCKED TREES';
+  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=!baselineReady?'No permanent DNA missions until baseline 3/3.':!companionDnaRevealed?'Reveal your player identity before training missions.':'All six DNA strands stay visible. The two trees you unlocked are the only ones that can bank mission progress this game.';
   if($('playerHomeOpenClimb'))$('playerHomeOpenClimb').textContent=baselineReady&&!companionDnaRevealed?'REVEAL MY DNA ↗':'OPEN MY DNA ↗';
 
   const roleRoot=$('playerDnaRoleSwitcher');
@@ -233,14 +233,14 @@ function renderPlayerHome(home,visible){
       const card=document.createElement('article');card.className='player-mission-card focus';
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=(('FOCUS '+focusOrder+' OF 2')+' · '+String(dna?.label||mission.domain||'DNA')).toUpperCase();
+      const label=document.createElement('span');label.textContent=(('UNLOCKED '+focusOrder+' OF 2')+' · '+String(dna?.label||mission.domain||'DNA')).toUpperCase();
       const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} PROVEN`;
       top.append(label,reps);
       const title=document.createElement('h3');title.textContent=String(mission.title||'Current DNA mission');
       const rule=document.createElement('p');rule.textContent=String(mission.nextGame||mission.gameRule||'Play a tracked game to build evidence for this strand.');
       const progress=document.createElement('div');progress.className='player-mission-progress';
       const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
-      const note=document.createElement('small');note.textContent='THIS GAME · Only these two missions can bank a proven rep. The other four DNA strands remain visible in My DNA but are not scored this match.';
+      const note=document.createElement('small');note.textContent='THIS GAME · Only the two DNA trees you unlocked can bank a proven rep. The other four remain fully visible in My DNA.';
       card.append(top,title,rule,progress,note);
       missionRoot.appendChild(card);
     });
@@ -349,7 +349,7 @@ function renderQuietMode(state,visible){
   $('quietIdentity').textContent=identity||'MATCH IN PROGRESS';
   const baselineReady=state?.playerHome?.baseline?.ready!==false;
   $('quietFocus').textContent=baselineReady
-    ?'No live instructions. OP CLIMB is recording quietly so your two selected missions can be measured after the game.'
+    ?'No live instructions. OP CLIMB is recording quietly so the two missions from your unlocked DNA trees can be measured after the game.'
     :'No live instructions. OP CLIMB is recording quietly so this game can build your baseline and provisional post-game coaching.';
 }
 
