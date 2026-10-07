@@ -62,7 +62,7 @@ export function buildJourneyState(input:{
     phase:'DNA_REVEAL',
     status:'STEP 3 OF 4 · DNA READY',
     title:'Your Game DNA is ready to reveal.',
-    body:'Your three-game baseline is complete. Open My DNA to see all six strands and the two missions OP CLIMB wants you to train next.',
+    body:'Your three-game baseline is complete. Open My DNA to see all six strands, then choose the two DNA trees you want to keep unlocked.',
     cta:'REVEAL MY DNA →',
     href:'/ilp',
     progress:'3/3',
@@ -71,7 +71,7 @@ export function buildJourneyState(input:{
   const required=Math.max(1,input.focusRequired??3);
   return{
     phase:'MISSION',
-    status:'STEP 4 OF 4 · DNA ACTIVE · TWO GAME MISSIONS',
+    status:'STEP 4 OF 4 · DNA ACTIVE · TWO TREES UNLOCKED',
     title:input.focusName,
     body:input.focusJob||'Take your two selected missions into the next tracked game.',
     cta:'PLAY NEXT GAME →',
