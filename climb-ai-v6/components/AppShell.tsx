@@ -139,7 +139,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     online:journeyOnline,
     baselineGames:journeyBaselineGames,
     dnaRevealed:journeyDnaRevealed,
-    focusName:journeyFocusPair.length===2?'Two missions selected':journeyFocusPlain?.name,
+    focusName:journeyFocusPair.length===2?'Two DNA trees unlocked':journeyFocusPlain?.name,
     focusJob:journeyFocusPair.length===2?`1. ${journeyFocusPlain?.nextGame||''}  2. ${journeySecondPlain?.nextGame||''}`:journeyFocusPlain?.nextGame,
     focusConfirmed:journeyFocusSummary?.confirmed,
     focusRequired:journeyFocusSummary?.required,
@@ -317,11 +317,11 @@ export function AppShell({children}:{children:React.ReactNode}){
       </div>
       {!journeyBaselineReady?<div className="op-learning-receipt-body">
         <h2>Baseline {Math.min(journeyBaselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} complete.</h2>
-        <p>This game is useful coaching evidence, but it is <strong>not a permanent DNA mission yet</strong>. Your six DNA strands unlock after game {DNA_BASELINE_GAMES}, then OP CLIMB selects two missions for each game.</p>
+        <p>This game is useful coaching evidence, but it is <strong>not a permanent DNA mission yet</strong>. Your six DNA strands unlock after game {DNA_BASELINE_GAMES}. You then choose which two DNA trees stay unlocked for scored progression.</p>
         <div className="op-learning-strength-count">PROVISIONAL COACHING ONLY · {DNA_BASELINE_GAMES-journeyBaselineGames} GAME{DNA_BASELINE_GAMES-journeyBaselineGames===1?'':'S'} UNTIL DNA REVEAL</div>
       </div>:journeyBaselineGames===DNA_BASELINE_GAMES&&latestLearningMatchData&&canonicalLeagueRole(latestLearningMatchData.role)===active.role?<div className="op-learning-receipt-body">
         <h2>Your Game DNA is ready.</h2>
-        <p>Baseline complete. Your six strands can now reveal their missions, with two focus missions selected for your next game.</p>
+        <p>Baseline complete. All six strands are visible. Choose the two DNA trees you want to keep unlocked first.</p>
         <div className="op-learning-mastered">◆ 3/3 BASELINE COMPLETE · DNA UNLOCKED</div>
       </div>:<div className="op-learning-receipt-body">
         <h2>{latestLearning.length
