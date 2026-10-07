@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import {Wordmark} from './UI';
 
-const SUPPORT_EMAIL='boxtoboxfootballacademy@gmail.com';
+const SUPPORT_EMAIL='OpClimb@outlook.com';
 
 export function PublicFooter({compact=false}:{compact?:boolean}){
   return <footer className={'public-footer '+(compact?'is-compact':'')}>
