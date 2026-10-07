@@ -107,11 +107,27 @@ function focusScore(task:ILPTask){
   return score;
 }
 
-export function gameMissionFocusPair(input:DnaTask[],role:Role|null|undefined){
+export function recommendedGameMissionFocusPair(input:DnaTask[],role:Role|null|undefined){
   return currentGameDnaMissions(input,role)
     .filter((row):row is {domain:DnaDomain;task:DnaTask}=>Boolean(row.task))
     .sort((a,b)=>focusScore(b.task)-focusScore(a.task)||DNA_DOMAINS.indexOf(a.domain)-DNA_DOMAINS.indexOf(b.domain))
     .slice(0,2);
+}
+
+export function unlockedDnaDomains(input:DnaTask[],role:Role|null|undefined){
+  return currentGameDnaMissions(input,role)
+    .filter((row):row is {domain:DnaDomain;task:DnaTask}=>Boolean(row.task?.dnaFocusUnlocked))
+    .map(row=>row.domain);
+}
+
+export function gameMissionFocusPair(input:DnaTask[],role:Role|null|undefined){
+  const rows=currentGameDnaMissions(input,role)
+    .filter((row):row is {domain:DnaDomain;task:DnaTask}=>Boolean(row.task));
+  const unlocked=rows.filter(row=>row.task.dnaFocusUnlocked===true);
+  if(unlocked.length===2){
+    return unlocked.sort((a,b)=>focusScore(b.task)-focusScore(a.task)||DNA_DOMAINS.indexOf(a.domain)-DNA_DOMAINS.indexOf(b.domain));
+  }
+  return recommendedGameMissionFocusPair(input,role);
 }
 
 export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):GameDnaClientMission[]{
