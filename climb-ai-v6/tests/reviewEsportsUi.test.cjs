@@ -79,7 +79,7 @@ test('post-game review closes the loop into the server-authoritative six-strand 
   assert.ok(liveRepo.includes('learningPlanSync'));
   assert.ok(liveRepo.includes("trigger,'FINALIZE'")||liveRepo.includes("'FINALIZE',proAnalysis"));
   assert.ok(reviewRoute.includes('developmentPlan'));
-  assert.ok(reviewRoute.includes('EXACTLY TWO DNA MISSIONS ARE SELECTED FOR EACH TRACKED GAME'));
+  assert.ok(reviewRoute.includes('THE PLAYER KEEPS EXACTLY TWO DNA TREES UNLOCKED FOR PROGRESSION'));
   assert.ok(reviewRoute.includes('EACH RESULT NEEDS TIMESTAMPED EVIDENCE'));
 });
 
