@@ -26,7 +26,7 @@ export default function Account(){
   };
 
   return <AppShell>
-    <PageHead title="Riot Accounts" subtitle="One OVERPOWERED login can track multiple Riot IDs, regions and roles independently." action={<button className="btn primary" onClick={()=>setShow(v=>!v)}>+ LINK ACCOUNT</button>}/>
+    <PageHead title="Riot Accounts" subtitle="One OP CLIMB login can track multiple Riot IDs, regions and roles independently." action={<button className="btn primary" onClick={()=>setShow(v=>!v)}>+ LINK ACCOUNT</button>}/>
     <div className="grid two">
       {accounts.map(a=><div className={`glass card account-card ${a.id===active.id?'selected-account':''}`} key={a.id}>
         <div className="section-row"><div><div className="eyebrow">{a.label}{a.isPrimary?' · PRIMARY':''}</div><h2>{a.gameName}<span className="muted">{a.tagline}</span></h2></div><span className="pill">{a.region}</span></div>
@@ -36,12 +36,12 @@ export default function Account(){
     </div>
     {show&&<div className="glass card form" style={{marginTop:18}}>
       <div className="eyebrow">LINK ANOTHER RIOT ID</div><h2>Add account</h2>
-      <p className="muted">This saves the Riot ID to your OVERPOWERED login. The Live Companion verifies the identity from the League client when you record a match.</p>
+      <p className="muted">This saves the Riot ID to your OP CLIMB login. The Live Companion verifies the identity from the League client when you record a match.</p>
       <div className="grid two"><label className="field">Game name<input className="input" value={gameName} onChange={e=>setGameName(e.target.value)} placeholder="Craggles"/></label><label className="field">Tagline<input className="input" value={tagline} onChange={e=>setTagline(e.target.value)} placeholder="EUW"/></label></div>
       <div className="grid two"><label className="field">Region<select className="input" value={region} onChange={e=>setRegion(e.target.value)}>{['EUW','EUNE','NA','OCE','KR','BR','LAN','LAS','JP','TR','RU'].map(x=><option key={x}>{x}</option>)}</select></label><label className="field">Role<select className="input" value={role} onChange={e=>setRole(e.target.value as Role)}>{['TOP','JUNGLE','MID','ADC','SUPPORT'].map(x=><option key={x}>{x}</option>)}</select></label></div>
       <button className="btn primary" onClick={add} disabled={busy||!authenticated}>{busy?'LINKING…':'LINK ACCOUNT'}</button>
     </div>}
     {message&&<div className="auth-message" style={{marginTop:14}}>{message}</div>}
-    <div className="glass card" style={{marginTop:18}}><div className="eyebrow">ACCOUNT SEPARATION</div><p className="muted">Each Riot account now keeps its own cloud-backed matches, tracker sessions and learning-plan evidence. Your OVERPOWERED login is shared, but one tester cannot see another tester&apos;s data.</p></div>
+    <div className="glass card" style={{marginTop:18}}><div className="eyebrow">ACCOUNT SEPARATION</div><p className="muted">Each Riot account now keeps its own cloud-backed matches, tracker sessions and learning-plan evidence. Your OP CLIMB login is shared, but one tester cannot see another tester&apos;s data.</p></div>
   </AppShell>;
 }
