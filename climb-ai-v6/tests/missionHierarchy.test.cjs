@@ -13,7 +13,7 @@ const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8'
 const appShell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8');
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
-test('My DNA keeps six strands but marks exactly two missions as scored this game',()=>{
+test('My DNA keeps six equal strands and marks the two player-unlocked trees',()=>{
   assert.ok(ilp.includes('YOUR 6 DNA STRANDS · 2 GAME MISSIONS'));
   assert.ok(ilp.includes('Two jobs per game. Six strands over time.'));
   assert.ok(ilp.includes('gameMissionFocusPair'));
@@ -24,20 +24,21 @@ test('My DNA keeps six strands but marks exactly two missions as scored this gam
   assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
 });
 
-test('Missions page selects two scored missions while keeping six DNA strands available',()=>{
+test('Missions page keeps six equal trees and lets the player unlock exactly two',()=>{
   assert.ok(missionsPage.includes('currentGameDnaMissions'));
-  assert.ok(missionsPage.includes('gameMissionFocusPair'));
-  assert.ok(missionsPage.includes('FOCUS {index+1} OF 2'));
-  assert.ok(missionsPage.includes('OTHER 4 DNA STRANDS'));
+  assert.ok(missionsPage.includes('setDnaFocusDomains'));
+  assert.ok(missionsPage.includes('missions-six-grid'));
+  assert.ok(missionsPage.includes('Choose your two DNA trees'));
+  assert.ok(missionsPage.includes('UNLOCK THIS TREE'));
   assert.ok(missionsPage.includes('missionComparisonForMatch(task,latestMatch?.id)'));
   assert.ok(missionsPage.includes('comparison.events'));
   assert.ok(appShell.includes("['Missions','/missions'"));
 });
 
-test('Companion shows exactly two scored missions for the next game',()=>{
-  assert.ok(companion.includes('TWO GAME MISSIONS'));
-  assert.ok(companion.includes('FOCUS '+"'"+'+focusOrder+'+"'"+' OF 2'));
-  assert.ok(companion.includes('Only these two missions can bank a proven rep'));
+test('Companion shows the two player-unlocked DNA missions for the next game',()=>{
+  assert.ok(companion.includes('TWO UNLOCKED TREES'));
+  assert.ok(companion.includes('UNLOCKED '+"'"+'+focusOrder+'+"'"+' OF 2'));
+  assert.ok(companion.includes('Only the two DNA trees you unlocked can bank a proven rep'));
   assert.ok(companion.includes('No permanent DNA missions until baseline 3/3.'));
   assert.ok(companion.includes('PROVISIONAL COACHING'));
   assert.ok(api.includes('const missionLimit=2'));
