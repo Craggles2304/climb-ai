@@ -684,6 +684,7 @@ export async function POST(req:NextRequest){
     if(!db)return NextResponse.json({ok:false,error:'Draft coach is unavailable.'},{status:503});
     const [subscriptionTier,context]=await Promise.all([leagueSubscriptionTier(db,device.userId),playerContext(db,device)]);
     if(!hasTier(subscriptionTier,'PLUS'))return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
+    const playerPlan=hasTier(subscriptionTier,'PLUS');
     const proModel=hasTier(subscriptionTier,'PRO');
 
     const roleResolution=resolvePlayerRole({
@@ -729,7 +730,7 @@ export async function POST(req:NextRequest){
     const carryMap=buildDraftCarryMap({champion,ours,enemies,mainThreat:fallback.threats?.[0]??null});
 
     const fullDraft=ours.length>=4&&enemies.length===5;
-    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,coachingContext.rank,proModel?coachingContext.mission:null,proModel?coachingContext.playerCoachingIdentity:null,proModel?coachingContext.learningVelocity:null,proModel?coachingContext.skillTransferGraph:null,proModel?coachingContext.decisionPrincipleEngine:null,proModel?coachingContext.adaptiveCoachingSession:null,personalTrap,decisionPremortem,carryMap,kits):null;
+    const ai=fullDraft?await aiCoach(champion,userRole,ours,enemies,fallback,coachingContext.rank,playerPlan?coachingContext.mission:null,proModel?coachingContext.playerCoachingIdentity:null,proModel?coachingContext.learningVelocity:null,proModel?coachingContext.skillTransferGraph:null,proModel?coachingContext.decisionPrincipleEngine:null,proModel?coachingContext.adaptiveCoachingSession:null,personalTrap,decisionPremortem,carryMap,kits):null;
     if(fullDraft&&process.env.OPENAI_API_KEY&&!ai){
       const fallbackQuality=evaluateWinConditionPlan({plan:fallback,ours,enemies,kits,rank:coachingContext.rank,role:userRole});
       return NextResponse.json({
@@ -755,16 +756,16 @@ export async function POST(req:NextRequest){
       role:roleResolution.role,
       coach,
     });
-    const scenarioPrime=proModel?selectScenarioPrime({
+    const scenarioPrime=playerPlan?selectScenarioPrime({
       memory:coachingContext.scenarioMemory,
       situationContext,
       simulation:decisionSimulation,
     }):null;
-    const learningContract=proModel?(coachingContext.curriculum.autonomous?.activeContract??null):null;
+    const learningContract=playerPlan?(coachingContext.curriculum.autonomous?.activeContract??null):null;
     const skillBridgePrime=proModel?selectSkillBridgePrime({graph:coachingContext.skillTransferGraph,situationContext,behaviourKey:coachingContext.curriculum.currentLesson?.behaviourKey??null}):null;
     const decisionPrinciplePrime=proModel?selectDecisionPrinciplePrime({engine:coachingContext.decisionPrincipleEngine,skillGraph:coachingContext.skillTransferGraph,situationContext,behaviourKey:coachingContext.curriculum.currentLesson?.behaviourKey??null}):null;
     const transferDirective=learningContract?.testDirective??null;
-    const decisionTransferPrime=proModel?selectDecisionTransferPrime({
+    const decisionTransferPrime=playerPlan?selectDecisionTransferPrime({
       transfer:coachingContext.decisionTransfer,
       memory:coachingContext.scenarioMemory,
       scenarioPrime,
@@ -775,7 +776,7 @@ export async function POST(req:NextRequest){
       enabled:transferDirective?.mode==='TRANSFER_TEST',
       behaviourKey:transferDirective?.behaviourKey??null,
     }):null;
-    const climbMission=proModel?buildClimbMatchMission({
+    const climbMission=playerPlan?buildClimbMatchMission({
       lesson:coachingContext.curriculum.status==='ACTIVE'?coachingContext.curriculum.currentLesson:null,
       situationContext,
       coach,
@@ -856,7 +857,7 @@ export async function POST(req:NextRequest){
       decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:proModel?(coachingContext.curriculum.autonomous??null):null,
+      autonomousCurriculum:playerPlan?(coachingContext.curriculum.autonomous??null):null,
       climbMission,
       intentProbe,
       experimentSchedule,
@@ -874,7 +875,7 @@ export async function POST(req:NextRequest){
       source:ai?'ai':'rules',
       player:{role:userRole||null,roleSource:roleResolution.source,roleConfidence:roleResolution.confidence,laneOpponents,lanePartner},
       coach,
-      productAccess:{tier:subscriptionTier,proModel},
+      productAccess:{tier:subscriptionTier,playerPlan,proModel},
       roleLearning:coachingContext.roleContext,
       playerCoachingIdentity:proModel?coachingContext.playerCoachingIdentity:null,
       learningVelocity:proModel?coachingContext.learningVelocity:null,
@@ -888,7 +889,7 @@ export async function POST(req:NextRequest){
       decisionSimulation:proModel?decisionSimulation:null,
       scenarioPrime,
       decisionTransferPrime,
-      autonomousCurriculum:proModel?(coachingContext.curriculum.autonomous??null):null,
+      autonomousCurriculum:playerPlan?(coachingContext.curriculum.autonomous??null):null,
       climbMission,
       intentProbe:proModel&&intentProbe?publicClimbIntentProbe(intentProbe):null,
       experimentSchedule,

@@ -21,7 +21,7 @@ export default function Billing(){
         {PLAN_ENTITLEMENTS[tier].map(item=><div key={item}>✓ {item}</div>)}
       </div>
       <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-        {tier==='FREE'&&<UpgradeButton tier="PLUS" label="UNLOCK FULL GAME COACHING"/>}
+        {tier==='FREE'&&<UpgradeButton tier="PLUS" label="UNLOCK MY DNA PLAYER PLAN"/>}
         {tier==='PLUS'&&<><UpgradeButton tier="PRO" label="BUILD MY PLAYER MODEL"/><BillingPortalButton/></>}
         {tier==='PRO'&&<BillingPortalButton/>}
         <Link className="btn secondary" href="/pricing">COMPARE ALL THREE LEVELS</Link>

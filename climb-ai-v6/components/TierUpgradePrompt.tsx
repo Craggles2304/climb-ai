@@ -9,12 +9,12 @@ export function TierUpgradePrompt(){
   if(tier==='PRO'){
     return <section className="tier-unlock-card is-complete">
       <div className="tier-unlock-kicker"><span>PRO · FULL PLAYER MODEL ACTIVE</span><b>YOU ARE AT THE DEEPEST COACHING LAYER</b></div>
-      <h3>Your coach can now remember, test and move you on.</h3>
-      <p>OP CLIMB can connect recurring situations across games, test whether a fix transfers to new conditions and choose the next evidence-backed lesson instead of treating every match as a fresh start.</p>
+      <h3>Your DNA plan is active — and your coach can now learn you as well.</h3>
+      <p>PLUS already manages Your Next Climb. PRO adds the persistent player model underneath it: recurring-habit memory, Decision Twin, learning velocity, principle connections and long-term identity.</p>
       <div className="tier-unlock-preview">
-        <div><span>REMEMBERS</span><strong>Recurring habits</strong></div>
-        <div><span>TESTS</span><strong>Transfer + principles</strong></div>
-        <div><span>MOVES ON</span><strong>Autonomous curriculum</strong></div>
+        <div><span>REMEMBERS</span><strong>Recurring habits + scenarios</strong></div>
+        <div><span>LEARNS</span><strong>Decision Twin + coaching velocity</strong></div>
+        <div><span>CONNECTS</span><strong>Skills + deeper principles</strong></div>
       </div>
       <Link className="text-link" href="/ilp">OPEN MY DEVELOPMENT PATH →</Link>
     </section>;
@@ -22,21 +22,21 @@ export function TierUpgradePrompt(){
 
   const plus=tier==='FREE';
   const target=plus?'PLUS':'PRO';
-  const title=plus?'Understand the whole game, not just the mistake.':'Turn separate reviews into a coach that actually knows you.';
+  const title=plus?'Turn your Game DNA into a real player plan.':'Add a persistent model of how you play and learn.';
   const body=plus
-    ?'PLUS unlocks the full 5v5 draft read: how your team wins, how the enemy wins, what your role should do and the deeper economy and fight context around the mistake.'
-    :'PRO remembers recurring situations across games, learns whether your fixes genuinely hold, tests them under new conditions and chooses what you should learn next.';
+    ?'PLUS unlocks YOUR NEXT CLIMB: OP CLIMB selects the primary DNA weakness, teaches one rule, gives you the mission, checks the evidence, repeats it to mastery, transfer-tests it and then moves you on.'
+    :'PRO keeps the complete DNA player plan and adds Decision Twin, Coach Memory, recurring-habit memory, learning velocity and long-term player identity.';
   const cells=plus
-    ?[['FULL DRAFT','Win + loss conditions'],['YOUR ROLE','What this comp needs from you'],['MORE CONTEXT','90-day game history']]
-    :[['REMEMBERS','Decision Twin + Scenario Memory'],['PROVES','Transfer + principle tests'],['DEVELOPS','Chooses the next lesson']];
+    ?[['NEXT CLIMB','One primary skill to learn'],['PROVE IT','Mission → evidence → mastery'],['MOVE ON','Transfer test → next skill']]
+    :[['REMEMBERS','Decision Twin + Coach Memory'],['ADAPTS','Learning velocity + support'],['CONNECTS','Skills + player identity']];
 
   return <section className="tier-unlock-card">
-    <div className="tier-unlock-kicker"><span>NEXT COACHING DEPTH · {target}</span><b>{plus?'READ THE GAME':'MODEL THE PLAYER'}</b></div>
+    <div className="tier-unlock-kicker"><span>NEXT COACHING DEPTH · {target}</span><b>{plus?'BUILD THE CLIMB':'MODEL THE PLAYER'}</b></div>
     <h3>{title}</h3>
     <p>{body}</p>
     <div className="tier-unlock-preview">{cells.map(([label,value])=><div key={label}><span>{label}</span><strong>{value}</strong></div>)}</div>
     <div className="tier-unlock-actions">
-      <UpgradeButton tier={target} label={plus?'UNLOCK FULL GAME COACHING':'BUILD MY PLAYER MODEL'}/>
+      <UpgradeButton tier={target} label={plus?'UNLOCK MY DNA PLAYER PLAN':'BUILD MY PLAYER MODEL'}/>
       <Link className="text-link" href="/pricing">COMPARE ALL THREE LEVELS →</Link>
     </div>
   </section>;
