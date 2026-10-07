@@ -1,27 +1,25 @@
 {
   "name": "op-climb-companion",
-  "version": "0.8.30",
+  "version": "0.9.0",
   "private": true,
-  "description": "OP CLIMB Windows companion for pre-game planning, local-first tracking and post-game coaching.",
+  "description": "OP CLIMB Windows companion for League tracking and first-party TFT post-game recording.",
   "main": "electron/bootstrap.cjs",
   "type": "module",
   "scripts": {
     "tracker": "node src/main.mjs",
     "desktop": "electron .",
     "build:win": "electron-builder --win nsis --x64",
-    "desktop:ow": "ow-electron .",
-    "build:ow": "ow-electron-builder --publish=never",
     "desktop:plain": "electron .",
     "build:plain": "electron-builder --win nsis --x64"
   },
   "dependencies": {
-    "electron-updater": "6.6.2"
+    "electron-updater": "6.6.2",
+    "tesseract.js": "7.0.0",
+    "@tesseract.js-data/eng": "1.0.0"
   },
   "devDependencies": {
     "electron": "44.3.0",
-    "electron-builder": "26.15.3",
-    "@overwolf/ow-electron": "42.11.4",
-    "@overwolf/ow-electron-builder": "26.9.3"
+    "electron-builder": "26.15.3"
   },
   "build": {
     "appId": "com.opclimb.companion",
@@ -62,6 +60,10 @@
       {
         "from": "build/icon.ico",
         "to": "icon.ico"
+      },
+      {
+        "from": "node_modules/@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz",
+        "to": "tessdata/eng.traineddata.gz"
       }
     ],
     "win": {
@@ -87,14 +89,13 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico"
-    }
+    },
+    "asarUnpack": [
+      "node_modules/tesseract.js/**/*",
+      "node_modules/tesseract.js-core/**/*"
+    ]
   },
   "author": {
     "name": "OP CLIMB"
-  },
-  "overwolf": {
-    "packages": [
-      "gep"
-    ]
   }
 }
