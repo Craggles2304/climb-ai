@@ -39,6 +39,23 @@ jobs:
       - name: Install Companion dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Verify native TFT OCR runtime
+        shell: pwsh
+        run: |
+          @'
+          const path=require('node:path');
+          const {createWorker}=require('tesseract.js');
+          (async()=>{
+            const packageDir=path.dirname(require.resolve('@tesseract.js-data/eng/package.json'));
+            const langPath=path.join(packageDir,'4.0.0_best_int');
+            const worker=await createWorker('eng',1,{langPath,logger:()=>{}});
+            await worker.terminate();
+            console.log('Native TFT OCR worker and bundled English data are ready.');
+          })().catch(error=>{console.error(error);process.exit(1)});
+          '@ | Set-Content -Path .\verify-tft-ocr.cjs -Encoding UTF8
+          node .\verify-tft-ocr.cjs
+          Remove-Item .\verify-tft-ocr.cjs -Force
+
       - name: Build Windows installer
         run: npm run build:win
 
@@ -95,7 +112,7 @@ jobs:
             if (-not (Test-Path $protocolKey)) { throw 'opclimb:// protocol registration is missing after packaged startup.' }
 
             Write-Host "Packaged Companion stayed alive from $($installedExe.FullName)."
-            Write-Host 'Packaged tracker resource and opclimb:// protocol registration verified.'
+            Write-Host 'Packaged League tracker, native TFT OCR data and opclimb:// protocol registration verified.'
           }
           finally {
             if ($appProcess -and -not $appProcess.HasExited) {

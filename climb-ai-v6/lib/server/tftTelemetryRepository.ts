@@ -36,7 +36,7 @@ export async function startTftTelemetrySession(device:TrackerDevice,input:TftRec
     device_id:device.id,
     pseudo_match_id:input.pseudoMatchId,
     status:'RECORDING',
-    source:'OVERWOLF_GEP',
+    source:'OP_CLIMB_NATIVE',
     started_at:input.startedAt??now,
     last_seen_at:now,
     updated_at:now,
@@ -180,11 +180,11 @@ export async function completeTftTelemetrySession(device:TrackerDevice,pseudoMat
   const timeline=await readTimeline(session.id,pseudoMatchId);
   const findings=analyzeTftTimeline(timeline);
   const summary={
-    mode:'OVERWOLF_GEP_LOCAL_PLAYER_V1',
+    mode:'OP_CLIMB_NATIVE_WINDOW_OCR_V1',
     pointCount:timeline.points.length,
     observedFindings:findings.filter(f=>f.status==='OBSERVED').map(f=>f.key),
     completedAt:endedAt??now,
-    evidenceBoundary:'Own-player telemetry only; no opponent board, roster, augment or shared item-bench capture.',
+    evidenceBoundary:'Own-player visible HUD/shop evidence only during play; no opponent scouting and no live prescriptions. Full game-window frames are not stored or uploaded.',
   };
   const {error:updateError}=await db.from('tft_telemetry_sessions').update({
     status:'COMPLETE',
