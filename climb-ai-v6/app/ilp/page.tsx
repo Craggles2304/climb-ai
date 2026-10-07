@@ -201,7 +201,7 @@ function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];fo
       <div>
         <div className="eyebrow">YOUR 6 DNA STRANDS · 2 GAME MISSIONS</div>
         <h2>Two jobs per game. Six strands over time.</h2>
-        <p>OP CLIMB chooses two evidence-led missions for each tracked {role} game. Only those two can bank progress in that match; the other four stay in your DNA profile until selected.</p>
+        <p>You choose two DNA trees to keep unlocked. All six keep their level, mission detail and evidence, but only your two unlocked trees can bank progression in a tracked {role} game.</p>
       </div>
       <div className="dna-mission-how" aria-label="How missions work">
         <span><b>1</b><small>DO</small><em>one clear behaviour</em></span>
@@ -224,9 +224,9 @@ function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];fo
           onClick={()=>onSelect(domain)}
           aria-pressed={focusDomain===domain}
         >
-          <small>{DNA_DOMAIN_LABELS[domain]} · LV {levels[domain].level}{focusIds.has(task.id)?` · FOCUS ${focusIds.get(task.id)}/2`:''}</small>
+          <small>{DNA_DOMAIN_LABELS[domain]} · LV {levels[domain].level}{focusIds.has(task.id)?` · UNLOCKED ${focusIds.get(task.id)}/2`:''}</small>
           <b>{plain.name}</b>
-          <span>{focusIds.has(task.id)?'SCORED THIS GAME · ':''}{summary.confirmed}/{summary.required} proven</span>
+          <span>{focusIds.has(task.id)?'UNLOCKED · ':''}{summary.confirmed}/{summary.required} proven</span>
         </button>;
       })}
     </div>
