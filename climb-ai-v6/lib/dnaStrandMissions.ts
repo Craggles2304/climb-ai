@@ -340,7 +340,7 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       let attempt:NonNullable<ILPTask['missionHistory']>[number];
 
       if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
-        const reason='This was one of your two focus missions, but the game did not expose enough recorded decision evidence to grade it.';
+        const reason='This mission belongs to one of your two unlocked DNA trees, but the game did not expose enough recorded decision evidence to grade it.';
         attempt={
           matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:false,outcome:'NO_REP',banksPass:false,source:'TRACKED',
           evidenceV2:notObservedReceipt(task.metric,'DECISION_EVIDENCE',targetLabel,reason),
