@@ -18,10 +18,11 @@ test('Match Room key moments use decision graph evidence and rich coaching conte
   assert.ok(css.includes('.match-room-moment-next'));
 });
 
-test('Match Room compares every DNA mission with the saved result for that match',()=>{
-  assert.ok(live.includes('currentGameDnaMissions(tasks,active.role)'));
+test('Match Room compares the two selected DNA missions with timestamped proof',()=>{
+  assert.ok(live.includes('gameMissionFocusPair(tasks,active.role)'));
   assert.ok(live.includes('missionComparisonForMatch(task,latestMissionMatch?.id)'));
   assert.ok(live.includes('missionRepView(task)'));
+  assert.ok(live.includes('comparison.events'));
   assert.ok(live.includes('REVIEW PENDING'));
   assert.ok(css.includes('.match-room-missions-grid'));
 });
