@@ -10,6 +10,7 @@ import {CompactMapTimerRoutine} from './CompactMapTimerRoutine';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
 import {coachingLevelFor} from '@/lib/coachingLevel';
+import {MatchStorySides} from './MatchStorySides';
 
 type Review={sessionId:string;matchId?:string|null;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
 type Pick={championId:number;championName:string|null;role:string|null;lockedIn:boolean};
@@ -64,10 +65,7 @@ export function LiveFightReviewMount(){
       <p>{review.status==='ABORTED'?'Partial capture — useful, but not enough for mastery.':detail.depth<=2?'One good point. One problem. One thing next game.':`${detail.reviewPoints} useful point${detail.reviewPoints===1?'':'s'} each side, then one focus for the next game.`}</p>
     </div>
 
-    <div className="grid two">
-      <PointCard title="GOOD" mark="✓" points={good} showDetail={detail.depth>=2}/>
-      <PointCard title="FIX" mark="!" points={critical} showDetail={detail.depth>=2}/>
-    </div>
+    <MatchStorySides analysis={review.proAnalysis} fights={fights} compact title="GOOD VS CRITICAL · THIS GAME"/>
 
     <div className="glass card" style={{padding:20,borderColor:'rgba(182,246,107,.34)'}}>
       <div className="eyebrow">ONE THING NEXT GAME</div>
@@ -88,10 +86,6 @@ export function LiveFightReviewMount(){
     </details>}
     {detail.depth>=7&&<style jsx global>{`.op-review-with-compact-ladder > div > section:nth-of-type(4){display:none!important;}`}</style>}
   </section>;
-}
-
-function PointCard({title,mark,points,showDetail}:{title:string;mark:string;points:Point[];showDetail:boolean}){
-  return <div className="glass card" style={{padding:20}}><div className="eyebrow">{title}</div><div style={{display:'grid',gap:12,marginTop:12}}>{points.map((point,index)=><div key={`${title}-${index}`} style={{display:'grid',gridTemplateColumns:'28px minmax(0,1fr)',gap:10,paddingBottom:index===points.length-1?0:11,borderBottom:index===points.length-1?'none':'1px solid rgba(255,255,255,.07)'}}><b style={{fontSize:18}}>{mark}</b><div><b>{point.title}</b>{showDetail&&<p className="muted" style={{margin:'4px 0 0',lineHeight:1.45}}>{point.detail}</p>}</div></div>)}</div></div>;
 }
 
 function buildSimpleReview(fights:FightReview[]){
