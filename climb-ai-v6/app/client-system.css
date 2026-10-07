@@ -2344,3 +2344,58 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .missions-six-grid{grid-template-columns:1fr}
   .missions-tree-card{min-height:0}
 }
+
+
+.missions-tree-save>small{
+  color:#68787d;
+  font:650 8px var(--mono);
+  letter-spacing:.06em;
+  text-transform:uppercase;
+}
+.missions-tree-swap{
+  display:grid;
+  gap:8px;
+  padding:12px 13px 13px;
+  border-top:1px solid color-mix(in srgb,var(--mission-color) 22%,var(--line));
+  background:color-mix(in srgb,var(--mission-color) 5%,#081014);
+}
+.missions-tree-swap>span{
+  color:var(--mission-color);
+  font:800 7px var(--mono);
+  letter-spacing:.08em;
+}
+.missions-tree-swap>b{
+  color:#e8eeee;
+  font:800 14px var(--display);
+}
+.missions-tree-swap>div{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:7px;
+}
+.missions-tree-swap>div>button{
+  min-height:38px;
+  padding:9px 10px;
+  border:1px solid color-mix(in srgb,var(--mission-color) 34%,#334147);
+  background:#0a1215;
+  color:#dfe6e5;
+  cursor:pointer;
+  font:800 8px var(--mono);
+  letter-spacing:.05em;
+}
+.missions-tree-swap>div>button:hover{
+  border-color:var(--mission-color);
+  color:var(--mission-color);
+  background:color-mix(in srgb,var(--mission-color) 6%,#0a1215);
+}
+.missions-tree-swap-cancel{
+  justify-self:start;
+  padding:0;
+  border:0;
+  background:transparent;
+  color:#718187;
+  cursor:pointer;
+  font:700 8px var(--mono);
+  letter-spacing:.06em;
+}
+.missions-tree-swap-cancel:hover{color:#dce4e3}

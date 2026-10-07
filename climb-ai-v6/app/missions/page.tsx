@@ -21,7 +21,7 @@ export default function Missions(){
   const {active}=useAccount();
   const {tasks,allTasks,planReady,planError,setDnaFocusDomains}=useLearningPlan();
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
-  const [draftDomains,setDraftDomains]=useState<DnaDomain[]>([]);
+  const [swapTarget,setSwapTarget]=useState<DnaDomain|null>(null);
   const [saveMessage,setSaveMessage]=useState('');
   const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&canonicalLeagueRole(match.role)===active.role);
   const baselineGames=dnaBaselineGameCount(matches,active.role);
@@ -34,26 +34,44 @@ export default function Missions(){
     return direct.length===2?direct:fallbackPair.map(row=>row.domain);
   },[missions.map(row=>row.task?.id+':'+String(row.task?.dnaFocusUnlocked)).join('|'),fallbackPair.map(row=>row.domain).join('|')]);
 
-  useEffect(()=>{setDraftDomains(persistedDomains);setSelectedDomain(current=>current??persistedDomains[0]??missions[0]?.domain??null)},[persistedDomains.join('|'),active.id,active.role]);
+  useEffect(()=>{setSelectedDomain(current=>current??persistedDomains[0]??missions[0]?.domain??null)},[persistedDomains.join('|'),active.id,active.role]);
 
   const latestMatch=[...matches].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   const selectedMission=missions.find(row=>row.domain===selectedDomain)??missions[0];
-  const dirty=draftDomains.length===2&&draftDomains.slice().sort().join('|')!==persistedDomains.slice().sort().join('|');
-
-  function toggleDomain(domain:DnaDomain){
-    setSaveMessage('');
-    setDraftDomains(current=>{
-      if(current.includes(domain))return current.filter(item=>item!==domain);
-      if(current.length>=2){setSaveMessage('You can only keep two DNA trees unlocked. Lock one of your current trees first.');return current}
-      return[...current,domain];
-    });
+  function requestUnlock(domain:DnaDomain){
     setSelectedDomain(domain);
+    if(persistedDomains.includes(domain)){
+      setSwapTarget(null);
+      setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is already one of your two active DNA trees. Choose a locked tree if you want to swap it out.`);
+      return;
+    }
+    if(persistedDomains.length<2){
+      const next=[...persistedDomains,domain];
+      if(next.length===2&&setDnaFocusDomains(next)){
+        setSwapTarget(null);
+        setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is now unlocked for progression.`);
+      }else{
+        setSaveMessage('OP CLIMB needs two active DNA trees. Choose one more tree.');
+      }
+      return;
+    }
+    setSwapTarget(domain);
+    setSaveMessage(`Unlock ${DNA_DOMAIN_LABELS[domain]}: choose which active tree to replace on this card.`);
   }
 
-  function saveFocus(){
-    if(draftDomains.length!==2){setSaveMessage('Choose exactly two DNA trees to keep unlocked.');return}
-    const ok=setDnaFocusDomains(draftDomains);
-    setSaveMessage(ok?'Your two active DNA trees are saved. Only these two can bank mission progress.':'Could not save those two trees. Refresh and try again.');
+  function replaceActiveTree(replaceDomain:DnaDomain){
+    if(!swapTarget)return;
+    const next=persistedDomains.filter(domain=>domain!==replaceDomain).concat(swapTarget);
+    if(next.length!==2){setSaveMessage('Could not build a valid two-tree selection. Refresh and try again.');return}
+    const incoming=swapTarget;
+    const ok=setDnaFocusDomains(next);
+    if(ok){
+      setSelectedDomain(incoming);
+      setSwapTarget(null);
+      setSaveMessage(`${DNA_DOMAIN_LABELS[incoming]} unlocked. ${DNA_DOMAIN_LABELS[replaceDomain]} is now locked. Changes are saved automatically.`);
+    }else{
+      setSaveMessage('Could not save that DNA tree swap. Refresh and try again.');
+    }
   }
 
   return <AppShell><main className="missions-page">
@@ -63,7 +81,7 @@ export default function Missions(){
         <h1>Choose your two DNA trees</h1>
         <p>All six strands stay fully visible, measured and levelled. You choose which two stay unlocked for progression. Only those two can bank mission reps until you swap one out.</p>
       </div>
-      <div className="missions-head-actions"><span>{draftDomains.length}/2 UNLOCKED</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
+      <div className="missions-head-actions"><span>{persistedDomains.length}/2 UNLOCKED</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
     </header>
 
     {!planReady?<section className="panel panel-padding"><div className="eyebrow">LOADING MISSIONS</div><h2>Checking your current plan…</h2></section>:
@@ -73,8 +91,8 @@ export default function Missions(){
       <div className="missions-tree-toolbar panel">
         <div><div className="eyebrow">YOUR 6 DNA TREES</div><h2>Unlock two. Keep all six visible.</h2><p>The lock only controls progression. Locked trees still keep their level, mission, history and evidence.</p></div>
         <div className="missions-tree-save">
-          <span className={draftDomains.length===2?'ready':'not-ready'}>{draftDomains.length}/2 SELECTED</span>
-          <button className="btn primary" type="button" disabled={!dirty||draftDomains.length!==2} onClick={saveFocus}>{dirty?'SAVE ACTIVE TREES':'ACTIVE TREES SAVED'}</button>
+          <span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 ACTIVE</span>
+          <small>Changes save instantly</small>
         </div>
       </div>
       {saveMessage&&<div className="missions-focus-message">{saveMessage}</div>}
@@ -82,7 +100,7 @@ export default function Missions(){
       <div className="missions-six-grid">
         {missions.map(({domain,task})=>{
           const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
-          const unlocked=draftDomains.includes(domain);
+          const unlocked=persistedDomains.includes(domain);
           const level=dnaStrandLevel(roleTasks,domain,active.role);
           const plain=task?plainLanguageFocus(task):null;
           const summary=task?missionSummary(task):null;
@@ -104,9 +122,15 @@ export default function Missions(){
               </div>
               <div className="missions-switch-track"><i style={{width:`${rep?.progress??0}%`}}/></div>
             </button>
-            <button className={`missions-tree-toggle ${unlocked?'on':''}`} type="button" onClick={()=>toggleDomain(domain)}>
-              <span>{unlocked?'UNLOCKED FOR PROGRESSION':'UNLOCK THIS TREE'}</span><b>{unlocked?'✓':'＋'}</b>
+            <button className={`missions-tree-toggle ${unlocked?'on':''}`} type="button" onClick={()=>requestUnlock(domain)}>
+              <span>{unlocked?'ACTIVE DNA TREE':'UNLOCK THIS TREE'}</span><b>{unlocked?'✓':'＋'}</b>
             </button>
+            {swapTarget===domain&&!unlocked&&<div className="missions-tree-swap">
+              <span>YOU ALREADY HAVE 2 ACTIVE TREES</span>
+              <b>Which one should this replace?</b>
+              <div>{persistedDomains.map(activeDomain=><button key={activeDomain} type="button" onClick={()=>replaceActiveTree(activeDomain)}>REPLACE {DNA_DOMAIN_LABELS[activeDomain].toUpperCase()}</button>)}</div>
+              <button className="missions-tree-swap-cancel" type="button" onClick={()=>{setSwapTarget(null);setSaveMessage('')}}>CANCEL</button>
+            </div>}
           </article>;
         })}
       </div>
@@ -114,7 +138,7 @@ export default function Missions(){
       {selectedMission&&(()=>{
         const {domain,task}=selectedMission;
         const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
-        const unlocked=draftDomains.includes(domain);
+        const unlocked=persistedDomains.includes(domain);
         if(!task)return null;
         const plain=plainLanguageFocus(task);
         const summary=missionSummary(task);
@@ -141,7 +165,7 @@ export default function Missions(){
           </div>
           <div className="missions-focus-actions">
             <Link href={`/ilp?dna=${domain}`} className="btn secondary">OPEN TREE DETAILS →</Link>
-            {unlocked?<Link href="/live" className="btn primary">TAKE THIS MISSION INTO MATCH ROOM →</Link>:<button className="btn primary" type="button" onClick={()=>toggleDomain(domain)}>UNLOCK THIS TREE</button>}
+            {unlocked?<Link href="/live" className="btn primary">TAKE THIS MISSION INTO MATCH ROOM →</Link>:<button className="btn primary" type="button" onClick={()=>requestUnlock(domain)}>UNLOCK THIS TREE</button>}
           </div>
         </article>;
       })()}
