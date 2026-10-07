@@ -391,7 +391,7 @@ function comparisonReason(snapshot:LiveTelemetrySnapshot,opponent:LiveTelemetryP
   const me=findMe(snapshot);
   if(me?.position&&opponent.position&&me.position.toUpperCase()===opponent.position.toUpperCase())
     return `Matched by Riot-exposed position: ${me.position}.`;
-  return 'No exact lane match was exposed, so OVERPOWERED used the closest visible enemy state and labels this comparison accordingly.';
+  return 'No exact lane match was exposed, so OP CLIMB used the closest visible enemy state and labels this comparison accordingly.';
 }
 
 function ratio(value:number|null,max:number|null){
