@@ -21,7 +21,8 @@ const rows=[
   ['Your role in the draft','🔒','✓','✓'],
   ['Win + loss conditions','🔒','✓','✓'],
   ['Deeper economy + fight context','🔒','✓','✓'],
-  ['Remembers recurring habits','🔒','🔒','✓'],
+  ['Decision Twin: remembers recurring habits','🔒','🔒','✓'],
+  ['Decision Fingerprint: your decision pattern each game','🔒','🔒','✓'],
   ['Learns whether you really fixed it','🔒','🔒','✓'],
   ['Tests the fix in new situations','🔒','🔒','✓'],
   ['Connects skills to deeper principles','🔒','🔒','✓'],
@@ -79,7 +80,7 @@ export default function Pricing(){
           <div className="pricing-feature-name">{name}</div>
           {[free,plus,pro].map((value,index)=><div key={index} className={'pricing-feature-cell '+(value==='🔒'?'is-locked':'is-yes')+(index===2?' is-pro':'')}>{value}</div>)}
         </div>)}
-        <div className="pricing-compare-note">Branded systems such as Decision Twin, Scenario Memory, Skill Transfer and Autonomous Curriculum sit underneath the PRO outcomes above. You are paying for a coach that remembers and develops you—not for more dashboard clutter.</div>
+        <div className="pricing-compare-note"><b>Decision Twin</b> is the PRO coach: it remembers your recurring habits, checks whether a fix really sticks and chooses what you learn next. For every reviewed game it also gives you a <b>Decision Fingerprint</b>, a named readout of the pattern your decisions followed, so you can see which pattern keeps repeating. You are paying for a coach that remembers and develops you, not for more dashboard clutter.</div>
       </section>
 
       <section className="glass card" style={{marginTop:22,padding:22}}>
