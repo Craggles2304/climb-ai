@@ -27,10 +27,18 @@ export function analyzeTftTimeline(timeline:TftTimeline):TftFinding[]{
   const finding=(key:string,title:string,evidence:string|undefined,principle:string):TftFinding=>({key,title,status:evidence?'OBSERVED':'NOT OBSERVED',evidence:evidence||'NOT OBSERVED — the recorded fields do not prove this pattern.',principle});
   const late=p.find((x,i)=>i>0&&x.hp!==undefined&&x.hp<=45&&x.gold!==undefined&&x.gold>=45&&p[i-1].hp!==undefined&&p[i-1].hp!>x.hp&&p.slice(i+1,i+4).some(y=>y.hp!==undefined&&y.hp<=25&&y.shopRefreshes!==undefined&&y.shopRefreshes>0));
   const over=p.find(x=>x.shopRefreshes!==undefined&&x.shopRefreshes>=8&&x.gold!==undefined&&x.gold<10&&x.hp!==undefined&&x.hp>55);
+  const nativeRoll=p.find(x=>x.shopRefreshes!==undefined&&x.shopRefreshes>=6&&x.gold!==undefined&&x.gold<=15);
+  const nativeBuy=p.find(x=>x.purchases!==undefined&&x.purchases>=3&&x.gold!==undefined);
+  const levelSpend=p.find((x,i)=>i>0&&x.level!==undefined&&p[i-1].level!==undefined&&x.level>p[i-1].level!&&x.gold!==undefined&&p[i-1].gold!==undefined&&p[i-1].gold!>x.gold);
+  const econHold=p.find((x,i)=>i>0&&x.gold!==undefined&&x.gold>=50&&p[i-1].gold!==undefined&&p[i-1].gold!>=50&&x.round!==p[i-1].round);
   const weak=p.find((x,i)=>i>0&&x.boardPower!==undefined&&p[i-1].boardPower!==undefined&&x.boardPower<=p[i-1].boardPower!&&x.hp!==undefined&&p[i-1].hp!==undefined&&x.hp<p[i-1].hp!);
   const items=p.find((x,i)=>i>1&&x.heldComponents!==undefined&&x.heldComponents>=4&&p[i-1].heldComponents!==undefined&&p[i-1].heldComponents!>=4&&p[i-2].heldComponents!==undefined&&p[i-2].heldComponents!>=4);
   const level=p.find((x,i)=>i>0&&x.level!==undefined&&p[i-1].level!==undefined&&x.level===p[i-1].level&&x.gold!==undefined&&x.gold>=50&&x.hp!==undefined&&x.hp<40);
   return[
+    finding('roll-down','Recorded roll-down',nativeRoll?`${nativeRoll.round}: ${nativeRoll.shopRefreshes} shop refreshes were recorded with ${nativeRoll.gold} gold remaining.`:undefined,'Review what changed after the roll-down: did the spend create enough playable strength for the stage?'),
+    finding('shop-commitment','Shop commitment burst',nativeBuy?`${nativeBuy.round}: ${nativeBuy.purchases} purchases were recorded in the round with ${nativeBuy.gold} gold visible.`:undefined,'Check whether the units bought supported one coherent board direction rather than consuming economy without a plan.'),
+    finding('level-spend','Level-up spend recorded',levelSpend?`${levelSpend.round}: level increased from ${p[p.indexOf(levelSpend)-1]?.level} to ${levelSpend.level} while visible gold fell from ${p[p.indexOf(levelSpend)-1]?.gold} to ${levelSpend.gold}.`:undefined,'Review whether the level-up created an immediate board or slot advantage at the right stage.'),
+    finding('economy-hold','Economy held across stages',econHold?`${econHold.round}: visible gold stayed at 50+ across consecutive recorded rounds.`:undefined,'Preserving economy is useful only when the board can afford it; compare this hold with your final placement and later spend window.'),
     finding('late-roll','Possible late stabilisation',late?`${late.round}: ${late.hp} HP, ${late.gold} gold; later HP fell below 25 before recorded refreshes.`:undefined,'Review whether an earlier stabilisation window was available.'),
     finding('over-roll','Heavy rolling while healthy',over?`${over.round}: ${over.shopRefreshes} recorded refreshes, ${over.gold} gold remaining, ${over.hp} HP.`:undefined,'Check whether the extra rolls changed your board enough to justify the spend.'),
     finding('weak-board','Board did not strengthen',weak?`${weak.round}: board power ${weak.boardPower} while HP fell to ${weak.hp}.`:undefined,'Look for a stronger playable board before committing to a final comp.'),
