@@ -71,7 +71,7 @@ export default function Dashboard(){
     online,
     baselineGames,
     dnaRevealed,
-    focusName:activeMissions.length===2?'Two missions selected':focusPlain?.name||focus?.title,
+    focusName:activeMissions.length===2?'Two DNA trees unlocked':focusPlain?.name||focus?.title,
     focusJob:activeMissions.length===2?`1. ${focusPlain?.nextGame||focus?.gameRule||''}  2. ${secondFocusPlain?.nextGame||secondFocus?.gameRule||''}`:focusPlain?.nextGame||focus?.gameRule,
     focusConfirmed:focusProof?.confirmed,
     focusRequired:focusProof?.required,
@@ -104,7 +104,7 @@ export default function Dashboard(){
           <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
           <h2>{baselineReady?'This is how you actually play.':'Play three games. Reveal your DNA.'}</h2>
           <p>{baselineReady
-            ?`Your live ${active.role} profile measures six parts of your game. OP CLIMB selects two missions for each game while the whole player profile keeps updating.`
+            ?`Your live ${active.role} profile measures six parts of your game. You choose two DNA trees to keep unlocked for progression while the whole player profile keeps updating.`
             :`Connect the Companion and play ${DNA_BASELINE_GAMES} normal ${active.role} games. OP CLIMB keeps the profile neutral until it has enough evidence to reveal your real starting shape.`}</p>
         </div>
         <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
