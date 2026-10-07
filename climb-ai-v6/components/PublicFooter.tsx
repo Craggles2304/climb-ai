@@ -11,7 +11,7 @@ export function PublicFooter({compact=false}:{compact?:boolean}){
         <p>Personal League coaching built around your own recorded evidence.</p>
       </div>
       <nav aria-label="Trust and legal links">
-        <Link href="/demo">Demo</Link>
+        <Link href="/client">Demo</Link>
         <Link href="/pricing">Pricing</Link>
         <Link href="/privacy">Privacy</Link>
         <Link href="/terms">Terms</Link>

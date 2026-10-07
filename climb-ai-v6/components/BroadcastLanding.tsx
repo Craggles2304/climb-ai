@@ -225,7 +225,7 @@ export function BroadcastLanding(){
           <a href="#how-it-works" className={styles['hide-sm']}>How it works</a>
           <a href="#pricing" className={styles['hide-sm']}>Plans</a>
           <a href="/client" className={styles.clientNav}><span className={styles['hide-sm']}>Client demo</span><span className={styles['show-sm']}>Demo</span></a>
-          <Link href="/login" className={styles['hide-sm']}>Sign in</Link>
+          <Link href="/login">Sign in</Link>
           <Link href="/signup" className={styles.navPrimary}>Start free</Link>
         </div>
       </nav>
