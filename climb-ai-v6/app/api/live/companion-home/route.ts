@@ -75,14 +75,14 @@ export async function GET(req:NextRequest){
     primaryRole:primaryRole||role||'ADC',
     roleProfiles:LEAGUE_ROLES.map(item=>({...roleBaselines[item]})),
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'2 focus missions per game · 7-day progress view',missionLimit:2,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:'2 player-unlocked DNA trees · 7-day progress view',missionLimit:2,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'2 focus missions per game · 90-day progress view',missionLimit:2,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'2 focus missions per game · long-term learning memory',missionLimit:2,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:'2 player-unlocked DNA trees · 90-day progress view',missionLimit:2,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:'2 player-unlocked DNA trees · long-term learning memory',missionLimit:2,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     journey:baseline.ready
       ?priorityMission
-        ?{phase:'MISSION',status:'DNA ACTIVE · TWO GAME MISSIONS',title:priorityMission.title,body:'Mission 1: '+priorityMission.nextGame+(missions[1]?(' · Mission 2: '+missions[1].title):''),progress:'2 FOCUS MISSIONS',cta:'PLAY NEXT GAME'}
+        ?{phase:'MISSION',status:'DNA ACTIVE · TWO TREES UNLOCKED',title:priorityMission.title,body:'Mission 1: '+priorityMission.nextGame+(missions[1]?(' · Mission 2: '+missions[1].title):''),progress:'2 UNLOCKED TREES',cta:'PLAY NEXT GAME'}
         :{phase:'DNA_REVEAL',status:'DNA READY',title:'Your Game DNA is ready.',body:'Open My DNA to reveal your six strands and first priority mission.',progress:'3/3',cta:'REVEAL MY DNA'}
       :{phase:'BASELINE',status:'BASELINE '+Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,title:baseline.games?'Play baseline game '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)+'.':'Play your first baseline game.',body:'Play normally. Coaching is provisional until the three-game role baseline is complete.',progress:Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,cta:'PLAY BASELINE GAME '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)},
     dna,
@@ -90,9 +90,9 @@ export async function GET(req:NextRequest){
     priorityMission,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
-      ?{tier:'PLUS',copy:'Keep two focused missions per game and unlock the 90-day development view.'}
+      ?{tier:'PLUS',copy:'Keep two DNA trees unlocked and add the 90-day development view.'}
       :tier==='PLUS'
-        ?{tier:'PRO',copy:'Keep two focused missions per game and unlock long-term player memory and mastered-habit history.'}
+        ?{tier:'PRO',copy:'Keep two DNA trees unlocked and add long-term player memory and mastered-habit history.'}
         :null,
   });
 }
