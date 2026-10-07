@@ -56,8 +56,6 @@ export function LiveFightReviewMount(){
   const matchDraft=pregame?.linkedSessionId===review.sessionId?pregame:null;
   const nextRule=summary.next?.detail||currentMission?.gameRule||'Keep the same learning-plan cue until repeated match evidence shows a clearer priority.';
   const nextTitle=summary.next?.title||currentMission?.title||'BUILD MORE EVIDENCE';
-  const good=summary.good.slice(0,detail.reviewPoints);
-  const critical=summary.critical.slice(0,detail.reviewPoints);
 
   return <section className="dash-section op-coaching-zone" style={{display:'grid',gap:14}}>
     <div className="op-section-title">
