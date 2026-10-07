@@ -9,7 +9,6 @@ import {buildPostGameSections,type FightReview,type ReviewMatch} from '@/lib/pos
 import {reviewMarkedMoments} from '@/lib/markedMomentReview';
 import {isNewRecentRiotMatch,riotCompanionReview} from '@/lib/riot/companionReviewFallback';
 import {companionDnaBaseline} from '@/lib/server/companionDnaBaseline';
-import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import type {ILPTask} from '@/lib/types';
@@ -88,8 +87,8 @@ async function missionEvidenceForMatch(userId:string,riotAccountId:string|null,m
     updatedAt:row?.updated_at??null,
   })).filter((task:any)=>task?.id)) as Array<ILPTask&{updatedAt?:string|null}>;
   const strandTasks=ensureOneMissionPerDnaStrand(stored,riotAccountId,role).tasks;
-  const missions=currentGameDnaMissions(strandTasks,role).flatMap(({domain,task})=>{
-    if(!task)return[];
+  const missions=strandTasks.flatMap(task=>{
+    const domain=task.dnaDomain;
     const history=Array.isArray(task.missionHistory)?task.missionHistory:[];
     const attempt=history.find(item=>String(item?.matchId||'')===matchId);
     if(!attempt)return[];
