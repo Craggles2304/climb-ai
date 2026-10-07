@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import {Wordmark} from '@/components/UI';
+import {PublicHeader} from '@/components/PublicHeader';
 import {PublicFooter} from '@/components/PublicFooter';
 import {BRAND} from '@/lib/brand';
 
 export default function Terms(){return <>
-  <main className="container section"><Wordmark/><article className="glass card legal">
+  <PublicHeader/>
+  <main className="container section"><article className="glass card legal">
     <h1>Terms of Service</h1><p className="muted">Last updated 13 September 2026</p>
     <h2>What you are getting</h2><p>{BRAND.name} analyses your own League of Legends match evidence, identifies recurring patterns and gives you measurable coaching tasks to work on in later games.</p>
     <h2>No guarantee of results</h2><p>We do not promise that using OP CLIMB will improve your rank, win rate or matchmaking results. Coaching is based on available evidence and cannot reconstruct information Riot does not expose, such as every exact input, camera decision or hidden cooldown.</p>
