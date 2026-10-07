@@ -22,6 +22,7 @@ import type {StrengthEvidence} from '@/lib/positiveEvidence';
 import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
+import {MatchStorySides} from '@/components/MatchStorySides';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -192,6 +193,10 @@ export default function Analysis(){
         </aside>
       </header>
 
+      <MatchStorySides analysis={proAnalysis} title="GOOD VS CRITICAL · THIS GAME"/>
+
+      <details className="ar-coaching-detail">
+        <summary>OPEN MORE COACHING DETAIL</summary>
       <div className="ar-coach-columns">
         <section className="ar-helped">
           <div className="ar-review-subheading good">
@@ -237,6 +242,7 @@ export default function Analysis(){
           </div>
         </section>
       </div>
+      </details>
 
       <section className="ar-next-action panel" style={({ '--strand-color':DNA_DOMAIN_COLORS[report.mission.dnaDomain]} as CSSProperties)}>
         <div className="ar-next-number">01</div>
