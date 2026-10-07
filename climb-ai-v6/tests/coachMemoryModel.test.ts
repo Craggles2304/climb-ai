@@ -44,9 +44,9 @@ test('Coach Memory evidence only appends when the state fingerprint changes',()=
 });
 
 test('Coach Memory stores role DNA level and traceable current strength',()=>{
-  const active={...mission,id:'dna-strand-adc-teamfights-2',status:'EVIDENCE_BUILDING' as const,progress:33,missionHistory:[
+  const active:ILPTask={...mission,id:'dna-strand-adc-teamfights-2',status:'EVIDENCE_BUILDING',progress:33,missionHistory:[
     {matchId:'m4',at:'2026-10-04T00:00:00.000Z',adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:{
-      version:2,state:'BANKED' as const,measurementSource:'DECISION_EVIDENCE' as const,metric:'survival_value',metricLabel:'Survival Value',observedValue:91,observedValueLabel:'91/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:3,successes:3,misses:0,events:[{atSeconds:620,label:'Threat cycle',detail:'Survived first access'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'Cleared the mission threshold.'
+      version:2 as const,state:'BANKED' as const,measurementSource:'DECISION_EVIDENCE' as const,metric:'survival_value',metricLabel:'Survival Value',observedValue:91,observedValueLabel:'91/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:3,successes:3,misses:0,events:[{atSeconds:620,label:'Threat cycle',detail:'Survived first access'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'Cleared the mission threshold.'
     }}
   ]};
   const roleProfiles={ADC:{gamesAnalyzed:12,learningIdentity:{behaviours:[
@@ -68,9 +68,9 @@ test('Coach Memory stores role DNA level and traceable current strength',()=>{
 });
 
 test('Coach Memory preserves mission Evidence V2 proof instead of only pass/fail',()=>{
-  const evidenceTask={...mission,status:'EVIDENCE_BUILDING' as const,missionHistory:[{
+  const evidenceTask:ILPTask={...mission,status:'EVIDENCE_BUILDING',missionHistory:[{
     matchId:'proof',at:'2026-10-05T00:00:00.000Z',adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:{
-      version:2,state:'BANKED' as const,measurementSource:'RIOT_POST_GAME' as const,metric:'survival_value',metricLabel:'Survival Value',observedValue:88,observedValueLabel:'88/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:4,successes:3,misses:1,events:[{atSeconds:900,label:'Teamfight',detail:'Survived first threat cycle'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'3 of 4 qualifying opportunities handled correctly.'
+      version:2 as const,state:'BANKED' as const,measurementSource:'RIOT_POST_GAME' as const,metric:'survival_value',metricLabel:'Survival Value',observedValue:88,observedValueLabel:'88/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:4,successes:3,misses:1,events:[{atSeconds:900,label:'Teamfight',detail:'Survived first threat cycle'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'3 of 4 qualifying opportunities handled correctly.'
     }
   }]};
   const rows=buildCoachMemoryCandidates({tasks:[evidenceTask],roleProfiles:{},now:'2026-10-05T00:00:00.000Z'});
