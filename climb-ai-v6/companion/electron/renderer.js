@@ -155,8 +155,8 @@ function renderPlayerHome(home,visible){
   if(journeyCard)journeyCard.className='player-journey phase-'+String(journey.phase||'MISSION').toLowerCase();
   if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=roleLabel+' GAME DNA';
   if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=!baselineReady?'Locked until the three-game role baseline is complete.':!companionDnaRevealed?'Baseline complete. Reveal your DNA to start the mission loop.':'Your '+roleLabel+' player shape.';
-  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' PRIORITY + BACKGROUND MISSIONS';
-  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=!baselineReady?'No permanent DNA missions until baseline 3/3.':!companionDnaRevealed?'Reveal your player identity before training missions.':'Focus one. OP CLIMB tracks all six automatically.';
+  if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' TWO GAME MISSIONS';
+  if($('playerMissionRoleSubtitle'))$('playerMissionRoleSubtitle').textContent=!baselineReady?'No permanent DNA missions until baseline 3/3.':!companionDnaRevealed?'Reveal your player identity before training missions.':'Focus on two. The other four DNA strands stay in the background and do not score this game.';
   if($('playerHomeOpenClimb'))$('playerHomeOpenClimb').textContent=baselineReady&&!companionDnaRevealed?'REVEAL MY DNA ↗':'OPEN MY DNA ↗';
 
   const roleRoot=$('playerDnaRoleSwitcher');
@@ -222,26 +222,25 @@ function renderPlayerHome(home,visible){
     missionRoot.appendChild(card);
   }else if(!companionDnaRevealed){
     const card=document.createElement('article');card.className='player-mission-card reveal';
-    card.innerHTML='<span>GAME DNA READY · 3/3</span><h3>REVEAL YOUR PLAYER IDENTITY</h3><p>Your baseline is complete. Open My DNA to reveal all six strands and the one priority mission to focus next.</p><small>Nothing to memorise yet · reveal first, then OP CLIMB gives you one clear job.</small>';
+    card.innerHTML='<span>GAME DNA READY · 3/3</span><h3>REVEAL YOUR PLAYER IDENTITY</h3><p>Your baseline is complete. Open My DNA to reveal all six strands and the two missions selected for your next game.</p><small>Nothing to memorise yet · reveal first, then OP CLIMB gives you two clear jobs.</small>';
     missionRoot.appendChild(card);
   }else{
     const missions=safeArray(home.missions);
     missions.forEach((mission,index)=>{
       const dna=safeArray(home.dna).find(item=>String(item.domain)===String(mission.domain));
-      const priority=Boolean(mission.priority||index===0);
-      const card=document.createElement('article');card.className='player-mission-card '+(priority?'priority':'background');
+      const focusOrder=Math.max(1,Number(mission.focusOrder)||index+1);
+      const priority=focusOrder===1;
+      const card=document.createElement('article');card.className='player-mission-card focus';
       card.style.setProperty('--mission-color',String(dna?.color||'#b6f66b'));
       const top=document.createElement('div');top.className='player-mission-top';
-      const label=document.createElement('span');label.textContent=((priority?'PRIORITY MISSION':'BACKGROUND · TRACKED AUTOMATICALLY')+' · '+String(dna?.label||mission.domain||'DNA')).toUpperCase();
+      const label=document.createElement('span');label.textContent=(('FOCUS '+focusOrder+' OF 2')+' · '+String(dna?.label||mission.domain||'DNA')).toUpperCase();
       const reps=document.createElement('b');reps.textContent=`${Number(mission.confirmed)||0}/${Number(mission.required)||3} PROVEN`;
       top.append(label,reps);
       const title=document.createElement('h3');title.textContent=String(mission.title||'Current DNA mission');
       const rule=document.createElement('p');rule.textContent=String(mission.nextGame||mission.gameRule||'Play a tracked game to build evidence for this strand.');
       const progress=document.createElement('div');progress.className='player-mission-progress';
       const progressFill=document.createElement('i');progressFill.style.width=clamp(Number(mission.progress)||0,0,100)+'%';progress.appendChild(progressFill);
-      const note=document.createElement('small');note.textContent=priority
-        ?'FOCUS THIS NEXT GAME · OP CLIMB tracks all five other strand missions in the background.'
-        :'BACKGROUND TRACKING · You do not need to actively focus on this while your priority mission is selected.';
+      const note=document.createElement('small');note.textContent='THIS GAME · Only these two missions can bank a proven rep. The other four DNA strands remain visible in My DNA but are not scored this match.';
       card.append(top,title,rule,progress,note);
       missionRoot.appendChild(card);
     });
@@ -260,16 +259,16 @@ function renderPlayerHome(home,visible){
     memory.innerHTML=`<span>BASELINE ${Math.min(games,required)}/${required}</span><strong>PERMANENT MISSIONS LOCKED</strong><small>Single-game coaching is provisional. Finish the role baseline before OP CLIMB creates your persistent DNA mission loop.</small>`;
   }else if(!companionDnaRevealed){
     memory.className='player-memory reveal';
-    memory.innerHTML='<span>DNA READY · 3/3</span><strong>REVEAL FIRST</strong><small>Your missions are ready behind the reveal. Open My DNA once, then the Companion will show one priority mission and five background missions.</small>';
+    memory.innerHTML='<span>DNA READY · 3/3</span><strong>REVEAL FIRST</strong><small>Your missions are ready behind the reveal. Open My DNA once, then the Companion will show the two missions selected for your next game.</small>';
   }else if(tier==='PRO'){
     memory.className='player-memory pro';
     memory.innerHTML=`<span>PRO PLAYER MEMORY</span><strong>${Number(home.masteredCount)||0} MASTERED HABIT${Number(home.masteredCount)===1?'':'S'}</strong><small>Your six DNA levels are uncapped. Mastered missions and completed games keep adding permanent strand XP.</small>`;
   }else if(tier==='PLUS'){
     memory.className='player-memory plus';
-    memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>All six DNA missions stay tracked together. Long-term mastered-habit memory unlocks with Pro.</small>';
+    memory.innerHTML='<span>PLUS DEVELOPMENT VIEW</span><strong>90-DAY PROGRESS</strong><small>Two missions are scored each game. All six DNA strands still build your long-term profile. Long-term mastered-habit memory unlocks with Pro.</small>';
   }else{
     memory.className='player-memory free';
-    memory.innerHTML='<span>FREE DEVELOPMENT VIEW</span><strong>6 DNA MISSIONS</strong><small>One mission sits on each DNA strand, with every tracked game able to bank progress.</small>';
+    memory.innerHTML='<span>FREE DEVELOPMENT VIEW</span><strong>6 DNA MISSIONS</strong><small>Two missions are selected and scored per game. The other four strands stay in your DNA profile without competing for focus.</small>';
   }
 
   const upgrade=$('playerHomeUpgrade');
@@ -350,7 +349,7 @@ function renderQuietMode(state,visible){
   $('quietIdentity').textContent=identity||'MATCH IN PROGRESS';
   const baselineReady=state?.playerHome?.baseline?.ready!==false;
   $('quietFocus').textContent=baselineReady
-    ?'No live instructions. OP CLIMB is recording quietly so your priority and background missions can be measured after the game.'
+    ?'No live instructions. OP CLIMB is recording quietly so your two selected missions can be measured after the game.'
     :'No live instructions. OP CLIMB is recording quietly so this game can build your baseline and provisional post-game coaching.';
 }
 
