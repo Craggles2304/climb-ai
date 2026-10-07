@@ -90,8 +90,9 @@ test('a measured miss is MISSED while missing evidence is neutral NOT OBSERVED',
 });
 
 
-test('only two DNA missions are scored in a new tracked game',()=>{
-  const first=ensureOneMissionPerDnaStrand([],'acct',role).tasks;
+test('only the two player-unlocked DNA missions are scored in a new tracked game',()=>{
+  const seeded=ensureOneMissionPerDnaStrand([],'acct',role).tasks;
+  const first=seeded.map(task=>({...task,dnaFocusUnlocked:task.dnaDomain==='OBJECTIVES'||task.dnaDomain==='TEAMFIGHTS'}));
   const started=first[0]?.history?.find(event=>event.type==='PROMOTED')?.at??'2026-10-01T00:00:00.000Z';
   const later=new Date(Date.parse(started)+60_000).toISOString();
   const metrics:any={};
@@ -105,6 +106,7 @@ test('only two DNA missions are scored in a new tracked game',()=>{
   const graded=gradeDnaStrandMissionsFromHistory(first,history).tasks;
   const scored=graded.filter(task=>task.missionHistory?.some(rep=>rep.matchId==='focus-two'));
   assert.equal(scored.length,2);
+  assert.deepEqual(new Set(scored.map(task=>task.dnaDomain)),new Set(['OBJECTIVES','TEAMFIGHTS']));
 });
 
 test('a decision score cannot bank without timestamped proof of when it happened',()=>{
@@ -124,4 +126,19 @@ test('a decision score cannot bank without timestamped proof of when it happened
   assert.equal(attempt?.banksPass,false);
   assert.equal(attempt?.evidenceV2?.state,'NOT_OBSERVED');
   assert.match(attempt?.evidenceV2?.reason??'',/could not prove when/i);
+});
+
+
+test('an unlocked DNA tree stays unlocked when mastery creates the next mission',()=>{
+  const first=ensureOneMissionPerDnaStrand([],'acct',role).tasks.map(task=>({
+    ...task,
+    dnaFocusUnlocked:task.dnaDomain==='LANING'||task.dnaDomain==='OBJECTIVES',
+  }));
+  const laning=first.find(task=>task.dnaDomain==='LANING'&&isDnaStrandMission(task))!;
+  const mastered=first.map(task=>task.id===laning.id?{...task,status:'MASTERED' as const,progress:100}:task);
+  const second=ensureOneMissionPerDnaStrand(mastered,'acct',role).tasks;
+  const nextLaning=second.find(task=>task.dnaDomain==='LANING'&&task.status!=='MASTERED'&&task.status!=='PAUSED')!;
+  assert.equal(nextLaning.dnaFocusUnlocked,true);
+  const teamfight=second.find(task=>task.dnaDomain==='TEAMFIGHTS'&&task.status!=='MASTERED'&&task.status!=='PAUSED')!;
+  assert.equal(teamfight.dnaFocusUnlocked,false);
 });
