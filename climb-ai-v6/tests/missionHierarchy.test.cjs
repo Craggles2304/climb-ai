@@ -24,24 +24,24 @@ test('My DNA shows six strand missions but makes one selected mission easy to un
   assert.ok(!ilp.includes('CORE MISSION · THE ONLY SCORED FOCUS'));
 });
 
-test('Missions page shows six current DNA strands with evidence-backed trackers',()=>{
+test('Missions page selects two scored missions while keeping six DNA strands available',()=>{
   assert.ok(missionsPage.includes('currentGameDnaMissions'));
-  assert.ok(missionsPage.includes('missions.map(({domain,task},index)'));
-  assert.ok(missionsPage.includes('missionRepView(task)'));
+  assert.ok(missionsPage.includes('gameMissionFocusPair'));
+  assert.ok(missionsPage.includes('FOCUS {index+1} OF 2'));
+  assert.ok(missionsPage.includes('OTHER 4 DNA STRANDS'));
   assert.ok(missionsPage.includes('missionComparisonForMatch(task,latestMatch?.id)'));
-  assert.ok(missionsPage.includes('comparison.result'));
+  assert.ok(missionsPage.includes('comparison.events'));
   assert.ok(appShell.includes("['Missions','/missions'"));
 });
 
-test('Companion shows one priority mission plus five background-tracked DNA missions',()=>{
-  assert.ok(companion.includes('PRIORITY MISSION'));
-  assert.ok(companion.includes('BACKGROUND · TRACKED AUTOMATICALLY'));
-  assert.ok(companion.includes('FOCUS THIS NEXT GAME'));
+test('Companion shows exactly two scored missions for the next game',()=>{
+  assert.ok(companion.includes('TWO GAME MISSIONS'));
+  assert.ok(companion.includes('FOCUS '+"'"+'+focusOrder+'+"'"+' OF 2'));
+  assert.ok(companion.includes('Only these two missions can bank a proven rep'));
   assert.ok(companion.includes('No permanent DNA missions until baseline 3/3.'));
   assert.ok(companion.includes('PROVISIONAL COACHING'));
-  assert.ok(!companion.includes('WATCH FOCUS'));
-  assert.ok(!companion.includes('CORE MISSION'));
-  assert.ok(api.includes('const missionLimit=6'));
+  assert.ok(api.includes('const missionLimit=2'));
+  assert.ok(api.includes('gameMissionFocusPair'));
   assert.ok(api.includes('priorityMission'));
 });
 
