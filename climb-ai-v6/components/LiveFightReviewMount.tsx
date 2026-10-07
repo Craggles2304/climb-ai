@@ -63,7 +63,7 @@ export function LiveFightReviewMount(){
       <p>{review.status==='ABORTED'?'Partial capture — useful, but not enough for mastery.':detail.depth<=2?'One good point. One problem. One thing next game.':`${detail.reviewPoints} useful point${detail.reviewPoints===1?'':'s'} each side, then one focus for the next game.`}</p>
     </div>
 
-    <MatchStorySides analysis={review.proAnalysis} fights={fights} compact title="GOOD VS CRITICAL · THIS GAME"/>
+    <MatchStorySides analysis={review.proAnalysis} fights={fights} compact title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={review.matchId}/>
 
     <div className="glass card" style={{padding:20,borderColor:'rgba(182,246,107,.34)'}}>
       <div className="eyebrow">ONE THING NEXT GAME</div>
