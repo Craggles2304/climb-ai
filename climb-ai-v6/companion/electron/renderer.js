@@ -66,11 +66,13 @@ function render(state){
   current=state||{};
   const paired=Boolean(current.paired);
   const phase=String(current.phase||'WAITING');
+  const tft=current.tftRecorder||{};
+  const tftBusy=['INITIALIZING','RECORDING','PROCESSING','READY'].includes(String(tft.state||''));
   const coach=current.postGameReview?.coachLevel||current.teamPlan?.coachLevel;
   setCoachLevel(coach);
 
   document.body.classList.toggle('op-mode-match-room',phase==='CHAMP_SELECT');
-  document.body.classList.toggle('op-mode-quiet',phase==='RECORDING');
+  document.body.classList.toggle('op-mode-quiet',phase==='RECORDING'||tft.state==='RECORDING');
   document.body.classList.toggle('op-mode-coach-review',phase==='REVIEW');
   if(phase!=='REVIEW'){
     coachReviewEvidenceOpen=false;
@@ -78,7 +80,7 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
-  renderPlayerHome(current.playerHome,paired&&phase==='WAITING');
+  renderPlayerHome(current.playerHome,paired&&phase==='WAITING'&&!tftBusy);
   renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
@@ -93,17 +95,20 @@ function render(state){
   const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup||current.draft);
   const quietVisible=phase==='RECORDING';
   const reviewVisible=phase==='REVIEW'&&Boolean(current.postGameReview);
-  const homeVisible=phase==='WAITING'&&Boolean(current.playerHome?.ok);
+  const homeVisible=phase==='WAITING'&&!tftBusy&&Boolean(current.playerHome?.ok);
   setHidden($('status'),homeVisible||pregameVisible||quietVisible||reviewVisible);
 
-  $('statusTitle').textContent=phaseTitle(phase);
-  $('statusCopy').textContent=phaseCopy(current);
+  const tftOwnsStatus=tftBusy&&!['CHAMP_SELECT','REVIEW'].includes(phase);
+  const tftTitle=tft.state==='RECORDING'?'Tracking TFT':tft.state==='PROCESSING'?'Building TFT review':tft.state==='READY'?'TFT review ready':'Preparing TFT recorder';
+  const tftCopy=tft.detail||'The OP CLIMB Companion records quietly and coaches only after the TFT game.';
+  $('statusTitle').textContent=tftOwnsStatus?tftTitle:phaseTitle(phase);
+  $('statusCopy').textContent=tftOwnsStatus?tftCopy:phaseCopy(current);
   $('trackerState').textContent=current.trackerRunning?'Running':'Stopped';
-  const tft=current.tftRecorder||{};
-  if($('tftRecorderState'))$('tftRecorderState').textContent=tft.state==='RECORDING'?'Recording':tft.state==='READY'?'Review ready':tft.state==='PROCESSING'?'Reviewing':tft.state==='ERROR'?'Needs attention':tft.available?'Armed':'Unavailable';
-  $('modeState').textContent=modeLabel(phase);
-  $('statusPill').textContent=modeLabel(phase).toUpperCase();
-  $('statusPill').classList.toggle('good',['WAITING','CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase));
+  if($('tftRecorderState'))$('tftRecorderState').textContent=tft.state==='RECORDING'?'Recording':tft.state==='READY'?'Review ready':tft.state==='PROCESSING'?'Reviewing':tft.state==='INITIALIZING'?'Preparing':tft.state==='ERROR'?'Needs attention':tft.available?'Armed':'Unavailable';
+  const visibleMode=tftOwnsStatus?(tft.state==='READY'?'TFT Review Ready':tft.state==='PROCESSING'?'TFT Reviewing':tft.state==='RECORDING'?'TFT Recording':'TFT Preparing'):modeLabel(phase);
+  $('modeState').textContent=visibleMode;
+  $('statusPill').textContent=visibleMode.toUpperCase();
+  $('statusPill').classList.toggle('good',tftOwnsStatus||['WAITING','CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase));
   $('statusPill').classList.toggle('bad',['AUTH_ERROR','ERROR','RESTARTING'].includes(phase));
   $('autoStart').classList.toggle('on',Boolean(current.autoStart));
 
