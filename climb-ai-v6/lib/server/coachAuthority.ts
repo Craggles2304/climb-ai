@@ -32,7 +32,7 @@ export async function loadCoachAuthority(db:any,userId:string,requestedAccountId
     learningProfile=profile??null;
     selectedRoleProfile=role?(profile?.role_profiles as any)?.[role]??null:null;
     await syncDerivedCoachMemories(db,userId,accountId).catch(error=>console.warn('[coach-memory] derived memory sync failed',error));
-    memories=await loadCoachMemories(db,userId,accountId,24,role);
+    memories=await loadCoachMemories(db,userId,accountId,40,role);
   }
   const primary=tasks[0]??null;
   const proMetric=primary?.metric&&latestPro?.metrics?.[primary.metric]?latestPro.metrics[primary.metric]:weakestActionable(latestPro);

@@ -28,5 +28,6 @@ export async function GET(req:NextRequest){
     regression:memories.filter(item=>['REGRESSED','DUE'].includes(String(item.memoryState||'').toUpperCase())),
     mastered:memories.filter(item=>['MASTERED','RETAINED','PRINCIPLE_OWNED'].includes(String(item.memoryState||'').toUpperCase())),
     transfer:memories.filter(item=>String(item.topic).includes(':TRANSFER:')),
+    dna:memories.filter(item=>String(item.topic).includes(':DNA:')),
   });
 }
