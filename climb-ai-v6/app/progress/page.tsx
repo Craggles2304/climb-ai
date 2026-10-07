@@ -63,7 +63,7 @@ export default function Progress(){
       <div className="vf-verdict-action"><span>NEXT ACTION</span><b>{active.role==='ADC'?'Protect the last wave before objective setup.':'Track objective timing and deaths around setup.'}</b></div>
     </section>
 
-    {tier==='PRO'?<><CareerDevelopmentMap accountId={active.id}/><LearningJourneyTimeline accountId={active.id}/></>:<section className="glass card"><div className="eyebrow">LONG-TERM DEVELOPMENT · PRO</div><h3>Persistent career memory is locked.</h3><p className="muted">{tier==='PLUS'?'PLUS keeps your current-game coaching and 90-day history. PRO adds long-term learning journeys, transfer tests and player-model development.':'FREE keeps the basic loop and 7-day view. PRO adds long-term learning journeys, transfer tests and player-model development.'}</p></section>}
+    {tier==='PRO'?<><CareerDevelopmentMap accountId={active.id}/><LearningJourneyTimeline accountId={active.id}/></>:<section className="glass card"><div className="eyebrow">PERSISTENT PLAYER MODEL · PRO</div><h3>Your DNA plan can still move you on. Long-term player memory is locked.</h3><p className="muted">{tier==='PLUS'?'PLUS already runs Your Next Climb, including the DNA mission, evidence loop, mastery and transfer check. PRO adds Decision Twin, Coach Memory, learning velocity, principle connections and long-term player identity.':'FREE keeps the basic loop and 7-day view. PLUS unlocks the managed DNA player plan; PRO adds the persistent player model on top.'}</p></section>}
     </details>
   </AppShell>;
 }
