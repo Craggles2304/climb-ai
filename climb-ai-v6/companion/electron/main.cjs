@@ -4,7 +4,7 @@ const {existsSync,readFileSync,writeFileSync,mkdirSync}=require('node:fs');
 const path=require('node:path');
 const {championRoster,championGuide}=require('./champion-hub-data.cjs');
 const {draftFromLocalContext,freshestDraft}=require('./live-draft.cjs');
-const {startTftRecorder:startTftGepRecorder}=require('./tft-recorder.cjs');
+const {startTftRecorder:startNativeTftRecorder}=require('./tft-recorder.cjs');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
@@ -484,13 +484,13 @@ function startTracker(){
 
 function stopTftRecorder(){
   if(tftRecorder){try{tftRecorder.stop?.()}catch{}tftRecorder=null}
-  setState({tftRecorder:{available:Boolean(app?.overwolf?.packages?.gep),state:'STOPPED',detail:'TFT recorder stopped.'}});
+  setState({tftRecorder:{available:true,state:'STOPPED',detail:'TFT recorder stopped.'}});
 }
 function startTftRecorder(){
   if(!paired())return;
   if(tftRecorder)return;
   try{
-    tftRecorder=startTftGepRecorder({
+    tftRecorder=startNativeTftRecorder({
       app,
       getConfig:()=>{const config=currentConfig();return{webUrl:config.webUrl,token:config.token}},
       log:(line,kind)=>addLog(line,kind),
