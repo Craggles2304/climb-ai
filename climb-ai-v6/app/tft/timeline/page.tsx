@@ -65,7 +65,7 @@ export default function TftTimelinePage(){
       <div className="tft-hero-copy">
         <div className="eyebrow">MATCH ROOM · TFT POST-GAME</div>
         <h1>WHERE DID THE GAME ACTUALLY TURN?</h1>
-        <p>The Companion records supported local-player evidence quietly during the match. After the game, Decision Twin turns those checkpoints into a timeline of economy, stabilisation and board-development decisions.</p>
+        <p>The OP CLIMB Companion records your own visible TFT evidence quietly during the match. After the game, Decision Twin turns those checkpoints into a timeline of economy, stabilisation and board-development decisions.</p>
         <div className="tft-hero-actions">
           <button className="btn primary" type="button" onClick={()=>void loadLatest(false)} disabled={loading}>{loading?'CHECKING…':'REFRESH LAST GAME'}</button>
           <a className="btn secondary" href="/tft/coach">OPEN MY TFT DNA</a>
@@ -128,13 +128,13 @@ export default function TftTimelinePage(){
       <section className="glass card" style={{marginTop:14,padding:20}}>
         <div className="eyebrow">EVIDENCE BOUNDARY</div>
         <h3>NO FAKE CREDIT. NO FAKE BLAME.</h3>
-        <p className="muted">The recorder uses supported own-player evidence only. If OP CLIMB cannot prove the decision from the captured game state, that behaviour stays NOT OBSERVED instead of being invented.</p>
+        <p className="muted">The recorder uses your own visible TFT HUD/shop evidence only during play. It does not scout opponent boards or give live prescriptions. If OP CLIMB cannot prove the decision from captured evidence, that behaviour stays NOT OBSERVED instead of being invented.</p>
       </section>
     </>:<section className="tft-focus-grid">
       <article className="tft-focus">
         <span>EVIDENCE STATUS</span>
         <h2>WAITING FOR YOUR NEXT TFT GAME.</h2>
-        <p>Run the Overwolf-enabled OP CLIMB Companion and play normally. The review appears here after the match without needing a manual JSON import.</p>
+        <p>Run the normal OP CLIMB Companion and play TFT normally. It detects the TFT game window itself, records silently, and your review appears here after the match without a separate app or manual JSON import.</p>
         <div className="tft-focus-rule"><small>WHAT HAPPENS NEXT</small><b>Play → record → review → update TFT DNA → carry one mission into the next game.</b></div>
       </article>
       <aside className="tft-grade"><span>STATUS</span><strong>—</strong><small>NO COMPLETED TIMELINE<br/>NOT OBSERVED</small></aside>
