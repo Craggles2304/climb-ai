@@ -23,7 +23,7 @@ const CAPTURE_REGIONS={
 
 function roundValue(value){
   const raw=String(value??'').replace(/[_.:—–]/g,'-');
-  const match=/(?:stage\s*)?([1-9])\s*-\s*([1-9])/i.exec(raw);
+  const match=/(?:^|\D)(?:stage\s*)?([1-9])\s*-\s*([1-9])(?:\D|$)/i.exec(raw);
   return match?Number(match[1])+'-'+Number(match[2]):'0-0';
 }
 function cleanText(value){return String(value??'').replace(/\s+/g,' ').trim()}
@@ -117,7 +117,7 @@ function parseTftHudOcr({topText='',bottomText='',bottomWords=[],bottomWidth=1,b
   const {level,xp}=parseLevelAndXp(bottomText);
   const gold=goldCandidate(bottomWords,bottomWidth,bottomHeight);
   const shop=shopRowsFromWords(bottomWords,bottomWidth,bottomHeight);
-  const shopAnchor=/\b(refresh|reroll|buy\s*xp|lvl\.?|level)\b/i.test(bottomText);
+  const shopAnchor=/\b(refresh|reroll|buy\s*xp)\b/i.test(bottomText)||shop.length>=3;
   const confirmedTft=round!=='0-0'&&shopAnchor;
   const evidenceCount=[round!=='0-0',shopAnchor,level!==undefined,gold!==null,shop.length>=3].filter(Boolean).length;
   return{
