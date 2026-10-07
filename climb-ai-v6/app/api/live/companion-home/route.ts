@@ -3,7 +3,7 @@ import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {companionDnaRoleBaselines,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server/companionDnaBaseline';
 import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
-import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaStrands,missionRepView} from '@/lib/gameDnaSnapshot';
+import {canonicalGameDnaTasks,gameDnaStrands,gameMissionFocusPair,missionRepView} from '@/lib/gameDnaSnapshot';
 import type {ILPTask,Role} from '@/lib/types';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
 import {LEAGUE_ROLES} from '@/lib/roleAwareLearning';
@@ -52,12 +52,11 @@ export async function GET(req:NextRequest){
     ?ensureOneMissionPerDnaStrand(storedTasks,String(account.id),roleKey).tasks
     :storedTasks;
   const allTasks=canonicalGameDnaTasks(strandReady,roleKey);
-  const live=activeGameDnaMissions(allTasks,roleKey);
+  const focusPair=gameMissionFocusPair(allTasks,roleKey);
 
-  const missionLimit=6;
-  const orderedLive=[...live].sort((a,b)=>(a.priority??99)-(b.priority??99));
-  const missions=baseline.ready?orderedLive.slice(0,missionLimit).map((task,index)=>missionView(task,index===0)):[];
-  const priorityMission=missions.find(mission=>mission.priority)??missions[0]??null;
+  const missionLimit=2;
+  const missions=baseline.ready?focusPair.map(({task},index)=>missionView(task,index)):[];
+  const priorityMission=missions[0]??null;
   const dna=gameDnaStrands(allTasks,roleKey,baseline.ready);
   const masteredCount=allTasks.filter(task=>String(task.status??'').toUpperCase()==='MASTERED').length;
 
@@ -76,14 +75,14 @@ export async function GET(req:NextRequest){
     primaryRole:primaryRole||role||'ADC',
     roleProfiles:LEAGUE_ROLES.map(item=>({...roleBaselines[item]})),
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'6 DNA missions · 7-day progress view',missionLimit:6,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:'2 focus missions per game · 7-day progress view',missionLimit:2,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'6 DNA missions · 90-day progress view',missionLimit:6,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'6 DNA missions · long-term learning memory',missionLimit:6,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:'2 focus missions per game · 90-day progress view',missionLimit:2,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:'2 focus missions per game · long-term learning memory',missionLimit:2,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     journey:baseline.ready
       ?priorityMission
-        ?{phase:'MISSION',status:'DNA ACTIVE · PRIORITY MISSION',title:priorityMission.title,body:priorityMission.nextGame,progress:priorityMission.confirmed+'/'+priorityMission.required+' proven',cta:'PLAY NEXT REP'}
+        ?{phase:'MISSION',status:'DNA ACTIVE · TWO GAME MISSIONS',title:priorityMission.title,body:'Mission 1: '+priorityMission.nextGame+(missions[1]?(' · Mission 2: '+missions[1].title):''),progress:'2 FOCUS MISSIONS',cta:'PLAY NEXT GAME'}
         :{phase:'DNA_REVEAL',status:'DNA READY',title:'Your Game DNA is ready.',body:'Open My DNA to reveal your six strands and first priority mission.',progress:'3/3',cta:'REVEAL MY DNA'}
       :{phase:'BASELINE',status:'BASELINE '+Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,title:baseline.games?'Play baseline game '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)+'.':'Play your first baseline game.',body:'Play normally. Coaching is provisional until the three-game role baseline is complete.',progress:Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,cta:'PLAY BASELINE GAME '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)},
     dna,
@@ -91,14 +90,14 @@ export async function GET(req:NextRequest){
     priorityMission,
     masteredCount:tier==='PRO'?masteredCount:null,
     upgrade:tier==='FREE'
-      ?{tier:'PLUS',copy:'Keep all six DNA missions and unlock the 90-day development view.'}
+      ?{tier:'PLUS',copy:'Keep two focused missions per game and unlock the 90-day development view.'}
       :tier==='PLUS'
-        ?{tier:'PRO',copy:'Keep all six DNA missions and unlock long-term player memory and mastered-habit history.'}
+        ?{tier:'PRO',copy:'Keep two focused missions per game and unlock long-term player memory and mastered-habit history.'}
         :null,
   });
 }
 
-function missionView(task:ILPTask,priority=false){
+function missionView(task:ILPTask,focusIndex=0){
   const reps=missionRepView(task);
   const plain=plainLanguageFocus(task);
   return{
@@ -114,7 +113,8 @@ function missionView(task:ILPTask,priority=false){
     success:String(plain.success||task.target||'').trim(),
     target:String(task.target??'').trim(),
     status:String(task.status??'ACTIVE').toUpperCase(),
-    priority,
+    priority:focusIndex===0,
+    focusOrder:focusIndex+1,
   };
 }
 
