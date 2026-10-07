@@ -2399,3 +2399,69 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   letter-spacing:.06em;
 }
 .missions-tree-swap-cancel:hover{color:#dce4e3}
+
+
+/* Match Reconstruction V2 evidence chain */
+.match-story-review.v2{position:relative}
+.match-story-proof{display:grid;gap:6px;margin-top:11px}
+.match-story-evidence{
+  display:grid;
+  grid-template-columns:74px minmax(0,1fr);
+  gap:10px;
+  padding:9px 10px;
+  border:1px solid rgba(255,255,255,.06);
+  background:#081014;
+}
+.match-story-evidence>b{
+  align-self:start;
+  color:#91a0a4;
+  font:800 9px var(--mono);
+}
+.match-story-evidence>div{display:grid;gap:3px}
+.match-story-evidence span{
+  color:#74858a;
+  font:700 7px var(--mono);
+  letter-spacing:.08em;
+}
+.match-story-evidence strong{
+  color:#e5eceb;
+  font:800 11px var(--display);
+}
+.match-story-evidence small{
+  color:#829196;
+  font-size:10px;
+  line-height:1.4;
+}
+.match-story-evidence.verified{border-left:2px solid #56d9b8}
+.match-story-evidence.connected{border-left:2px solid #7eb2c2}
+.match-story-evidence.coaching_inference{border-left:2px solid #b7a4ef}
+.match-story-evidence.verified span{color:#56d9b8}
+.match-story-evidence.connected span{color:#7eb2c2}
+.match-story-evidence.coaching_inference span{color:#b7a4ef}
+.match-story-mission{
+  display:grid;
+  gap:5px;
+  margin-top:10px;
+  padding:11px 12px;
+  border:1px solid rgba(182,246,107,.2);
+  background:rgba(182,246,107,.035);
+}
+.match-story-mission>span{
+  color:#b6f66b;
+  font:750 7px var(--mono);
+  letter-spacing:.09em;
+}
+.match-story-mission>b{font:800 14px var(--display)}
+.match-story-mission>small{color:#91a09f;font-size:10px;line-height:1.45}
+.match-story-boundary{
+  margin:0;
+  padding:10px 12px;
+  border:1px solid rgba(255,255,255,.055);
+  color:#68787d;
+  background:#080e11;
+  font-size:9px;
+  line-height:1.45;
+}
+@media(max-width:600px){
+  .match-story-evidence{grid-template-columns:1fr;gap:4px}
+}
