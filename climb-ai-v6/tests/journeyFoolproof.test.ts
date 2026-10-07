@@ -48,7 +48,7 @@ test('new player journey is linear from baseline zero through game four',()=>{
   assert.equal(firstMission.phase,'MISSION');
   assert.equal(firstMission.title,'Protect the lead');
   assert.equal(firstMission.progress,'0/3 proven');
-  assert.equal(firstMission.cta,'PLAY NEXT REP →');
+  assert.equal(firstMission.cta,'PLAY NEXT GAME →');
 
   const afterGame4=buildJourneyState({
     ...base,
@@ -62,7 +62,7 @@ test('new player journey is linear from baseline zero through game four',()=>{
   assert.equal(afterGame4.phase,'MISSION');
   assert.equal(afterGame4.title,'Protect the lead');
   assert.equal(afterGame4.progress,'1/3 proven');
-  assert.equal(afterGame4.cta,'PLAY NEXT REP →');
+  assert.equal(afterGame4.cta,'PLAY NEXT GAME →');
 });
 
 test('connection failures always take priority over coaching state',()=>{
