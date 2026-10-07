@@ -51,10 +51,10 @@ function liveTask(payload:any,role:Role){
   return status!=='MASTERED'&&status!=='PAUSED'&&(scope===role||scope==='GLOBAL');
 }
 
-function domainFor(key:DecisionBehaviourKey,tasks:any[]):DnaDomain{
+function domainFor(key:DecisionBehaviourKey,tasks:any[],role:Role):DnaDomain{
   const metrics=new Set(METRICS[key]);
   const matching=tasks
-    .filter(task=>liveTask(task,task?.roleScope as Role))
+    .filter(task=>liveTask(task,role))
     .find(task=>metrics.has(String(task?.metric||''))&&task?.dnaDomain);
   return (matching?.dnaDomain as DnaDomain)||DEFAULT_DOMAIN[key];
 }
@@ -92,7 +92,7 @@ export async function GET(req:Request){
 
     const [historyResult,learningResult,taskResult]=await Promise.all([
       db.from('op_match_analysis')
-        .select('match_id,champion,role,created_at,analysis')
+        .select('champion,role,created_at,analysis')
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .order('created_at',{ascending:true})
@@ -113,7 +113,6 @@ export async function GET(req:Request){
     if(taskResult.error)throw new Error(taskResult.error.message);
 
     const allRows:HistoryAnalysisRow[]=(historyResult.data??[]).map((row:any)=>({
-      matchId:row.match_id?String(row.match_id):undefined,
       champion:String(row.champion||'Unknown'),
       role:row.role?String(row.role):null,
       createdAt:String(row.created_at),
@@ -149,8 +148,8 @@ export async function GET(req:Request){
       });
     }
 
-    const dnaDomain=domainFor(lesson.behaviourKey,tasks);
-    const completedGates=(contract?.gates??[]).filter((gate:any)=>gate.status==='PASSED'||gate.status==='COMPLETE').length;
+    const dnaDomain=domainFor(lesson.behaviourKey,tasks,input.role);
+    const completedGates=(contract?.gates??[]).filter((gate:any)=>gate.met===true).length;
     const totalGates=Math.max(1,(contract?.gates??[]).length);
     return NextResponse.json({
       ok:true,
@@ -173,8 +172,11 @@ export async function GET(req:Request){
         gates:(contract?.gates??[]).map((gate:any)=>({
           id:gate.id,
           label:gate.label,
-          status:gate.status,
-          detail:gate.detail,
+          current:gate.current,
+          target:gate.target,
+          unit:gate.unit,
+          met:Boolean(gate.met),
+          evidence:gate.evidence,
         })),
         transferTest:contract?.testDirective?.mode==='TRANSFER_TEST'
           ?{
