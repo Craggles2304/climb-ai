@@ -61,7 +61,7 @@ function currentStrengthForDomain(profile:any,domain:DnaDomain){
   const relevant=behaviours.filter((item:any)=>BEHAVIOUR_DOMAINS[String(item?.key||'')]?.includes(domain)&&Number.isFinite(Number(item?.recentScore)));
   if(!relevant.length)return null;
   let recentWeighted=0,lifetimeWeighted=0,totalWeight=0;
-  const components=relevant.map((item:any)=>{
+  const components:any[]=relevant.map((item:any)=>{
     const recent=Math.max(0,Math.min(100,Number(item.recentScore)));
     const lifetime=Number.isFinite(Number(item.averageScore))?Math.max(0,Math.min(100,Number(item.averageScore))):recent;
     const evidence=Math.max(1,Number(item.evidenceCount||item.applicableGames||1));
@@ -178,3 +178,10 @@ export function buildCoachMemoryCandidates(input:{tasks:ILPTask[];roleProfiles:R
       out.push({
         key:`derived:league-mind:${role}`,type:'PATTERN',topic:`${role}:LEAGUE_MIND`,summary:clamp(summaries.join(' '),1800),
         status:allowedStatus(state),role,memoryState:state,confidence:clean(identity?.confidence||causal?.confidence)||null,occurredAt:generatedAt,occurrences:Math.max(1,Number(profile?.gamesAnalyzed)||1),
+        snapshot:{fingerprint,at:generatedAt,source:'LEAGUE_MIND',role,memoryState:state,playerCoachingIdentitySummary:clean(identity?.summary),causalSummary:clean(causal?.summary),learningVelocitySummary:clean(velocity?.summary),principleSummary:clean(principles?.summary),currentFocus:profile?.currentFocus??null},
+      });
+    }
+  }
+
+  return out;
+}
