@@ -42,3 +42,44 @@ test('Coach Memory evidence only appends when the state fingerprint changes',()=
   assert.equal(changed.changed,true);
   assert.equal(changed.evidence.length,2);
 });
+
+test('Coach Memory stores role DNA level and traceable current strength',()=>{
+  const active={...mission,id:'dna-strand-adc-teamfights-2',status:'EVIDENCE_BUILDING' as const,progress:33,missionHistory:[
+    {matchId:'m4',at:'2026-10-04T00:00:00.000Z',adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:{
+      version:2,state:'BANKED' as const,measurementSource:'DECISION_EVIDENCE' as const,metricKey:'survival_value',observedValue:91,observedValueLabel:'91/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:3,successes:3,misses:0,events:[{atSeconds:620,label:'Threat cycle',detail:'Survived first access'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'Cleared the mission threshold.'
+    }}
+  ]};
+  const roleProfiles={ADC:{gamesAnalyzed:12,learningIdentity:{behaviours:[
+    {key:'FIGHT_SELECTION',label:'Fight Selection',recentScore:84,averageScore:76,evidenceCount:5,applicableGames:5,confidence:'HIGH',trend:'IMPROVING'},
+    {key:'CARRY_PRESERVATION',label:'Carry Preservation',recentScore:78,averageScore:80,evidenceCount:4,applicableGames:4,confidence:'MEDIUM',trend:'STABLE'},
+    {key:'SURVIVAL_VALUE',label:'Survival Value',recentScore:82,averageScore:74,evidenceCount:3,applicableGames:3,confidence:'HIGH',trend:'IMPROVING'},
+  ]},recentChange:{generatedAt:'2026-10-05T00:00:00.000Z'}}};
+  const rows=buildCoachMemoryCandidates({tasks:[mission,active],roleProfiles,now:'2026-10-05T00:00:00.000Z'});
+  const dna=rows.find(row=>row.key==='derived:dna:ADC:TEAMFIGHTS')!;
+  assert.equal(dna.role,'ADC');
+  assert.equal(dna.dnaDomain,'TEAMFIGHTS');
+  assert.equal((dna.snapshot as any).level,2);
+  assert.equal((dna.snapshot as any).totalXp,125);
+  assert.equal(typeof (dna.snapshot as any).currentStrength,'number');
+  assert.ok((dna.snapshot as any).currentStrength>=0&&(dna.snapshot as any).currentStrength<=100);
+  assert.equal((dna.snapshot as any).currentMission.confirmed,1);
+  assert.equal((dna.snapshot as any).currentMission.required,3);
+  assert.equal((dna.snapshot as any).components.length,3);
+});
+
+test('Coach Memory preserves mission Evidence V2 proof instead of only pass/fail',()=>{
+  const evidenceTask={...mission,status:'EVIDENCE_BUILDING' as const,missionHistory:[{
+    matchId:'proof',at:'2026-10-05T00:00:00.000Z',adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:{
+      version:2,state:'BANKED' as const,measurementSource:'RIOT_POST_GAME' as const,metricKey:'survival_value',observedValue:88,observedValueLabel:'88/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:4,successes:3,misses:1,events:[{atSeconds:900,label:'Teamfight',detail:'Survived first threat cycle'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'score >= 85'},reason:'3 of 4 qualifying opportunities handled correctly.'
+    }
+  }]};
+  const rows=buildCoachMemoryCandidates({tasks:[evidenceTask],roleProfiles:{},now:'2026-10-05T00:00:00.000Z'});
+  const memory=rows.find(row=>row.key.includes('mission:ADC'))!;
+  const attempt=(memory.snapshot as any).recentAttempts[0];
+  assert.equal(attempt.evidenceState,'BANKED');
+  assert.equal(attempt.opportunities,4);
+  assert.equal(attempt.successes,3);
+  assert.equal(attempt.misses,1);
+  assert.equal(attempt.confidence,'HIGH');
+  assert.equal(attempt.events[0].atSeconds,900);
+});
