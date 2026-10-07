@@ -113,7 +113,9 @@ test('Decision Graph links post-game moments to the exact frozen pre-game coach'
   assert.ok(draftCoach.includes('persistLockedCoachForPregame'));
   assert.ok(draftCoach.includes('deepCoach'));
   assert.ok(liveRepo.includes('linkedDecisionPlan'));
-  assert.ok(liveRepo.includes('decisionGraph:buildDecisionGraph'));
+  assert.ok(liveRepo.includes('const graph=buildDecisionGraph'));
+  assert.ok(liveRepo.includes('decisionGraph:graph'));
+  assert.ok(liveRepo.includes('reconstruction:buildLiveMatchReconstruction'));
   assert.ok(reviewRoute.includes('decisionGraph:summary?.decisionGraph'));
 });
 

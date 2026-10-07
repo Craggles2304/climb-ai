@@ -193,7 +193,7 @@ export default function Analysis(){
         </aside>
       </header>
 
-      <MatchStorySides analysis={proAnalysis} title="GOOD VS CRITICAL · THIS GAME"/>
+      <MatchStorySides analysis={proAnalysis} title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={id}/>
 
       <details className="ar-coaching-detail">
         <summary>OPEN MORE COACHING DETAIL</summary>
