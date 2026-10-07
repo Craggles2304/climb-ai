@@ -30,12 +30,13 @@ type ProgressionPayload={
 const primary=[
   ['Home','/dashboard','⌂','Your next step'],
   ['My DNA','/ilp','⬡','Your player identity'],
+  ['Climb Plan','/progress','↗','Your history → next rank'],
   ['Missions','/missions','✦','Six DNA trackers'],
   ['Match Room','/live','◇','Prepare · play · review'],
   ['My Games','/analyse','▤','Past games and evidence'],
   ['Coach','/coach','◎','Ask why · understand more'],
 ] as const;
-const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Missions','/missions'],['Match','/live']] as const;
+const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Climb Plan','/progress'],['Missions','/missions'],['Match','/live']] as const;
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'HOME';
@@ -47,7 +48,7 @@ const routeTitle=(path:string)=>{
   if(path==='/ilp')return'MY DNA';
   if(path==='/validation')return'VALIDATION LAB';
   if(path==='/advanced-statistics')return'ADVANCED';
-  if(path==='/progress')return'ADVANCED PROGRESS';
+  if(path==='/progress')return'MY CLIMB PLAN';
   if(path==='/matchups')return'MATCHUP ASSISTANT';
   if(path.startsWith('/matchup-lab'))return'ADVANCED MATCHUP';
   if(path==='/champions/main')return'MY MAIN CHAMP';
@@ -144,7 +145,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     focusConfirmed:journeyFocusSummary?.confirmed,
     focusRequired:journeyFocusSummary?.required,
   });
-  const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/missions'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
+  const coreJourneyRoute=path==='/dashboard'||path==='/live'||path==='/ilp'||path==='/progress'||path==='/missions'||path==='/game-dna'||path==='/coach'||path==='/analyse'||path.startsWith('/analyse/');
   useEffect(()=>{
     try{setJourneyDnaRevealed(localStorage.getItem('op:dna-revealed:'+active.id+':'+active.role)==='1')}catch{setJourneyDnaRevealed(false)}
   },[active.id,active.role]);
@@ -172,7 +173,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     }
   },[]);
   useEffect(()=>{
-    const view=path==='/dashboard'?'overview':path==='/live'?'match-room':path==='/ilp'||path==='/game-dna'?'climb':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
+    const view=path==='/dashboard'?'overview':path==='/live'?'match-room':path==='/ilp'||path==='/game-dna'?'climb':path==='/progress'?'climb-plan':path==='/coach'?'coach-memory':path==='/pricing'||path==='/billing'?'plans':'overview';
     document.body.dataset.clientView=view;
     document.body.dataset.clientTier=tier.toLowerCase();
     return()=>{

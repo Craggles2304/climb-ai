@@ -43,9 +43,9 @@ export function BillingPortalButton({label='MANAGE SUBSCRIPTION',className='btn 
 
 export function ProMoatGate({compact=false}:{compact?:boolean}){
   return <div className="glass card" style={{padding:compact?16:24}}>
-    <div className="eyebrow">PRO · DEVELOPS THE PLAYER</div>
-    <h3 style={{margin:'6px 0'}}>This is where OP CLIMB stops treating every game as a separate review.</h3>
-    <p className="muted">PRO remembers recurring habits, checks whether a fix survives new situations and moves you onto the next evidence-backed lesson when the current one is genuinely learned.</p>
-    <UpgradeButton tier="PRO" label="BUILD MY PLAYER MODEL"/>
+    <div className="eyebrow">PRO · YOUR COMPLETE CLIMB PLAN</div>
+    <h3 style={{margin:'6px 0'}}>Turn your whole game history into one simple route to improve.</h3>
+    <p className="muted">PRO connects all six DNA strands, GOOD and CRITICAL match evidence, recurring patterns, Decision Twin memory, mastery and transfer into one living plan that tells you what to fix now and what comes next.</p>
+    <UpgradeButton tier="PRO" label="UNLOCK MY CLIMB PLAN"/>
   </div>;
 }
