@@ -2769,3 +2769,20 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .climb-history-sides{grid-template-columns:1fr}.climb-history-sides>div.good{border-right:0;border-bottom:1px solid var(--line)}
   .climb-history-game>footer{flex-direction:column}.climb-plan-rank-path{align-items:stretch;flex-direction:column}.climb-plan-rank-path i{transform:rotate(90deg);align-self:flex-start}
 }
+
+.climb-plan-anchor{scroll-margin-top:22px}
+.climb-plan-path-nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;padding:8px;border:1px solid var(--line);background:#071013;position:sticky;top:8px;z-index:20;backdrop-filter:blur(14px)}
+.climb-plan-path-nav a{display:grid;gap:3px;padding:10px 9px;border:1px solid transparent;background:#091316;text-decoration:none;min-width:0}
+.climb-plan-path-nav a:hover{border-color:rgba(182,246,107,.38);background:#0b171a}
+.climb-plan-path-nav span{color:var(--mint);font:900 10px var(--display)}
+.climb-plan-path-nav b{color:#dce7e5;font:800 9px/1.1 var(--display);letter-spacing:.02em}
+.climb-plan-path-nav small{color:#6e8084;font:650 7px/1.2 var(--mono)}
+.climb-plan-subheading{max-width:720px;margin:7px 0 0;color:#91a2a6;font-size:11px;line-height:1.5}
+.climb-plan-answer-head .climb-plan-subheading{max-width:760px}
+@media(max-width:1100px){
+  .climb-plan-path-nav{grid-template-columns:repeat(4,minmax(0,1fr));position:static}
+}
+@media(max-width:760px){
+  .climb-plan-path-nav{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:7px}
+  .climb-plan-path-nav a{min-width:150px;scroll-snap-align:start}
+}
