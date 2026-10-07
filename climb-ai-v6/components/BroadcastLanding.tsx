@@ -336,7 +336,7 @@ export function BroadcastLanding(){
           <div className={styles.tier}>
             <div className={styles.role}>Build your personal coach</div><h3>Pro</h3><div className={styles.price}>£19.99<small> / month</small></div>
             <p className={styles.fit}><b>Choose Pro if:</b> you want OP CLIMB to learn you over time and decide what your development needs next.</p>
-            <ul><li>Everything in Plus</li><li>Decision Twin remembers recurring habits</li><li>Checks whether a fix really sticks</li><li>Tests skills in new champions and situations</li><li>Moves you to the next lesson when ready</li></ul>
+            <ul><li>Everything in Plus</li><li>Decision Twin: a coach that remembers your recurring habits</li><li>Decision Fingerprint: your decision pattern in every reviewed game</li><li>Checks whether a fix really sticks</li><li>Tests skills in new champions and situations</li><li>Moves you to the next lesson when ready</li></ul>
             <Link className={styles.go} href="/pricing">See how Pro develops you</Link>
           </div>
         </div>
