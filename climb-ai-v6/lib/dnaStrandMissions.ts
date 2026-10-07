@@ -261,7 +261,8 @@ export function ensureOneMissionPerDnaStrand(tasks:ILPTask[],accountId:string,ro
     }
 
     const cycle=cycleFor(next,domain);
-    const mission=createDnaStrandMission(accountId,role,domain,cycle);
+    const inheritedFocus=next.some(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&task.dnaFocusUnlocked===true);
+    const mission={...createDnaStrandMission(accountId,role,domain,cycle),dnaFocusUnlocked:inheritedFocus};
     next.push(mission);
     changes.push(`${DNA_DOMAIN_LABELS[domain]}: ${mission.title}`);
   }
