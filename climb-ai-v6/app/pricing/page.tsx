@@ -3,6 +3,7 @@ import Link from 'next/link';
 import {Wordmark} from '@/components/UI';
 import {PublicFooter} from '@/components/PublicFooter';
 import {useSubscription} from '@/components/SubscriptionContext';
+import {useAccount} from '@/components/AccountContext';
 import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
 import {PLAN_COPY,TIER_RANK,type SubscriptionTier} from '@/lib/subscription';
 
@@ -30,6 +31,7 @@ const rows=[
 
 export default function Pricing(){
   const {tier}=useSubscription();
+  const {authenticated}=useAccount();
   return <>
     <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/#how-it-works">HOW IT WORKS</Link><Link href="/client">CLIENT DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
     <main className="container pricing-public">
@@ -51,8 +53,8 @@ export default function Pricing(){
         {(['FREE','PLUS','PRO'] as SubscriptionTier[]).map(plan=>{
           const copy=PLAN_COPY[plan];
           const position=positioning[plan];
-          const current=tier===plan;
-          const included=TIER_RANK[tier]>TIER_RANK[plan];
+          const current=authenticated&&tier===plan;
+          const included=authenticated&&TIER_RANK[tier]>TIER_RANK[plan];
           return <article className={'pricing-card-v2 '+(plan==='PRO'?'is-pro ':plan==='PLUS'?'is-plus ':'')+(current?'is-current':'')} key={plan}>
             <div className="pricing-card-top"><span>{plan}</span>{current&&<b>CURRENT</b>}</div>
             <strong className="pricing-price">{copy.price}</strong>
@@ -62,7 +64,7 @@ export default function Pricing(){
             <div className="pricing-card-why">{position.why}</div>
             <div style={{marginTop:18}}>
               {plan==='FREE'
-                ?current?<Link href="/dashboard" className="btn secondary">OPEN HOME</Link>:<span className="pricing-included">INCLUDED IN {tier}</span>
+                ?!authenticated?<Link href="/signup" className="btn primary">START FREE</Link>:current?<Link href="/dashboard" className="btn secondary">OPEN HOME</Link>:<span className="pricing-included">INCLUDED IN {tier}</span>
                 :current
                   ?<BillingPortalButton label="MANAGE CURRENT PLAN"/>
                   :included
