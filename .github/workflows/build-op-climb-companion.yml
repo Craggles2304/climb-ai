@@ -42,7 +42,19 @@ jobs:
       - name: Verify native TFT OCR runtime
         shell: pwsh
         run: |
-          node -e "const path=require('node:path'); const data=require.resolve('@tesseract.js-data/eng/4.0.0_best_int/eng.traineddata.gz'); const t=require('tesseract.js'); if(!t.createWorker||!data) process.exit(1); console.log('Native TFT OCR ready:', path.basename(data));"
+          @'
+          const path=require('node:path');
+          const {createWorker}=require('tesseract.js');
+          (async()=>{
+            const packageDir=path.dirname(require.resolve('@tesseract.js-data/eng/package.json'));
+            const langPath=path.join(packageDir,'4.0.0_best_int');
+            const worker=await createWorker('eng',1,{langPath,logger:()=>{}});
+            await worker.terminate();
+            console.log('Native TFT OCR worker and bundled English data are ready.');
+          })().catch(error=>{console.error(error);process.exit(1)});
+          '@ | Set-Content -Path .\verify-tft-ocr.cjs -Encoding UTF8
+          node .\verify-tft-ocr.cjs
+          Remove-Item .\verify-tft-ocr.cjs -Force
 
       - name: Build Windows installer
         run: npm run build:win
