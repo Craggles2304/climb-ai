@@ -38,13 +38,13 @@ test('DNA reveal is a mandatory visible step before active mission coaching',()=
   assert.ok(companion.includes("phase:'DNA_REVEAL'"));
 });
 
-test('active mission phase shows one priority and five background missions',()=>{
-  assert.ok(companion.includes('PRIORITY MISSION'));
-  assert.ok(companion.includes('BACKGROUND · TRACKED AUTOMATICALLY'));
-  assert.ok(companion.includes('FOCUS THIS NEXT GAME'));
-  assert.ok(companion.includes('You do not need to actively focus on this'));
+test('active mission phase shows exactly two focus missions',()=>{
+  assert.ok(companion.includes('TWO GAME MISSIONS'));
+  assert.ok(companion.includes("'FOCUS '+focusOrder+' OF 2'"));
+  assert.ok(companion.includes('Only these two missions can bank a proven rep'));
   assert.ok(companionApi.includes('priorityMission'));
-  assert.ok(companionApi.includes('const missionLimit=6'));
+  assert.ok(companionApi.includes('gameMissionFocusPair'));
+  assert.ok(companionApi.includes('const missionLimit=2'));
 });
 
 test('player-facing postgame wording uses proven games instead of rep jargon',()=>{

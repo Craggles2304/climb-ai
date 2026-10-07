@@ -16,7 +16,7 @@ import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
-import {currentGameDnaMissions,missionRepView} from '@/lib/gameDnaSnapshot';
+import {gameMissionFocusPair,missionRepView} from '@/lib/gameDnaSnapshot';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {missionComparisonForMatch} from '@/lib/missionComparison';
 import type {CSSProperties} from 'react';
@@ -37,17 +37,18 @@ const baselineGames=dnaBaselineGameCount(accountMatches,active.role);
 const baselineReady=dnaBaselineReady(baselineGames);
 const climbGames=session?gamesInSession(session,accountMatches):[];
 const sessionTask=session?tasks.find(task=>task.id===session.taskId):undefined;
-const activeMissions=baselineReady?tasks.filter(task=>task.status!=='MASTERED'&&task.status!=='PAUSED'):[];
-const trackingMissions=[...(sessionTask?[sessionTask]:[]),...activeMissions.filter(task=>task.id!==sessionTask?.id)].slice(0,3);
+const gameFocus=baselineReady?gameMissionFocusPair(tasks,active.role):[];
+const activeMissions=gameFocus.map(item=>item.task);
 const nextGame=Math.min((climbGames.length+1),session?.targetGames||3);
 const latestSessionGame=climbGames.at(-1);
 const latestEvidence=sessionTask&&latestSessionGame?missionEvidence(sessionTask,latestSessionGame,active.rank):null;
 const focusMission=baselineReady?(sessionTask??activeMissions[0]??null):null;
+const secondFocusMission=baselineReady?(activeMissions.find(task=>task.id!==focusMission?.id)??activeMissions[1]??null):null;
 
 const latestMatch=useMemo(()=>[...accountMatches]
   .filter(match=>match.durationSeconds>=300)
   .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0],[accountMatches]);
-const dnaMissions=baselineReady?currentGameDnaMissions(tasks,active.role):[];
+const dnaMissions=gameFocus;
 const latestMissionMatch=canonicalLeagueRole(latestMatch?.role)===active.role?latestMatch:null;
 const embeddedLastGameAnalysis=latestMatch?.proAnalysis;
 const {analysis:fetchedLastGameAnalysis,loading:lastGameAnalysisLoading}=useProMatch(embeddedLastGameAnalysis?undefined:latestMatch?.id);
@@ -116,9 +117,9 @@ return <div className="match-room">
 
   <section className="match-room-focus panel">
     <div className="match-room-focus-copy">
-      <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT GAME · PRIORITY MISSION':'NEXT MATCH · DNA BASELINE · PROVISIONAL COACHING'}</div>
-      <h2>{baselineReady?(focusMission?.title||session?.taskTitle||'Your priority mission is building'):`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
-      <p>{recording?'OP CLIMB is recording the evidence you entered the match with. Coaching resumes after the game.':baselineReady?(focusMission?.gameRule||session?.gameRule||'Your next tracked game will keep shaping your priority mission.'):'Play normally. PERMANENT MISSIONS UNLOCK AFTER GAME 3.'}</p>
+      <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT GAME · TWO FOCUS MISSIONS':'NEXT MATCH · DNA BASELINE · PROVISIONAL COACHING'}</div>
+      <h2>{baselineReady?'Two missions. One game.':`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
+      <p>{recording?'OP CLIMB is recording evidence for the two missions you entered the match with. Coaching resumes after the game.':baselineReady?`1. ${focusMission?.gameRule||session?.gameRule||'Your first focus is building.'}${secondFocusMission?`  2. ${secondFocusMission.gameRule}`:''}`:'Play normally. PERMANENT MISSIONS UNLOCK AFTER GAME 3.'}</p>
     </div>
     <div className="match-room-focus-side">
       {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
@@ -126,9 +127,9 @@ return <div className="match-room">
     </div>
   </section>
 
-  <section className="panel match-room-missions" aria-label="Your six DNA missions">
+  <section className="panel match-room-missions" aria-label="Your two focus missions">
     <div className="match-room-missions-head">
-      <div><div className="eyebrow">YOUR SIX DNA MISSIONS</div><h2>Where you stand</h2><p>{recording?'Your previous results stay visible while this game is being recorded.':latestMissionMatch?`Compared with your last ${active.role} game. Only confirmed results move the trackers.`:'Your mission results will appear after a tracked game is reviewed.'}</p></div>
+      <div><div className="eyebrow">YOUR TWO GAME MISSIONS</div><h2>Only these two can score this match.</h2><p>{recording?'The Companion is measuring these two missions quietly.':latestMissionMatch?`Compared with your last ${active.role} game. Each result needs timestamped proof before it can bank.`:'Your two selected missions will be graded after the tracked game is reviewed.'}</p></div>
       <Link className="btn secondary" href="/missions">OPEN ALL MISSIONS →</Link>
     </div>
     {!baselineReady?<div className="match-room-missions-baseline">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} {active.role} GAMES · Permanent missions unlock after game {DNA_BASELINE_GAMES}.</div>:
@@ -142,7 +143,7 @@ return <div className="match-room">
       return <div className="match-room-mission-row" key={domain} style={style}>
         <div className="match-room-mission-main"><span>{DNA_DOMAIN_LABELS[domain]}</span><strong>{task.title}</strong><small>{summary.confirmed}/{summary.required} proven games</small></div>
         <div className="match-room-mission-track" role="progressbar" aria-label={`${DNA_DOMAIN_LABELS[domain]} mission progress`} aria-valuenow={Math.min(summary.confirmed,summary.required)} aria-valuemin={0} aria-valuemax={summary.required}><span style={{width:`${rep.progress}%`}}/></div>
-        <div className="match-room-mission-comparison"><span className={'match-room-mission-result '+(result==='PROVEN'?'proven':result==='NEEDS WORK'?'missed':'neutral')}>{result}</span><small>{recording?'Current game results appear after review.':postgameProcessing?'This game is still being reviewed. The tracker shows earlier proven games.':comparison.detail}</small></div>
+        <div className="match-room-mission-comparison"><span className={'match-room-mission-result '+(result==='PROVEN'?'proven':result==='NEEDS WORK'?'missed':'neutral')}>{result}</span><small>{recording?'Current game results appear after review.':postgameProcessing?'This game is still being reviewed. The tracker shows earlier proven games.':comparison.detail}</small>{!recording&&!postgameProcessing&&comparison.events.length>0&&<div className="match-room-mission-proof">{comparison.events.slice(0,2).map((event,index)=><div key={index}><b>{event.clock}</b><span>{event.label}</span><small>{event.detail}</small></div>)}</div>}</div>
       </div>;
     })}</div>}
   </section>

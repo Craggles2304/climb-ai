@@ -3,6 +3,7 @@ import type {CoachingMetricKey} from './subscription';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
 import {notObservedReceipt,proMetricReceipt} from './missionGrading';
+import {gameMissionFocusPair} from './gameDnaSnapshot';
 
 type MissionTemplate={
   title:string;
@@ -283,88 +284,98 @@ function missionScoreTarget(task:ILPTask){
   return score?Number(score[1]):85;
 }
 
+function refreshMissionProgress(task:ILPTask){
+  const attempts=[...(task.missionHistory??[])].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+  const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
+  const required=Math.max(1,Number(task.masteryRequired)||3);
+  const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
+  const progress=Math.round(Math.min(required,confirmed)/required*100);
+  const mastered=confirmed>=required;
+  return{
+    ...task,
+    progress,
+    metricProgress:progress,
+    missionProgress:progress,
+    status:mastered?'MASTERED' as const:observedAttempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const,
+    successfulGames:confirmed,
+    gamesObserved:observedAttempts.length,
+    masteryRequired:required,
+    missionHistory:attempts,
+    lastUpdatedReason:mastered
+      ?`${confirmed}/${required} tracked games completed this DNA mission. Moving the strand to its next mission.`
+      :`${confirmed}/${required} tracked games completed this DNA mission.`,
+    history:mastered&&task.status!=='MASTERED'
+      ?[...(task.history??[]),{at:new Date().toISOString(),type:'MASTERED' as const,note:`${confirmed}/${required} tracked games completed the DNA strand mission.`}].slice(-12)
+      :task.history,
+  };
+}
+
 export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:HistoryAnalysisRow[]){
   const ordered=[...history].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
   const changes:string[]=[];
-  const graded=tasks.map(task=>{
-    if(!isDnaStrandMission(task)||task.status==='MASTERED'||task.status==='PAUSED')return task;
-    const start=(task.history??[]).filter(event=>event.type==='PROMOTED').at(-1)?.at;
-    const startedAt=start&&Number.isFinite(Date.parse(start))?Date.parse(start):Number.NEGATIVE_INFINITY;
-    const existing=new Map((task.missionHistory??[]).map(attempt=>[attempt.matchId,attempt]));
-    const threshold=missionScoreTarget(task);
+  let graded=tasks.map(task=>({...task,missionHistory:[...(task.missionHistory??[])]}));
 
-    for(const row of ordered){
-      if(Date.parse(row.createdAt)<startedAt)continue;
+  for(const row of ordered){
+    const matchId=String(row.matchId||`analysis-${row.role||'role'}-${row.createdAt}-${row.champion}`);
+    const alreadyGraded=graded.filter(task=>isDnaStrandMission(task)&&(task.missionHistory??[]).some(attempt=>attempt.matchId===matchId));
+    if(alreadyGraded.length)continue;
+
+    const rowTime=Date.parse(row.createdAt);
+    const eligible=graded.filter(task=>{
+      if(!isDnaStrandMission(task)||task.status==='MASTERED'||task.status==='PAUSED')return false;
+      const start=(task.history??[]).filter(event=>event.type==='PROMOTED').at(-1)?.at;
+      const startedAt=start&&Number.isFinite(Date.parse(start))?Date.parse(start):Number.NEGATIVE_INFINITY;
+      return rowTime>=startedAt;
+    });
+    const role=(eligible[0]?.roleScope||row.role||'ADC') as Role;
+    const focus=gameMissionFocusPair(eligible,role);
+    const focusIds=new Set(focus.map(item=>item.task.id));
+
+    graded=graded.map(task=>{
+      if(!focusIds.has(task.id))return task;
+      const threshold=missionScoreTarget(task);
       const metric=row.analysis?.metrics?.[task.metric as CoachingMetricKey];
-      const matchId=String(row.matchId||`analysis-${row.role||'role'}-${row.createdAt}-${row.champion}`);
-      if(existing.has(matchId))continue;
-      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
-        const targetLabel=`${threshold}+ decision score · 3 proven games`;
-        const reason='This tracked game did not expose enough recorded decision evidence to grade this mission.';
-        existing.set(matchId,{
-          matchId,
-          at:row.createdAt,
-          adherence:'TRACKED',
-          clearedBar:false,
-          outcome:'NO_REP',
-          banksPass:false,
-          source:'TRACKED',
-          evidenceV2:notObservedReceipt(task.metric,'DECISION_EVIDENCE',targetLabel,reason),
-        });
-        continue;
-      }
-      const pass=metric.score>=threshold;
-      const valueLabel=`${Math.round(metric.score)}/100`;
       const targetLabel=`${threshold}+ decision score · 3 proven games`;
-      const reason=`${metric.label}: ${valueLabel} from ${metric.sources.join(' + ')} evidence.`;
-      existing.set(matchId,{
-        matchId,
-        at:row.createdAt,
-        adherence:'TRACKED',
-        clearedBar:pass,
-        outcome:pass?'CONFIRMED':'UNREWARDED',
-        banksPass:pass,
-        source:'TRACKED',
-        evidenceV2:proMetricReceipt({
-          metric:task.metric,
-          metricLabel:metric.label,
-          score:metric.score,
-          valueLabel,
-          targetLabel,
-          passed:pass,
-          confidence:metric.confidence,
-          sources:metric.sources,
-          evidence:metric.evidence,
-          reason,
-        }),
-      });
-    }
+      let attempt:NonNullable<ILPTask['missionHistory']>[number];
 
-    const attempts=[...existing.values()].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
-    const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
-    const required=Math.max(1,Number(task.masteryRequired)||3);
-    const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
-    const progress=Math.round(Math.min(required,confirmed)/required*100);
-    const mastered=confirmed>=required;
-    const status=mastered?'MASTERED' as const:observedAttempts.length?'EVIDENCE_BUILDING' as const:'ACTIVE' as const;
-    if(mastered)changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
-    return{
-      ...task,
-      progress,
-      metricProgress:progress,
-      missionProgress:progress,
-      status,
-      successfulGames:confirmed,
-      gamesObserved:observedAttempts.length,
-      masteryRequired:required,
-      missionHistory:attempts,
-      lastUpdatedReason:mastered
-        ?`${confirmed}/${required} tracked games completed this DNA mission. Moving the strand to its next mission.`
-        :`${confirmed}/${required} tracked games completed this DNA mission.`,
-      history:mastered
-        ?[...(task.history??[]),{at:new Date().toISOString(),type:'MASTERED' as const,note:`${confirmed}/${required} tracked games completed the DNA strand mission.`}].slice(-12)
-        :task.history,
-    };
-  });
+      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
+        const reason='This was one of your two focus missions, but the game did not expose enough recorded decision evidence to grade it.';
+        attempt={
+          matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:false,outcome:'NO_REP',banksPass:false,source:'TRACKED',
+          evidenceV2:notObservedReceipt(task.metric,'DECISION_EVIDENCE',targetLabel,reason),
+        };
+      }else{
+        const timestamped=(metric.evidence??[]).filter(event=>typeof event.atSeconds==='number'&&Number.isFinite(event.atSeconds)&&String(event.detail||event.label||'').trim());
+        if(!timestamped.length){
+          const reason='A decision score existed, but OP CLIMB could not prove when the behaviour happened. The mission stays NOT OBSERVED instead of guessing.';
+          attempt={
+            matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:false,outcome:'NO_REP',banksPass:false,source:'TRACKED',
+            evidenceV2:notObservedReceipt(task.metric,'DECISION_EVIDENCE',targetLabel,reason),
+          };
+        }else{
+          const pass=metric.score>=threshold;
+          const valueLabel=`${Math.round(metric.score)}/100`;
+          const first=timestamped[0]!;
+          const minutes=Math.floor(Number(first.atSeconds)/60);
+          const seconds=Math.floor(Number(first.atSeconds)%60);
+          const clock=`${minutes}:${String(seconds).padStart(2,'0')}`;
+          const reason=`${clock} · ${first.label}: ${first.detail} Overall ${metric.label} scored ${valueLabel} from ${metric.sources.join(' + ')} evidence.`;
+          attempt={
+            matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:pass,outcome:pass?'CONFIRMED':'UNREWARDED',banksPass:pass,source:'TRACKED',
+            evidenceV2:proMetricReceipt({
+              metric:task.metric,metricLabel:metric.label,score:metric.score,valueLabel,targetLabel,passed:pass,
+              confidence:metric.confidence,sources:metric.sources,evidence:timestamped,reason,
+            }),
+          };
+        }
+      }
+
+      const beforeMastered=task.status==='MASTERED';
+      const next=refreshMissionProgress({...task,missionHistory:[...(task.missionHistory??[]),attempt]});
+      if(!beforeMastered&&next.status==='MASTERED')changes.push(`${DNA_DOMAIN_LABELS[task.dnaDomain]} mastered: ${task.title}`);
+      return next;
+    });
+  }
+
   return{tasks:graded,changes};
 }

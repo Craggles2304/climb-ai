@@ -88,3 +88,40 @@ test('a measured miss is MISSED while missing evidence is neutral NOT OBSERVED',
   assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='neutral')?.outcome,'NO_REP');
   assert.equal(updated.missionHistory?.find(rep=>rep.matchId==='neutral')?.evidenceV2?.state,'NOT_OBSERVED');
 });
+
+
+test('only two DNA missions are scored in a new tracked game',()=>{
+  const first=ensureOneMissionPerDnaStrand([],'acct',role).tasks;
+  const started=first[0]?.history?.find(event=>event.type==='PROMOTED')?.at??'2026-10-01T00:00:00.000Z';
+  const later=new Date(Date.parse(started)+60_000).toISOString();
+  const metrics:any={};
+  for(const task of first){
+    metrics[task.metric]={
+      key:task.metric,label:task.title.toUpperCase(),score:70,value:'70/100',status:'DERIVED',confidence:'HIGH',
+      sources:['LIVE_TELEMETRY'],summary:'Measured.',evidence:[{atSeconds:720,label:'Decision window',detail:'A concrete decision was recorded here.'}],
+    };
+  }
+  const history:any[]=[{matchId:'focus-two',champion:'Jinx',role:'ADC',createdAt:later,analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics,leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'HIGH'}}}];
+  const graded=gradeDnaStrandMissionsFromHistory(first,history).tasks;
+  const scored=graded.filter(task=>task.missionHistory?.some(rep=>rep.matchId==='focus-two'));
+  assert.equal(scored.length,2);
+});
+
+test('a decision score cannot bank without timestamped proof of when it happened',()=>{
+  const first=ensureOneMissionPerDnaStrand([],'acct',role).tasks;
+  const lane=first.find(task=>task.dnaDomain==='LANING')!;
+  const started=lane.history?.find(event=>event.type==='PROMOTED')?.at??'2026-10-01T00:00:00.000Z';
+  const later=new Date(Date.parse(started)+60_000).toISOString();
+  const history:any[]=[{
+    matchId:'no-clock',champion:'Jinx',role:'ADC',createdAt:later,
+    analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics:{
+      red_state_fights:{key:'red_state_fights',label:'RED STATE',score:94,value:'94/100',status:'DERIVED',confidence:'HIGH',sources:['LIVE_TELEMETRY'],summary:'High score but no clock.',evidence:[{label:'Generic summary',detail:'No timestamp attached.'}]},
+    },leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'HIGH'}},
+  }];
+  const graded=gradeDnaStrandMissionsFromHistory(first,history).tasks;
+  const updated=graded.find(task=>task.id===lane.id)!;
+  const attempt=updated.missionHistory?.find(rep=>rep.matchId==='no-clock');
+  assert.equal(attempt?.banksPass,false);
+  assert.equal(attempt?.evidenceV2?.state,'NOT_OBSERVED');
+  assert.match(attempt?.evidenceV2?.reason??'',/could not prove when/i);
+});

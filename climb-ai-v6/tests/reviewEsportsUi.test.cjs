@@ -79,16 +79,18 @@ test('post-game review closes the loop into the server-authoritative six-strand 
   assert.ok(liveRepo.includes('learningPlanSync'));
   assert.ok(liveRepo.includes("trigger,'FINALIZE'")||liveRepo.includes("'FINALIZE',proAnalysis"));
   assert.ok(reviewRoute.includes('developmentPlan'));
-  assert.ok(reviewRoute.includes('EVERY TRACKED MATCH CAN BANK A GAME'));
+  assert.ok(reviewRoute.includes('EXACTLY TWO DNA MISSIONS ARE SELECTED FOR EACH TRACKED GAME'));
+  assert.ok(reviewRoute.includes('EACH RESULT NEEDS TIMESTAMPED EVIDENCE'));
 });
 
-test('Companion exposes all six DNA mission evidence states in the main post-game hierarchy',()=>{
+test('Companion exposes the two scored DNA mission evidence states in the main post-game hierarchy',()=>{
   assert.ok(reviewRoute.includes('missionEvidenceForMatch'));
   assert.ok(reviewRoute.includes('missionEvidence:missionEvidence.missions'));
   assert.ok(reviewRoute.includes("'BANKED'"));
   assert.ok(reviewRoute.includes("'MISSED'"));
   assert.ok(reviewRoute.includes("'NOT_OBSERVED'"));
-  assert.ok(core.includes('YOUR 6 DNA MISSIONS THIS GAME'));
+  assert.ok(core.includes('YOUR 2 FOCUS MISSIONS THIS GAME'));
+  assert.ok(core.includes('slice(0,2)'));
   assert.ok(core.includes("state==='BANKED'"));
   assert.ok(core.includes("state==='MISSED'"));
   assert.ok(core.includes("'NOT_OBSERVED'"));
@@ -235,7 +237,7 @@ test('V5 transfer review only credits frozen novel decisions that actually occur
 
 
 test('post-game review mirrors Match Room hierarchy and collapses the evidence wall by default',()=>{
-  for(const label of ['MATCH ROOM · LAST GAME','YOUR LAST GAME','WHAT HURT YOU','WHAT YOU DID WELL','NEXT GAME · ONE THING','KEY MOMENTS · 5 MAX','YOUR 6 DNA MISSIONS THIS GAME','MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE','COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER']){
+  for(const label of ['MATCH ROOM · LAST GAME','YOUR LAST GAME','WHAT HURT YOU','WHAT YOU DID WELL','NEXT GAME · ONE THING','KEY MOMENTS · 5 MAX','YOUR 2 FOCUS MISSIONS THIS GAME','MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE','COACH EVIDENCE · PATTERNS / REHEARSAL / DECISION LAB / SKILL TRANSFER']){
     assert.ok(core.includes(label),`missing compact review label: ${label}`);
   }
   assert.ok(core.includes('function selectKeyDecisions'));

@@ -19,3 +19,23 @@ test('saved mission attempts decide the last-game result',()=>{
   const misses=task([{matchId:'game-1',at:'2026-10-06T12:00:00Z',adherence:'YES',clearedBar:false,outcome:'UNREWARDED',banksPass:false}]);
   assert.equal(missionComparisonForMatch(misses,'game-1').result,'NEEDS WORK');
 });
+
+
+test('mission comparison exposes exact timestamped proof',()=>{
+  const withProof=task([{
+    matchId:'game-proof',at:'2026-10-06T12:00:00Z',adherence:'TRACKED',clearedBar:true,outcome:'CONFIRMED',banksPass:true,
+    evidenceV2:{
+      version:2,state:'BANKED',measurementSource:'DECISION_EVIDENCE',metric:'deathsPre10',metricLabel:'Threat cycle',
+      observedValue:91,observedValueLabel:'91/100',targetLabel:'85+ decision score',confidence:'HIGH',
+      opportunities:1,successes:1,misses:0,
+      events:[{atSeconds:1122,label:'First engage survived',detail:'Stayed outside the first engage, then re-entered after the cooldown was used.'}],
+      reconstruction:{kind:'PRO_METRIC',fields:['metric:deathsPre10'],formula:'91 >= 85'},
+      reason:'Timestamped decision proof.',
+    },
+  }]);
+  const result=missionComparisonForMatch(withProof,'game-proof');
+  assert.equal(result.result,'PROVEN');
+  assert.equal(result.events[0]?.clock,'18:42');
+  assert.match(result.detail,/18:42/);
+  assert.match(result.events[0]?.detail??'',/re-entered/);
+});

@@ -15,7 +15,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {currentGameDnaMissions} from '@/lib/gameDnaSnapshot';
+import {gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
@@ -125,10 +125,11 @@ export function AppShell({children}:{children:React.ReactNode}){
   const journeyBaselineReady=dnaBaselineReady(journeyBaselineGames);
   const journeyAccountTasks=allTasks[active.id]??tasks;
   const journeyRoleTasks=useMemo(()=>journeyAccountTasks.filter(task=>taskAppliesToRole(task,active.role)),[journeyAccountTasks,active.role]);
-  const journeyFocus=useMemo(()=>journeyBaselineReady
-    ?currentGameDnaMissions(journeyRoleTasks,active.role).flatMap(({task})=>task?[task]:[]).sort((a,b)=>(a.priority??99)-(b.priority??99))[0]??null
-    :null,[journeyBaselineReady,journeyRoleTasks,active.role]);
+  const journeyFocusPair=useMemo(()=>journeyBaselineReady?gameMissionFocusPair(journeyRoleTasks,active.role):[],[journeyBaselineReady,journeyRoleTasks,active.role]);
+  const journeyFocus=journeyFocusPair[0]?.task??null;
+  const journeySecond=journeyFocusPair[1]?.task??null;
   const journeyFocusPlain=journeyFocus?plainLanguageFocus(journeyFocus):null;
+  const journeySecondPlain=journeySecond?plainLanguageFocus(journeySecond):null;
   const journeyFocusSummary=journeyFocus?missionSummary(journeyFocus):null;
   const journeyLinked=journeyDevices.length>0;
   const journeyOnline=journeyDevices.some(device=>Boolean(device.last_seen_at&&Date.now()-Date.parse(device.last_seen_at)<90_000));
@@ -138,8 +139,8 @@ export function AppShell({children}:{children:React.ReactNode}){
     online:journeyOnline,
     baselineGames:journeyBaselineGames,
     dnaRevealed:journeyDnaRevealed,
-    focusName:journeyFocusPlain?.name,
-    focusJob:journeyFocusPlain?.nextGame,
+    focusName:journeyFocusPair.length===2?'Two missions selected':journeyFocusPlain?.name,
+    focusJob:journeyFocusPair.length===2?`1. ${journeyFocusPlain?.nextGame||''}  2. ${journeySecondPlain?.nextGame||''}`:journeyFocusPlain?.nextGame,
     focusConfirmed:journeyFocusSummary?.confirmed,
     focusRequired:journeyFocusSummary?.required,
   });
@@ -316,11 +317,11 @@ export function AppShell({children}:{children:React.ReactNode}){
       </div>
       {!journeyBaselineReady?<div className="op-learning-receipt-body">
         <h2>Baseline {Math.min(journeyBaselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} complete.</h2>
-        <p>This game is useful coaching evidence, but it is <strong>not a permanent DNA mission yet</strong>. Your six DNA missions unlock after game {DNA_BASELINE_GAMES}.</p>
+        <p>This game is useful coaching evidence, but it is <strong>not a permanent DNA mission yet</strong>. Your six DNA strands unlock after game {DNA_BASELINE_GAMES}, then OP CLIMB selects two missions for each game.</p>
         <div className="op-learning-strength-count">PROVISIONAL COACHING ONLY · {DNA_BASELINE_GAMES-journeyBaselineGames} GAME{DNA_BASELINE_GAMES-journeyBaselineGames===1?'':'S'} UNTIL DNA REVEAL</div>
       </div>:journeyBaselineGames===DNA_BASELINE_GAMES&&latestLearningMatchData&&canonicalLeagueRole(latestLearningMatchData.role)===active.role?<div className="op-learning-receipt-body">
         <h2>Your Game DNA is ready.</h2>
-        <p>Baseline complete. Your six strands can now reveal their first missions, with one priority mission selected for your next game.</p>
+        <p>Baseline complete. Your six strands can now reveal their missions, with two focus missions selected for your next game.</p>
         <div className="op-learning-mastered">◆ 3/3 BASELINE COMPLETE · DNA UNLOCKED</div>
       </div>:<div className="op-learning-receipt-body">
         <h2>{latestLearning.length

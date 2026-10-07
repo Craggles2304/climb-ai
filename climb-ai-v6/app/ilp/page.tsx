@@ -20,7 +20,7 @@ import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dn
 import {DnaRoleSwitcher} from '@/components/DnaRoleSwitcher';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {taskFreshness} from '@/lib/ilpCloudMerge';
-import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
+import {currentGameDnaMissions,gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
 import {canonicalLeagueRole,LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
@@ -193,13 +193,15 @@ export default function PlayerDevelopmentCentre(){
 }
 
 function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];focusDomain:DnaDomain|null;levels:Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>;role:Role;onSelect:(domain:DnaDomain)=>void}){
+  const focusPair=gameMissionFocusPair(tasks,role);
+  const focusIds=new Map(focusPair.map((item,index)=>[item.task.id,index+1]));
   const focusTask=focusDomain?tasks.find(task=>task.dnaDomain===focusDomain)??null:null;
   return <section className="dna-mission-hub" aria-label={role+' Game DNA missions'}>
     <div className="dna-mission-hub-head">
       <div>
-        <div className="eyebrow">YOUR 6 DNA MISSIONS</div>
-        <h2>Every strand has one job.</h2>
-        <p>You do not need to memorise six coaching reports. Each strand carries one simple behaviour to practise, and OP CLIMB checks it automatically in your tracked {role} games.</p>
+        <div className="eyebrow">YOUR 6 DNA STRANDS · 2 GAME MISSIONS</div>
+        <h2>Two jobs per game. Six strands over time.</h2>
+        <p>OP CLIMB chooses two evidence-led missions for each tracked {role} game. Only those two can bank progress in that match; the other four stay in your DNA profile until selected.</p>
       </div>
       <div className="dna-mission-how" aria-label="How missions work">
         <span><b>1</b><small>DO</small><em>one clear behaviour</em></span>
@@ -222,9 +224,9 @@ function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];fo
           onClick={()=>onSelect(domain)}
           aria-pressed={focusDomain===domain}
         >
-          <small>{DNA_DOMAIN_LABELS[domain]} · LV {levels[domain].level}</small>
+          <small>{DNA_DOMAIN_LABELS[domain]} · LV {levels[domain].level}{focusIds.has(task.id)?` · FOCUS ${focusIds.get(task.id)}/2`:''}</small>
           <b>{plain.name}</b>
-          <span>{summary.confirmed}/{summary.required} proven</span>
+          <span>{focusIds.has(task.id)?'SCORED THIS GAME · ':''}{summary.confirmed}/{summary.required} proven</span>
         </button>;
       })}
     </div>
