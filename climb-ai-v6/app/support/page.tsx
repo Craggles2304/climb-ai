@@ -1,12 +1,12 @@
 import Link from 'next/link';
-import {Wordmark} from '@/components/UI';
+import {PublicHeader} from '@/components/PublicHeader';
 import {PublicFooter} from '@/components/PublicFooter';
 
 const SUPPORT_EMAIL='boxtoboxfootballacademy@gmail.com';
 
 export default function Support(){return <>
+  <PublicHeader/>
   <main className="container section">
-    <Wordmark/>
     <article className="glass card legal" style={{marginTop:38}}>
       <div className="eyebrow">SUPPORT</div>
       <h1>Need help with OP CLIMB?</h1>
@@ -16,7 +16,7 @@ export default function Support(){return <>
       <h2>Privacy or deletion request</h2>
       <p>Use the same support address and clearly state that your request concerns access, correction or deletion of your OP CLIMB data.</p>
       <h2>Before creating an account</h2>
-      <p><Link className="text-link" href="/demo">OPEN THE PUBLIC DEMO →</Link></p>
+      <p><Link className="text-link" href="/client">OPEN THE PUBLIC DEMO →</Link></p>
     </article>
   </main>
   <PublicFooter compact/>
