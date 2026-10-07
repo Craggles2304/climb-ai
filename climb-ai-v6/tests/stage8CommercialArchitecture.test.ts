@@ -5,9 +5,9 @@ import fs from 'node:fs';
 test('Stage 8 has one canonical Free Plus Pro product story',()=>{
   const subscription=fs.readFileSync('lib/subscription.ts','utf8');
   const pricing=fs.readFileSync('app/pricing/page.tsx','utf8');
-  assert.match(subscription,/CHOOSES WHAT YOU SHOULD LEARN NEXT/);
-  assert.match(subscription,/TESTS LEARNING IN NEW SITUATIONS/);
-  assert.match(pricing,/BUILD A COACH THAT ACTUALLY KNOWS YOU/);
+  assert.match(subscription,/DNA PLAYER PLAN · YOUR NEXT CLIMB/);
+  assert.match(subscription,/TRANSFER TEST BEFORE A SKILL IS RETIRED/);
+  assert.match(pricing,/ALWAYS KNOW WHAT TO LEARN NEXT/);
 });
 
 test('Stripe billing is webhook-driven and keeps card handling off OP CLIMB',()=>{
@@ -34,10 +34,13 @@ test('Paid users manage plan changes through Stripe portal',()=>{
 });
 
 
-test('PLUS draft intelligence does not consume or expose the PRO player model',()=>{
+test('PLUS gets the managed DNA curriculum while the persistent player model remains PRO',()=>{
   const draft=fs.readFileSync('app/api/live/draft-coach/route.ts','utf8');
+  assert.match(draft,/const playerPlan=hasTier\(subscriptionTier,'PLUS'\)/);
   assert.match(draft,/const proModel=hasTier\(subscriptionTier,'PRO'\)/);
   assert.match(draft,/proModel\?coachingContext\.decisionTwin:undefined/);
   assert.match(draft,/coachTwin:proModel\?coachingContext\.coachTwin:null/);
-  assert.match(draft,/autonomousCurriculum:proModel\?/);
+  assert.match(draft,/const climbMission=playerPlan\?buildClimbMatchMission/);
+  assert.match(draft,/const decisionTransferPrime=playerPlan\?selectDecisionTransferPrime/);
+  assert.match(draft,/autonomousCurriculum:playerPlan\?/);
 });
