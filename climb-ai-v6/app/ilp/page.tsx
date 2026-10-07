@@ -25,6 +25,34 @@ import {dnaStrandLevel} from '@/lib/dnaLevel';
 import {canonicalLeagueRole,LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 
 type Tab='CURRENT'|'EVIDENCE'|'HISTORY';
+type NextClimbGate={id:string;label:string;current:number;target:number;unit:string;met:boolean;evidence:string};
+type NextClimbResponse={
+  ok?:boolean;
+  tier?:'FREE'|'PLUS'|'PRO';
+  role?:Role;
+  status?:string;
+  gamesAnalyzed?:number;
+  message?:string;
+  boundary?:string;
+  plan?:{
+    dnaDomain:DnaDomain;
+    behaviourKey:string;
+    skill:string;
+    phase:string;
+    state:string;
+    action:string;
+    whyNow:string;
+    teachingPoint:string;
+    evidence:string;
+    graduationRule:string;
+    completion:number;
+    gates:NextClimbGate[];
+    transferTest:{active:boolean;needsNovelChampionOrContext:boolean;behaviourKey:string|null};
+    retireWhen:string;
+    nextSkill:string|null;
+    decisionReason:string;
+  }|null;
+};
 const clean=(value:string)=>value.replaceAll('_',' ');
 const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties);
 
@@ -37,6 +65,8 @@ export default function PlayerDevelopmentCentre(){
   const [checking,setChecking]=useState(false);
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
   const [viewRole,setViewRole]=useState<Role>(active.role);
+  const [nextClimb,setNextClimb]=useState<NextClimbResponse|null>(null);
+  const [nextClimbLoading,setNextClimbLoading]=useState(false);
 
   useEffect(()=>{
     const params=new URLSearchParams(window.location.search);
@@ -72,8 +102,9 @@ export default function PlayerDevelopmentCentre(){
     if(!baselineReady)return[];
     return currentGameDnaMissions(roleTasks,viewRole).flatMap(({task})=>task?[task]:[]);
   },[roleTasks,viewRole,baselineReady]);
-  const priorityTask=useMemo(()=>[...activeTasks].sort((a,b)=>(a.priority??99)-(b.priority??99))[0]??null,[activeTasks]);
-  const focusDomain=selectedDomain??priorityTask?.dnaDomain??null;
+  const priorityTask=useMemo(()=>gameMissionFocusPair(activeTasks,viewRole)[0]?.task??[...activeTasks].sort((a,b)=>(b.priority??0)-(a.priority??0))[0]??null,[activeTasks,viewRole]);
+  const recommendedDomain=nextClimb?.plan?.dnaDomain??priorityTask?.dnaDomain??null;
+  const focusDomain=selectedDomain??recommendedDomain;
   const focusTask=useMemo(()=>focusDomain?activeTasks.find(task=>task.dnaDomain===focusDomain)??null:null,[activeTasks,focusDomain]);
   const displayTasks=useMemo(()=>focusTask?[focusTask]:[],[focusTask]);
   const dnaLevels=useMemo(()=>Object.fromEntries(DNA_DOMAINS.map(domain=>[domain,dnaStrandLevel(roleTasks,domain,viewRole)])) as Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>,[roleTasks,viewRole]);
@@ -83,6 +114,26 @@ export default function PlayerDevelopmentCentre(){
   const paused=useMemo(()=>selectedDomain?pausedAll.filter(task=>task.dnaDomain===selectedDomain):pausedAll,[pausedAll,selectedDomain]);
   const matches=filterHistoryForTier(allRoleMatches,tier);
   const xp=accountProgress(allTasks[active.id]??tasks);
+
+  useEffect(()=>{
+    if(tier==='FREE'||!baselineReady){
+      setNextClimb(null);
+      setNextClimbLoading(false);
+      return;
+    }
+    let cancelled=false;
+    setNextClimbLoading(true);
+    fetch('/api/player-plan?accountId='+encodeURIComponent(active.id)+'&role='+encodeURIComponent(viewRole),{cache:'no-store'})
+      .then(async response=>{
+        const body=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(String(body?.error||'Player plan unavailable'));
+        return body as NextClimbResponse;
+      })
+      .then(body=>{if(!cancelled)setNextClimb(body)})
+      .catch(()=>{if(!cancelled)setNextClimb({ok:false,message:'Your Next Climb is temporarily unavailable. Your DNA missions are still tracking normally.'})})
+      .finally(()=>{if(!cancelled)setNextClimbLoading(false)});
+    return()=>{cancelled=true};
+  },[active.id,viewRole,tier,baselineReady,allRoleMatches.length]);
 
   const refresh=async()=>{
     setChecking(true);
@@ -149,6 +200,8 @@ export default function PlayerDevelopmentCentre(){
 
     <DnaRoleSwitcher role={viewRole} primaryRole={active.role} gameCounts={roleGameCounts} baselineRequired={DNA_BASELINE_GAMES} onChange={chooseRole}/>
 
+    <NextClimbPlan response={nextClimb} loading={nextClimbLoading} tier={tier} role={viewRole}/>
+
     <div className="my-dna-workspace">
       <section className="my-dna-stage" aria-label={`${viewRole} interactive Game DNA`}>
         <div className="my-dna-stage-head">
@@ -192,6 +245,71 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 }
 
+function NextClimbPlan({response,loading,tier,role}:{response:NextClimbResponse|null;loading:boolean;tier:'FREE'|'PLUS'|'PRO';role:Role}){
+  if(tier==='FREE')return <section className="next-climb panel is-locked">
+    <div className="next-climb-head">
+      <div><div className="eyebrow">PLUS · DNA PLAYER PLAN</div><h2>YOUR NEXT CLIMB</h2><p>Turn your six DNA strands into one clear development journey instead of guessing what to work on next.</p></div>
+      <Link className="btn primary" href="/pricing">UNLOCK MY PLAYER PLAN →</Link>
+    </div>
+    <div className="next-climb-flow is-preview">
+      {['WEAKNESS','TEACH','MISSION','EVIDENCE','MASTER','TRANSFER','RETIRE','NEXT SKILL'].map((label,index)=><span key={label}><b>{index+1}</b><small>{label}</small></span>)}
+    </div>
+  </section>;
+
+  if(loading)return <section className="next-climb panel">
+    <div className="eyebrow">PLUS · DNA PLAYER PLAN</div><h2>Choosing Your Next Climb…</h2><p className="muted">Checking your latest verified {role} evidence before changing the plan.</p>
+  </section>;
+
+  const plan=response?.plan;
+  if(!plan)return <section className="next-climb panel">
+    <div className="next-climb-head"><div><div className="eyebrow">PLUS · DNA PLAYER PLAN</div><h2>YOUR NEXT CLIMB</h2><p>{response?.message||'OP CLIMB is still building enough repeated evidence to choose the next skill honestly.'}</p></div><Link className="btn primary" href="/live">PLAY NEXT GAME →</Link></div>
+  </section>;
+
+  const state=String(plan.state||plan.phase||'TEACH').toUpperCase();
+  const activeIndex=state==='COMPLETE'||plan.phase==='GRADUATED'?7:state==='TRANSFER_TEST'?5:state==='STABILISE'?4:state==='PRACTISE'?3:state==='REOPEN'?3:state==='TEACH'?2:1;
+  const steps=[
+    ['WEAKNESS',plan.skill],
+    ['TEACH',plan.teachingPoint],
+    ['MISSION','Take the rule into the next relevant game'],
+    ['EVIDENCE','Only verified decision evidence counts'],
+    ['MASTER','Repeat clean decisions until local mastery is stable'],
+    ['TRANSFER','Prove the same principle in a genuinely new condition'],
+    ['RETIRE','Retire only when the graduation gate is met'],
+    ['NEXT SKILL',plan.nextSkill||'Chosen from your next strongest DNA need'],
+  ] as const;
+  const primaryGate=plan.gates?.find(gate=>!gate.met)??plan.gates?.at(-1)??null;
+
+  return <section className="next-climb panel" style={strandStyle(plan.dnaDomain)}>
+    <div className="next-climb-head">
+      <div>
+        <div className="eyebrow">PLUS · DNA PLAYER PLAN · {dnaDomainLabel(plan.dnaDomain).toUpperCase()}</div>
+        <h2>YOUR NEXT CLIMB</h2>
+        <p><b>{plan.skill}</b> is the current evidence-backed priority. OP CLIMB keeps this objective active until the learning gate says it is genuinely ready to move on.</p>
+      </div>
+      <div className="next-climb-state"><span>{clean(state)}</span><strong>{Math.max(0,Math.min(100,Math.round(plan.completion||0)))}%</strong><small>CURRICULUM COMPLETE</small></div>
+    </div>
+
+    <div className="next-climb-focus">
+      <article><span>CURRENT WEAKNESS</span><strong>{plan.skill}</strong><p>{plan.whyNow}</p></article>
+      <article className="primary"><span>TEACHING POINT</span><strong>ONE RULE</strong><p>{plan.teachingPoint}</p></article>
+      <article><span>NEXT PROOF GATE</span><strong>{primaryGate?.label||'Keep building verified evidence'}</strong><p>{primaryGate?.evidence||plan.evidence}</p></article>
+    </div>
+
+    <div className="next-climb-flow" aria-label="Your Next Climb learning path">
+      {steps.map(([label,detail],index)=><div key={label} className={index<activeIndex?'done':index===activeIndex?'active':'future'}>
+        <i>{index<activeIndex?'✓':index+1}</i><span>{label}</span><small>{detail}</small>
+      </div>)}
+    </div>
+
+    <div className="next-climb-bottom">
+      <div><span>{plan.transferTest.active?'TRANSFER TEST ACTIVE':'HOW THIS SKILL ENDS'}</span><b>{plan.transferTest.active?'Apply the same principle without relying on the original cue.':plan.retireWhen}</b></div>
+      <div><span>AFTER THIS</span><b>{plan.nextSkill?plan.nextSkill:'OP CLIMB chooses the next DNA priority from fresh evidence.'}</b></div>
+      <Link className="btn primary" href="/live">{plan.transferTest.active?'TAKE THE TRANSFER TEST →':'TAKE THIS INTO MY NEXT GAME →'}</Link>
+    </div>
+    <small className="next-climb-boundary">{response?.boundary}</small>
+  </section>;
+}
+
 function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];focusDomain:DnaDomain|null;levels:Record<DnaDomain,ReturnType<typeof dnaStrandLevel>>;role:Role;onSelect:(domain:DnaDomain)=>void}){
   const focusPair=gameMissionFocusPair(tasks,role);
   const focusIds=new Map(focusPair.map((item,index)=>[item.task.id,index+1]));
@@ -199,14 +317,14 @@ function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];fo
   return <section className="dna-mission-hub" aria-label={role+' Game DNA missions'}>
     <div className="dna-mission-hub-head">
       <div>
-        <div className="eyebrow">YOUR 6 DNA STRANDS · 2 GAME MISSIONS</div>
-        <h2>Two jobs per game. Six strands over time.</h2>
-        <p>You choose two DNA trees to keep unlocked. All six keep their level, mission detail and evidence, but only your two unlocked trees can bank progression in a tracked {role} game.</p>
+        <div className="eyebrow">YOUR 6 DNA STRANDS · PLAYER PLAN</div>
+        <h2>One primary Climb. Two live missions. Six strands developing.</h2>
+        <p>OP CLIMB ranks the evidence and highlights the most important DNA skill as Your Next Climb. Your two unlocked trees can still bank progress in each tracked {role} game while all six strands keep developing over time.</p>
       </div>
       <div className="dna-mission-how" aria-label="How missions work">
         <span><b>1</b><small>DO</small><em>one clear behaviour</em></span>
         <span><b>2</b><small>PROVE</small><em>bank it in tracked games</em></span>
-        <span><b>3</b><small>MASTER</small><em>3/3 → next mission</em></span>
+        <span><b>3</b><small>MASTER</small><em>local mastery → transfer test</em></span>
       </div>
     </div>
 
