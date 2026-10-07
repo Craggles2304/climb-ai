@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import {Wordmark} from '@/components/UI';
+import {PublicHeader} from '@/components/PublicHeader';
 import {PublicFooter} from '@/components/PublicFooter';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {BillingPortalButton,UpgradeButton} from '@/components/BillingActions';
@@ -31,7 +31,7 @@ const rows=[
 export default function Pricing(){
   const {tier}=useSubscription();
   return <>
-    <header className="container public-topbar"><Link href="/" aria-label="OP CLIMB home"><Wordmark size="sm"/></Link><nav><Link href="/#how-it-works">HOW IT WORKS</Link><Link href="/client">CLIENT DEMO</Link><Link href="/login">LOG IN</Link><Link className="btn primary" href="/signup">START FREE</Link></nav></header>
+    <PublicHeader/>
     <main className="container pricing-public">
       <section className="pricing-hero">
         <div className="eyebrow">START FREE · UPGRADE WHEN THE VALUE IS CLEAR</div>
