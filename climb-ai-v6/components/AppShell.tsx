@@ -243,7 +243,7 @@ export function AppShell({children}:{children:React.ReactNode}){
 
   return <div className={'app-shell authenticated-client-shell '+(live?'is-live':'')}>
     <aside className="sidebar" aria-label="Primary navigation">
-      <Link className="brand" href="/dashboard" aria-label="OP Climb home">
+      <Link className="brand" href="/dashboard" aria-label="OP CLIMB home">
         <span className="brand-mark">OP<span>↗</span></span>
         <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
       </Link>
