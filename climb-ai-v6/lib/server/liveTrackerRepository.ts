@@ -10,6 +10,7 @@ import {persistProMatchAnalysis,getProMatchAnalysisBySession,rebuildProLearningP
 import {buildDecisionGraph,lockedPlanFromPregameContext,type LockedDecisionPlan} from '@/lib/decisionGraph';
 import {latestPatch} from '@/lib/champions/source';
 import {canonicalLeaguePatch} from '@/lib/patchIntelligence';
+import {buildLiveMatchReconstruction} from '@/lib/matchReconstruction';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
@@ -265,14 +266,16 @@ export async function latestLiveReview(userId:string,accountKey:string){
   }
   if(!queueProcessing&&normalized.length&&strength&&!proAnalysis&&['COMPLETE','ABORTED'].includes(String(session.status))){
     const base=buildLiveProAnalysis(normalized,strength);
-    proAnalysis={...base,decisionGraph:buildDecisionGraph({analysis:base,summary:strength,lockedPlan,readCheckpoints})};
+    const graph=buildDecisionGraph({analysis:base,summary:strength,lockedPlan,readCheckpoints});
+    proAnalysis={...base,decisionGraph:graph,reconstruction:buildLiveMatchReconstruction(normalized,strength,graph)??base.reconstruction};
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
       const persisted=await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis,patch:session.patch??null,gameVersion:session.game_version??null}).catch(err=>{console.warn('[pro-backfill] match analysis failed',err);return null});
       if(persisted)await syncLearningPlanForSession(session.id,userId,session.riot_account_id??null,'BACKFILL',proAnalysis);
     }
   }else if(proAnalysis&&strength&&!proAnalysis.decisionGraph){
-    proAnalysis={...proAnalysis,decisionGraph:buildDecisionGraph({analysis:proAnalysis,summary:strength,lockedPlan,readCheckpoints})};
+    const graph=buildDecisionGraph({analysis:proAnalysis,summary:strength,lockedPlan,readCheckpoints});
+    proAnalysis={...proAnalysis,decisionGraph:graph,reconstruction:buildLiveMatchReconstruction(normalized,strength,graph)??proAnalysis.reconstruction};
     if(session.status==='COMPLETE'){
       const matchId=await findMatchIdForSession(session.id);
       await persistProMatchAnalysis({userId,riotAccountId:session.riot_account_id??null,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis,patch:session.patch??null,gameVersion:session.game_version??null}).catch(err=>console.warn('[decision-graph] backfill persist failed',err));
@@ -354,7 +357,8 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   ]);
   const readCheckpoints=queuedReadCheckpoints.length?queuedReadCheckpoints:embeddedReadCheckpoints.length?embeddedReadCheckpoints:storedReadCheckpoints;
   const baseAnalysis=buildLiveProAnalysis(snapshots,summary);
-  const proAnalysis={...baseAnalysis,decisionGraph:buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints})};
+  const graph=buildDecisionGraph({analysis:baseAnalysis,summary,lockedPlan,readCheckpoints});
+  const proAnalysis={...baseAnalysis,decisionGraph:graph,reconstruction:buildLiveMatchReconstruction(snapshots,summary,graph)??baseAnalysis.reconstruction};
   const storedSummary={
     ...existingSummary,
     ...summary,
