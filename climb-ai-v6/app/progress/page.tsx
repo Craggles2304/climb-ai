@@ -96,11 +96,11 @@ export default function ClimbPlanPage(){
 
   return <AppShell>
     <main className="climb-plan-page">
-      <header className="climb-plan-hero" style={strandStyle(currentDomain)}>
+      <header id="where-you-are" className="climb-plan-hero climb-plan-anchor" style={strandStyle(currentDomain)}>
         <div className="climb-plan-hero-copy">
           <div className="eyebrow">PRO · MY CLIMB PLAN · {plan.account.role||'ROLE'} HISTORY</div>
-          <h1>Your history already knows<br/><span>what should move you up.</span></h1>
-          <p>This is not a match report. OP CLIMB is comparing your games against each other, following repeated decisions, protecting what is already working and keeping one development path active until the evidence says you are ready to move on.</p>
+          <h1>Your history becomes<br/><span>your route to the next rank.</span></h1>
+          <p><b>The aim is simple:</b> stop guessing what to practise. OP CLIMB studies your game history, finds the behaviour with the biggest development value, gives you one rule to use in-game, checks the evidence, and only moves you on when the improvement is real.</p>
           <div className="climb-plan-rank-path">
             <div><span>YOU ARE HERE</span><strong>{plan.account.rank}</strong></div>
             <i>→</i>
@@ -115,9 +115,19 @@ export default function ClimbPlanPage(){
         </div>
       </header>
 
-      <section className="climb-plan-answer panel" style={strandStyle(currentDomain)}>
+      <nav className="climb-plan-path-nav" aria-label="Your climb path">
+        <a href="#where-you-are"><span>01</span><b>WHERE YOU ARE</b><small>Rank + history</small></a>
+        <a href="#fix-now"><span>02</span><b>FIX NOW</b><small>One priority</small></a>
+        <a href="#prove-it"><span>03</span><b>PROVE IT</b><small>Evidence in games</small></a>
+        <a href="#dna-progress"><span>04</span><b>TRACK PROGRESS</b><small>All 6 DNA strands</small></a>
+        <a href="#patterns"><span>05</span><b>REMOVE PATTERNS</b><small>Recurring mistakes</small></a>
+        <a href="#history"><span>06</span><b>LEARN FROM GAMES</b><small>GOOD + CRITICAL</small></a>
+        <a href="#next-skill"><span>07</span><b>MOVE ON</b><small>Next skill</small></a>
+      </nav>
+
+      <section id="fix-now" className="climb-plan-answer panel climb-plan-anchor" style={strandStyle(currentDomain)}>
         <div className="climb-plan-answer-head">
-          <div><span>THE ANSWER AFTER EVERY GAME</span><h2>WHAT SHOULD I DO NOW?</h2></div>
+          <div><span>STEP 02 · FIX NOW</span><h2>ONE THING TO IMPROVE NEXT</h2><p className="climb-plan-subheading">This is your current coaching focus. Ignore the noise and take this one behaviour into your next games.</p></div>
           <Link className="btn primary" href="/live">PLAY THE NEXT PROOF GAME →</Link>
         </div>
         {plan.now?<div className="climb-plan-now-grid">
@@ -144,8 +154,8 @@ export default function ClimbPlanPage(){
         </div>:<div className="climb-plan-empty"><h3>Your first long-term priority is still building.</h3><p>Keep playing tracked games. OP CLIMB will not invent a repeated pattern from a single match.</p></div>}
       </section>
 
-      <section className="climb-plan-route panel">
-        <div className="climb-plan-section-head"><div><span>YOUR CLIMB ROUTE</span><h2>One path. No dashboard hunting.</h2></div><small>{plan.curriculum.decision.reason}</small></div>
+      <section id="prove-it" className="climb-plan-route panel climb-plan-anchor">
+        <div className="climb-plan-section-head"><div><span>STEP 03 · PROVE IT</span><h2>LEARN IT → USE IT → PROVE IT → MASTER IT</h2><p className="climb-plan-subheading">The app does not reward reading advice. It follows whether you can repeat the behaviour in real games, then tests whether it survives a new situation.</p></div><small>{plan.curriculum.decision.reason}</small></div>
         <div className="climb-route-grid">
           {plan.route.map((item,index)=><article key={item.step} className={index===0?'active':''}>
             <i>{String(index+1).padStart(2,'0')}</i>
@@ -157,9 +167,9 @@ export default function ClimbPlanPage(){
         </div>
       </section>
 
-      <section className="climb-plan-dna panel">
+      <section id="dna-progress" className="climb-plan-dna panel climb-plan-anchor">
         <div className="climb-plan-section-head">
-          <div><span>YOUR WHOLE GAME DNA</span><h2>Six parts of the same climb.</h2></div>
+          <div><span>STEP 04 · TRACK PROGRESS</span><h2>YOUR WHOLE GAME DNA</h2><p className="climb-plan-subheading">Your current mission is only one part of the player. These six strands show what is improving, stable or slipping while you climb.</p></div>
           <small>{lowest?'Biggest current development need: '+lowest.label:'Building DNA evidence'}{highest?' · strongest current strand: '+highest.label:''}</small>
         </div>
         <div className="climb-dna-grid">
@@ -176,8 +186,8 @@ export default function ClimbPlanPage(){
       </section>
 
       <div className="climb-plan-two-col">
-        <section className="climb-plan-patterns panel">
-          <div className="climb-plan-section-head"><div><span>CRITICAL PATTERNS</span><h2>What keeps coming back?</h2></div><small>Repeated across separate games, not one-off mistakes.</small></div>
+        <section id="patterns" className="climb-plan-patterns panel climb-plan-anchor">
+          <div className="climb-plan-section-head"><div><span>STEP 05 · REMOVE REPEATING MISTAKES</span><h2>WHAT KEEPS HOLDING YOU BACK?</h2><p className="climb-plan-subheading">One bad game is noise. A mistake that keeps appearing across games becomes a coaching priority.</p></div><small>Repeated across separate games, not one-off mistakes.</small></div>
           {plan.patterns.length?<div className="climb-pattern-list">
             {plan.patterns.map((item,index)=><article key={item.key} style={strandStyle(item.dnaDomain)}>
               <div className="climb-pattern-rank">{String(index+1).padStart(2,'0')}</div>
@@ -192,7 +202,7 @@ export default function ClimbPlanPage(){
         </section>
 
         <section className="climb-plan-strengths panel">
-          <div className="climb-plan-section-head"><div><span>KEEP THESE</span><h2>What is already helping you climb?</h2></div><small>Measured strengths across repeated games.</small></div>
+          <div className="climb-plan-section-head"><div><span>PROTECT YOUR STRENGTHS</span><h2>WHAT SHOULD YOU KEEP DOING?</h2><p className="climb-plan-subheading">Climbing is not only removing mistakes. These are behaviours the evidence says are already helping you.</p></div><small>Measured strengths across repeated games.</small></div>
           <div className="climb-strength-list">
             {plan.strengths.slice(0,6).map(item=><article key={item.key} style={strandStyle(item.dnaDomain)}>
               <div><span>{DNA_DOMAIN_LABELS[item.dnaDomain]}</span><b>{item.score??'—'}/100</b></div>
@@ -205,9 +215,9 @@ export default function ClimbPlanPage(){
         </section>
       </div>
 
-      <section className="climb-plan-history panel">
+      <section id="history" className="climb-plan-history panel climb-plan-anchor">
         <div className="climb-plan-section-head">
-          <div><span>YOUR HISTORY, CONNECTED</span><h2>Every game should explain the pattern — not reset the conversation.</h2></div>
+          <div><span>STEP 06 · LEARN FROM EVERY GAME</span><h2>GOOD TO REPEAT. CRITICAL TO REMOVE.</h2><p className="climb-plan-subheading">Each match feeds the same development plan. GOOD moments show what to repeat; CRITICAL moments show where the same climb is breaking down.</p></div>
           <small>{date(plan.coverage.from)} → {date(plan.coverage.to)} · {plan.coverage.champions.slice(0,6).join(' · ')}</small>
         </div>
         <div className="climb-history-list">
@@ -240,8 +250,8 @@ export default function ClimbPlanPage(){
         </div>
       </section>
 
-      <section className="climb-plan-next panel">
-        <div className="climb-plan-section-head"><div><span>WHAT COMES AFTER THE CURRENT FIX?</span><h2>Your plan already has a queue — but it is allowed to change when the evidence changes.</h2></div><small>Evidence gated, not a generic syllabus.</small></div>
+      <section id="next-skill" className="climb-plan-next panel climb-plan-anchor">
+        <div className="climb-plan-section-head"><div><span>STEP 07 · MOVE ON WHEN YOU ARE READY</span><h2>MASTER THIS. THEN THE APP CHOOSES THE NEXT BEST SKILL.</h2><p className="climb-plan-subheading">You do not collect endless missions. When the current behaviour is proven and transferred, OP CLIMB retires it and promotes the next highest-value skill from your evidence.</p></div><small>Evidence gated, not a generic syllabus.</small></div>
         <div className="climb-next-grid">
           {plan.curriculum.queue.slice(0,4).map((item,index)=><article key={item.label}><span>{String(index+1).padStart(2,'0')} · {item.phase}</span><h3>{item.label}</h3><p>{item.whyNow}</p><small>{item.readiness} · {item.gameRule}</small></article>)}
           {!plan.curriculum.queue.length&&<div className="climb-plan-empty"><p>No replacement skill is being forced yet. OP CLIMB is waiting for the current learning contract to resolve.</p></div>}
