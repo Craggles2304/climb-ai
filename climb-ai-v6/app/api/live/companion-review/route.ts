@@ -257,7 +257,7 @@ export async function GET(req:NextRequest){
 }
 
 function developmentPlanFromSync(sync:any,status:unknown){
-  const policy='EXACTLY TWO DNA MISSIONS ARE SELECTED FOR EACH TRACKED GAME. ONLY THOSE TWO CAN BANK A REP, AND EACH RESULT NEEDS TIMESTAMPED EVIDENCE. THREE PROVEN GAMES MASTER A STRAND MISSION.';
+  const policy='THE PLAYER KEEPS EXACTLY TWO DNA TREES UNLOCKED FOR PROGRESSION. ONLY MISSIONS FROM THOSE TWO TREES CAN BANK A REP, AND EACH RESULT NEEDS TIMESTAMPED EVIDENCE. THREE PROVEN GAMES MASTER A STRAND MISSION.';
   if(String(status)==='ABORTED')return{synced:false,status:'SKIPPED_PARTIAL',changed:false,changes:[],activeFive:[],primary:null,activeCount:0,gamesAnalyzed:0,policy};
   if(sync?.status==='COMPLETE'){
     const activeFive=Array.isArray(sync.activeFive)?sync.activeFive.slice(0,6):[];
