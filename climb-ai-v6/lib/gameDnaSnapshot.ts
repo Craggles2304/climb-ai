@@ -93,6 +93,27 @@ export function currentGameDnaMissions(input:DnaTask[],role:Role|null|undefined)
   return DNA_DOMAINS.map(domain=>({domain,task:currentForDomain(tasks,domain)}));
 }
 
+
+function focusScore(task:ILPTask){
+  const attempts=[...(task.missionHistory??[])].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
+  const latest=attempts[0];
+  const state=latest?.evidenceV2?.state??(latest?.banksPass?'BANKED':latest?'MISSED':null);
+  const observed=Number(latest?.evidenceV2?.observedValue);
+  const summary=missionSummary(task);
+  let score=state==='MISSED'?500:!latest?320:state==='NOT_OBSERVED'?180:120;
+  if(Number.isFinite(observed))score+=Math.max(0,100-observed)*2;
+  if(summary.confirmed>0&&summary.confirmed<summary.required)score+=summary.confirmed*28;
+  score+=(Number(task.priority)||50)/100;
+  return score;
+}
+
+export function gameMissionFocusPair(input:DnaTask[],role:Role|null|undefined){
+  return currentGameDnaMissions(input,role)
+    .filter((row):row is {domain:DnaDomain;task:DnaTask}=>Boolean(row.task))
+    .sort((a,b)=>focusScore(b.task)-focusScore(a.task)||DNA_DOMAINS.indexOf(a.domain)-DNA_DOMAINS.indexOf(b.domain))
+    .slice(0,2);
+}
+
 export function gameDnaClientMissions(input:DnaTask[],role:Role|null|undefined):GameDnaClientMission[]{
   const tasks=canonicalGameDnaTasks(input,role);
   const rows=DNA_DOMAINS.map(domain=>({domain,task:currentForDomain(tasks,domain)}));
