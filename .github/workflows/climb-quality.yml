@@ -99,7 +99,7 @@ jobs:
       - name: Bot lane regression tests
         run: node --import tsx --test tests/botlane.test.ts
       - name: Live tracker regressions
-        run: node --import tsx --test tests/liveGame.test.ts tests/liveStrength.test.ts tests/localFirstMatchIo.test.cjs
+        run: node --import tsx --test tests/liveGame.test.ts tests/liveStrength.test.ts tests/matchReconstruction.test.ts tests/localFirstMatchIo.test.cjs
       - name: Core and auth regressions
         run: node --import tsx --test tests/analytics.test.ts tests/auth.test.ts tests/build.test.ts tests/companionRiotReviewFallback.test.ts && node --test tests/accountRankSwitch.test.cjs
       - name: Champion and combo regressions
