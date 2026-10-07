@@ -87,7 +87,7 @@ export default function ClimbPlanPage(){
 
   if(loading&&!plan)return <AppShell><section className="panel climb-plan-loading"><div className="eyebrow">BUILDING YOUR CLIMB PLAN</div><h1>Reading your whole game history…</h1><p className="muted">Combining DNA, decision evidence, GOOD/CRITICAL sequences, recurring patterns and learning state.</p></section></AppShell>;
   if(error&&!plan)return <AppShell><section className="panel climb-plan-loading"><div className="eyebrow">CLIMB PLAN ERROR</div><h1>Your history is still safe.</h1><p className="muted">{error}</p><button className="btn primary" onClick={()=>window.location.reload()}>RETRY</button></section></AppShell>;
-  if(!plan)return <AppShell/>;
+  if(!plan)return <AppShell><div/></AppShell>;
 
   const lowest=plan.dna.filter(item=>item.score!==null).sort((a,b)=>Number(a.score)-Number(b.score))[0]??null;
   const highest=plan.dna.filter(item=>item.score!==null).sort((a,b)=>Number(b.score)-Number(a.score))[0]??null;
