@@ -18,7 +18,7 @@ test('My DNA owns long-term development while Match Room owns the game',()=>{
   assert.ok(liveCenter.includes('WHAT HURT YOU'));
   assert.ok(liveCenter.includes('WHAT YOU DID WELL'));
   assert.ok(liveCenter.includes('KEY MOMENTS'));
-  assert.ok(liveCenter.includes('NEXT GAME · PRIORITY MISSION'));
+  assert.ok(liveCenter.includes('NEXT GAME · TWO FOCUS MISSIONS'));
   assert.ok(liveCenter.includes('SEE MY DNA'));
 });
 
