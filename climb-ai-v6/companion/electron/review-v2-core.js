@@ -146,7 +146,7 @@
         </div>
       </section>
       <section class="op333-key"><div class="op333-key-head"><span>KEY MOMENTS · 5 MAX</span><small id="op333KeyMeta">ONLY WHAT MATTERED MOST</small></div><div id="op333KeyList" class="op333-key-list"></div></section>
-      <section class="op332-development"><div class="op332-development-head"><div><span>YOUR 6 DNA MISSIONS THIS GAME</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy">BANKED = target cleared · MISSED = observed but target missed · NOT OBSERVED = not enough reliable evidence.</p><div id="op332DevList" class="op332-dev-list"></div></section>
+      <section class="op332-development"><div class="op332-development-head"><div><span>YOUR 2 FOCUS MISSIONS THIS GAME</span><div id="op332DevStatus" class="op332-dev-status">CHECKING POST-GAME EVIDENCE</div></div></div><p id="op332DevCopy" class="op332-dev-copy">PROVEN = target cleared with timestamped proof · NEEDS WORK = observed with timestamped proof but target missed · NOT OBSERVED = OP CLIMB cannot prove when/how it happened.</p><div id="op332DevList" class="op332-dev-list"></div></section>
       <details id="op334Recognition" class="op334-recognition"><summary><span>GAME READ</span><strong id="op334RecognitionStatus">CHECKING YOUR READS</strong><small id="op334RecognitionMeta">POST-GAME ONLY</small></summary><div id="op334RecognitionList" class="op334-recognition-list"></div></details>
       <details class="op333-details"><summary>MATCH DETAILS · PLAN / 3 GOOD / 3 REVIEW / FULL TIMELINE</summary><div class="op333-details-body">
         <div class="op332-baseline"><div class="op332-section-label">THE PLAN YOU ACTUALLY TOOK INTO THE GAME</div><div class="op332-baseline-grid"><article class="op332-plan"><span>01 · VS THEIR TEAM</span><strong id="op332Vs"></strong><p id="op332VsWhy"></p></article><article class="op332-plan"><span>02 · YOUR WIN CONDITION</span><strong id="op332Win"></strong><p id="op332WinWhy"></p></article><article class="op332-plan mission"><span>CLIMB MISSION · PERSISTENT</span><strong id="op332Mission"></strong><p id="op332MissionWhy"></p></article></div><p id="op332LockNote" class="op332-lock-note">REVIEWED AGAINST THE LOCKED PRE-GAME PLAN · NO RESULT-BASED REWRITING</p></div>
@@ -673,7 +673,7 @@
   function renderDevelopmentPlan(review){
     const root=$('op332DevList');if(!root)return;root.replaceChildren();
     const baseline=review?.dnaBaseline||{games:0,required:3,ready:false};
-    const missions=safeArray(review?.missionEvidence).slice(0,6);
+    const missions=safeArray(review?.missionEvidence).slice(0,2);
     const ready=Boolean(baseline?.ready);
     if(!ready){
       setText('op332DevStatus','BASELINE '+Math.min(Number(baseline?.games)||0,Number(baseline?.required)||3)+'/'+(Number(baseline?.required)||3)+' · GRADING LOCKED');
