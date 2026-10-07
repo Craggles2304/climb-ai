@@ -117,9 +117,9 @@ return <div className="match-room">
 
   <section className="match-room-focus panel">
     <div className="match-room-focus-copy">
-      <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT GAME · TWO FOCUS MISSIONS':'NEXT MATCH · DNA BASELINE · PROVISIONAL COACHING'}</div>
-      <h2>{baselineReady?'Two missions. One game.':`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
-      <p>{recording?'OP CLIMB is recording evidence for the two missions you entered the match with. Coaching resumes after the game.':baselineReady?`1. ${focusMission?.gameRule||session?.gameRule||'Your first focus is building.'}${secondFocusMission?`  2. ${secondFocusMission.gameRule}`:''}`:'Play normally. PERMANENT MISSIONS UNLOCK AFTER GAME 3.'}</p>
+      <div className="eyebrow">{recording?'GAME IN PROGRESS · TRACKING ONLY':baselineReady?'NEXT GAME · TWO UNLOCKED DNA TREES':'NEXT MATCH · DNA BASELINE · PROVISIONAL COACHING'}</div>
+      <h2>{baselineReady?'Two unlocked trees. One game.':`Baseline game ${Math.min(baselineGames+1,DNA_BASELINE_GAMES)} of ${DNA_BASELINE_GAMES}`}</h2>
+      <p>{recording?'OP CLIMB is recording evidence for the two missions from the DNA trees you unlocked. Coaching resumes after the game.':baselineReady?`1. ${focusMission?.gameRule||session?.gameRule||'Your first focus is building.'}${secondFocusMission?`  2. ${secondFocusMission.gameRule}`:''}`:'Play normally. PERMANENT MISSIONS UNLOCK AFTER GAME 3.'}</p>
     </div>
     <div className="match-room-focus-side">
       {session&&<div className="match-room-proof"><span>SESSION</span><b>GAME {nextGame}/{session.targetGames}</b><small>{focusMission?.target||session.target}</small></div>}
@@ -129,7 +129,7 @@ return <div className="match-room">
 
   <section className="panel match-room-missions" aria-label="Your two focus missions">
     <div className="match-room-missions-head">
-      <div><div className="eyebrow">YOUR TWO GAME MISSIONS</div><h2>Only these two can score this match.</h2><p>{recording?'The Companion is measuring these two missions quietly.':latestMissionMatch?`Compared with your last ${active.role} game. Each result needs timestamped proof before it can bank.`:'Your two selected missions will be graded after the tracked game is reviewed.'}</p></div>
+      <div><div className="eyebrow">YOUR TWO UNLOCKED MISSIONS</div><h2>Only the two trees you unlocked can score this match.</h2><p>{recording?'The Companion is measuring your two unlocked missions quietly.':latestMissionMatch?`Compared with your last ${active.role} game. Each result needs timestamped proof before it can bank.`:'The missions from your two unlocked DNA trees will be graded after the tracked game is reviewed.'}</p></div>
       <Link className="btn secondary" href="/missions">OPEN ALL MISSIONS →</Link>
     </div>
     {!baselineReady?<div className="match-room-missions-baseline">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} {active.role} GAMES · Permanent missions unlock after game {DNA_BASELINE_GAMES}.</div>:
