@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import type {ILPTask,Role} from '../lib/types';
-import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaClientMissions,gameDnaStrands,missionRepView} from '../lib/gameDnaSnapshot';
+import {activeGameDnaMissions,canonicalGameDnaTasks,gameDnaClientMissions,gameDnaStrands,gameMissionFocusPair,missionRepView,unlockedDnaDomains} from '../lib/gameDnaSnapshot';
 
 function task(overrides:Partial<ILPTask>&{id:string,title:string,metric:string}):ILPTask{
   return{
@@ -67,4 +67,17 @@ test('mission progress bar is driven by the same reps shown in the rep counter',
   });
   assert.deepEqual(missionRepView(one),{confirmed:1,required:3,progress:33});
   assert.equal(activeGameDnaMissions([zero,one],role).length,1);
+});
+
+test('player-chosen DNA unlocks override automatic focus recommendations',()=>{
+  const rows=[
+    task({id:'lane',title:'Lane',metric:'red_state_fights',dnaDomain:'LANING',roleScope:'ADC',dnaFocusUnlocked:false}),
+    task({id:'wave',title:'Wave',metric:'reset_quality',dnaDomain:'WAVES_CS',roleScope:'ADC',dnaFocusUnlocked:true}),
+    task({id:'vision',title:'Vision',metric:'opponent_adaptation',dnaDomain:'VISION_MAP',roleScope:'ADC',dnaFocusUnlocked:false}),
+    task({id:'objective',title:'Objective',metric:'objective_readiness',dnaDomain:'OBJECTIVES',roleScope:'ADC',dnaFocusUnlocked:true}),
+    task({id:'fight',title:'Fight',metric:'carry_preservation',dnaDomain:'TEAMFIGHTS',roleScope:'ADC',dnaFocusUnlocked:false}),
+    task({id:'mind',title:'Mind',metric:'lead_protection',dnaDomain:'CONSISTENCY',roleScope:'ADC',dnaFocusUnlocked:false}),
+  ];
+  assert.deepEqual(new Set(unlockedDnaDomains(rows,role)),new Set(['WAVES_CS','OBJECTIVES']));
+  assert.deepEqual(new Set(gameMissionFocusPair(rows,role).map(row=>row.domain)),new Set(['WAVES_CS','OBJECTIVES']));
 });
