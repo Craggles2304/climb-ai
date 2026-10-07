@@ -2651,3 +2651,121 @@ input[type=checkbox],input[type=radio],input[type=range]{accent-color:var(--mint
   .next-climb-flow{grid-template-columns:repeat(2,minmax(0,1fr))}
   .next-climb-bottom{grid-template-columns:1fr}
 }
+
+
+/* PRO flagship — My Climb Plan */
+.climb-plan-page{display:grid;gap:16px;padding-bottom:42px}
+.climb-plan-page .panel{border-color:rgba(255,255,255,.08)}
+.climb-plan-hero{
+  --strand-color:var(--mint);
+  display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;
+  padding:28px;border:1px solid color-mix(in srgb,var(--strand-color) 28%,var(--line));border-top:3px solid var(--strand-color);
+  background:radial-gradient(circle at 85% 10%,color-mix(in srgb,var(--strand-color) 14%,transparent),transparent 34%),linear-gradient(145deg,#091114,#071014);
+}
+.climb-plan-hero-copy h1,.climb-plan-paywall h1{margin:8px 0 12px;font-size:clamp(42px,6vw,74px);line-height:.9;letter-spacing:-.04em}
+.climb-plan-hero-copy h1 span,.climb-plan-paywall h1 span{color:var(--mint)}
+.climb-plan-hero-copy>p,.climb-plan-paywall>p{max-width:850px;margin:0;color:#a7b5b8;font-size:14px;line-height:1.65}
+.climb-plan-rank-path{display:flex;align-items:center;gap:12px;margin-top:22px}
+.climb-plan-rank-path>div{min-width:170px;padding:12px 14px;border:1px solid var(--line);background:#091316}
+.climb-plan-rank-path span{display:block;color:#728287;font:750 8px var(--mono);letter-spacing:.09em}
+.climb-plan-rank-path strong{display:block;margin-top:4px;color:#edf5f3;font:900 20px var(--display)}
+.climb-plan-rank-path i{color:var(--strand-color);font:900 20px var(--display)}
+.climb-plan-proof{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-content:start}
+.climb-plan-proof>div{padding:18px 14px;border:1px solid var(--line);background:#091316}
+.climb-plan-proof strong{display:block;color:var(--strand-color);font:900 34px/1 var(--display)}
+.climb-plan-proof span{display:block;margin-top:6px;color:#7d8d91;font:700 8px var(--mono);letter-spacing:.07em}
+.climb-plan-answer{--strand-color:var(--mint);padding:20px;border-top:3px solid var(--strand-color);background:linear-gradient(150deg,color-mix(in srgb,var(--strand-color) 6%,#091114),#091114)}
+.climb-plan-answer-head,.climb-plan-section-head{display:flex;align-items:end;justify-content:space-between;gap:18px}
+.climb-plan-answer-head>div>span,.climb-plan-section-head>div>span{color:var(--strand-color,var(--mint));font:800 8px var(--mono);letter-spacing:.1em}
+.climb-plan-answer-head h2,.climb-plan-section-head h2{margin:5px 0 0;font-size:clamp(27px,3.4vw,43px);line-height:.96}
+.climb-plan-section-head>small{max-width:500px;color:#77878b;font-size:10px;line-height:1.45;text-align:right}
+.climb-plan-now-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:16px}
+.climb-plan-now-grid article{padding:15px;border:1px solid var(--line);background:#091316}
+.climb-plan-now-grid article.primary{border-color:color-mix(in srgb,var(--strand-color) 42%,var(--line));box-shadow:inset 0 -2px 0 var(--strand-color)}
+.climb-plan-now-grid span{display:block;color:#74858a;font:750 8px var(--mono);letter-spacing:.08em}
+.climb-plan-now-grid h3{margin:7px 0 7px;font-size:20px;line-height:1}
+.climb-plan-now-grid p{margin:0;color:#9cabad;font-size:11px;line-height:1.5}
+.climb-plan-route,.climb-plan-dna,.climb-plan-patterns,.climb-plan-strengths,.climb-plan-history,.climb-plan-next{padding:20px}
+.climb-route-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:15px}
+.climb-route-grid article{padding:15px;min-height:180px;border:1px solid var(--line);background:#091114}
+.climb-route-grid article.active{border-color:rgba(182,246,107,.48);box-shadow:inset 0 -2px 0 var(--mint)}
+.climb-route-grid i{display:grid;place-items:center;width:28px;height:28px;border:1px solid #354349;border-radius:50%;color:#84969a;font:800 9px var(--mono);font-style:normal}
+.climb-route-grid article.active i{border-color:var(--mint);color:var(--mint)}
+.climb-route-grid>article>span{display:block;margin-top:12px;color:#7b8c91;font:800 8px var(--mono);letter-spacing:.09em}
+.climb-route-grid h3{margin:5px 0 7px;font-size:22px;line-height:1}
+.climb-route-grid p{margin:0;color:#9cacaf;font-size:11px;line-height:1.5}
+.climb-route-grid small{display:block;margin-top:12px;color:#68787d;font:700 8px var(--mono)}
+.climb-dna-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:15px}
+.climb-dna-grid article{--strand-color:var(--mint);padding:15px;border:1px solid color-mix(in srgb,var(--strand-color) 24%,var(--line));background:#091114}
+.climb-dna-grid article.current{border-color:var(--strand-color);box-shadow:inset 0 -2px 0 var(--strand-color)}
+.climb-dna-top{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.climb-dna-top span{color:var(--strand-color);font:800 9px var(--mono);letter-spacing:.08em}
+.climb-dna-top b{font:900 25px var(--display)}
+.climb-dna-bar{height:5px;margin:11px 0;background:#172126}
+.climb-dna-bar i{display:block;height:100%;background:var(--strand-color)}
+.climb-dna-meta{display:flex;justify-content:space-between;gap:8px;color:#819196;font:700 8px var(--mono)}
+.climb-dna-grid article.improving .climb-dna-meta span:first-child{color:#56d9b8}
+.climb-dna-grid article.slipping .climb-dna-meta span:first-child{color:#f99594}
+.climb-dna-proof{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-top:12px}
+.climb-dna-proof span{padding:7px;background:#0c1518;color:#718287;font:650 7px var(--mono);text-align:center}
+.climb-dna-proof b{display:block;color:#dfe8e6;font-size:11px}
+.climb-plan-two-col{display:grid;grid-template-columns:minmax(0,1.18fr) minmax(0,.82fr);gap:16px}
+.climb-pattern-list,.climb-strength-list{display:grid;gap:7px;margin-top:14px}
+.climb-pattern-list article{--strand-color:var(--mint);display:grid;grid-template-columns:42px minmax(0,1fr);gap:11px;padding:13px;border-left:3px solid var(--strand-color);background:#091316}
+.climb-pattern-rank{color:var(--strand-color);font:900 22px var(--display)}
+.climb-pattern-top{display:flex;justify-content:space-between;gap:8px;color:#7e8f93;font:700 8px var(--mono)}
+.climb-pattern-list h3,.climb-strength-list h3{margin:5px 0 5px;font-size:18px}
+.climb-pattern-list p,.climb-strength-list p{margin:0;color:#98a8ab;font-size:10px;line-height:1.45}
+.climb-pattern-list small,.climb-strength-list small{display:block;margin-top:7px;color:#67777c;font-size:8px}
+.climb-strength-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+.climb-strength-list article{--strand-color:var(--mint);padding:13px;border-top:2px solid var(--strand-color);background:#091316}
+.climb-strength-list article>div{display:flex;justify-content:space-between;color:#7c8c90;font:700 8px var(--mono)}
+.climb-strength-list article>div b{color:var(--strand-color)}
+.climb-history-list{display:grid;gap:9px;margin-top:15px}
+.climb-history-game{border:1px solid var(--line);background:#081114}
+.climb-history-game>header{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+.climb-history-index{color:#738389;font:900 18px var(--display)}
+.climb-history-game header span{color:#74858a;font:700 8px var(--mono)}
+.climb-history-game header h3{margin:3px 0 0;font-size:20px}
+.climb-history-game header>strong{font:900 18px var(--mono)}
+.climb-history-fingerprint{padding:11px 14px;background:#0a1417}
+.climb-history-fingerprint span{display:block;color:#738489;font:700 8px var(--mono)}
+.climb-history-fingerprint b{display:block;margin-top:4px;color:#e4eeec;font:850 14px var(--display)}
+.climb-history-fingerprint p{margin:4px 0 0;color:#839397;font-size:10px;line-height:1.45}
+.climb-history-sides{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}
+.climb-history-sides>div{padding:12px 14px}
+.climb-history-sides>div.good{border-right:1px solid var(--line)}
+.climb-history-sides>div>span{display:block;margin-bottom:8px;font:800 8px var(--mono);letter-spacing:.08em}
+.climb-history-sides .good>span{color:#56d9b8}
+.climb-history-sides .critical>span{color:#f99594}
+.climb-history-sides>div>div{display:grid;grid-template-columns:45px minmax(0,1fr);gap:7px;margin-top:6px}
+.climb-history-sides>div>div>b{font:850 11px var(--mono)}
+.climb-history-sides .good>div>b{color:#56d9b8}.climb-history-sides .critical>div>b{color:#f99594}
+.climb-history-sides p{margin:0;color:#89999d;font-size:9px;line-height:1.4}.climb-history-sides p strong{display:block;color:#dce6e4;font-size:10px}
+.climb-history-sides small{color:#67777b;font-size:9px}
+.climb-history-game>footer{display:flex;justify-content:space-between;gap:10px;padding:8px 14px;border-top:1px solid var(--line);color:#6d7e83;font:700 8px var(--mono)}
+.climb-next-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:15px}
+.climb-next-grid article{padding:14px;border:1px solid var(--line);background:#091316}
+.climb-next-grid span{color:#7a8b90;font:750 8px var(--mono)}.climb-next-grid h3{margin:6px 0;font-size:18px}.climb-next-grid p{margin:0;color:#93a3a6;font-size:10px;line-height:1.45}.climb-next-grid small{display:block;margin-top:9px;color:#66767b;font-size:8px}
+.climb-plan-deep{border:1px solid var(--line);background:#071013}
+.climb-plan-deep>summary{display:flex;justify-content:space-between;gap:14px;padding:15px 18px;cursor:pointer}
+.climb-plan-deep>summary b{font:800 11px var(--display)}.climb-plan-deep>summary span{color:#75858a;font:700 8px var(--mono)}
+.climb-plan-deep-body{padding:0 14px 14px}
+.climb-plan-boundary{margin:0;color:#607176;font-size:9px;line-height:1.5}
+.climb-plan-empty{padding:18px;border:1px dashed #27343a;background:#091215}.climb-plan-empty h3{margin:0 0 6px}.climb-plan-empty p{margin:0;color:#829297;font-size:11px;line-height:1.5}
+.climb-plan-paywall{padding:30px;background:radial-gradient(circle at 80% 0,rgba(182,246,107,.09),transparent 35%),#081114}
+.climb-plan-preview-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:22px 0}
+.climb-plan-preview-grid article{padding:15px;border:1px solid var(--line);background:#091316}.climb-plan-preview-grid span{display:block;color:var(--mint);font:900 18px var(--display)}.climb-plan-preview-grid b{display:block;margin-top:6px;font:850 13px var(--display)}.climb-plan-preview-grid small{display:block;margin-top:4px;color:#76868b;font-size:9px}
+.climb-plan-loading{max-width:900px;margin:20px auto;padding:28px}.climb-plan-loading h1{font-size:clamp(34px,5vw,58px);margin:8px 0 10px}
+@media(max-width:1100px){
+  .climb-plan-hero{grid-template-columns:1fr}.climb-plan-proof{grid-template-columns:repeat(4,1fr)}
+  .climb-plan-now-grid,.climb-route-grid,.climb-next-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .climb-plan-two-col{grid-template-columns:1fr}
+}
+@media(max-width:760px){
+  .climb-plan-hero{padding:18px}.climb-plan-proof{grid-template-columns:repeat(2,1fr)}
+  .climb-plan-answer-head,.climb-plan-section-head{align-items:start;flex-direction:column}.climb-plan-section-head>small{text-align:left}
+  .climb-plan-now-grid,.climb-route-grid,.climb-dna-grid,.climb-next-grid,.climb-plan-preview-grid,.climb-strength-list{grid-template-columns:1fr}
+  .climb-history-sides{grid-template-columns:1fr}.climb-history-sides>div.good{border-right:0;border-bottom:1px solid var(--line)}
+  .climb-history-game>footer{flex-direction:column}.climb-plan-rank-path{align-items:stretch;flex-direction:column}.climb-plan-rank-path i{transform:rotate(90deg);align-self:flex-start}
+}
