@@ -7,7 +7,7 @@ import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {currentGameDnaMissions,gameDnaClientMissions} from '@/lib/gameDnaSnapshot';
+import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
@@ -53,10 +53,12 @@ export default function Dashboard(){
   const roleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,active.role)),[accountTasks,active.role]);
   const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(roleTasks,active.role),[roleTasks,active.role]);
   const activeMissions=useMemo(()=>baselineReady
-    ?currentGameDnaMissions(roleTasks,active.role).flatMap(({task})=>task?[task]:[])
+    ?gameMissionFocusPair(roleTasks,active.role).map(({task})=>task)
     :[],[roleTasks,active.role,baselineReady]);
   const focus=activeMissions[0]??null;
+  const secondFocus=activeMissions[1]??null;
   const focusPlain=focus?plainLanguageFocus(focus):null;
+  const secondFocusPlain=secondFocus?plainLanguageFocus(secondFocus):null;
   const focusProof=focus?missionSummary(focus):null;
   const mastered=roleTasks.filter(task=>task.status==='MASTERED').length;
   const linked=devices.length>0;
@@ -69,8 +71,8 @@ export default function Dashboard(){
     online,
     baselineGames,
     dnaRevealed,
-    focusName:focusPlain?.name||focus?.title,
-    focusJob:focusPlain?.nextGame||focus?.gameRule,
+    focusName:activeMissions.length===2?'Two missions selected':focusPlain?.name||focus?.title,
+    focusJob:activeMissions.length===2?`1. ${focusPlain?.nextGame||focus?.gameRule||''}  2. ${secondFocusPlain?.nextGame||secondFocus?.gameRule||''}`:focusPlain?.nextGame||focus?.gameRule,
     focusConfirmed:focusProof?.confirmed,
     focusRequired:focusProof?.required,
   });
@@ -80,7 +82,7 @@ export default function Dashboard(){
     {label:'CONNECT COMPANION',done:linked,active:!linked},
     {label:'PLAY 3 GAMES',done:baselineReady,active:linked&&!baselineReady},
     {label:'REVEAL DNA',done:baselineReady,active:false},
-    {label:'TRAIN ONE STRAND',done:missionProven,active:Boolean(baselineReady&&focus&&!missionProven)},
+    {label:'TRAIN 2 MISSIONS',done:missionProven,active:Boolean(baselineReady&&focus&&!missionProven)},
     {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
   ];
 
@@ -102,7 +104,7 @@ export default function Dashboard(){
           <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
           <h2>{baselineReady?'This is how you actually play.':'Play three games. Reveal your DNA.'}</h2>
           <p>{baselineReady
-            ?`Your live ${active.role} profile measures six parts of your game. Missions train the weakest strand while every match keeps measuring the whole player.`
+            ?`Your live ${active.role} profile measures six parts of your game. OP CLIMB selects two missions for each game while the whole player profile keeps updating.`
             :`Connect the Companion and play ${DNA_BASELINE_GAMES} normal ${active.role} games. OP CLIMB keeps the profile neutral until it has enough evidence to reveal your real starting shape.`}</p>
         </div>
         <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
