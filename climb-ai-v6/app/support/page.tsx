@@ -2,7 +2,7 @@ import Link from 'next/link';
 import {Wordmark} from '@/components/UI';
 import {PublicFooter} from '@/components/PublicFooter';
 
-const SUPPORT_EMAIL='boxtoboxfootballacademy@gmail.com';
+const SUPPORT_EMAIL='OpClimb@outlook.com';
 
 export default function Support(){return <>
   <main className="container section">
