@@ -40,13 +40,13 @@ export const METRIC_TIER:Record<CoachingMetricKey,SubscriptionTier>={
 
 /**
  * Stage 8 commercial contract.
- * FREE proves the loop. PLUS explains the current game. PRO models how the player learns.
+ * FREE proves the loop. PLUS turns Game DNA into a managed player plan. PRO adds the persistent player model.
  * Keep homepage, pricing, billing and in-product gates derived from this story.
  */
 export const PLAN_COPY={
   FREE:{name:'FREE',price:'£0',historyDays:7,fixDepth:2,reviewAllowance:'3 detailed reviews / week',description:'Find what is holding you back, take one rule into the next game and prove whether it changes.'},
-  PLUS:{name:'PLUS',price:'£9.99/month',historyDays:90,fixDepth:4,reviewAllowance:'Higher review allowance',description:'Understand the whole game around the mistake: both win conditions, your role and deeper fight/economy context.'},
-  PRO:{name:'PRO',price:'£19.99/month',historyDays:3650,fixDepth:5,reviewAllowance:'Highest coaching allowance',description:'Build a coach that remembers your habits, tests what you learned and chooses what you should work on next.'},
+  PLUS:{name:'PLUS',price:'£9.99/month',historyDays:90,fixDepth:4,reviewAllowance:'Higher review allowance',description:'Turn your Game DNA into a live player plan: learn the next weakness, prove it in games, master it, transfer-test it and move on.'},
+  PRO:{name:'PRO',price:'£19.99/month',historyDays:3650,fixDepth:5,reviewAllowance:'Highest coaching allowance',description:'Everything in PLUS, plus a persistent Decision Twin and Coach Memory that learn your recurring habits, coaching needs and long-term player identity.'},
 } as const;
 
 export const PLAN_ENTITLEMENTS={
@@ -60,6 +60,10 @@ export const PLAN_ENTITLEMENTS={
   ],
   PLUS:[
     'EVERYTHING IN FREE',
+    'DNA PLAYER PLAN · YOUR NEXT CLIMB',
+    'OP CLIMB CHOOSES THE PRIMARY NEXT SKILL',
+    'MISSION → EVIDENCE → REPEAT → MASTERY',
+    'TRANSFER TEST BEFORE A SKILL IS RETIRED',
     'FULL 5V5 GAME PLAN',
     'OUR WIN CONDITION + THEIR WIN CONDITION',
     'YOUR ROLE IN THE DRAFT',
@@ -69,11 +73,11 @@ export const PLAN_ENTITLEMENTS={
   ],
   PRO:[
     'EVERYTHING IN PLUS',
-    'REMEMBERS RECURRING HABITS',
-    'SCENARIO MEMORY ACROSS GAMES',
-    'TESTS LEARNING IN NEW SITUATIONS',
+    'DECISION TWIN + COACH MEMORY',
+    'REMEMBERS RECURRING HABITS ACROSS GAMES',
+    'SCENARIO MEMORY + PERSONAL TRAPS',
+    'LEARNING VELOCITY + ADAPTIVE COACHING',
     'CONNECTS SKILLS INTO DECISION PRINCIPLES',
-    'CHOOSES WHAT YOU SHOULD LEARN NEXT',
     'LONG-TERM CHAMPION + PLAYER IDENTITY',
     'ALL 5 FIX LADDER STAGES',
   ],
