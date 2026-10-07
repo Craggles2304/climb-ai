@@ -500,6 +500,10 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
         missHits+=1;
         if(missHits>=2){finish('TFT gameflow ended');return}
       }
+      if(!active&&flow.available&&flow.active&&flow.mode==='OTHER'){
+        status('ARMED','League match detected. TFT OCR is sleeping while League tracking runs.');
+        return;
+      }
 
       const captured=await captureWindow();
       if(!captured){
