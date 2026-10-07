@@ -234,7 +234,7 @@ export function BroadcastLanding(){
         <div>
           <div className={styles.eyebrow}>GAME DNA · YOUR PLAYER IDENTITY</div>
           <h1>Play 3 games.<em className={styles.gold}>Reveal your DNA.</em></h1>
-          <p className={styles.lede}>Install the OP CLIMB Companion, play three normal games in your role, and your Game DNA appears across six strands. From there, every game trains one weakness while measuring the whole player.</p>
+          <p className={styles.lede}>Create a free account, link your Riot ID and connect the OP CLIMB Companion. Play three normal games in your role, and your Game DNA appears across six strands. From there, every game trains one weakness while measuring the whole player.</p>
           <div className={styles.heroActions}>
             <Link href="/signup" className={styles.heroPrimary}>START FREE →</Link>
             <a href="#how-it-works" className={styles.heroSecondary}>SEE THE DNA LOOP</a>
@@ -324,7 +324,7 @@ export function BroadcastLanding(){
           <div className={styles.tier}>
             <div className={styles.role}>Find what to fix</div><h3>Free</h3><div className={styles.price}>£0</div>
             <p className={styles.fit}><b>Choose Free if:</b> you want to prove OP CLIMB can find something useful before you spend anything.</p>
-            <ul><li>Scan your recent ranked games</li><li>Get your #1 next-game fix</li><li>Track one active focus</li><li>See whether that focus is improving</li></ul>
+            <ul><li>Reveal your six-strand Game DNA</li><li>Get your #1 next-game fix</li><li>Track one active focus</li><li>See whether that focus is improving</li></ul>
             <a className={styles.go} href="#report">Try the free coach</a>
           </div>
           <div className={styles.tier+' '+styles.feat}>
