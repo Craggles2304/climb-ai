@@ -92,6 +92,7 @@ async function missionEvidenceForMatch(userId:string,riotAccountId:string|null,m
     if(!task)return[];
     const history=Array.isArray(task.missionHistory)?task.missionHistory:[];
     const attempt=history.find(item=>String(item?.matchId||'')===matchId);
+    if(!attempt)return[];
     const confirmed=history.filter(item=>Boolean(item?.banksPass)).length;
     const required=Math.max(1,Number(task.masteryRequired||3));
     const mastered=String(task.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
@@ -257,7 +258,7 @@ export async function GET(req:NextRequest){
 }
 
 function developmentPlanFromSync(sync:any,status:unknown){
-  const policy='EVERY TRACKED MATCH CAN BANK A GAME ON ANY DNA MISSION THAT CLEARS ITS TARGET. THREE COMPLETED GAMES MASTER THAT STRAND MISSION.';
+  const policy='EXACTLY TWO DNA MISSIONS ARE SELECTED FOR EACH TRACKED GAME. ONLY THOSE TWO CAN BANK A REP, AND EACH RESULT NEEDS TIMESTAMPED EVIDENCE. THREE PROVEN GAMES MASTER A STRAND MISSION.';
   if(String(status)==='ABORTED')return{synced:false,status:'SKIPPED_PARTIAL',changed:false,changes:[],activeFive:[],primary:null,activeCount:0,gamesAnalyzed:0,policy};
   if(sync?.status==='COMPLETE'){
     const activeFive=Array.isArray(sync.activeFive)?sync.activeFive.slice(0,6):[];
