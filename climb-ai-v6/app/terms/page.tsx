@@ -15,7 +15,7 @@ export default function Terms(){return <>
     <h2>Subscriptions</h2><p>Paid tiers, where offered, unlock additional analysis depth and history features. The current price and included features are shown on the <Link className="text-link" href="/pricing">Pricing</Link> page before purchase.</p>
     <h2>Liability</h2><p>{BRAND.name} is provided as is. We are not liable for losses arising from reliance on coaching output or temporary service unavailability. Nothing in these terms removes rights that cannot legally be excluded under applicable consumer law.</p>
     <h2>Riot Games</h2><p>{BRAND.name} is not endorsed by Riot Games and does not reflect the views or opinions of Riot Games or anyone officially involved in producing or managing Riot Games properties. League of Legends and Riot Games are trademarks or registered trademarks of Riot Games, Inc.</p>
-    <h2>Contact</h2><p>Questions about these terms: <b>boxtoboxfootballacademy@gmail.com</b> or <Link className="text-link" href="/support">open Support</Link>.</p>
+    <h2>Contact</h2><p>Questions about these terms: <b>OpClimb@outlook.com</b> or <Link className="text-link" href="/support">open Support</Link>.</p>
     <p className="muted legal-links"><Link className="text-link" href="/privacy">PRIVACY POLICY →</Link> · <Link className="text-link" href="/support">SUPPORT →</Link></p>
   </article></main><PublicFooter compact/>
 </>}
