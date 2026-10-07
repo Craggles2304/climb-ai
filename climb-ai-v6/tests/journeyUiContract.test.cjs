@@ -38,10 +38,10 @@ test('DNA reveal is a mandatory visible step before active mission coaching',()=
   assert.ok(companion.includes("phase:'DNA_REVEAL'"));
 });
 
-test('active mission phase shows exactly two focus missions',()=>{
-  assert.ok(companion.includes('TWO GAME MISSIONS'));
-  assert.ok(companion.includes("'FOCUS '+focusOrder+' OF 2'"));
-  assert.ok(companion.includes('Only these two missions can bank a proven rep'));
+test('active mission phase shows exactly two player-unlocked DNA missions',()=>{
+  assert.ok(companion.includes('TWO UNLOCKED TREES'));
+  assert.ok(companion.includes("'UNLOCKED '+focusOrder+' OF 2'"));
+  assert.ok(companion.includes('Only the two DNA trees you unlocked can bank a proven rep'));
   assert.ok(companionApi.includes('priorityMission'));
   assert.ok(companionApi.includes('gameMissionFocusPair'));
   assert.ok(companionApi.includes('const missionLimit=2'));
