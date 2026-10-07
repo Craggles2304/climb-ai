@@ -19,7 +19,7 @@ type CoachResponse={answer?:string;error?:string;suggestion?:Suggestion;groundin
 type HistoryTurn={role:'user'|'assistant';content:string};
 type CoachTab='ASK'|'MEMORY';
 type CoachMemoryItem={id:string;kind:string;topic:string;summary:string;metric:string|null;role:string|null;dnaDomain:string|null;memoryState:string|null;confidence:string|null;status:string;firstSeenAt:string;lastSeenAt:string;occurrences:number;evidence:any[]};
-type CoachMemoryPayload={ok:boolean;role:string|null;count:number;states:Record<string,number>;memories:CoachMemoryItem[];leagueMind:CoachMemoryItem|null;regression:CoachMemoryItem[];mastered:CoachMemoryItem[];transfer:CoachMemoryItem[]};
+type CoachMemoryPayload={ok:boolean;role:string|null;count:number;states:Record<string,number>;memories:CoachMemoryItem[];leagueMind:CoachMemoryItem|null;regression:CoachMemoryItem[];mastered:CoachMemoryItem[];transfer:CoachMemoryItem[];dna:CoachMemoryItem[]};
 
 const THREAD_KEY='op_climb_coach_thread_v1';
 const MAX_SAVED_MESSAGES=30;
@@ -191,6 +191,21 @@ export default function Coach(){
             <span className="tag gold">{memorySnapshot.count} memories</span>
           </div>
           <p className="muted">{memorySnapshot.leagueMind?.summary||'Your long-term player model is building from repeated mission, retention and transfer evidence.'}</p>
+          {memorySnapshot.dna?.length>0&&<div className="memory-timeline" style={{marginTop:18}}>
+            {memorySnapshot.dna.slice(0,6).map(item=>{
+              const snap=(item.evidence[item.evidence.length-1]??{}) as any;
+              const strength=typeof snap.currentStrength==='number'?snap.currentStrength:null;
+              const trend=snap.strengthTrend==='UP'?'↑':snap.strengthTrend==='DOWN'?'↓':snap.strengthTrend==='STABLE'?'→':'';
+              return <div className="memory-event" key={item.id}>
+                <span>LV {Number(snap.level||1)}</span>
+                <div>
+                  <h3>{String(item.dnaDomain||'DNA').replaceAll('_',' ')}{strength!==null?' · '+strength+' '+trend:''}</h3>
+                  <p>{item.summary}</p>
+                  <small className="muted">{strength!==null?(Number(snap.evidencePoints||0)+' qualifying evidence point'+(Number(snap.evidencePoints||0)===1?'':'s')+' · '+String(snap.confidence||'LOW')+' confidence'):'Current strength is building from qualifying evidence.'}</small>
+                </div>
+              </div>;
+            })}
+          </div>}
           <div className="vf-coach-context-stats" style={{marginTop:16}}>
             <div><span>MASTERED / RETAINED</span><b>{memorySnapshot.mastered.length}</b><small>earned learning that stays remembered</small></div>
             <div><span>REGRESSION WATCH</span><b>{memorySnapshot.regression.length}</b><small>previous learning currently slipping or due</small></div>
