@@ -41,3 +41,32 @@ test('isolated overlay never injects scripts or receives pairing secrets',()=>{
  assert.match(main,/CommandOrControl\+Shift\+O/);assert.match(main,/Alt\+B/);
  assert.match(main,/overlayEnabled:raw\.overlayEnabled===true/);
 });
+
+test('overlay renderer changes from League mission to locked TFT focus without browser injection',async()=>{
+ const vm=require('node:vm');
+ const nodes=new Map(),handlers={};
+ const element=id=>{
+   if(nodes.has(id))return nodes.get(id);
+   const node={textContent:'',hidden:false,style:{},value:'',offsetWidth:390,offsetHeight:300,
+     classList:{toggle(key,on){this[key]=on}},
+     addEventListener:(type,fn)=>{handlers[id+':'+type]=fn},
+     setPointerCapture(){}};
+   nodes.set(id,node);return node;
+ };
+ let stateHandler=null;
+ const gameState={show:true,editing:false,game:'LOL',status:'LEAGUE · RECORDING',
+   layout:{x:0.68,y:0.045,scale:1,opacity:0.96},
+   plan:{champion:'Jinx',role:'ADC',winCondition:'Hold range',mission:'Position safely',avoid:'Do not chase'}};
+ const sandbox={window:{OP_TFT_COACH_MODEL:{mission:()=>({title:'ECONOMY DISCIPLINE',rule:'Plan your spending',cues:['Keep options open','Protect your economy']})},
+   opOverlay:{getState:async()=>gameState,onState:fn=>{stateHandler=fn},saveLayout:async()=>({ok:true}),finishEditing:async()=>({ok:true})},
+   addEventListener:()=>{}},document:{getElementById:element},innerWidth:1920,innerHeight:1080};
+ vm.runInNewContext(fs.readFileSync(path.join(base,'learning-overlay.js'),'utf8'),sandbox,{filename:'learning-overlay.js'});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(element('win').textContent,'Hold range');
+ assert.equal(element('mission').textContent,'Position safely');
+ stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY'});
+ assert.equal(element('title').textContent,'ECONOMY DISCIPLINE');
+ assert.equal(element('win').textContent,'Plan your spending');
+ assert.equal(element('avoid').textContent,'Protect your economy');
+ assert.ok(!element('editor').hidden===false || element('editor').hidden);
+});

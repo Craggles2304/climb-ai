@@ -5,6 +5,13 @@
  let state=null,layout={x:0.68,y:0.045,scale:1,opacity:0.96},drag=null;
  function text(id,value){$(id).textContent=String(value??'')}
  function place(){
+   // Keep the card usable across laptops, display scaling and ultrawide screens.
+   const width=$('overlay').offsetWidth||390;
+   const height=$('overlay').offsetHeight||360;
+   const maxX=Math.max(0.015,Math.min(0.82,(innerWidth-width*layout.scale-12)/innerWidth));
+   const maxY=Math.max(0.015,Math.min(0.75,(innerHeight-height*layout.scale-12)/innerHeight));
+   layout.x=clamp(layout.x,0.015,maxX);
+   layout.y=clamp(layout.y,0.015,maxY);
    $('overlay').style.left=(layout.x*100)+'vw';
    $('overlay').style.top=(layout.y*100)+'vh';
    $('overlay').style.transform='scale('+layout.scale+')';
@@ -50,5 +57,6 @@
  $('opacity').addEventListener('input',()=>{layout.opacity=clamp(Number($('opacity').value)/100,0.68,1);place()});
  for(const id of ['scale','opacity'])$(id).addEventListener('change',()=>void save());
  $('done').addEventListener('click',async()=>{await save();await window.opOverlay.finishEditing()});
+ window.addEventListener('resize',place);
  window.opOverlay.onState(render);void window.opOverlay.getState().then(render);
 })();
