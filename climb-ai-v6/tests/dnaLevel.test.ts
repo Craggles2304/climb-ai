@@ -4,6 +4,8 @@ import type {ILPTask,Role} from '../lib/types';
 import {dnaLevelFromXp,dnaStrandLevel,dnaXpRequiredForLevel} from '../lib/dnaLevel';
 
 const role:Role='ADC';
+const proof=({version:2 as const,state:'BANKED' as const,measurementSource:'DECISION_EVIDENCE' as const,metric:'lead_protection',metricLabel:'Verified decision',observedValue:90,observedValueLabel:'90/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:1,successes:1,misses:0,events:[{atSeconds:620,label:'Decision',detail:'Verified timed action'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'90 >= 85'},reason:'Verified after match'});
+const proven=(id:string)=>({matchId:id,at:'2026-10-01T00:00:00.000Z',source:'TRACKED' as const,adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:proof});
 
 function task(overrides:Partial<ILPTask>&{id:string,dnaDomain:ILPTask['dnaDomain']}):ILPTask{
   return{
@@ -40,14 +42,14 @@ test('DNA levels start at level 1 and have no fixed ceiling',()=>{
 
 test('mastered missions and banked games create persistent strand XP',()=>{
   const rows=[
-    task({id:'dna-strand-adc-laning-1',dnaDomain:'LANING',status:'MASTERED'}),
+    task({id:'dna-strand-adc-laning-1',dnaDomain:'LANING',status:'MASTERED',missionHistory:[proven('old1'),proven('old2'),proven('old3')]}),
     task({
       id:'dna-strand-adc-laning-2',
       dnaDomain:'LANING',
       status:'EVIDENCE_BUILDING',
       missionHistory:[
-        {matchId:'m1',at:'2026-10-01T00:00:00.000Z',adherence:'TRACKED',clearedBar:true,outcome:'CONFIRMED',banksPass:true},
-        {matchId:'m2',at:'2026-10-02T00:00:00.000Z',adherence:'TRACKED',clearedBar:true,outcome:'CONFIRMED',banksPass:true},
+        proven('m1'),
+        proven('m2'),
       ],
     }),
   ];
