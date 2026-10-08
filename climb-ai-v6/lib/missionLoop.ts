@@ -18,7 +18,7 @@ export function missionStage(task:ILPTask):MissionStage{
   const reviewed=history.length;
   const confirmed=verifiedMissionAttempts(task).length;
   const observed=reviewed
-    ?history.filter(a=>a.evidenceV2?.state!=='NOT_OBSERVED').length
+    ?history.filter(a=>Boolean(a.evidenceV2)&&a.evidenceV2?.state!=='NOT_OBSERVED').length
     :Math.max(0,task.gamesObserved??0);
   if(!observed)return'DISCOVER';
   if(!confirmed)return'PRACTISE';
@@ -43,7 +43,7 @@ export function missionSummary(task:ILPTask){
   const hasReviewedBehaviour=history.length>0;
   const confirmed=verifiedMissionAttempts(task).length;
   const attempted=hasReviewedBehaviour
-    ?history.filter(a=>(a.adherence==='YES'||a.adherence==='PARTLY'||a.adherence==='TRACKED')&&a.evidenceV2?.state!=='NOT_OBSERVED').length
+    ?history.filter(a=>(a.adherence==='YES'||a.adherence==='PARTLY'||a.adherence==='TRACKED')&&Boolean(a.evidenceV2)&&a.evidenceV2?.state!=='NOT_OBSERVED').length
     :Math.max(0,task.gamesObserved??0);
   const reviewed=hasReviewedBehaviour?history.length:Math.max(0,task.gamesObserved??0);
   return{

@@ -288,7 +288,7 @@ function missionScoreTarget(task:ILPTask){
 
 function refreshMissionProgress(task:ILPTask){
   const attempts=[...(task.missionHistory??[])].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
-  const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
+  const observedAttempts=attempts.filter(attempt=>Boolean(attempt.evidenceV2)&&attempt.evidenceV2?.state!=='NOT_OBSERVED');
   const required=Math.max(1,Number(task.masteryRequired)||3);
   const confirmed=verifiedMissionAttempts({...task,missionHistory:attempts}).length;
   const progress=Math.round(Math.min(required,confirmed)/required*100);

@@ -1,6 +1,7 @@
 import 'server-only';
 import {XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP,progressFromXp} from '@/lib/accountXp';
 import {verifiedMissionAttempts,verifiedMissionMastery} from '@/lib/verifiedMissionProof';
+import {missionTargetNumber} from '@/lib/proMissionMastery';
 import type {ILPTask} from '@/lib/types';
 export interface ProgressionTransaction{
   id:number;accountId:string|null;missionId:string|null;matchId:string|null;
@@ -19,11 +20,20 @@ async function verifiedXpRows(db:any,userId:string){
   if(error)throw new Error(error.message);
   const rows=(data??[]) as TaskRow[];
   const candidates=[...new Set(rows.flatMap(row=>verifiedMissionAttempts(row.payload??{} as ILPTask).map(a=>a.matchId).filter(id=>uuid.test(id))))];
-  const validMatches=new Map<string,string>();
+  const validMatches=new Map<string,{accountId:string;deaths:number|null}>();
+  const proAnalysis=new Map<string,any>();
+  const matchMetrics=new Map<string,any>();
   for(let i=0;i<candidates.length;i+=100){
-    const result=await db.from('matches').select('id,riot_account_id').eq('user_id',userId).in('id',candidates.slice(i,i+100));
-    if(result.error)throw new Error(result.error.message);
-    for(const match of result.data??[])validMatches.set(String(match.id),String(match.riot_account_id??''));
+    const batch=candidates.slice(i,i+100);
+    const [result,analysisResult,metricsResult]=await Promise.all([
+      db.from('matches').select('id,riot_account_id,deaths').eq('user_id',userId).in('id',batch),
+      db.from('op_match_analysis').select('match_id,analysis').eq('user_id',userId).in('match_id',batch),
+      db.from('match_metrics').select('*').eq('user_id',userId).in('match_id',batch),
+    ]);
+    for(const response of [result,analysisResult,metricsResult])if(response.error)throw new Error(response.error.message);
+    for(const match of result.data??[])validMatches.set(String(match.id),{accountId:String(match.riot_account_id??''),deaths:typeof match.deaths==='number'?match.deaths:null});
+    for(const row of analysisResult.data??[])proAnalysis.set(String(row.match_id),row.analysis);
+    for(const row of metricsResult.data??[])matchMetrics.set(String(row.match_id),row);
   }
   const earned:XpLedgerRow[]=[];const eligibleKeys=new Set<string>();
   for(const row of rows){
@@ -32,7 +42,9 @@ async function verifiedXpRows(db:any,userId:string){
     const accountId=String(row.riot_account_id||task.accountId||'');
     if(!uuid.test(accountId))continue;
     const title=String(task.title||'Mission'),role=task.roleScope&&task.roleScope!=='GLOBAL'?task.roleScope:null;
-    const matches=verifiedMissionAttempts(task).filter(a=>validMatches.get(a.matchId)===accountId);
+    const matches=verifiedMissionAttempts(task).filter(a=>
+      validMatches.get(a.matchId)?.accountId===accountId &&
+      independentEvidenceAgrees(task,a,proAnalysis.get(a.matchId),matchMetrics.get(a.matchId),validMatches.get(a.matchId)?.deaths));
     for(const attempt of matches){
       const key='rep:'+accountId+':'+row.id+':'+attempt.matchId;
       if(eligibleKeys.has(key))continue;eligibleKeys.add(key);
@@ -47,6 +59,29 @@ async function verifiedXpRows(db:any,userId:string){
     }
   }
   return{earned,eligibleKeys};
+}
+/** Independently re-check the persisted match analysis. Client-authored mission flags
+ * or even fabricated V2 receipts are never sufficient to mint server XP.
+ */
+function independentEvidenceAgrees(task:ILPTask,attempt:NonNullable<ILPTask['missionHistory']>[number],
+  analysis:any,metrics:any,deaths:number|null|undefined):boolean{
+  const receipt=attempt.evidenceV2;
+  if(!receipt)return false;
+  if(receipt.measurementSource==='DECISION_EVIDENCE'){
+    const metric=analysis?.metrics?.[task.metric];
+    if(!metric||['UNAVAILABLE','BUILDING'].includes(String(metric.status||'')))return false;
+    const score=Number(metric.score);
+    if(!Number.isFinite(score)||score<missionTargetNumber(task.target))return false;
+    if(Math.abs(score-Number(receipt.observedValue))>0.01)return false;
+    return Array.isArray(metric.evidence)&&metric.evidence.some((event:any)=>
+      typeof event.atSeconds==='number'&&Number.isFinite(event.atSeconds)&&event.atSeconds>=0&&
+      Boolean(String(event.detail||event.label||'').trim()));
+  }
+  // Match metrics must agree exactly with the saved Riot/live result.
+  const field=task.metric.replace(/[A-Z]/g,letter=>'_'+letter.toLowerCase());
+  const recorded=task.metric==='deaths'?deaths:metrics?.[field];
+  return typeof recorded==='number'&&Number.isFinite(recorded)&&
+    Math.abs(recorded-Number(receipt.observedValue))<0.000001;
 }
 /** Automatic after completed post-game evidence sync; idempotent across retries. */
 export async function syncVerifiedXpForUser(db:any,userId:string){
