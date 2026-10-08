@@ -255,7 +255,7 @@ test('premium champ select shows actual allies/enemies revealed and protects unk
 
 test('draft without an opponent stays a preview and never invents enemy info',()=>{
   const {render,registry}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:{localRole:'MIDDLE',localChampionName:'Ahri',localLockedIn:false,allies:[],enemies:[],bans:{allies:[],enemies:[]}},matchup:{status:'READY',source:'CHAMPION_HOVER',provisional:true,champion:'Ahri',role:'MID',opponent:null,plan:plan()},teamPlan:null});
+  render({...base,phase:'CHAMP_SELECT',draft:{localRole:'MIDDLE',localChampionName:'Ahri',localLockedIn:false,allies:[],enemies:[],bans:{allies:[],enemies:[]}},matchup:{status:'READY',source:'CHAMPION_HOVER',provisional:true,champion:'Ahri',role:'MID',opponent:null,plan:{...plan(),you:{name:'Ahri'}}},teamPlan:null});
   assert.equal(registry.get('draftBoardSeen').textContent,'0/5 ENEMIES SEEN');
   assert.equal(registry.get('draftBoardReadBar').style.width,'0%');
   assert.equal(registry.get('draftBoardState').textContent,'HOVERING');
