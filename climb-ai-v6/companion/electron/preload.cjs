@@ -3,6 +3,9 @@ const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('opCompanion',{
   getState:()=>ipcRenderer.invoke('companion:get-state'),
   setDnaRole:(role)=>ipcRenderer.invoke('companion:set-dna-role',role),
+  setOverlayEnabled:(enabled)=>ipcRenderer.invoke('companion:overlay-enabled',enabled),
+  editOverlay:()=>ipcRenderer.invoke('companion:overlay-edit'),
+  setTftFocus:(id)=>ipcRenderer.invoke('companion:set-tft-focus',id),
   unpair:()=>ipcRenderer.invoke('companion:unpair'),
   restart:()=>ipcRenderer.invoke('companion:restart'),
   setAutoStart:(enabled)=>ipcRenderer.invoke('companion:auto-start',enabled),

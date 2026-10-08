@@ -130,6 +130,11 @@ function render(state){
   $('statusPill').classList.toggle('good',tftOwnsStatus||['WAITING','CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase));
   $('statusPill').classList.toggle('bad',['AUTH_ERROR','ERROR','RESTARTING'].includes(phase));
   $('autoStart').classList.toggle('on',Boolean(current.autoStart));
+  if($('overlayToggle')){
+    $('overlayToggle').classList.toggle('on',Boolean(current.overlay?.enabled));
+    $('overlayToggle').setAttribute('aria-pressed',String(Boolean(current.overlay?.enabled)));
+  }
+  if($('overlayEdit'))$('overlayEdit').disabled=!current.overlay?.enabled;
 
   const statusBottom=document.querySelector('.status-bottom');
   if(statusBottom)statusBottom.style.display=['AUTH_ERROR','ERROR','RESTARTING'].includes(phase)?'flex':'none';
@@ -179,6 +184,7 @@ function ensureTftPrep(){
     button.addEventListener('click',()=>{
       tftChosenFocus=focus.id;
       try{localStorage.setItem(tftCoach.STORAGE_KEY,focus.id)}catch{}
+      void window.opCompanion.setTftFocus(focus.id);
       renderTftPrep(true);
     });
     picks.appendChild(button);
@@ -982,6 +988,10 @@ async function boot(){
     window.opCompanion.getUpdateState().catch(()=>null),
   ]);
   updateState=updater;
+  if(appState?.tftFocus&&appState?.tftRecorder?.state!=='RECORDING'){
+    tftChosenFocus=tftCoach.normalize(appState.tftFocus);
+    try{localStorage.setItem(tftCoach.STORAGE_KEY,tftChosenFocus)}catch{}
+  }
   render(appState);
   renderUpdate(updateState,appState?.phase);
   window.opCompanion.onState(next=>{
@@ -996,6 +1006,8 @@ bind('openClimb','click',()=>window.opCompanion.openClimb());
 bind('restart','click',()=>window.opCompanion.restart());
 bind('unpair','click',async()=>{if(confirm('Unpair this PC from OP CLIMB? You can reconnect it from the Live Companion page.'))await window.opCompanion.unpair()});
 bind('autoStart','click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
+bind('overlayToggle','click',async()=>{await window.opCompanion.setOverlayEnabled(!current?.overlay?.enabled)});
+bind('overlayEdit','click',()=>window.opCompanion.editOverlay());
 bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());
 bind('installUpdate','click',async()=>{const result=await window.opCompanion.installUpdate(current?.phase||'');if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error});

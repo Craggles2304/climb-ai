@@ -1,0 +1,18 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'none'; connect-src 'none'; object-src 'none'; base-uri 'none'">
+<title>OP CLIMB | In-game learning</title><link rel="stylesheet" href="learning-overlay.css"></head>
+<body><main id="overlay" class="hud" aria-label="OP CLIMB coaching overlay">
+<header id="handle"><b>OP<span>CLIMB</span></b><span id="status">● RECORDING</span></header>
+<div class="sub"><span id="game">LEAGUE</span><span>YOUR GAME PLAN</span></div>
+<h1 id="title">YOUR DEVELOPMENT MISSION</h1>
+<section class="win"><small id="winLabel">FROZEN WIN CONDITION</small><strong id="win">Preparing your locked game plan.</strong></section>
+<section class="mission"><small id="missionLabel">LEARNING MISSION</small><p id="mission">Keep your learning mission from before the game.</p></section>
+<section class="avoid"><small id="avoidLabel">AVOID</small><p id="avoid">Don't over-commit without a reason.</p></section>
+<footer><span class="rec">● REC</span><span>CTRL+SHIFT+M · MARK MOMENT</span></footer>
+<p class="boundary">FROZEN PRE-GAME PLAN · POST-GAME EVIDENCE</p>
+<div id="editor" class="editor" hidden><strong>MOVE & CUSTOMISE</strong><p>Drag the header. Alt+B exits edit mode.</p>
+<label>SIZE<input id="scale" type="range" min="75" max="135" value="100"></label>
+<label>OPACITY<input id="opacity" type="range" min="68" max="100" value="96"></label>
+<button id="done" type="button">SAVE LAYOUT</button></div>
+</main><script src="tft-coach-model.js"></script><script src="learning-overlay.js"></script></body></html>
