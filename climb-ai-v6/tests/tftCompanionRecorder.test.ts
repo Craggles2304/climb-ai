@@ -79,3 +79,22 @@ test('TFT wire schema accepts real recorded stages instead of rejecting every PO
   assert.equal(tftEnvelopeSchema.safeParse({...envelope,point:{...point,round:'not-a-round'}}).success,false);
   assert.equal(tftEnvelopeSchema.safeParse({...envelope,point:{...point,gold:-50}}).success,false);
 });
+
+
+test('native recorder queues failed uploads in original order and retries automatically',()=>{
+  const {readFileSync}=require('node:fs');
+  const source=readFileSync('companion/electron/tft-recorder.cjs','utf8');
+  assert.match(source,/if\(!await flush\(\)\)\{queueEvent\(body\);return null\}/);
+  assert.match(source,/rows\.slice\(-3000\)/);
+  assert.match(source,/error\?\.status===400\|\|error\?\.status===404/);
+  assert.match(source,/lastEndedMatch===body\.pseudoMatchId/);
+  assert.match(source,/pointCounter\+' checkpoints captured/);
+});
+
+test('post-game telemetry cannot show a successful review for an empty capture',()=>{
+  const {readFileSync}=require('node:fs');
+  const source=readFileSync('lib/server/tftTelemetryRepository.ts','utf8');
+  assert.match(source,/status:timeline\.points\.length\?'COMPLETE':'ABORTED'/);
+  assert.match(source,/evidenceReady:timeline\.points\.length>0/);
+  assert.match(source,/quality:timeline\.points\.length\?'RECORDED':'NO_EVIDENCE'/);
+});

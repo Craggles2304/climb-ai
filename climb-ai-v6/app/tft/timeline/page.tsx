@@ -72,7 +72,7 @@ export default function TftTimelinePage(){
         </div>
       </div>
       <div className="tft-hero-side">
-        <div className="tft-hero-signal primary"><span>RECORDER</span><strong>{loading?'CHECKING':source==='AUTO'?'GAME READY':'WAITING'}</strong></div>
+        <div className="tft-hero-signal primary"><span>RECORDER</span><strong>{loading?'CHECKING':session?.status==='ABORTED'?'CAPTURE FAILED':source==='AUTO'?'GAME READY':'WAITING'}</strong></div>
         <div className="tft-hero-signal"><span>CHECKPOINTS</span><strong>{timeline?.points.length??0}</strong></div>
         <div className="tft-hero-signal"><span>PROVEN FINDINGS</span><strong>{findings.filter(f=>f.status==='OBSERVED').length}</strong></div>
       </div>
@@ -91,7 +91,13 @@ export default function TftTimelinePage(){
 
     {error&&<section className="glass card" style={{padding:16,marginBottom:14}}><div className="eyebrow">RECORDER STATUS</div><b>{error}</b></section>}
 
-    {timeline?<>
+    {session?.status==='ABORTED'&&<section className="glass card" style={{padding:20,marginBottom:14,borderColor:'#c86e4f'}}>
+      <div className="eyebrow">TFT CAPTURE DIAGNOSTIC</div>
+      <h2>No usable checkpoints were received.</h2>
+      <p>This game was detected but its stage and economy evidence did not reach OP CLIMB. No decisions have been graded. Install Companion v0.9.6 or newer, then play a new match to verify automatic recording.</p>
+      <p className="muted">If the next game also shows zero checkpoints, open Companion diagnostics and check the TFT recording state and local upload queue.</p>
+    </section>}
+    {timeline?.points.length?<>
       <section className="tft-timeline-card">
         <div className="tft-timeline-head">
           <div>
@@ -133,8 +139,8 @@ export default function TftTimelinePage(){
     </>:<section className="tft-focus-grid">
       <article className="tft-focus">
         <span>EVIDENCE STATUS</span>
-        <h2>WAITING FOR YOUR NEXT TFT GAME.</h2>
-        <p>Run the normal OP CLIMB Companion and play TFT normally. It detects the TFT game window itself, records silently, and your review appears here after the match without a separate app or manual JSON import.</p>
+        <h2>{session?.status==='ABORTED'?'YOUR LAST RECORDING DID NOT CAPTURE EVIDENCE.':'WAITING FOR YOUR NEXT TFT GAME.'}</h2>
+        <p>{session?.status==='ABORTED'?'The Companion detected the match, but zero stage/economy checkpoints were saved. No conclusions can be drawn from this recording. Update the Companion and retry.':'Run the normal OP CLIMB Companion and play TFT normally. It detects the TFT game window itself, records silently, and your review appears here after the match without a separate app or manual JSON import.'}</p>
         <div className="tft-focus-rule"><small>WHAT HAPPENS NEXT</small><b>Play → record → review → update TFT DNA → carry one mission into the next game.</b></div>
       </article>
       <aside className="tft-grade"><span>STATUS</span><strong>—</strong><small>NO COMPLETED TIMELINE<br/>NOT OBSERVED</small></aside>

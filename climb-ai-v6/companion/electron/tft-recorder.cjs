@@ -580,6 +580,9 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
           if(missHits>=8)finish('TFT HUD no longer detected');
         }
       }else status('ARMED','OP CLIMB TFT recorder is ready. Open TFT and play normally.');
+    }catch(error){
+      log('TFT capture retry after error: '+(error?.message||error),'error');
+      if(active)status('RECORDING','TFT capture temporarily unavailable. OP CLIMB will retry automatically.',{pseudoMatchId,round,pointCount:pointCounter});
     }finally{
       inFlight=false;
       if(!stopped)pollTimer=setTimeout(()=>void poll(),POLL_MS);
