@@ -572,7 +572,7 @@ function renderPregame(matchup,teamPlan,draft,visible){
   setHidden(box,!visible);
   if(!visible)return;
 
-  setCoachLevel(teamPlan?.coachLevel);
+  setCoachLevel(teamPlan?.coachLevel,current);
   renderDraftBoard(draft,matchup);
 
   const loading=matchup?.status==='LOADING';
@@ -668,8 +668,9 @@ function renderDraftBoard(draft,matchup){
 function renderDraftSide(id,picks,localCell,ours){
   const root=$(id);if(!root)return;
   root.replaceChildren();
-  const values=picks.length?picks:Array.from({length:5},()=>null);
-  values.slice(0,5).forEach((pick,index)=>{
+  // Display all five slots even while only one or two players are revealed.
+  const values=Array.from({length:5},(_,index)=>picks[index]||null);
+  values.forEach((pick,index)=>{
     const row=document.createElement('div');
     row.style.cssText='display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.018)';
     const localPick=ours&&pick?.cellId!=null&&localCell!=null&&Number(pick.cellId)===Number(localCell);

@@ -244,7 +244,8 @@ test('premium champ select shows actual allies/enemies revealed and protects unk
   assert.equal(registry.get('draftEnemyCount').textContent,'2 / 5 SEEN');
   assert.equal(registry.get('draftBoardSeen').textContent,'2/5 ENEMIES SEEN');
   assert.equal(registry.get('draftBoardReadBar').style.width,'40%');
-  assert.equal(registry.get('draftTheirPicks').children.length,2);
+  assert.equal(registry.get('draftTheirPicks').children.length,5);
+  assert.equal(registry.get('draftTheirPicks').children.filter(x=>x.className.includes('draft-pending')).length,3);
   assert.equal(registry.get('draftOurPicks').children.length,5);
   assert.equal(registry.get('draftOurPicks').children[3].className.includes('es-you'),true);
   assert.equal(registry.get('draftOurPicks').children[3].className.includes('es-locked'),true);
@@ -272,4 +273,11 @@ test('premium draft uses responsive visual system while keeping the current data
   assert.match(script,/id="draftOurPicks"/);
   assert.match(script,/id="draftTheirPicks"/);
   assert.match(script,/id="simplePregameMission"/);
+});
+
+
+test('champ-select coach badge respects paid membership rather than rank calibration',()=>{
+  const {render,badge}=makeContext();
+  render({...base,phase:'CHAMP_SELECT',draft:fullDraft(),matchup:matchup(),teamPlan:{...teamPlan(),strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}}});
+  assert.equal(badge.textContent,'PRO COACH');
 });
