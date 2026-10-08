@@ -29,7 +29,7 @@ const rendererSource=fs.readFileSync(path.join(electron,'renderer.js'),'utf8');
 class FakeElement{
   constructor(registry,tag='div'){
     this.registry=registry;this.tagName=tag.toUpperCase();
-    this.children=[];this.style={};this.dataset={};this._id='';this._html='';
+    this.children=[];this.style={setProperty(name,value){this[name]=value}};this.dataset={};this._id='';this._html='';
     this.textContent='';this.value='';this.disabled=false;this.className='';
     const classes=new Set();
     this.classList={
@@ -84,6 +84,8 @@ function makeContext(){
   const sandbox={document,console,confirm:()=>false,setTimeout,clearTimeout,Date,opCompanion:bridge};
   sandbox.window=sandbox;
   const context=vm.createContext(sandbox);
+  // The real desktop loads TFT Coach Model before renderer.js; mirror that order.
+  vm.runInContext(fs.readFileSync(path.join(electron,'tft-coach-model.js'),'utf8'),context,{filename:'tft-coach-model.js'});
   vm.runInContext(rendererSource,context,{filename:'renderer.js'});
   return {context,registry,badge,render:state=>vm.runInContext('render',context)(state)};
 }
