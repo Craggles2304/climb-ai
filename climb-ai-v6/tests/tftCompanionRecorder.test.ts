@@ -68,3 +68,14 @@ test('native TFT recorder uses LCU only to distinguish TFT from other Riot gamef
   assert.equal(recorder.classifyTftSession({}),'UNKNOWN');
   assert.equal(recorder.roundValue('PVP Stage 6-3'),'6-3');
 });
+
+
+test('TFT wire schema accepts real recorded stages instead of rejecting every POINT',async()=>{
+  const {tftEnvelopeSchema}=await import('../lib/tft/ingestSchema');
+  const point={clientPointId:'4-2:CHECKPOINT:12',at:new Date().toISOString(),round:'4-2',eventKind:'CHECKPOINT' as const,gold:48,level:7,xp:18,shopRefreshes:2,purchases:1,shop:[{slot:'slot_1',name:'Ahri',confidence:92}]};
+  const envelope={game:'TFT' as const,action:'POINT' as const,pseudoMatchId:'native-test-123',point};
+  assert.equal(tftEnvelopeSchema.safeParse(envelope).success,true);
+  assert.equal(tftEnvelopeSchema.safeParse({...envelope,action:'END',endedAt:new Date().toISOString()}).success,true);
+  assert.equal(tftEnvelopeSchema.safeParse({...envelope,point:{...point,round:'not-a-round'}}).success,false);
+  assert.equal(tftEnvelopeSchema.safeParse({...envelope,point:{...point,gold:-50}}).success,false);
+});
