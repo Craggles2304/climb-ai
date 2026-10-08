@@ -29,6 +29,8 @@
   let state=null,lastEventId=null,lastDeaths=null,alertTimer=null;
 
   function missionFor(next){
+    const frozen=next?.teamPlan?.climbMission;
+    if(frozen?.status==='READY')return {...frozen,source:'frozen'};
     const missions=Array.isArray(next?.playerHome?.missions)?next.playerHome.missions:[];
     const matchRole=role(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role);
     const homeRole=role(next?.playerHome?.selectedRole);
@@ -36,11 +38,12 @@
       ?missions.filter(item=>item&&item.title).sort((a,b)=>(Number(a.focusOrder)||99)-(Number(b.focusOrder)||99))[0]
       :null;
     if(dna)return {...dna,source:'dna'};
-    const frozen=next?.teamPlan?.climbMission;
-    if(frozen?.status==='READY')return {...frozen,source:'frozen'};
     return null;
   }
   function metricFor(mission){
+    const behaviour=clean(mission?.behaviourKey).toLowerCase();
+    const behaviourMap={fight_selection:'fight_selection',death_recovery:'historical_recovery',lead_protection:'lead_protection',reset_discipline:'reset_quality',objective_readiness:'objective_readiness',farm_vs_setup:'farm_fight_tradeoff',threat_adaptation:'opponent_adaptation',carry_preservation:'carry_preservation',power_spike_conversion:'power_spike_conversion',survival_value:'survival_value'};
+    if(behaviourMap[behaviour])return behaviourMap[behaviour];
     const key=clean(mission?.metric);if(key)return key;
     const title=clean(mission?.title).toLowerCase();
     if(title.includes('carry alive'))return'carry_preservation';
@@ -75,6 +78,10 @@
     }
     const detailBody=$('opLiveMissionDetailBody');
     [...body.children].forEach(node=>{if(node!==live&&node!==details)detailBody.appendChild(node)});
+    if(!$('opmDetailSummary')){
+      const summary=document.createElement('div');summary.id='opmDetailSummary';summary.className='opm-detail-summary';
+      detailBody.prepend(summary);
+    }
     return live;
   }
 
@@ -108,19 +115,24 @@
     if(!document.body.classList.contains('op-remember-live')){lastDeaths=null;lastEventId=null;return}
     if(!ensure())return;
     const mission=missionFor(next),metric=metricFor(mission),rule=rules[metric];
-    const baseline=next?.playerHome?.baseline?.ready===false;
-    const title=baseline?'BASELINE GAME':names[metric]||short(mission?.title||'PLAY THE FROZEN PLAN',32);
-    const action=baseline?'Play normally. Build your baseline.':rule?.[0]||short(mission?.gameRule||mission?.action||mission?.cue||'Follow the frozen match plan.',72);
+    const job=clean(next?.teamPlan?.yourJob);
+    const jobParts=job.split(/\s*(?:→|->)\s*/).filter(Boolean);
+    const baseline=next?.playerHome?.baseline?.ready===false&&!mission&&!job;
+    const protectCarry=/\bcarry\b|\bkeep\s+\w+\s+playable\b/i.test(job);
+    const title=baseline?'BASELINE GAME':names[metric]||(mission?short(mission.title,32):protectCarry?'CARRY PRESERVATION':job?'MATCH PLAN':'PLAY YOUR GAME');
+    const action=baseline?'Play normally. Build your baseline.':mission?(rule?.[0]||short(mission.action||mission.gameRule||mission.cue,72)):jobParts.length>1?short(jobParts[1],72):short(jobParts[0]||'Follow the frozen match plan.',72);
     put('opmDomain',clean(mission?.domain||mission?.dnaDomain||'GAME DNA').replace(/_/g,' '));
     put('opmRole',clean(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role||''));
     put('opmTitle',title);put('opmAction',action);
-    put('opmCueOne',rule?.[1]||'Watch the next decision');
-    put('opmCueTwo',rule?.[2]||'Keep your safe position');
+    put('opmCueOne',rule?.[1]||short(jobParts[0]||'Watch the next decision',38));
+    put('opmCueTwo',rule?.[2]||short(jobParts[2]||'Keep your safe position',38));
     const [first,second]=metricSet(metric,next?.liveHud);
     put('opmMetricOneLabel',first[0]);put('opmMetricOne',first[1]);
     put('opmMetricTwoLabel',second[0]);put('opmMetricTwo',second[1]);
-    put('opmMetricThreeLabel','Proven games');
-    put('opmMetricThree',mission?.source==='dna'?`${score(mission.confirmed)}/${score(mission.required||3)}`:'—');
+    put('opmMetricThreeLabel','Game time');
+    const seconds=Number(next?.liveHud?.gameTime);
+    put('opmMetricThree',Number.isFinite(seconds)&&seconds>=0?`${Math.floor(seconds/60)}:${String(Math.floor(seconds%60)).padStart(2,'0')}`:'—');
+    put('opmDetailSummary',mission?.whyThisGame?short(mission.whyThisGame,150):job?short(job,150):'Play normally while OP CLIMB builds your baseline.');
     checkEvents(next?.liveHud);
   }
   const observer=new MutationObserver(()=>{if(document.body.classList.contains('op-remember-live'))render(state)});
