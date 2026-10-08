@@ -257,7 +257,7 @@ async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:stri
   const tier=String(riotResult?.data?.rank_tier??'').trim();
   const division=String(riotResult?.data?.rank_division??'').trim();
   if(tier)return`${tier}${division?` ${division}`:''}`;
-  return String(profileResult?.data?.rank||'Silver');
+  return String(profileResult?.data?.rank||'UNRANKED');
 }
 
 function adaptPlanForRank(plan:any,depth:number,visiblePoints:number){

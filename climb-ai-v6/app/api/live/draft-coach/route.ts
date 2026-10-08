@@ -239,7 +239,7 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
   const [profileResult,riotResult,taskResult,learningResult,historyResult]=await Promise.all([profilePromise,riotPromise,taskPromise,learningPromise,historyPromise]);
   const tier=clean(riotResult?.data?.rank_tier);
   const division=clean(riotResult?.data?.rank_division);
-  const rank=tier?(tier+(division?' '+division:'')):(clean(profileResult?.data?.rank)||'Silver');
+  const rank=tier?(tier+(division?' '+division:'')):(clean(profileResult?.data?.rank)||'UNRANKED');
   const tasks=(taskResult?.data??[]).map((row:any)=>row?.payload??{}).filter((task:any)=>{
     const status=clean(task?.status||'ACTIVE').toUpperCase();
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);

@@ -334,14 +334,14 @@ async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promis
 
 async function resolvePlayerRank(userId:string,riotAccountId:string|null){
   const db=getSupabaseAdmin();
-  if(!db)return'Silver';
+  if(!db)return'UNRANKED';
   const profilePromise=db.from('profiles').select('rank').eq('id',userId).maybeSingle();
   const riotPromise=riotAccountId?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',riotAccountId).maybeSingle():Promise.resolve({data:null,error:null});
   const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
   const tier=String(riotResult?.data?.rank_tier??'').trim();
   const division=String(riotResult?.data?.rank_division??'').trim();
   if(tier)return`${tier}${division?` ${division}`:''}`;
-  return String(profileResult?.data?.rank||'Silver');
+  return String(profileResult?.data?.rank||'UNRANKED');
 }
 
 const TIER_ORDER=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'];

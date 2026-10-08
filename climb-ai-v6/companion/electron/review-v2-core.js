@@ -731,7 +731,9 @@
 
     const match=review.match||{};
     const bits=[match.champion,match.role,match.kda?`${match.kda} KDA`:null,Number.isFinite(match.csPerMin)?`${match.csPerMin} CS/min`:null].filter(Boolean);
-    setText('op332Tag',`${review.coachLevel?.tier||'OP'} COACH · ${review.partial?'PARTIAL':'POST-GAME'} · 3 / 3 / 2`);
+    const planTier=clean(state?.teamPlan?.strategyAccess?.tier||state?.playerHome?.tier).toUpperCase();
+    const coachBadge=['FREE','PLUS','PRO'].includes(planTier)?planTier+' COACH':'OP CLIMB COACH';
+    setText('op332Tag',`${coachBadge} · ${review.partial?'PARTIAL':'POST-GAME'} · 3 / 3 / 2`);
     setText('op332Match',bits.join(' · '),'Recorded match review');
 
     const baseline=reviewBaseline(state,review);
