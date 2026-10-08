@@ -3,6 +3,7 @@
 import {useEffect,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
+import {TrackView} from '@/components/TrackView';
 import {useAccount} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {UpgradeButton} from '@/components/BillingActions';
@@ -94,7 +95,7 @@ export default function ClimbPlanPage(){
   const repeated=plan.patterns.filter(item=>item.repeated);
   const currentDomain=plan.now?.task?.dnaDomain??lowest?.domain??'CONSISTENCY';
 
-  return <AppShell>
+  return <AppShell><TrackView event="career_viewed"/>
     <main className="climb-plan-page">
       <header id="where-you-are" className="climb-plan-hero climb-plan-anchor" style={strandStyle(currentDomain)}>
         <div className="climb-plan-hero-copy">

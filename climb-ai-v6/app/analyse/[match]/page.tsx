@@ -15,6 +15,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import type {Match} from '@/lib/types';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
+import {verifiedMissionRep,verifiedMissionMastery} from '@/lib/verifiedMissionProof';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAIN_COLORS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
@@ -110,7 +111,7 @@ export default function Analysis(){
   const nextAction=plainNextAction(report.primary.category,match.opponent);
   const overviewStrength=strengths[0];
   const overviewProblem=plainProblems[0];
-  const passedMissionCount=missionResults.filter(item=>item.attempt.banksPass).length;
+  const passedMissionCount=missionResults.filter(item=>verifiedMissionRep(item.task,item.attempt)).length;
 
   return <AppShell>
     <PageHead title={`${match.champion} vs ${match.opponent||'Unknown'}`} subtitle={`${match.result} · ${match.rank} · ${detail.tier} REVIEW ${detail.depth}/10${detail.depth>=3?` · ${Math.floor(match.durationSeconds/60)}:${String(match.durationSeconds%60).padStart(2,'0')}`:''} · ${section.toUpperCase()}`}/>
@@ -279,14 +280,15 @@ export default function Analysis(){
       <div className="ar-mission-update-grid">{missionResults.map(({task,attempt})=>{
         const plain=plainLanguageFocus(task);
         const latest=(task.missionHistory??[]).at(-1)?.matchId===id;
-        const mastered=task.status==='MASTERED'&&latest&&attempt.banksPass;
-        const xp=attempt.banksPass?XP_PER_PROVEN_REP+(mastered?XP_PER_MISSION_MASTERY:0):0;
+        const passed=verifiedMissionRep(task,attempt);
+        const mastered=latest&&passed&&verifiedMissionMastery(task);
+        const xp=passed?XP_PER_PROVEN_REP+(mastered?XP_PER_MISSION_MASTERY:0):0;
         return <article key={task.id}>
-          <span>{attempt.banksPass?'PROVEN GAME':'REVIEWED GAME'}</span>
+          <span>{passed?'PROVEN GAME':'REVIEWED GAME'}</span>
           <b>{plain.name}</b>
           <MissionMeasurementBadge metric={task.metric} compact/>
-          <strong className={attempt.banksPass?'good':'watch'}>{mastered?'MASTERED ✓':attempt.banksPass?'PASS ✓':'NOT BANKED'}</strong>
-          <small>{attempt.banksPass?('+'+xp+' XP · '+(mastered?'mission completed':'proven game banked')):'The metric did not clear the proof bar this game.'}</small>
+          <strong className={passed?'good':'watch'}>{mastered?'MASTERED ✓':passed?'PASS ✓':'NOT BANKED'}</strong>
+          <small>{passed?('+'+xp+' XP · '+(mastered?'mission completed':'proven game banked')):'The metric did not clear the proof bar this game.'}</small>
         </article>;
       })}</div>
     </section>}

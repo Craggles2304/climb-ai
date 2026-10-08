@@ -11,6 +11,7 @@ import {coachingLevelFor} from '@/lib/coachingLevel';
 import {BetaReporter} from './BetaReporter';
 import {useLearningPlan} from './LearningPlanContext';
 import {accountProgress,type AccountProgress} from '@/lib/accountXp';
+import {verifiedMissionRep} from '@/lib/verifiedMissionProof';
 import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
@@ -326,7 +327,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-learning-mastered">◆ 3/3 BASELINE COMPLETE · DNA UNLOCKED</div>
       </div>:<div className="op-learning-receipt-body">
         <h2>{latestLearning.length
-          ?latestLearning.some(item=>item.attempt.banksPass)
+          ?latestLearning.some(item=>verifiedMissionRep(item.task,item.attempt))
             ?'That game moved your Climb.'
             :'Game reviewed. Keep training the same habit.'
           :'Your game is in. OP CLIMB is measuring it now.'}</h2>
@@ -334,7 +335,7 @@ export function AppShell({children}:{children:React.ReactNode}){
           {latestLearning.slice(0,3).map(({task,attempt,summary})=><div key={task.id} style={({ '--strand-color':DNA_DOMAIN_COLORS[task.dnaDomain]} as CSSProperties)}>
             <span>{DNA_DOMAIN_LABELS[task.dnaDomain]}</span>
             <b>{plainLanguageFocus(task).name}</b>
-            <strong className={attempt.banksPass?'good':'watch'}>{attempt.banksPass?'✓ PROVEN GAME':'○ NOT PROVEN'}</strong>
+            <strong className={verifiedMissionRep(task,attempt)?'good':'watch'}>{verifiedMissionRep(task,attempt)?'✓ PROVEN GAME':'○ NOT PROVEN'}</strong>
             <small>{summary.confirmed}/{summary.required} proven games · {learningStageLabel(summary.stage)}</small>
           </div>)}
         </div>:<p>Match data has synced. Mission evidence can take a short moment to finish processing.</p>}

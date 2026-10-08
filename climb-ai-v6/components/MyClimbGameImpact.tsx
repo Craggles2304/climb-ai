@@ -7,6 +7,7 @@ import type {StrengthEvidence} from '@/lib/positiveEvidence';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
+import {verifiedMissionRep} from '@/lib/verifiedMissionProof';
 
 type LearningRow={
   task:ILPTask;
@@ -34,7 +35,7 @@ export function MyClimbGameImpact({
   const baselineReady=baselineGames>=baselineRequired;
   if(!baselineReady)return <BaselineImpact match={match} games={baselineGames} required={baselineRequired} strengths={strengths}/>;
   if(!match)return <section className="mc-impact"><div className="panel panel-padding"><div className="eyebrow">MY CLIMB</div><h2>Waiting for your first tracked game.</h2><p className="muted">OP CLIMB needs a completed match before it can show last-game impact.</p></div></section>;
-  const primaryLearning=learning.find(item=>item.attempt.banksPass)??learning[0]??null;
+  const primaryLearning=learning.find(item=>verifiedMissionRep(item.task,item.attempt))??learning[0]??null;
   const primaryTask=primaryLearning?.task??activeTasks[0]??null;
   const primarySummary=primaryLearning?.summary??(primaryTask?missionSummary(primaryTask):null);
   const primaryAttempt=primaryLearning?.attempt??null;
@@ -42,17 +43,17 @@ export function MyClimbGameImpact({
   const domain=(primaryTask?.dnaDomain??primaryStrength?.dnaDomain??'CONSISTENCY') as DnaDomain;
   const required=Math.max(1,primarySummary?.required??3);
   const afterReps=primarySummary?.confirmed??0;
-  const beforeReps=Math.max(0,afterReps-(primaryAttempt?.banksPass?1:0));
+  const beforeReps=Math.max(0,afterReps-((primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt))?1:0));
   const afterProgress=Math.round(Math.min(required,afterReps)/required*100);
-  const repDelta=primaryAttempt?.banksPass?Math.max(1,Math.round(100/required)):0;
+  const repDelta=(primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt))?Math.max(1,Math.round(100/required)):0;
   const beforeProgress=Math.max(0,afterProgress-repDelta);
-  const dnaMoved=Boolean(primaryAttempt?.banksPass);
+  const dnaMoved=Boolean((primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt)));
   const keyMoments=buildKeyMoments(match,strengths).slice(0,3);
   const dnaRows=DNA_DOMAINS.map(dnaDomain=>{
     const task=activeTasks.find(row=>row.dnaDomain===dnaDomain);
     const summary=task?missionSummary(task):null;
     const progress=summary?Math.round(Math.min(summary.required,summary.confirmed)/Math.max(1,summary.required)*100):0;
-    const touched=learning.some(item=>item.task.dnaDomain===dnaDomain&&item.attempt.banksPass);
+    const touched=learning.some(item=>item.task.dnaDomain===dnaDomain&&verifiedMissionRep(item.task,item.attempt));
     return{domain:dnaDomain,progress,touched};
   });
 
@@ -77,7 +78,7 @@ export function MyClimbGameImpact({
         <span>{primaryStrength?.subskill||clean(primaryTask?.category||'LEARNING')}</span>
         <small>COMPLETED GAMES</small>
         <strong>{beforeReps}/{required} <i>→</i> <em>{afterReps}/{required}</em></strong>
-        <b>{primaryAttempt?.banksPass?'✓ GAME BANKED':'○ NO GAME BANKED'}</b>
+        <b>{(primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt))?'✓ GAME BANKED':'○ NO GAME BANKED'}</b>
       </article>
       <article className="is-strength" style={styleFor(primaryStrength?.dnaDomain??domain)}>
         <span>STRENGTH CONFIRMED</span>
@@ -95,7 +96,7 @@ export function MyClimbGameImpact({
 
     <div className="mc-impact-grid">
       <article className="mc-change panel" style={styleFor(primaryStrength?.dnaDomain??domain)}>
-        <div className="mc-card-head"><div><span>WHAT CHANGED THIS GAME</span><h2>{primaryAttempt?.banksPass?'This game moved your Climb.':'This game added evidence.'}</h2></div>{primaryAttempt?.banksPass&&<b>PROGRESS ✓</b>}</div>
+        <div className="mc-card-head"><div><span>WHAT CHANGED THIS GAME</span><h2>{(primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt))?'This game moved your Climb.':'This game added evidence.'}</h2></div>{(primaryTask&&verifiedMissionRep(primaryTask,primaryAttempt))&&<b>PROGRESS ✓</b>}</div>
         {primaryStrength?<div className="mc-change-main">
           <div className="mc-strength-mark">✦</div>
           <div>
