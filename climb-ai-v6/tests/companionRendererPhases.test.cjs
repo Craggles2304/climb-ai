@@ -202,3 +202,36 @@ test('rank-calibrated SILVER never masquerades as paid plan or persists on TFT/h
   render({...base,phase:'WAITING',tftRecorder:{state:'ARMED'},playerHome:null});
   assert.equal(badge.textContent,'OP CLIMB COACH');
 });
+
+
+test('premium Companion Home displays genuine baseline, rank and a primary development action',()=>{
+  const {render,registry}=makeContext();
+  const home={ok:true,
+    player:{gameName:'Player123',tagline:'EUW',rank:'PLATINUM III',role:'ADC'},
+    tier:'PRO',tierView:{label:'PLAYER MEMORY'},
+    baseline:{ready:false,games:1,required:3},journey:{phase:'BASELINE',status:'BASELINE 1/3',title:'Play baseline game 2.',body:'Play normally.',progress:'1/3'},
+    roleProfiles:[],dna:[],missions:[],selectedRole:'ADC',primaryRole:'ADC',
+  };
+  assert.doesNotThrow(()=>render({...base,phase:'WAITING',playerHome:home}));
+  const val=id=>registry.get(id)?.textContent;
+  assert.equal(val('playerHomeName'),'Player123 #EUW');
+  assert.equal(val('playerHomeTier'),'PRO');
+  assert.equal(val('playerHomeRank'),'PLATINUM III · ADC');
+  assert.equal(val('playerHomeScoreValue'),'1/3');
+  assert.equal(val('playerHomeScoreKind'),'BASELINE');
+  assert.equal(val('playerHomeSpotlightTitle'),'BUILD YOUR BASELINE');
+  assert.equal(val('playerHomeNextButton'),'OPEN MY CLIMB ↗');
+});
+
+test('premium Companion Home uses real mission repetitions, not time-played XP',()=>{
+  const source=fs.readFileSync(path.join(electron,'renderer.js'),'utf8');
+  const style=fs.readFileSync(path.join(electron,'premium-home.css'),'utf8');
+  const html=fs.readFileSync(path.join(electron,'index.html'),'utf8');
+  assert.match(source,/nextMission\?\.confirmed/);
+  assert.match(source,/nextMission\?\.required/);
+  assert.match(source,/playerHomeOrbitFill/);
+  assert.match(html,/premium-home\.css/);
+  assert.match(style,/prefers-reduced-motion/);
+  assert.match(style,/\.player-home-hero/);
+  assert.match(style,/\.player-home-next-button/);
+});
