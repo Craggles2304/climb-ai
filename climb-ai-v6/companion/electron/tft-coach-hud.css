@@ -1,0 +1,44 @@
+/* TFT coach: concise live learning HUD, never adaptive in-game advice. */
+.tft-coach-prep,.tft-coach-live{position:relative;overflow:hidden;padding:23px!important;background:radial-gradient(circle at 92% 0,rgba(83,137,255,.15),transparent 40%),linear-gradient(125deg,#111a25,#080d12 80%)!important;border:1px solid rgba(125,170,255,.24)!important;border-radius:16px!important;color:#edf3fb}
+.tft-coach-prep:before,.tft-coach-live:before{content:'';position:absolute;inset:0 auto 0 0;width:4px;background:#89f5e1}
+.tft-coach-head{display:flex;justify-content:space-between;gap:14px;align-items:center;margin-bottom:18px}
+.tft-coach-kicker{color:#8be8da;font:800 11px/1.3 'IBM Plex Mono',monospace;letter-spacing:.13em}
+.tft-coach-badge{border:1px solid rgba(137,245,225,.45);border-radius:7px;color:#a6ffe9;padding:9px 12px;font:800 10px/1 'IBM Plex Mono',monospace;letter-spacing:.1em;white-space:nowrap}
+.tft-coach-prep h2,.tft-coach-live h2{font:800 clamp(28px,4.5vw,54px)/1 'Barlow Condensed',Impact,sans-serif!important;letter-spacing:.012em!important;color:#fff!important;margin:9px 0 7px!important}
+.tft-coach-intro{color:#aebbc9!important;font-size:13px!important;margin:0 0 18px!important}
+.tft-coach-picks{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.tft-coach-pick{min-height:68px;text-align:left;padding:13px 15px;border:1px solid rgba(255,255,255,.12);background:#0b121b;color:#bac9d8;border-radius:10px}
+.tft-coach-pick strong{display:block;font-size:14px;line-height:1.15}
+.tft-coach-pick small{display:block;margin-top:7px;font:700 9px/1 'IBM Plex Mono',monospace;color:#7d8fa5;letter-spacing:.06em}
+.tft-coach-pick[aria-pressed=true]{border-color:#9cfce7;background:rgba(96,248,204,.09);color:#eafff8;box-shadow:inset 3px 0 #9cfce7}
+.tft-coach-prep-preview{border:1px solid rgba(139,232,218,.18);background:rgba(5,13,21,.74);padding:18px;margin-top:13px;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px}
+.tft-coach-prep-preview span,.tft-coach-overline{color:#94a8b6;font:800 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.1em}
+.tft-coach-prep-preview strong{display:block;color:#f6fffd;font-size:22px;margin:7px 0 3px}
+.tft-coach-prep-preview p{font-size:13px!important;color:#afc5d0!important}
+.tft-coach-prep-preview button{align-self:center}
+.tft-coach-live .tft-coach-mission{padding:23px 27px;background:linear-gradient(105deg,rgba(52,100,115,.23),rgba(9,14,25,.86));border:1px solid rgba(137,245,225,.33);box-shadow:inset 4px 0 #83efd9}
+.tft-coach-live .tft-coach-mission strong{display:block;font-size:clamp(20px,2.6vw,29px);line-height:1.15;color:#e7faf7;margin:2px 0 0}
+.tft-coach-cues{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+.tft-coach-cues span{padding:10px 12px;border:1px solid rgba(151,194,222,.22);border-radius:5px;background:rgba(5,12,19,.7);color:#c3d6df;font-size:13px;font-weight:750}
+.tft-coach-cues span:before{content:'›';margin-right:9px;color:#a3ffed;font-size:17px}
+.tft-coach-mini{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin-top:13px}
+.tft-coach-mini>div{border:1px solid rgba(255,255,255,.09);background:#0a121d;padding:14px 16px}
+.tft-coach-mini span{display:block;font:800 10px/1.2 'IBM Plex Mono',monospace;color:#8d9cad;letter-spacing:.1em}
+.tft-coach-mini strong{display:block;margin-top:7px;color:#eaf8fd;font-size:16px}
+.tft-coach-guides{border:1px solid rgba(255,255,255,.12);background:rgba(7,14,23,.72);margin-top:13px;border-radius:7px}
+.tft-coach-guides>summary{cursor:pointer;display:flex;justify-content:space-between;gap:12px;padding:14px 16px;color:#d5e6ea;font:800 12px/1.3 'IBM Plex Mono',monospace;letter-spacing:.08em}
+.tft-coach-guides>summary::marker{color:#85ffdf}
+.tft-coach-guides>summary span{font-size:10px;color:#85b5bf;letter-spacing:0}
+.tft-coach-guide-body{padding:0 16px 17px}
+.tft-coach-guide-tabs{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:11px}
+.tft-coach-guide-tabs button{padding:9px 13px;font-size:11px;border:1px solid rgba(255,255,255,.12);border-radius:5px;background:#101b26}
+.tft-coach-guide-tabs button[aria-pressed=true]{background:#a1fce8;color:#071418}
+.tft-coach-guide-list{display:grid;gap:8px}
+.tft-coach-guide-list article{display:grid;grid-template-columns:124px minmax(0,1fr);gap:10px;border:1px solid rgba(255,255,255,.07);padding:12px;background:#0b1722}
+.tft-coach-guide-list b{color:#94f7e3;font:750 11px 'IBM Plex Mono',monospace}
+.tft-coach-guide-list span{color:#c3d1df;font-size:12px;line-height:1.35}
+.tft-coach-end{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:14px}
+.tft-coach-end small{max-width:620px;color:#91a5b7;line-height:1.35;font-size:11px}
+.tft-coach-end button{white-space:nowrap}
+@media(max-width:760px){.tft-coach-picks{grid-template-columns:repeat(2,minmax(0,1fr))}.tft-coach-prep-preview{grid-template-columns:1fr}.tft-coach-head{flex-wrap:wrap}.tft-coach-mini{gap:6px}.tft-coach-mini>div{padding:12px 8px}.tft-coach-mini strong{font-size:13px}}
+@media(max-width:520px){.tft-coach-prep,.tft-coach-live{padding:15px!important}.tft-coach-live .tft-coach-mission{padding:18px}.tft-coach-mini{grid-template-columns:1fr}.tft-coach-guide-list article{grid-template-columns:1fr;gap:3px}.tft-coach-end{display:grid}.tft-coach-end button{width:100%}}
