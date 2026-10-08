@@ -651,6 +651,15 @@ async function tick(){
   lastLcuDetected=true;
   const snapshot=normalize(data);
   emitLiveMatchup(snapshot);
+  // Read-only score feed for the desktop HUD. Recording and review still use
+  // the unmodified snapshot below.
+  const local=localPlayer(snapshot);
+  console.log('OPCLIMB_HUD_JSON='+JSON.stringify({
+    gameTime:snapshot.gameTime,
+    champion:snapshot.active?.championName||'',
+    scores:local?.scores||null,
+    events:(snapshot.events||[]).slice(-3).map(event=>({id:event.id,name:event.name,time:event.time,actor:event.actor,target:event.target})),
+  }));
   if(session&&snapshot.gameTime+30<session.lastGameTime)await finishSession('new game detected');
   if(!session)await startSession(snapshot);
   session.misses=0;

@@ -67,7 +67,7 @@ function setState(patch){
   }
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
-  if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null}}
+  if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null,liveHud:null}}
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   if(state.phase==='WAITING'&&previousPhase!=='WAITING'){
     const detectedRole=normalizedRole(state.postGameReview?.match?.role||state.matchup?.role||state.matchup?.plan?.role);
@@ -91,7 +91,7 @@ function setState(patch){
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
-  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)||clean.startsWith(DRAFT_CONTEXT_PREFIX)){parseTrackerLine(clean,kind);return}
+  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)||clean.startsWith(DRAFT_CONTEXT_PREFIX)||clean.startsWith('OPCLIMB_HUD_JSON=')){parseTrackerLine(clean,kind);return}
   recentLogs.push({at:new Date().toISOString(),kind,line:clean});
   if(recentLogs.length>200)recentLogs=recentLogs.slice(-200);
   setState({lastLog:clean});parseTrackerLine(clean,kind);
@@ -334,6 +334,10 @@ async function reconcileTrackerStatus(){
   }
 }
 function parseTrackerLine(line,kind){
+  if(line.startsWith('OPCLIMB_HUD_JSON=')){
+    try{if(state.phase==='RECORDING')setState({liveHud:JSON.parse(line.slice('OPCLIMB_HUD_JSON='.length))})}catch{}
+    return;
+  }
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
   if(line.startsWith(TRACKER_STATE_PREFIX)){try{applyTrackerState(JSON.parse(line.slice(TRACKER_STATE_PREFIX.length)))}catch{}return}
   if(line.startsWith(DRAFT_CONTEXT_PREFIX)){try{if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,draftFromLocalContext(JSON.parse(line.slice(DRAFT_CONTEXT_PREFIX.length))))})}catch{}return}

@@ -104,6 +104,7 @@ function missionView(task:ILPTask,focusIndex=0){
     id:String(task.id??''),
     title:String(plain.name||task.title||'Current mission'),
     domain:String(task.dnaDomain??'CONSISTENCY'),
+    metric:String(task.metric??''),
     progress:reps.progress,
     confirmed:reps.confirmed,
     required:reps.required,

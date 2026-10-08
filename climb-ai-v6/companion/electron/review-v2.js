@@ -23,4 +23,5 @@
   load('remember-v12-skill-transfer-graph.js');
   load('remember-v13-decision-principle-engine.js');
   load('remember-v14-focus-layout.js');
+  load('live-mission-hud.js');
 })();
