@@ -27,7 +27,7 @@ test('TFT overlay contains a preselected learning focus but no current board, go
  for(const forbidden of ['5-4','gold','board'])assert.equal(JSON.stringify(view).includes(forbidden),false);
 });
 test('untrusted layout values are bounded',()=>{
- assert.deepEqual(safeLayout({x:-100,y:30,scale:50,opacity:0}),{x:0.015,y:0.75,scale:1.35,opacity:0.68});
+ assert.deepEqual(safeLayout({x:-100,y:30,scale:50,opacity:0}),{x:0.015,y:0.75,scale:1.35,opacity:0.68,mode:'FOCUS'});
 });
 test('isolated overlay never injects scripts or receives pairing secrets',()=>{
  const html=fs.readFileSync(path.join(base,'learning-overlay.html'),'utf8');
@@ -69,4 +69,91 @@ test('overlay renderer changes from League mission to locked TFT focus without b
  assert.equal(element('win').textContent,'Plan your spending');
  assert.equal(element('avoid').textContent,'Protect your economy');
  assert.ok(!element('editor').hidden===false || element('editor').hidden);
+});
+
+
+test('three visually distinct HUD presets are bounded, stable and user-selectable',()=>{
+ const {HUD_MODES,safeLayout,nextHudMode}=require(path.join(base,'overlay-model.cjs'));
+ assert.deepEqual(HUD_MODES,['FOCUS','MINIMAL','EXPANDED']);
+ assert.equal(safeLayout({mode:'MINIMAL',x:.32}).mode,'MINIMAL');
+ assert.equal(safeLayout({mode:'expanded'}).mode,'EXPANDED');
+ assert.equal(safeLayout({mode:'../../malicious'}).mode,'FOCUS');
+ assert.equal(nextHudMode('FOCUS'),'MINIMAL');
+ assert.equal(nextHudMode('MINIMAL'),'EXPANDED');
+ assert.equal(nextHudMode('EXPANDED'),'FOCUS');
+ for(const mode of HUD_MODES){
+   const p=overlayView({paired:true,phase:'RECORDING'},{enabled:true,layout:{mode,opacity:.8}});
+   assert.equal(p.layout.mode,mode);
+   assert.equal(p.layout.opacity,.8);
+ }
+});
+
+test('premium HUD includes real static champion art with safe CSP and readable minimal focus expanded modes',()=>{
+ const html=fs.readFileSync(path.join(base,'learning-overlay.html'),'utf8');
+ const css=fs.readFileSync(path.join(base,'learning-overlay.css'),'utf8');
+ const js=fs.readFileSync(path.join(base,'learning-overlay.js'),'utf8');
+ assert.match(html,/img-src https:\/\/ddragon\.leagueoflegends\.com/);
+ assert.match(html,/id="championArt"/);
+ assert.match(html,/data-preset="MINIMAL"/);
+ assert.match(html,/data-preset="FOCUS"/);
+ assert.match(html,/data-preset="EXPANDED"/);
+ assert.match(css,/\.hud\.mode-minimal/);
+ assert.match(css,/\.hud\.mode-focus/);
+ assert.match(css,/\.hud\.mode-expanded/);
+ assert.match(css,/prefers-reduced-motion/);
+ assert.match(js,/leagueoflegends\.com\/cdn\/img\/champion\/tiles\//);
+ assert.match(js,/encodeURIComponent\(key\)/);
+ assert.doesNotMatch(js,/\.innerHTML=/);
+ assert.doesNotMatch(js,/liveHud|winProbability|enemyCooldown/i);
+});
+
+test('League plan cannot update with late live recovery; settings support layout cycle hotkey',()=>{
+ const main=fs.readFileSync(path.join(base,'main.cjs'),'utf8');
+ const preload=fs.readFileSync(path.join(base,'preload.cjs'),'utf8');
+ const html=fs.readFileSync(path.join(base,'index.html'),'utf8');
+ const renderer=fs.readFileSync(path.join(base,'renderer.js'),'utf8');
+ assert.match(main,/state\.phase==='CHAMP_SELECT'&&state\.matchup\?\.status==='READY'/);
+ assert.match(main,/else if\(enteringRecording&&!overlayFrozenLeague\)/);
+ assert.doesNotMatch(main,/if\(state\.phase!=='RECORDING'\)overlayFrozenLeague=null;/);
+ assert.match(main,/CommandOrControl\+Shift\+L/);
+ assert.match(main,/companion:overlay-cycle/);
+ assert.match(preload,/cycleOverlay/);
+ assert.match(renderer,/overlayModeCycle/);
+ assert.match(html,/overlayModeLabel/);
+});
+
+test('preset buttons persist mode and status clearly distinguishes preview from a real recording',async()=>{
+ const vm=require('node:vm');
+ const nodes=new Map(),handlers={};
+ const fake=id=>{
+   if(nodes.has(id))return nodes.get(id);
+   const node={textContent:'',hidden:false,style:{},dataset:{},value:'',offsetWidth:364,offsetHeight:340,
+     classList:{toggle(key,on){this[key]=on}},
+     addEventListener(type,fn){handlers[id+':'+type]=fn},setPointerCapture(){},removeAttribute(){},setAttribute(){}};
+   nodes.set(id,node);return node;
+ };
+ const buttons=['MINIMAL','FOCUS','EXPANDED'].map(mode=>{
+   const element=fake('button-'+mode);element.dataset.preset=mode;return element;
+ });
+ let push=null,lastSaved=null;
+ const initial={show:true,editing:true,game:'PREVIEW',status:'PREVIEW · EDITING',
+   layout:{x:.68,y:.045,scale:1,opacity:.96,mode:'FOCUS'},plan:null,focus:'ECONOMY'};
+ const window={addEventListener(){},OP_TFT_COACH_MODEL:{mission:()=>null},
+   opOverlay:{onState:fn=>{push=fn},getState:async()=>initial,saveLayout:async value=>(lastSaved=value,{layout:value}),finishEditing:async()=>({ok:true})}};
+ vm.runInNewContext(fs.readFileSync(path.join(base,'learning-overlay.js'),'utf8'),
+   {window,document:{getElementById:fake,querySelectorAll:()=>buttons},innerWidth:1920,innerHeight:1080},{filename:'learning-overlay.js'});
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(fake('status').textContent,'LAYOUT PREVIEW');
+ assert.equal(fake('recordingStatus').textContent,'● EDITOR PREVIEW');
+ assert.equal(fake('overlay').dataset.mode,'FOCUS');
+ assert.equal(fake('championArt').hidden,true);
+ handlers['button-MINIMAL:click']();
+ await new Promise(resolve=>setImmediate(resolve));
+ assert.equal(lastSaved.mode,'MINIMAL');
+ assert.equal(fake('overlay').dataset.mode,'MINIMAL');
+ push({...initial,editing:false,game:'LOL',layout:lastSaved,plan:{champion:'Jinx',role:'ADC',mission:'Protect positioning',winCondition:'Scale',avoid:'Do not chase'}});
+ assert.equal(fake('title').textContent,'Jinx · ADC');
+ assert.equal(fake('mission').textContent,'Protect positioning');
+ assert.equal(fake('status').textContent,'LEAGUE RECORDING');
+ assert.match(fake('championArt').src,/Jinx_0\.jpg/);
 });

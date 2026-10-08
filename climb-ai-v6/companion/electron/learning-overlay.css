@@ -27,8 +27,8 @@ html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent
  border:1px solid rgba(182,246,107,.45);background:rgba(182,246,107,.07);
  color:var(--lime);font:950 16px/1 'Bahnschrift','Segoe UI',sans-serif;letter-spacing:-.065em}
 .logo-mark-slash{color:var(--cyan);padding-left:1px}
-.logo-text{display:grid;color:#f5fbf8;font:950 15px/1 'Bahnschrift','Segoe UI',sans-serif;letter-spacing:.025em}
-.logo-text b{color:var(--lime)}.logo-text small{margin-top:5px;color:#8faeb7;font:750 9px/1.1 'Consolas',monospace;letter-spacing:.14em}
+.logo-text{display:block;color:#f5fbf8;font:950 15px/1 'Bahnschrift','Segoe UI',sans-serif;letter-spacing:.025em}
+.logo-text b{color:var(--lime)}.logo-text small{display:block;margin-top:5px;color:#8faeb7;font:750 9px/1.1 'Consolas',monospace;letter-spacing:.14em}
 .state-badge{display:flex;flex:none;align-items:center;gap:7px;padding:7px 8px;border:1px solid rgba(85,242,197,.24);
  border-radius:6px;background:rgba(85,242,197,.055);color:#bcffe8;
  font:850 10px/1 'Consolas',monospace;letter-spacing:.05em}
