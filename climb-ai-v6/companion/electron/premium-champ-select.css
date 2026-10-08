@@ -1,0 +1,302 @@
+/*
+ * OP CLIMB / PREMIUM FOUNDATION 02
+ * League Champion Select: a polished 5v5 draft + pre-game match blueprint.
+ * Cosmetic only. Champion identity, bans, mission, and role remain tracker/API truth.
+ * This layer loads AFTER esports-v2 to resolve legacy mixed inline styles.
+ */
+:root{
+  --ocd-void:#070c12;--ocd-paper:#f4faf8;--ocd-secondary:#a9bcc7;
+  --ocd-lime:#b6f66b;--ocd-cyan:#43d9dc;--ocd-purple:#b195ff;--ocd-danger:#ff8c83;
+  --ocd-line:rgba(192,225,233,.17);--ocd-panel:#101b24;
+}
+#matchup.matchup-card{
+  border-radius:14px!important;overflow:visible!important;background:transparent!important;
+  border:0!important;padding:0!important;box-shadow:none!important;
+}
+#draftBoard{
+  padding:0!important;display:grid!important;gap:0!important;
+  position:relative;overflow:hidden;border-radius:14px!important;
+  clip-path:none!important;
+  border:1px solid rgba(182,246,107,.3)!important;
+  background:
+    radial-gradient(650px 300px at 3% 2%,rgba(182,246,107,.10),transparent 76%),
+    radial-gradient(650px 320px at 101% 20%,rgba(255,112,116,.085),transparent 75%),
+    linear-gradient(155deg,#111b24,#080e16 70%)!important;
+  box-shadow:0 24px 64px rgba(0,0,0,.37),inset 0 1px 0 rgba(182,246,107,.2)!important;
+}
+#draftBoard::before{
+  content:"";position:absolute;top:0;left:0;right:0;width:100%;height:3px;
+  background:linear-gradient(90deg,var(--ocd-lime),var(--ocd-cyan) 45%,rgba(255,140,131,.84));
+  animation:none!important;z-index:2;
+}
+#draftBoard .eyebrow{font-size:11px!important;letter-spacing:.13em!important;color:var(--ocd-secondary)!important}
+#draftBoard .eyebrow::before{display:none!important}
+.premium-draft-head{
+  display:flex;gap:22px;align-items:center;justify-content:space-between;
+  padding:28px 30px 20px;border-bottom:1px solid var(--ocd-line);
+}
+.premium-draft-headline{min-width:0}
+.premium-draft-headline .eyebrow{display:flex;align-items:center;gap:9px;color:var(--ocd-lime)!important}
+.draft-live-dot{
+  display:block;flex:none;width:8px;height:8px;border-radius:50%;
+  background:#43e8ad;box-shadow:0 0 16px rgba(67,232,173,.54);
+}
+#draftBoardTitle{
+  margin:10px 0 7px!important;
+  font:900 clamp(32px,4.8vw,51px)/.94 'Barlow Condensed',Impact,sans-serif!important;
+  letter-spacing:.006em!important;font-style:normal!important;color:var(--ocd-paper);
+  overflow-wrap:anywhere;text-shadow:0 2px 20px #0009;
+}
+.premium-draft-headline>p{
+  color:#bacbd1!important;font-size:13px!important;line-height:1.45!important;
+  margin:0!important;font-weight:550;
+}
+#draftBoardState{
+  flex:none;min-width:120px;text-align:center;
+  font:900 11px 'IBM Plex Mono',monospace!important;letter-spacing:.08em!important;
+  padding:11px 15px!important;border:1px solid rgba(222,245,206,.23)!important;
+  border-radius:7px!important;clip-path:none!important;
+  color:#e7f3eb!important;background:rgba(255,255,255,.07)!important;
+}
+#draftBoardState.good{
+  color:#112314!important;background:var(--ocd-lime)!important;
+  border-color:var(--ocd-lime)!important;animation:none!important;
+}
+.premium-draft-metrics{
+  display:grid;grid-template-columns:.7fr 1.25fr 1fr;gap:11px!important;padding:18px 30px!important;
+  background:rgba(0,0,0,.14);
+}
+#draftBoard .premium-draft-metrics .premium-draft-metric{
+  clip-path:none!important;border-radius:9px!important;
+  padding:15px 16px!important;min-width:0;
+  border:1px solid var(--ocd-line)!important;
+  background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.015))!important;
+  box-shadow:none!important;
+}
+#draftBoard .premium-draft-metric:nth-child(1){border-left:3px solid var(--ocd-cyan)!important}
+#draftBoard .premium-draft-metric:nth-child(2){border-left:3px solid var(--ocd-lime)!important}
+#draftBoard .premium-draft-metric:nth-child(3){border-left:3px solid #f7c56e!important}
+.premium-draft-metric>.eyebrow{color:#afc3c7!important;font-size:10px!important}
+.premium-draft-metric strong{
+  display:block;margin:10px 0 0;font:850 clamp(20px,3vw,27px)/1.1 'Barlow Condensed',sans-serif!important;
+  color:var(--ocd-paper);letter-spacing:.015em!important;overflow-wrap:anywhere;
+}
+.draft-read-track{height:7px;border-radius:12px;background:#29343c;overflow:hidden;margin-top:12px}
+.draft-read-track i{
+  display:block;height:100%;width:0;max-width:100%;
+  background:linear-gradient(90deg,#43d9dc,#b6f66b);border-radius:12px;
+  box-shadow:0 0 15px rgba(67,217,220,.25);
+  transition:width .22s ease;
+}
+.premium-draft-rosters{
+  display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px!important;
+  padding:16px 30px 24px!important;
+}
+.premium-draft-roster{min-width:0}
+.premium-draft-roster-head{
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:0 1px 12px;border-bottom:1px solid var(--ocd-line);margin-bottom:12px;
+}
+#draftBoard .premium-draft-roster-head .eyebrow{
+  margin:0!important;font-size:12px!important;color:var(--ocd-cyan)!important;
+  letter-spacing:.12em!important;
+}
+#draftBoard .premium-draft-roster.enemies .premium-draft-roster-head .eyebrow{color:#ffa3a0!important}
+.premium-draft-roster-head b{
+  font:800 10px/1.25 'IBM Plex Mono',monospace;letter-spacing:.08em;color:#a5bbc2;
+}
+.premium-draft-picks{display:grid;gap:8px}
+#draftOurPicks > div,#draftTheirPicks > div{
+  position:relative;min-width:0;
+  display:grid!important;grid-template-columns:66px 68px minmax(0,1fr) auto!important;
+  gap:11px!important;align-items:center!important;min-height:66px;
+  padding:0 12px 0 0!important;overflow:hidden;
+  border:1px solid rgba(192,225,233,.15)!important;
+  border-radius:9px!important;clip-path:none!important;
+  background:linear-gradient(90deg,rgba(67,217,220,.09),rgba(255,255,255,.02))!important;
+  box-shadow:none!important;
+  transition:background .14s,border-color .14s;
+}
+#draftTheirPicks > div{background:linear-gradient(90deg,rgba(255,140,131,.095),rgba(255,255,255,.02))!important}
+#draftOurPicks > div::before,#draftTheirPicks > div::before{width:3px!important;background:var(--ocd-cyan)!important}
+#draftTheirPicks > div::before{background:var(--ocd-danger)!important}
+#draftOurPicks > div:hover,#draftTheirPicks > div:hover{border-color:rgba(192,225,233,.32)!important}
+#draftOurPicks > div.es-you{
+  border-color:rgba(182,246,107,.52)!important;
+  background:linear-gradient(90deg,rgba(182,246,107,.20),rgba(182,246,107,.032))!important;
+  box-shadow:inset 0 0 0 1px rgba(182,246,107,.1)!important;
+}
+#draftOurPicks > div.es-you::before{background:var(--ocd-lime)!important;width:4px!important}
+#draftOurPicks > div.es-you::after{font-size:9px!important;right:11px!important;bottom:4px!important}
+#draftOurPicks > div.es-you > span:last-child{margin-bottom:13px}
+#draftOurPicks > div > .es-tile,#draftTheirPicks > div > .es-tile{
+  display:block;width:66px!important;height:66px!important;
+  align-self:stretch;object-fit:cover;background:#17252b;
+  border-right:1px solid rgba(219,247,241,.12);color:#b7cbd4;
+}
+#draftOurPicks > div > .es-tile.es-empty,#draftTheirPicks > div > .es-tile.es-empty{
+  font:850 22px 'Barlow Condensed',sans-serif;background:
+    repeating-linear-gradient(135deg,#122028 0 7px,#16252b 7px 14px);color:#758a91;
+}
+#draftOurPicks > div > span:first-of-type,#draftTheirPicks > div > span:first-of-type{
+  color:#afbec7!important;font-size:11px!important;letter-spacing:.06em!important;
+  font-family:'IBM Plex Mono',monospace!important;opacity:1!important;
+}
+#draftOurPicks > div > strong,#draftTheirPicks > div > strong{
+  font:850 clamp(17px,2.4vw,23px)/1.1 'Barlow Condensed',sans-serif!important;
+  letter-spacing:.015em!important;color:#f0f7f6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+#draftOurPicks > div > span:last-child,#draftTheirPicks > div > span:last-child{
+  font:850 10px/1.2 'IBM Plex Mono',monospace!important;
+  letter-spacing:.045em!important;color:#b9c7cd!important;
+  border-radius:4px!important;padding:5px 5px!important;clip-path:none!important;
+}
+#draftOurPicks > div.es-locked > span:last-child{color:#0c2213!important;background:var(--ocd-lime)!important}
+#draftTheirPicks > div.es-locked > span:last-child{color:#190e0e!important;background:var(--ocd-danger)!important}
+#draftOurPicks > div.draft-pending,#draftTheirPicks > div.draft-pending{opacity:.74}
+.premium-draft-bans{
+  display:grid;grid-template-columns:1fr 1fr;gap:20px!important;
+  padding:18px 30px!important;border-top:1px solid var(--ocd-line);
+  background:rgba(255,255,255,.015);
+}
+.premium-draft-ban-block{min-width:0}
+.premium-draft-ban-list{display:flex;gap:7px;flex-wrap:wrap;margin-top:10px}
+#draftOurBans span,#draftTheirBans span{
+  font-size:10px!important;font-weight:750!important;padding:8px 10px!important;
+  border-radius:6px!important;border:1px solid rgba(255,140,131,.28)!important;
+  color:#c8d1d7!important;background:rgba(255,140,131,.065)!important;
+  clip-path:none!important;text-decoration-thickness:1px;
+}
+#draftBoardHint{
+  display:block;margin:0!important;padding:14px 30px!important;
+  background:rgba(182,246,107,.05);border-top:1px solid rgba(182,246,107,.14);
+  border-left:0!important;color:#bad0ce!important;
+  font:550 12px/1.55 'DM Sans',sans-serif!important;
+  letter-spacing:0!important;opacity:1!important;
+}
+/* Hero: champion art remains directly sourced from the existing Dragon asset decorator. */
+#simplePregame{margin-top:17px!important;display:grid;gap:0}
+#simplePregame > .premium-plan-hero{
+  display:flex;justify-content:space-between;align-items:flex-end;gap:18px;
+  min-height:280px;padding:29px 30px!important;margin-bottom:18px;
+  border:1px solid rgba(182,246,107,.28)!important;border-radius:13px!important;
+  clip-path:none!important;overflow:hidden;
+  background:linear-gradient(100deg,#0c1820,#0b1018)!important;
+  box-shadow:0 18px 49px rgba(0,0,0,.24),inset 0 1px rgba(182,246,107,.12)!important;
+}
+#simplePregame .premium-plan-hero::before{width:64%;opacity:.76}
+#simplePregame .premium-plan-hero::after{width:48%;opacity:.52}
+#simplePregame .premium-plan-hero-copy{max-width:min(590px,83%);position:relative;z-index:1}
+.premium-plan-intro{
+  display:flex;align-items:center;gap:9px;margin-bottom:12px;
+  font:900 11px 'IBM Plex Mono',monospace;letter-spacing:.13em;color:var(--ocd-cyan);
+}
+.premium-plan-line{display:block;width:25px;height:3px;background:var(--ocd-lime)}
+#simplePregameTier{font:800 11px 'IBM Plex Mono',monospace!important;letter-spacing:.12em!important;color:#d2fba5!important}
+#simplePregameTitle{
+  margin:10px 0 13px!important;font:900 clamp(37px,6.8vw,72px)/.94 'Barlow Condensed',Impact,sans-serif!important;
+  letter-spacing:0!important;font-style:normal!important;overflow-wrap:anywhere;color:var(--ocd-paper)!important;
+  text-shadow:0 3px 22px #000a!important;
+}
+#simplePregameSummary{
+  max-width:580px!important;margin:0!important;font:600 13px/1.5 'DM Sans',sans-serif!important;
+  color:#eef6f3!important;opacity:1!important;text-shadow:0 2px 12px #000e;
+}
+#simplePregamePill{
+  align-self:flex-start;padding:10px 14px!important;border-radius:7px!important;clip-path:none!important;
+  font:850 10px 'IBM Plex Mono',monospace!important;letter-spacing:.08em!important;
+  background:rgba(18,29,36,.91)!important;color:#eaf5ee!important;border:1px solid rgba(255,255,255,.26)!important;
+}
+#simplePregamePill.good{
+  background:var(--ocd-lime)!important;color:#09190f!important;
+  border-color:var(--ocd-lime)!important;animation:none!important;
+}
+.simple-pregame-win-grid.premium-plan-duel{
+  display:grid;grid-template-columns:1fr 1fr;gap:13px!important;margin:0!important;
+}
+#simplePregame .simple-pregame-win-grid article,
+#simplePregame .simple-pregame-job,
+#simplePregame .simple-pregame-actions,
+#simplePregame .simple-pregame-throw,
+#simplePregame .simple-pregame-mission{
+  clip-path:none!important;border-radius:11px!important;
+  border:1px solid var(--ocd-line)!important;padding:21px 22px!important;
+  background:linear-gradient(148deg,#12202a,#0b141c)!important;box-shadow:none!important;
+}
+#simplePregame .simple-pregame-win-grid strong,
+#simplePregame .simple-pregame-job strong,
+#simplePregame .simple-pregame-throw strong,
+#simplePregame .simple-pregame-mission strong{
+  margin-top:9px!important;line-height:1.21!important;
+  font:800 clamp(19px,2.4vw,25px)/1.19 'Barlow Condensed',sans-serif!important;
+  color:#f4faf9;
+}
+#simplePregame .eyebrow{
+  font-size:11px!important;letter-spacing:.11em!important;color:var(--ocd-secondary)!important;
+}
+#simplePregame .simple-pregame-win .eyebrow{color:var(--ocd-lime)!important}
+#simplePregame .simple-pregame-loss .eyebrow,#simplePregame .simple-pregame-throw .eyebrow{color:#ffa09a!important}
+#simplePregame .simple-pregame-job .eyebrow{color:var(--ocd-cyan)!important}
+#simplePregame .simple-pregame-mission .eyebrow{color:#c4afff!important}
+#simplePregame .simple-pregame-win-grid article::before,
+#simplePregame .simple-pregame-job::before,
+#simplePregame .simple-pregame-throw::before,
+#simplePregame .simple-pregame-mission::before{
+  width:4px!important;opacity:1;
+}
+#simplePregame .simple-pregame-job,
+#simplePregame .simple-pregame-actions{margin-top:13px!important}
+#simplePregame .simple-pregame-actions{
+  background:linear-gradient(145deg,rgba(182,246,107,.07),#0b141c)!important;
+}
+#simplePregame .simple-pregame-actions>.eyebrow{color:var(--ocd-lime)!important}
+#simplePregame .simple-winning-action{grid-template-columns:52px minmax(0,1fr)!important;padding:14px 0!important;gap:14px!important}
+#simplePregame .simple-winning-action>b{font-size:42px!important;-webkit-text-stroke-color:var(--ocd-lime)}
+#simplePregame .simple-winning-action strong{font-size:16px!important;line-height:1.35!important}
+.premium-plan-bottom{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:13px}
+#simplePregame .premium-plan-bottom .simple-pregame-throw,
+#simplePregame .premium-plan-bottom .simple-pregame-mission{margin:0!important;min-width:0}
+#simplePregame .premium-plan-bottom .simple-pregame-throw{
+  border-color:rgba(255,140,131,.28)!important;
+}
+#simplePregame .premium-plan-bottom .simple-pregame-mission{
+  border-color:rgba(177,149,255,.36)!important;
+  background:linear-gradient(145deg,rgba(177,149,255,.11),#111622)!important;
+}
+#simplePregameMore,#simplePregameFull{
+  border-radius:7px!important;clip-path:none!important;font:850 11px 'DM Sans',sans-serif!important;
+  padding:11px 15px!important;
+}
+#simplePregameFull{color:var(--ocd-lime)!important;border-color:rgba(182,246,107,.3)!important}
+@media(max-width:950px){
+  .premium-draft-head,.premium-draft-metrics,.premium-draft-rosters,.premium-draft-bans{padding-left:19px!important;padding-right:19px!important}
+  .premium-draft-rosters{gap:12px!important}
+  #draftOurPicks > div,#draftTheirPicks > div{grid-template-columns:54px 45px minmax(0,1fr) auto!important;gap:8px!important;min-height:54px}
+  #draftOurPicks > div > .es-tile,#draftTheirPicks > div > .es-tile{width:54px!important;height:54px!important}
+  #draftOurPicks > div > strong,#draftTheirPicks > div > strong{font-size:17px!important}
+  #draftOurPicks > div > span:first-of-type,#draftTheirPicks > div > span:first-of-type{font-size:9px!important}
+  #simplePregame > .premium-plan-hero{min-height:240px}
+}
+@media(max-width:690px){
+  .premium-draft-head{padding:21px 16px!important;align-items:flex-start}
+  .premium-draft-headline>p{font-size:12px!important}
+  #draftBoardTitle{font-size:36px!important}
+  #draftBoardState{min-width:80px;padding:9px 7px!important;font-size:9px!important}
+  .premium-draft-metrics{grid-template-columns:1fr 1fr;gap:8px!important;padding:12px 16px!important}
+  .premium-draft-progress{grid-column:1/-1}
+  .premium-draft-rosters{grid-template-columns:1fr!important;gap:22px!important;padding:10px 16px 20px!important}
+  #draftOurPicks > div,#draftTheirPicks > div{grid-template-columns:60px 65px minmax(0,1fr) auto!important;min-height:60px}
+  #draftOurPicks > div > .es-tile,#draftTheirPicks > div > .es-tile{width:60px!important;height:60px!important}
+  #draftOurPicks > div > strong,#draftTheirPicks > div > strong{font-size:20px!important}
+  .premium-draft-bans{gap:13px!important;padding:15px 16px!important}
+  #draftBoardHint{padding:14px 16px!important}
+  #simplePregame > .premium-plan-hero{padding:20px!important;min-height:235px;align-items:flex-start!important}
+  #simplePregame .premium-plan-hero-copy{max-width:90%}
+  #simplePregameTitle{font-size:39px!important}
+  #simplePregameSummary{font-size:12px!important}
+  #simplePregamePill{font-size:9px!important;flex:none}
+  .simple-pregame-win-grid.premium-plan-duel,.premium-plan-bottom{grid-template-columns:1fr!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .draft-read-track i,#draftOurPicks > div,#draftTheirPicks > div{transition:none!important}
+}
