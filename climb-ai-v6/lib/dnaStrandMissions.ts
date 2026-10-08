@@ -3,6 +3,7 @@ import type {CoachingMetricKey} from './subscription';
 import type {HistoryAnalysisRow} from './riot/proHistory';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
 import {notObservedReceipt,proMetricReceipt} from './missionGrading';
+import {verifiedMissionAttempts} from './verifiedMissionProof';
 import {gameMissionFocusPair} from './gameDnaSnapshot';
 
 type MissionTemplate={
@@ -289,7 +290,7 @@ function refreshMissionProgress(task:ILPTask){
   const attempts=[...(task.missionHistory??[])].sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
   const observedAttempts=attempts.filter(attempt=>attempt.evidenceV2?.state!=='NOT_OBSERVED');
   const required=Math.max(1,Number(task.masteryRequired)||3);
-  const confirmed=attempts.filter(attempt=>attempt.banksPass).length;
+  const confirmed=verifiedMissionAttempts({...task,missionHistory:attempts}).length;
   const progress=Math.round(Math.min(required,confirmed)/required*100);
   const mastered=confirmed>=required;
   return{

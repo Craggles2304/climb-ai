@@ -1,6 +1,7 @@
 import type {DnaDomain,ILPTask,Role} from './types';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GENE,DNA_DOMAIN_LABELS,ensureDnaDomain} from './dnaDomain';
 import {missionSummary} from './missionLoop';
+import {verifiedMissionRep} from './verifiedMissionProof';
 import {taskFreshness} from './ilpCloudMerge';
 import {stampLegacyTaskScope,taskAppliesToRole} from './roleAwareLearning';
 import {dnaStrandLevel} from './dnaLevel';
@@ -97,7 +98,7 @@ export function currentGameDnaMissions(input:DnaTask[],role:Role|null|undefined)
 function focusScore(task:ILPTask){
   const attempts=[...(task.missionHistory??[])].sort((a,b)=>Date.parse(b.at)-Date.parse(a.at));
   const latest=attempts[0];
-  const state=latest?.evidenceV2?.state??(latest?.banksPass?'BANKED':latest?'MISSED':null);
+  const state=latest?(verifiedMissionRep(task,latest)?'BANKED':latest.evidenceV2?.state==='MISSED'?'MISSED':'NOT_OBSERVED'):null;
   const observed=Number(latest?.evidenceV2?.observedValue);
   const summary=missionSummary(task);
   let score=state==='MISSED'?500:!latest?320:state==='NOT_OBSERVED'?180:120;

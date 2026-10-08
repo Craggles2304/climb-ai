@@ -1,6 +1,7 @@
 import 'server-only';
 
 import type {ILPTask,ILPMissionAttempt,Match,Role} from '@/lib/types';
+import {verifiedMissionRep} from '@/lib/verifiedMissionProof';
 import {gradeMissionGame,missionMeasurementLabel,missionMeasurementSource} from '@/lib/missionGrading';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 
@@ -97,8 +98,8 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
         missionId:task.id,title:task.title,metric:task.metric,
         source:missionMeasurementLabel(missionMeasurementSource(task.metric)),
         expectedPass:grade.available?grade.passed:null,recordedPass:Boolean(attempt.clearedBar),
-        banked:Boolean(attempt.banksPass),xp:xpForMission,
-        consistent:grade.available?grade.passed===Boolean(attempt.clearedBar):!attempt.banksPass,
+        banked:verifiedMissionRep(task,attempt),xp:xpForMission,
+        consistent:(!attempt.banksPass||verifiedMissionRep(task,attempt))&&(grade.available?grade.passed===Boolean(attempt.clearedBar):!attempt.banksPass),
       };
     });
     const sourceCoverage=Array.from(new Set(missionResults.map(result=>result.source)));
