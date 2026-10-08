@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('opCompanion',{
   setDnaRole:(role)=>ipcRenderer.invoke('companion:set-dna-role',role),
   setOverlayEnabled:(enabled)=>ipcRenderer.invoke('companion:overlay-enabled',enabled),
   editOverlay:()=>ipcRenderer.invoke('companion:overlay-edit'),
+  cycleOverlay:()=>ipcRenderer.invoke('companion:overlay-cycle'),
   setTftFocus:(id)=>ipcRenderer.invoke('companion:set-tft-focus',id),
   unpair:()=>ipcRenderer.invoke('companion:unpair'),
   restart:()=>ipcRenderer.invoke('companion:restart'),

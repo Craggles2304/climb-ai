@@ -1,11 +1,23 @@
 'use strict';
-/** Read-only pre-game learning. This deliberately ignores live telemetry, enemy data and combat state. */
+/**
+ * In-game HUD contracts. All coaching copy is frozen from pre-game preparation.
+ * NEVER consume live telemetry, hidden enemy knowledge or opponent scouting.
+ */
 const allowedFocus=new Set(['ECONOMY','TEMPO','FLEX','POSITION']);
+const HUD_MODES=Object.freeze(['FOCUS','MINIMAL','EXPANDED']);
 const limit=(value,max=180)=>String(value??'').replace(/\s+/g,' ').trim().slice(0,max);
 const clamp=(value,min,max,defaultValue)=>Math.max(min,Math.min(max,Number.isFinite(Number(value))?Number(value):defaultValue));
 function safeLayout(source={}){
-  return{x:clamp(source.x,0.015,0.82,0.68),y:clamp(source.y,0.015,0.75,0.045),
-    scale:clamp(source.scale,0.75,1.35,1),opacity:clamp(source.opacity,0.68,1,0.96)};
+  const rawMode=String(source?.mode||'FOCUS').toUpperCase();
+  const mode=HUD_MODES.includes(rawMode)?rawMode:'FOCUS';
+  return {
+    x:clamp(source?.x,0.015,0.82,0.68),y:clamp(source?.y,0.015,0.75,0.045),
+    scale:clamp(source?.scale,0.75,1.35,1),opacity:clamp(source?.opacity,0.68,1,0.96),mode,
+  };
+}
+function nextHudMode(mode){
+  const index=HUD_MODES.indexOf(String(mode||'').toUpperCase());
+  return HUD_MODES[(index+1)%HUD_MODES.length];
 }
 function freezeLeaguePlan(state){
   const team=state?.teamPlan;
@@ -23,10 +35,12 @@ function overlayView(state,options={}){
   const tft=state?.tftRecorder||{};
   const game=state?.phase==='RECORDING'?'LOL':tft.state==='RECORDING'?'TFT':options.editing===true?'PREVIEW':null;
   const show=options.enabled===true&&Boolean(state?.paired)&&Boolean(game);
-  return{show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
+  return {
+    show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
     focus:allowedFocus.has(String(options.tftFocus||''))?String(options.tftFocus):'ECONOMY',
     status:game==='TFT'?'TFT · RECORDING':game==='LOL'?'LEAGUE · RECORDING':'PREVIEW · EDITING',
     plan:game==='LOL'?(options.frozenLeague||null):null,
-    disclaimer:'FROZEN BEFORE THE GAME · REVIEW AFTER'};
+    disclaimer:'FROZEN BEFORE THE GAME · REVIEW AFTER',
+  };
 }
-module.exports={safeLayout,freezeLeaguePlan,overlayView};
+module.exports={HUD_MODES,safeLayout,nextHudMode,freezeLeaguePlan,overlayView};

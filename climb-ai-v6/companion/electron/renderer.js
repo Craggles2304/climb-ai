@@ -135,6 +135,11 @@ function render(state){
     $('overlayToggle').setAttribute('aria-pressed',String(Boolean(current.overlay?.enabled)));
   }
   if($('overlayEdit'))$('overlayEdit').disabled=!current.overlay?.enabled;
+  if($('overlayModeCycle'))$('overlayModeCycle').disabled=!current.overlay?.enabled;
+  if($('overlayModeLabel')){
+    const mode=String(current.overlay?.layout?.mode||'FOCUS').toUpperCase();
+    $('overlayModeLabel').textContent=({FOCUS:'FOCUS · balanced mission + win condition',MINIMAL:'MINIMAL · compact mission only',EXPANDED:'EXPANDED · complete pre-game contract'})[mode]||'FOCUS · balanced mission + win condition';
+  }
 
   const statusBottom=document.querySelector('.status-bottom');
   if(statusBottom)statusBottom.style.display=['AUTH_ERROR','ERROR','RESTARTING'].includes(phase)?'flex':'none';
@@ -1080,6 +1085,7 @@ bind('unpair','click',async()=>{if(confirm('Unpair this PC from OP CLIMB? You ca
 bind('autoStart','click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
 bind('overlayToggle','click',async()=>{await window.opCompanion.setOverlayEnabled(!current?.overlay?.enabled)});
 bind('overlayEdit','click',()=>window.opCompanion.editOverlay());
+bind('overlayModeCycle','click',()=>window.opCompanion.cycleOverlay());
 bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());
 bind('installUpdate','click',async()=>{const result=await window.opCompanion.installUpdate(current?.phase||'');if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error});

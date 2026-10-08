@@ -5,7 +5,7 @@ const path=require('node:path');
 const {championRoster,championGuide}=require('./champion-hub-data.cjs');
 const {draftFromLocalContext,freshestDraft}=require('./live-draft.cjs');
 const {startTftRecorder:startNativeTftRecorder}=require('./tft-recorder.cjs');
-const {safeLayout,freezeLeaguePlan,overlayView}=require('./overlay-model.cjs');
+const {safeLayout,nextHudMode,freezeLeaguePlan,overlayView}=require('./overlay-model.cjs');
 
 const DEFAULT_WEB='https://opclimb.com';
 const APP_NAME='OP CLIMB Companion';
@@ -105,6 +105,14 @@ function saveOverlayLayout(raw){
   syncOverlay();setState({});
   return{ok:true,layout:cfg.overlayLayout};
 }
+function cycleOverlayLayout(){
+  const cfg=readConfig();
+  const previous=safeLayout(cfg.overlayLayout);
+  cfg.overlayLayout={...previous,mode:nextHudMode(previous.mode)};
+  writeConfig(cfg);
+  syncOverlay();setState({});
+  return{ok:true,layout:cfg.overlayLayout};
+}
 function selectTftFocus(focus){
   const allowed=new Set(['ECONOMY','TEMPO','FLEX','POSITION']);
   if(!allowed.has(focus))return{ok:false,error:'Invalid TFT learning focus.'};
@@ -136,8 +144,16 @@ function setState(patch){
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null,liveHud:null}}
   const previousTftState=String(state.tftRecorder?.state||'');
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
-  if(state.phase!=='RECORDING')overlayFrozenLeague=null;
-  else if(!overlayFrozenLeague)overlayFrozenLeague=freezeLeaguePlan(state);
+  // Update the learning contract ONLY during Champion Select, before play.
+  // Later plan-recovery responses must never silently change the in-game HUD.
+  if(enteringChampSelect)overlayFrozenLeague=null;
+  else if(state.phase==='CHAMP_SELECT'&&state.matchup?.status==='READY'){
+    overlayFrozenLeague=freezeLeaguePlan(state)||overlayFrozenLeague;
+  }else if(enteringRecording&&!overlayFrozenLeague){
+    overlayFrozenLeague=freezeLeaguePlan(state);
+  }else if(!['CHAMP_SELECT','RECORDING'].includes(state.phase)){
+    overlayFrozenLeague=null;
+  }
   if(state.tftRecorder?.state==='RECORDING'&&previousTftState!=='RECORDING')overlayFrozenTftFocus=currentConfig().tftFocus;
   else if(state.tftRecorder?.state!=='RECORDING')overlayFrozenTftFocus=null;
   if(state.phase==='WAITING'&&previousPhase!=='WAITING'){
@@ -638,6 +654,7 @@ function updateTray(){
     {label:'Open Companion',click:()=>createWindow(true)},
     {label:'Enable in-game learning overlay',type:'checkbox',checked:currentConfig().overlayEnabled,click:item=>applyOverlayEnabled(item.checked)},
     {label:'Edit overlay layout (Alt+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayEditor()},
+    {label:'Cycle HUD size (Ctrl+Shift+L)',enabled:currentConfig().overlayEnabled,click:()=>cycleOverlayLayout()},
     {label:'Open OP CLIMB',click:()=>shell.openExternal(`${currentConfig().webUrl}/live`)},
     {label:'Restart Tracker',enabled:paired(),click:()=>{stopTracker();startTracker()}},{type:'separator'},
     {label:'Quit',click:()=>{quitting=true;app.quit()}}]));
@@ -650,6 +667,7 @@ ipcMain.handle('overlay:save-layout',(_event,layout)=>saveOverlayLayout(layout))
 ipcMain.handle('overlay:finish-edit',()=>toggleOverlayEditor(false));
 ipcMain.handle('companion:overlay-enabled',(_event,enabled)=>applyOverlayEnabled(enabled));
 ipcMain.handle('companion:overlay-edit',()=>toggleOverlayEditor());
+ipcMain.handle('companion:overlay-cycle',()=>cycleOverlayLayout());
 ipcMain.handle('companion:set-tft-focus',(_event,focus)=>selectTftFocus(focus));
 ipcMain.handle('companion:get-state',()=>publicState());
 ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
@@ -690,6 +708,7 @@ app.whenReady().then(()=>{
   try{globalShortcut.register('CommandOrControl+Shift+M',()=>markMoment())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+O',()=>applyOverlayEnabled(!currentConfig().overlayEnabled))}catch{}
   try{globalShortcut.register('Alt+B',()=>toggleOverlayEditor())}catch{}
+  try{globalShortcut.register('CommandOrControl+Shift+L',()=>cycleOverlayLayout())}catch{}
   screen.on('display-metrics-changed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   screen.on('display-removed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired){startTracker();startTftRecorder()}else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
