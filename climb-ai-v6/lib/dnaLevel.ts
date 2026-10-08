@@ -1,6 +1,7 @@
 import type {DnaDomain,ILPTask,Role} from './types';
 import {DNA_DOMAINS} from './dnaDomain';
 import {taskAppliesToRole} from './roleAwareLearning';
+import {verifiedMissionAttempts,verifiedMissionMastery} from './verifiedMissionProof';
 
 export const DNA_XP_PER_COMPLETED_GAME=25;
 export const DNA_XP_PER_MASTERED_MISSION=100;
@@ -43,12 +44,12 @@ export function dnaLevelFromXp(totalXp:number){
 
 export function dnaStrandLevel(tasks:ILPTask[],domain:DnaDomain,role?:Role|null):DnaLevelProgress{
   const strand=tasks.filter(task=>String(task.id||'').startsWith('dna-strand-')&&task.dnaDomain===domain&&taskAppliesToRole(task,role));
-  const mastered=strand.filter(task=>String(task.status).toUpperCase()==='MASTERED');
+  const mastered=strand.filter(verifiedMissionMastery);
   const live=strand.filter(task=>!['MASTERED','PAUSED'].includes(String(task.status).toUpperCase()));
   const current=live[0]??null;
   const currentCompletedGames=Math.min(
     Math.max(1,Number(current?.masteryRequired)||3),
-    (current?.missionHistory??[]).filter(attempt=>attempt.banksPass).length,
+    current?verifiedMissionAttempts(current).length:0,
   );
   const totalXp=mastered.length*DNA_XP_PER_MASTERED_MISSION+currentCompletedGames*DNA_XP_PER_COMPLETED_GAME;
   return{

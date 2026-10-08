@@ -1,4 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
+import {verifiedMissionRep,verifiedMissionAttempts,verifiedMissionMastery} from '@/lib/verifiedMissionProof';
 import {authenticateTrackerToken,type TrackerDevice} from '@/lib/server/liveTrackerRepository';
 import {latestLiveRead} from '@/lib/server/liveReadRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
@@ -92,12 +93,10 @@ async function missionEvidenceForMatch(userId:string,riotAccountId:string|null,m
     const history=Array.isArray(task.missionHistory)?task.missionHistory:[];
     const attempt=history.find(item=>String(item?.matchId||'')===matchId);
     if(!attempt)return[];
-    const confirmed=history.filter(item=>Boolean(item?.banksPass)).length;
+    const confirmed=verifiedMissionAttempts(task).length;
     const required=Math.max(1,Number(task.masteryRequired||3));
-    const mastered=String(task.status||'').toUpperCase()==='MASTERED'&&Boolean(attempt?.banksPass);
-    const evidenceState=String(attempt?.evidenceV2?.state||(
-      attempt?.banksPass?'BANKED':attempt?'MISSED':'NOT_OBSERVED'
-    ));
+    const mastered=verifiedMissionMastery(task)&&verifiedMissionRep(task,attempt);
+    const evidenceState=verifiedMissionRep(task,attempt)?'BANKED':attempt?.evidenceV2?.state==='MISSED'?'MISSED':'NOT_OBSERVED';
     const evidenceV2=attempt?.evidenceV2??null;
     return[{
       missionId:String(task.id),

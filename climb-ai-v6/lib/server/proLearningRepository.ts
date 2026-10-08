@@ -3,6 +3,7 @@ import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import {ensureOneMissionPerDnaStrand,gradeDnaStrandMissionsFromHistory} from '@/lib/dnaStrandMissions';
+import {verifiedMissionAttempts} from '@/lib/verifiedMissionProof';
 import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
 import {buildDecisionTwinV2} from '@/lib/decisionTwinV2';
@@ -393,7 +394,7 @@ function toPostGameMission(task:ILPTask):PostGameIlpMission{
   const adaptive=(task as ILPTask&{adaptive?:{lastAction?:string}}).adaptive;
   const stamped=ensureDnaDomain(task as ILPTask&{dnaDomain?:DnaDomain});
   const requiredGames=Math.max(1,Number(stamped.masteryRequired)||3);
-  const completedGames=Math.min(requiredGames,(stamped.missionHistory??[]).filter(attempt=>attempt.banksPass).length);
+  const completedGames=Math.min(requiredGames,verifiedMissionAttempts(stamped).length);
   return{id:stamped.id,title:stamped.title,status:String(stamped.status||'ACTIVE'),progress:Number(stamped.progress||0),completedGames,requiredGames,dnaDomain:stamped.dnaDomain,category:String(stamped.category||'CONSISTENCY'),gameRule:stamped.gameRule,priority:Number(stamped.priority??50),source:String(stamped.source||'SYSTEM'),adaptiveAction:adaptive?.lastAction?String(adaptive.lastAction):null,roleScope:stamped.roleScope??null};
 }
 

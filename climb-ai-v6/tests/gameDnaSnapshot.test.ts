@@ -20,6 +20,8 @@ function task(overrides:Partial<ILPTask>&{id:string,title:string,metric:string})
 }
 
 const role:Role='ADC';
+const evidenceFor=(metric:string)=>({...({version:2 as const,state:'BANKED' as const,measurementSource:'DECISION_EVIDENCE' as const,metric:'PLACEHOLDER',metricLabel:'Verified decision',observedValue:90,observedValueLabel:'90/100',targetLabel:'85+',confidence:'HIGH' as const,opportunities:1,successes:1,misses:0,events:[{atSeconds:620,label:'Decision',detail:'Verified timed action'}],reconstruction:{kind:'PRO_METRIC' as const,fields:['score'],formula:'90 >= 85'},reason:'Verified after match'}),metric});
+const proven=(metric:string,id:string)=>({matchId:id,at:'2026-10-02T00:00:00.000Z',source:'TRACKED' as const,adherence:'TRACKED' as const,clearedBar:true,outcome:'CONFIRMED' as const,banksPass:true,evidenceV2:evidenceFor(metric)});
 
 test('foreign-role rows never leak into Game DNA',()=>{
   const rows=[
@@ -45,7 +47,7 @@ test('Companion strands and client helix use one mission per DNA strand',()=>{
   const rows=[
     task({
       id:'a',title:'A',metric:'a',dnaDomain:'LANING',roleScope:'ADC',masteryRequired:3,
-      missionHistory:[{matchId:'m1',at:'2026-10-01T00:00:00.000Z',adherence:'TRACKED',clearedBar:true,outcome:'CONFIRMED',banksPass:true}],
+      missionHistory:[proven('a','m1')],
     }),
     task({id:'b',title:'Old A',metric:'b',dnaDomain:'LANING',progress:99,roleScope:'ADC',status:'PAUSED'}),
   ];
@@ -63,7 +65,7 @@ test('mission progress bar is driven by the same reps shown in the rep counter',
 
   const one=task({
     id:'one',title:'One',metric:'one',progress:12,roleScope:'ADC',masteryRequired:3,
-    missionHistory:[{matchId:'m1',at:'2026-10-02T00:00:00.000Z',adherence:'YES',clearedBar:true,outcome:'CONFIRMED',banksPass:true}],
+    missionHistory:[proven('one','m1')],
   });
   assert.deepEqual(missionRepView(one),{confirmed:1,required:3,progress:33});
   assert.equal(activeGameDnaMissions([zero,one],role).length,1);

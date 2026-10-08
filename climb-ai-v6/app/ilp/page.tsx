@@ -13,6 +13,7 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {accountProgress,XP_PER_MISSION_MASTERY,XP_PER_PROVEN_REP} from '@/lib/accountXp';
+import {verifiedMissionRep} from '@/lib/verifiedMissionProof';
 import {missionRankBand} from '@/lib/rankMissionBenchmarks';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_GUIDE,DNA_DOMAIN_LABELS,dnaDomainLabel} from '@/lib/dnaDomain';
@@ -502,7 +503,7 @@ function EvidenceCard({task,level}:{task:ILPTask;level:ReturnType<typeof dnaStra
     {recent.length>0?<div className="ip-rep-list">
       {recent.map(rep=>{
         const proof=rep.evidenceV2;
-        const state=proof?.state??(rep.banksPass?'BANKED':rep.outcome==='NO_REP'?'NOT_OBSERVED':'MISSED');
+        const state=verifiedMissionRep(task,rep)?'BANKED':proof?.state==='MISSED'?'MISSED':'NOT_OBSERVED';
         const stateClass=state==='BANKED'?'good':'watch';
         return <div key={rep.matchId}>
           <span className={stateClass}>{clean(state)}</span>

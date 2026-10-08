@@ -1,5 +1,6 @@
 import {ILPTask,Match,ILPMissionAttempt} from './types';
 import {gradeMissionGame} from './missionGrading';
+import {verifiedMissionRep,verifiedMissionAttempts,verifiedMissionMastery} from './verifiedMissionProof';
 
 export type MissionStage='DISCOVER'|'PRACTISE'|'REPEAT'|'MASTERED';
 export interface MissionEvidence{
@@ -12,14 +13,12 @@ export interface MissionEvidence{
 }
 
 export function missionStage(task:ILPTask):MissionStage{
-  if(task.status==='MASTERED')return'MASTERED';
+  if(verifiedMissionMastery(task))return'MASTERED';
   const history=task.missionHistory??[];
   const reviewed=history.length;
-  const confirmed=reviewed
-    ?history.filter(a=>a.banksPass).length
-    :Math.max(0,task.successfulGames??0);
+  const confirmed=verifiedMissionAttempts(task).length;
   const observed=reviewed
-    ?history.filter(a=>a.evidenceV2?.state!=='NOT_OBSERVED').length
+    ?history.filter(a=>Boolean(a.evidenceV2)&&a.evidenceV2?.state!=='NOT_OBSERVED').length
     :Math.max(0,task.gamesObserved??0);
   if(!observed)return'DISCOVER';
   if(!confirmed)return'PRACTISE';
@@ -42,11 +41,9 @@ export function missionSummary(task:ILPTask){
   const history=task.missionHistory??[];
   const required=task.masteryRequired||3;
   const hasReviewedBehaviour=history.length>0;
-  const confirmed=hasReviewedBehaviour
-    ?history.filter(a=>a.banksPass).length
-    :Math.min(required,Math.max(0,task.successfulGames??0));
+  const confirmed=verifiedMissionAttempts(task).length;
   const attempted=hasReviewedBehaviour
-    ?history.filter(a=>(a.adherence==='YES'||a.adherence==='PARTLY'||a.adherence==='TRACKED')&&a.evidenceV2?.state!=='NOT_OBSERVED').length
+    ?history.filter(a=>(a.adherence==='YES'||a.adherence==='PARTLY'||a.adherence==='TRACKED')&&Boolean(a.evidenceV2)&&a.evidenceV2?.state!=='NOT_OBSERVED').length
     :Math.max(0,task.gamesObserved??0);
   const reviewed=hasReviewedBehaviour?history.length:Math.max(0,task.gamesObserved??0);
   return{
@@ -67,11 +64,11 @@ export function upsertMissionAttempt(task:ILPTask,attempt:ILPMissionAttempt):ILP
   const history=[...current.filter(a=>a.matchId!==attempt.matchId),attempt]
     .sort((a,b)=>Date.parse(a.at)-Date.parse(b.at))
     .slice(-12);
-  const confirmed=history.filter(a=>a.banksPass).length;
+  const confirmed=verifiedMissionAttempts({...task,missionHistory:history}).length;
   const required=task.masteryRequired||3;
   const missionProgress=Math.min(100,Math.round(confirmed/required*100));
   const changed=!previous||previous.outcome!==attempt.outcome||previous.adherence!==attempt.adherence||previous.clearedBar!==attempt.clearedBar||previous.evidenceV2?.state!==attempt.evidenceV2?.state;
-  const proofState=attempt.evidenceV2?.state??(attempt.banksPass?'BANKED':attempt.outcome==='NO_REP'?'NOT_OBSERVED':'MISSED');
+  const proofState=verifiedMissionRep(task,attempt)?'BANKED':attempt.evidenceV2?.state==='MISSED'?'MISSED':'NOT_OBSERVED';
   const note=`Mission rep: ${proofState.replaceAll('_',' ')}${attempt.evidenceV2?.observedValueLabel?` · ${attempt.evidenceV2.observedValueLabel}`:''}.`;
   return{
     ...task,

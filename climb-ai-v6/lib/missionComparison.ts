@@ -1,4 +1,5 @@
 import type {ILPTask} from './types';
+import {verifiedMissionRep} from './verifiedMissionProof';
 
 function clock(seconds:number){
   const safe=Math.max(0,Math.floor(seconds));
@@ -9,7 +10,7 @@ export function missionComparisonForMatch(task:ILPTask,matchId:string|undefined)
   const attempt=matchId?(task.missionHistory??[]).find(item=>item.matchId===matchId):undefined;
   if(!attempt)return{result:'NOT OBSERVED' as const,detail:'This was not one of the two scored missions for that game, or no reviewed evidence exists yet.',events:[] as Array<{clock:string;label:string;detail:string}>};
 
-  const state=attempt.evidenceV2?.state??(attempt.banksPass?'BANKED':attempt.outcome==='NO_REP'?'NOT_OBSERVED':'MISSED');
+  const state=verifiedMissionRep(task,attempt)?'BANKED':attempt.evidenceV2?.state==='MISSED'?'MISSED':'NOT_OBSERVED';
   const result=state==='BANKED'?'PROVEN' as const:state==='MISSED'?'NEEDS WORK' as const:'NOT OBSERVED' as const;
   const events=(attempt.evidenceV2?.events??[])
     .filter(event=>typeof event.atSeconds==='number'&&Number.isFinite(event.atSeconds))

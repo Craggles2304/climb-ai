@@ -11,6 +11,7 @@ import {buildDecisionGraph,lockedPlanFromPregameContext,type LockedDecisionPlan}
 import {latestPatch} from '@/lib/champions/source';
 import {canonicalLeaguePatch} from '@/lib/patchIntelligence';
 import {buildLiveMatchReconstruction} from '@/lib/matchReconstruction';
+import {syncVerifiedXpForUser} from './playerProgressionRepository';
 
 export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAccountId:string|null;deviceName:string}
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
@@ -454,12 +455,15 @@ function matchCandidateScore(match:any,session:any,snapshots:LiveTelemetrySnapsh
 async function syncLearningPlanForSession(sessionId:string,userId:string,riotAccountId:string|null,trigger:string,analysis:ProMatchAnalysis|null):Promise<PostGameIlpSyncResult|null>{
   const signature=analysis?analysisSignature(analysis):'';
   const existing=await sessionLearningPlanStatus(sessionId);
-  if(existing?.status==='COMPLETE'&&signature&&existing.analysisSignature===signature)return{...existing,reused:true} as PostGameIlpSyncResult;
+  if(existing?.status==='COMPLETE'&&existing.xpSyncStatus==='COMPLETE'&&signature&&existing.analysisSignature===signature)return{...existing,reused:true} as PostGameIlpSyncResult;
   if(!riotAccountId){await markLearningPlanSync(sessionId,{status:'SKIPPED',reason:'NO_RIOT_ACCOUNT',trigger,analysisSignature:signature,syncedAt:new Date().toISOString()});return null}
   try{
     const rebuilt=await rebuildProLearningProfileWithIlp(userId,riotAccountId);
     if(!rebuilt){await markLearningPlanSync(sessionId,{status:'SKIPPED',reason:'NO_PROFILE',trigger,analysisSignature:signature,syncedAt:new Date().toISOString()});return null}
-    const result={...rebuilt.ilp,trigger,analysisSignature:signature};
+    const db=getSupabaseAdmin();
+    if(!db)throw new Error('XP ledger storage unavailable after post-game analysis.');
+    const xp=await syncVerifiedXpForUser(db,userId);
+    const result={...rebuilt.ilp,trigger,analysisSignature:signature,xpSyncStatus:'COMPLETE',verifiedXpTransactions:xp.verifiedTransactions};
     await markLearningPlanSync(sessionId,result);
     return rebuilt.ilp;
   }catch(err){
