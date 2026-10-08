@@ -14,8 +14,8 @@ const appShell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8
 const dnaClient=fs.readFileSync(path.join(root,'public','client','dna.js'),'utf8');
 
 test('My DNA keeps six equal strands and marks the two player-unlocked trees',()=>{
-  assert.ok(ilp.includes('YOUR 6 DNA STRANDS · 2 GAME MISSIONS'));
-  assert.ok(ilp.includes('Two jobs per game. Six strands over time.'));
+  assert.ok(ilp.includes('YOUR 6 DNA STRANDS · PLAYER PLAN'));
+  assert.ok(ilp.includes('One primary Climb. Two live missions. Six strands developing.'));
   assert.ok(ilp.includes('gameMissionFocusPair'));
   assert.ok(ilp.includes('YOUR JOB NEXT GAME'));
   assert.ok(ilp.includes('HOW YOU PROVE IT'));
