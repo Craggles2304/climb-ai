@@ -68,7 +68,8 @@ function render(state){
   const phase=String(current.phase||'WAITING');
   const tft=current.tftRecorder||{};
   const tftBusy=['INITIALIZING','RECORDING','PROCESSING','READY'].includes(String(tft.state||''));
-  renderTftHome(current,tftBusy);
+  const tftHomeVisible=paired&&tftBusy&&!['CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase);
+  renderTftHome(current,tftHomeVisible);
   const coach=current.postGameReview?.coachLevel||current.teamPlan?.coachLevel;
   setCoachLevel(coach);
 
@@ -81,7 +82,7 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
-  renderPlayerHome(current.playerHome,paired&&phase==='WAITING'&&!tftBusy);
+  renderPlayerHome(current.playerHome,paired&&phase==='WAITING'&&!tftHomeVisible);
   renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
@@ -96,8 +97,8 @@ function render(state){
   const pregameVisible=phase==='CHAMP_SELECT'&&Boolean(current.matchup||current.draft);
   const quietVisible=phase==='RECORDING';
   const reviewVisible=phase==='REVIEW'&&Boolean(current.postGameReview);
-  const homeVisible=phase==='WAITING'&&!tftBusy&&Boolean(current.playerHome?.ok);
-  setHidden($('status'),homeVisible||pregameVisible||quietVisible||reviewVisible);
+  const homeVisible=phase==='WAITING'&&!tftHomeVisible&&Boolean(current.playerHome?.ok);
+  setHidden($('status'),tftHomeVisible||homeVisible||pregameVisible||quietVisible||reviewVisible);
 
   const tftOwnsStatus=tftBusy&&!['CHAMP_SELECT','REVIEW'].includes(phase);
   const tftTitle=tft.state==='RECORDING'?'Tracking TFT':tft.state==='PROCESSING'?'Building TFT review':tft.state==='READY'?'TFT review ready':'Preparing TFT recorder';
@@ -133,7 +134,8 @@ function renderTftHome(state,visible){
   section.querySelector('#tftHomeStatus').textContent=status;
   section.querySelector('#tftHomeTitle').textContent=title;
   section.querySelector('#tftHomeCopy').textContent=copy;
-  section.querySelector('#tftHomePhase').textContent=status==='RECORDING'?'RECORDING LIVE':'POST-GAME ANALYSIS';
+  section.querySelector('#tftHomePhase').textContent=status==='RECORDING'?'RECORDING LIVE':status==='READY'?'REVIEW READY':status==='PROCESSING'?'BUILDING REVIEW':'PREPARING';
+  section.querySelector('#tftHomeRound').textContent=tft.round&&tft.round!=='0-0'?`STAGE ${tft.round}`:'AWAITING STAGE';
 }
 
 function ensureTftHome(){
@@ -141,7 +143,7 @@ function ensureTftHome(){
   if(section)return section;
   section=document.createElement('section');section.id='tftHome';section.className='card tft-home hidden';
   section.innerHTML=`<div class="tft-home-top"><div><div class="eyebrow">OP CLIMB · TFT</div><h2 id="tftHomeTitle">PREPARING TFT</h2><p id="tftHomeCopy">The TFT recorder is starting.</p></div><span id="tftHomeStatus" class="tft-home-status">STARTING</span></div>
-    <div class="tft-home-grid"><article><span>MODE</span><strong id="tftHomePhase">POST-GAME ANALYSIS</strong><small>Native TFT timeline capture</small></article><article><span>SET / STAGE</span><strong>LIVE DATA READY</strong><small>Set and stage appear when the match feed is available</small></article><article><span>FOCUS</span><strong>ECONOMY · BOARD · PLACEMENT</strong><small>Review targets are built from the recorded timeline</small></article></div>
+    <div class="tft-home-grid"><article><span>MODE</span><strong id="tftHomePhase">PREPARING</strong><small>Native TFT timeline capture</small></article><article><span>STAGE</span><strong id="tftHomeRound">AWAITING STAGE</strong><small>Updates when the match feed is readable</small></article><article><span>REVIEW</span><strong>ECONOMY · BOARD · PLACEMENT</strong><small>Evidence from your recorded timeline</small></article></div>
     <div class="tft-home-actions"><button id="tftHomeOpen" class="primary">OPEN TFT TIMELINE</button><span>TFT coaching stays separate from League DNA missions.</span></div>`;
   $('status').after(section);
   section.querySelector('#tftHomeOpen')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/tft/timeline'));
