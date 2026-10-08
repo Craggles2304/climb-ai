@@ -708,16 +708,16 @@ function ensureDraftBoard(){
   board.innerHTML=`
     <div class="premium-draft-head">
       <div class="premium-draft-headline">
-        <div class="eyebrow"><span class="draft-live-dot"></span> CHAMP SELECT / LIVE DRAFT</div>
+        <div class="eyebrow"><span class="draft-live-dot"></span> CHAMP SELECT · LIVE DRAFT</div>
         <h2 id="draftBoardTitle">DRAFT IN PROGRESS</h2>
         <p>Both teams, one clear role, and the plan you're building towards.</p>
       </div>
       <span id="draftBoardState" class="pill premium-draft-state">CHOOSING</span>
     </div>
     <div class="premium-draft-metrics">
-      <div class="premium-draft-metric"><span class="eyebrow">YOUR POSITION</span><strong id="draftBoardRole">—</strong></div>
-      <div class="premium-draft-metric"><span class="eyebrow">YOUR CHAMPION</span><strong id="draftBoardPick">SELECTING</strong></div>
-      <div class="premium-draft-metric premium-draft-progress"><span class="eyebrow">ENEMY TEAM READ</span><strong id="draftBoardSeen">0/5 ENEMIES SEEN</strong><div class="draft-read-track"><i id="draftBoardReadBar" role="progressbar" aria-label="Enemy picks revealed" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"></i></div></div>
+      <div class="premium-draft-metric"><span class="eyebrow">YOUR ROLE</span><strong id="draftBoardRole">—</strong></div>
+      <div class="premium-draft-metric"><span class="eyebrow">YOUR PICK</span><strong id="draftBoardPick">SELECTING</strong></div>
+      <div class="premium-draft-metric premium-draft-progress"><span class="eyebrow">DRAFT READ</span><strong id="draftBoardSeen">0/5 ENEMIES SEEN</strong><div class="draft-read-track"><i id="draftBoardReadBar" role="progressbar" aria-label="Enemy picks revealed" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"></i></div></div>
     </div>
     <div class="premium-draft-rosters">
       <div class="premium-draft-roster ours">
