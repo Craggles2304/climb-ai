@@ -68,6 +68,7 @@ function render(state){
   const phase=String(current.phase||'WAITING');
   const tft=current.tftRecorder||{};
   const tftBusy=['INITIALIZING','RECORDING','PROCESSING','READY'].includes(String(tft.state||''));
+  renderTftHome(current,tftBusy);
   const coach=current.postGameReview?.coachLevel||current.teamPlan?.coachLevel;
   setCoachLevel(coach);
 
@@ -119,6 +120,32 @@ function render(state){
   $('logs').textContent=rows.length?rows.map(row=>`[${new Date(row.at).toLocaleTimeString()}] ${row.line}`).join('\n'):'No tracker activity yet.';
 
   syncSettingsVisibility();
+}
+
+function renderTftHome(state,visible){
+  const section=ensureTftHome();
+  setHidden(section,!visible);
+  if(!visible)return;
+  const tft=state?.tftRecorder||{};
+  const status=String(tft.state||'STARTING').toUpperCase();
+  const copy=tft.detail||'TFT recorder is ready for the next game.';
+  const title=status==='RECORDING'?'TFT MATCH IN PROGRESS':status==='PROCESSING'?'BUILDING TFT REVIEW':status==='READY'?'TFT REVIEW READY':'PREPARING TFT';
+  section.querySelector('#tftHomeStatus').textContent=status;
+  section.querySelector('#tftHomeTitle').textContent=title;
+  section.querySelector('#tftHomeCopy').textContent=copy;
+  section.querySelector('#tftHomePhase').textContent=status==='RECORDING'?'RECORDING LIVE':'POST-GAME ANALYSIS';
+}
+
+function ensureTftHome(){
+  let section=$('tftHome');
+  if(section)return section;
+  section=document.createElement('section');section.id='tftHome';section.className='card tft-home hidden';
+  section.innerHTML=`<div class="tft-home-top"><div><div class="eyebrow">OP CLIMB · TFT</div><h2 id="tftHomeTitle">PREPARING TFT</h2><p id="tftHomeCopy">The TFT recorder is starting.</p></div><span id="tftHomeStatus" class="tft-home-status">STARTING</span></div>
+    <div class="tft-home-grid"><article><span>MODE</span><strong id="tftHomePhase">POST-GAME ANALYSIS</strong><small>Native TFT timeline capture</small></article><article><span>SET / STAGE</span><strong>LIVE DATA READY</strong><small>Set and stage appear when the match feed is available</small></article><article><span>FOCUS</span><strong>ECONOMY · BOARD · PLACEMENT</strong><small>Review targets are built from the recorded timeline</small></article></div>
+    <div class="tft-home-actions"><button id="tftHomeOpen" class="primary">OPEN TFT TIMELINE</button><span>TFT coaching stays separate from League DNA missions.</span></div>`;
+  $('status').after(section);
+  section.querySelector('#tftHomeOpen')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/tft/timeline'));
+  return section;
 }
 
 function renderPlayerHome(home,visible){
