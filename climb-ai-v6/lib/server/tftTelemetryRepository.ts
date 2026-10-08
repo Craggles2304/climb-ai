@@ -30,6 +30,11 @@ function dbOrThrow(){
 export async function startTftTelemetrySession(device:TrackerDevice,input:TftRecorderSessionInput){
   const db=dbOrThrow();
   const now=new Date().toISOString();
+  const {data:existing,error:existingError}=await db.from('tft_telemetry_sessions')
+    .select('id,pseudo_match_id,status,started_at,riot_account_id')
+    .eq('device_id',device.id).eq('user_id',device.userId).eq('pseudo_match_id',input.pseudoMatchId).maybeSingle();
+  if(existingError)throw new Error(existingError.message);
+  if(existing)return existing;
   const payload={
     user_id:device.userId,
     riot_account_id:device.riotAccountId,
@@ -60,6 +65,7 @@ export async function recordTftTelemetryPoint(device:TrackerDevice,pseudoMatchId
     .maybeSingle();
   if(sessionError)throw new Error(sessionError.message);
   if(!session)throw new Error('TFT telemetry session is not active.');
+  if(session.status!=='RECORDING')throw new Error('TFT telemetry session has already ended.');
   const row={
     session_id:session.id,
     client_point_id:point.clientPointId,
@@ -182,12 +188,13 @@ export async function completeTftTelemetrySession(device:TrackerDevice,pseudoMat
   const summary={
     mode:'OP_CLIMB_NATIVE_WINDOW_OCR_V1',
     pointCount:timeline.points.length,
+    quality:timeline.points.length?'RECORDED':'NO_EVIDENCE',
     observedFindings:findings.filter(f=>f.status==='OBSERVED').map(f=>f.key),
     completedAt:endedAt??now,
     evidenceBoundary:'Own-player visible HUD/shop evidence only during play; no opponent scouting and no live prescriptions. Full game-window frames are not stored or uploaded.',
   };
   const {error:updateError}=await db.from('tft_telemetry_sessions').update({
-    status:'COMPLETE',
+    status:timeline.points.length?'COMPLETE':'ABORTED',
     ended_at:endedAt??now,
     last_seen_at:now,
     findings,
@@ -195,8 +202,8 @@ export async function completeTftTelemetrySession(device:TrackerDevice,pseudoMat
     updated_at:now,
   }).eq('id',session.id);
   if(updateError)throw new Error(updateError.message);
-  const linked=await tryLinkRiotTftMatch(device,{...session,ended_at:endedAt??now});
-  return{sessionId:session.id,timeline,findings,linkedMatch:linked};
+  const linked=timeline.points.length?await tryLinkRiotTftMatch(device,{...session,ended_at:endedAt??now}):null;
+  return{sessionId:session.id,timeline,findings,linkedMatch:linked,pointCount:timeline.points.length,evidenceReady:timeline.points.length>0};
 }
 
 export async function latestTftTelemetryForUser(userId:string,riotAccountId?:string|null){
@@ -204,7 +211,7 @@ export async function latestTftTelemetryForUser(userId:string,riotAccountId?:str
   let query=db.from('tft_telemetry_sessions')
     .select('id,pseudo_match_id,status,started_at,ended_at,last_seen_at,summary,findings,linked_tft_match_id')
     .eq('user_id',userId)
-    .eq('status','COMPLETE')
+    .in('status',['COMPLETE','ABORTED'])
     .order('started_at',{ascending:false})
     .limit(1);
   if(riotAccountId)query=query.eq('riot_account_id',riotAccountId);

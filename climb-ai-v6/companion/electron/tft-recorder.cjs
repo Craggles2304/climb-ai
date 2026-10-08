@@ -207,11 +207,25 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
   let worker=null;
   let lcuCredentials=null;
   let lcuCheckedAt=0;
+  let nextRetryAt=0;
+  let uploadedPoints=0;
+  let lastEndedMatch='';
 
   const status=(state,detail,extra={})=>onStatus({available:true,state,detail,capture:'OP_CLIMB_NATIVE',...extra});
   const cfg=()=>getConfig?.()||{};
   const loadQueue=()=>{try{const rows=JSON.parse(readFileSync(queueFile,'utf8'));return Array.isArray(rows)?rows:[]}catch{return[]}};
-  const saveQueue=rows=>{try{mkdirSync(path.dirname(queueFile),{recursive:true});writeFileSync(queueFile,JSON.stringify(rows.slice(-120)),'utf8')}catch{}};
+  const saveQueue=rows=>{
+    try{
+      mkdirSync(path.dirname(queueFile),{recursive:true});
+      // Preserve the original START/POINT/END order through long offline games.
+      writeFileSync(queueFile,JSON.stringify(rows.slice(-3000)),'utf8');
+      return true;
+    }catch(error){
+      log('TFT recovery queue could not be written: '+(error?.message||error),'error');
+      status('ERROR','TFT checkpoints could not be saved locally. Check drive storage and restart the Companion.');
+      return false;
+    }
+  };
 
   const request=async body=>{
     const config=cfg();
@@ -230,28 +244,57 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
       return payload;
     }finally{clearTimeout(timer)}
   };
+  const noteAccepted=(body,result)=>{
+    if(body.action==='POINT')uploadedPoints+=1;
+    if(body.action==='END'&&!active&&lastEndedMatch===body.pseudoMatchId){
+      const count=Number(result?.pointCount??result?.timeline?.points?.length??0);
+      if(result?.evidenceReady&&count>0)status('READY','TFT review ready · '+count+' recorded checkpoints.',{sessionId:result.sessionId,pointCount:count});
+      else status('ERROR','TFT game ended but no checkpoints were saved. Check recording diagnostics before playing again.',{sessionId:result?.sessionId,pointCount:0});
+    }
+  };
+  const queueEvent=body=>{
+    const rows=loadQueue();
+    rows.push(body);
+    return saveQueue(rows);
+  };
   const flush=async()=>{
     const queued=loadQueue();
-    if(!queued.length)return;
-    const remaining=[];
+    if(!queued.length)return true;
     for(let i=0;i<queued.length;i++){
-      try{await request(queued[i])}
-      catch(error){
-        if(error?.status===401){log('TFT recorder needs this PC to be paired again.','error');saveQueue([]);return}
-        remaining.push(...queued.slice(i));break;
+      try{
+        const result=await request(queued[i]);
+        noteAccepted(queued[i],result);
+      }catch(error){
+        // A malformed historical packet must never block later valid captures.
+        if(error?.status===400||error?.status===404){
+          log('Discarded rejected TFT telemetry event ('+queued[i]?.action+'): '+(error?.message||error),'error');
+          continue;
+        }
+        saveQueue(queued.slice(i));
+        if(error?.status===401||error?.status===403)status('ERROR','TFT upload paused: please re-pair this Companion. Recorded evidence is retained locally.');
+        else log('TFT upload interrupted. Local checkpoints will retry in order.','info');
+        return false;
       }
     }
-    saveQueue(remaining);
+    saveQueue([]);
+    return true;
   };
   const send=body=>{
-    chain=chain.then(async()=>{
-      await flush();
-      try{return await request(body)}
-      catch(error){
-        if(error?.status!==401){
-          const rows=loadQueue();rows.push(body);saveQueue(rows);
-          log('TFT checkpoint saved locally; upload will retry automatically.','info');
-        }else log('TFT recorder could not upload because pairing is invalid.','error');
+    chain=chain.catch(error=>{log('TFT retry recovered: '+(error?.message||error),'error')}).then(async()=>{
+      if(!await flush()){queueEvent(body);return null}
+      try{
+        const result=await request(body);
+        noteAccepted(body,result);
+        return result;
+      }catch(error){
+        if(error?.status===400||error?.status===404){
+          log('TFT '+body.action+' rejected by server: '+(error?.message||error),'error');
+          status('ERROR','TFT checkpoint rejected by OP CLIMB. Update the Companion and retry.');
+        }else{
+          queueEvent(body);
+          if(error?.status===401||error?.status===403)status('ERROR','TFT upload paused: please re-pair this Companion. Evidence is saved locally.');
+          else log('TFT checkpoint queued locally for automatic ordered retry.','info');
+        }
         return null;
       }
     });
@@ -403,7 +446,7 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
     active=true;
     startedAt=new Date().toISOString();
     pseudoMatchId='native-'+Date.now();
-    pointCounter=0;round='0-0';roundRefreshes=0;roundPurchases=0;shop=[];
+    pointCounter=0;uploadedPoints=0;round='0-0';roundRefreshes=0;roundPurchases=0;shop=[];
     acceptedGold=undefined;current={gold:undefined,level:undefined,xp:undefined};
     lastCheckpointAt=0;matchStartSent=false;pendingShopSignature='';pendingShopHits=0;missHits=0;nonTftFlowHits=0;
     status('RECORDING','TFT detected. OP CLIMB is recording your own visible decision evidence silently.',{pseudoMatchId});
@@ -441,13 +484,11 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
     const point=pointPayload('MATCH_END');
     const id=pseudoMatchId;
     active=false;
-    status('PROCESSING','TFT finished. Building your post-game Decision Twin review.',{pseudoMatchId:id});
+    lastEndedMatch=id;
+    status('PROCESSING','TFT finished. Uploading '+pointCounter+' recorded events and building your post-game review.',{pseudoMatchId:id,pointCount:pointCounter});
     void send({game:'TFT',action:'END',pseudoMatchId:id,endedAt,point:point||undefined}).then(result=>{
-      if(result?.ok){
-        const observed=Array.isArray(result.findings)?result.findings.filter(item=>item?.status==='OBSERVED').length:0;
-        status('READY','TFT review ready · '+observed+' evidence-backed pattern'+(observed===1?'':'s')+' found.',{pseudoMatchId:id,sessionId:result.sessionId});
-        log('TFT post-game review ready ('+reason+').');
-      }
+      if(result?.ok)log('TFT game evidence processed ('+reason+').');
+      else if(lastEndedMatch===id)status('PROCESSING','TFT game saved locally. Waiting to retry the post-game upload.',{pseudoMatchId:id,pointCount:pointCounter});
     });
     pseudoMatchId='';startedAt='';round='0-0';shop=[];roundRefreshes=0;roundPurchases=0;
     current={gold:undefined,level:undefined,xp:undefined};pendingShopSignature='';pendingShopHits=0;
@@ -470,12 +511,13 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
   };
   const applyHud=hud=>{
     if(!hud)return;
+    const previousRound=round;
+    const nextRound=hud.round&&hud.round!=='0-0'?hud.round:round;
+    // Preserve the previous round's gold/level before applying the next screenshot.
+    if(previousRound!=='0-0'&&nextRound!==previousRound)void checkpoint('ROUND_END');
     if(Number.isFinite(hud.gold))current.gold=hud.gold;
     if(Number.isFinite(hud.level))current.level=hud.level;
     if(Number.isFinite(hud.xp))current.xp=hud.xp;
-    const previousRound=round;
-    const nextRound=hud.round&&hud.round!=='0-0'?hud.round:round;
-    if(previousRound!=='0-0'&&nextRound!==previousRound)void checkpoint('ROUND_END');
     if(nextRound!==round){
       round=nextRound;roundRefreshes=0;roundPurchases=0;shop=[];acceptedGold=current.gold;pendingShopSignature='';pendingShopHits=0;
       if(!matchStartSent){matchStartSent=true;void checkpoint('MATCH_START')}
@@ -492,6 +534,7 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
     inFlight=true;
     try{
       const flow=await gameflow();
+      if(Date.now()>=nextRetryAt){nextRetryAt=Date.now()+15000;chain=chain.catch(()=>{}).then(()=>flush())}
       if(active&&flow.available&&flow.active&&flow.mode==='OTHER'){
         nonTftFlowHits+=1;
         if(nonTftFlowHits>=2){finish('League gameflow replaced TFT');return}
@@ -526,22 +569,27 @@ function startTftRecorder({app,getConfig,log=()=>{},onStatus=()=>{}}){
       const flowConfirmsTft=flow.active&&flow.mode==='TFT';
       if(!active&&(flowConfirmsTft||tftConfirmHits>=2))ensureMatch(flowConfirmsTft?'LCU TFT gameflow':'TFT HUD detected');
       if(active){
-        missHits=0;
-        if(hud.confirmedTft||flowConfirmsTft){
+        // After a positively identified TFT game, missing shop text must not
+        // discard otherwise useful stage/gold/level evidence.
+        if(hud.confirmedTft||flowConfirmsTft||hud.round!=='0-0'){
+          missHits=0;
           applyHud(hud);
-          status('RECORDING','TFT recording quietly · '+(round!=='0-0'?'stage '+round:'waiting for stage read')+' · post-game coaching only.',{pseudoMatchId,round,confidence:hud.confidence});
+          status('RECORDING','TFT recording · '+(round!=='0-0'?'stage '+round:'waiting for stage read')+' · '+pointCounter+' checkpoints captured · post-game coaching only.',{pseudoMatchId,round,confidence:hud.confidence,pointCount:pointCounter,uploadedPoints});
         }else if(!flowConfirmsTft){
           missHits+=1;
-          if(missHits>=4)finish('TFT HUD no longer detected');
+          if(missHits>=8)finish('TFT HUD no longer detected');
         }
       }else status('ARMED','OP CLIMB TFT recorder is ready. Open TFT and play normally.');
+    }catch(error){
+      log('TFT capture retry after error: '+(error?.message||error),'error');
+      if(active)status('RECORDING','TFT capture temporarily unavailable. OP CLIMB will retry automatically.',{pseudoMatchId,round,pointCount:pointCounter});
     }finally{
       inFlight=false;
       if(!stopped)pollTimer=setTimeout(()=>void poll(),POLL_MS);
     }
   };
 
-  void flush();
+  chain=chain.then(()=>flush());
   status('ARMED','OP CLIMB TFT recorder is ready. Open TFT and play normally.');
   pollTimer=setTimeout(()=>void poll(),1200);
 
