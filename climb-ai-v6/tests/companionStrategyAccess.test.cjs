@@ -56,3 +56,16 @@ test('Companion keeps a simple free plan while paid match read exposes a compact
   assert.match(preload,/toggle\('opBiggestThrowCard',!paid\)/);
   assert.match(preload,/toggle\('opSimpleFlow',hasRoleWin\)/);
 });
+
+
+test('subscription badge never falls back to player Elo as a membership plan',()=>{
+  const renderer=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
+  const review=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
+  const plan=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
+  assert.match(renderer,/function companionCoachBadge\(state\)/);
+  assert.match(renderer,/strategyAccess\?\.tier\|\|state\?\.playerHome\?\.tier/);
+  assert.doesNotMatch(renderer,/activeCoachLevel\.tier\?\x60/);
+  assert.doesNotMatch(preload,/access\?\.tier\|\|team\?\.coachLevel\?\.tier/);
+  assert.match(review,/const planTier=clean\(state\?\.teamPlan\?\.strategyAccess\?\.tier/);
+  assert.match(plan,/return String\(profileResult\?\.data\?\.rank\|\|'UNRANKED'\)/);
+});

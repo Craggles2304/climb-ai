@@ -64,12 +64,13 @@ function makeContext(){
   const registry=new Map();
   // Every id that is in index.html at load time exists from the start.
   for(const match of html.matchAll(/\bid="([^"]+)"/g))new FakeElement(registry).id=match[1];
+  const badge=new FakeElement(registry,'b');
   const document={
     body:new FakeElement(registry,'body'),
     head:new FakeElement(registry,'head'),
     getElementById:id=>registry.get(id)||null,
     createElement:tag=>new FakeElement(registry,tag),
-    querySelector:()=>new FakeElement(registry),
+    querySelector:selector=>selector==='.brand-signal b'?badge:new FakeElement(registry),
     querySelectorAll:()=>[],
     addEventListener(){},
   };
@@ -84,7 +85,7 @@ function makeContext(){
   sandbox.window=sandbox;
   const context=vm.createContext(sandbox);
   vm.runInContext(rendererSource,context,{filename:'renderer.js'});
-  return {context,registry,render:state=>vm.runInContext('render',context)(state)};
+  return {context,registry,badge,render:state=>vm.runInContext('render',context)(state)};
 }
 
 /* ---------------------------------------------------------------- fixtures -- */
@@ -183,4 +184,21 @@ test('the desktop app throwing in one phase does not poison the next',()=>{
   for(const name of ['waiting for League','champ select, plan locked','in game, plan held','building the review','review ready','waiting for League'])
     assert.doesNotThrow(()=>render({...base,...scenarios[name]}),name);
   assert.equal(registry.get('statusTitle').textContent,'Ready for League');
+});
+
+
+test('rank-calibrated SILVER never masquerades as paid plan or persists on TFT/home',()=>{
+  const {render,registry,badge}=makeContext();
+  const silverCalibration={tier:'SILVER',rank:'UNRANKED',depth:3,visiblePoints:3,reviewPoints:2};
+  const paidPlan={...teamPlan(),coachLevel:silverCalibration,strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}};
+  render({...base,phase:'CHAMP_SELECT',matchup:matchup(),draft:fullDraft(),teamPlan:paidPlan});
+  assert.equal(badge.textContent,'PRO COACH');
+  assert.match(registry.get('simplePregameTier').textContent,/PRO COACH/);
+  assert.doesNotMatch(registry.get('simplePregameTier').textContent,/SILVER COACH/);
+  render({...base,phase:'RECORDING',teamPlan:paidPlan,matchup:matchup()});
+  assert.equal(badge.textContent,'PRO COACH');
+  render({...base,phase:'WAITING',playerHome:{tier:'PRO',ok:false}});
+  assert.equal(badge.textContent,'PRO COACH');
+  render({...base,phase:'WAITING',tftRecorder:{state:'ARMED'},playerHome:null});
+  assert.equal(badge.textContent,'OP CLIMB COACH');
 });

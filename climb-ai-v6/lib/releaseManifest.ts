@@ -1,7 +1,7 @@
 export const RELEASE_MANIFEST={
   channel:'BETA',
   webVersion:'0.4.0',
-  companionVersion:'0.9.6',
+  companionVersion:'0.9.7',
   companionReleaseTag:'companion-beta',
   windowsDownloadPath:'/download/windows',
   supportPath:'/support',

@@ -48,7 +48,19 @@ function phaseCopy(state){
   return state?.detail||'Companion is running.';
 }
 
-function setCoachLevel(level){
+/** A player's ranked calibration and their FREE/PLUS/PRO membership are different.
+ * Display only the actual subscription as a COACH badge. Do not label an
+ * unranked player "SILVER COACH" because of the coaching-depth fallback.
+ */
+function companionPlanTier(state){
+  const raw=String(state?.teamPlan?.strategyAccess?.tier||state?.playerHome?.tier||'').trim().toUpperCase();
+  return ['FREE','PLUS','PRO'].includes(raw)?raw:null;
+}
+function companionCoachBadge(state){
+  const tier=companionPlanTier(state);
+  return tier?tier+' COACH':'OP CLIMB COACH';
+}
+function setCoachLevel(level,state){
   if(level&&Number(level.depth)){
     activeCoachLevel={
       ...activeCoachLevel,
@@ -59,7 +71,7 @@ function setCoachLevel(level){
     };
   }
   const signal=document.querySelector('.brand-signal b');
-  if(signal)signal.textContent=activeCoachLevel.tier?`${activeCoachLevel.tier} COACH`:'LIVE COACHING';
+  if(signal)signal.textContent=companionCoachBadge(state);
 }
 
 function render(state){
@@ -71,8 +83,12 @@ function render(state){
   const tftHomeVisible=paired&&tftBusy&&!['CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase);
   renderTftHome(current,tftHomeVisible);
   renderTftPrep(paired&&phase==='WAITING'&&!tftHomeVisible);
-  const coach=current.postGameReview?.coachLevel||current.teamPlan?.coachLevel;
-  setCoachLevel(coach);
+  // Do not retain a previous League rank calibration on the TFT/home screens.
+  const coach=['CHAMP_SELECT','RECORDING','REVIEW'].includes(phase)
+    ?(current.postGameReview?.coachLevel||current.teamPlan?.coachLevel)
+    :null;
+  if(!coach)activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
+  setCoachLevel(coach,current);
 
   document.body.classList.toggle('op-mode-match-room',phase==='CHAMP_SELECT');
   document.body.classList.toggle('op-mode-quiet',phase==='RECORDING'||tft.state==='RECORDING');
@@ -532,7 +548,7 @@ function renderPregame(matchup,teamPlan,draft,visible){
   const ruleCap=clamp(Number(activeCoachLevel.visiblePoints)||2,1,5);
 
   $('simplePregameTier').textContent=baselineReady
-    ?`${activeCoachLevel.tier} COACH · ${provisional?'PREVIEW':'LOCKED'}`
+    ?`${companionCoachBadge(current)} · ${provisional?'PREVIEW':'LOCKED'}${activeCoachLevel.rank&&String(activeCoachLevel.rank).toUpperCase()!=='UNRANKED'?' · PLAYER '+activeCoachLevel.rank:''}`
     :`DNA BASELINE · ${Math.min(Number(baseline?.games||0),Number(baseline?.required||3))}/${Number(baseline?.required||3)}`;
   $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:provisional?`${you} preview`:`${you} game plan`;
   $('simplePregameSummary').textContent=!baselineReady

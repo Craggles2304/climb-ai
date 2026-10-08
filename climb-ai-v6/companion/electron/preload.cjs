@@ -400,10 +400,11 @@ function renderMissionReminders(state){
   const labels=phaseLabels(role);
   const hasRoleWin=paid&&renderRoleWin(team,set);
   const hasDeep=Boolean(access?.deepStrategy)&&renderDeepRead(team,set);
-  const tier=String(access?.tier||team?.coachLevel?.tier||'FREE').toUpperCase();
+  const tier=String(access?.tier||state?.playerHome?.tier||'').toUpperCase();
+  const membership=['FREE','PLUS','PRO'].includes(tier)?tier+' COACH':'OP CLIMB COACH';
 
   if(!hasRoleWin)set('opStrategyHeading',paid?'HOW WE WIN THIS GAME':'YOUR SIMPLE GAME PLAN');
-  set('opMissionRank',access?.trialing?`${tier} TRIAL`:`${tier} COACH`);
+  set('opMissionRank',access?.trialing&&membership!=='OP CLIMB COACH'?`${tier} TRIAL`:membership);
   set('opRole',role?`${champion} · ${role}`:`${champion} · ROLE NOT CONFIRMED`);
   set('opOurIdentity',oneLine(team?.ourIdentity,40)||'FORMING');
   set('opTheirIdentity',oneLine(team?.theirIdentity,40)||'FORMING');
