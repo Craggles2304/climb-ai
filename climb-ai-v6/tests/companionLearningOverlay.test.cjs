@@ -66,7 +66,8 @@ test('overlay renderer changes from League mission to locked TFT focus without b
  assert.equal(element('mission').textContent,'Position safely');
  stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY'});
  assert.equal(element('title').textContent,'ECONOMY DISCIPLINE');
- assert.equal(element('win').textContent,'Plan your spending');
+ assert.equal(element('mission').textContent,'Plan your spending');
+ assert.equal(element('win').textContent,'Keep options open');
  assert.equal(element('avoid').textContent,'Protect your economy');
  assert.ok(!element('editor').hidden===false || element('editor').hidden);
 });
