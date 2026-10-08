@@ -5,7 +5,7 @@ let diagnosticsOpen=false;
 let settingsOpen=false;
 let pregameExpanded=false;
 let coachReviewEvidenceOpen=false;
-let activeCoachLevel={tier:'SILVER',depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
+let activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
 
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function safeArray(value){return Array.isArray(value)?value.filter(Boolean):[]}
@@ -59,7 +59,7 @@ function setCoachLevel(level){
     };
   }
   const signal=document.querySelector('.brand-signal b');
-  if(signal)signal.textContent=`${activeCoachLevel.tier} COACH`;
+  if(signal)signal.textContent=activeCoachLevel.tier?`${activeCoachLevel.tier} COACH`:'LIVE COACHING';
 }
 
 function render(state){
