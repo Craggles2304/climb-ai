@@ -82,6 +82,13 @@
       const summary=document.createElement('div');summary.id='opmDetailSummary';summary.className='opm-detail-summary';
       detailBody.prepend(summary);
     }
+    // Legacy renderers continue to update these nodes. Keep their data in the DOM,
+    // but never let their full coaching board reappear inside the live HUD.
+    [...detailBody.children].forEach(node=>{
+      if(node.id==='opmDetailSummary')return;
+      if(!node.hidden)node.hidden=true;
+      if(node.style.getPropertyValue('display')!=='none'||node.style.getPropertyPriority('display')!=='important')node.style.setProperty('display','none','important');
+    });
     return live;
   }
 
