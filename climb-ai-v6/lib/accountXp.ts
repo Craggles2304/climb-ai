@@ -1,4 +1,5 @@
 import type {ILPTask} from './types';
+import {verifiedMissionAttempts,verifiedMissionMastery} from './verifiedMissionProof';
 
 export const XP_PER_PROVEN_REP=50;
 export const XP_PER_MISSION_MASTERY=500;
@@ -15,21 +16,19 @@ export interface AccountProgress{
 }
 
 export function provenRepsForTask(task:ILPTask){
-  const tracked=(task.missionHistory??[]).filter(rep=>rep.source==='TRACKED'||rep.adherence==='TRACKED');
-  if(tracked.length)return tracked.filter(rep=>rep.banksPass).length;
-  return Math.max(0,task.successfulGames??0);
+  return verifiedMissionAttempts(task).length;
 }
 
 export function xpForTask(task:ILPTask){
   const reps=provenRepsForTask(task);
-  const mastery=task.status==='MASTERED'?XP_PER_MISSION_MASTERY:0;
+  const mastery=verifiedMissionMastery(task)?XP_PER_MISSION_MASTERY:0;
   return reps*XP_PER_PROVEN_REP+mastery;
 }
 
 export function accountProgress(tasks:ILPTask[]):AccountProgress{
   const unique=[...new Map(tasks.map(task=>[task.id,task])).values()];
   const provenReps=unique.reduce((sum,task)=>sum+provenRepsForTask(task),0);
-  const masteredMissions=unique.filter(task=>task.status==='MASTERED').length;
+  const masteredMissions=unique.filter(verifiedMissionMastery).length;
   const xp=unique.reduce((sum,task)=>sum+xpForTask(task),0);
   return progressFromXp(xp,{masteredMissions,provenReps});
 }
