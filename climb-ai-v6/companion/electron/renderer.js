@@ -297,6 +297,29 @@ function renderPlayerHome(home,visible){
   if($('playerJourneyBody'))$('playerJourneyBody').textContent=String(journey.body||'OP CLIMB will keep the next step clear.');
   const journeyCard=$('playerJourney');
   if(journeyCard)journeyCard.className='player-journey phase-'+String(journey.phase||'MISSION').toLowerCase();
+
+  // Player Home spotlight uses only real persisted baseline / verified mission
+  // progress. It must never invent a completion percentage or player rank.
+  const nextMission=baselineReady&&companionDnaRevealed?(home.priorityMission||safeArray(home.missions)[0]):null;
+  const repCount=Math.max(0,Number(nextMission?.confirmed)||0);
+  const repsNeeded=Math.max(1,Number(nextMission?.required)||3);
+  const spotlightProgress=!baselineReady
+    ?clamp(games/required*100,0,100)
+    :!companionDnaRevealed?100:clamp(repCount/repsNeeded*100,0,100);
+  $('playerHomeScoreValue').textContent=!baselineReady
+    ?Math.min(games,required)+'/'+required
+    :!companionDnaRevealed?'3/3':repCount+'/'+repsNeeded;
+  $('playerHomeScoreKind').textContent=!baselineReady?'BASELINE':!companionDnaRevealed?'DNA READY':'PROVEN REPS';
+  $('playerHomeSpotlightTitle').textContent=!baselineReady?'BUILD YOUR BASELINE'
+    :!companionDnaRevealed?'YOUR DNA IS READY'
+      :String(nextMission?.title||'YOUR NEXT CLIMB');
+  $('playerHomeSpotlightCopy').textContent=!baselineReady
+    ?'Play normally. Your missions unlock after three games in this role.'
+    :!companionDnaRevealed?'Reveal six DNA strands and your first two development missions.'
+      :String(nextMission?.nextGame||'Play a tracked game and prove your next learning repetition.');
+  $('playerHomeOrbit').setAttribute('aria-valuenow',String(Math.round(spotlightProgress)));
+  $('playerHomeOrbitFill').setAttribute('stroke-dashoffset',String(Math.round(245*(1-spotlightProgress/100))));
+  $('playerHomeNextButton').textContent=baselineReady&&!companionDnaRevealed?'REVEAL MY DNA ↗':'OPEN MY CLIMB ↗';
   if($('playerDnaRoleTitle'))$('playerDnaRoleTitle').textContent=roleLabel+' GAME DNA';
   if($('playerDnaRoleSubtitle'))$('playerDnaRoleSubtitle').textContent=!baselineReady?'Locked until the three-game role baseline is complete.':!companionDnaRevealed?'Baseline complete. Reveal your DNA to start the mission loop.':'Your '+roleLabel+' player shape.';
   if($('playerMissionRoleTitle'))$('playerMissionRoleTitle').textContent=!baselineReady?'PROVISIONAL COACHING':!companionDnaRevealed?'DNA READY':roleLabel+' TWO UNLOCKED TREES';
@@ -431,17 +454,33 @@ function ensurePlayerHome(){
   section.className='player-home hidden';
   section.innerHTML=`
     <header class="player-home-hero">
-      <div>
+      <div class="player-home-identity">
         <div class="player-home-kicker"><span id="playerHomeView">PLAYER OVERVIEW</span><b id="playerHomeTier">FREE</b></div>
         <h2 id="playerHomeName">PLAYER</h2>
         <p id="playerHomeRank">RANK · ROLE</p>
         <small id="playerHomeViewCopy">Loading your development view…</small>
       </div>
-      <div class="player-home-ready"><i></i><span>READY FOR LEAGUE</span><small>Match detection armed</small></div>
+      <div class="player-home-hero-side">
+        <div class="player-home-spotlight">
+          <div id="playerHomeOrbit" class="player-home-progress-orbit" role="progressbar"
+            aria-label="Current learning progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <svg viewBox="0 0 112 112" aria-hidden="true"><circle class="orbit-track" cx="56" cy="56" r="39"></circle>
+              <circle id="playerHomeOrbitFill" class="orbit-progress" cx="56" cy="56" r="39"></circle></svg>
+            <div class="orbit-center"><strong id="playerHomeScoreValue">0/3</strong><small id="playerHomeScoreKind">BASELINE</small></div>
+          </div>
+          <div class="player-home-spotlight-copy">
+            <span>YOUR DEVELOPMENT</span>
+            <strong id="playerHomeSpotlightTitle">BUILD YOUR BASELINE</strong>
+            <p id="playerHomeSpotlightCopy">Your coaching focus updates after a game.</p>
+          </div>
+        </div>
+        <div class="player-home-ready"><i></i><span>READY FOR LEAGUE</span><small>Match detection armed</small></div>
+      </div>
     </header>
     <section id="playerJourney" class="player-journey">
       <div class="player-journey-step"><span id="playerJourneyStatus">YOUR NEXT STEP</span><b id="playerJourneyProgress"></b></div>
       <div class="player-journey-copy"><strong id="playerJourneyTitle">Loading your journey…</strong><small id="playerJourneyBody">OP CLIMB is checking what comes next.</small></div>
+      <button id="playerHomeNextButton" class="player-home-next-button" type="button">OPEN MY CLIMB ↗</button>
     </section>
     <section class="player-role-switcher">
       <div><span>DNA ROLE PROFILE</span><strong>FLICK BETWEEN ROLES</strong><small>Viewing only · switching here never changes your main role or merges progress.</small></div>
@@ -462,7 +501,14 @@ function ensurePlayerHome(){
       <article id="playerHomeUpgrade" class="player-upgrade hidden"><div><b>UNLOCK NEXT</b><span></span></div><button id="playerHomePlans" type="button">SEE PLANS ↗</button></article>
     </div>`;
   $('status').after(section);
-  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',()=>{const role=String(current?.playerHome?.selectedRole||current?.playerHome?.player?.role||'').toUpperCase();const baseline=current?.playerHome?.baseline;if(baseline?.ready&&role){try{localStorage.setItem('op:dna-revealed:'+role,'1')}catch{}}window.opCompanion.openClimbPath(role?`/ilp?role=${encodeURIComponent(role)}`:'/ilp')});
+  const openMyDna=()=>{
+    const role=String(current?.playerHome?.selectedRole||current?.playerHome?.player?.role||'').toUpperCase();
+    const baseline=current?.playerHome?.baseline;
+    if(baseline?.ready&&role){try{localStorage.setItem('op:dna-revealed:'+role,'1')}catch{}}
+    window.opCompanion.openClimbPath(role?`/ilp?role=${encodeURIComponent(role)}`:'/ilp');
+  };
+  section.querySelector('#playerHomeOpenClimb')?.addEventListener('click',openMyDna);
+  section.querySelector('#playerHomeNextButton')?.addEventListener('click',openMyDna);
   section.querySelector('#playerHomePlans')?.addEventListener('click',()=>window.opCompanion.openClimbPath('/progress'));
   return section;
 }

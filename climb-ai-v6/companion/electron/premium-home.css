@@ -1,0 +1,214 @@
+/*
+ OP CLIMB / PREMIUM FOUNDATION 01
+ First-impression overhaul: Companion player home.
+ Adds a single accessible, responsive visual hierarchy without touching scores,
+ missions, evidence, rank, subscriptions, or gameplay behaviour.
+*/
+:root{
+  --ocp-night:#060b11;--ocp-panel:#101b23;--ocp-lime:#b6f66b;--ocp-cyan:#43d9dc;
+  --ocp-indigo:#9387ff;--ocp-paper:#f3f8f7;--ocp-fog:#b6c9ce;--ocp-line:rgba(189,223,234,.16);
+}
+.player-home{gap:16px;margin-top:10px;color:var(--ocp-paper)}
+.player-home .player-home-hero,
+.player-home .player-journey,
+.player-home .player-role-switcher,
+.player-home .player-dna-panel,
+.player-home .player-missions-panel,
+.player-home .player-memory,
+.player-home .player-upgrade{
+  border-radius:14px!important;box-shadow:0 16px 40px rgba(0,0,0,.22)!important;
+}
+.player-home-hero{
+  position:relative;isolation:isolate;overflow:hidden;
+  display:grid!important;grid-template-columns:minmax(0,1.1fr) minmax(265px,.9fr);
+  gap:24px;min-height:300px;padding:30px!important;align-items:center!important;
+  border:1px solid rgba(182,246,107,.24)!important;
+  background:
+    radial-gradient(ellipse 65% 110% at 95% 12%,rgba(97,118,237,.25),transparent 70%),
+    radial-gradient(ellipse 70% 80% at 18% -10%,rgba(182,246,107,.12),transparent 80%),
+    linear-gradient(118deg,#101b22 3%,#0a111a 53%,#0e1423 100%)!important;
+}
+.player-home-hero::before{
+  content:"";position:absolute;z-index:-1;pointer-events:none;inset:0;
+  background:
+    repeating-linear-gradient(90deg,transparent 0 63px,rgba(200,231,250,.025) 64px 65px),
+    repeating-linear-gradient(0deg,transparent 0 63px,rgba(200,231,250,.025) 64px 65px);
+  opacity:.76;
+}
+.player-home-hero::after{
+  content:"";position:absolute;inset:auto 0 0;height:3px;opacity:1!important;
+  background:linear-gradient(90deg,var(--ocp-lime) 0%,var(--ocp-cyan) 33%,var(--ocp-indigo) 75%,#f4c86f 100%)!important;
+}
+.player-home-identity{position:relative;z-index:1;min-width:0}
+.player-home-identity::before{
+  content:"PLAYER COMMAND CENTER / OP CLIMB";
+  display:block;margin-bottom:18px;color:var(--ocp-cyan);
+  font:800 11px/1.1 'IBM Plex Mono',monospace;letter-spacing:.14em;
+}
+.player-home-kicker{gap:10px;align-items:center;flex-wrap:wrap}
+.player-home-kicker span{color:#d5e7df!important;font-size:11px!important;letter-spacing:.12em!important}
+.player-home-kicker b{
+  font:850 11px/1 'IBM Plex Mono',monospace!important;
+  letter-spacing:.08em;padding:7px 10px!important;border-radius:5px;
+  border-color:rgba(182,246,107,.32)!important;background:rgba(182,246,107,.10);color:#ddffb8;
+}
+.player-home-hero h2{
+  margin:14px 0 7px!important;max-width:100%;overflow-wrap:anywhere;
+  font:900 clamp(44px,6vw,70px)/.94 'Barlow Condensed',Impact,sans-serif!important;
+  letter-spacing:-.025em!important;text-transform:uppercase;
+  color:#f6fbf6;text-shadow:0 3px 26px rgba(0,0,0,.44);
+}
+.player-home-hero p{
+  color:#d4e6e5!important;font:800 14px/1.35 'IBM Plex Mono',monospace!important;letter-spacing:.05em;
+}
+.player-home-hero .player-home-identity>small{
+  color:#aec2c7!important;font-size:12px!important;line-height:1.55!important;
+  max-width:54ch;margin-top:15px!important;
+}
+.player-home-hero-side{
+  display:grid;gap:15px;align-content:center;justify-items:stretch;
+}
+.player-home-spotlight{
+  display:grid;grid-template-columns:128px minmax(0,1fr);gap:15px;
+  align-items:center;padding:18px 16px;border:1px solid rgba(182,246,107,.24);
+  background:linear-gradient(120deg,rgba(182,246,107,.085),rgba(13,26,33,.9));
+  border-radius:12px;
+}
+.player-home-progress-orbit{position:relative;width:112px;height:112px;display:grid;place-items:center}
+.player-home-progress-orbit svg{width:112px;height:112px;overflow:visible;transform:rotate(-90deg)}
+.player-home-progress-orbit circle{fill:none;stroke-width:8}
+.player-home-progress-orbit .orbit-track{stroke:rgba(223,238,235,.13)}
+.player-home-progress-orbit .orbit-progress{
+  stroke:var(--ocp-lime);stroke-linecap:round;stroke-dasharray:245;stroke-dashoffset:245;
+  filter:drop-shadow(0 0 8px rgba(182,246,107,.35));transition:stroke-dashoffset .42s ease;
+}
+.player-home-progress-orbit .orbit-center{position:absolute;display:grid;justify-items:center;text-align:center}
+.player-home-progress-orbit .orbit-center strong{font:900 28px/1 'Barlow Condensed',sans-serif;color:#efffea}
+.player-home-progress-orbit .orbit-center small{
+  margin:4px 0 0!important;color:#b5cbd2!important;
+  font:700 10px/1.2 'IBM Plex Mono',monospace;letter-spacing:.09em;
+}
+.player-home-spotlight-copy{min-width:0}
+.player-home-spotlight-copy>span{
+  font:850 10px 'IBM Plex Mono',monospace;letter-spacing:.14em;color:var(--ocp-lime);
+}
+.player-home-spotlight-copy strong{
+  display:block;margin-top:7px;color:var(--ocp-paper);
+  font:850 24px/1.03 'Barlow Condensed',sans-serif;overflow-wrap:anywhere;text-transform:uppercase;
+}
+.player-home-spotlight-copy p{
+  font:600 11px/1.5 'DM Sans',sans-serif!important;color:var(--ocp-fog)!important;
+  letter-spacing:0!important;margin-top:7px!important;
+}
+.player-home-ready{
+  width:100%;min-width:0;grid-template-columns:auto 1fr!important;
+  padding:12px 15px!important;gap:5px 10px!important;
+  border:1px solid rgba(67,217,220,.24)!important;border-radius:8px;
+  background:rgba(9,22,27,.86)!important;
+}
+.player-home-ready i{height:9px;width:9px;background:#58edba!important;box-shadow:0 0 15px rgba(83,248,187,.47)!important}
+.player-home-ready span{font:850 11px 'IBM Plex Mono',monospace!important;color:#dffdf1!important}
+.player-home-ready small{color:#b8ced0!important;font-size:11px!important}
+.player-journey{
+  grid-template-columns:minmax(150px,.24fr) minmax(0,1fr) auto!important;
+  gap:22px!important;min-height:124px;padding:21px 25px!important;
+  border:1px solid rgba(182,246,107,.3)!important;
+  background:linear-gradient(97deg,rgba(182,246,107,.095),rgba(13,23,29,.96) 52%,rgba(9,17,23,.98))!important;
+}
+.player-journey-step span{font-size:11px!important;color:var(--ocp-lime)!important}
+.player-journey-step b{font-size:27px!important}
+.player-journey-copy strong{font-size:28px!important;line-height:1.04!important}
+.player-journey-copy small{font:500 13px/1.5 'DM Sans',sans-serif!important;color:#b6c8ce!important;margin-top:8px!important}
+.player-home-next-button{
+  justify-self:end;white-space:nowrap;min-height:46px;
+  padding:12px 18px!important;border-radius:7px!important;
+  background:var(--ocp-lime)!important;color:#0c1b0c!important;
+  border:1px solid var(--ocp-lime)!important;
+  font:800 12px 'DM Sans',sans-serif!important;
+}
+.player-home-next-button:hover{background:#d1ff9c!important;color:#061209!important;transform:translateY(-1px)}
+.player-role-switcher{padding:15px 18px!important;grid-template-columns:190px minmax(0,1fr)!important}
+.player-role-switcher>div:first-child span{font-size:11px!important}
+.player-role-switcher>div:first-child strong{font-size:22px!important;color:#f5f8f6}
+.player-role-switcher>div:first-child small{font-size:11px!important;color:#a6bcc2!important;line-height:1.45}
+.player-role-tabs{gap:9px}
+.player-role-tabs button{
+  border-radius:9px!important;padding:12px 10px!important;
+  background:#0b171e!important;min-height:62px;
+}
+.player-role-tabs button strong{font-size:12px!important}
+.player-role-tabs button small{font-size:10px!important;color:#a0b4bb!important}
+.player-role-tabs button.active{
+  background:rgba(182,246,107,.12)!important;
+  border-color:rgba(182,246,107,.55)!important;
+}
+.player-home-grid{gap:15px!important;grid-template-columns:minmax(0,1.02fr) minmax(0,.98fr)!important}
+.player-dna-panel,.player-missions-panel{
+  border:1px solid var(--ocp-line)!important;
+  padding:23px!important;background:linear-gradient(155deg,#111d26,#0b141c 82%)!important;
+}
+.player-panel-head{gap:16px;padding-bottom:17px!important}
+.player-panel-head span{font-size:11px!important;color:var(--ocp-cyan)!important}
+.player-panel-head h3{
+  font:650 13px/1.45 'DM Sans',sans-serif!important;
+  text-transform:none!important;color:#b9cad0!important;letter-spacing:0!important;margin-top:7px!important;
+}
+.player-panel-head button{
+  border-radius:7px!important;padding:10px 12px!important;
+  color:#e4fbef!important;border:1px solid rgba(182,246,107,.3)!important;
+  font-size:11px!important;letter-spacing:0!important;white-space:nowrap;
+}
+.player-dna-tree{gap:13px!important;margin-top:22px!important}
+.player-dna-row{grid-template-columns:143px minmax(0,1fr) 57px!important;min-height:47px!important;gap:11px!important}
+.player-dna-label span{color:#f0f5f2!important;font-size:12px!important}
+.player-dna-label span small{color:#b4c4c7!important;font-size:10px!important;line-height:1.35}
+.player-dna-label i{width:9px!important;height:9px!important}
+.player-dna-row>b{font-size:11px!important}
+.player-dna-track{height:10px!important;border-radius:6px}
+.player-dna-track>i{border-radius:5px}
+.player-mission-list{gap:12px!important;margin-top:21px!important}
+.player-mission-card{
+  padding:16px!important;border-radius:10px!important;
+}
+.player-mission-top span{font-size:10px!important;line-height:1.35}
+.player-mission-top b{font-size:10px!important;color:#cbd9dd!important}
+.player-mission-card h3{font-size:21px!important;line-height:1.1!important;margin:10px 0!important}
+.player-mission-card p{font:600 12px/1.55 'DM Sans',sans-serif!important;color:#b9cbd0!important}
+.player-mission-progress{height:9px!important;border-radius:6px;margin-top:14px!important}
+.player-mission-progress i{border-radius:5px}
+.player-mission-card>small{font-size:10px!important;line-height:1.5!important;color:#a5b9c0!important}
+.player-mission-card.priority h3{font-size:26px!important}
+.player-home-bottom{gap:15px!important}
+.player-memory,.player-upgrade{padding:19px 23px!important;min-height:102px}
+.player-memory>span{font-size:11px!important}
+.player-memory strong{font-size:25px!important}
+.player-memory small{font-size:12px!important;line-height:1.5!important;color:#b3c7cb!important}
+.player-upgrade b{font-size:22px!important}
+.player-upgrade span{font-size:12px!important;color:#b4c5c9!important}
+.player-upgrade button{font-size:11px!important;padding:11px 12px!important;border-radius:7px!important}
+@media(max-width:940px){
+  .player-home-hero{grid-template-columns:minmax(0,1fr)!important}
+  .player-home-hero-side{grid-template-columns:minmax(0,1fr) minmax(170px,.45fr);align-items:center}
+  .player-home-spotlight{grid-template-columns:105px minmax(0,1fr)}
+  .player-home-progress-orbit,.player-home-progress-orbit svg{width:100px;height:100px}
+  .player-home-ready{height:100%;align-content:center}
+  .player-home-grid{grid-template-columns:1fr!important}
+  .player-journey{grid-template-columns:130px minmax(0,1fr)!important}
+  .player-home-next-button{grid-column:1/-1;justify-self:start}
+}
+@media(max-width:690px){
+  .player-home-hero{padding:21px!important;gap:16px}
+  .player-home-hero h2{font-size:45px!important}
+  .player-home-hero-side{grid-template-columns:1fr}
+  .player-home-spotlight{grid-template-columns:110px minmax(0,1fr)}
+  .player-journey{grid-template-columns:1fr!important;padding:20px!important;gap:13px!important}
+  .player-home-next-button{width:100%;justify-content:center}
+  .player-role-switcher{grid-template-columns:1fr!important}
+  .player-role-tabs{overflow:auto}
+  .player-home-grid,.player-home-bottom{grid-template-columns:1fr!important}
+  .player-dna-panel,.player-missions-panel{padding:18px!important}
+  .player-dna-row{grid-template-columns:128px minmax(0,1fr) 47px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  .player-home-progress-orbit .orbit-progress,.player-home-next-button{transition:none!important}
+}
