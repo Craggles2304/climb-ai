@@ -21,11 +21,11 @@ function freezeLeaguePlan(state){
 }
 function overlayView(state,options={}){
   const tft=state?.tftRecorder||{};
-  const game=state?.phase==='RECORDING'?'LOL':tft.state==='RECORDING'?'TFT':null;
+  const game=state?.phase==='RECORDING'?'LOL':tft.state==='RECORDING'?'TFT':options.editing===true?'PREVIEW':null;
   const show=options.enabled===true&&Boolean(state?.paired)&&Boolean(game);
   return{show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
     focus:allowedFocus.has(String(options.tftFocus||''))?String(options.tftFocus):'ECONOMY',
-    status:game==='TFT'?'TFT · RECORDING':game==='LOL'?'LEAGUE · RECORDING':'IDLE',
+    status:game==='TFT'?'TFT · RECORDING':game==='LOL'?'LEAGUE · RECORDING':'PREVIEW · EDITING',
     plan:game==='LOL'?(options.frozenLeague||null):null,
     disclaimer:'FROZEN BEFORE THE GAME · REVIEW AFTER'};
 }

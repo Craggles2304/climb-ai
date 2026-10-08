@@ -9,16 +9,14 @@ const tracker=fs.readFileSync('companion/src/main.mjs','utf8');
 const route=fs.readFileSync('app/api/live/champion-plan/route-core.ts','utf8');
 const packageConfig=JSON.parse(fs.readFileSync('companion/package.json','utf8'));
 
-test('Companion opens one standard window and no floating HUD',()=>{
+test('Companion keeps its main window and an optional click-through learning-only HUD',()=>{
   assert.ok(main.includes("mainWindow=new BrowserWindow("));
   assert.ok(main.includes("createWindow(!hidden)"));
-  assert.equal(main.includes('overlayWindow'),false);
-  assert.equal(main.includes('createOverlayWindow'),false);
+  assert.ok(main.includes("createOverlayWindow()"));
+  assert.ok(main.includes("setIgnoreMouseEvents(!overlayEditing,{forward:true})"));
+  assert.ok(main.includes("overlayEnabled:raw.overlayEnabled===true"));
   assert.equal(main.includes("setAlwaysOnTop(true,'screen-saver')"),false);
-  assert.equal(main.includes('setIgnoreMouseEvents'),false);
-  for(const file of ['overlay.html','overlay.css']){
-    assert.equal(fs.existsSync(`companion/electron/${file}`),false);
-  }
+  for(const file of ['overlay.html','overlay.css'])assert.equal(fs.existsSync(`companion/electron/${file}`),false);
   assert.ok(packageConfig.build.files.includes('!electron/overlay.js'));
 });
 
