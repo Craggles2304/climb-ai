@@ -646,8 +646,14 @@ function renderDraftBoard(draft,matchup){
   $('draftBoardPick').textContent=champion||'NO CHAMPION SELECTED';
   $('draftBoardState').textContent=state;
   $('draftBoardState').classList.toggle('good',locked);
-  const enemySeen=safeArray(draft.enemies).filter(p=>p?.championName).length;
+  const enemySeen=clamp(safeArray(draft.enemies).filter(p=>p?.championName).length,0,5);
+  const allySeen=clamp(safeArray(draft.allies).filter(p=>p?.championName).length,0,5);
   $('draftBoardSeen').textContent=`${enemySeen}/5 ENEMIES SEEN`;
+  $('draftAllyCount').textContent=`${allySeen} / 5 PICKED`;
+  $('draftEnemyCount').textContent=`${enemySeen} / 5 SEEN`;
+  $('draftBoardReadBar').style.width=(enemySeen*20)+'%';
+  $('draftBoardReadBar').setAttribute('aria-valuenow',String(enemySeen));
+  $('draftBoardState').setAttribute('aria-label',locked?'Champion locked in':champion?'Champion previewing':'Selecting champion');
   $('draftBoardHint').textContent=locked
     ?'Your pick is locked. OP CLIMB is finalising the matchup, team plan and item recommendation as the remaining draft appears.'
     :champion
@@ -666,14 +672,16 @@ function renderDraftSide(id,picks,localCell,ours){
   values.slice(0,5).forEach((pick,index)=>{
     const row=document.createElement('div');
     row.style.cssText='display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.018)';
+    const localPick=ours&&pick?.cellId!=null&&localCell!=null&&Number(pick.cellId)===Number(localCell);
+    row.className='draft-pick'+(pick?.lockedIn?' es-locked':'')+(localPick?' es-you':'')+(!pick?.championName?' draft-pending':'');
+    row.setAttribute('aria-label',`${ours?'Ally':'Enemy'} ${index+1}: ${pick?.championName||'not yet revealed'}, ${pick?.lockedIn?'locked':pick?.championName?'preview':'waiting'}`);
     const role=document.createElement('span');
     role.textContent=roleLabel(pick?.role);role.style.cssText='font-size:9px;font-weight:900;opacity:.55';
     const name=document.createElement('strong');
     name.textContent=pick?.championName||((ours&&Number(pick?.cellId)===Number(localCell))?'YOU · SELECTING':'SELECTING…');
     name.style.cssText='white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
     const state=document.createElement('span');
-    const selection=String(pick?.selectionState||pick?.lockedIn?'LOCKED':pick?.championName?'HOVER':'WAITING');
-    state.textContent=pick?.lockedIn?'LOCKED':pick?.championName?(ours?'HOVER':'SEEN'):'';
+    state.textContent=pick?.lockedIn?'LOCKED':pick?.championName?(ours?'HOVER':'SEEN'):'WAITING';
     state.style.cssText='font-size:8px;font-weight:900;color:'+(pick?.lockedIn?'#d6ff2f':'#7f93a0');
     row.append(role,name,state);root.appendChild(row);
   });
@@ -697,24 +705,34 @@ function ensureDraftBoard(){
   board.className='hidden';
   board.style.cssText='display:grid;gap:12px;margin-bottom:12px;padding:16px;border:1px solid rgba(214,255,47,.2);background:linear-gradient(135deg,rgba(214,255,47,.035),rgba(4,8,12,.72));border-radius:16px';
   board.innerHTML=`
-    <div style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-      <div><div class="eyebrow">CHAMP SELECT · LIVE DRAFT</div><h2 id="draftBoardTitle" style="margin:5px 0 0;font-size:clamp(24px,4vw,36px)">DRAFT IN PROGRESS</h2></div>
-      <span id="draftBoardState" class="pill">CHOOSING</span>
+    <div class="premium-draft-head">
+      <div class="premium-draft-headline">
+        <div class="eyebrow"><span class="draft-live-dot"></span> CHAMP SELECT / LIVE DRAFT</div>
+        <h2 id="draftBoardTitle">DRAFT IN PROGRESS</h2>
+        <p>Both teams, one clear role, and the plan you're building towards.</p>
+      </div>
+      <span id="draftBoardState" class="pill premium-draft-state">CHOOSING</span>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
-      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">YOUR ROLE</span><strong id="draftBoardRole" style="display:block;margin-top:4px">—</strong></div>
-      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">YOUR PICK</span><strong id="draftBoardPick" style="display:block;margin-top:4px">SELECTING</strong></div>
-      <div style="padding:9px 10px;border:1px solid rgba(255,255,255,.07);border-radius:11px"><span class="eyebrow">DRAFT READ</span><strong id="draftBoardSeen" style="display:block;margin-top:4px">0/5 ENEMIES SEEN</strong></div>
+    <div class="premium-draft-metrics">
+      <div class="premium-draft-metric"><span class="eyebrow">YOUR POSITION</span><strong id="draftBoardRole">—</strong></div>
+      <div class="premium-draft-metric"><span class="eyebrow">YOUR CHAMPION</span><strong id="draftBoardPick">SELECTING</strong></div>
+      <div class="premium-draft-metric premium-draft-progress"><span class="eyebrow">ENEMY TEAM READ</span><strong id="draftBoardSeen">0/5 ENEMIES SEEN</strong><div class="draft-read-track"><i id="draftBoardReadBar" role="progressbar" aria-label="Enemy picks revealed" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"></i></div></div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><div class="eyebrow" style="margin-bottom:7px">YOUR TEAM</div><div id="draftOurPicks" style="display:grid;gap:6px"></div></div>
-      <div><div class="eyebrow" style="margin-bottom:7px">THEIR TEAM</div><div id="draftTheirPicks" style="display:grid;gap:6px"></div></div>
+    <div class="premium-draft-rosters">
+      <div class="premium-draft-roster ours">
+        <div class="premium-draft-roster-head"><span class="eyebrow">YOUR TEAM</span><b id="draftAllyCount">0 / 5 PICKED</b></div>
+        <div id="draftOurPicks" class="premium-draft-picks"></div>
+      </div>
+      <div class="premium-draft-roster enemies">
+        <div class="premium-draft-roster-head"><span class="eyebrow">THEIR TEAM</span><b id="draftEnemyCount">0 / 5 SEEN</b></div>
+        <div id="draftTheirPicks" class="premium-draft-picks"></div>
+      </div>
     </div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;border-top:1px solid rgba(255,255,255,.07);padding-top:10px">
-      <div><div class="eyebrow">OUR BANS</div><div id="draftOurBans" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div></div>
-      <div><div class="eyebrow">THEIR BANS</div><div id="draftTheirBans" style="display:flex;gap:5px;flex-wrap:wrap;margin-top:6px"></div></div>
+    <div class="premium-draft-bans">
+      <div class="premium-draft-ban-block"><div class="eyebrow">OUR BANS</div><div id="draftOurBans" class="premium-draft-ban-list"></div></div>
+      <div class="premium-draft-ban-block"><div class="eyebrow">THEIR BANS</div><div id="draftTheirBans" class="premium-draft-ban-list"></div></div>
     </div>
-    <p id="draftBoardHint" style="margin:0;font-size:11px;line-height:1.5;opacity:.68"></p>`;
+    <p id="draftBoardHint" class="premium-draft-hint" role="status"></p>`;
   const simple=$('simplePregame');
   if(simple)box.insertBefore(board,simple);else box.prepend(board);
   return board;
@@ -728,18 +746,25 @@ function ensureSimplePregame(){
   section.id='simplePregame';
   section.className='hidden';
   section.innerHTML=`
-    <div class="simple-pregame-hero" style="display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap">
-      <div><div class="eyebrow" id="simplePregameTier">COACH</div><h2 id="simplePregameTitle" style="font-size:clamp(28px,5vw,44px);margin:6px 0 8px;letter-spacing:-.04em"></h2><p id="simplePregameSummary" style="margin:0;opacity:.72;line-height:1.5;max-width:720px"></p></div>
+    <div class="simple-pregame-hero premium-plan-hero">
+      <div class="premium-plan-hero-copy">
+        <div class="premium-plan-intro"><span class="premium-plan-line"></span> YOUR MATCH BLUEPRINT</div>
+        <div class="eyebrow" id="simplePregameTier">COACH</div>
+        <h2 id="simplePregameTitle"></h2>
+        <p id="simplePregameSummary"></p>
+      </div>
       <span id="simplePregamePill" class="pill good">GAME PLAN</span>
     </div>
-    <div class="simple-pregame-win-grid">
-      <article class="simple-pregame-win"><div class="eyebrow">HOW WE WIN</div><strong id="simplePregameHowWin"></strong></article>
-      <article class="simple-pregame-loss"><div class="eyebrow">HOW THEY WIN</div><strong id="simplePregameHowLose"></strong></article>
+    <div class="simple-pregame-win-grid premium-plan-duel">
+      <article class="simple-pregame-win"><div class="eyebrow">01 / OUR WIN CONDITION</div><strong id="simplePregameHowWin"></strong></article>
+      <article class="simple-pregame-loss"><div class="eyebrow">02 / WHAT WE MUST DENY</div><strong id="simplePregameHowLose"></strong></article>
     </div>
-    <article class="simple-pregame-job"><div class="eyebrow">YOUR JOB</div><strong id="simplePregameJob"></strong></article>
-    <section class="simple-pregame-actions"><div class="eyebrow">YOUR 3 WINNING ACTIONS</div><div id="simplePregameRules"></div></section>
-    <article class="simple-pregame-throw"><div class="eyebrow">BIGGEST THROW</div><strong id="simplePregameThrow"></strong></article>
-    <article class="simple-pregame-mission"><div class="eyebrow">YOUR DEVELOPMENT JOB · SEPARATE FROM THE MATCH PLAN</div><strong id="simplePregameMission"></strong></article>
+    <article class="simple-pregame-job"><div class="eyebrow">03 / YOUR JOB THIS GAME</div><strong id="simplePregameJob"></strong></article>
+    <section class="simple-pregame-actions"><div class="eyebrow">04 / THREE ACTIONS TO REMEMBER</div><div id="simplePregameRules"></div></section>
+    <div class="premium-plan-bottom">
+      <article class="simple-pregame-throw"><div class="eyebrow">AVOID / BIGGEST THROW</div><strong id="simplePregameThrow"></strong></article>
+      <article class="simple-pregame-mission"><div class="eyebrow">YOUR DEVELOPMENT MISSION / SEPARATE FROM TEAM PLAN</div><strong id="simplePregameMission"></strong></article>
+    </div>
     <div id="simplePregameExtra" class="hidden" style="margin-top:12px;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;background:rgba(255,255,255,.02)"><div class="eyebrow">DEEPER MATCH DETAIL</div><div id="simplePregameExtraList" style="display:grid;gap:9px;margin-top:10px"></div></div>
     <div class="simple-pregame-actions-row" style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button id="simplePregameMore" class="ghost">MORE DETAIL</button><button id="simplePregameFull" class="ghost">OPEN FULL ANALYSIS</button></div>`;
   const ready=$('matchupReady');
