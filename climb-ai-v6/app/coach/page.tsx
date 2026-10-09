@@ -3,6 +3,7 @@ import {useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
+import {ArenaMemoryJourney} from '@/components/ArenaMemoryJourney';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {useSubscription} from '@/components/SubscriptionContext';
@@ -179,6 +180,8 @@ export default function Coach(){
           </div>
           <Link className="btn btn-small" href="/ilp">Open My DNA →</Link>
         </header>
+
+        <ArenaMemoryJourney/>
 
         {memoryLoading&&<section className="panel panel-padding" style={{marginBottom:18}}>
           <div className="eyebrow">LEAGUE MIND · SYNCING</div>
