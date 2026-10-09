@@ -115,6 +115,8 @@
   put('identityTag','TACTICIAN / LEARNING FOCUS');
   put('hudBrandMode','TACTICIAN HUD');
   put('game','TEAMFIGHT TACTICS');
+  put('freezeNote','PRESELECTED BEFORE PLAY');
+  put('ruleNote','SELECTED BEFORE PLAY · REVIEW AFTER');
   put('planState','STATIC TFT FOCUS');
   put('title',focus?.title||'TFT development focus');
   put('missionLabel','Your TFT focus');put('mission',focus?.rule||'Follow the focus you chose before the game.');
