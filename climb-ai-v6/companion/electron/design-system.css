@@ -51,6 +51,15 @@
   --oc-amber: #e6ad4f;                /* warning, needs attention */
   --oc-red: #f0626a;                  /* negative outcome, enemy team */
   --oc-gold: #e8c47e;                 /* PRO tier, rank */
+  --oc-blue: #6aa3ff;
+
+  /* Game DNA strands — one stable colour per domain everywhere. */
+  --oc-dna-laning: var(--oc-lime);
+  --oc-dna-waves: var(--oc-cyan);
+  --oc-dna-vision: var(--oc-violet);
+  --oc-dna-objectives: var(--oc-amber);
+  --oc-dna-teamfights: var(--oc-red);
+  --oc-dna-consistency: var(--oc-blue);
 
   /* Semantic aliases — components use these, not the raw hues. */
   --oc-brand: var(--oc-lime);
@@ -148,6 +157,7 @@
 .oc-tone-amber   { --oc-tone: var(--oc-amber); }
 .oc-tone-red     { --oc-tone: var(--oc-red); }
 .oc-tone-gold    { --oc-tone: var(--oc-gold); }
+.oc-tone-blue    { --oc-tone: var(--oc-blue); }
 .oc-tone-neutral { --oc-tone: var(--oc-text-3); }
 
 

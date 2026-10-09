@@ -271,7 +271,6 @@ body.op-remember-live .rem-lower.mission{border-color:#42623b!important;backgrou
 .update-progress{border-radius:0!important;background:#223036!important;border-color:var(--line)!important}
 .update-progress span{background:var(--mint)!important}
 
-footer{border-top-color:var(--line)!important;color:var(--dim)!important}
 
 /* Keep radar/true status dots circular where they communicate state. */
 .idle-radar .r1,.idle-radar .r2,.idle-radar .r3,.notification-dot,.status-dot,.brand-signal span,.power-node i{border-radius:999px!important}

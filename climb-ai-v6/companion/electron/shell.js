@@ -65,7 +65,7 @@
      #legacyView not listed here follow the phase: they show only on the
      route the current phase opens. */
   const MEMBERS={
-    setup:['home'], status:['home'], playerHome:['home','dna'], tftHome:['home'], tftPrep:['home'],
+    setup:['home'], status:['home'], tftHome:['home'], tftPrep:['home'],
     championHub:['prep'],
     matchup:['draft','prep'], opMissionReminders:['draft','prep','live'],
     quietMode:['live'], opRememberHud:['live'],
@@ -76,15 +76,12 @@
   const NESTED=[
     ['#draftBoard',['draft']],
     ['#simplePregame',['draft','prep']],
-    ['#playerHome > .player-home-hero',['home']],
-    ['#playerJourney',['home']],
-    ['#playerHome > .player-home-bottom',['home']],
   ];
   /* What counts as real content for a route. If none of it is visible, the
      shell shows the route state instead of an empty page. */
   const PROBES={
-    home:['#setup','#status','#playerHome','#tftHome','#tftPrep'],
-    dna:['#playerHome'],
+    home:['#setup','#status','#tftHome','#tftPrep'],
+    dna:[],
     draft:['#draftBoard','#simplePregame','#matchupError','#opMissionReminders'],
     prep:['#simplePregame','#opMissionReminders','#championHub','#matchupError'],
     live:['#quietMode','#opRememberHud','#opMissionReminders'],
@@ -107,7 +104,16 @@
   const view=$('ocView');
   const inner=$('ocViewInner');
   const routeState=$('ocRouteState');
-  if(!shell||!legacy||!view||!inner||!routeState)return;
+  const native=$('ocNative');
+  if(!shell||!legacy||!view||!inner||!routeState||!native)return;
+
+  /* Native views register on window.ocViews before this script runs:
+       ocViews[route]={render(root,state,ctx)->boolean, observe?(state),
+                       leave?(state,ctx), ownsNextAction?:boolean}
+     render() returns false when it has nothing to show, so the route state
+     (or a legacy screen) can take its place. */
+  const VIEWS=window.ocViews||{};
+  let nativeShown=false;
 
   const text=value=>String(value??'').trim();
   const upper=value=>text(value).toUpperCase();
@@ -335,8 +341,10 @@
     nextNode.title=next.text;
     $('ocNow').textContent=text(s.detail)||'Starting OP CLIMB Companion…';
 
+    // A native view that shows its own main action keeps the strip text-only.
+    const viewOwnsAction=nativeShown&&VIEWS[route]?.ownsNextAction;
     const button=$('ocNextAction');
-    if(next.action){
+    if(next.action&&!viewOwnsAction){
       button.hidden=false;
       button.textContent=next.action.label;
       button.onclick=()=>next.action.run();
@@ -389,8 +397,22 @@
     for(const [selector,routes] of NESTED){
       legacy.querySelectorAll(selector).forEach(el=>setGate(el,routes.includes(route)));
     }
-    const hasContent=followerShown||PROBES[route].some(selector=>isShown(legacy.querySelector(selector)));
+    const hasContent=nativeShown||followerShown||PROBES[route].some(selector=>isShown(legacy.querySelector(selector)));
     renderRouteState(!hasContent);
+  }
+
+  const ctx={go,get route(){return route},get update(){return update},api};
+  function renderNative(){
+    const viewFor=VIEWS[route];
+    let shown=false;
+    if(viewFor){
+      try{shown=Boolean(viewFor.render(native,state||{},ctx))}
+      catch(err){console.error('[ocShell] view failed',route,err);shown=false}
+    }
+    if(!shown&&native.childElementCount)native.replaceChildren();
+    native.hidden=!shown;
+    native.dataset.route=shown?route:'';
+    nativeShown=shown;
   }
 
   let gateQueued=false;
@@ -519,6 +541,7 @@
   function go(next,{auto=false}={}){
     if(!ROUTE[next])return;
     const changed=next!==route;
+    if(changed)try{VIEWS[route]?.leave?.(state||{},ctx)}catch(err){console.error('[ocShell] leave failed',err)}
     route=next;
     if(route==='review'&&phaseOf(state)==='REVIEW')reviewSeen=true;
     shell.dataset.route=route;
@@ -537,12 +560,14 @@
     renderIdentity();
     renderVersion();
     renderHeader();
+    renderNative();
     renderStrip();
     applyGate();
   }
 
   function onState(next){
     state=next||{};
+    for(const viewFor of Object.values(VIEWS)){try{viewFor.observe?.(state)}catch{}}
     const phase=phaseOf(state);
     if(phase!==lastPhase){
       if(phase==='REVIEW')reviewSeen=false;

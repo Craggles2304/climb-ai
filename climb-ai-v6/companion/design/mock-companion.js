@@ -2,11 +2,17 @@
    exercised in a browser. Sample data is illustrative, never shipped. */
 (()=>{
   const dna=[
-    ['LANING','Laning','#b6f66b',3,62],['WAVES','Waves & CS','#43d8ef',2,48],['VISION','Vision & map','#a68bff',2,31],
-    ['OBJECTIVES','Objectives','#e6ad4f',1,74],['TEAMFIGHTS','Teamfights','#f0626a',2,12],['CONSISTENCY','Consistency','#3ddc8c',1,55],
-  ].map(([domain,label,color,level,levelProgress])=>({domain,label,color,level,levelProgress,xpIntoLevel:levelProgress,xpForNextLevel:100}));
-  const mission={id:'m1',title:'Hold the wave before your first back',domain:'WAVES',progress:66,confirmed:2,required:3,nextGame:'Freeze near your tower from 3:00, then back once the enemy wave arrives.',focusOrder:1,priority:true};
-  const mission2={id:'m2',title:'Ward river before 3:15',domain:'VISION',progress:33,confirmed:1,required:3,nextGame:'Place a trinket ward in river before the first scuttle spawns.',focusOrder:2};
+    ['LANING','Laning',3,62,1],['WAVES_CS','Waves & CS',2,48,0],['VISION_MAP','Vision & Map',2,31,0],
+    ['OBJECTIVES','Objectives',1,74,0],['TEAMFIGHTS','Teamfights',2,12,1],['CONSISTENCY','Consistency',1,55,0],
+  ].map(([domain,label,level,levelProgress,mastered])=>({domain,label,level,levelProgress,xpIntoLevel:levelProgress,xpForNextLevel:100,mastered,totalXp:(level-1)*100+levelProgress}));
+  const mission={id:'m1',title:'Hold the wave before your first back',domain:'WAVES_CS',progress:66,confirmed:2,required:3,status:'ACTIVE',
+    meaning:'Backing on a crashing wave hands the enemy a free plate and pushes your next item back.',
+    nextGame:'Freeze near your tower from 3:00, then back once the enemy wave arrives.',
+    success:'Your first back happens with the wave on your side in a tracked game.',focusOrder:1,priority:true};
+  const mission2={id:'m2',title:'Ward river before 3:15',domain:'VISION_MAP',progress:33,confirmed:1,required:3,status:'ACTIVE',
+    meaning:'Most early ganks in your games came from an unwarded river.',
+    nextGame:'Place a trinket ward in river before the first scuttle spawns.',
+    success:'A river ward is placed before 3:15.',focusOrder:2};
   const roles=['TOP','JUNGLE','MID','ADC','SUPPORT'];
   function home({tier='PLUS',games=7,ready=true}={}){
     return{ok:true,
