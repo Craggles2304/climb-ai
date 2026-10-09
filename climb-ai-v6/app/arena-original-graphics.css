@@ -1,0 +1,291 @@
+/* OP CLIMB — original Arena graphics upgrade
+   Keeps the approved Arena identity and layout. No substitute cartoon art.
+   Visual polish uses Riot Data Dragon champion splashes and original SVG linework. */
+
+/* Consistent custom vector iconography in the existing navigation. */
+body[data-client-view] .nav-link-icon .arena-v-icon,
+body[data-client-view] .sidebar-help .arena-v-icon,
+body[data-client-view] .topbar .arena-v-icon,
+body[data-client-view] .mini-profile .arena-v-icon {
+  display:block;flex:none;stroke-width:1.8;
+}
+body[data-client-view] .nav-link-icon{
+  display:grid;place-items:center;flex:none;
+  width:33px;min-width:33px;height:33px;
+  border:1px solid rgba(143,178,204,.17);
+  background:linear-gradient(143deg,rgba(42,67,82,.44),rgba(15,26,39,.8));
+  color:#b0c5d5;
+  transition:border-color .18s,background .18s,transform .18s,color .18s;
+}
+body[data-client-view] .nav-link:hover .nav-link-icon{
+  color:#d9fbc9;border-color:rgba(182,255,46,.38);transform:translateY(-1px)
+}
+body[data-client-view] .nav-link.active .nav-link-icon{
+  color:#bfff73;border-color:rgba(182,255,46,.62);
+  background:linear-gradient(135deg,#395b39,#1d302e);
+  box-shadow:0 0 13px rgba(182,255,46,.11);
+}
+body[data-client-view] .sidebar-help span{display:inline-flex;align-items:center}
+body[data-client-view] .topbar .icon-button{
+  display:inline-flex;align-items:center;justify-content:center;
+  transition:border-color .2s,color .2s,transform .2s;
+}
+body[data-client-view] .topbar .icon-button:hover{color:#c6ff81;transform:translateY(-1px)}
+body[data-client-view] .game-rune{display:inline-flex;align-items:center;justify-content:center}
+body[data-client-view] .arena-portrait-avatar{
+  position:relative;overflow:hidden;
+  display:grid;place-items:center;
+  border:1px solid rgba(207,239,240,.6);
+  background:linear-gradient(143deg,#314e69,#142435);
+}
+body[data-client-view] .arena-portrait-avatar img{
+  position:absolute;inset:0;width:100%;height:100%;
+  display:block;object-fit:cover;object-position:70% 22%;
+}
+body[data-client-view] .arena-portrait-avatar img[hidden]{display:none}
+
+/* Cinematic artwork behind established page-specific headers.
+   Never covers copy or interactive controls. */
+body[data-client-view] .arena-visual-arthead{
+  position:relative;isolation:isolate;overflow:hidden;
+  border:1px solid rgba(137,178,199,.25);
+  box-shadow:0 18px 43px rgba(0,0,0,.16);
+  background:#121b27;
+  min-height:192px;
+}
+body[data-client-view] .arena-visual-arthead>.arena-page-art{
+  position:absolute;inset:0;pointer-events:none;
+  z-index:0;overflow:hidden;
+  background:radial-gradient(ellipse 50% 85% at 78% 39%,rgba(86,127,160,.22),transparent 90%);
+}
+body[data-client-view] .arena-visual-arthead>.arena-page-art img{
+  position:absolute;top:0;right:0;width:75%;height:100%;
+  max-width:none;object-fit:cover;object-position:70% 29%;
+  filter:saturate(1.09) contrast(1.07);
+}
+body[data-client-view] .arena-visual-arthead>.arena-page-art img[hidden]{display:none}
+body[data-client-view] .arena-visual-arthead .arena-page-art-shade{
+  position:absolute;inset:0;
+  background:
+    linear-gradient(90deg,#0b1420 2%,rgba(11,20,32,.98) 28%,rgba(11,20,32,.82) 53%,rgba(11,20,32,.26) 100%),
+    linear-gradient(0deg,rgba(11,20,32,.88) 0%,transparent 47%);
+}
+body[data-client-view] .arena-visual-arthead .arena-page-art-shines{
+  position:absolute;inset:0;opacity:.7;
+  background:linear-gradient(120deg,transparent 80%,rgba(182,255,46,.07) 80.1%,transparent 80.5%),
+  repeating-linear-gradient(90deg,transparent 0 105px,rgba(175,212,240,.035) 106px 107px);
+}
+body[data-client-view] .arena-visual-arthead .arena-page-art-caption{
+  position:absolute;right:19px;bottom:12px;z-index:1;
+  display:inline-flex;align-items:center;gap:7px;
+  padding:5px 10px;border:1px solid rgba(150,172,192,.22);
+  background:rgba(8,16,25,.79);
+  color:#aebfcb;font:700 9px var(--mono);letter-spacing:.06em
+}
+body[data-client-view] .arena-visual-arthead .arena-page-art-caption b{color:#d5ff8a}
+body[data-client-view] .arena-visual-arthead>:not(.arena-page-art){
+  position:relative;z-index:2;
+}
+body[data-client-view] .arena-visual-arthead .eyebrow{color:#b7f570}
+body[data-client-view] .arena-visual-arthead :is(h1,h2){
+  text-shadow:0 3px 30px rgba(1,9,16,.53);
+}
+body[data-client-view] .arena-visual-arthead :is(p){
+  color:#d1dce8!important;text-shadow:0 1px 9px rgba(0,0,0,.4);
+}
+body[data-client-view] .arena-visual-dna,
+body[data-client-view] .arena-visual-missions,
+body[data-client-view] .arena-visual-coach,
+body[data-client-view] .arena-visual-progress,
+body[data-client-view] .arena-visual-games {padding:clamp(22px,2.4vw,35px);}
+body[data-client-view] .arena-visual-arthead :is(.btn,.missions-head-actions){z-index:3;}
+body[data-client-view] .arena-visual-coach .arena-page-art-shines{
+  background:linear-gradient(105deg,transparent 74%,rgba(164,107,255,.1) 74.3%,transparent 74.8%);
+}
+body[data-client-view] .arena-visual-missions .arena-page-art-shines{
+  background:linear-gradient(105deg,transparent 79%,rgba(0,245,212,.095) 79.3%,transparent 79.8%);
+}
+body[data-client-view] .arena-visual-dna>.arena-page-art img{object-position:72% 23%}
+
+/* Professional evidence graphics: mini trends drawn ONLY from saved matches. */
+body[data-client-view="overview"] .arena-original-spark{
+  display:block;width:100%;height:43px;margin:1px 0 0;
+  overflow:visible;
+  filter:drop-shadow(0 3px 10px rgba(138,255,149,.055));
+}
+body[data-client-view="overview"] .arena-original-stat{
+  min-height:185px;gap:6px;justify-content:start;
+}
+body[data-client-view="overview"] .arena-original-stat strong{
+  margin:2px 0 0;
+}
+body[data-client-view="overview"] .arena-original-stat>span:last-child{
+  margin-top:auto;
+}
+body[data-client-view="overview"] .arena-original-trend-empty{
+  display:flex;align-items:center;
+  min-height:43px;color:#688395;
+  font:700 9px var(--mono);letter-spacing:.04em;
+  border-bottom:1px dashed rgba(116,144,164,.22);
+}
+body[data-client-view="overview"] .arena-original-form{min-height:185px}
+body[data-client-view="overview"] .arena-original-form>div>span:not(.arena-original-no-form){
+  border-radius:2px;
+  box-shadow:0 0 11px rgba(182,255,46,.07);
+}
+body[data-client-view="overview"] .arena-original-insights{
+  border-top:2px solid rgba(182,255,46,.7)
+}
+
+/* Six DNA symbols are genuinely vector-based, not emojis or CSS cartoon art. */
+body[data-client-view="overview"] .arena-original-dna-tabs .arena-v-icon{
+  color:var(--strand-color);flex:0 0 auto;
+  filter:drop-shadow(0 0 7px color-mix(in srgb,var(--strand-color) 22%,transparent));
+}
+body[data-client-view="overview"] .arena-original-dna-tabs button{
+  gap:9px;align-content:center;
+}
+body[data-client-view="overview"] .arena-original-dna-tabs button.is-selected,
+body[data-client-view="overview"] .arena-original-dna-tabs button[aria-pressed=true]{
+  background:linear-gradient(120deg,rgba(40,71,61,.68),rgba(16,32,45,.75));
+}
+body[data-client-view="overview"] .arena-original-dna-summary h3{letter-spacing:.04em}
+body[data-client-view="overview"] .arena-original-dna-proof strong{font-variant-numeric:tabular-nums}
+
+/* Original Game DNA stage and match cards: depth without excessive glow. */
+body[data-client-view="overview"] .op-home-dna-stage{
+  border:1px solid rgba(141,173,195,.18);
+  background:radial-gradient(ellipse at 50% 44%,rgba(48,65,91,.27),transparent 67%),#0c141f;
+}
+body[data-client-view="overview"] .arena-original-match-row{
+  background-image:linear-gradient(90deg,rgba(118,159,183,.055),transparent 26%);
+}
+body[data-client-view="overview"] .arena-original-match-row:hover{
+  background-color:rgba(36,63,82,.58);
+}
+body[data-client-view="overview"] .arena-original-match-champ .arena-original-champ-photo{
+  position:relative;width:58px;height:60px;
+  background:radial-gradient(circle,#415b6b,#122032);
+  border:1px solid rgba(170,196,213,.38);
+  transition:border-color .18s,transform .18s;
+}
+body[data-client-view="overview"] .arena-original-match-row:hover .arena-original-champ-photo{
+  border-color:rgba(182,255,46,.55);transform:scale(1.035)
+}
+body[data-client-view="overview"] .arena-original-match-champ img{
+  filter:contrast(1.06) saturate(1.09);
+}
+body[data-client-view="overview"] .arena-original-match-champ b{letter-spacing:.04em}
+
+/* Actual match library: keep its cards and information architecture.
+   Improve image framing, overlay contrast and scannability. */
+body[data-client-view] .games-review-card{
+  overflow:hidden;position:relative;
+  border:1px solid rgba(145,176,201,.23)!important;
+  background:linear-gradient(140deg,#162334,#0e1622)!important;
+  transition:transform .2s,border-color .2s,box-shadow .2s;
+}
+body[data-client-view] .games-review-card:hover{
+  transform:translateY(-3px);border-color:rgba(182,255,46,.42)!important;
+  box-shadow:0 19px 36px rgba(0,0,0,.2);
+}
+body[data-client-view] .games-card-art{position:relative;isolation:isolate;overflow:hidden}
+body[data-client-view] .games-card-art>img{filter:saturate(1.07) contrast(1.1);transition:transform .4s ease;object-position:65% 28%}
+body[data-client-view] .games-review-card:hover .games-card-art>img{transform:scale(1.035)}
+body[data-client-view] .games-card-art::after{
+  content:"";position:absolute;z-index:1;inset:0;pointer-events:none;
+  background:linear-gradient(0deg,rgba(9,18,30,.73),transparent 60%);
+}
+body[data-client-view] .games-card-art>span{z-index:2!important}
+body[data-client-view] .games-card-body{position:relative;z-index:2}
+body[data-client-view] .games-story>div{border-color:rgba(144,166,193,.16)!important}
+body[data-client-view] .games-open{color:#c5ff79!important}
+
+/* Mission tree cards now have real six-domain vector glyphs. */
+body[data-client-view] .arena-mission-symbol{
+  display:inline-flex;align-items:center;gap:12px;letter-spacing:.04em;
+}
+body[data-client-view] .arena-mission-symbol .arena-v-icon{
+  flex:0 0 auto;stroke-width:1.9;
+  color:var(--mission-color);
+  filter:drop-shadow(0 0 8px color-mix(in srgb,var(--mission-color) 25%,transparent));
+}
+body[data-client-view] .missions-tree-card{
+  position:relative;overflow:hidden;
+  box-shadow:inset 0 1px rgba(255,255,255,.035),0 16px 32px rgba(0,0,0,.095);
+}
+body[data-client-view] .missions-tree-card:hover{
+  border-color:color-mix(in srgb,var(--mission-color) 55%,rgba(255,255,255,.15));
+}
+body[data-client-view] .missions-tree-open{position:relative}
+body[data-client-view] .missions-tree-open::after{
+  content:"";position:absolute;top:0;right:0;width:120px;height:120px;pointer-events:none;opacity:.25;
+  background:radial-gradient(ellipse at 100% 0%,var(--mission-color),transparent 70%);
+}
+body[data-client-view] .missions-tree-level{overflow:hidden}
+body[data-client-view] .missions-tree-level>i{transition:width .3s ease}
+body[data-client-view] .missions-tree-card.locked .arena-v-icon{opacity:.6}
+
+/* Coach Memory and longer-term Climb screens: retain working page structure. */
+body[data-client-view] .coach-subtabs,
+body[data-client-view] .coach-climb-handoff,
+body[data-client-view] .climb-plan-proof,
+body[data-client-view] .climb-plan-dna{
+  border-color:rgba(151,184,211,.25);
+}
+body[data-client-view] .coach-subtabs :is(button,a):hover{
+  border-color:rgba(182,255,46,.32);
+}
+body[data-client-view] .coach-subtabs .active{
+  box-shadow:inset 0 -2px #b6ff2e;
+}
+body[data-client-view] .climb-dna-grid article{
+  transition:transform .2s,border-color .2s;
+}
+body[data-client-view] .climb-dna-grid article:hover{
+  transform:translateY(-2px);
+  border-color:rgba(166,207,190,.36);
+}
+body[data-client-view] .climb-dna-bar{
+  overflow:hidden;border:1px solid rgba(156,180,202,.14);
+}
+body[data-client-view] .climb-dna-bar i{transition:width .4s ease}
+
+@media(max-width:1100px){
+  body[data-client-view] .arena-visual-arthead>.arena-page-art img{width:88%;object-position:60% 30%}
+  body[data-client-view] .arena-visual-arthead .arena-page-art-shade{
+    background:linear-gradient(90deg,#0b1420 0%,rgba(11,20,32,.96) 39%,rgba(11,20,32,.45) 100%);
+  }
+}
+@media(max-width:670px){
+  body[data-client-view] .arena-visual-arthead{min-height:206px}
+  body[data-client-view] .arena-visual-arthead>.arena-page-art img{width:100%;opacity:.42}
+  body[data-client-view] .arena-visual-arthead .arena-page-art-shade{
+    background:linear-gradient(90deg,rgba(11,20,32,.95),rgba(11,20,32,.70)),
+      linear-gradient(0deg,#0b1420c2,transparent);
+  }
+  body[data-client-view] .arena-visual-dna,
+  body[data-client-view] .arena-visual-missions,
+  body[data-client-view] .arena-visual-coach,
+  body[data-client-view] .arena-visual-progress,
+  body[data-client-view] .arena-visual-games{padding:22px 17px 34px;}
+  body[data-client-view] .arena-visual-arthead .arena-page-art-caption{
+    font-size:8px;bottom:6px;right:8px;
+  }
+  body[data-client-view="overview"] .arena-original-stat{min-height:175px}
+  body[data-client-view="overview"] .arena-original-stat .arena-original-spark{height:36px}
+  body[data-client-view="overview"] .arena-original-match-champ .arena-original-champ-photo{
+    height:45px;width:43px;
+  }
+  body[data-client-view="overview"] .arena-original-dna-tabs .arena-v-icon{width:18px;height:18px}
+  body[data-client-view] .arena-mission-symbol{gap:7px}
+  body[data-client-view] .arena-mission-symbol .arena-v-icon{height:20px;width:20px}
+}
+@media(prefers-reduced-motion:reduce){
+  body[data-client-view] .arena-v-icon,
+  body[data-client-view] .arena-original-spark,
+  body[data-client-view] .games-review-card,
+  body[data-client-view] .games-card-art>img{
+    animation:none!important;transition:none!important;
+  }
+}
