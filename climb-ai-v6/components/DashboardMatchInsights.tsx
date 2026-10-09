@@ -10,7 +10,7 @@ const formDate=(iso:string)=>{
 };
 const fixed=(value:number)=>Number.isFinite(value)&&value>0?value.toFixed(1):'—';
 
-export function DashboardMatchInsights({matches,isDemo}:{matches:Match[];isDemo:boolean}){
+export function DashboardMatchInsights({matches,isDemo,mode}:{matches:Match[];isDemo:boolean;mode:'form'|'archive'}){
   const recent=matches.slice(0,10);
   const wins=recent.filter(match=>match.result==='WIN').length;
   const winRate=recent.length?Math.round(wins/recent.length*100):null;
@@ -22,7 +22,7 @@ export function DashboardMatchInsights({matches,isDemo}:{matches:Match[];isDemo:
   const kda=recent.length?(deaths?((kills+assists)/deaths).toFixed(2):'Perfect'):'—';
 
   return <>
-    <section className="arena-original-insights" aria-labelledby="arena-original-insights-heading">
+    {mode==='form'&&<section className="arena-original-insights" aria-labelledby="arena-original-insights-heading">
       <header className="arena-original-section-heading">
         <div><span className="eyebrow">MATCH EVIDENCE / LAST 10 GAMES</span><h2 id="arena-original-insights-heading">YOUR RECENT FORM</h2></div>
         {isDemo&&<span className="arena-original-demo-tag">DEMO MATCHES</span>}
@@ -34,8 +34,8 @@ export function DashboardMatchInsights({matches,isDemo}:{matches:Match[];isDemo:
         <div className="arena-original-stat"><small>AVERAGE CS/MIN</small><strong>{averageCS}</strong><span>{csGames.length?'From '+csGames.length+' recorded games':'Waiting for farm metrics'}</span></div>
         <div className="arena-original-form"><small>RESULTS / OLDEST → NEWEST</small><div role="img" aria-label={recent.length?recent.slice().reverse().map(m=>m.result==='WIN'?'Victory':'Defeat').join(', '):'No recorded results'}>{recent.length?recent.slice().reverse().map(match=><span key={match.id} className={match.result==='WIN'?'is-win':'is-loss'} title={match.champion+' · '+match.result}>{match.result==='WIN'?'W':'L'}</span>):<span className="arena-original-no-form">AWAITING MATCHES</span>}</div><p>{recent.length+' of 10 games recorded'}</p></div>
       </div>
-    </section>
-    <section className="arena-original-match-archive" aria-labelledby="arena-original-archive-heading">
+    </section>}
+    {mode==='archive'&&<section className="arena-original-match-archive" aria-labelledby="arena-original-archive-heading">
       <header className="arena-original-section-heading">
         <div><span className="eyebrow">MATCH ROOM / PERFORMANCE EVIDENCE</span><h2 id="arena-original-archive-heading">RECENT MATCHES</h2></div>
         <Link className="arena-original-text-action" href="/analyse">VIEW ALL MATCHES ↗</Link>
@@ -54,6 +54,6 @@ export function DashboardMatchInsights({matches,isDemo}:{matches:Match[];isDemo:
           <span className="arena-original-match-go" aria-hidden="true">↗</span>
         </Link>)}
       </div>:<div className="arena-original-empty"><b>YOUR MATCH HISTORY STARTS HERE</b><p>Track your first match to unlock genuine stats, champion portraits, match outcomes and review links.</p><Link href="/live">OPEN MATCH ROOM ↗</Link></div>}
-    </section>
+    </section>}
   </>;
 }
