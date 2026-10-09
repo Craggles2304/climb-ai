@@ -27,16 +27,34 @@
       masteredCount:tier==='PRO'?4:null,
       upgrade:tier==='FREE'?{tier:'PLUS',copy:'Add the 90-day development view.'}:tier==='PLUS'?{tier:'PRO',copy:'Add long-term player memory.'}:null};
   }
-  const draft={localRole:'MIDDLE',localChampionName:'Ahri',localLockedIn:true,localPlayerCellId:2,
-    allies:[{cellId:0,championName:'Ornn',role:'TOP',lockedIn:true},{cellId:1,championName:'Vi',role:'JUNGLE',lockedIn:true},{cellId:2,championName:'Ahri',role:'MIDDLE',lockedIn:true},{cellId:3,championName:'Jinx',role:'BOTTOM',lockedIn:false},{cellId:4,championName:'',role:'UTILITY'}],
-    enemies:[{championName:'Syndra',role:'MIDDLE',lockedIn:true},{championName:'Lee Sin',role:'JUNGLE',lockedIn:true},{championName:''},{championName:''},{championName:''}],
-    bans:{allies:[{championName:'Zed'},{championName:'Yasuo'}],enemies:[{championName:'LeBlanc'}]}};
+  const draft={phase:'BAN_PICK',localRole:'MID',localChampionName:'Ahri',localLockedIn:true,localPlayerCellId:2,localSelectionState:'LOCKED',
+    allies:[{cellId:0,championName:'Ornn',role:'TOP',lockedIn:true,selectionState:'LOCKED'},{cellId:1,championName:'Vi',role:'JUNGLE',lockedIn:true,selectionState:'LOCKED'},{cellId:2,championName:'Ahri',role:'MID',lockedIn:true,selectionState:'LOCKED'},{cellId:3,championName:'Jinx',role:'ADC',lockedIn:false,selectionState:'HOVER'},{cellId:4,championName:null,role:'SUPPORT',lockedIn:false,selectionState:'WAITING'}],
+    enemies:[{cellId:5,championName:'Syndra',role:null,lockedIn:true,selectionState:'LOCKED'},{cellId:6,championName:'Lee Sin',role:null,lockedIn:true,selectionState:'LOCKED'},{cellId:7,championName:null,role:null,selectionState:'WAITING'},{cellId:8,championName:null,role:null,selectionState:'WAITING'},{cellId:9,championName:null,role:null,selectionState:'WAITING'}],
+    bans:{allies:[{championName:'Zed'},{championName:'Yasuo'},{championName:'Katarina'}],enemies:[{championName:'LeBlanc'},{championName:'Kai\'Sa'}]}};
+  const earlyDraft={...draft,phase:'PLANNING',localChampionName:null,localLockedIn:false,localSelectionState:'WAITING',
+    allies:draft.allies.map(p=>({...p,championName:null,lockedIn:false,selectionState:'WAITING'})),
+    enemies:draft.enemies.map(p=>({...p,championName:null,lockedIn:false,selectionState:'WAITING'})),bans:{allies:[],enemies:[]}};
   const matchup={status:'READY',champion:'Ahri',opponent:'Syndra',source:'CHAMP_SELECT',role:'MID',
     plan:{you:{name:'Ahri'},them:{name:'Syndra'},role:'MID',rules:['Trade when Syndra spends Q on the wave','Shove at level 3, then look at river','Hold Charm for her E']}};
-  const teamPlan={yourJob:'Shove first, then roam to bot when their jungler shows top.',biggestThrow:'Facechecking river without vision after 20 minutes.',
-    strategyAccess:{tier:'PLUS',paidStrategy:true},missionTips:[{cue:'Hold the wave before your first back',title:mission.title}],
-    dnaBaseline:{ready:true,games:7,required:3},ourIdentity:'Pick and engage',theirIdentity:'Poke and siege',
-    coachLevel:{tier:'EMERALD',depth:3,visiblePoints:3,reviewPoints:2}};
+  function teamPlan(tier='PLUS'){
+    const paid=tier!=='FREE',deep=tier==='PRO';
+    return{yourJob:'Shove first, then roam to bot when their jungler shows top.',
+      ourIdentity:'Pick and engage',theirIdentity:'Poke and siege',
+      teamfight:{label:'PICK',summary:'Find one pick with Charm before objectives, then force the 5v4.'},
+      sidelane:{label:'SIDE',summary:'Ornn holds top so you and Vi can play around river.'},
+      strategyAccess:{tier,paidStrategy:paid,deepStrategy:deep},
+      ourWinCondition:paid?'Catch one target with Ahri and Vi before dragon, then take the objective 5v4.':null,
+      theirWinCondition:paid?'They poke you down from range and siege towers before you can engage.':null,
+      biggestThrow:paid?'Walking into river without vision after 20 minutes.':null,
+      roleWinCondition:paid?{role:'MID',compPlan:'Pick composition',lossCondition:'They siege mid before you find a pick.',steps:[
+        {label:'LANE',value:'Shove at level 3'},{label:'MOVE',value:'Roam bot with Vi'},{label:'VISION',value:'Ward river before dragon'},{label:'FIGHT',value:'Charm the first target in range'},{label:'CONVERT',value:'Take dragon, then reset'}]}:null,
+      compositionRead:deep?{firstContact:['Vi','Ahri'],protectors:['Ornn'],enemyThreats:['Syndra','Lee Sin'],
+        fightGeometry:'Fight in the river jungle, where Syndra cannot poke freely.',matchupRule:'Do not fight on open mid lane against their siege.'}:null,
+      adaptiveBuild:{patch:'14.24.1',core:[{id:6655,name:'Luden\'s Companion',slot:'CORE'},{id:4645,name:'Shadowflame',slot:'CORE'}],boots:{id:3020,name:'Sorcerer\'s Shoes',slot:'BOOTS'},finish:{id:3157,name:'Zhonya\'s Hourglass',slot:'FINISH'},
+        draftItem:{name:'Banshee\'s Veil',why:'if Syndra starts winning lane'}},
+      missionTips:[{cue:'Hold the wave before your first back',title:mission.title}],
+      dnaBaseline:{ready:true,games:7,required:3},coachLevel:{tier:'EMERALD',depth:3,visiblePoints:3,reviewPoints:2}};
+  }
   const review={sessionId:'demo-1',match:{champion:'Ahri',role:'MID',kda:'7/2/9',csPerMin:7.8},source:'RIOT_MATCH',
     doneWell:[{title:'Backed on a frozen wave twice',detail:'Both backs landed with the wave at your tower.',verified:true}],
     improve:[{title:'Died to the jungler at 14:20 without vision',detail:'River was unwarded for 90 seconds before the gank.'}],
@@ -53,9 +71,13 @@
     'Home · baseline 1/3 (FREE)':{...base,phase:'WAITING',detail:'Companion is running. Waiting for League.',playerHome:home({tier:'FREE',games:1,ready:false})},
     'Home · missions (PLUS)':{...base,phase:'WAITING',detail:'League detected. Waiting for champ select or match.',playerHome:home()},
     'Home · PRO':{...base,phase:'WAITING',detail:'League detected. Waiting for champ select or match.',playerHome:home({tier:'PRO'})},
-    'Champ select · hovering':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.',playerHome:home(),draft:{...draft,localLockedIn:false,allies:draft.allies.map(p=>({...p,lockedIn:false}))},matchup:{...matchup,source:'CHAMPION_HOVER',provisional:true},teamPlan},
-    'Champ select · locked':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft.',playerHome:home(),draft,matchup,teamPlan},
-    'In game':{...base,phase:'RECORDING',detail:'Match detected. Recording quietly in the background.',playerHome:home(),matchup,teamPlan},
+    'Champ select · early':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.',playerHome:home(),draft:earlyDraft},
+    'Champ select · hovering':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.',playerHome:home(),
+      draft:{...draft,localLockedIn:false,localSelectionState:'HOVER',allies:draft.allies.map(p=>p.cellId===2?{...p,lockedIn:false,selectionState:'HOVER'}:p)},matchup:{...matchup,source:'CHAMPION_HOVER',opponent:null,provisional:true},teamPlan:teamPlan()},
+    'Champ select · locked':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft.',playerHome:home(),draft,matchup,teamPlan:teamPlan()},
+    'Champ select · FREE':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft.',playerHome:home({tier:'FREE'}),draft,matchup,teamPlan:teamPlan('FREE')},
+    'Champ select · PRO':{...base,phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft.',playerHome:home({tier:'PRO'}),draft,matchup,teamPlan:teamPlan('PRO')},
+    'In game':{...base,phase:'RECORDING',detail:'Match detected. Recording quietly in the background.',playerHome:home(),draft,matchup,teamPlan:teamPlan()},
     'Building review':{...base,phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.',playerHome:home()},
     'Review ready':{...base,phase:'REVIEW',detail:'Your review is ready.',playerHome:home(),postGameReview:review},
     'Tracker error':{...base,phase:'ERROR',trackerRunning:false,detail:'Tracker could not start.',playerHome:home()},

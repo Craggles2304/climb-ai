@@ -39,12 +39,15 @@ test('desktop keeps live draft state and distinguishes hover from locked plan',(
   assert.ok(!desktop.includes("Lock your champion to build your briefing."));
 });
 
-test('desktop renderer shows a live draft board instead of a repeated lock prompt',()=>{
-  for(const text of ['CHAMP SELECT · LIVE DRAFT','YOUR ROLE','YOUR PICK','DRAFT READ','YOUR TEAM','THEIR TEAM','OUR BANS','THEIR BANS']){
-    assert.ok(renderer.includes(text),text);
+test('desktop shows a live draft board instead of a repeated lock prompt',()=>{
+  // The board is the native Champion Select view; companionDraftView.test.cjs renders it.
+  const view=fs.readFileSync('companion/electron/draft-view.js','utf8');
+  for(const text of ['Champion select · ','lane</span>','Your team','Their team','Our bans','Their bans','Picks locked']){
+    assert.ok(view.includes(text),text);
   }
-  assert.ok(renderer.includes("champion?'HOVERING':'CHOOSING'"));
-  assert.ok(renderer.includes("Preview only — the path to win will freeze when you lock in and sharpen as the full draft appears."));
+  assert.ok(view.includes("champion?`Hovering ${champion}`"));
+  assert.ok(view.includes('Preview. The plan freezes when you lock in and sharpens as the draft appears.'));
+  assert.ok(!renderer.includes('function renderDraftBoard'));
 });
 
 test('web champ select follows draft changes at a Nano-safe cadence and labels hover state',()=>{

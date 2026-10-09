@@ -60,10 +60,13 @@ test('Companion keeps a simple free plan while paid match read exposes a compact
 
 test('subscription badge never falls back to player Elo as a membership plan',()=>{
   const renderer=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
+  const draftView=fs.readFileSync(path.join(root,'companion','electron','draft-view.js'),'utf8');
+  const shell=fs.readFileSync(path.join(root,'companion','electron','shell.js'),'utf8');
   const review=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
   const plan=fs.readFileSync(path.join(root,'app','api','live','champion-plan','route-core.ts'),'utf8');
-  assert.match(renderer,/function companionCoachBadge\(state\)/);
-  assert.match(renderer,/strategyAccess\?\.tier\|\|state\?\.playerHome\?\.tier/);
+  // Plan chips in the shell and the match plan read membership, never coachLevel.
+  for(const source of [draftView,shell])assert.match(source,/strategyAccess\?\.tier\|\|state\?\.playerHome\?\.tier|strategyAccess\?\.tier\|\|s\?\.playerHome\?\.tier/);
+  assert.doesNotMatch(draftView,/coachLevel\?\.tier/);
   assert.doesNotMatch(renderer,/activeCoachLevel\.tier\?\x60/);
   assert.doesNotMatch(preload,/access\?\.tier\|\|team\?\.coachLevel\?\.tier/);
   assert.match(review,/const planTier=clean\(state\?\.teamPlan\?\.strategyAccess\?\.tier/);

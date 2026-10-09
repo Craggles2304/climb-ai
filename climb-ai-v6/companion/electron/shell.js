@@ -66,24 +66,20 @@
      route the current phase opens. */
   const MEMBERS={
     setup:['home'], status:['home'], tftHome:['home'], tftPrep:['home'],
-    championHub:['prep'],
-    matchup:['draft','prep'], opMissionReminders:['draft','prep','live'],
+    opMissionReminders:['live'],
     quietMode:['live'], opRememberHud:['live'],
     simplePostgameReview:['review'], opPostGame332:['review'],
     settings:['settings'],
   };
   /* Parts inside a legacy screen that only some of its routes should show. */
-  const NESTED=[
-    ['#draftBoard',['draft']],
-    ['#simplePregame',['draft','prep']],
-  ];
+  const NESTED=[];
   /* What counts as real content for a route. If none of it is visible, the
      shell shows the route state instead of an empty page. */
   const PROBES={
     home:['#setup','#status','#tftHome','#tftPrep'],
     dna:[],
-    draft:['#draftBoard','#simplePregame','#matchupError','#opMissionReminders'],
-    prep:['#simplePregame','#opMissionReminders','#championHub','#matchupError'],
+    draft:[],
+    prep:[],
     live:['#quietMode','#opRememberHud','#opMissionReminders'],
     review:['#simplePostgameReview','#opPostGame332'],
     settings:['#settings'],
@@ -386,7 +382,8 @@
 
   function applyGate(){
     const phase=phaseOf(state);
-    const followsPhase=route===phaseRoute(phase);
+    // Unlisted legacy screens (status stages) only fill a phase route with no native view.
+    const followsPhase=route===phaseRoute(phase)&&!nativeShown;
     let followerShown=false;
     for(const el of legacy.children){
       const members=MEMBERS[el.id];

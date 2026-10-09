@@ -2,7 +2,6 @@ const $=id=>document.getElementById(id);
 let current=null;
 let updateState=null;
 let diagnosticsOpen=false;
-let pregameExpanded=false;
 let coachReviewEvidenceOpen=false;
 let activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
 
@@ -47,18 +46,6 @@ function phaseCopy(state){
   return state?.detail||'Companion is running.';
 }
 
-/** A player's ranked calibration and their FREE/PLUS/PRO membership are different.
- * Display only the actual subscription as a COACH badge. Do not label an
- * unranked player "SILVER COACH" because of the coaching-depth fallback.
- */
-function companionPlanTier(state){
-  const raw=String(state?.teamPlan?.strategyAccess?.tier||state?.playerHome?.tier||'').trim().toUpperCase();
-  return ['FREE','PLUS','PRO'].includes(raw)?raw:null;
-}
-function companionCoachBadge(state){
-  const tier=companionPlanTier(state);
-  return tier?tier+' COACH':'OP CLIMB COACH';
-}
 function setCoachLevel(level,state){
   if(level&&Number(level.depth)){
     activeCoachLevel={
@@ -96,8 +83,8 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
-  // Home and My Game DNA are native views (home-view.js) driven by the shell.
-  renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
+  // Home, My Game DNA, Champion Select and Match Preparation are native views
+  // (home-view.js, draft-view.js) driven by the shell.
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
   renderUpdate(updateState,phase);
@@ -307,309 +294,6 @@ function ensureQuietMode(){
   return section;
 }
 
-function renderPregame(matchup,teamPlan,draft,visible){
-  const box=$('matchup');
-  if(!box)return;
-  setHidden(box,!visible);
-  if(!visible)return;
-
-  setCoachLevel(teamPlan?.coachLevel,current);
-  renderDraftBoard(draft,matchup);
-
-  const loading=matchup?.status==='LOADING';
-  const failed=matchup?.status==='ERROR';
-  const ready=matchup?.status==='READY'&&matchup?.plan;
-  setHidden($('matchupLoading'),true);
-  setHidden($('matchupError'),!failed);
-  setHidden($('matchupReady'),true);
-
-  const simple=ensureSimplePregame();
-  setHidden(simple,!ready);
-  if(failed)$('matchupErrorCopy').textContent=matchup?.error||'OP CLIMB could not build this plan.';
-  if(!ready)return;
-
-  const plan=matchup.plan||{};
-  const baseline=teamPlan?.dnaBaseline||null;
-  const baselineReady=baseline?.ready!==false;
-  const source=String(matchup?.source||'');
-  const provisional=Boolean(matchup?.provisional||source==='CHAMPION_HOVER');
-  const hasOpponent=Boolean(matchup.opponent&&['CHAMP_SELECT','IN_GAME'].includes(source));
-  const you=plan.you?.name||matchup.champion||'Your champion';
-  const them=hasOpponent?(plan.them?.name||matchup.opponent):'Opponent pending';
-  const role=String(plan.role||'').toUpperCase();
-  const rules=safeArray(plan.rules).length?safeArray(plan.rules):safeArray(plan.winCondition);
-  const ruleCap=clamp(Number(activeCoachLevel.visiblePoints)||2,1,5);
-
-  $('simplePregameTier').textContent=baselineReady
-    ?`${companionCoachBadge(current)} · ${provisional?'PREVIEW':'LOCKED'}${activeCoachLevel.rank&&String(activeCoachLevel.rank).toUpperCase()!=='UNRANKED'?' · PLAYER '+activeCoachLevel.rank:''}`
-    :`DNA BASELINE · ${Math.min(Number(baseline?.games||0),Number(baseline?.required||3))}/${Number(baseline?.required||3)}`;
-  $('simplePregameTitle').textContent=hasOpponent?`${you} vs ${them}`:provisional?`${you} preview`:`${you} game plan`;
-  $('simplePregameSummary').textContent=!baselineReady
-    ?`Observation game ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))} of ${Number(baseline?.required||3)}. The match plan stays simple while OP CLIMB learns your starting point.`
-    :provisional
-      ?'Preview only — the path to win will freeze when you lock in and sharpen as the full draft appears.'
-      :'Read this once: how we win, how they win, your job, three actions and the one throw to avoid.';
-  $('simplePregameHowWin').textContent=directWinPath(teamPlan,plan);
-  $('simplePregameHowLose').textContent=directLossPath(teamPlan);
-  $('simplePregameJob').textContent=teamPlan?.yourJob||fallbackJob(role);
-  $('simplePregameThrow').textContent=String(teamPlan?.biggestThrow||teamPlan?.roleWinCondition?.lossCondition||'Do not break formation for a low-value chase.');
-  const mission=baselineReady?safeArray(teamPlan?.missionTips)[0]||null:null;
-  $('simplePregameMission').textContent=baselineReady
-    ?String(mission?.cue||mission?.title||'Keep your current development focus separate from the match win condition.')
-    :`BASELINE ${Math.min(Number(baseline?.games||0)+1,Number(baseline?.required||3))}/${Number(baseline?.required||3)} · PLAY NORMALLY`;
-  const pill=$('simplePregamePill');
-  if(pill){
-    pill.textContent=provisional?'PREVIEW':'PLAN LOCKED';
-    pill.classList.toggle('good',!provisional);
-  }
-  renderWinningActions(directWinningActions(teamPlan,rules.slice(0,ruleCap),role));
-  renderPregameExtra(plan,teamPlan);
-}
-
-function renderDraftBoard(draft,matchup){
-  const board=ensureDraftBoard();
-  if(!board)return;
-  const hasDraft=Boolean(draft);
-  setHidden(board,!hasDraft);
-  if(!hasDraft)return;
-
-  const role=roleLabel(draft.localRole);
-  const champion=String(draft.localChampionName||'').trim();
-  const locked=Boolean(draft.localLockedIn);
-  const state=locked?'LOCKED':champion?'HOVERING':'CHOOSING';
-  const title=champion
-    ?`${champion} · ${state}`
-    :role&&role!=='—'
-      ?`${role} · CHOOSE YOUR CHAMPION`
-      :'DRAFT IN PROGRESS';
-  $('draftBoardTitle').textContent=title;
-  $('draftBoardRole').textContent=role;
-  $('draftBoardPick').textContent=champion||'NO CHAMPION SELECTED';
-  $('draftBoardState').textContent=state;
-  $('draftBoardState').classList.toggle('good',locked);
-  const enemySeen=clamp(safeArray(draft.enemies).filter(p=>p?.championName).length,0,5);
-  const allySeen=clamp(safeArray(draft.allies).filter(p=>p?.championName).length,0,5);
-  $('draftBoardSeen').textContent=`${enemySeen}/5 ENEMIES SEEN`;
-  $('draftAllyCount').textContent=`${allySeen} / 5 PICKED`;
-  $('draftEnemyCount').textContent=`${enemySeen} / 5 SEEN`;
-  $('draftBoardReadBar').style.width=(enemySeen*20)+'%';
-  $('draftBoardReadBar').setAttribute('aria-valuenow',String(enemySeen));
-  $('draftBoardState').setAttribute('aria-label',locked?'Champion locked in':champion?'Champion previewing':'Selecting champion');
-  $('draftBoardHint').textContent=locked
-    ?'Your pick is locked. OP CLIMB is finalising the matchup, team plan and item recommendation as the remaining draft appears.'
-    :champion
-      ?'Preview is live now. Change your hover freely — the plan will follow you. Locking only freezes the final version.'
-      :'OP CLIMB is already reading role, picks and bans. Hover a champion when you are ready and the preview will appear automatically.';
-  renderDraftSide('draftOurPicks',safeArray(draft.allies),draft.localPlayerCellId,true);
-  renderDraftSide('draftTheirPicks',safeArray(draft.enemies),draft.localPlayerCellId,false);
-  renderDraftBans('draftOurBans',safeArray(draft?.bans?.allies));
-  renderDraftBans('draftTheirBans',safeArray(draft?.bans?.enemies));
-}
-
-function renderDraftSide(id,picks,localCell,ours){
-  const root=$(id);if(!root)return;
-  root.replaceChildren();
-  // Display all five slots even while only one or two players are revealed.
-  const values=Array.from({length:5},(_,index)=>picks[index]||null);
-  values.forEach((pick,index)=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:8px;align-items:center;padding:8px 9px;border:1px solid rgba(255,255,255,.07);border-radius:10px;background:rgba(255,255,255,.018)';
-    const localPick=ours&&pick?.cellId!=null&&localCell!=null&&Number(pick.cellId)===Number(localCell);
-    row.className='draft-pick'+(pick?.lockedIn?' es-locked':'')+(localPick?' es-you':'')+(!pick?.championName?' draft-pending':'');
-    row.setAttribute('aria-label',`${ours?'Ally':'Enemy'} ${index+1}: ${pick?.championName||'not yet revealed'}, ${pick?.lockedIn?'locked':pick?.championName?'preview':'waiting'}`);
-    const role=document.createElement('span');
-    role.textContent=roleLabel(pick?.role);role.style.cssText='font-size:9px;font-weight:900;opacity:.55';
-    const name=document.createElement('strong');
-    name.textContent=pick?.championName||((ours&&Number(pick?.cellId)===Number(localCell))?'YOU · SELECTING':'SELECTING…');
-    name.style.cssText='white-space:nowrap;overflow:hidden;text-overflow:ellipsis';
-    const state=document.createElement('span');
-    state.textContent=pick?.lockedIn?'LOCKED':pick?.championName?(ours?'HOVER':'SEEN'):'WAITING';
-    state.style.cssText='font-size:8px;font-weight:900;color:'+(pick?.lockedIn?'#d6ff2f':'#7f93a0');
-    row.append(role,name,state);root.appendChild(row);
-  });
-}
-
-function renderDraftBans(id,bans){
-  const root=$(id);if(!root)return;
-  root.replaceChildren();
-  const named=bans.map(b=>String(b?.championName||'').trim()).filter(Boolean);
-  if(!named.length){const empty=document.createElement('span');empty.textContent='NONE YET';empty.style.opacity='.45';root.appendChild(empty);return}
-  named.slice(0,5).forEach(name=>{const chip=document.createElement('span');chip.textContent=name;chip.style.cssText='padding:5px 7px;border:1px solid rgba(255,95,95,.18);border-radius:999px;font-size:8px;font-weight:850;color:#d8b0b0';root.appendChild(chip)});
-}
-
-function ensureDraftBoard(){
-  let board=$('draftBoard');
-  if(board)return board;
-  const box=$('matchup');
-  if(!box)return null;
-  board=document.createElement('section');
-  board.id='draftBoard';
-  board.className='hidden';
-  board.style.cssText='display:grid;gap:12px;margin-bottom:12px;padding:16px;border:1px solid rgba(214,255,47,.2);background:linear-gradient(135deg,rgba(214,255,47,.035),rgba(4,8,12,.72));border-radius:16px';
-  board.innerHTML=`
-    <div class="premium-draft-head">
-      <div class="premium-draft-headline">
-        <div class="eyebrow"><span class="draft-live-dot"></span> CHAMP SELECT · LIVE DRAFT</div>
-        <h2 id="draftBoardTitle">DRAFT IN PROGRESS</h2>
-        <p>Both teams, one clear role, and the plan you're building towards.</p>
-      </div>
-      <span id="draftBoardState" class="pill premium-draft-state">CHOOSING</span>
-    </div>
-    <div class="premium-draft-metrics">
-      <div class="premium-draft-metric"><span class="eyebrow">YOUR ROLE</span><strong id="draftBoardRole">—</strong></div>
-      <div class="premium-draft-metric"><span class="eyebrow">YOUR PICK</span><strong id="draftBoardPick">SELECTING</strong></div>
-      <div class="premium-draft-metric premium-draft-progress"><span class="eyebrow">DRAFT READ</span><strong id="draftBoardSeen">0/5 ENEMIES SEEN</strong><div class="draft-read-track"><i id="draftBoardReadBar" role="progressbar" aria-label="Enemy picks revealed" aria-valuemin="0" aria-valuemax="5" aria-valuenow="0"></i></div></div>
-    </div>
-    <div class="premium-draft-rosters">
-      <div class="premium-draft-roster ours">
-        <div class="premium-draft-roster-head"><span class="eyebrow">YOUR TEAM</span><b id="draftAllyCount">0 / 5 PICKED</b></div>
-        <div id="draftOurPicks" class="premium-draft-picks"></div>
-      </div>
-      <div class="premium-draft-roster enemies">
-        <div class="premium-draft-roster-head"><span class="eyebrow">THEIR TEAM</span><b id="draftEnemyCount">0 / 5 SEEN</b></div>
-        <div id="draftTheirPicks" class="premium-draft-picks"></div>
-      </div>
-    </div>
-    <div class="premium-draft-bans">
-      <div class="premium-draft-ban-block"><div class="eyebrow">OUR BANS</div><div id="draftOurBans" class="premium-draft-ban-list"></div></div>
-      <div class="premium-draft-ban-block"><div class="eyebrow">THEIR BANS</div><div id="draftTheirBans" class="premium-draft-ban-list"></div></div>
-    </div>
-    <p id="draftBoardHint" class="premium-draft-hint" role="status"></p>`;
-  const simple=$('simplePregame');
-  if(simple)box.insertBefore(board,simple);else box.prepend(board);
-  return board;
-}
-
-function ensureSimplePregame(){
-  let section=$('simplePregame');
-  if(section)return section;
-  const box=$('matchup');
-  section=document.createElement('section');
-  section.id='simplePregame';
-  section.className='hidden';
-  section.innerHTML=`
-    <div class="simple-pregame-hero premium-plan-hero">
-      <div class="premium-plan-hero-copy">
-        <div class="premium-plan-intro"><span class="premium-plan-line"></span> YOUR MATCH BLUEPRINT</div>
-        <div class="eyebrow" id="simplePregameTier">COACH</div>
-        <h2 id="simplePregameTitle"></h2>
-        <p id="simplePregameSummary"></p>
-      </div>
-      <span id="simplePregamePill" class="pill good">GAME PLAN</span>
-    </div>
-    <div class="simple-pregame-win-grid premium-plan-duel">
-      <article class="simple-pregame-win"><div class="eyebrow">01 / OUR WIN CONDITION</div><strong id="simplePregameHowWin"></strong></article>
-      <article class="simple-pregame-loss"><div class="eyebrow">02 / WHAT WE MUST DENY</div><strong id="simplePregameHowLose"></strong></article>
-    </div>
-    <article class="simple-pregame-job"><div class="eyebrow">03 / YOUR JOB THIS GAME</div><strong id="simplePregameJob"></strong></article>
-    <section class="simple-pregame-actions"><div class="eyebrow">04 / THREE ACTIONS TO REMEMBER</div><div id="simplePregameRules"></div></section>
-    <div class="premium-plan-bottom">
-      <article class="simple-pregame-throw"><div class="eyebrow">AVOID / BIGGEST THROW</div><strong id="simplePregameThrow"></strong></article>
-      <article class="simple-pregame-mission"><div class="eyebrow">YOUR DEVELOPMENT MISSION / SEPARATE FROM TEAM PLAN</div><strong id="simplePregameMission"></strong></article>
-    </div>
-    <div id="simplePregameExtra" class="hidden" style="margin-top:12px;border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:16px;background:rgba(255,255,255,.02)"><div class="eyebrow">DEEPER MATCH DETAIL</div><div id="simplePregameExtraList" style="display:grid;gap:9px;margin-top:10px"></div></div>
-    <div class="simple-pregame-actions-row" style="display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px"><button id="simplePregameMore" class="ghost">MORE DETAIL</button><button id="simplePregameFull" class="ghost">OPEN FULL ANALYSIS</button></div>`;
-  const ready=$('matchupReady');
-  box.insertBefore(section,ready||null);
-  $('simplePregameMore').addEventListener('click',()=>{pregameExpanded=!pregameExpanded;syncPregameExtra()});
-  $('simplePregameFull').addEventListener('click',()=>window.opCompanion.openClimb());
-  return section;
-}
-
-function directWinPath(teamPlan,plan){
-  const roleWin=teamPlan?.roleWinCondition||null;
-  const steps=safeArray(roleWin?.steps);
-  if(steps.length===5){
-    const shape=String(roleWin?.compPlan||teamPlan?.teamfight?.label||'PLAY THE DRAFT').trim();
-    const fight=String(steps[3]?.value||'').trim();
-    const convert=String(steps[4]?.value||'').trim();
-    return [shape,fight,convert].filter(Boolean).join(' → ');
-  }
-  const fallback=String(teamPlan?.ourWinCondition||safeArray(plan?.winCondition)[0]||teamPlan?.teamfight?.summary||'Create the first clean advantage, stay connected and convert it into the objective.').trim();
-  return fallback;
-}
-
-function directLossPath(teamPlan){
-  return String(teamPlan?.theirWinCondition||teamPlan?.roleWinCondition?.lossCondition||'They isolate a target or break your formation before the fight starts.').trim();
-}
-
-function directWinningActions(teamPlan,rules,role){
-  const steps=safeArray(teamPlan?.roleWinCondition?.steps);
-  if(steps.length===5){
-    const firstLabel=role==='JUNGLE'?'EARLY PATH':role==='SUPPORT'?'LANE':'EARLY GAME';
-    return[
-      {label:firstLabel,value:String(steps[0]?.value||'PLAY CLEAN')},
-      {label:'SETUP',value:[steps[1]?.value,steps[2]?.value].filter(Boolean).join(' → ')},
-      {label:'FIGHT → CONVERT',value:[steps[3]?.value,steps[4]?.value].filter(Boolean).join(' → ')},
-    ];
-  }
-  const fallback=(rules.length?rules:['Play clean.','Arrive before the important fight.','Win the fight, take the objective, then reset.']).slice(0,3);
-  return fallback.map((value,index)=>({label:['EARLY GAME','SETUP','FIGHT → CONVERT'][index],value:String(value)}));
-}
-
-function renderWinningActions(actions){
-  const root=$('simplePregameRules');
-  if(!root)return;
-  root.replaceChildren();
-  safeArray(actions).slice(0,3).forEach((action,index)=>{
-    const row=document.createElement('div');
-    row.className='simple-winning-action';
-    const n=document.createElement('b');n.textContent=String(index+1).padStart(2,'0');
-    const copy=document.createElement('div');
-    const label=document.createElement('span');label.textContent=String(action?.label||'ACTION');
-    const text=document.createElement('strong');text.textContent=String(action?.value||'PLAY CLEAN');
-    copy.append(label,text);row.append(n,copy);root.appendChild(row);
-  });
-}
-
-function renderPregameExtra(plan,teamPlan){
-  const extras=[];
-  const spikes=safeArray(plan.powerSpikes);
-  const first=spikes.find(x=>Number(x.level)===2)||spikes[0];
-  const major=spikes.find(x=>Number(x.level)===6)||spikes.find(x=>Number(x.level)>2);
-  if(first)extras.push(`Early spike · Lv ${first.level}: ${first.fight||first.label||'Use the first clean power window.'}`);
-  if(activeCoachLevel.depth>=5&&plan.laneDuel?.advantage)extras.push(`Matchup edge: ${plan.laneDuel.advantage}`);
-  if(activeCoachLevel.depth>=7&&major)extras.push(`Major spike · Lv ${major.level}: ${major.fight||major.label||'Use the next major power window.'}`);
-  if(activeCoachLevel.depth>=8&&teamPlan?.teamfight?.summary)extras.push(`Teamfight: ${teamPlan.teamfight.summary}`);
-  if(activeCoachLevel.depth>=9&&teamPlan?.biggestThrow)extras.push(`Avoid: ${teamPlan.biggestThrow}`);
-
-  const cap=activeCoachLevel.depth<=3?1:activeCoachLevel.depth<=6?2:activeCoachLevel.depth<=8?3:4;
-  const root=$('simplePregameExtraList');
-  if(root){
-    root.replaceChildren();
-    extras.slice(0,cap).forEach(text=>{
-      const p=document.createElement('p');p.textContent=text;p.style.cssText='margin:0;line-height:1.45;opacity:.8';root.appendChild(p);
-    });
-  }
-  const more=$('simplePregameMore');
-  if(more)more.style.display=extras.length?'':'none';
-  syncPregameExtra();
-}
-
-function syncPregameExtra(){
-  const extra=$('simplePregameExtra');
-  setHidden(extra,!pregameExpanded);
-  const more=$('simplePregameMore');
-  if(more)more.textContent=pregameExpanded?'LESS DETAIL':'MORE DETAIL';
-}
-
-function leadPathFor(depth){
-  if(depth<=2)return'TRADE → RESET';
-  if(depth<=4)return'TRADE → WAVE → RESET';
-  if(depth<=6)return'TRADE → WAVE → RESET → ITEM';
-  return'TRADE → HP → WAVE → RESET → ITEM';
-}
-
-function fallbackJob(role){
-  const value=String(role||'').toUpperCase();
-  if(value==='ADC'||value==='BOTTOM')return'Stay safe, keep your range and hit the nearest safe target.';
-  if(value==='SUPPORT'||value==='UTILITY')return'Create space for your carries. Engage or peel — do not do both at once.';
-  if(value==='JUNGLE')return'Be there before the important fight starts. Connect your team around objectives.';
-  if(value==='TOP')return'Use side-lane pressure, then reconnect before the important fight.';
-  if(value==='MID'||value==='MIDDLE')return'Catch your wave, then move first and stay connected to your team.';
-  return'Play your champion strength without breaking the team shape.';
-}
-
 function renderPostGameReview(review,phase){
   const section=ensureReviewSection();
   const visible=phase==='REVIEW'&&Boolean(review);
@@ -806,10 +490,7 @@ async function boot(){
   }
   render(appState);
   renderUpdate(updateState,appState?.phase);
-  window.opCompanion.onState(next=>{
-    if(String(current?.phase||'')!=='CHAMP_SELECT'&&String(next?.phase||'')==='CHAMP_SELECT')pregameExpanded=false;
-    render(next);
-  });
+  window.opCompanion.onState(render);
   window.opCompanion.onUpdateState(next=>{updateState=next;renderUpdate(next,current?.phase)});
 }
 
