@@ -45,7 +45,7 @@ jobs:
       - name: Companion V2 native Home and draft regressions
         run: node --test tests/companionHomeView.test.cjs tests/companionDraftView.test.cjs
       - name: In-game Learning Overlay regressions
-        run: node --test tests/companionLearningOverlay.test.cjs
+        run: node --test tests/companionLearningOverlay.test.cjs tests/tftHudEsports.test.cjs
       - name: TFT Companion recorder regressions
         run: node --import tsx --test tests/tftCompanionRecorder.test.ts
       - name: Adaptive ILP evidence regressions
