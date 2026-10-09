@@ -2,48 +2,61 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src https://ddragon.leagueoflegends.com; connect-src 'none'; object-src 'none'; base-uri 'none'">
 <title>OP CLIMB | In-game learning HUD</title>
+<link rel="stylesheet" href="arena-tokens.css">
 <link rel="stylesheet" href="design-system.css">
-<link rel="stylesheet" href="learning-overlay.css"></head>
+<link rel="stylesheet" href="learning-overlay.css">
+<link rel="stylesheet" href="learning-overlay-esports.css">
+<link rel="stylesheet" href="learning-overlay-tft.css"></head>
 <body>
 <main id="overlay" class="hud mode-focus" data-mode="FOCUS" aria-label="OP CLIMB in-game learning HUD">
   <header id="handle" class="hud-header">
-    <span class="hud-mark" aria-hidden="true">OP</span>
-    <span class="hud-brand">OP CLIMB</span>
+    <span class="hud-mark" aria-hidden="true">OP<span class="hud-mark-bolt">↗</span></span>
+    <span class="hud-brand"><b>OP CLIMB</b><small id="hudBrandMode">PERFORMANCE HUD</small></span>
+    <span class="hud-mode-id" aria-hidden="true">HUD / <b id="modeIndicator">FOCUS</b></span>
     <span id="stateBadge" class="hud-state"><i></i><span id="status">LEAGUE RECORDING</span></span>
   </header>
 
   <section class="hud-identity">
     <div id="championPortrait" class="hud-portrait"><img id="championArt" src="" alt="" hidden><span id="championFallback" aria-hidden="true">OP</span></div>
-    <div class="hud-identity__text"><span id="game" class="hud-kicker">LEAGUE OF LEGENDS</span><h1 id="title">Your match focus</h1></div>
+    <div id="tftSigil" class="hud-tft-sigil" aria-hidden="true" hidden>
+      <svg viewBox="0 0 72 76" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+        <path d="M36 4 63 20v34L36 70 9 54V20L36 4Z" class="sigil-shell"/>
+        <path d="M36 14 54 25v23L36 59 18 48V25l18-11Z" class="sigil-inner"/>
+        <path d="m36 20 14 8v16l-14 8-14-8V28l14-8Z" class="sigil-gem"/>
+        <path d="m36 20 14 8-14 8-14-8 14-8Zm0 16v16m14-24-14 8m-14-8 14 8" class="sigil-grid"/>
+        <path d="M3 21 13 12M59 12l10 9M3 55l10 9m46 0 10-9" class="sigil-wings"/>
+      </svg>
+    </div>
+    <div class="hud-identity__text"><span id="identityTag" class="hud-identity-tag">PLAYER / MATCH ID</span><span id="game" class="hud-kicker">LEAGUE OF LEGENDS</span><h1 id="title">Your match focus</h1><div class="hud-identity-sub"><strong id="planState">PRE-GAME PLAN</strong><span id="freezeNote" class="hud-freeze-icon">◆ FROZEN BEFORE PLAY</span></div></div>
   </section>
 
   <section id="missionBlock" class="hud-block hud-block--mission">
-    <span id="missionLabel" class="hud-label">Your mission</span>
+    <div class="hud-panel-top"><span class="hud-panel-number" aria-hidden="true">01</span><span id="missionLabel" class="hud-label">Your mission</span></div>
     <p id="mission"></p>
   </section>
 
   <section id="winBlock" class="hud-block hud-block--win">
-    <span id="winLabel" class="hud-label">Win condition</span>
+    <div class="hud-panel-top"><span class="hud-panel-number" aria-hidden="true">02</span><span id="winLabel" class="hud-label">Win condition</span></div>
     <p id="win"></p>
   </section>
 
   <section id="actionsBlock" class="hud-block hud-block--actions">
-    <span class="hud-label">Three actions</span>
+    <div class="hud-panel-top"><span class="hud-panel-number" aria-hidden="true">03</span><span class="hud-label">Three actions</span></div>
     <ol id="actions"></ol>
   </section>
 
   <section id="avoidBlock" class="hud-block hud-block--avoid">
-    <span id="avoidLabel" class="hud-label">Avoid</span>
+    <div class="hud-panel-top"><span class="hud-panel-number" aria-hidden="true">04</span><span id="avoidLabel" class="hud-label">Avoid</span></div>
     <p id="avoid"></p>
   </section>
 
   <section id="threatBlock" class="hud-block hud-block--threat">
-    <span class="hud-label">Their win condition</span>
+    <div class="hud-panel-top"><span class="hud-panel-number" aria-hidden="true">05</span><span class="hud-label">Their win condition</span></div>
     <p id="threat"></p>
   </section>
 
   <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+M bookmark</span></footer>
-  <div class="hud-rule">Frozen before the game · review after</div>
+  <div id="ruleNote" class="hud-rule">◆ LOCKED PRE-GAME INTEL · LEARN AFTER MATCH</div>
   <div id="resizer" class="hud-resizer" aria-hidden="true"></div>
 
   <div id="editor" class="hud-editor" hidden>
