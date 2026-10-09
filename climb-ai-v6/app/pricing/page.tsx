@@ -78,6 +78,7 @@ export default function Pricing(){
         })}
       </section>
 
+      <p className="pricing-mobile-hint">Swipe across to compare every feature →</p>
       <section className="pricing-compare" aria-label="Compare OP CLIMB plans">
         <div className="pricing-compare-head"><div><span>WHAT CHANGES</span><strong>Compare the same journey row by row</strong></div><div><span>FREE</span><strong>Find</strong></div><div><span>PLUS</span><strong>Climb</strong></div><div><span>PRO</span><strong>Remember</strong></div></div>
         {rows.map(([name,free,plus,pro])=><div className="pricing-feature-row" key={name}>

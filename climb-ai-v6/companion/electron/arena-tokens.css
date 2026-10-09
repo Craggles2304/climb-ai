@@ -1,0 +1,19 @@
+/* One palette for the web application and the Windows Companion. */
+:root {
+  --arena-obsidian: #060a0f;
+  --arena-ink: #0c121b;
+  --arena-surface: #111a25;
+  --arena-surface-raised: #182330;
+  --arena-line: #283745;
+  --arena-white: #f2f5f1;
+  --arena-muted: #adbac3;
+  --arena-lime: #b8f66d;
+  --arena-cyan: #58d6eb;
+  --arena-violet: #aa92ff;
+  --arena-gold: #e9c783;
+  --arena-red: #f17c81;
+  --arena-display: 'Barlow Condensed', 'Bahnschrift Condensed', Impact, sans-serif;
+  --arena-body: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
+  --arena-mono: 'IBM Plex Mono', Consolas, monospace;
+  --arena-ease: cubic-bezier(.2,.8,.2,1);
+}

@@ -23,10 +23,10 @@
 
   /* Surfaces — midnight navy at the back, deep blue-grey towards the front.
      Each step is a visible but quiet lift; nest at most two levels. */
-  --oc-bg: #05080d;
+  --oc-bg: var(--arena-obsidian);
   --oc-bg-raised: #090d14;
-  --oc-surface-1: #0d131c;
-  --oc-surface-2: #121a25;
+  --oc-surface-1: var(--arena-ink);
+  --oc-surface-2: var(--arena-surface);
   --oc-surface-3: #182230;
   --oc-surface-4: #1f2b3b;
   --oc-well: #070b11;                 /* sunk panels inside a card */
@@ -36,21 +36,21 @@
   --oc-line-bright: rgb(190 215 240 / .32);
 
   /* Text — every step passes WCAG AA on --oc-surface-2. */
-  --oc-text: #eef3f8;
-  --oc-text-2: #b6c3d0;
+  --oc-text: var(--arena-white);
+  --oc-text-2: var(--arena-muted);
   --oc-text-3: #8797a9;
   --oc-text-on-accent: #08110a;
 
   /* Accents — one job each. Lime is the brand and the single main action. */
-  --oc-lime: #b6f66b;
+  --oc-lime: var(--arena-lime);
   --oc-lime-hi: #d3ff95;
   --oc-lime-lo: #86c246;
-  --oc-cyan: #43d8ef;                 /* information, allies, secondary emphasis */
-  --oc-violet: #a68bff;               /* Game DNA, Coach Memory, advanced coaching */
+  --oc-cyan: var(--arena-cyan);                 /* information, allies, secondary emphasis */
+  --oc-violet: var(--arena-violet);               /* Game DNA, Coach Memory, advanced coaching */
   --oc-green: #3ddc8c;                /* positive outcome */
   --oc-amber: #e6ad4f;                /* warning, needs attention */
-  --oc-red: #f0626a;                  /* negative outcome, enemy team */
-  --oc-gold: #e8c47e;                 /* PRO tier, rank */
+  --oc-red: var(--arena-red);                  /* negative outcome, enemy team */
+  --oc-gold: var(--arena-gold);                 /* PRO tier, rank */
   --oc-blue: #6aa3ff;
 
   /* Game DNA strands — one stable colour per domain everywhere. */

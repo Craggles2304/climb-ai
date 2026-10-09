@@ -1,0 +1,139 @@
+/* The Arena identity carries through authenticated League screens. */
+body[data-client-view]{
+  --bg:var(--arena-obsidian);
+  --surface:var(--arena-ink);
+  --surface-2:var(--arena-surface);
+  --panel:var(--arena-ink);
+  --panel-2:var(--arena-surface);
+  --line:var(--arena-line);
+  --border:var(--arena-line);
+  --text:var(--arena-white);
+  --ink:var(--arena-white);
+  --muted:var(--arena-muted);
+  --mint:var(--arena-lime);
+  --teal:var(--arena-cyan);
+  --cyan:var(--arena-cyan);
+  --purple:var(--arena-violet);
+  --gold:var(--arena-gold);
+}
+.arena-player-hero{
+  position:relative;
+  isolation:isolate;
+  min-height:315px;
+  padding:34px 38px;
+  overflow:hidden;
+  border:1px solid #5d72845c;
+  background:radial-gradient(600px 350px at 78% 50%,#31445a,#0b121c 70%);
+  box-shadow:0 20px 45px #0005;
+}
+.arena-player-hero-art{
+  position:absolute;
+  z-index:-2;
+  inset:0 0 0 auto;
+  width:75%;
+  height:100%;
+  object-fit:cover;
+  object-position:70% 35%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 5%,#000 62%);
+  mask-image:linear-gradient(90deg,transparent 5%,#000 62%);
+}
+.arena-player-hero::after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:0;
+  pointer-events:none;
+  background:linear-gradient(90deg,#0a111b 8%,#0a111bf2 41%,#0a111b66 72%,#0a111b22),linear-gradient(0deg,#0a111bca,transparent 55%);
+}
+.arena-player-hero-copy{position:relative;z-index:1;max-width:720px}
+.arena-player-hero .eyebrow{color:var(--arena-lime)!important}
+.arena-player-hero h1{
+  max-width:700px;
+  margin:10px 0 14px;
+  font:800 clamp(58px,6vw,96px)/.84 var(--display)!important;
+  text-transform:uppercase;
+  overflow-wrap:anywhere;
+  text-shadow:0 4px 25px #0009;
+}
+.arena-player-hero h1 span{
+  display:inline-block;
+  margin-left:.15em;
+  color:#b5c6cc;
+  font-size:.43em;
+  vertical-align:.2em;
+}
+.arena-player-hero p{
+  max-width:510px;
+  color:#e1e8e8!important;
+  font-size:17px!important;
+  line-height:1.4!important;
+  text-shadow:0 1px 8px #000c;
+}
+.arena-player-hero-meta{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:9px;
+  margin-top:22px;
+}
+.arena-player-hero-meta>*{
+  padding:5px 9px;
+  border:1px solid #adbbc359;
+  background:#0b141dbd;
+  color:#dce6e5;
+  font:700 12px var(--display);
+  letter-spacing:.06em;
+}
+.arena-player-hero-meta b{color:var(--arena-gold);font-size:18px}
+.arena-player-hero .op-home-connection{
+  position:absolute;
+  z-index:2;
+  right:25px;
+  top:22px;
+  background:#0a111be6;
+  backdrop-filter:blur(6px);
+}
+.arena-player-hero-credit{
+  position:absolute;
+  right:25px;
+  bottom:19px;
+  z-index:2;
+  padding:5px 8px;
+  background:#0a111bd4;
+  color:#d2dddf;
+  font:500 10px var(--mono);
+  letter-spacing:.08em;
+}
+body[data-client-view="overview"] .op-home-dna{
+  border-color:#54647a!important;
+  background:linear-gradient(135deg,#101a27,#0b111a 70%)!important;
+}
+body[data-client-view="overview"] .op-next-step{
+  background:linear-gradient(110deg,#223021,#0e1821 60%)!important;
+}
+body[data-client-view="overview"] .op-home-dna-legend{
+  border-color:var(--arena-line)!important;
+}
+@media(max-width:900px){
+  .arena-player-hero{min-height:300px;padding:27px}
+  .arena-player-hero-copy{max-width:75%}
+  .arena-player-hero-art{opacity:.65}
+}
+@media(max-width:620px){
+  .arena-player-hero{min-height:345px;padding:68px 20px 25px}
+  .arena-player-hero-copy{max-width:100%}
+  .arena-player-hero h1{font-size:clamp(48px,12vw,72px)!important}
+  .arena-player-hero-art{width:100%;opacity:.48}
+  .arena-player-hero::after{background:linear-gradient(90deg,#0a111be8,#0a111b75),linear-gradient(0deg,#0a111be8,transparent 65%)}
+  .arena-player-hero .op-home-connection{left:20px;right:auto;top:16px}
+  .arena-player-hero-credit{right:16px;bottom:8px;font-size:9px}
+}
+@media(prefers-reduced-motion:reduce){.arena-player-hero *{animation:none!important;transition:none!important}}
+.pricing-mobile-hint{display:none;color:var(--arena-cyan);font:700 12px var(--display);letter-spacing:.06em}
+@media(max-width:900px){
+  .pricing-story-arrow{display:none!important;transform:none!important}
+  .pricing-story{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:1px!important}
+  .pricing-story-step{min-width:0!important;width:100%!important}
+  .pricing-mobile-hint{display:block;margin:25px 0 4px}
+  .pricing-compare{overflow-x:auto!important;overscroll-behavior-inline:contain}
+}

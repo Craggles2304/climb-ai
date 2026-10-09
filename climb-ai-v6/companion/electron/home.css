@@ -358,3 +358,70 @@
   .oc-roles__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .oc-baseline__games { grid-template-columns: 1fr; }
 }
+
+/* Arena flagship: champion led identity and one unmistakable next mission. */
+.oc-home-hero{
+  min-height:410px;
+  padding:44px 48px;
+  border-radius:8px;
+  background:#0a1119;
+}
+.oc-home-hero .oc-card__art{
+  object-position:72% 35%;
+  -webkit-mask-image:linear-gradient(90deg,transparent 18%,#000 55%);
+  mask-image:linear-gradient(90deg,transparent 18%,#000 55%);
+  filter:saturate(.96) contrast(1.07);
+}
+.oc-home-hero::after{
+  background:linear-gradient(90deg,#0b121b 10%,#0b121bec 42%,#0b121b77 64%,#0b121b25 100%),linear-gradient(0deg,#0b121bee,transparent 35%);
+}
+.oc-home-hero__pattern{opacity:.2;mix-blend-mode:screen}
+.oc-home-hero__body{max-width:62%;gap:18px}
+.oc-home-hero__name{font-size:clamp(58px,5.5vw,91px);line-height:.86}
+.oc-home-hero__rank b{font-size:30px}
+.oc-home-hero__focus{background:#0d171bc4;border-left-color:var(--oc-lime);backdrop-filter:blur(5px)}
+.oc-home-hero__focus strong{font-size:18px}
+.oc-home-hero__credit{background:#071019b8;padding:5px 8px}
+.oc-next-mission{
+  position:relative;
+  display:grid;
+  grid-template-columns:180px minmax(0,1fr) auto;
+  align-items:center;
+  gap:28px;
+  padding:25px 32px;
+  border:1px solid #66845d72;
+  background:linear-gradient(115deg,#1d2d22,#111b25 46%,#0b121b);
+  box-shadow:inset 5px 0 var(--oc-lime),0 20px 45px #0005;
+}
+.oc-next-mission::after{
+  content:"";
+  position:absolute;
+  right:180px;top:0;bottom:0;width:180px;
+  opacity:.08;
+  background:repeating-linear-gradient(120deg,#fff 0 1px,transparent 1px 12px);
+  pointer-events:none;
+}
+.oc-next-mission__index{display:grid;gap:9px;border-right:1px solid #a7c0ab48}
+.oc-next-mission__index span{font:500 11px var(--oc-font-mono);letter-spacing:.12em;color:var(--oc-lime)}
+.oc-next-mission__index b{font:800 31px/.9 var(--oc-font-display);letter-spacing:.02em}
+.oc-next-mission__copy{min-width:0}
+.oc-next-mission__copy .oc-eyebrow{color:var(--oc-lime)}
+.oc-next-mission__copy h2{margin:4px 0 5px;font:800 clamp(28px,2.8vw,44px)/.95 var(--oc-font-display);text-transform:uppercase}
+.oc-next-mission__copy p{max-width:660px;color:var(--oc-text-2);font-size:14px;line-height:1.4}
+.oc-next-mission__action{min-width:160px;white-space:nowrap}
+@media(max-width:1180px){
+  .oc-next-mission{grid-template-columns:145px minmax(0,1fr);gap:18px}
+  .oc-next-mission__action{grid-column:2;justify-self:start}
+}
+@media(max-width:850px){
+  .oc-home-hero{min-height:380px;padding:30px}
+  .oc-home-hero__body{max-width:88%}
+  .oc-home-hero .oc-card__art{opacity:.55}
+  .oc-next-mission{grid-template-columns:1fr;padding:22px}
+  .oc-next-mission__index{border-right:0;border-bottom:1px solid #a7c0ab48;padding-bottom:12px}
+  .oc-next-mission__index b br{display:none}
+  .oc-next-mission__action{grid-column:auto}
+}
+@media(prefers-reduced-motion:reduce){
+  .oc-home-hero .oc-card__art{transition:none}
+}

@@ -1,3 +1,4 @@
+import '../companion/electron/arena-tokens.css';
 import './globals.css';
 import './live-review-cleanup.css';
 import './op-wow.css';
@@ -15,6 +16,7 @@ import './client-system.css';
 import './visual-depth.css';
 import './tft-league-ui.css';
 import './career-dna.css';
+import './arena-client.css';
 import type {Metadata} from 'next';
 import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
