@@ -74,6 +74,11 @@
   const role=ROLES[text(plan.role).toUpperCase()]||'';
   const champion=text(plan.champion);
   showChampion(champion,'OP');
+  show('tftSigil',false);
+  put('identityTag','PLAYER / MATCH ID');
+  put('hudBrandMode','PERFORMANCE HUD');
+  put('freezeNote','FROZEN BEFORE PLAY');
+  put('ruleNote','PRE-GAME PLAN · REVIEW AFTER');
   put('game','LEAGUE OF LEGENDS');
   put('planState',plan.baseline?'BASELINE CAPTURE':'PLAN LOCKED');
   put('title',champion&&champion.toUpperCase()!=='YOUR CHAMPION'?champion+(role?' · '+role:''):'Your match focus');
@@ -107,8 +112,13 @@
 
  function renderTft(focusId){
   const focus=window.OP_TFT_COACH_MODEL?.mission(focusId);
+  for(const id of ['ECONOMY','TEMPO','FLEX','POSITION'])$('overlay').classList.toggle('tft-focus-'+id.toLowerCase(),(focus?.id||'ECONOMY')===id);
   showChampion(null,'TFT');
+  put('identityTag','TACTICIAN / LEARNING FOCUS');
+  put('hudBrandMode','TACTICIAN HUD');
   put('game','TEAMFIGHT TACTICS');
+  put('freezeNote','PRESELECTED BEFORE PLAY');
+  put('ruleNote','SELECTED BEFORE PLAY · REVIEW AFTER');
   put('planState','STATIC TFT FOCUS');
   put('title',focus?.title||'TFT development focus');
   put('missionLabel','Your TFT focus');put('mission',focus?.rule||'Follow the focus you chose before the game.');
@@ -135,6 +145,9 @@
   else{
    // Preview without a match: show what each layout holds, clearly labelled.
    showChampion(null,'OP');
+   put('hudBrandMode','PERFORMANCE HUD');
+   put('identityTag','PLAYER / MATCH ID');
+   show('tftSigil',false);
    put('game',preview?'LAYOUT PREVIEW':'LEAGUE OF LEGENDS');
    put('planState',preview?'DISPLAY EXAMPLE':'PLAN NOT LOCKED');
    put('title',preview?'Your champion':'Your match focus');
