@@ -4,6 +4,7 @@ import Link from 'next/link';
 import {useEffect,useMemo,useState} from 'react';
 import type {CSSProperties} from 'react';
 import {AppShell} from '@/components/AppShell';
+import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
@@ -75,7 +76,7 @@ export default function Missions(){
   }
 
   return <AppShell><main className="missions-page">
-    <header className="missions-head">
+    <header className="missions-head arena-visual-arthead arena-visual-missions"><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
       <div>
         <div className="eyebrow">LEAGUE · {active.role} · GAME DNA</div>
         <h1>Choose your two DNA trees</h1>
