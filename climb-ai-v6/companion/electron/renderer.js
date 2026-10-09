@@ -2,7 +2,6 @@ const $=id=>document.getElementById(id);
 let current=null;
 let updateState=null;
 let diagnosticsOpen=false;
-let settingsOpen=false;
 let pregameExpanded=false;
 let coachReviewEvidenceOpen=false;
 let activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
@@ -70,8 +69,6 @@ function setCoachLevel(level,state){
       reviewPoints:clamp(Number(level.reviewPoints)||2,1,3),
     };
   }
-  const signal=document.querySelector('.brand-signal b');
-  if(signal)signal.textContent=companionCoachBadge(state);
 }
 
 function render(state){
@@ -99,7 +96,8 @@ function render(state){
   }
 
   setHidden($('setup'),paired);
-  renderPlayerHome(current.playerHome,paired&&phase==='WAITING'&&!tftHomeVisible);
+  // Player Home renders in every phase; the shell decides when its route is open.
+  renderPlayerHome(current.playerHome,paired&&!tftHomeVisible&&Boolean(current.playerHome?.ok));
   renderPregame(current.matchup,current.teamPlan,current.draft,paired&&phase==='CHAMP_SELECT');
   renderQuietMode(current,paired&&phase==='RECORDING');
   renderPostGameReview(current.postGameReview,phase);
@@ -518,17 +516,9 @@ function ensurePlayerHome(){
   return section;
 }
 
+// Settings is its own route in the shell; it only needs a paired PC.
 function syncSettingsVisibility(){
-  const settings=$('settings');
-  if(!settings)return;
-  setHidden(settings,!settingsOpen);
-  const button=$('headerUpdates');
-  if(!button)return;
-  button.setAttribute('aria-expanded',String(settingsOpen));
-  const status=String(updateState?.status||'');
-  const needsUpdate=['AVAILABLE','DOWNLOADING','READY'].includes(status);
-  button.classList.toggle('needs-update',needsUpdate);
-  button.textContent=status==='READY'?'UPDATE READY':status==='AVAILABLE'?'UPDATE AVAILABLE':status==='DOWNLOADING'?'DOWNLOADING UPDATE':settingsOpen?'CLOSE SETTINGS':'UPDATES & SETTINGS';
+  setHidden($('settings'),!current?.paired);
 }
 
 
@@ -1044,7 +1034,6 @@ function renderUpdate(next,phase){
 
   $('updateCopy').textContent=copy;
   $('updateVersion').textContent=version;
-  if($('companionVersionBadge'))$('companionVersionBadge').textContent=version;
   setHidden($('checkUpdate'),!['IDLE','CURRENT','ERROR'].includes(status));
   setHidden($('downloadUpdate'),status!=='AVAILABLE');
   setHidden($('installUpdate'),status!=='READY');
@@ -1090,6 +1079,5 @@ bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());
 bind('installUpdate','click',async()=>{const result=await window.opCompanion.installUpdate(current?.phase||'');if(result&&!result.ok&&result.error)$('updateCopy').textContent=result.error});
 bind('showLogs','click',()=>{diagnosticsOpen=!diagnosticsOpen;setHidden($('logs'),!diagnosticsOpen);$('showLogs').textContent=diagnosticsOpen?'HIDE DIAGNOSTICS':'DIAGNOSTICS'});
-bind('headerUpdates','click',()=>{settingsOpen=!settingsOpen;syncSettingsVisibility();if(settingsOpen)$('settings')?.scrollIntoView({behavior:'smooth',block:'start'})});
 
 boot();

@@ -190,19 +190,25 @@ test('the desktop app throwing in one phase does not poison the next',()=>{
 
 
 test('rank-calibrated SILVER never masquerades as paid plan or persists on TFT/home',()=>{
-  const {render,registry,badge}=makeContext();
+  const {context,render,registry}=makeContext();
+  // The header badge moved to the shell; the renderer still owns the plan label.
+  const coachBadge=state=>vm.runInContext('companionCoachBadge',context)(state);
   const silverCalibration={tier:'SILVER',rank:'UNRANKED',depth:3,visiblePoints:3,reviewPoints:2};
   const paidPlan={...teamPlan(),coachLevel:silverCalibration,strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}};
-  render({...base,phase:'CHAMP_SELECT',matchup:matchup(),draft:fullDraft(),teamPlan:paidPlan});
-  assert.equal(badge.textContent,'PRO COACH');
+  const champ={...base,phase:'CHAMP_SELECT',matchup:matchup(),draft:fullDraft(),teamPlan:paidPlan};
+  render(champ);
+  assert.equal(coachBadge(champ),'PRO COACH');
   assert.match(registry.get('simplePregameTier').textContent,/PRO COACH/);
   assert.doesNotMatch(registry.get('simplePregameTier').textContent,/SILVER COACH/);
-  render({...base,phase:'RECORDING',teamPlan:paidPlan,matchup:matchup()});
-  assert.equal(badge.textContent,'PRO COACH');
-  render({...base,phase:'WAITING',playerHome:{tier:'PRO',ok:false}});
-  assert.equal(badge.textContent,'PRO COACH');
-  render({...base,phase:'WAITING',tftRecorder:{state:'ARMED'},playerHome:null});
-  assert.equal(badge.textContent,'OP CLIMB COACH');
+  const game={...base,phase:'RECORDING',teamPlan:paidPlan,matchup:matchup()};
+  render(game);
+  assert.equal(coachBadge(game),'PRO COACH');
+  const waiting={...base,phase:'WAITING',playerHome:{tier:'PRO',ok:false}};
+  render(waiting);
+  assert.equal(coachBadge(waiting),'PRO COACH');
+  const tft={...base,phase:'WAITING',tftRecorder:{state:'ARMED'},playerHome:null};
+  render(tft);
+  assert.equal(coachBadge(tft),'OP CLIMB COACH');
 });
 
 
@@ -279,7 +285,9 @@ test('premium draft uses responsive visual system while keeping the current data
 
 
 test('champ-select coach badge respects paid membership rather than rank calibration',()=>{
-  const {render,badge}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:fullDraft(),matchup:matchup(),teamPlan:{...teamPlan(),strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}}});
-  assert.equal(badge.textContent,'PRO COACH');
+  const {context,render,registry}=makeContext();
+  const state={...base,phase:'CHAMP_SELECT',draft:fullDraft(),matchup:matchup(),teamPlan:{...teamPlan(),strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}}};
+  render(state);
+  assert.equal(vm.runInContext('companionCoachBadge',context)(state),'PRO COACH');
+  assert.match(registry.get('simplePregameTier').textContent,/PRO COACH/);
 });

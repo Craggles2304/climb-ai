@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css">
 <link rel="stylesheet" href="styles.css">
 <link rel="stylesheet" href="lane.css">
 <link rel="stylesheet" href="updates.css">
@@ -15,21 +16,53 @@
 <link rel="stylesheet" href="champion-hub.css">
 <link rel="stylesheet" href="player-home.css">
 <link rel="stylesheet" href="match-plan-v4.css">
-<link rel="stylesheet" href="header-updates.css">
 <link rel="stylesheet" href="esports-v2.css">
 <link rel="stylesheet" href="live-mission-hud.css">
 <link rel="stylesheet" href="tft-coach-hud.css">
 <link rel="stylesheet" href="premium-home.css">
 <link rel="stylesheet" href="premium-champ-select.css">
 <link rel="stylesheet" href="premium-review.css">
+<link rel="stylesheet" href="shell.css">
 </head>
-<body>
-<main class="shell">
-  <header class="brand esports-brand">
-    <div class="brand-lockup"><div class="mark">OP</div><div><h1>OP CLIMB</h1><p>COMPANION · MATCH INTELLIGENCE</p></div></div>
-    <div class="header-tools"><button id="headerUpdates" class="header-updates" type="button" aria-controls="settings" aria-expanded="false">UPDATES &amp; SETTINGS</button><div class="brand-signal"><span></span><b>LIVE COACHING SYSTEM</b><small id="companionVersionBadge" style="margin-left:8px;opacity:.55;font-family:IBM Plex Mono,monospace">v—</small></div></div>
-  </header>
+<body class="oc-app">
+<div id="ocShell" class="oc-shell" data-route="home">
+  <aside class="oc-sidebar" aria-label="OP CLIMB Companion">
+    <div class="oc-brand"><span class="oc-brand__mark" aria-hidden="true">OP</span><span class="oc-brand__word">Climb<small>Companion</small></span></div>
+    <div id="ocIdentity" class="oc-identity" data-link="warn">
+      <div id="ocIdentityAvatar" class="oc-identity__avatar" aria-hidden="true">OP</div>
+      <div class="oc-identity__text"><span id="ocIdentityName" class="oc-identity__name">Starting…</span><span id="ocIdentityRank" class="oc-identity__rank">&nbsp;</span></div>
+      <div id="ocIdentityMeta" class="oc-identity__meta"></div>
+    </div>
+    <nav id="ocNav" class="oc-nav" aria-label="Main"></nav>
+    <div class="oc-sidebar__spacer"></div>
+    <div id="ocNavFooter" class="oc-sidebar__footer">
+      <div class="oc-sidebar__meta"><span id="ocVersion" class="oc-sidebar__version"></span><button id="ocCollapse" class="oc-icon-btn oc-sidebar__collapse" type="button" aria-label="Collapse sidebar"></button></div>
+    </div>
+  </aside>
 
+  <div class="oc-main">
+    <header class="oc-header">
+      <div class="oc-header__title"><span id="ocRouteEyebrow" class="oc-eyebrow">Your climb</span><h1 id="ocRouteTitle" class="oc-h1" tabindex="-1">Home</h1></div>
+      <div class="oc-header__tools"><button id="ocUpdateChip" class="oc-chip oc-chip--lg oc-chip--warning" type="button" hidden>Update available</button><div id="ocSystemStatus" class="oc-status" role="status"></div></div>
+    </header>
+
+    <section id="ocStrip" class="oc-strip" aria-label="Where you are and what to do next">
+      <div id="ocLoop" class="oc-loop" role="img" aria-label="Match loop">
+        <div id="ocLoopSteps" class="oc-loop__steps" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <span id="ocLoopLabel" class="oc-loop__label">Between games</span>
+      </div>
+      <div class="oc-strip__copy" aria-live="polite">
+        <span id="ocNext" class="oc-strip__next"></span>
+        <span id="ocNow" class="oc-strip__now"></span>
+      </div>
+      <button id="ocNextAction" class="oc-btn oc-btn--primary oc-btn--sm oc-strip__action" type="button" hidden></button>
+      <span id="ocStripFeedback" class="oc-strip__feedback" role="status"></span>
+    </section>
+
+    <div id="ocView" class="oc-view">
+      <div id="ocViewInner" class="oc-view__inner">
+        <section id="ocRouteState" class="oc-route-state" hidden></section>
+<main id="legacyView">
   <section id="setup" class="card hidden">
     <div class="eyebrow">ONE-TIME SETUP</div>
     <h2>Connect this Windows PC</h2>
@@ -282,12 +315,16 @@
     <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
     <button id="unpair" class="danger">UNPAIR THIS PC</button>
   </section>
-  <footer>YOUR CLIMB → LOCK IN → PLAY → REVIEW. The Companion keeps your development visible between games and your match plan visible when it matters.</footer>
 </main>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="tft-coach-model.js"></script>
 <script src="renderer.js"></script>
 <script src="arena.js"></script>
 <script src="esports-v2.js"></script>
 <script src="review-v2.js"></script>
+<script src="shell.js"></script>
 </body>
 </html>

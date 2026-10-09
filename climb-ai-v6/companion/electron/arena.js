@@ -54,7 +54,7 @@
       </div>`;
     const status=$('status');status?.insertAdjacentElement('afterend',root);
     $('idleOpenClimb')?.addEventListener('click',()=>window.opCompanion?.openClimb?.());
-    $('idleSettings')?.addEventListener('click',()=>$('headerUpdates')?.click());
+    $('idleSettings')?.addEventListener('click',()=>window.ocShell?.go('settings'));
     return root;
   }
 

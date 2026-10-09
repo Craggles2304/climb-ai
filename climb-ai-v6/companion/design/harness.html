@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Companion harness</title>
+<!-- Dev only: loads the real electron/index.html with a mocked preload API.
+     Serve the companion folder (e.g. npx serve) and open /design/harness.html. -->
+<script>
+fetch('../electron/index.html').then(res=>res.text()).then(html=>{
+  html=html
+    .replace('<head>','<head><base href="../electron/">')
+    .replace('<script src="tft-coach-model.js">','<script src="../design/mock-companion.js"><\/script><script src="tft-coach-model.js">');
+  document.open();document.write(html);document.close();
+});
+</script>
