@@ -197,10 +197,11 @@ body[data-client-view="overview"] .arena-pro-focus{
   box-shadow:0 16px 35px #0002;
 }
 body[data-client-view="overview"] .arena-pro-focus::before{
-  content:"ACTIVE PROTOCOL";position:absolute;top:18px;right:15px;
+  content:"BASELINE SCAN";position:absolute;top:18px;right:15px;
   color:#90b076;font:700 9px var(--mono);letter-spacing:.1em;
   pointer-events:none;
 }
+body[data-client-view="overview"] .arena-pro-focus.is-ready::before{content:"ACTIVE PROTOCOL"}
 body[data-client-view="overview"] .arena-pro-focus .op-home-job{
   border-left:3px solid #c6ff7e;
   background:linear-gradient(95deg,#283c2b,#162634);
