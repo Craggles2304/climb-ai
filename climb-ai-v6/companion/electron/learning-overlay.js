@@ -77,6 +77,8 @@
   show('tftSigil',false);
   put('identityTag','PLAYER / MATCH ID');
   put('hudBrandMode','PERFORMANCE HUD');
+  put('freezeNote','FROZEN BEFORE PLAY');
+  put('ruleNote','PRE-GAME PLAN · REVIEW AFTER');
   put('game','LEAGUE OF LEGENDS');
   put('planState',plan.baseline?'BASELINE CAPTURE':'PLAN LOCKED');
   put('title',champion&&champion.toUpperCase()!=='YOUR CHAMPION'?champion+(role?' · '+role:''):'Your match focus');
