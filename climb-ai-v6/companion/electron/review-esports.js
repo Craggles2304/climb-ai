@@ -48,7 +48,7 @@
       hero.id='opEsHero';hero.className='op-es-hero';
       hero.innerHTML=`
         <div id="opEsArt" class="op-es-art"><div class="op-es-art-copy"><div class="op-es-overline">POST MATCH // PERFORMANCE REVIEW</div><div class="op-es-roleline"><b id="opEsRole">ROLE</b><span>·</span><span id="opEsCoach">OP COACH</span></div><h1 id="opEsChamp" class="op-es-champ">CHAMPION</h1></div></div>
-        <div class="op-es-board"><div class="op-es-board-head"><div><div class="eyebrow">MATCH INTELLIGENCE // VERIFIED REVIEW</div><h2>GAME DEBRIEF</h2></div><div class="op-es-ready">REVIEW READY</div></div><div class="op-es-stat-grid"><article class="op-es-stat accent"><span>KDA</span><strong id="opEsKda">—</strong><small>final line</small></article><article class="op-es-stat"><span>CS / MIN</span><strong id="opEsCs">—</strong><small>economy pace</small></article><article class="op-es-stat"><span>MATCH TIME</span><strong id="opEsTime">—</strong><small>recorded duration</small></article><article class="op-es-stat"><span>DECISIONS</span><strong id="opEsEvidence">—</strong><small>reviewed moments</small></article></div><div class="op-es-next-call"><span>NEXT GAME // ONE CALL</span><strong id="opEsNextTitle">REPEAT THE CLEAN DECISIONS</strong><p id="opEsNextRule"></p></div></div>`;
+        <div class="op-es-board"><div class="op-es-board-head"><div><div class="eyebrow">MATCH INTELLIGENCE // VERIFIED REVIEW</div><h2>GAME DEBRIEF</h2></div><div id="opEsReady" class="op-es-ready">REVIEW READY</div></div><div class="op-es-stat-grid"><article class="op-es-stat accent"><span>KDA</span><strong id="opEsKda">—</strong><small>final line</small></article><article class="op-es-stat"><span>CS / MIN</span><strong id="opEsCs">—</strong><small>economy pace</small></article><article class="op-es-stat"><span>MATCH TIME</span><strong id="opEsTime">—</strong><small>recorded duration</small></article><article class="op-es-stat"><span>DECISIONS</span><strong id="opEsEvidence">—</strong><small>reviewed moments</small></article></div><div class="op-es-next-call"><span>NEXT GAME // ONE CALL</span><strong id="opEsNextTitle">REPEAT THE CLEAN DECISIONS</strong><p id="opEsNextRule"></p></div></div>`;
       // Only direct children may be used as insertBefore references. The
       // historical .op332-baseline lives INSIDE collapsed match details.
       const summary=section.querySelector('.op333-summary');
@@ -123,8 +123,8 @@
     const rawDuration=Number(review?.match?.durationSeconds);
     const duration=Number.isFinite(rawDuration)&&rawDuration>0?rawDuration:1;
     set('opEsEndTime',Number.isFinite(rawDuration)&&rawDuration>0?clock(rawDuration):'—');
-    const good=safeArray(review?.doneWell||review?.good).filter(item=>item?.verified!==false&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'good'}));
-    const fix=safeArray(review?.improve||review?.critical).filter(item=>item?.verified!==false&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'fix'}));
+    const good=safeArray(review?.doneWell||review?.good).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'good'}));
+    const fix=safeArray(review?.improve||review?.critical).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'fix'}));
     const chosen=[...good,...fix].sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds).slice(0,7);
     chosen.forEach(item=>{
       const seconds=Math.max(0,Math.min(duration,Number(item.atSeconds)||0));
@@ -181,6 +181,7 @@
     const match=review.match||{};
     const champion=clean(match.champion)||'Champion';
     const art=$('opEsArt');if(art){const asset=championAssetId(champion);art.style.setProperty('--op-champ-art',`url("https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${asset}_0.jpg")`)}
+    set('opEsReady',review.partial?'PARTIAL REVIEW':'REVIEW READY');
     set('opEsChamp',champion.toUpperCase(),'CHAMPION');
     set('opEsRole',clean(match.role).toUpperCase(),'ROLE');
     const accessTier=clean(state?.teamPlan?.strategyAccess?.tier||state?.playerHome?.tier).toUpperCase();
