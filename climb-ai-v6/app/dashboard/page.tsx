@@ -11,15 +11,17 @@ import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot'
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
-import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {buildJourneyState} from '@/lib/journeyState';
 import {championSplash} from '@/lib/championArt';
+import {DashboardMatchInsights} from '@/components/DashboardMatchInsights';
+import {DashboardDnaInspector} from '@/components/DashboardDnaInspector';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
 
 export default function Dashboard(){
-  const {active}=useAccount();
+  const {active,hydrated,authenticated}=useAccount();
   const {tasks,allTasks}=useLearningPlan();
   const [devices,setDevices]=useState<Device[]>([]);
   const [deviceLoaded,setDeviceLoaded]=useState(false);
@@ -45,9 +47,9 @@ export default function Dashboard(){
     return()=>{stopped=true;window.clearInterval(timer)};
   },[active.id]);
 
-  const matches=useMemo(()=>matchesFor(active.id)
+  const matches=matchesFor(active.id)
     .filter(match=>match.durationSeconds>=300)
-    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)),[active.id]);
+    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
   const baselineGames=dnaBaselineGameCount(matches,active.role);
   const baselineReady=dnaBaselineReady(baselineGames);
   const accountTasks=allTasks[active.id]??tasks;
@@ -87,6 +89,8 @@ export default function Dashboard(){
     {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
   ];
 
+  if(!hydrated)return <AppShell><section className="arena-original-loading" role="status">Loading your Riot player data…</section></AppShell>;
+
   return <AppShell>
     <header className="op-home-head op-home-head-dna arena-player-hero">
       {latest&&<img className="arena-player-hero-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>}
@@ -104,6 +108,8 @@ export default function Dashboard(){
       {latest&&<small className="arena-player-hero-credit">LAST PLAYED · {latest.champion}</small>}
     </header>
 
+    <DashboardMatchInsights matches={matches} isDemo={!authenticated} mode="form"/>
+
     <section className="op-home-dna op-home-dna-primary">
       <div className="op-home-dna-head">
         <div>
@@ -115,9 +121,7 @@ export default function Dashboard(){
         </div>
         <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
       </div>
-      <div className="op-home-dna-legend" aria-label="Six Game DNA strands">
-        {DNA_DOMAINS.map(domain=><span key={domain} style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}><i/>{DNA_DOMAIN_LABELS[domain]}</span>)}
-      </div>
+      <DashboardDnaInspector tasks={roleTasks} role={active.role} baselineReady={baselineReady} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
       <div className="op-home-dna-stage">
         <ClientGameDna
           player={active.gameName+active.tagline}
@@ -182,5 +186,7 @@ export default function Dashboard(){
         </>}
       </article>
     </section>
+
+    <DashboardMatchInsights matches={matches} isDemo={!authenticated} mode="archive"/>
   </AppShell>;
 }
