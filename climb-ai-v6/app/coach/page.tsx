@@ -2,6 +2,7 @@
 import {useEffect,useMemo,useRef,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
+import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {useSubscription} from '@/components/SubscriptionContext';
@@ -90,7 +91,7 @@ export default function Coach(){
   function applyProposal(index:number,task:Suggestion){addTask(task);setMessages(current=>current.map((m,i)=>i===index?{...m,applied:true}:m))}
   function resetThread(){const next:Msg[]=[welcome(activeThree[0]?.title,detail.tier,baselineGames)];setMessages(next);try{localStorage.setItem(`${THREAD_KEY}:${active.id}`,JSON.stringify(next))}catch{}}
   return <AppShell>
-    <header className="coach-hub-head">
+    <header className="coach-hub-head arena-visual-arthead arena-visual-coach"><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
       <div>
         <div className="eyebrow">COACH · DIAGNOSE AND DECIDE</div>
         <h1>Turn game evidence into one clear decision.</h1>
