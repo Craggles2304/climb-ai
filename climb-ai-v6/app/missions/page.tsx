@@ -40,7 +40,7 @@ export default function Missions(){
 
   const latestMatch=[...matches].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   const selectedMission=missions.find(row=>row.domain===selectedDomain)??missions[0];
-  function requestUnlock(domain:DnaDomain){
+  async function requestUnlock(domain:DnaDomain){
     setSelectedDomain(domain);
     if(persistedDomains.includes(domain)){
       setSwapTarget(null);
@@ -49,11 +49,15 @@ export default function Missions(){
     }
     if(persistedDomains.length<2){
       const next=[...persistedDomains,domain];
-      if(next.length===2&&setDnaFocusDomains(next)){
+      if(next.length===2){
+        setSaveMessage('Saving your two DNA tree choices…');
+        const saved=await setDnaFocusDomains(next);
+        if(saved){
         setSwapTarget(null);
-        setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is now unlocked for progression.`);
+        setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is now saved as an active mission. Your two missions appear above the trees.`);
+        }else{setSaveMessage('We could not save your DNA selection. Your previous missions are still active. Please retry.')}
       }else{
-        setSaveMessage('OP CLIMB needs two active DNA trees. Choose one more tree.');
+        setSaveMessage('Choose one more DNA tree to complete your two active missions.');
       }
       return;
     }
@@ -61,18 +65,19 @@ export default function Missions(){
     setSaveMessage(`Unlock ${DNA_DOMAIN_LABELS[domain]}: choose which active tree to replace on this card.`);
   }
 
-  function replaceActiveTree(replaceDomain:DnaDomain){
+  async function replaceActiveTree(replaceDomain:DnaDomain){
     if(!swapTarget)return;
     const next=persistedDomains.filter(domain=>domain!==replaceDomain).concat(swapTarget);
     if(next.length!==2){setSaveMessage('Could not build a valid two-tree selection. Refresh and try again.');return}
     const incoming=swapTarget;
-    const ok=setDnaFocusDomains(next);
+    setSaveMessage('Saving your active mission choices…');
+    const ok=await setDnaFocusDomains(next);
     if(ok){
       setSelectedDomain(incoming);
       setSwapTarget(null);
-      setSaveMessage(`${DNA_DOMAIN_LABELS[incoming]} unlocked. ${DNA_DOMAIN_LABELS[replaceDomain]} is now locked. Changes are saved automatically.`);
+      setSaveMessage(`Saved: ${DNA_DOMAIN_LABELS[incoming]} is an active mission. ${DNA_DOMAIN_LABELS[replaceDomain]} is locked. Your missions are shown above.`);
     }else{
-      setSaveMessage('Could not save that DNA tree swap. Refresh and try again.');
+      setSaveMessage('Could not save that swap. Your previous two missions remain selected. Please try again.');
     }
   }
 
@@ -97,7 +102,21 @@ export default function Missions(){
           <small>Changes save instantly</small>
         </div>
       </div>
-      {saveMessage&&<div className="missions-focus-message">{saveMessage}</div>}
+      <section className="missions-active-strip" aria-label="Your two active coaching missions">
+        <header><div><span className="eyebrow">YOUR CURRENT COACHING PLAN</span><h2>YOUR 2 ACTIVE MISSIONS</h2><p>These are the two missions that can earn verified progress in your next tracked {active.role} game.</p></div><Link href="/live" className="btn primary">TAKE MISSIONS INTO MATCH ROOM →</Link></header>
+        <div className="missions-active-grid">{persistedDomains.map(domain=>{
+          const task=missions.find(row=>row.domain===domain)?.task;
+          const proof=task?missionSummary(task):null;
+          const plain=task?plainLanguageFocus(task):null;
+          return <button className="missions-active-item" type="button" key={domain} style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>setSelectedDomain(domain)}>
+            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>{DNA_DOMAIN_LABELS[domain]}</b><small>UNLOCKED · SCORING ENABLED</small></span>
+            <strong>{plain?.name||task?.title||'Waiting for your next mission'}</strong>
+            <span>{plain?.nextGame||task?.gameRule||'Your mission will appear after the coaching plan loads.'}</span>
+            <span className="missions-active-evidence">{proof?proof.confirmed+'/'+proof.required+' verified games':'NOT OBSERVED'} <b>VIEW MISSION ↗</b></span>
+          </button>;
+        })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR ACTIVE MISSIONS NEED SETTING UP</strong><p>Select two unlocked Game DNA trees below. If your selection does not save, retry or use the error message above.</p></div>}</div>
+      </section>
+      {saveMessage&&<div className="missions-focus-message" role="status" aria-live="polite">{saveMessage}</div>}
 
       <div className="missions-six-grid">
         {missions.map(({domain,task})=>{
