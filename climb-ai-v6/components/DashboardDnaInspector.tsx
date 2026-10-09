@@ -2,6 +2,7 @@
 
 import {useState,type CSSProperties} from 'react';
 import Link from 'next/link';
+import {ArenaDomainIcon} from '@/components/ArenaIcon';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS,DNA_DOMAIN_GUIDE} from '@/lib/dnaDomain';
 import {gameDnaStrands} from '@/lib/gameDnaSnapshot';
 import {missionSummary} from '@/lib/missionLoop';
@@ -21,7 +22,7 @@ export function DashboardDnaInspector({tasks,role,baselineReady,baselineGames,ba
       {DNA_DOMAINS.map(domain=><button key={domain} type="button"
         aria-pressed={selected===domain} className={selected===domain?'is-selected':''}
         style={{'--strand-color':baselineReady?DNA_DOMAIN_COLORS[domain]:'#7d8b99'} as CSSProperties}
-        onClick={()=>setSelected(domain)}><i aria-hidden="true"/>{DNA_DOMAIN_LABELS[domain]}</button>)}
+        onClick={()=>setSelected(domain)}><ArenaDomainIcon domain={domain} size={20}/>{DNA_DOMAIN_LABELS[domain]}</button>)}
     </div>
     <div className="arena-original-dna-selected" style={{'--strand-color':baselineReady?DNA_DOMAIN_COLORS[selected]:'#7d8b99'} as CSSProperties} aria-live="polite">
       <div className="arena-original-dna-summary">
