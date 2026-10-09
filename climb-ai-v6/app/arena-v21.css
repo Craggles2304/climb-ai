@@ -331,7 +331,7 @@ body[data-client-view] .mobile-nav{background:#0d1722!important;border-top:1px s
   .arena-v21-action{padding:15px 17px}
   .arena-v21-coach>p{padding:12px 17px!important}
   .arena-v21-coach-footer{padding:13px 17px}
-  .arena-v21-match{padding:10px 13px;grid-template-columns:minmax(0,1.15fr) .85fr .5fr 17px}
+  .arena-v21-match{padding:10px 13px;grid-template-columns:minmax(0,1.5fr) .9fr 17px}
   .arena-v21-match-art{height:46px;width:40px}
   .arena-v21-match-ident{gap:9px}
   .arena-v21-match-ident b{font-size:17px}
