@@ -1,0 +1,401 @@
+/* OP CLIMB / MATCH HUD — esports presentation layer
+   Visual-only. In-match content remains the frozen pre-game learning plan.
+   Never infer mission completion, enemy cooldowns or real-time actions.
+   Never turn this into a giant streamer dashboard over League gameplay.
+*/
+
+.hud {
+  --hud-electric: #baff5a;
+  --hud-blueprint: #76cfe0;
+  --hud-stroke: #354e5f;
+  --hud-strong: #e9f5f6;
+  --hud-muted: #a2bac7;
+  --hud-ink: #071018;
+  --hud-gap: 9px;
+  gap: var(--hud-gap);
+  padding: 11px 12px 10px;
+  border: 1px solid rgba(134,177,196,.65);
+  border-top: 2px solid var(--hud-electric);
+  border-left: 2px solid rgba(112,153,180,.75);
+  border-radius: 0;
+  background: linear-gradient(145deg, rgba(16,31,46,.965), rgba(7,17,28,.968));
+  box-shadow:
+    0 15px 44px rgba(0,0,0,.65),
+    inset 0 1px rgba(233,253,255,.09),
+    inset 0 -1px rgba(110,169,178,.16);
+  color: var(--hud-strong);
+  font-family: var(--oc-font-body), 'Segoe UI', sans-serif;
+  clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%);
+  overflow: hidden;
+}
+.hud::before {
+  content:"";
+  position:absolute;
+  width:3px;
+  height:46px;
+  top:34px;
+  left:0;
+  inset:34px auto auto 0;
+  border-radius:0;
+  background:linear-gradient(180deg, #baff5a, #4cc5c9);
+  box-shadow:0 0 18px rgba(186,255,90,.18);
+  pointer-events:none;
+}
+.hud::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: .65;
+  background:
+    linear-gradient(135deg, transparent 76%, rgba(166,205,220,.045) 76.1%, transparent 76.8%),
+    repeating-linear-gradient(90deg, transparent 0 66px, rgba(134,194,203,.024) 67px 68px);
+}
+.hud.mode-minimal {
+  --hud-w: 290px;
+  --hud-gap: 5px;
+  padding: 8px 10px 9px;
+  border-top-width: 2px;
+}
+.hud.mode-focus {--hud-w:360px}
+.hud.mode-expanded {--hud-w:420px; --hud-gap:8px}
+.hud.is-tft {
+  --hud-electric: #76ddf3;
+  --hud-blueprint: #bcafff;
+}
+.hud.preview {
+  --hud-electric: #e6c385;
+  border-top-color: var(--hud-electric);
+}
+
+/* Precision status strip / brand / mode */
+.hud-header {
+  position: relative;
+  display: flex;
+  gap: 7px;
+  min-height: 29px;
+  align-items: center;
+  padding: 0 0 8px;
+  border-bottom:1px solid rgba(117,164,186,.23);
+}
+.hud-mark{
+  display:flex;
+  position:relative;
+  justify-content:center;
+  align-items:center;
+  flex:0 0 31px;
+  height:25px;
+  width:31px;
+  border:1px solid rgba(186,255,90,.82);
+  clip-path: polygon(0 0,100% 0,100% 75%,76% 100%,0 100%);
+  background:var(--hud-electric);
+  color:#091822;
+  font:900 17px/.9 var(--oc-font-display),Impact,sans-serif;
+  letter-spacing:-.04em;
+}
+.hud-mark .hud-mark-bolt {
+  position:absolute;
+  right:-1px;
+  bottom:-2px;
+  font:800 10px/.9 var(--oc-font-display),Impact,sans-serif;
+  color:#214354;
+}
+.hud-brand{
+  display:grid;
+  gap:1px;
+  min-width:0;
+  color:#eaf6f6;
+  font:900 14px/.94 var(--oc-font-display),Impact,sans-serif;
+  letter-spacing:.075em;
+}
+.hud-brand small{
+  font:700 7px/1.25 var(--oc-font-mono),'Consolas',monospace;
+  color:#819eae;
+  letter-spacing:.09em;
+}
+.hud-mode-id {
+  display:flex;align-items:center;gap:4px;margin-left:auto;
+  border:1px solid rgba(147,177,189,.25);
+  background:rgba(80,118,140,.09);
+  color:#a2bac9;
+  padding:4px 5px;
+  white-space:nowrap;
+  font:800 8px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.055em;
+}
+.hud-mode-id b{color:#d9fdb2;font-weight:800}
+.hud-state{
+  margin-left:0;
+  display:inline-flex;align-items:center;gap:5px;
+  min-width:0;
+  padding:4px 5px;
+  color:#b8ff86;
+  border:1px solid rgba(151,242,121,.35);
+  border-radius:0;
+  background:rgba(89,132,70,.13);
+  font:700 8px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.015em;
+  white-space:nowrap;
+}
+.hud-state i{
+  width:5px;height:5px;flex:0 0 5px;
+  border-radius:50%;
+  background:#adff75;
+  box-shadow:0 0 5px rgba(146,255,119,.4);
+  animation:none;
+}
+.hud.preview .hud-state{
+  color:#efd8aa;border-color:rgba(230,173,79,.4);
+  background:rgba(230,173,79,.11);
+}
+.hud.preview .hud-state i{background:#e6c385}
+.hud.is-tft .hud-state{color:#bceefd;border-color:rgba(118,221,243,.32)}
+.hud.is-tft .hud-state i{background:#76ddf3}
+
+/* Champion / role ID. Artwork is real Riot artwork and loads under strict CSP. */
+.hud-identity {
+  display:flex;
+  gap:10px;
+  min-height:60px;
+  align-items:center;
+  padding:2px 0 3px;
+}
+.hud-portrait{
+  width:58px;height:58px;
+  flex:0 0 58px;
+  overflow:hidden;position:relative;
+  display:grid;place-items:center;
+  border:1px solid rgba(148,197,202,.56);
+  border-left:3px solid var(--hud-electric);
+  border-radius:0;
+  background:
+    radial-gradient(circle at 60% 36%,rgba(88,158,175,.26),transparent 68%),#122332;
+  box-shadow:inset 0 0 0 2px rgba(5,14,24,.55);
+  color:var(--hud-electric);
+  font:900 19px var(--oc-font-display),Impact,sans-serif;
+}
+.hud-portrait::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  border:3px solid rgba(4,18,28,.35);
+}
+.hud-portrait img{
+  position:absolute;inset:0;
+  width:100%;height:100%;object-fit:cover;
+  object-position:50% 28%;
+  transform:scale(1.08);
+}
+.hud-identity__text {display:grid;gap:4px;min-width:0;flex:1}
+.hud-identity-tag{
+  color:#77c0c3;
+  font:800 8px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.12em;
+}
+.hud-kicker{
+  color:#a9bdcb;
+  font:700 9px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.075em;
+}
+.hud-identity h1{
+  max-width:100%;
+  font:900 25px/.93 var(--oc-font-display),Impact,sans-serif;
+  letter-spacing:.025em;
+  margin:0;
+  text-transform:uppercase;
+  text-overflow:ellipsis;overflow:hidden;white-space:nowrap;
+  color:#f3fcff;
+}
+.hud-identity-sub {
+  display:flex;align-items:center;justify-content:space-between;
+  gap:6px;
+  color:#b5c9d5;
+  font:700 9px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.055em;
+}
+.hud-identity-sub strong {
+  font-weight:800;color:var(--hud-electric);
+}
+.hud-identity-sub .hud-freeze-icon{
+  display:flex;align-items:center;gap:4px;opacity:.86;
+}
+
+/* Mission is the main focus; secondary win condition is intentionally quieter. */
+.hud-block{
+  position:relative;
+  gap:6px;
+  border:1px solid rgba(133,161,186,.26);
+  border-left:3px solid var(--hud-block, #96a7b5);
+  border-radius:0;
+  background:rgba(19,38,53,.83);
+  padding:10px 11px 11px;
+  min-width:0;
+  box-shadow:inset 0 1px rgba(240,255,255,.035);
+}
+.hud-panel-top{display:flex;align-items:center;gap:7px;min-width:0}
+.hud-panel-number{
+  display:inline-flex;align-items:center;justify-content:center;
+  width:24px;height:19px;
+  border:1px solid color-mix(in srgb,var(--hud-block, #9bb7c9) 38%,transparent);
+  background:color-mix(in srgb,var(--hud-block, #9bb7c9) 12%,transparent);
+  color:var(--hud-block, #9bb7c9);
+  font:900 10px var(--oc-font-mono),'Consolas',monospace;
+}
+.hud-label {
+  color:var(--hud-block, #a2b9c6);
+  font:900 12px var(--oc-font-display),Impact,sans-serif;
+  letter-spacing:.105em;
+  text-transform:uppercase;
+}
+.hud-block p{
+  margin:0;
+  color:#ecf8fa;
+  font:600 13px/1.42 var(--oc-font-body),'Segoe UI',sans-serif;
+  text-wrap:pretty;
+}
+.hud-block--mission {
+  --hud-block:#baff5a;
+  border-color:rgba(161,220,142,.28);
+  border-left-color:var(--hud-block);
+  background:linear-gradient(115deg,rgba(65,93,57,.33),rgba(21,43,47,.76) 63%,rgba(14,31,46,.82));
+}
+.hud-block--mission::after{
+  content:"";position:absolute;top:0;right:0;width:34px;height:34px;
+  pointer-events:none;
+  background:linear-gradient(135deg,transparent 49%,rgba(186,255,90,.22) 50%,transparent 51%);
+}
+.hud-block--mission p{
+  font:700 16px/1.32 var(--oc-font-body),'Segoe UI',sans-serif;
+  color:#f3fff2;
+}
+.hud-block--win{
+  --hud-block:#63dbe1;
+  background:linear-gradient(110deg,rgba(36,79,87,.28),rgba(13,34,47,.71));
+  border-left-color:var(--hud-block);
+}
+.hud-block--win p{font-weight:600;font-size:13px}
+.hud-block--actions{--hud-block:#84d7ff}
+.hud-block--avoid{--hud-block:#e9c48f}
+.hud-block--threat{--hud-block:#ffa0a3}
+.hud-block ol{
+  display:grid;gap:8px;list-style:none;
+  margin:3px 0 0;padding:0;counter-reset:hud;
+}
+.hud-block li{
+  position:relative;
+  padding:0 0 0 25px;
+  counter-increment:hud;
+  font:600 12px/1.42 var(--oc-font-body),'Segoe UI',sans-serif;
+  color:#c9dce8;
+}
+.hud-block li::before{
+  content:counter(hud,decimal-leading-zero);
+  display:grid;place-items:center;
+  position:absolute;left:0;top:0;
+  width:19px;height:17px;
+  border:1px solid rgba(132,215,255,.35);
+  background:rgba(132,215,255,.08);
+  font:900 10px var(--oc-font-mono),'Consolas',monospace;
+  color:var(--hud-block);
+}
+
+/* Footer: indicate only RECORDING, never 'mission completed' while playing. */
+.hud-footer{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding-top:7px;
+  border-top:1px solid rgba(124,164,184,.25);
+  color:#8fa8b8;
+  font:700 9px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.045em;
+}
+.hud-rec {
+  display:inline-flex;align-items:center;gap:5px;
+  color:#a7eeb1;font-weight:700;
+}
+.hud-keys {color:#7595a8;white-space:nowrap}
+.hud-rule{
+  color:#7a96a7;
+  font:700 9px var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.095em;
+  padding:1px 0 2px;
+  text-transform:uppercase;
+}
+.hud-mode-note{
+  padding:5px 7px;
+  border:1px solid rgba(111,163,185,.18);
+  background:rgba(17,43,58,.41);
+  color:#8cadbb;
+  font:700 9px/1.25 var(--oc-font-mono),'Consolas',monospace;
+  letter-spacing:.035em;
+}
+
+/* Minimal must remain tiny: no portrait, no extra telemetry. */
+.hud.mode-minimal .hud-identity,
+.hud.mode-minimal .hud-block:not(.hud-block--mission),
+.hud.mode-minimal .hud-footer,
+.hud.mode-minimal .hud-rule,
+.hud.mode-minimal .hud-brand,
+.hud.mode-minimal .hud-mode-note{display:none}
+.hud.mode-minimal .hud-header{
+  min-height:23px;padding:0 0 5px;border-bottom:1px solid rgba(153,201,193,.19);
+}
+.hud.mode-minimal .hud-mode-id{margin-left:auto}
+.hud.mode-minimal .hud-block--mission{
+  display:grid;
+  border:0;
+  padding:8px 6px 5px;
+  background:transparent;
+  box-shadow:none;
+}
+.hud.mode-minimal .hud-block--mission p{
+  font-size:14px;line-height:1.36;font-weight:700;
+}
+.hud.mode-minimal .hud-panel-number{width:19px;height:18px;font-size:9px}
+.hud.mode-minimal .hud-label{font-size:11px}
+.hud.mode-minimal .hud-state{font-size:8px;padding:4px}
+
+/* Focus (default): intentionally information-light on screen. */
+.hud.mode-focus .hud-block--actions,
+.hud.mode-focus .hud-block--avoid,
+.hud.mode-focus .hud-block--threat,
+.hud.mode-focus .hud-rule{display:none}
+.hud.mode-focus .hud-block--mission{min-height:71px}
+.hud.mode-focus .hud-block--win{min-height:58px}
+.hud.mode-focus .hud-mode-note{display:none}
+
+/* Expanded: detailed PRE-GAME plan; no data updates while playing. */
+.hud.mode-expanded .hud-identity h1{font-size:27px}
+.hud.mode-expanded .hud-block{padding:9px 11px}
+.hud.mode-expanded .hud-mode-note{display:none}
+
+/* Explicit editor controls; never show during normal game click-through. */
+.hud.editing{
+  outline:2px dashed #74e9e9;
+  outline-offset:3px;
+  clip-path:none;
+}
+.hud.editing .hud-header{cursor:grab}
+.hud.editing .hud-header:active{cursor:grabbing}
+.hud.editing .hud-resizer{
+  width:17px;height:17px;bottom:-5px;right:-5px;border-radius:0;
+  background:linear-gradient(135deg,transparent 45%,#baff5a 46% 55%,transparent 56%),#1d3441;
+  border:1px solid #baff5a;box-shadow:none;
+}
+.hud-editor{
+  display:grid;gap:11px;padding:12px;margin-top:5px;
+  border:1px solid rgba(144,211,195,.47);
+  background:linear-gradient(150deg,#132839,#0b1827);
+  border-radius:0;
+}
+.hud-editor__title b{font:900 16px var(--oc-font-display),Impact,sans-serif;color:#eafaef}
+.hud-editor__title span,.hud-editor__hint{color:#a3b9c9;font-size:11px}
+.hud-presets{border-radius:0;background:#0a1825;border:1px solid #2e5265;gap:3px}
+.preset{border-radius:0;font-weight:900;color:#a9bdcd}
+.preset.selected{background:#baff5a;color:#10200e}
+.hud-save{background:linear-gradient(90deg,#ceff7b,#a8ed50);color:#10200e}
+.hud-slider output{color:#dcf6e7}
+.hud-editor__keys kbd{border-radius:0}
+
+/* Reduced motion is particularly important for gaming overlays. */
+@media(prefers-reduced-motion: reduce) {
+  .hud,.hud *{animation:none!important;transition:none!important}
+}
