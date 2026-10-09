@@ -1,1 +1,13 @@
-import {NextResponse} from 'next/server';export async function POST(){return NextResponse.json({mode:'demo',requiresConfirmation:true,extracted:{champion:"Kog'Maw",kills:8,deaths:4,assists:10,cs:221,duration:'32:10',result:'WIN'},notice:'Production multimodal extraction is intentionally disabled until a server-side AI provider is configured.'})}
+import {NextResponse} from 'next/server';
+
+/**
+ * Screenshot/clip extraction is not built. This used to return the same
+ * invented Kog'Maw game for every file; it now says plainly that it is not
+ * available, so nothing downstream can mistake a placeholder for real data.
+ */
+export async function POST(){
+  return NextResponse.json(
+    {ok:false,code:'NOT_AVAILABLE',error:'Upload extraction is not available yet. Sync your ranked games from Riot instead.'},
+    {status:501},
+  );
+}
