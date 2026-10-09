@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
+import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {useSubscription} from '@/components/SubscriptionContext';
@@ -164,7 +165,7 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   if(!baselineReady)return <AppShell>
-    <header className="my-dna-hero">
+    <header className="my-dna-hero arena-visual-arthead arena-visual-dna"><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
       <div>
         <div className="eyebrow">MY DNA · {viewRole} PLAYER IDENTITY</div>
         <h1>Your game starts here.</h1>
@@ -190,7 +191,7 @@ export default function PlayerDevelopmentCentre(){
   </AppShell>;
 
   return <AppShell>
-    <header className="my-dna-hero">
+    <header className="my-dna-hero arena-visual-arthead arena-visual-dna"><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
       <div>
         <div className="eyebrow">MY DNA · YOUR PLAYER IDENTITY</div>
         <h1>This is the player your decisions are building.</h1>

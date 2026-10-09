@@ -3,6 +3,7 @@
 import {useEffect,useState,type CSSProperties} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
+import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {TrackView} from '@/components/TrackView';
 import {useAccount} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
@@ -97,7 +98,7 @@ export default function ClimbPlanPage(){
 
   return <AppShell><TrackView event="career_viewed"/>
     <main className="climb-plan-page">
-      <header id="where-you-are" className="climb-plan-hero climb-plan-anchor" style={strandStyle(currentDomain)}>
+      <header id="where-you-are" className="climb-plan-hero climb-plan-anchor arena-visual-arthead arena-visual-progress" style={strandStyle(currentDomain)}><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
         <div className="climb-plan-hero-copy">
           <div className="eyebrow">PRO · MY CLIMB PLAN · {plan.account.role||'ROLE'} HISTORY</div>
           <h1>Your history becomes<br/><span>your route to the next rank.</span></h1>

@@ -3,6 +3,7 @@
 import {useEffect,useMemo,useState} from 'react';
 import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
+import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
@@ -50,7 +51,7 @@ export default function MyGames(){
   const latestPreview=latest?previews.get(latest.id):undefined;
 
   return <AppShell>
-    <header className="page-head">
+    <header className="page-head arena-visual-arthead arena-visual-games"><ArenaHeroArtwork champion={latest?.champion||active.champions?.[0]||"Jinx"} tag="RECENT CHAMPION" />
       <div>
         <div className="eyebrow">MY GAMES · REVIEW</div>
         <h1>Every game has a lesson.</h1>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import type {Match} from '@/lib/types';
 import {championSplash} from '@/lib/championArt';
+import {ArenaSparkline} from '@/components/ArenaSparkline';
 
 const formDate=(iso:string)=>{
   const value=Date.parse(iso);
@@ -20,6 +21,10 @@ export function DashboardMatchInsights({matches,isDemo,mode}:{matches:Match[];is
   const assists=recent.reduce((sum,match)=>sum+match.assists,0);
   const deaths=recent.reduce((sum,match)=>sum+match.deaths,0);
   const kda=recent.length?(deaths?((kills+assists)/deaths).toFixed(2):'Perfect'):'—';
+  const oldestFirst=recent.slice().reverse();
+  const winSeries=oldestFirst.map((_,i)=>Math.round(oldestFirst.slice(0,i+1).filter(m=>m.result==='WIN').length/(i+1)*100));
+  const kdaSeries=oldestFirst.filter(m=>m.deaths>0).map(m=>(m.kills+m.assists)/m.deaths);
+  const csSeries=oldestFirst.filter(m=>m.metrics.csPerMin>0&&Number.isFinite(m.metrics.csPerMin)).map(m=>m.metrics.csPerMin);
 
   return <>
     {mode==='form'&&<section className="arena-original-insights" aria-labelledby="arena-original-insights-heading">
@@ -29,9 +34,9 @@ export function DashboardMatchInsights({matches,isDemo,mode}:{matches:Match[];is
         <Link className="arena-original-text-action" href="/analyse">FULL MATCH HISTORY ↗</Link>
       </header>
       <div className="arena-original-insights-grid">
-        <div className="arena-original-stat"><small>WIN RATE</small><strong>{winRate===null?'—':winRate+'%'}</strong><span>{recent.length?wins+' wins in '+recent.length+' matches':'Play your first tracked game'}</span></div>
-        <div className="arena-original-stat"><small>COMBINED KDA</small><strong>{kda}</strong><span>{recent.length?'Kills + assists ÷ deaths':'No combat data yet'}</span></div>
-        <div className="arena-original-stat"><small>AVERAGE CS/MIN</small><strong>{averageCS}</strong><span>{csGames.length?'From '+csGames.length+' recorded games':'Waiting for farm metrics'}</span></div>
+        <div className="arena-original-stat"><small>WIN RATE</small><strong>{winRate===null?'—':winRate+'%'}</strong><ArenaSparkline points={winSeries} label="Cumulative win percentage by game" color="#b6ff2e"/><span>{recent.length?wins+' wins in '+recent.length+' matches':'Play your first tracked game'}</span></div>
+        <div className="arena-original-stat"><small>COMBINED KDA</small><strong>{kda}</strong><ArenaSparkline points={kdaSeries} label="KDA over recent games with deaths" color="#5de6d6"/><span>{recent.length?'Kills + assists ÷ deaths':'No combat data yet'}</span></div>
+        <div className="arena-original-stat"><small>AVERAGE CS/MIN</small><strong>{averageCS}</strong><ArenaSparkline points={csSeries} label="CS per minute across recorded games" color="#af9bff"/><span>{csGames.length?'From '+csGames.length+' recorded games':'Waiting for farm metrics'}</span></div>
         <div className="arena-original-form"><small>RESULTS / OLDEST → NEWEST</small><div role="img" aria-label={recent.length?recent.slice().reverse().map(m=>m.result==='WIN'?'Victory':'Defeat').join(', '):'No recorded results'}>{recent.length?recent.slice().reverse().map(match=><span key={match.id} className={match.result==='WIN'?'is-win':'is-loss'} title={match.champion+' · '+match.result}>{match.result==='WIN'?'W':'L'}</span>):<span className="arena-original-no-form">AWAITING MATCHES</span>}</div><p>{recent.length+' of 10 games recorded'}</p></div>
       </div>
     </section>}
