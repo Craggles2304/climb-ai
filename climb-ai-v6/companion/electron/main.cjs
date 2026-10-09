@@ -312,7 +312,7 @@ async function confirmReviewRendered(sessionId){
     try{win.webContents.send('companion:state',publicState())}catch{}
     try{
       const rendered=await win.webContents.executeJavaScript(
-        `(()=>{const section=document.getElementById('simplePostgameReview');return Boolean(section&&!section.classList.contains('hidden')&&String(window.__opRenderedReviewSessionId||'')===${JSON.stringify(id)});})()`,
+        `(()=>{const section=document.querySelector('#ocNative[data-route="review"] .oc-review');return Boolean(section&&String(window.__opRenderedReviewSessionId||'')===${JSON.stringify(id)});})()`,
         true,
       );
       if(rendered)return true;

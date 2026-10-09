@@ -52,8 +52,12 @@ test('active mission phase shows exactly two player-unlocked DNA missions',()=>{
 });
 
 test('player-facing postgame wording uses proven games instead of rep jargon',()=>{
-  assert.ok(companion.includes('PROVEN GAME ✓'));
-  assert.ok(companion.includes('proven games'));
-  assert.equal(companion.includes('PROVEN REP BANKED ✓'),false);
-  assert.equal(companion.includes('No personalised challenge yet'),false);
+  const review=read('companion/electron/review-view.js');
+  assert.ok(review.includes('Proven this game'));
+  assert.ok(review.includes('Proven games'));
+  assert.ok(companionHome.includes('proven games'));
+  for(const source of [review,companionHome,companion]){
+    assert.equal(source.includes('PROVEN REP BANKED'),false);
+    assert.equal(source.includes('No personalised challenge yet'),false);
+  }
 });

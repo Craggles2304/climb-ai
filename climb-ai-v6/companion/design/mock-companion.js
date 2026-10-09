@@ -55,7 +55,21 @@
       missionTips:[{cue:'Hold the wave before your first back',title:mission.title}],
       dnaBaseline:{ready:true,games:7,required:3},coachLevel:{tier:'EMERALD',depth:3,visiblePoints:3,reviewPoints:2}};
   }
-  const review={sessionId:'demo-1',match:{champion:'Ahri',role:'MID',kda:'7/2/9',csPerMin:7.8},source:'RIOT_MATCH',
+  const node=(id,at,verdict,title,extra={})=>({id,atSeconds:at,minuteLabel:`${Math.floor(at/60)}:${String(at%60).padStart(2,'0')}`,verdict,confidence:'HIGH',type:'FIGHT',
+    title,behaviourLabel:title,situation:'',decisionRead:'',consequence:'',lockedPrinciple:null,planAlignment:'NOT_VERIFIABLE',evidence:[],counterfactual:null,limitation:'',...extra});
+  const decisionGraph={nodeCount:5,summary:{cleanDecisions:3,improveDecisions:2},nodes:[
+    node('n1',212,'GOOD','Backed on a frozen wave',{type:'RESET',situation:'Your wave was frozen outside your tower at 3:20.',decisionRead:'You recalled with the enemy wave still arriving.',consequence:'You lost no minions and reached your first item 40 seconds earlier.',evidence:['0 minions lost during recall','Item purchase at 4:05']}),
+    node('n2',548,'IMPROVE','Fought into an unseen jungler',{situation:'River was unwarded for 90 seconds.',decisionRead:'You pushed past river to trade with Syndra.',consequence:'Lee Sin collapsed from river and you died, giving up dragon priority.',
+      counterfactual:{alternative:'Ward river first, then trade from the side brush.',whyBetter:'Lee Sin had been last seen bot side 40 seconds earlier and was due to arrive.',tradeoff:'You would have lost about four seconds of pressure on the wave.'},evidence:['Death at 9:08','No ward in river for 92 seconds'],limitation:'Fog of war: the review cannot see what you saw on the minimap.'}),
+    node('n3',901,'GOOD','Charm opened the dragon fight',{type:'OBJECTIVE',decisionRead:'You charmed the first target in range as Vi engaged.',consequence:'Your team won the fight 4 for 1 and took dragon.',planAlignment:'MATCHED',lockedPrinciple:'Charm the first target in range'}),
+    node('n4',1340,'IMPROVE','Late to baron setup',{type:'OBJECTIVE',decisionRead:'You stayed mid to push a wave while your team set up baron.',consequence:'You arrived after the fight started; baron was lost.',counterfactual:{alternative:'Leave the wave and arrive 20 seconds before baron spawns.',whyBetter:'Your plan was built around picks before objectives.',tradeoff:'One wave of minions.'}}),
+    node('n5',1620,'GOOD','Clean side-lane shove',{type:'FARM',decisionRead:'You shoved bot with vision and reset safely.',consequence:'Kept pressure without dying.'}),
+  ]};
+  const review={sessionId:'demo-1',matchId:'m-demo',progressPath:'/ilp?game=m-demo',evidenceCount:5,decisionGraph,
+    markedMoments:[{atSeconds:530,status:'MATCHED',detail:'Nearby recorded fight: died to Lee Sin gank.'},{atSeconds:1180,status:'NO_EVIDENCE',detail:'No nearby review evidence was captured for this moment.'}],
+    missionEvidence:[{dnaDomain:'WAVES_CS',title:'Hold the wave before your first back',evidenceState:'BANKED',confirmed:3,required:3,evidenceReason:'First back happened with the wave on your side.'},
+      {dnaDomain:'VISION_MAP',title:'Ward river before 3:15',evidenceState:'MISSED',confirmed:1,required:3,evidenceReason:'First river ward was placed at 4:40.'}],
+    match:{champion:'Ahri',role:'MID',kda:'7/2/9',csPerMin:7.8,durationSeconds:1902},source:'RIOT_MATCH',
     doneWell:[{title:'Backed on a frozen wave twice',detail:'Both backs landed with the wave at your tower.',verified:true}],
     improve:[{title:'Died to the jungler at 14:20 without vision',detail:'River was unwarded for 90 seconds before the gank.'}],
     dnaBaseline:{ready:true,games:7,required:3},
@@ -80,6 +94,11 @@
     'In game':{...base,phase:'RECORDING',detail:'Match detected. Recording quietly in the background.',playerHome:home(),draft,matchup,teamPlan:teamPlan()},
     'Building review':{...base,phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.',playerHome:home()},
     'Review ready':{...base,phase:'REVIEW',detail:'Your review is ready.',playerHome:home(),postGameReview:review},
+    'Review · partial baseline':{...base,phase:'REVIEW',detail:'Your review is ready.',playerHome:home({tier:'FREE',games:1,ready:false}),
+      postGameReview:{sessionId:'demo-2',partial:true,match:{champion:'Jinx',role:'ADC'},dnaBaseline:{ready:false,games:1,required:3},missionEvidence:[],
+        doneWell:[{title:'Positive 1 not verified',detail:'The recording did not capture another decision strong enough to call a genuine positive. OP CLIMB will not invent praise.',verified:false}],
+        improve:[{title:'Death from an even state at 12:10',detail:'Stay behind your support until level 6.',atSeconds:730,verified:true}],decisionGraph:{nodes:[]},markedMoments:[]}},
+    'Waiting · review unseen':{...base,phase:'WAITING',detail:'League detected. Waiting for champ select or match.',playerHome:home(),postGameReview:{...review,sessionId:'demo-3'}},
     'Tracker error':{...base,phase:'ERROR',trackerRunning:false,detail:'Tracker could not start.',playerHome:home()},
   };
 

@@ -2,16 +2,10 @@ const $=id=>document.getElementById(id);
 let current=null;
 let updateState=null;
 let diagnosticsOpen=false;
-let coachReviewEvidenceOpen=false;
-let activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
 
 function clamp(n,min,max){return Math.max(min,Math.min(max,n))}
 function safeArray(value){return Array.isArray(value)?value.filter(Boolean):[]}
 function setHidden(node,hidden){if(node)node.classList.toggle('hidden',Boolean(hidden))}
-function roleLabel(value){
-  const role=String(value||'').trim().toUpperCase();
-  return({TOP:'TOP',JUNGLE:'JUNGLE',MIDDLE:'MID',MID:'MID',BOTTOM:'ADC',ADC:'ADC',UTILITY:'SUPPORT',SUPPORT:'SUPPORT'})[role]||'—';
-}
 
 function phaseTitle(phase){
   return ({
@@ -46,18 +40,6 @@ function phaseCopy(state){
   return state?.detail||'Companion is running.';
 }
 
-function setCoachLevel(level,state){
-  if(level&&Number(level.depth)){
-    activeCoachLevel={
-      ...activeCoachLevel,
-      ...level,
-      depth:clamp(Number(level.depth)||3,1,10),
-      visiblePoints:clamp(Number(level.visiblePoints)||3,1,5),
-      reviewPoints:clamp(Number(level.reviewPoints)||2,1,3),
-    };
-  }
-}
-
 function render(state){
   current=state||{};
   const paired=Boolean(current.paired);
@@ -67,26 +49,15 @@ function render(state){
   const tftHomeVisible=paired&&tftBusy&&!['CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase);
   renderTftHome(current,tftHomeVisible);
   renderTftPrep(paired&&phase==='WAITING'&&!tftHomeVisible);
-  // Do not retain a previous League rank calibration on the TFT/home screens.
-  const coach=['CHAMP_SELECT','RECORDING','REVIEW'].includes(phase)
-    ?(current.postGameReview?.coachLevel||current.teamPlan?.coachLevel)
-    :null;
-  if(!coach)activeCoachLevel={tier:null,depth:3,visiblePoints:3,reviewPoints:2,summary:'Core coaching with a little more context.'};
-  setCoachLevel(coach,current);
 
   document.body.classList.toggle('op-mode-match-room',phase==='CHAMP_SELECT');
   document.body.classList.toggle('op-mode-quiet',phase==='RECORDING'||tft.state==='RECORDING');
   document.body.classList.toggle('op-mode-coach-review',phase==='REVIEW');
-  if(phase!=='REVIEW'){
-    coachReviewEvidenceOpen=false;
-    document.body.classList.remove('op-review-evidence-open');
-  }
 
   setHidden($('setup'),paired);
-  // Home, My Game DNA, Champion Select and Match Preparation are native views
-  // (home-view.js, draft-view.js) driven by the shell.
+  // Home, My Game DNA, Champion Select, Match Preparation and Match Review are
+  // native views (home-view.js, draft-view.js, review-view.js) driven by the shell.
   renderQuietMode(current,paired&&phase==='RECORDING');
-  renderPostGameReview(current.postGameReview,phase);
   renderUpdate(updateState,phase);
 
   if(!paired){
@@ -292,156 +263,6 @@ function ensureQuietMode(){
     $('markMomentResult').textContent=result?.ok?'Moment marked for your post-game review.':result?.error||'Could not mark this moment.';
   });
   return section;
-}
-
-function renderPostGameReview(review,phase){
-  const section=ensureReviewSection();
-  const visible=phase==='REVIEW'&&Boolean(review);
-  setHidden(section,!visible);
-  if(!visible)return;
-
-  setCoachLevel(review.coachLevel);
-  const match=review.match||{};
-  const bits=[match.champion,match.role];
-  if(activeCoachLevel.depth>=2&&match.kda)bits.push(`${match.kda} KDA`);
-  if(activeCoachLevel.depth>=4&&Number.isFinite(match.csPerMin))bits.push(`${match.csPerMin} CS/min`);
-  $('simpleReviewMatch').textContent=bits.filter(Boolean).join(' · ');
-  $('simpleReviewTag').textContent=`${activeCoachLevel.tier} COACH · ${review.source==='RIOT_MATCH'?'RIOT MATCH':review.partial?'PARTIAL':'POST-GAME'}`;
-
-  const baseline=review.dnaBaseline||{games:3,required:3,ready:true};
-  const baselineGames=Math.max(0,Number(baseline.games||0));
-  const baselineRequired=Math.max(1,Number(baseline.required||3));
-  const baselineReady=Boolean(baseline.ready);
-  const learning=review.learningSignal||null;
-  const primary=review.developmentPlan?.primary||null;
-  const strength=safeArray(review.doneWell||review.good).find(item=>item?.verified!==false)||safeArray(review.doneWell||review.good)[0]||null;
-
-  $('simpleReviewHeadline').textContent=!baselineReady
-    ?`BASELINE ${Math.min(baselineGames,baselineRequired)}/${baselineRequired}`
-    :learning?.status==='MASTERED'
-      ?'HABIT MASTERED ✓'
-      :learning?.status==='REP_BANKED'
-        ?'PROVEN GAME ✓'
-        :'YOUR PROGRESS IS READY';
-
-  const intro=section.querySelector('.coach-review-intro');
-  if(intro)intro.textContent=!baselineReady
-    ?`Game ${Math.min(baselineGames,baselineRequired)} of ${baselineRequired} is recorded. This is provisional coaching only — permanent DNA missions stay locked until baseline 3/3 and the DNA reveal.`
-    :learning?.status==='REP_BANKED'
-      ?`That game proved “${learning.title}”. You now have ${learning.confirmed}/${learning.required} proven games.`
-      :learning?.status==='MASTERED'
-        ?`You proved “${learning.title}” enough times for it to move into mastery.`
-        :'The game is measured. See what held, what needs work and whether your priority mission was proven.';
-
-  renderReviewList('simpleGood',review.doneWell||review.good,'✓');
-  renderReviewList('simpleCritical',review.improve||review.critical,'!');
-
-  const strengthCard=$('simpleStrengthSignal');
-  if(strengthCard){
-    const strengthTitle=strength?.title||'No verified strength yet';
-    strengthCard.querySelector('strong').textContent=strengthTitle;
-    strengthCard.querySelector('small').textContent=strength?.verified===false
-      ?'OP CLIMB will not invent praise when the evidence is weak.'
-      :'Measured good play worth keeping.';
-    strengthCard.classList.toggle('muted-signal',!strength||strength?.verified===false);
-  }
-
-  const repCard=$('simpleRepSignal');
-  if(repCard){
-    const title=learning?.status==='MASTERED'?'MASTERED ✓':learning?.status==='REP_BANKED'?'PROVEN ✓':learning?.status==='REP_MISSED'?'MISSED':learning?.status==='NOT_OBSERVED'?'NOT OBSERVED':'EVIDENCE UPDATED';
-    repCard.querySelector('strong').textContent=baselineReady?title:`${Math.min(baselineGames,baselineRequired)}/${baselineRequired} BASELINE`;
-    repCard.querySelector('small').textContent=!baselineReady
-      ?`${Math.max(0,baselineRequired-baselineGames)} baseline game${Math.max(0,baselineRequired-baselineGames)===1?'':'s'} left before the DNA reveal.`
-      :learning
-        ?`${learning.confirmed}/${learning.required} proven games · ${learning.dnaDomain||'DNA'} · ${String(learning.evidenceState||'NOT_OBSERVED').replace('_',' ')}`
-        :'No mission was proven from this game.';
-  }
-
-  const dnaCard=$('simpleDnaSignal');
-  if(dnaCard){
-    const progress=learning?Number(learning.progress||0):primary?Number(primary.progress||0):0;
-    dnaCard.querySelector('strong').textContent=!baselineReady?'0%':`${Math.max(0,Math.min(100,Math.round(progress)))}%`;
-    dnaCard.querySelector('small').textContent=!baselineReady
-      ?'DNA stays grey until game 3 is complete.'
-      :learning?.status==='REP_BANKED'||learning?.status==='MASTERED'
-        ?`${learning.dnaDomain||primary?.dnaDomain||'DNA'} moved from verified learning evidence.`
-        :primary
-          ?`${primary.dnaDomain||'DNA'} · current mission progress`
-          :'DNA will move when a behaviour is actually proven.';
-  }
-
-  if(!baselineReady){
-    $('simpleNextTitle').textContent=`BASELINE GAME ${Math.min(baselineGames+1,baselineRequired)} OF ${baselineRequired}`;
-    $('simpleNextRule').textContent='Play normally. Do not change your game for OP CLIMB yet — give it a real baseline.';
-  }else{
-    $('simpleNextTitle').textContent=primary?.title||review.nextFocus?.title||'NEXT GAME';
-    $('simpleNextRule').textContent=primary?.gameRule||review.nextFocus?.rule||'Keep the current challenge simple and build another clean rep.';
-  }
-
-  const progressButton=$('simpleOpenProgress');
-  if(progressButton)progressButton.textContent='OPEN MATCH ROOM →';
-
-  syncCoachReviewEvidence();
-  window.__opRenderedReviewSessionId=String(review.sessionId||'');
-}
-
-function ensureReviewSection(){
-  let section=$('simplePostgameReview');
-  if(section)return section;
-  section=document.createElement('section');
-  section.id='simplePostgameReview';
-  section.className='card hidden';
-  section.style.cssText='margin-top:14px;padding:22px';
-  section.innerHTML=`
-    <div class="coach-review-head">
-      <div><div class="eyebrow" id="simpleReviewTag">POST-GAME</div><h2 id="simpleReviewHeadline">YOUR PROGRESS</h2><p id="simpleReviewMatch"></p></div>
-      <div class="pill good">PROGRESS READY</div>
-    </div>
-    <p class="coach-review-intro">Your game has been measured.</p>
-    <div class="coach-review-signals" style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0">
-      <article id="simpleStrengthSignal" style="border:1px solid rgba(182,246,107,.2);padding:12px;border-radius:12px"><span class="eyebrow">STRENGTH PROVED</span><strong style="display:block;margin-top:6px"></strong><small style="display:block;margin-top:4px;opacity:.62"></small></article>
-      <article id="simpleRepSignal" style="border:1px solid rgba(214,255,47,.18);padding:12px;border-radius:12px"><span class="eyebrow">LEARNING</span><strong style="display:block;margin-top:6px"></strong><small style="display:block;margin-top:4px;opacity:.62"></small></article>
-      <article id="simpleDnaSignal" style="border:1px solid rgba(100,169,255,.18);padding:12px;border-radius:12px"><span class="eyebrow">DNA</span><strong style="display:block;margin-top:6px"></strong><small style="display:block;margin-top:4px;opacity:.62"></small></article>
-    </div>
-    <div class="coach-review-grid">
-      <article class="coach-review-card good"><span>WHAT YOU DID WELL</span><div id="simpleGood"></div></article>
-      <article class="coach-review-card fix"><span>WHAT TO WORK ON</span><div id="simpleCritical"></div></article>
-    </div>
-    <article class="coach-review-next"><span>NEXT GAME</span><h3 id="simpleNextTitle"></h3><p id="simpleNextRule"></p></article>
-    <div class="coach-review-actions"><button id="simpleOpenProgress" class="primary">SEE MY PROGRESS →</button><button id="simpleReviewEvidence" class="ghost">SHOW THE PROOF</button></div>`;
-  $('status').after(section);
-  $('simpleReviewEvidence').addEventListener('click',()=>{coachReviewEvidenceOpen=!coachReviewEvidenceOpen;syncCoachReviewEvidence()});
-  $('simpleOpenProgress').addEventListener('click',()=>{
-    window.opCompanion.openClimbPath('/live');
-  });
-  return section;
-}
-
-function renderReviewList(id,items,mark){
-  const root=$(id);if(!root)return;
-  root.replaceChildren();
-  const cap=1;
-  const values=safeArray(items).slice(0,cap);
-  const source=values.length?values:[{title:mark==='✓'?'No clear positive signal':'No critical leak confirmed',detail:mark==='✓'?'OP CLIMB will not invent praise when the evidence is weak.':'Keep the same focus and build more evidence.'}];
-  source.forEach(item=>{
-    const row=document.createElement('div');
-    row.style.cssText='display:grid;grid-template-columns:24px minmax(0,1fr);gap:9px;padding:5px 0';
-    const icon=document.createElement('b');icon.textContent=mark;icon.style.fontSize='18px';
-    const copy=document.createElement('div');
-    const title=document.createElement('b');title.textContent=item.title||'Review point';
-    copy.appendChild(title);
-    if(activeCoachLevel.depth>=3&&item.detail){
-      const detail=document.createElement('p');detail.textContent=item.detail;detail.style.cssText='margin:3px 0 0;opacity:.68;font-size:12px;line-height:1.45';copy.appendChild(detail);
-    }
-    row.append(icon,copy);root.appendChild(row);
-  });
-}
-
-
-function syncCoachReviewEvidence(){
-  document.body.classList.toggle('op-review-evidence-open',coachReviewEvidenceOpen);
-  const button=$('simpleReviewEvidence');
-  if(button)button.textContent=coachReviewEvidenceOpen?'HIDE COACH EVIDENCE':'OPEN COACH EVIDENCE';
 }
 
 function renderUpdate(next,phase){

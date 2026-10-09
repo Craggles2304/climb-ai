@@ -68,9 +68,11 @@
     setup:['home'], status:['home'], tftHome:['home'], tftPrep:['home'],
     opMissionReminders:['live'],
     quietMode:['live'], opRememberHud:['live'],
-    simplePostgameReview:['review'], opPostGame332:['review'],
+    // The deep-analysis engines show under the native review only when the player opens them.
+    opPostGame332:r=>r==='review'&&document.body.classList.contains('oc-review-deep'),
     settings:['settings'],
   };
+  const isMember=(members,r)=>typeof members==='function'?members(r):members.includes(r);
   /* Parts inside a legacy screen that only some of its routes should show. */
   const NESTED=[];
   /* What counts as real content for a route. If none of it is visible, the
@@ -81,7 +83,7 @@
     draft:[],
     prep:[],
     live:['#quietMode','#opRememberHud','#opMissionReminders'],
-    review:['#simplePostgameReview','#opPostGame332'],
+    review:[],
     settings:['#settings'],
     memory:[],
   };
@@ -300,7 +302,9 @@
       const next=text(s.postGameReview?.developmentPlan?.primary?.title||s.postGameReview?.nextFocus?.title);
       return{text:next?`Next game: ${next}`:'Read your review, then queue for your next game.'};
     }
-    // Between games.
+    // Between games. A review the player hasn't opened yet comes first.
+    if(s.postGameReview&&window.ocUI&&!window.ocUI.reviewSeen(s.postGameReview))
+      return{text:'Your last game\'s review is ready.',action:goTo('review','Review last game')};
     const tftState=upper(s.tftRecorder?.state);
     if(tftBusy(s))return{text:tftState==='RECORDING'?'Play your TFT game. Coaching follows after it ends.':'Your TFT review is being prepared.'};
     if(!home)return{text:'Open League and queue up. OP CLIMB takes over in champion select.'};
@@ -387,7 +391,7 @@
     let followerShown=false;
     for(const el of legacy.children){
       const members=MEMBERS[el.id];
-      const show=members?members.includes(route):followsPhase;
+      const show=members?isMember(members,route):followsPhase;
       setGate(el,show);
       if(!members&&show&&isShown(el))followerShown=true;
     }

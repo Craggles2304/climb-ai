@@ -33,7 +33,7 @@
     if(phase==='CHAMP_SELECT')return{label:'Open match plan',go:'prep',icon:'target'};
     if(phase==='RECORDING')return{label:'Back to live companion',go:'live',icon:'play'};
     if(phase==='UPLOADING')return{label:'Building your review',go:'review',icon:'review'};
-    if(phase==='REVIEW'&&state.postGameReview)return{label:'Review last game',go:'review',icon:'review'};
+    if(state.postGameReview&&(phase==='REVIEW'||!ui.reviewSeen(state.postGameReview)))return{label:'Review last game',go:'review',icon:'review'};
     if(stage.stage==='baseline')return{label:'Complete your baseline',go:'dna',icon:'target'};
     if(stage.stage==='reveal')return{label:'Reveal your Game DNA',go:'dna',icon:'dna'};
     return{label:'Prepare next match',go:'prep',icon:'play'};

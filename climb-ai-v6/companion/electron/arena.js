@@ -1,8 +1,7 @@
 (()=>{
+  // broadcast-v2.css and brand-sync.css are linked in index.html, after the
+  // other legacy styles and before the new design system; review-v2.js loads there too.
   const $=id=>document.getElementById(id);
-  const hud=document.createElement('link');hud.rel='stylesheet';hud.href='broadcast-v2.css';document.head.appendChild(hud);
-  const brand=document.createElement('link');brand.rel='stylesheet';brand.href='brand-sync.css';document.head.appendChild(brand);
-  const review=document.createElement('script');review.src='review-v2.js';review.defer=true;document.head.appendChild(review);
   function cleanText(value){return String(value||'').replace(/\s+/g,' ').trim()}
 
   function ensureIdleArena(){

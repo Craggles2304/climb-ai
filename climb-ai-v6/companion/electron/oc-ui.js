@@ -26,7 +26,7 @@
   };
   function championId(name){
     const clean=text(name);
-    if(!clean||/pending|tbd|waiting|unknown|selecting/i.test(clean))return'';
+    if(!clean||/pending|tbd|waiting|unknown|selecting|not revealed|picking|choosing/i.test(clean))return'';
     return SPECIAL_IDS[clean]||clean.replace(/[^A-Za-z0-9]/g,'');
   }
   const DDRAGON='https://ddragon.leagueoflegends.com/cdn/img/champion';
@@ -158,6 +158,12 @@
     try{const value=JSON.parse(localStorage.getItem('oc:last-champion')||'null');return text(value?.name)?value:null}catch{return null}
   }
 
+  /** Whether the player has opened this post-game review yet. */
+  const reviewKey=review=>text(review?.sessionId||review?.matchId);
+  function reviewSeen(review){const key=reviewKey(review);if(!key)return true;try{return localStorage.getItem('oc:review-seen')===key}catch{return true}}
+  function markReviewSeen(review){const key=reviewKey(review);if(key)try{localStorage.setItem('oc:review-seen',key)}catch{}}
+  const clock=seconds=>{const s=Math.max(0,Math.floor(num(seconds)));return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`};
+
   window.ocUI={esc,text,upper,num,clamp,titleCase,roleName,roleKey,championId,splashUrl,tileUrl,portrait,ring,steps,icon,
-    DNA,dnaMeta,dnaColor,dnaStrands,dnaStage,markRevealed,dnaRadar,rememberChampion,lastChampion};
+    DNA,dnaMeta,dnaColor,dnaStrands,dnaStage,markRevealed,dnaRadar,rememberChampion,lastChampion,reviewSeen,markReviewSeen,clock};
 })();
