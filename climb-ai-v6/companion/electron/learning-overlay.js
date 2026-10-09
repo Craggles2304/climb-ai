@@ -110,6 +110,8 @@
   const focus=window.OP_TFT_COACH_MODEL?.mission(focusId);
   for(const id of ['ECONOMY','TEMPO','FLEX','POSITION'])$('overlay').classList.toggle('tft-focus-'+id.toLowerCase(),(focus?.id||'ECONOMY')===id);
   showChampion(null,'TFT');
+  put('identityTag','TACTICIAN / LEARNING FOCUS');
+  put('hudBrandMode','TACTICIAN HUD');
   put('game','TEAMFIGHT TACTICS');
   put('planState','STATIC TFT FOCUS');
   put('title',focus?.title||'TFT development focus');
