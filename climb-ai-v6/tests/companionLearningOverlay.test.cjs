@@ -174,3 +174,25 @@ test('preset buttons persist mode and status clearly distinguishes preview from 
  assert.equal(fake('status').textContent,'LEAGUE RECORDING');
  assert.match(fake('championArt').src,/Jinx_0\.jpg/);
 });
+
+
+test('esports HUD preserves click-through safety and frozen-plan, low-distraction modes',()=>{
+ const html=fs.readFileSync(path.join(base,'learning-overlay.html'),'utf8');
+ const styles=fs.readFileSync(path.join(base,'learning-overlay-esports.css'),'utf8');
+ const script=fs.readFileSync(path.join(base,'learning-overlay.js'),'utf8');
+ assert.match(html,/learning-overlay-esports\.css/);
+ assert.match(html,/id="modeIndicator"/);
+ assert.match(html,/id="planState"/);
+ assert.match(html,/FROZEN BEFORE PLAY/);
+ assert.match(styles,/\.hud\.mode-minimal/);
+ assert.match(styles,/\.hud\.mode-focus/);
+ assert.match(styles,/\.hud\.mode-expanded/);
+ assert.match(styles,/prefers-reduced-motion/);
+ assert.match(styles,/\.hud\.mode-focus \.hud-block--actions/);
+ assert.match(styles,/\.hud\.mode-minimal \.hud-identity/);
+ assert.match(script,/put\('modeIndicator',mode\)/);
+ assert.match(script,/put\('planState','STATIC TFT FOCUS'\)/);
+ assert.doesNotMatch(script,/\.innerHTML=/);
+ assert.doesNotMatch(script,/winProbability|enemyCooldown|liveHud|enemyPosition/i);
+ assert.doesNotMatch(styles,/animation:[^;]*infinite/i);
+});
