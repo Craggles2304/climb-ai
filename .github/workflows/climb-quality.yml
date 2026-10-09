@@ -122,3 +122,5 @@ jobs:
         run: node --test tests/missionHierarchy.test.cjs tests/journeyUiContract.test.cjs tests/keyMomentRichReview.test.cjs tests/dnaRoleSwitcher.test.cjs tests/dnaClientRuntime.test.cjs
       - name: Product regressions
         run: node --import tsx --test tests/coachMemoryModel.test.ts tests/dnaLevel.test.ts tests/dnaStrandMissions.test.ts tests/farmEvidenceReliability.test.ts tests/gameDnaSnapshot.test.ts tests/journeyFoolproof.test.ts tests/keyMoments.test.ts tests/lane.test.ts tests/mapMatch.test.ts tests/patchIntelligence.test.ts tests/learningModelVersion.test.ts tests/planOrder.test.ts tests/profile.test.ts tests/publicPreview.test.ts tests/review.test.ts tests/skillRanks.test.ts tests/tilt.test.ts tests/visualDepth.test.cjs tests/plainLanguageCoaching.test.ts tests/readabilityUX.test.cjs tests/missionPlanLoad.test.cjs
+      - name: Career DNA habits, habit missions and weekly report
+        run: node --import tsx --test tests/careerDna.test.ts tests/careerDnaReport.test.ts

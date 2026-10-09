@@ -1,4 +1,6 @@
 import type {ILPTask} from '@/lib/types';
+import {HABITS} from '@/lib/habits/library';
+import {habitOfTask} from '@/lib/dna/plan';
 
 export type PlainLanguageFocus={
   name:string;
@@ -11,6 +13,18 @@ export type PlainLanguageFocus={
 const has=(text:string,...needles:string[])=>needles.some(n=>text.includes(n));
 
 export function plainLanguageFocus(task:Pick<ILPTask,'title'|'category'|'gameRule'|'why'|'metric'|'target'>):PlainLanguageFocus{
+  // Career DNA habit missions carry their own plain-language copy; keyword matching would mislabel them.
+  const habit=habitOfTask(task);
+  if(habit){
+    const def=HABITS[habit];
+    return{
+      name:`BREAK IT: ${def.name.toUpperCase()}`,
+      meaning:def.description,
+      nextGame:def.rule,
+      success:`Play 3 tracked games without ${def.name.toLowerCase()}. Games where it cannot be measured do not count either way.`,
+      why:def.why,
+    };
+  }
   const title=String(task.title||'').toLowerCase();
   const category=String(task.category||'').toLowerCase();
   const rule=String(task.gameRule||'').toLowerCase();

@@ -5,6 +5,7 @@ import {benchmarkPass,benchmarkProgress,benchmarkTargetText,missionBenchmark} fr
 import {gradeMissionGame} from '@/lib/missionGrading';
 import {dnaDomainForTask} from '@/lib/dnaDomain';
 import {coachingEvidenceScore,coachingNeedScore} from '@/lib/coachingPriorityEngine';
+import {evaluateHabit,habitOfTask} from '@/lib/dna/plan';
 
 type Eval={progress:number;passed:boolean;note:string;hasEvidence:boolean};
 type Candidate=Omit<ILPTask,'id'|'accountId'|'dnaDomain'|'progress'|'status'|'source'|'evidence'> & {roles?:Role[]};
@@ -32,6 +33,7 @@ export function isGameMeasurableTask(task:Pick<ILPTask,'metric'|'id'|'evidence'|
 function proMetric(task:ILPTask,match:Match){const metric=match.proAnalysis?.metrics?.[task.metric as CoachingMetricKey];return metric&&metric.status!=='UNAVAILABLE'&&metric.status!=='BUILDING'&&typeof metric.score==='number'?metric:null}
 function evaluatePro(task:ILPTask,matches:Match[]):Eval|null{const measured=matches.slice(0,5).map(match=>proMetric(task,match)).filter((metric):metric is NonNullable<ReturnType<typeof proMetric>>=>Boolean(metric));if(!measured.length)return null;const score=avg(measured.map(metric=>metric.score as number)),target=missionTargetNumber(task.target),latest=measured[0];return{progress:clamp(score),passed:score>=target,note:`PRO ${latest.label}: ${score.toFixed(0)}/100 across ${measured.length} evidence-backed game${measured.length===1?'':'s'}; target ${target}.`,hasEvidence:true}}
 function evaluateMetric(task:ILPTask,matches:Match[],rank?:string|null):Eval{
+  if(habitOfTask(task))return evaluateHabit(task,matches.slice(0,5));
   const recent=matches.slice(0,5),pro=evaluatePro(task,recent);
   if(pro)return pro;
   const vals=(key:keyof Match['metrics'])=>recent.map(m=>m.metrics[key]).filter((v):v is number=>typeof v==='number'&&Number.isFinite(v));

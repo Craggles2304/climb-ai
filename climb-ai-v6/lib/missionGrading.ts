@@ -3,6 +3,7 @@ import type {CoachingMetricKey} from './subscription';
 import {METRIC_SPECS} from './metrics';
 import {benchmarkPass,benchmarkTargetText,missionBenchmark} from './rankMissionBenchmarks';
 import {missionTargetNumber} from './proMissionMastery';
+import {HABIT_PREFIX,gradeHabitGame,habitOfTask} from './dna/plan';
 
 export type MissionMeasurementSource='LIVE_MEASURABLE'|'RIOT_POST_GAME'|'DECISION_EVIDENCE';
 
@@ -26,6 +27,7 @@ const RIOT_METRICS=new Set([
 ]);
 
 export function missionMeasurementSource(metric:string):MissionMeasurementSource{
+  if(String(metric||'').startsWith(HABIT_PREFIX))return'RIOT_POST_GAME';
   if(LIVE_METRICS.has(metric))return'LIVE_MEASURABLE';
   if(RIOT_METRICS.has(metric))return'RIOT_POST_GAME';
   return'DECISION_EVIDENCE';
@@ -38,6 +40,7 @@ export function missionMeasurementLabel(source:MissionMeasurementSource){
 }
 
 export function gradeMissionGame(task:Pick<ILPTask,'metric'|'target'>,match:Match|undefined,rank?:string|null):MissionGameGrade{
+  if(habitOfTask(task))return{...gradeHabitGame(task,match),source:'RIOT_POST_GAME'};
   const source=missionMeasurementSource(task.metric);
   const defaultTarget=benchmarkTargetText(task.metric,rank,task.target);
   if(!match){

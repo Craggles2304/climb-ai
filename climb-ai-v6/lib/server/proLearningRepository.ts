@@ -3,6 +3,7 @@ import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import {ensureOneMissionPerDnaStrand,gradeDnaStrandMissionsFromHistory} from '@/lib/dnaStrandMissions';
+import {habitOfTask,type HabitGame} from '@/lib/dna/plan';
 import {verifiedMissionAttempts} from '@/lib/verifiedMissionProof';
 import type {DnaDomain,ILPTask,Role} from '@/lib/types';
 import {buildDecisionTwin} from '@/lib/decisionTwin';
@@ -329,6 +330,39 @@ export async function getProLearningProfile(userId:string,riotAccountId:string|n
   return{version:1,gamesAnalyzed:Number(data.games_analyzed||0),fingerprint:data.fingerprint as any,metricRollups:data.metric_rollups as any,fixLadder:data.fix_ladder as any,championProfiles:data.champion_profiles as any,opLeakRate:{occurrencesPerGame:extractLeakRate(leak?.recentValue),cleanScore:Number(leak?.averageScore??0),trend:leak?.trend??'BUILDING'},recovery:{score:typeof recovery?.averageScore==='number'?recovery.averageScore:null,trend:recovery?.trend??'BUILDING',availableGames:Number(recovery?.availableGames||0)},latestAnalysisAt:data.latest_analysis_at??null};
 }
 
+/**
+ * Habit data for the games being graded, keyed by match id. Only loaded when a
+ * live Career DNA habit mission exists, so plans without one cost no extra reads.
+ */
+async function loadHabitGames(db:NonNullable<ReturnType<typeof getSupabaseAdmin>>,userId:string,tasks:ILPTask[],history:HistoryAnalysisRow[]):Promise<Map<string,HabitGame>>{
+  const games=new Map<string,HabitGame>();
+  const habitMissionLive=tasks.some(task=>habitOfTask(task)&&task.status!=='MASTERED'&&task.status!=='PAUSED');
+  const ids=[...new Set(history.map(row=>row.matchId).filter((id):id is string=>Boolean(id)))];
+  if(!habitMissionLive||!ids.length)return games;
+  const [matchResult,metricResult]=await Promise.all([
+    db.from('matches').select('id,champion,role,duration_seconds').eq('user_id',userId).in('id',ids),
+    db.from('match_metrics').select('match_id,raw').eq('user_id',userId).in('match_id',ids),
+  ]);
+  if(matchResult.error||metricResult.error){
+    console.warn('[pro-ilp] habit evidence lookup failed',matchResult.error?.message??metricResult.error?.message);
+    return games;
+  }
+  const rawById=new Map((metricResult.data??[]).map((row:any)=>[String(row.match_id),row.raw&&typeof row.raw==='object'?row.raw:{}]));
+  for(const row of matchResult.data??[]){
+    const raw:any=rawById.get(String(row.id))??{};
+    games.set(String(row.id),{
+      champion:String(row.champion||'Unknown'),
+      role:canonicalLeagueRole(row.role)??'ADC',
+      durationSeconds:Number(row.duration_seconds)||0,
+      metrics:raw.metrics&&typeof raw.metrics==='object'?raw.metrics:{},
+      ...(raw.habits&&typeof raw.habits==='object'?{habits:raw.habits}:{}),
+      ...(typeof raw.habitRelevant==='boolean'?{habitRelevant:raw.habitRelevant}:{}),
+      ...(Array.isArray(raw.habitMoments)?{habitMoments:raw.habitMoments}:{}),
+    });
+  }
+  return games;
+}
+
 export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:string,profile:ProLearningProfile,history:HistoryAnalysisRow[]):Promise<PostGameIlpSyncResult>{
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for post-game ILP sync.');
   const [storedResult,accountResult]=await Promise.all([
@@ -348,6 +382,7 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
     return{...stamped,target:benchmarkTargetText(stamped.metric,rankLabel,stamped.target)};
   });
   const changes:string[]=[];
+  const habitGames=await loadHabitGames(db,userId,tasks,history);
 
   for(const role of LEAGUE_ROLES){
     const roleHistory=rowsForRole(history,role);
@@ -355,7 +390,7 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
     const otherTasks=tasks.filter(task=>task.roleScope!==role);
     const roleTasks=tasks.filter(task=>task.roleScope===role);
     const seeded=ensureOneMissionPerDnaStrand(roleTasks,riotAccountId,role);
-    const graded=gradeDnaStrandMissionsFromHistory(seeded.tasks,roleHistory);
+    const graded=gradeDnaStrandMissionsFromHistory(seeded.tasks,roleHistory,habitGames);
     const advanced=ensureOneMissionPerDnaStrand(graded.tasks,riotAccountId,role);
     const stamped=advanced.tasks.map(task=>({...task,roleScope:role,roleEvidence:[role]} as ILPTask));
     tasks=[...otherTasks,...stamped];

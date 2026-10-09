@@ -5,6 +5,8 @@ import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from './dnaDomain';
 import {notObservedReceipt,proMetricReceipt} from './missionGrading';
 import {verifiedMissionAttempts} from './verifiedMissionProof';
 import {gameMissionFocusPair} from './gameDnaSnapshot';
+import {HABITS,type HabitId} from './habits/library';
+import {createHabitStrandMission,gradeHabitGame,habitDomain,habitOfTask,type HabitGame} from './dna/plan';
 
 type MissionTemplate={
   title:string;
@@ -185,7 +187,8 @@ function live(task:ILPTask){
 }
 
 function cycleFor(tasks:ILPTask[],domain:DnaDomain){
-  return tasks.filter(task=>isDnaStrandMission(task)&&task.dnaDomain===domain).length;
+  // Habit missions are a detour chosen by the player, not a step in the strand's sequence.
+  return tasks.filter(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&!habitOfTask(task)).length;
 }
 
 function templateFor(domain:DnaDomain,cycle:number){
@@ -281,6 +284,35 @@ export function ensureOneMissionPerDnaStrand(tasks:ILPTask[],accountId:string,ro
   return{tasks:next,changes};
 }
 
+/**
+ * Make a Career DNA habit its strand's mission. The strand's current mission is
+ * paused, not discarded: once the habit mission is mastered, the next plan pass
+ * restores it. The new mission keeps the strand's unlocked/locked state, so the
+ * player's two chosen DNA trees do not change.
+ */
+export function startHabitStrandMission(tasks:ILPTask[],input:{
+  accountId:string;role:Role;habit:HabitId;
+  reading?:{occurred:number;measured:number;rate:number};
+  now?:Date;
+}):{tasks:ILPTask[];status:'STARTED'|'ALREADY_ACTIVE';mission:ILPTask}{
+  const domain=habitDomain(input.habit);
+  const inStrand=(task:ILPTask)=>isDnaStrandMission(task)&&task.dnaDomain===domain&&task.roleScope===input.role;
+  const existing=tasks.find(task=>inStrand(task)&&live(task)&&habitOfTask(task)===input.habit);
+  if(existing)return{tasks,status:'ALREADY_ACTIVE',mission:existing};
+
+  const current=tasks.filter(task=>inStrand(task)&&live(task));
+  const now=(input.now??new Date()).toISOString();
+  const name=HABITS[input.habit].name.toLowerCase();
+  const mission=createHabitStrandMission({...input,dnaFocusUnlocked:current.some(task=>task.dnaFocusUnlocked===true)});
+  const paused=tasks.map(task=>current.includes(task)?{
+    ...task,
+    status:'PAUSED' as const,
+    lastUpdatedReason:`Paused while you break ${name}. It comes back when that habit mission is mastered.`,
+    history:[...(task.history??[]),{at:now,type:'PAUSED' as const,note:`Paused for the ${name} habit mission.`}].slice(-12),
+  }:task);
+  return{tasks:[...paused,mission],status:'STARTED',mission};
+}
+
 function missionScoreTarget(task:ILPTask){
   const score=String(task.target||'').match(/(\d+(?:\.\d+)?)\s*\+/);
   return score?Number(score[1]):85;
@@ -312,7 +344,11 @@ function refreshMissionProgress(task:ILPTask){
   };
 }
 
-export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:HistoryAnalysisRow[]){
+/**
+ * `habitGames` carries each game's habit data by match id. Habit missions are
+ * graded from it; without it they stay NOT OBSERVED rather than guessed.
+ */
+export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:HistoryAnalysisRow[],habitGames?:ReadonlyMap<string,HabitGame>){
   const ordered=[...history].sort((a,b)=>Date.parse(a.createdAt)-Date.parse(b.createdAt));
   const changes:string[]=[];
   let graded=tasks.map(task=>({...task,missionHistory:[...(task.missionHistory??[])]}));
@@ -340,7 +376,15 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       const targetLabel=`${threshold}+ decision score · 3 proven games`;
       let attempt:NonNullable<ILPTask['missionHistory']>[number];
 
-      if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
+      if(habitOfTask(task)){
+        const grade=gradeHabitGame(task,habitGames?.get(matchId));
+        const state=grade.evidenceV2.state;
+        attempt={
+          matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:grade.passed,
+          outcome:state==='BANKED'?'CONFIRMED':state==='MISSED'?'UNREWARDED':'NO_REP',
+          banksPass:state==='BANKED',source:'TRACKED',evidenceV2:grade.evidenceV2,
+        };
+      }else if(!metric||metric.status==='UNAVAILABLE'||metric.status==='BUILDING'||typeof metric.score!=='number'){
         const reason='This mission belongs to one of your two unlocked DNA trees, but the game did not expose enough recorded decision evidence to grade it.';
         attempt={
           matchId,at:row.createdAt,adherence:'TRACKED',clearedBar:false,outcome:'NO_REP',banksPass:false,source:'TRACKED',
