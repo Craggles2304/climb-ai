@@ -102,7 +102,7 @@ export default function Dashboard(){
         <span className="arena-pro-hero-kicker"><i/> OP CLIMB <b>COMPETITIVE PERFORMANCE HQ</b><small>SEASON 2026</small></span>
         <div className="eyebrow">YOUR CLIMB · {active.role} PLAYER</div>
         <h1>{active.gameName}<span>{active.tagline}</span></h1>
-        <p>{baselineReady
+        <p><strong className="arena-pro-identity-thesis">Your games build your player identity.</strong> {baselineReady
           ?'Your Game DNA is active. '+(focusPlain?.nextGame||'Take one clear mission into the next game.')
           :'Play '+DNA_BASELINE_GAMES+' tracked '+active.role+' games to reveal a player shape built from evidence.'}</p>
         <div className="arena-pro-hero-actions"><Link href="/live" className="arena-pro-hero-primary"><ArenaIcon name="match" size={18}/> OPEN MATCH ROOM <span>↗</span></Link><Link href="/ilp" className="arena-pro-hero-secondary"><ArenaIcon name="dna" size={17}/> MY GAME DNA</Link></div>
