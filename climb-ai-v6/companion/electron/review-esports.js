@@ -49,20 +49,22 @@
       hero.innerHTML=`
         <div id="opEsArt" class="op-es-art"><div class="op-es-art-copy"><div class="op-es-overline">POST MATCH // PERFORMANCE REVIEW</div><div class="op-es-roleline"><b id="opEsRole">ROLE</b><span>·</span><span id="opEsCoach">OP COACH</span></div><h1 id="opEsChamp" class="op-es-champ">CHAMPION</h1></div></div>
         <div class="op-es-board"><div class="op-es-board-head"><div><div class="eyebrow">MATCH INTELLIGENCE // VERIFIED REVIEW</div><h2>GAME DEBRIEF</h2></div><div class="op-es-ready">REVIEW READY</div></div><div class="op-es-stat-grid"><article class="op-es-stat accent"><span>KDA</span><strong id="opEsKda">—</strong><small>final line</small></article><article class="op-es-stat"><span>CS / MIN</span><strong id="opEsCs">—</strong><small>economy pace</small></article><article class="op-es-stat"><span>MATCH TIME</span><strong id="opEsTime">—</strong><small>recorded duration</small></article><article class="op-es-stat"><span>DECISIONS</span><strong id="opEsEvidence">—</strong><small>reviewed moments</small></article></div><div class="op-es-next-call"><span>NEXT GAME // ONE CALL</span><strong id="opEsNextTitle">REPEAT THE CLEAN DECISIONS</strong><p id="opEsNextRule"></p></div></div>`;
-      const baseline=section.querySelector('.op332-baseline');
-      section.insertBefore(hero,baseline||section.firstChild);
+      // Only direct children may be used as insertBefore references. The
+      // historical .op332-baseline lives INSIDE collapsed match details.
+      const summary=section.querySelector('.op333-summary');
+      section.insertBefore(hero,summary||section.firstChild);
     }
     if(!$('opEsProof')){
       const proof=document.createElement('section');
       proof.id='opEsProof';proof.className='op-es-proof';
       proof.innerHTML='<div class="op-es-proof-intro"><span>YOUR DEVELOPMENT · VERIFIED PROGRESSION</span><h3>GAME DNA MISSION PROOF</h3><p id="opEsProofSub">Only timestamped and reliable mission evidence counts towards progression.</p></div><div id="opEsProofGrid" class="op-es-proof-grid"></div>';
-      const timelineAnchor=section.querySelector('.op333-key');
-      section.insertBefore(proof,timelineAnchor||section.querySelector('.op332-development'));
+      const proofAnchor=section.querySelector('.op332-development');
+      section.insertBefore(proof,proofAnchor||null);
     }
     if(!$('opEsTimeline')){
       const timeline=document.createElement('section');timeline.id='opEsTimeline';timeline.className='op-es-timeline';timeline.innerHTML=`<div class="op-es-timeline-head"><div><span class="op-es-timeline-overline">MATCH EVIDENCE / GAME REVIEW</span><b>MATCH MOMENTS</b></div><span>GREEN = CLEAN CONVERSION · RED = LEAK · PURPLE = YOUR MARK</span></div><div id="opEsRail" class="op-es-rail"></div><div id="opEsRailAxis" class="op-es-rail-axis"><span>00:00</span><span id="opEsEndTime">—</span></div><div id="opEsMoments" class="op-es-moments" role="list" aria-label="Key reviewed decisions"></div><div id="opEsMarked" class="op-es-marked"></div>`;
-      const main=section.querySelector('.op332-main');
-      section.insertBefore(timeline,main||section.querySelector('.op332-neutral'));
+      const timelineAnchor=section.querySelector('.op332-development');
+      section.insertBefore(timeline,timelineAnchor||null);
     }
     return section;
   }
