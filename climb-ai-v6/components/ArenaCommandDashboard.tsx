@@ -29,8 +29,8 @@ const nodePos=[
   {x:19,y:76},{x:50,y:88},{x:81,y:76},
 ];
 const branches=[
-  'M168 165 340 230','M440 112 440 228','M713 165 540 230',
-  'M168 485 340 320','M440 550 440 320','M713 485 540 320',
+  'M168 154 355 266','M440 77 440 203','M713 154 525 266',
+  'M168 486 355 374','M440 563 440 437','M713 486 525 374',
 ] as const;
 const safeDate=(v:string)=>{const d=new Date(v);return Number.isFinite(d.valueOf())?d.toLocaleDateString('en-GB',{day:'2-digit',month:'short'}):'—'};
 const safeValue=(v:number)=>Number.isFinite(v)?v.toFixed(1):'—';
@@ -129,7 +129,7 @@ export function ArenaCommandDashboard(){
           <div className="op-a22-header-left"><button type="button" className="op-a22-burger" aria-label={navOpen?'Close navigation':'Open navigation'} aria-expanded={navOpen} onClick={()=>setNavOpen(v=>!v)}>☰</button><span className="op-a22-header-location">THE ARENA</span><span className="op-a22-header-slash">/</span><b>COMMAND CENTRE</b></div>
           <div className="op-a22-header-actions">
             <span className={'op-a22-device-status '+(deviceState==='ONLINE'?'is-on':'')}><i/>{status}</span>
-            <span className="op-a22-header-tier">{tier}</span>
+            {accounts.length>1&&<select className="op-a22-account-picker" aria-label="Switch Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(account=><option key={account.id} value={account.id}>{account.gameName}{account.tagline}</option>)}</select>}<span className="op-a22-header-tier">{tier}</span>
             <Link href="/settings" className="op-a22-header-settings" aria-label="Settings">⚙</Link>
           </div>
         </header>
@@ -165,10 +165,10 @@ export function ArenaCommandDashboard(){
                 <div className="op-a22-map-noise"/>
                 <svg className="op-a22-paths" viewBox="0 0 880 640" preserveAspectRatio="none" aria-hidden="true">
                   <defs><linearGradient id="a22-path"><stop stopColor="#88dccb" stopOpacity=".55"/><stop offset="1" stopColor="#9167d0" stopOpacity=".45"/></linearGradient></defs>
-                  {branches.map((path,index)=><g key={path}><path d={path} stroke="url(#a22-path)" strokeWidth="2" strokeDasharray={ready?'':'4 8'} fill="none" opacity={ready?'.73':'.3'}/><circle cx={[250,440,635,250,440,635][index]} cy={[190,160,190,450,480,450][index]} r="4" fill={DNA_DOMAIN_COLORS[DNA_DOMAINS[index]]} opacity={ready?'.85':'.28'}/></g>)}
-                  <circle cx="440" cy="275" r="100" stroke="#598da5" strokeWidth="1" opacity=".22" fill="none"/>
+                  {branches.map((path,index)=><g key={path}><path d={path} stroke="url(#a22-path)" strokeWidth="2" strokeDasharray={ready?'':'4 8'} fill="none" opacity={ready?'.73':'.3'}/><circle cx={[250,440,635,250,440,635][index]} cy={[215,155,215,425,492,425][index]} r="4" fill={DNA_DOMAIN_COLORS[DNA_DOMAINS[index]]} opacity={ready?'.85':'.28'}/></g>)}
+                  <circle cx="440" cy="320" r="100" stroke="#598da5" strokeWidth="1" opacity=".22" fill="none"/>
                   <circle cx="440" cy="275" r="118" stroke="#598da5" strokeDasharray="5 10" strokeWidth="1" opacity=".16" fill="none"/>
-                  <path d="M440 141 565 205 565 344 440 408 315 344 315 205Z" fill="#091925" stroke="#447c85" strokeWidth="2" opacity=".65"/>
+                  <path d="M440 208 530 264 530 376 440 432 350 376 350 264Z" fill="#091925" stroke="#447c85" strokeWidth="2" opacity=".65"/>
                 </svg>
                 <div className="op-a22-central-seal"><div><span>O<span>P</span></span><strong>GAME DNA</strong><small>{ready?'EVIDENCE ACTIVE':'BASELINE LOCKED'}</small></div></div>
                 {strands.map((strand,index)=>{
