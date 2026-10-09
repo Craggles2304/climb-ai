@@ -21,6 +21,7 @@ import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
 import {ArenaIcon,type ArenaIconName} from '@/components/ArenaIcon';
+import {championSplash} from '@/lib/championArt';
 
 type ProgressionPayload={
   ok:boolean;
@@ -272,7 +273,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <SidebarTierStep tier={tier}/>
         <Link className="sidebar-help" href="/client"><span><ArenaIcon name="spark" size={17}/></span> Take a quick tour</Link>
         <div className="mini-profile">
-          <span className="player-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}</span>
+          <span className="player-avatar arena-portrait-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}<img src={championSplash(active.champions?.[0]||"Jinx")} alt="" aria-hidden="true" loading="lazy" onError={event=>{event.currentTarget.hidden=true}}/></span>
           <span><strong>{active.gameName}{active.tagline}</strong><small>{active.rank} · {active.role} · LV {xp.level}</small></span>
           <Link className="icon-button" href="/settings" aria-label="Player settings"><ArenaIcon name="gear" size={18}/></Link>
         </div>
