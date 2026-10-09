@@ -17,7 +17,16 @@
 
   <section class="hud-identity">
     <div id="championPortrait" class="hud-portrait"><img id="championArt" src="" alt="" hidden><span id="championFallback" aria-hidden="true">OP</span></div>
-    <div class="hud-identity__text"><span class="hud-identity-tag">PLAYER / MATCH ID</span><span id="game" class="hud-kicker">LEAGUE OF LEGENDS</span><h1 id="title">Your match focus</h1><div class="hud-identity-sub"><strong id="planState">PRE-GAME PLAN</strong><span class="hud-freeze-icon">◆ FROZEN BEFORE PLAY</span></div></div>
+    <div id="tftSigil" class="hud-tft-sigil" aria-hidden="true" hidden>
+      <svg viewBox="0 0 72 76" fill="none" xmlns="http://www.w3.org/2000/svg" focusable="false">
+        <path d="M36 4 63 20v34L36 70 9 54V20L36 4Z" class="sigil-shell"/>
+        <path d="M36 14 54 25v23L36 59 18 48V25l18-11Z" class="sigil-inner"/>
+        <path d="m36 20 14 8v16l-14 8-14-8V28l14-8Z" class="sigil-gem"/>
+        <path d="m36 20 14 8-14 8-14-8 14-8Zm0 16v16m14-24-14 8m-14-8 14 8" class="sigil-grid"/>
+        <path d="M3 21 13 12M59 12l10 9M3 55l10 9m46 0 10-9" class="sigil-wings"/>
+      </svg>
+    </div>
+    <div class="hud-identity__text"><span id="identityTag" class="hud-identity-tag">PLAYER / MATCH ID</span><span id="game" class="hud-kicker">LEAGUE OF LEGENDS</span><h1 id="title">Your match focus</h1><div class="hud-identity-sub"><strong id="planState">PRE-GAME PLAN</strong><span id="freezeNote" class="hud-freeze-icon">◆ FROZEN BEFORE PLAY</span></div></div>
   </section>
 
   <section id="missionBlock" class="hud-block hud-block--mission">
@@ -46,7 +55,7 @@
   </section>
 
   <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+M bookmark</span></footer>
-  <div class="hud-rule">◆ LOCKED PRE-GAME INTEL · LEARN AFTER MATCH</div>
+  <div id="ruleNote" class="hud-rule">◆ LOCKED PRE-GAME INTEL · LEARN AFTER MATCH</div>
   <div id="resizer" class="hud-resizer" aria-hidden="true"></div>
 
   <div id="editor" class="hud-editor" hidden>
