@@ -180,3 +180,6 @@
 @media(prefers-reduced-motion:reduce) {
   .hud.is-tft,.hud.is-tft *{animation:none!important;transition:none!important}
 }
+
+/* TFT uses a custom sigil instead of a fake unit portrait. */
+.hud.is-tft .hud-tft-sigil[hidden]{display:grid!important}
