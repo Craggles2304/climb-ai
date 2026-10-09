@@ -168,7 +168,7 @@ export default function Dashboard(){
     </section>
 
     <section id="arena-mission" className="op-home-focus-grid arena-pro-focus-grid">
-      <article className="panel op-home-focus arena-pro-focus">
+      <article className={"panel op-home-focus arena-pro-focus "+(baselineReady?"is-ready":"is-baseline")}>
         <div className="eyebrow">{baselineReady?'CURRENT FIX':'DNA BASELINE'}</div>
         {baselineReady&&focus?<>
           <span className="op-home-strand" style={({ '--strand-color':DNA_DOMAIN_COLORS[focus.dnaDomain]} as CSSProperties)}>
