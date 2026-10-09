@@ -1,19 +1,135 @@
-/* One palette for the web application and the Windows Companion. */
+/* ==========================================================================
+   OP CLIMB Arena — shared design tokens (V2.1)
+   --------------------------------------------------------------------------
+   One palette, type scale, spacing, shape and motion system for the website
+   and the Windows Companion. Both load this file first; the Companion maps
+   its --oc-* tokens onto these and the web components read them directly.
+
+   Rules
+   - Every accent has one job. Do not use an accent for decoration.
+   - Depth comes from surface steps, a hairline highlight and soft shadow —
+     not from glowing borders.
+   - Game DNA strands always use --arena-strand-*.
+   ========================================================================== */
 :root {
-  --arena-obsidian: #060a0f;
-  --arena-ink: #0c121b;
-  --arena-surface: #111a25;
-  --arena-surface-raised: #182330;
+  /* Surfaces — deep obsidian at the back, layered charcoal at the front. */
+  --arena-obsidian: #060a0f;           /* page */
+  --arena-midnight: #080e17;           /* app chrome: sidebar, header */
+  --arena-ink: #0c121b;                /* panel */
+  --arena-surface: #111a25;            /* raised panel */
+  --arena-surface-raised: #182330;     /* hover, controls */
+  --arena-slate: #1d2937;              /* strong hover, selected control */
+  --arena-charcoal: #253242;           /* pressed control, rails */
+  --arena-well: #070c13;               /* sunk wells inside a panel */
   --arena-line: #283745;
+  --arena-line-soft: rgb(150 180 215 / .09);
+  --arena-line-strong: rgb(160 190 225 / .18);
+
+  /* Text — --arena-muted and brighter pass WCAG AA on every surface above. */
   --arena-white: #f2f5f1;
+  --arena-text-2: #cad3da;
   --arena-muted: #adbac3;
-  --arena-lime: #b8f66d;
-  --arena-cyan: #58d6eb;
-  --arena-violet: #aa92ff;
-  --arena-gold: #e9c783;
-  --arena-red: #f17c81;
+  --arena-dim: #7d8b98;                /* labels 12px+ in caps, never body copy */
+  --arena-ink-on-accent: #08110a;
+
+  /* Accents — one job each. */
+  --arena-lime: #b8f66d;               /* primary action, selected progression */
+  --arena-lime-hi: #d3ff95;
+  --arena-cyan: #58d6eb;               /* waves, technical performance */
+  --arena-violet: #aa92ff;             /* vision, intelligence, learning */
+  --arena-gold: #e9c783;               /* objectives, rank, achievement */
+  --arena-crimson: #f0596a;            /* teamfights, critical moments */
+  --arena-blue: #6f9dff;               /* consistency, player development */
+  --arena-red: #f17c81;                /* legacy alias kept for the Companion */
+
+  /* Outcomes. Victory is League blue, defeat is crimson; both always carry a word. */
+  --arena-win: #4aaeff;
+  --arena-loss: #f0596a;
+  --arena-positive: #6fdc9b;
+  --arena-warning: #f0b45a;
+
+  /* Game DNA strands — one stable colour per domain everywhere. */
+  --arena-strand-laning: var(--arena-lime);
+  --arena-strand-waves: var(--arena-cyan);
+  --arena-strand-vision: var(--arena-violet);
+  --arena-strand-objectives: var(--arena-gold);
+  --arena-strand-teamfights: var(--arena-crimson);
+  --arena-strand-consistency: var(--arena-blue);
+
+  /* Subscription tiers — quiet, never louder than the coaching. */
+  --arena-tier-free: #9fb0bd;
+  --arena-tier-plus: #58d6eb;
+  --arena-tier-pro: #e9c783;
+
+  /* Ranked tiers (OP CLIMB's own emblem set). */
+  --arena-rank-iron: #8b8580;
+  --arena-rank-bronze: #c58a5c;
+  --arena-rank-silver: #b9c6d2;
+  --arena-rank-gold: #e9c783;
+  --arena-rank-platinum: #5fd0c2;
+  --arena-rank-emerald: #4fd683;
+  --arena-rank-diamond: #79a8ff;
+  --arena-rank-master: #c07cff;
+  --arena-rank-grandmaster: #ff6b6b;
+  --arena-rank-challenger: #ffd77a;
+  --arena-rank-unranked: #6f7d8a;
+
+  /* Type families. The Companion overlay's CSP blocks web fonts, so the Windows faces follow. */
   --arena-display: 'Barlow Condensed', 'Bahnschrift Condensed', Impact, sans-serif;
   --arena-body: 'DM Sans', 'Segoe UI', system-ui, sans-serif;
   --arena-mono: 'IBM Plex Mono', Consolas, monospace;
+
+  /* Type scale. 12px is the floor and is reserved for uppercase labels;
+     anything a player must read to act is 15px or larger. */
+  --arena-fs-label: 12px;
+  --arena-fs-sm: 13.5px;
+  --arena-fs-base: 15px;
+  --arena-fs-md: 17px;
+  --arena-fs-lg: 20px;
+  --arena-fs-xl: 26px;
+  --arena-fs-2xl: 34px;
+  --arena-fs-3xl: 46px;
+  --arena-fs-hero: clamp(44px, 4.6vw, 80px);
+  --arena-track-label: .09em;
+  --arena-track-display: .01em;
+
+  /* Spacing — 4px grid. */
+  --arena-space-1: 4px;
+  --arena-space-2: 8px;
+  --arena-space-3: 12px;
+  --arena-space-4: 16px;
+  --arena-space-5: 20px;
+  --arena-space-6: 24px;
+  --arena-space-7: 32px;
+  --arena-space-8: 40px;
+  --arena-space-9: 48px;
+
+  /* Shape. Panels are softly rounded; primary actions carry the chamfer of the OP mark. */
+  --arena-radius-xs: 4px;
+  --arena-radius-sm: 6px;
+  --arena-radius-md: 10px;
+  --arena-radius-lg: 14px;
+  --arena-radius-pill: 999px;
+  --arena-cut: 9px;
+
+  /* Elevation. */
+  --arena-highlight: inset 0 1px 0 rgb(255 255 255 / .045);
+  --arena-shadow-1: 0 1px 2px rgb(0 0 0 / .45), 0 6px 18px -8px rgb(0 0 0 / .55);
+  --arena-shadow-2: 0 2px 4px rgb(0 0 0 / .4), 0 18px 40px -14px rgb(0 0 0 / .7);
+
+  /* Motion. Durations collapse to zero for reduced motion, so every transition can use them. */
   --arena-ease: cubic-bezier(.2,.8,.2,1);
+  --arena-ease-out: cubic-bezier(.16,1,.3,1);
+  --arena-dur-1: 120ms;
+  --arena-dur-2: 200ms;
+  --arena-dur-3: 360ms;
+  --arena-dur-4: 700ms;
+}
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --arena-dur-1: 0ms;
+    --arena-dur-2: 0ms;
+    --arena-dur-3: 0ms;
+    --arena-dur-4: 0ms;
+  }
 }

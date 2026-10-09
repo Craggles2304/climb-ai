@@ -18,13 +18,14 @@ export const DNA_DOMAIN_LABELS:Record<DnaDomain,string>={
   CONSISTENCY:'Consistency',
 };
 
+/** Mirrors --arena-strand-* in companion/electron/arena-tokens.css. */
 export const DNA_DOMAIN_COLORS:Record<DnaDomain,string>={
-  LANING:'#b6ff2e',
-  WAVES_CS:'#00f5d4',
-  VISION_MAP:'#a46bff',
-  OBJECTIVES:'#ffb21e',
-  TEAMFIGHTS:'#ff3d71',
-  CONSISTENCY:'#2ec7ff',
+  LANING:'#b8f66d',
+  WAVES_CS:'#58d6eb',
+  VISION_MAP:'#aa92ff',
+  OBJECTIVES:'#e9c783',
+  TEAMFIGHTS:'#f0596a',
+  CONSISTENCY:'#6f9dff',
 };
 
 

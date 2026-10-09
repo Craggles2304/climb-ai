@@ -1,0 +1,13 @@
+.portrait{
+  position:relative;display:inline-grid;place-items:center;flex:none;
+  width:var(--size);height:var(--size);overflow:hidden;
+  border-radius:calc(var(--size) * .22);
+  background:linear-gradient(135deg,#1b2633,#0d141d);
+  box-shadow:inset 0 0 0 1px rgb(255 255 255 / .1),0 6px 14px -8px rgb(0 0 0 / .8);
+}
+.portrait img{width:100%;height:100%;object-fit:cover;transform:scale(1.08);transition:transform var(--arena-dur-3) var(--arena-ease)}
+.portrait::after{content:'';position:absolute;inset:0;border-radius:inherit;box-shadow:inset 0 0 0 1px rgb(255 255 255 / .08),inset 0 -18px 22px -18px rgb(0 0 0 / .65);pointer-events:none}
+.portraitRing{box-shadow:0 0 0 2px var(--ring),0 6px 14px -8px rgb(0 0 0 / .8)}
+.portraitFallback{font:700 calc(var(--size) * .36)/1 var(--arena-display);letter-spacing:.04em;text-transform:uppercase;color:var(--arena-muted)}
+
+.emblem{display:block;flex:none;filter:drop-shadow(0 6px 14px rgb(0 0 0 / .55))}
