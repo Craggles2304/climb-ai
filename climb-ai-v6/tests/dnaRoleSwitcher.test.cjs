@@ -42,6 +42,10 @@ test('Companion can browse a selected role only while idle',()=>{
   assert.ok(main.includes("ipcMain.handle('companion:set-dna-role'"));
   assert.ok(main.includes("state.phase!=='WAITING'"));
   assert.ok(preload.includes("setDnaRole:(role)=>ipcRenderer.invoke('companion:set-dna-role',role)"));
-  assert.ok(renderer.includes("id=\"playerDnaRoleSwitcher\""));
-  assert.ok(renderer.includes('window.opCompanion.setDnaRole(role)'));
+  // Role browsing lives on the Companion's My Game DNA view; Home always shows the main role.
+  const homeView=fs.readFileSync(path.join(root,'companion','electron','home-view.js'),'utf8');
+  assert.ok(homeView.includes('data-role="${role}"'));
+  assert.ok(homeView.includes('ctx.api?.setDnaRole?.(role)'));
+  assert.ok(homeView.includes("ctx.api?.setDnaRole?.(primary)"));
+  assert.ok(!renderer.includes('setDnaRole'));
 });

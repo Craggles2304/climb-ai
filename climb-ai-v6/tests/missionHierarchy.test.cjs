@@ -6,7 +6,7 @@ const root=path.join(__dirname,'..');
 
 const ilp=fs.readFileSync(path.join(root,'app','ilp','page.tsx'),'utf8');
 const missionsPage=fs.readFileSync(path.join(root,'app','missions','page.tsx'),'utf8');
-const companion=fs.readFileSync(path.join(root,'companion','electron','renderer.js'),'utf8');
+const companion=fs.readFileSync(path.join(root,'companion','electron','home-view.js'),'utf8');
 const api=fs.readFileSync(path.join(root,'app','api','live','companion-home','route.ts'),'utf8');
 const coach=fs.readFileSync(path.join(root,'app','coach','page.tsx'),'utf8');
 const gameDna=fs.readFileSync(path.join(root,'app','game-dna','page.tsx'),'utf8');
@@ -39,11 +39,12 @@ test('Missions page keeps six equal trees and lets the player unlock exactly two
 });
 
 test('Companion shows the two player-unlocked DNA missions for the next game',()=>{
-  assert.ok(companion.includes('TWO UNLOCKED TREES'));
-  assert.ok(companion.includes('UNLOCKED '+"'"+'+focusOrder+'+"'"+' OF 2'));
+  assert.ok(companion.includes('Your two unlocked trees'));
+  assert.ok(companion.includes('Unlocked tree ${num(mission.focusOrder,index+1)} of 2'));
+  assert.ok(companion.includes('missionsOf=home=>(Array.isArray(home?.missions)?home.missions:[]).slice(0,2)'));
   assert.ok(companion.includes('Only the two DNA trees you unlocked can bank a proven rep'));
   assert.ok(companion.includes('No permanent DNA missions until baseline 3/3.'));
-  assert.ok(companion.includes('PROVISIONAL COACHING'));
+  assert.ok(companion.includes('Provisional coaching'));
   assert.ok(api.includes('const missionLimit=2'));
   assert.ok(api.includes('gameMissionFocusPair'));
   assert.ok(api.includes('priorityMission'));
@@ -53,9 +54,9 @@ test('Game DNA stays role-specific in My DNA and Companion',()=>{
   assert.ok(ilp.includes('Every tracked {viewRole} game updates the evidence behind these six strands'));
   assert.ok(ilp.includes('accountMatches.filter(match=>canonicalLeagueRole(match.role)===viewRole)'));
   assert.ok(dnaClient.includes("roleLabel+' GAME DNA'"));
-  assert.ok(companion.includes('playerDnaRoleTitle'));
-  assert.ok(companion.includes('only ${roleLabel} games progress these six strands'));
-  assert.ok(companion.includes("String(dna?.label||mission.domain||'DNA')"));
+  assert.ok(companion.includes('Game DNA</span>'));
+  assert.ok(companion.includes('Only ${esc(role)} games progress these six strands'));
+  assert.ok(companion.includes("esc(strand?.label||titleCase(domain.replace('_',' '))||'DNA')"));
 });
 
 test('Coach is conversation-first and hands development back to My DNA',()=>{

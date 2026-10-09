@@ -1,0 +1,1027 @@
+/* ==========================================================================
+   OP CLIMB Companion — design system
+   --------------------------------------------------------------------------
+   The single source of truth for colour, type, spacing, motion and the core
+   components. Every token is `--oc-*` and every class `oc-*`, so this file can
+   load beside the legacy stylesheets while screens migrate onto it one by one.
+   As each screen moves over, delete the legacy file it replaces — never add a
+   new override layer on top of this one.
+
+   Usage
+     <body class="oc-app">           base type, colour and focus rules
+     class="oc-tone-violet"          re-tints any component below it
+     Gallery of every component:     companion/design/index.html
+   ========================================================================== */
+
+
+/* ------------------------------------------------------------------------ */
+/* 1. TOKENS                                                                */
+/* ------------------------------------------------------------------------ */
+
+:root {
+  color-scheme: dark;
+
+  /* Surfaces — midnight navy at the back, deep blue-grey towards the front.
+     Each step is a visible but quiet lift; nest at most two levels. */
+  --oc-bg: #05080d;
+  --oc-bg-raised: #090d14;
+  --oc-surface-1: #0d131c;
+  --oc-surface-2: #121a25;
+  --oc-surface-3: #182230;
+  --oc-surface-4: #1f2b3b;
+  --oc-well: #070b11;                 /* sunk panels inside a card */
+
+  --oc-line: rgb(150 180 215 / .10);
+  --oc-line-strong: rgb(160 190 225 / .18);
+  --oc-line-bright: rgb(190 215 240 / .32);
+
+  /* Text — every step passes WCAG AA on --oc-surface-2. */
+  --oc-text: #eef3f8;
+  --oc-text-2: #b6c3d0;
+  --oc-text-3: #8797a9;
+  --oc-text-on-accent: #08110a;
+
+  /* Accents — one job each. Lime is the brand and the single main action. */
+  --oc-lime: #b6f66b;
+  --oc-lime-hi: #d3ff95;
+  --oc-lime-lo: #86c246;
+  --oc-cyan: #43d8ef;                 /* information, allies, secondary emphasis */
+  --oc-violet: #a68bff;               /* Game DNA, Coach Memory, advanced coaching */
+  --oc-green: #3ddc8c;                /* positive outcome */
+  --oc-amber: #e6ad4f;                /* warning, needs attention */
+  --oc-red: #f0626a;                  /* negative outcome, enemy team */
+  --oc-gold: #e8c47e;                 /* PRO tier, rank */
+  --oc-blue: #6aa3ff;
+
+  /* Game DNA strands — one stable colour per domain everywhere. */
+  --oc-dna-laning: var(--oc-lime);
+  --oc-dna-waves: var(--oc-cyan);
+  --oc-dna-vision: var(--oc-violet);
+  --oc-dna-objectives: var(--oc-amber);
+  --oc-dna-teamfights: var(--oc-red);
+  --oc-dna-consistency: var(--oc-blue);
+
+  /* Semantic aliases — components use these, not the raw hues. */
+  --oc-brand: var(--oc-lime);
+  --oc-info: var(--oc-cyan);
+  --oc-dna: var(--oc-violet);
+  --oc-positive: var(--oc-green);
+  --oc-warning: var(--oc-amber);
+  --oc-negative: var(--oc-red);
+  --oc-bookmark: var(--oc-violet);
+  --oc-ally: var(--oc-cyan);
+  --oc-enemy: var(--oc-red);
+
+  /* The current tone. Chips, rings, bars, accent cards and tone buttons all
+     read it, so `oc-tone-*` on any ancestor re-colours them together. */
+  --oc-tone: var(--oc-lime);
+
+  /* Type families. The fallbacks matter: the in-game overlay's CSP blocks web
+     fonts, so it renders with the Windows faces listed second. */
+  --oc-font-display: 'Barlow Condensed', 'Bahnschrift Condensed', 'Bahnschrift', 'Arial Narrow', sans-serif;
+  --oc-font-body: 'DM Sans', 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --oc-font-mono: 'IBM Plex Mono', 'Cascadia Mono', Consolas, ui-monospace, monospace;
+
+  /* Type scale. 12px is the floor and is reserved for uppercase labels;
+     anything a player must read to act is 15px or larger. */
+  --oc-fs-xs: 12px;
+  --oc-fs-sm: 13.5px;
+  --oc-fs-base: 15px;
+  --oc-fs-md: 17px;
+  --oc-fs-lg: 20px;
+  --oc-fs-xl: 26px;
+  --oc-fs-2xl: 34px;
+  --oc-fs-3xl: 46px;
+  --oc-fs-4xl: 62px;
+  --oc-fs-hero: clamp(56px, 5.4vw, 92px);
+
+  --oc-lh-tight: 1.02;
+  --oc-lh-snug: 1.22;
+  --oc-lh-body: 1.55;
+
+  --oc-track-display: .01em;
+  --oc-track-label: .09em;
+
+  /* Spacing — 4px grid. */
+  --oc-space-1: 4px;
+  --oc-space-2: 8px;
+  --oc-space-3: 12px;
+  --oc-space-4: 16px;
+  --oc-space-5: 20px;
+  --oc-space-6: 24px;
+  --oc-space-7: 32px;
+  --oc-space-8: 40px;
+  --oc-space-9: 48px;
+  --oc-space-10: 64px;
+  --oc-space-11: 80px;
+
+  /* Shape. Cards are softly rounded; buttons and tags carry the chamfered
+     cut that echoes the skewed OP mark. */
+  --oc-radius-xs: 4px;
+  --oc-radius-sm: 6px;
+  --oc-radius-md: 10px;
+  --oc-radius-lg: 14px;
+  --oc-radius-xl: 20px;
+  --oc-radius-pill: 999px;
+  --oc-cut: 10px;
+
+  /* Control heights. */
+  --oc-control-sm: 32px;
+  --oc-control-md: 42px;
+  --oc-control-lg: 54px;
+
+  /* Elevation — depth comes from shadow and a hairline top highlight,
+     not from glowing borders. */
+  --oc-highlight: inset 0 1px 0 rgb(255 255 255 / .045);
+  --oc-shadow-1: 0 1px 2px rgb(0 0 0 / .45), 0 6px 18px -8px rgb(0 0 0 / .55);
+  --oc-shadow-2: 0 2px 4px rgb(0 0 0 / .4), 0 18px 40px -14px rgb(0 0 0 / .7);
+  --oc-shadow-3: 0 4px 10px rgb(0 0 0 / .4), 0 30px 70px -20px rgb(0 0 0 / .8);
+
+  /* Motion. */
+  --oc-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --oc-ease-in-out: cubic-bezier(.65, 0, .35, 1);
+  --oc-ease-spring: cubic-bezier(.34, 1.45, .64, 1);
+  --oc-dur-fast: 120ms;
+  --oc-dur: 200ms;
+  --oc-dur-slow: 360ms;
+  --oc-dur-reveal: 900ms;
+
+  --oc-focus: 0 0 0 2px var(--oc-bg), 0 0 0 4px var(--oc-cyan);
+}
+
+/* Tone modifiers — apply to a component or to any ancestor. */
+.oc-tone-lime    { --oc-tone: var(--oc-lime); }
+.oc-tone-cyan    { --oc-tone: var(--oc-cyan); }
+.oc-tone-violet  { --oc-tone: var(--oc-violet); }
+.oc-tone-green   { --oc-tone: var(--oc-green); }
+.oc-tone-amber   { --oc-tone: var(--oc-amber); }
+.oc-tone-red     { --oc-tone: var(--oc-red); }
+.oc-tone-gold    { --oc-tone: var(--oc-gold); }
+.oc-tone-blue    { --oc-tone: var(--oc-blue); }
+.oc-tone-neutral { --oc-tone: var(--oc-text-3); }
+
+
+/* ------------------------------------------------------------------------ */
+/* 2. BASE                                                                  */
+/* ------------------------------------------------------------------------ */
+
+.oc-app {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(1200px 600px at 85% -10%, rgb(67 216 239 / .06), transparent 60%),
+    radial-gradient(900px 500px at -10% 110%, rgb(166 139 255 / .05), transparent 60%),
+    var(--oc-bg);
+  color: var(--oc-text);
+  font-family: var(--oc-font-body);
+  font-size: var(--oc-fs-base);
+  line-height: var(--oc-lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.oc-app,
+.oc-app *,
+.oc-app *::before,
+.oc-app *::after { box-sizing: border-box; }
+
+.oc-app :where(h1, h2, h3, h4, p, figure, blockquote, ul, ol) { margin: 0; }
+.oc-app :where(img, svg, video) { display: block; max-width: 100%; }
+.oc-app :where(button, input, select, textarea) { font: inherit; color: inherit; }
+.oc-app ::selection { background: rgb(182 246 107 / .3); color: var(--oc-text); }
+
+.oc-app :focus-visible { outline: 2px solid var(--oc-cyan); outline-offset: 3px; }
+
+/* `hidden` always wins over a component's display rule. */
+.oc-app [hidden] { display: none !important; }
+
+.oc-app ::-webkit-scrollbar { width: 10px; height: 10px; }
+.oc-app ::-webkit-scrollbar-track { background: transparent; }
+.oc-app ::-webkit-scrollbar-thumb {
+  background: var(--oc-surface-4);
+  border: 3px solid transparent;
+  border-radius: var(--oc-radius-pill);
+  background-clip: padding-box;
+}
+.oc-app ::-webkit-scrollbar-thumb:hover { background-color: #2b3a4e; }
+
+.oc-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* 3. TYPOGRAPHY                                                            */
+/* ------------------------------------------------------------------------ */
+
+/* Display — expressive esports headings. Uppercase, condensed, tight. */
+.oc-hero,
+.oc-h1,
+.oc-h2,
+.oc-h3 {
+  font-family: var(--oc-font-display);
+  font-weight: 800;
+  line-height: var(--oc-lh-tight);
+  letter-spacing: var(--oc-track-display);
+  text-transform: uppercase;
+  font-stretch: condensed;
+  text-wrap: balance;
+}
+.oc-hero { font-size: var(--oc-fs-hero); letter-spacing: -.005em; }
+.oc-h1   { font-size: var(--oc-fs-3xl); }
+.oc-h2   { font-size: var(--oc-fs-2xl); font-weight: 700; }
+.oc-h3   { font-size: var(--oc-fs-xl); font-weight: 700; line-height: 1.08; }
+
+/* Title — sentence-case heading inside cards; reads as coaching, not chrome. */
+.oc-title {
+  font-family: var(--oc-font-body);
+  font-size: var(--oc-fs-lg);
+  font-weight: 700;
+  line-height: var(--oc-lh-snug);
+  letter-spacing: -.01em;
+  text-wrap: balance;
+}
+
+/* Body copy — the coaching voice. */
+.oc-lead  { font-size: var(--oc-fs-md); line-height: 1.5; color: var(--oc-text-2); text-wrap: pretty; }
+.oc-body  { font-size: var(--oc-fs-base); line-height: var(--oc-lh-body); color: var(--oc-text-2); text-wrap: pretty; }
+.oc-small { font-size: var(--oc-fs-sm); line-height: 1.45; color: var(--oc-text-3); }
+
+/* Eyebrow — the small uppercase kicker above a heading. Tinted by tone. */
+.oc-eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-sm);
+  font-weight: 700;
+  letter-spacing: var(--oc-track-label);
+  text-transform: uppercase;
+  color: var(--oc-tone);
+}
+.oc-eyebrow::before {
+  content: "";
+  width: 14px;
+  height: 2px;
+  background: currentColor;
+  transform: skewX(-30deg);
+}
+
+/* Label — mono, for stat names and technical metadata. */
+.oc-label {
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  font-weight: 500;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--oc-text-3);
+}
+
+/* Numbers — tabular so values don't jitter as they update. */
+.oc-num {
+  font-family: var(--oc-font-display);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+}
+.oc-mono { font-family: var(--oc-font-mono); font-variant-numeric: tabular-nums; }
+
+.oc-text-1 { color: var(--oc-text); }
+.oc-text-2 { color: var(--oc-text-2); }
+.oc-text-3 { color: var(--oc-text-3); }
+.oc-text-tone { color: var(--oc-tone); }
+
+
+/* ------------------------------------------------------------------------ */
+/* 4. LAYOUT PRIMITIVES                                                     */
+/* ------------------------------------------------------------------------ */
+
+.oc-stack   { display: flex; flex-direction: column; gap: var(--oc-gap, var(--oc-space-4)); }
+.oc-row     { display: flex; align-items: center; gap: var(--oc-gap, var(--oc-space-3)); }
+.oc-cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--oc-gap, var(--oc-space-2)); }
+.oc-spread  { display: flex; align-items: center; justify-content: space-between; gap: var(--oc-gap, var(--oc-space-4)); }
+.oc-grid {
+  display: grid;
+  gap: var(--oc-gap, var(--oc-space-5));
+  grid-template-columns: repeat(auto-fit, minmax(var(--oc-grid-min, 240px), 1fr));
+}
+
+.oc-divider {
+  height: 1px;
+  border: 0;
+  margin: 0;
+  background: linear-gradient(90deg, var(--oc-line-strong), var(--oc-line) 60%, transparent);
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* 5. BUTTONS                                                               */
+/* ------------------------------------------------------------------------ */
+/* The chamfered shape is drawn by two pseudo-elements — ::before is the
+   border, ::after the fill — so the button itself stays a plain rectangle and
+   its focus outline is never clipped. Variants only set the three
+   --oc-btn-* properties.                                                    */
+
+.oc-btn {
+  --oc-btn-fill: var(--oc-surface-3);
+  --oc-btn-edge: var(--oc-line-strong);
+  --oc-btn-ink: var(--oc-text);
+  --oc-btn-cut: var(--oc-cut);
+  --oc-chamfer: polygon(var(--oc-btn-cut) 0, 100% 0, 100% calc(100% - var(--oc-btn-cut)), calc(100% - var(--oc-btn-cut)) 100%, 0 100%, 0 var(--oc-btn-cut));
+  /* Inset 1px, the cut shrinks by 2-√2 so the diagonal border stays 1px. */
+  --oc-chamfer-inner: polygon(calc(var(--oc-btn-cut) - .59px) 0, 100% 0, 100% calc(100% - var(--oc-btn-cut) + .59px), calc(100% - var(--oc-btn-cut) + .59px) 100%, 0 100%, 0 calc(var(--oc-btn-cut) - .59px));
+
+  position: relative;
+  isolation: isolate;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--oc-space-2);
+  height: var(--oc-control-md);
+  padding: 0 var(--oc-space-5);
+  border: 0;
+  border-radius: 0;
+  background: none;
+  color: var(--oc-btn-ink);
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-md);
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  cursor: pointer;
+  user-select: none;
+  transition: transform var(--oc-dur-fast) var(--oc-ease-out), filter var(--oc-dur) var(--oc-ease-out), color var(--oc-dur) var(--oc-ease-out);
+}
+.oc-btn::before,
+.oc-btn::after {
+  content: "";
+  position: absolute;
+  z-index: -1;
+  transition: background var(--oc-dur) var(--oc-ease-out), opacity var(--oc-dur) var(--oc-ease-out);
+}
+.oc-btn::before { inset: 0; background: var(--oc-btn-edge); clip-path: var(--oc-chamfer); }
+.oc-btn::after  { inset: 1px; background: var(--oc-btn-fill); clip-path: var(--oc-chamfer-inner); }
+
+.oc-btn > svg { width: 1.15em; height: 1.15em; flex: none; }
+
+.oc-btn:hover { --oc-btn-fill: var(--oc-surface-4); --oc-btn-edge: var(--oc-line-bright); filter: none; }
+.oc-btn:active { transform: translateY(1px) scale(.985); }
+.oc-btn:focus-visible { outline: 2px solid var(--oc-cyan); outline-offset: 3px; }
+
+/* Primary — the one main action on a screen. Use it once per view. */
+.oc-btn--primary {
+  --oc-btn-fill: linear-gradient(180deg, var(--oc-lime-hi) -40%, var(--oc-lime) 55%, var(--oc-lime-lo) 160%);
+  --oc-btn-edge: var(--oc-lime-hi);
+  --oc-btn-ink: var(--oc-text-on-accent);
+  font-weight: 800;
+}
+.oc-btn--primary:hover {
+  --oc-btn-fill: linear-gradient(180deg, #e6ffbf -40%, var(--oc-lime-hi) 55%, var(--oc-lime) 160%);
+  --oc-btn-edge: #efffd6;
+  filter: drop-shadow(0 6px 18px rgb(182 246 107 / .28));
+}
+
+/* Secondary — supporting actions. */
+.oc-btn--secondary { /* the default look; class kept for clarity in markup */ }
+
+/* Tone — a coloured secondary, e.g. violet "Open Game DNA". */
+.oc-btn--tone {
+  --oc-btn-fill: color-mix(in srgb, var(--oc-tone) 13%, var(--oc-surface-2));
+  --oc-btn-edge: color-mix(in srgb, var(--oc-tone) 45%, transparent);
+  --oc-btn-ink: color-mix(in srgb, var(--oc-tone) 70%, white);
+}
+.oc-btn--tone:hover {
+  --oc-btn-fill: color-mix(in srgb, var(--oc-tone) 22%, var(--oc-surface-2));
+  --oc-btn-edge: color-mix(in srgb, var(--oc-tone) 75%, transparent);
+}
+
+/* Ghost — low-emphasis actions in toolbars and card footers. */
+.oc-btn--ghost {
+  --oc-btn-fill: transparent;
+  --oc-btn-edge: transparent;
+  --oc-btn-ink: var(--oc-text-2);
+}
+.oc-btn--ghost:hover {
+  --oc-btn-fill: rgb(255 255 255 / .05);
+  --oc-btn-edge: transparent;
+  --oc-btn-ink: var(--oc-text);
+}
+
+/* Danger — destructive actions only. */
+.oc-btn--danger {
+  --oc-btn-fill: color-mix(in srgb, var(--oc-red) 12%, var(--oc-surface-2));
+  --oc-btn-edge: color-mix(in srgb, var(--oc-red) 45%, transparent);
+  --oc-btn-ink: #ffb3b6;
+}
+.oc-btn--danger:hover { --oc-btn-fill: color-mix(in srgb, var(--oc-red) 22%, var(--oc-surface-2)); }
+
+/* Sizes. */
+.oc-btn--sm { --oc-btn-cut: 7px; height: var(--oc-control-sm); padding: 0 var(--oc-space-4); font-size: var(--oc-fs-base); }
+.oc-btn--lg { --oc-btn-cut: 14px; height: var(--oc-control-lg); padding: 0 var(--oc-space-7); font-size: var(--oc-fs-lg); }
+.oc-btn--block { display: flex; width: 100%; }
+
+/* Disabled — visibly unavailable, never hidden. */
+.oc-btn:disabled,
+.oc-btn[aria-disabled="true"] {
+  --oc-btn-fill: var(--oc-surface-2);
+  --oc-btn-edge: var(--oc-line);
+  --oc-btn-ink: var(--oc-text-3);
+  filter: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Locked — a feature outside the player's plan. Pair with a tier chip and an
+   explanation; the control must not pretend to work. */
+.oc-btn--locked,
+.oc-btn--locked:hover {
+  --oc-btn-fill: repeating-linear-gradient(135deg, var(--oc-surface-2) 0 8px, var(--oc-surface-1) 8px 16px);
+  --oc-btn-edge: var(--oc-line-strong);
+  --oc-btn-ink: var(--oc-text-3);
+  filter: none;
+  cursor: not-allowed;
+}
+.oc-btn--locked .oc-chip { margin-left: var(--oc-space-1); }
+
+/* Loading — keep the label for width, hide it, show the spinner. */
+.oc-btn[aria-busy="true"] { color: transparent; pointer-events: none; }
+.oc-btn[aria-busy="true"] > .oc-spinner { position: absolute; color: var(--oc-btn-ink); }
+
+/* Icon-only button — square, softly rounded; for toolbars. */
+.oc-icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--oc-radius-md);
+  background: transparent;
+  color: var(--oc-text-2);
+  cursor: pointer;
+  transition: background var(--oc-dur) var(--oc-ease-out), color var(--oc-dur) var(--oc-ease-out), border-color var(--oc-dur) var(--oc-ease-out);
+}
+.oc-icon-btn > svg { width: 18px; height: 18px; }
+.oc-icon-btn:hover { background: var(--oc-surface-3); color: var(--oc-text); border-color: var(--oc-line); filter: none; }
+.oc-icon-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--oc-tone) 14%, transparent);
+  border-color: color-mix(in srgb, var(--oc-tone) 40%, transparent);
+  color: var(--oc-tone);
+}
+
+/* Spinner. */
+.oc-spinner {
+  width: 1.1em;
+  height: 1.1em;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: oc-spin .7s linear infinite;
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* 6. CARDS                                                                 */
+/* ------------------------------------------------------------------------ */
+/* Hierarchy: canvas → card → well. A card never sits inside another card;
+   use .oc-well for a nested area.                                           */
+
+.oc-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-4);
+  padding: var(--oc-card-pad, var(--oc-space-6));
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-lg);
+  background: linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1) 70%);
+  box-shadow: var(--oc-highlight), var(--oc-shadow-1);
+  overflow: hidden;
+}
+.oc-card--compact { --oc-card-pad: var(--oc-space-4); gap: var(--oc-space-3); border-radius: var(--oc-radius-md); }
+.oc-card--roomy   { --oc-card-pad: var(--oc-space-8); gap: var(--oc-space-5); }
+
+.oc-card__header { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--oc-space-4); }
+.oc-card__heading { display: flex; flex-direction: column; gap: var(--oc-space-2); min-width: 0; }
+.oc-card__body { display: flex; flex-direction: column; gap: var(--oc-space-3); }
+.oc-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-3);
+  margin: auto calc(var(--oc-card-pad, var(--oc-space-6)) * -1) calc(var(--oc-card-pad, var(--oc-space-6)) * -1);
+  padding: var(--oc-space-3) var(--oc-card-pad, var(--oc-space-6));
+  border-top: 1px solid var(--oc-line);
+  background: rgb(0 0 0 / .14);
+}
+
+/* Interactive — the whole card is the target. */
+.oc-card--interactive {
+  cursor: pointer;
+  transition: transform var(--oc-dur) var(--oc-ease-out), border-color var(--oc-dur) var(--oc-ease-out), box-shadow var(--oc-dur) var(--oc-ease-out);
+}
+.oc-card--interactive:hover {
+  transform: translateY(-2px);
+  border-color: var(--oc-line-strong);
+  box-shadow: var(--oc-highlight), var(--oc-shadow-2);
+}
+.oc-card--interactive:active { transform: translateY(0); }
+.oc-card--interactive:focus-visible { outline: 2px solid var(--oc-cyan); outline-offset: 3px; }
+
+/* Accent — a tone edge and faint wash; marks the card that matters most. */
+.oc-card--accent {
+  border-color: color-mix(in srgb, var(--oc-tone) 26%, var(--oc-line));
+  background:
+    radial-gradient(120% 90% at 0% 0%, color-mix(in srgb, var(--oc-tone) 11%, transparent), transparent 55%),
+    linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1) 70%);
+}
+.oc-card--accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: linear-gradient(180deg, var(--oc-tone), color-mix(in srgb, var(--oc-tone) 20%, transparent));
+}
+
+/* Selected — e.g. the active timeline moment or chosen mission. */
+.oc-card[aria-selected="true"],
+.oc-card.is-selected {
+  border-color: color-mix(in srgb, var(--oc-tone) 60%, transparent);
+  box-shadow: var(--oc-highlight), var(--oc-shadow-2), 0 0 0 1px color-mix(in srgb, var(--oc-tone) 35%, transparent);
+}
+
+/* Hero — champion splash art fading into the surface behind the content.
+   Put the <img class="oc-card__art"> first; content follows. */
+.oc-card--hero {
+  --oc-card-pad: var(--oc-space-8);
+  min-height: 300px;
+  justify-content: flex-end;
+  border-radius: var(--oc-radius-xl);
+  background: var(--oc-surface-1);
+  box-shadow: var(--oc-highlight), var(--oc-shadow-3);
+}
+.oc-card__art {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--oc-art-focus, 70% 20%);
+  -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 62%);
+          mask-image: linear-gradient(90deg, transparent 8%, #000 62%);
+  opacity: .9;
+  transition: transform 1.2s var(--oc-ease-out), opacity var(--oc-dur-slow) var(--oc-ease-out);
+}
+.oc-card--hero::after {
+  /* Bottom and left scrim so text over the art always holds AA contrast. */
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(0deg, var(--oc-surface-1) 0%, rgb(13 19 28 / .55) 38%, transparent 70%),
+    linear-gradient(90deg, var(--oc-surface-1) 22%, rgb(13 19 28 / .3) 55%, transparent 80%);
+}
+.oc-card--hero > :not(.oc-card__art) { position: relative; z-index: 1; }
+.oc-card--hero:hover .oc-card__art { transform: scale(1.025); }
+
+/* Well — sunk area inside a card, for lists, timelines, nested stats. */
+.oc-well {
+  padding: var(--oc-space-4);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-well);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / .35);
+}
+
+/* Locked — content the plan doesn't include. The preview is blurred and an
+   explanation sits on top; nothing underneath is interactive. */
+.oc-locked { position: relative; }
+.oc-locked > .oc-locked__preview {
+  filter: blur(6px) saturate(.6);
+  opacity: .5;
+  pointer-events: none;
+  user-select: none;
+}
+.oc-locked__panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-6);
+  text-align: center;
+  background: radial-gradient(70% 70% at 50% 50%, rgb(5 8 13 / .82), rgb(5 8 13 / .55));
+}
+.oc-locked__panel .oc-body { max-width: 38ch; }
+
+/* Empty — honest "nothing yet" states; say why and what to do next. */
+.oc-empty {
+  display: grid;
+  justify-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-8) var(--oc-space-6);
+  border: 1px dashed var(--oc-line-strong);
+  border-radius: var(--oc-radius-lg);
+  text-align: center;
+  color: var(--oc-text-3);
+}
+.oc-empty > svg { width: 32px; height: 32px; color: var(--oc-text-3); opacity: .8; }
+.oc-empty .oc-body { max-width: 44ch; }
+
+/* Skeleton — loading placeholder; never use it to imply data exists. */
+.oc-skeleton {
+  border-radius: var(--oc-radius-sm);
+  background: linear-gradient(90deg, rgb(150 180 215 / .07) 0%, rgb(150 180 215 / .16) 40%, rgb(150 180 215 / .07) 80%) 0 0 / 300% 100%;
+  animation: oc-shimmer 1.6s var(--oc-ease-in-out) infinite;
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* 7. STAT TILES                                                            */
+/* ------------------------------------------------------------------------ */
+
+.oc-stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-1);
+  min-width: 0;
+}
+.oc-stat__value {
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-2xl);
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-text);
+}
+.oc-stat__value small { font-size: .55em; font-weight: 600; color: var(--oc-text-3); margin-left: 2px; }
+.oc-stat--lg .oc-stat__value { font-size: var(--oc-fs-4xl); }
+.oc-stat--sm .oc-stat__value { font-size: var(--oc-fs-xl); }
+
+/* Unavailable data — shown honestly, never as zero. */
+.oc-stat.is-unavailable .oc-stat__value { color: var(--oc-text-3); font-size: var(--oc-fs-lg); font-family: var(--oc-font-body); font-weight: 600; }
+
+.oc-delta {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-sm);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+}
+.oc-delta--up   { color: var(--oc-positive); }
+.oc-delta--down { color: var(--oc-negative); }
+.oc-delta--flat { color: var(--oc-text-3); }
+.oc-delta--up::before   { content: "▲"; font-size: .7em; }
+.oc-delta--down::before { content: "▼"; font-size: .7em; }
+
+
+/* ------------------------------------------------------------------------ */
+/* 8. PROGRESS RINGS                                                        */
+/* ------------------------------------------------------------------------ */
+/* Markup (pathLength="100" makes --oc-value a plain percentage):
+     <div class="oc-ring" style="--oc-value:62">
+       <svg viewBox="0 0 120 120" aria-hidden="true">
+         <circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/>
+         <circle class="oc-ring__fill"  cx="60" cy="60" r="52" pathLength="100"/>
+       </svg>
+       <div class="oc-ring__center"><b class="oc-ring__value">62</b></div>
+     </div>
+   Optional, with --oc-prev set: a .oc-ring__ghost circle before the fill
+   shows ground lost; a .oc-ring__mark circle after it ticks the old value.  */
+
+@property --oc-value {
+  syntax: '<number>';
+  inherits: true;
+  initial-value: 0;
+}
+
+.oc-ring {
+  --oc-ring-size: 112px;
+  --oc-ring-stroke: 8;
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: var(--oc-ring-size);
+  height: var(--oc-ring-size);
+  transition: --oc-value var(--oc-dur-reveal) var(--oc-ease-out);
+}
+.oc-ring > svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform: rotate(-90deg);
+}
+.oc-ring circle { fill: none; stroke-width: var(--oc-ring-stroke); }
+.oc-ring__track { stroke: rgb(150 180 215 / .1); }
+/* Ghost — only the ground lost since --oc-prev, drawn faintly past the fill.
+   Zero length when the value has grown. */
+.oc-ring__ghost {
+  stroke: color-mix(in srgb, var(--oc-tone) 42%, transparent);
+  stroke-dasharray: calc(max(var(--oc-prev, 0) - var(--oc-value), 0) * 1px) 100px;
+  stroke-dashoffset: calc(var(--oc-value) * -1px);
+}
+/* Mark — a tick across the ring at the previous value. */
+.oc-ring .oc-ring__mark {
+  stroke: var(--oc-text-2);
+  stroke-width: calc((var(--oc-ring-stroke) + 5) * 1px);
+  stroke-dasharray: .8px 99.2px;
+  stroke-dashoffset: calc((var(--oc-prev, 0) - .4) * -1px);
+  animation: oc-fade-in var(--oc-dur-slow) var(--oc-ease-out) var(--oc-dur-reveal) both;
+}
+.oc-ring__fill {
+  stroke: var(--oc-tone);
+  stroke-linecap: round;
+  stroke-dasharray: 100 100;
+  stroke-dashoffset: calc((100 - var(--oc-value)) * 1px);
+  filter: drop-shadow(0 0 5px color-mix(in srgb, var(--oc-tone) 45%, transparent));
+  animation: oc-ring-in var(--oc-dur-reveal) var(--oc-ease-out) both;
+}
+/* At 0 the round cap would still draw a dot — mark the ring empty. */
+.oc-ring.is-empty .oc-ring__fill { opacity: 0; }
+
+.oc-ring__center {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+  line-height: 1;
+}
+.oc-ring__value {
+  font-family: var(--oc-font-display);
+  font-size: calc(var(--oc-ring-size) * .3);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--oc-text);
+}
+/* Inner labels fit lg and xl rings only; smaller rings put the label below. */
+.oc-ring__label {
+  max-width: calc(var(--oc-ring-size) * .66);
+  overflow: hidden;
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  letter-spacing: .05em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--oc-text-3);
+}
+
+.oc-ring--sm { --oc-ring-size: 56px;  --oc-ring-stroke: 9; }
+.oc-ring--sm .oc-ring__value { font-size: var(--oc-fs-md); }
+.oc-ring--md { --oc-ring-size: 88px;  --oc-ring-stroke: 8; }
+.oc-ring--lg { --oc-ring-size: 148px; --oc-ring-stroke: 7; }
+.oc-ring--xl { --oc-ring-size: 200px; --oc-ring-stroke: 6; }
+
+/* Locked — not yet revealed (e.g. Game DNA before the three-game baseline).
+   The track goes dashed and no fill is drawn: no progress is implied. */
+.oc-ring--locked .oc-ring__track { stroke: rgb(150 180 215 / .22); stroke-dasharray: 2 4; }
+.oc-ring--locked .oc-ring__fill,
+.oc-ring--locked .oc-ring__ghost,
+.oc-ring--locked .oc-ring__mark { display: none; }
+.oc-ring--locked .oc-ring__value { color: var(--oc-text-3); }
+.oc-ring--locked .oc-ring__center > svg { width: calc(var(--oc-ring-size) * .2); height: calc(var(--oc-ring-size) * .2); color: var(--oc-text-3); }
+
+
+/* ------------------------------------------------------------------------ */
+/* 9. PROGRESS BARS & STEPS                                                 */
+/* ------------------------------------------------------------------------ */
+
+.oc-progress {
+  --oc-bar-h: 8px;
+  position: relative;
+  height: var(--oc-bar-h);
+  border-radius: var(--oc-radius-pill);
+  background: rgb(150 180 215 / .1);
+  overflow: hidden;
+}
+.oc-progress__fill {
+  height: 100%;
+  width: calc(var(--oc-value, 0) * 1%);
+  border-radius: inherit;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--oc-tone) 55%, transparent), var(--oc-tone));
+  box-shadow: 0 0 10px color-mix(in srgb, var(--oc-tone) 40%, transparent);
+  transform-origin: left center;
+  animation: oc-bar-in var(--oc-dur-reveal) var(--oc-ease-out) both;
+}
+.oc-progress--thin  { --oc-bar-h: 4px; }
+.oc-progress--thick { --oc-bar-h: 12px; }
+
+/* Steps — discrete verified progress, e.g. "2 of 3 baseline games". */
+.oc-steps {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
+  gap: 5px;
+}
+.oc-steps > span {
+  height: 8px;
+  background: rgb(150 180 215 / .1);
+  transform: skewX(-24deg);
+  transition: background var(--oc-dur-slow) var(--oc-ease-out), box-shadow var(--oc-dur-slow) var(--oc-ease-out);
+}
+.oc-steps > span:first-child { border-radius: 3px 0 0 3px; }
+.oc-steps > span:last-child  { border-radius: 0 3px 3px 0; }
+.oc-steps > .is-done { background: var(--oc-tone); box-shadow: 0 0 10px color-mix(in srgb, var(--oc-tone) 35%, transparent); }
+.oc-steps > .is-current { background: color-mix(in srgb, var(--oc-tone) 35%, transparent); animation: oc-pulse-soft 2s var(--oc-ease-in-out) infinite; }
+
+
+/* ------------------------------------------------------------------------ */
+/* 10. CHIPS & STATUS                                                       */
+/* ------------------------------------------------------------------------ */
+
+.oc-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 10px;
+  border: 1px solid color-mix(in srgb, var(--oc-tone) 32%, transparent);
+  border-radius: var(--oc-radius-sm);
+  background: color-mix(in srgb, var(--oc-tone) 11%, transparent);
+  color: color-mix(in srgb, var(--oc-tone) 72%, white);
+  font-family: var(--oc-font-body);
+  font-size: var(--oc-fs-xs);
+  font-weight: 700;
+  letter-spacing: .07em;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+  vertical-align: middle;
+}
+.oc-chip > svg { width: 13px; height: 13px; flex: none; }
+.oc-chip--lg { height: 32px; padding: 0 13px; font-size: var(--oc-fs-sm); }
+.oc-chip--sm { height: 22px; padding: 0 7px; font-size: 11px; letter-spacing: .06em; }
+
+/* Solid — for the one status that must stand out. */
+.oc-chip--solid {
+  border-color: transparent;
+  background: var(--oc-tone);
+  color: var(--oc-text-on-accent);
+}
+
+/* Semantic shorthands, so markup reads as meaning rather than colour. */
+.oc-chip--positive { --oc-tone: var(--oc-positive); }
+.oc-chip--warning  { --oc-tone: var(--oc-warning); }
+.oc-chip--negative { --oc-tone: var(--oc-negative); }
+.oc-chip--info     { --oc-tone: var(--oc-info); }
+.oc-chip--dna      { --oc-tone: var(--oc-dna); }
+.oc-chip--neutral  {
+  --oc-tone: var(--oc-text-3);
+  color: var(--oc-text-2);
+  background: rgb(255 255 255 / .04);
+  border-color: var(--oc-line-strong);
+}
+
+/* Status dot — leads a chip or stands alone. */
+.oc-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--oc-tone);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--oc-tone) 18%, transparent);
+}
+.oc-dot--live::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: var(--oc-tone);
+  animation: oc-ping 1.8s var(--oc-ease-out) infinite;
+}
+
+/* Plan tiers. */
+.oc-tier {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-sm);
+  font-weight: 800;
+  letter-spacing: .1em;
+  line-height: 1;
+  text-transform: uppercase;
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  padding-inline: 12px;
+}
+.oc-tier--free { background: var(--oc-surface-4); color: var(--oc-text-2); }
+.oc-tier--plus { background: color-mix(in srgb, var(--oc-cyan) 85%, white); color: #031518; }
+.oc-tier--pro  { background: linear-gradient(100deg, var(--oc-gold), #fff0c8 50%, var(--oc-gold)); color: #1d1405; }
+
+/* Status line — what the app is doing right now; lives in the header. */
+.oc-status {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: 6px 14px 6px 12px;
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-pill);
+  background: rgb(0 0 0 / .25);
+}
+.oc-status__text { display: grid; gap: 1px; line-height: 1.15; }
+.oc-status__title { font-size: var(--oc-fs-sm); font-weight: 700; color: var(--oc-text); }
+.oc-status__detail { font-size: var(--oc-fs-xs); color: var(--oc-text-3); }
+
+
+/* ------------------------------------------------------------------------ */
+/* 11. CHAMPION PORTRAIT                                                    */
+/* ------------------------------------------------------------------------ */
+/* Uses Data Dragon tiles. When the image fails or the champion is unknown,
+   drop the <img> and the frame shows the initials or "?" — never a guess.   */
+
+.oc-portrait {
+  --oc-portrait-size: 64px;
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: var(--oc-portrait-size);
+  height: var(--oc-portrait-size);
+  border-radius: var(--oc-radius-md);
+  background: linear-gradient(160deg, var(--oc-surface-4), var(--oc-surface-2));
+  box-shadow: inset 0 0 0 1px var(--oc-line-strong);
+  overflow: hidden;
+  font-family: var(--oc-font-display);
+  font-size: calc(var(--oc-portrait-size) * .36);
+  font-weight: 800;
+  color: var(--oc-text-3);
+  text-transform: uppercase;
+}
+.oc-portrait > img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scale(1.08);
+  transition: transform var(--oc-dur-slow) var(--oc-ease-out), filter var(--oc-dur-slow) var(--oc-ease-out);
+}
+.oc-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 2px var(--oc-portrait-ring, transparent), inset 0 -18px 24px -14px rgb(0 0 0 / .7);
+  pointer-events: none;
+}
+.oc-portrait--sm { --oc-portrait-size: 40px; border-radius: var(--oc-radius-sm); }
+.oc-portrait--lg { --oc-portrait-size: 96px; border-radius: var(--oc-radius-lg); }
+.oc-portrait--xl { --oc-portrait-size: 128px; border-radius: var(--oc-radius-lg); }
+
+.oc-portrait--ally  { --oc-portrait-ring: color-mix(in srgb, var(--oc-ally) 70%, transparent); }
+.oc-portrait--enemy { --oc-portrait-ring: color-mix(in srgb, var(--oc-enemy) 70%, transparent); }
+.oc-portrait--you   { --oc-portrait-ring: var(--oc-lime); box-shadow: 0 0 0 3px rgb(182 246 107 / .18), 0 8px 24px -8px rgb(182 246 107 / .35); }
+
+/* Hovering in champ select — not yet locked. */
+.oc-portrait.is-hovering > img { filter: saturate(.55) brightness(.85); }
+.oc-portrait.is-hovering::after { animation: oc-pulse-ring 1.6s var(--oc-ease-in-out) infinite; }
+
+/* Unknown — no pick yet. */
+.oc-portrait--unknown { background: repeating-linear-gradient(135deg, var(--oc-surface-2) 0 6px, var(--oc-surface-1) 6px 12px); }
+
+
+/* ------------------------------------------------------------------------ */
+/* 12. MOTION                                                               */
+/* ------------------------------------------------------------------------ */
+
+/* Entrance — add to items as they render; set --oc-i for a stagger. */
+.oc-enter {
+  animation: oc-enter var(--oc-dur-slow) var(--oc-ease-out) both;
+  animation-delay: calc(var(--oc-i, 0) * 45ms);
+}
+
+@keyframes oc-enter      { from { opacity: 0; transform: translateY(8px); } }
+@keyframes oc-fade-in    { from { opacity: 0; } }
+@keyframes oc-ring-in    { from { stroke-dashoffset: 100px; } }
+@keyframes oc-bar-in     { from { transform: scaleX(0); } }
+@keyframes oc-spin       { to { transform: rotate(360deg); } }
+@keyframes oc-shimmer    { from { background-position: 100% 0; } to { background-position: -50% 0; } }
+@keyframes oc-ping       { 0% { transform: scale(1); opacity: .7; } 80%, 100% { transform: scale(2.6); opacity: 0; } }
+@keyframes oc-pulse-soft { 50% { opacity: .45; } }
+@keyframes oc-pulse-ring { 50% { box-shadow: inset 0 0 0 2px var(--oc-portrait-ring, var(--oc-line-bright)), inset 0 -18px 24px -14px rgb(0 0 0 / .7); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .oc-app *,
+  .oc-app *::before,
+  .oc-app *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

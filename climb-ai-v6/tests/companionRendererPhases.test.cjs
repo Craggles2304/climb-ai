@@ -146,38 +146,13 @@ for(const [name,patch] of Object.entries(scenarios)){
   });
 }
 
-test('THE BUG: a live draft reaches the screen and the status line still updates',()=>{
+test('THE BUG: a live draft no longer stops render() before the status line',()=>{
   const {render,registry}=makeContext();
   render({...base,phase:'CHAMP_SELECT',draft:fullDraft(),matchup:matchup(),teamPlan:teamPlan()});
-  const text=id=>registry.get(id)?.textContent;
-
-  // The draft board is filled in...
-  assert.equal(text('draftBoardRole'),'ADC');
-  assert.equal(text('draftBoardPick'),'Jinx');
-  assert.equal(text('draftBoardSeen'),'5/5 ENEMIES SEEN');
-  assert.equal(registry.get('draftOurPicks').children.length,5);
-  assert.equal(registry.get('draftTheirPicks').children.length,5);
-  // ...the plan is drawn after it...
-  assert.match(text('simplePregameTitle'),/Jinx vs Caitlyn/);
-  // ...and the lines that render() writes LAST were reached, which is what a
-  // thrown error upstream prevents.
-  assert.equal(text('statusTitle'),'Your game plan');
-});
-
-test('each role the tracker can send is labelled for the draft board',()=>{
-  const {render,registry}=makeContext();
-  const expected={TOP:'TOP',JUNGLE:'JUNGLE',MIDDLE:'MID',MID:'MID',BOTTOM:'ADC',ADC:'ADC',UTILITY:'SUPPORT',SUPPORT:'SUPPORT'};
-  for(const [sent,shown] of Object.entries(expected)){
-    render({...base,phase:'CHAMP_SELECT',draft:{...fullDraft(),localRole:sent}});
-    assert.equal(registry.get('draftBoardRole').textContent,shown,`${sent} should read ${shown}`);
-  }
-});
-
-test('a draft with no role yet still renders, with a neutral label',()=>{
-  const {render,registry}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:{...fullDraft(),localRole:null,localChampionName:null,localLockedIn:false}});
-  assert.equal(registry.get('draftBoardRole').textContent,'—');
-  assert.equal(registry.get('draftBoardTitle').textContent,'DRAFT IN PROGRESS');
+  // The draft board and plan are native views now (companionDraftView.test.cjs);
+  // the lines render() writes LAST must still be reached.
+  assert.equal(registry.get('statusTitle')?.textContent,'Your game plan');
+  assert.doesNotMatch(rendererSource,/function renderDraftBoard|function ensureSimplePregame/);
 });
 
 test('the desktop app throwing in one phase does not poison the next',()=>{
@@ -189,97 +164,17 @@ test('the desktop app throwing in one phase does not poison the next',()=>{
 });
 
 
-test('rank-calibrated SILVER never masquerades as paid plan or persists on TFT/home',()=>{
-  const {render,registry,badge}=makeContext();
-  const silverCalibration={tier:'SILVER',rank:'UNRANKED',depth:3,visiblePoints:3,reviewPoints:2};
-  const paidPlan={...teamPlan(),coachLevel:silverCalibration,strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}};
-  render({...base,phase:'CHAMP_SELECT',matchup:matchup(),draft:fullDraft(),teamPlan:paidPlan});
-  assert.equal(badge.textContent,'PRO COACH');
-  assert.match(registry.get('simplePregameTier').textContent,/PRO COACH/);
-  assert.doesNotMatch(registry.get('simplePregameTier').textContent,/SILVER COACH/);
-  render({...base,phase:'RECORDING',teamPlan:paidPlan,matchup:matchup()});
-  assert.equal(badge.textContent,'PRO COACH');
-  render({...base,phase:'WAITING',playerHome:{tier:'PRO',ok:false}});
-  assert.equal(badge.textContent,'PRO COACH');
-  render({...base,phase:'WAITING',tftRecorder:{state:'ARMED'},playerHome:null});
-  assert.equal(badge.textContent,'OP CLIMB COACH');
-});
 
-
-test('premium Companion Home displays genuine baseline, rank and a primary development action',()=>{
-  const {render,registry}=makeContext();
-  const home={ok:true,
-    player:{gameName:'Player123',tagline:'EUW',rank:'PLATINUM III',role:'ADC'},
-    tier:'PRO',tierView:{label:'PLAYER MEMORY'},
-    baseline:{ready:false,games:1,required:3},journey:{phase:'BASELINE',status:'BASELINE 1/3',title:'Play baseline game 2.',body:'Play normally.',progress:'1/3'},
-    roleProfiles:[],dna:[],missions:[],selectedRole:'ADC',primaryRole:'ADC',
-  };
+// Home and My Game DNA moved to native views; companionHomeView.test.cjs runs them.
+test('Home is a native view; the renderer still survives a waiting state with player data',()=>{
+  const {render}=makeContext();
+  const home={ok:true,player:{gameName:'Player123',tagline:'EUW',rank:'PLATINUM III',role:'ADC'},tier:'PRO',
+    baseline:{ready:false,games:1,required:3},roleProfiles:[],dna:[],missions:[],selectedRole:'ADC',primaryRole:'ADC'};
   assert.doesNotThrow(()=>render({...base,phase:'WAITING',playerHome:home}));
-  const val=id=>registry.get(id)?.textContent;
-  assert.equal(val('playerHomeName'),'Player123 #EUW');
-  assert.equal(val('playerHomeTier'),'PRO');
-  assert.equal(val('playerHomeRank'),'PLATINUM III · ADC');
-  assert.equal(val('playerHomeScoreValue'),'1/3');
-  assert.equal(val('playerHomeScoreKind'),'BASELINE');
-  assert.equal(val('playerHomeSpotlightTitle'),'BUILD YOUR BASELINE');
-  assert.equal(val('playerHomeNextButton'),'OPEN MY CLIMB ↗');
+  assert.doesNotMatch(rendererSource,/function renderPlayerHome/);
+  assert.match(html,/<script src="home-view\.js"><\/script>/);
+  assert.match(html,/href="home\.css"/);
+  const tokens=fs.readFileSync(path.join(electron,'design-system.css'),'utf8');
+  assert.match(tokens,/prefers-reduced-motion/);
 });
 
-test('premium Companion Home uses real mission repetitions, not time-played XP',()=>{
-  const source=fs.readFileSync(path.join(electron,'renderer.js'),'utf8');
-  const style=fs.readFileSync(path.join(electron,'premium-home.css'),'utf8');
-  const html=fs.readFileSync(path.join(electron,'index.html'),'utf8');
-  assert.match(source,/nextMission\?\.confirmed/);
-  assert.match(source,/nextMission\?\.required/);
-  assert.match(source,/playerHomeOrbitFill/);
-  assert.match(html,/premium-home\.css/);
-  assert.match(style,/prefers-reduced-motion/);
-  assert.match(style,/\.player-home-hero/);
-  assert.match(style,/\.player-home-next-button/);
-});
-
-
-test('premium champ select shows actual allies/enemies revealed and protects unknown picks',()=>{
-  const {render,registry}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:{...fullDraft(),enemies:fullDraft().enemies.slice(0,2)},matchup:matchup(),teamPlan:teamPlan()});
-  assert.equal(registry.get('draftAllyCount').textContent,'5 / 5 PICKED');
-  assert.equal(registry.get('draftEnemyCount').textContent,'2 / 5 SEEN');
-  assert.equal(registry.get('draftBoardSeen').textContent,'2/5 ENEMIES SEEN');
-  assert.equal(registry.get('draftBoardReadBar').style.width,'40%');
-  assert.equal(registry.get('draftTheirPicks').children.length,5);
-  assert.equal(registry.get('draftTheirPicks').children.filter(x=>x.className.includes('draft-pending')).length,3);
-  assert.equal(registry.get('draftOurPicks').children.length,5);
-  assert.equal(registry.get('draftOurPicks').children[3].className.includes('es-you'),true);
-  assert.equal(registry.get('draftOurPicks').children[3].className.includes('es-locked'),true);
-});
-
-test('draft without an opponent stays a preview and never invents enemy info',()=>{
-  const {render,registry}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:{localRole:'MIDDLE',localChampionName:'Ahri',localLockedIn:false,allies:[],enemies:[],bans:{allies:[],enemies:[]}},matchup:{status:'READY',source:'CHAMPION_HOVER',provisional:true,champion:'Ahri',role:'MID',opponent:null,plan:{...plan(),you:{name:'Ahri'}}},teamPlan:null});
-  assert.equal(registry.get('draftBoardSeen').textContent,'0/5 ENEMIES SEEN');
-  assert.equal(registry.get('draftBoardReadBar').style.width,'0%');
-  assert.equal(registry.get('draftBoardState').textContent,'HOVERING');
-  assert.equal(registry.get('simplePregamePill').textContent,'PREVIEW');
-  assert.match(registry.get('simplePregameTitle').textContent,/Ahri preview/);
-  assert.equal(registry.get('draftTheirPicks').children.length,5);
-  assert.equal(registry.get('draftTheirPicks').children.every(x=>x.className.includes('draft-pending')),true);
-});
-
-test('premium draft uses responsive visual system while keeping the current data fields',()=>{
-  const stylesheet=fs.readFileSync(path.join(electron,'premium-champ-select.css'),'utf8');
-  const script=fs.readFileSync(path.join(electron,'renderer.js'),'utf8');
-  assert.match(html,/premium-champ-select\.css/);
-  assert.match(stylesheet,/prefers-reduced-motion/);
-  assert.match(stylesheet,/premium-draft-rosters/);
-  assert.match(stylesheet,/premium-plan-duel/);
-  assert.match(script,/id="draftOurPicks"/);
-  assert.match(script,/id="draftTheirPicks"/);
-  assert.match(script,/id="simplePregameMission"/);
-});
-
-
-test('champ-select coach badge respects paid membership rather than rank calibration',()=>{
-  const {render,badge}=makeContext();
-  render({...base,phase:'CHAMP_SELECT',draft:fullDraft(),matchup:matchup(),teamPlan:{...teamPlan(),strategyAccess:{tier:'PRO',paidStrategy:true,deepStrategy:true}}});
-  assert.equal(badge.textContent,'PRO COACH');
-});

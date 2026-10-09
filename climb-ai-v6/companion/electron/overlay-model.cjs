@@ -19,16 +19,34 @@ function nextHudMode(mode){
   const index=HUD_MODES.indexOf(String(mode||'').toUpperCase());
   return HUD_MODES[(index+1)%HUD_MODES.length];
 }
+/** Up to three pre-game actions: the role win path if the plan has one, else the lane rules. */
+function frozenActions(team,plan){
+  const steps=Array.isArray(team?.roleWinCondition?.steps)?team.roleWinCondition.steps:[];
+  if(steps.length===5){
+    const join=(...values)=>values.map(step=>limit(step?.value,70)).filter(Boolean).join(' → ');
+    return [join(steps[0]),join(steps[1],steps[2]),join(steps[3],steps[4])].filter(Boolean);
+  }
+  const rules=Array.isArray(plan?.rules)&&plan.rules.length?plan.rules:Array.isArray(plan?.winCondition)?plan.winCondition:[];
+  return rules.map(rule=>limit(rule,120)).filter(Boolean).slice(0,3);
+}
+/** Snapshot of the plan locked in champion select. Missing fields stay empty
+ *  so the HUD hides them rather than showing generic advice. */
 function freezeLeaguePlan(state){
   const team=state?.teamPlan;
   if(!team||typeof team!=='object')return null;
   const mission=Array.isArray(team.missionTips)?team.missionTips[0]:null;
+  const baseline=team.dnaBaseline&&team.dnaBaseline.ready===false
+    ?Object.freeze({games:clamp(team.dnaBaseline.games,0,9,0),required:clamp(team.dnaBaseline.required,1,9,3)}):null;
   return Object.freeze({
-    champion:limit(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.draft?.localChampionName||'YOUR CHAMPION',35),
+    champion:limit(state?.matchup?.champion||state?.matchup?.plan?.you?.name||state?.draft?.localChampionName||'',35),
     role:limit(state?.matchup?.role||state?.matchup?.plan?.role||state?.draft?.localRole||'',18),
-    winCondition:limit(team.ourWinCondition||team.roleWinCondition?.summary||team.yourJob||'Play your role within the team plan.'),
-    mission:limit(mission?.cue||mission?.gameRule||mission?.title||'Play your pre-game learning mission.'),
-    avoid:limit(team.biggestThrow||team.roleWinCondition?.lossCondition||'Avoid unnecessary risks.'),
+    winCondition:limit(team.ourWinCondition||team.roleWinCondition?.summary||''),
+    job:limit(team.yourJob||''),
+    mission:baseline?'':limit(mission?.cue||mission?.gameRule||mission?.title||''),
+    avoid:limit(team.biggestThrow||team.roleWinCondition?.lossCondition||''),
+    threat:limit(team.theirWinCondition||''),
+    actions:Object.freeze(frozenActions(team,state?.matchup?.plan)),
+    baseline,
   });
 }
 function overlayView(state,options={}){

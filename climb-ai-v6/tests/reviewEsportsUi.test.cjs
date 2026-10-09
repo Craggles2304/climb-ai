@@ -4,7 +4,8 @@ const fs=require('node:fs');
 const path=require('node:path');
 
 const root=path.join(__dirname,'..');
-const esports=fs.readFileSync(path.join(root,'companion','electron','review-esports.js'),'utf8');
+// The esports review layer was replaced by the native review view.
+const esports=fs.readFileSync(path.join(root,'companion','electron','review-view.js'),'utf8');
 const core=fs.readFileSync(path.join(root,'companion','electron','review-v2-core.js'),'utf8');
 const loader=fs.readFileSync(path.join(root,'companion','electron','review-v2.js'),'utf8');
 const pkg=JSON.parse(fs.readFileSync(path.join(root,'companion','package.json'),'utf8'));
@@ -15,27 +16,28 @@ const learningContext=fs.readFileSync(path.join(root,'components','LearningPlanC
 const decisionGraph=fs.readFileSync(path.join(root,'lib','decisionGraph.ts'),'utf8');
 const draftCoach=fs.readFileSync(path.join(root,'app','api','live','draft-coach','route.ts'),'utf8');
 
-test('post-game review has a champion-led esports hero instead of a report-only header',()=>{
-  for(const label of ['POST MATCH // PERFORMANCE REVIEW','MATCH INTELLIGENCE // VERIFIED REVIEW','GAME DEBRIEF','KDA','CS / MIN','MATCH TIME','DECISIONS']){
+test('post-game review has a champion-led hero instead of a report-only header',()=>{
+  for(const label of ['Post-game review · ','KDA','CS / min','Duration','Decisions reviewed']){
     assert.ok(esports.includes(label),`missing ${label}`);
   }
-  assert.ok(esports.includes('ddragon.leagueoflegends.com/cdn/img/champion/splash/'));
-  assert.ok(esports.includes('op-es-art'));
-  assert.ok(esports.includes('op-es-board'));
+  const ui=fs.readFileSync(path.join(root,'companion','electron','oc-ui.js'),'utf8');
+  assert.ok(ui.includes('ddragon.leagueoflegends.com/cdn/img/champion'));
+  assert.ok(esports.includes('ui.splashUrl(champion)'));
+  assert.ok(esports.includes('oc-review-hero'));
 });
 
 test('post-game review uses recorded evidence as a match-moments timeline',()=>{
-  assert.ok(esports.includes('MATCH MOMENTS'));
-  assert.ok(esports.includes("item?.verified!==false"));
-  assert.ok(esports.includes('item?.atSeconds'));
-  assert.ok(esports.includes("item.kind==='fix'?'fix':''"));
-  assert.ok(esports.includes('(seconds/duration)*100'));
+  assert.ok(esports.includes('Decision moments'));
+  assert.ok(esports.includes("p.verified!==false&&finite(p.atSeconds)"));
+  assert.ok(esports.includes("['GOOD','IMPROVE'].includes(upper(n?.verdict))&&finite(n?.atSeconds)"));
+  assert.ok(esports.includes("kind:good?'good':'review'"));
+  assert.ok(esports.includes('at/duration*100'));
 });
 
 test('next-game coaching call is visually promoted without inventing a performance score',()=>{
-  assert.ok(esports.includes('NEXT GAME // ONE CALL'));
-  assert.ok(esports.includes('review?.nextFocus?.title'));
-  assert.ok(esports.includes('review?.nextFocus?.rule'));
+  assert.ok(esports.includes('Next game · one focus'));
+  assert.ok(esports.includes('review.nextFocus?.title'));
+  assert.ok(esports.includes('review.nextFocus?.rule'));
   assert.ok(!esports.includes('PERFORMANCE SCORE'));
   assert.ok(!esports.includes('RATING / 100'));
 });
@@ -47,10 +49,10 @@ test('completed review has an explicit route back to ready for the next game',()
   assert.ok(core.includes('window.opCompanion?.restart?.()'));
 });
 
-test('review layer loads after the evidence renderer and Companion version matches this release',()=>{
+test('deep-analysis core still loads, the retired esports layer does not, and the version matches this release',()=>{
   const coreIndex=loader.indexOf("load('review-v2-core.js')");
-  const esportsIndex=loader.indexOf("load('review-esports.js')");
-  assert.ok(coreIndex>=0&&esportsIndex>coreIndex);
+  assert.ok(coreIndex>=0);
+  assert.ok(!loader.includes("load('review-esports.js')"));
   const [major,minor,patch]=pkg.version.split('.').map(Number);assert.ok(major>0||minor>7||(minor===7&&patch>=36));
 });
 

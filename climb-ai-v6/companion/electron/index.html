@@ -7,29 +7,64 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="design-system.css">
 <link rel="stylesheet" href="styles.css">
-<link rel="stylesheet" href="lane.css">
 <link rel="stylesheet" href="updates.css">
 <link rel="stylesheet" href="arena.css">
-<link rel="stylesheet" href="brand-sync.css">
 <link rel="stylesheet" href="champion-hub.css">
-<link rel="stylesheet" href="player-home.css">
 <link rel="stylesheet" href="match-plan-v4.css">
-<link rel="stylesheet" href="header-updates.css">
 <link rel="stylesheet" href="esports-v2.css">
 <link rel="stylesheet" href="live-mission-hud.css">
 <link rel="stylesheet" href="tft-coach-hud.css">
-<link rel="stylesheet" href="premium-home.css">
-<link rel="stylesheet" href="premium-champ-select.css">
 <link rel="stylesheet" href="premium-review.css">
+<link rel="stylesheet" href="broadcast-v2.css">
+<link rel="stylesheet" href="brand-sync.css">
+<!-- New design system and views load last. -->
+<link rel="stylesheet" href="shell.css">
+<link rel="stylesheet" href="home.css">
+<link rel="stylesheet" href="draft.css">
+<link rel="stylesheet" href="review.css">
 </head>
-<body>
-<main class="shell">
-  <header class="brand esports-brand">
-    <div class="brand-lockup"><div class="mark">OP</div><div><h1>OP CLIMB</h1><p>COMPANION · MATCH INTELLIGENCE</p></div></div>
-    <div class="header-tools"><button id="headerUpdates" class="header-updates" type="button" aria-controls="settings" aria-expanded="false">UPDATES &amp; SETTINGS</button><div class="brand-signal"><span></span><b>LIVE COACHING SYSTEM</b><small id="companionVersionBadge" style="margin-left:8px;opacity:.55;font-family:IBM Plex Mono,monospace">v—</small></div></div>
-  </header>
+<body class="oc-app">
+<div id="ocShell" class="oc-shell" data-route="home">
+  <aside class="oc-sidebar" aria-label="OP CLIMB Companion">
+    <div class="oc-brand"><span class="oc-brand__mark" aria-hidden="true">OP</span><span class="oc-brand__word">Climb<small>Companion</small></span></div>
+    <div id="ocIdentity" class="oc-identity" data-link="warn">
+      <div id="ocIdentityAvatar" class="oc-identity__avatar" aria-hidden="true">OP</div>
+      <div class="oc-identity__text"><span id="ocIdentityName" class="oc-identity__name">Starting…</span><span id="ocIdentityRank" class="oc-identity__rank">&nbsp;</span></div>
+      <div id="ocIdentityMeta" class="oc-identity__meta"></div>
+    </div>
+    <nav id="ocNav" class="oc-nav" aria-label="Main"></nav>
+    <div class="oc-sidebar__spacer"></div>
+    <div id="ocNavFooter" class="oc-sidebar__footer">
+      <div class="oc-sidebar__meta"><span id="ocVersion" class="oc-sidebar__version"></span><button id="ocCollapse" class="oc-icon-btn oc-sidebar__collapse" type="button" aria-label="Collapse sidebar"></button></div>
+    </div>
+  </aside>
 
+  <div class="oc-main">
+    <header class="oc-header">
+      <div class="oc-header__title"><span id="ocRouteEyebrow" class="oc-eyebrow">Your climb</span><h1 id="ocRouteTitle" class="oc-h1" tabindex="-1">Home</h1></div>
+      <div class="oc-header__tools"><button id="ocUpdateChip" class="oc-chip oc-chip--lg oc-chip--warning" type="button" hidden>Update available</button><div id="ocSystemStatus" class="oc-status" role="status"></div></div>
+    </header>
+
+    <section id="ocStrip" class="oc-strip" aria-label="Where you are and what to do next">
+      <div id="ocLoop" class="oc-loop" role="img" aria-label="Match loop">
+        <div id="ocLoopSteps" class="oc-loop__steps" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        <span id="ocLoopLabel" class="oc-loop__label">Between games</span>
+      </div>
+      <div class="oc-strip__copy" aria-live="polite">
+        <span id="ocNext" class="oc-strip__next"></span>
+        <span id="ocNow" class="oc-strip__now"></span>
+      </div>
+      <button id="ocNextAction" class="oc-btn oc-btn--primary oc-btn--sm oc-strip__action" type="button" hidden></button>
+      <span id="ocStripFeedback" class="oc-strip__feedback" role="status"></span>
+    </section>
+
+    <div id="ocView" class="oc-view">
+      <div id="ocViewInner" class="oc-view__inner">
+        <section id="ocRouteState" class="oc-route-state" hidden></section>
+        <div id="ocNative" class="oc-native" hidden></div>
+<main id="legacyView">
   <section id="setup" class="card hidden">
     <div class="eyebrow">ONE-TIME SETUP</div>
     <h2>Connect this Windows PC</h2>
@@ -80,196 +115,6 @@
     </div>
   </section>
 
-  <section id="matchup" class="card matchup-card hidden" aria-live="polite">
-    <div id="matchupLoading" class="matchup-state hidden">
-      <div class="eyebrow">PREGAME BRIEFING</div>
-      <h2>Building your game plan…</h2>
-      <p>Reading your role, current champion hover and the live draft. The preview upgrades automatically when you lock in.</p>
-    </div>
-
-    <div id="matchupError" class="matchup-state hidden">
-      <div class="eyebrow">PREGAME BRIEFING</div>
-      <h2>Plan unavailable</h2>
-      <p id="matchupErrorCopy">OP CLIMB could not build this plan.</p>
-    </div>
-
-    <div id="matchupReady" class="hidden">
-      <section class="arena-hero" aria-label="Lane matchup">
-        <div class="arena-side arena-you">
-          <div id="youSplash" class="arena-splash"></div>
-          <div class="arena-shade"></div>
-          <div class="arena-champion">
-            <span class="arena-side-label">YOU</span>
-            <div class="arena-champion-lockup"><div class="arena-portrait"><img id="youPortrait" alt="Your champion"></div><div><small id="heroYouRole">LOCKED</small><h2 id="matchupYou">—</h2></div></div>
-          </div>
-        </div>
-        <div class="arena-vs">
-          <span>LANE</span>
-          <strong id="matchupVs">VS</strong>
-          <div id="matchupEdge" class="edge-pill">YOUR POWER CURVE</div>
-          <small id="matchupRole">GAME PLAN</small>
-        </div>
-        <div class="arena-side arena-enemy">
-          <div id="themSplash" class="arena-splash"></div>
-          <div class="arena-shade"></div>
-          <div class="arena-champion enemy-align">
-            <span class="arena-side-label">OPPONENT</span>
-            <div class="arena-champion-lockup enemy-lockup"><div><small id="heroThemRole">MATCHUP</small><h2 id="matchupThem">PENDING</h2></div><div class="arena-portrait"><img id="themPortrait" alt="Lane opponent"></div></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="command-deck">
-        <div class="command-main">
-          <div class="command-kicker"><span></span> WIN THIS LANE</div>
-          <h1 id="heroCommand">BUILD THE FIRST CLEAN ADVANTAGE</h1>
-          <p id="matchupSummary">Your plan is ready.</p>
-        </div>
-        <div class="mission-grid">
-          <article><span>YOUR JOB</span><strong id="yourJob">Stay connected to the fight.</strong></article>
-          <article><span>LEAD PATH</span><strong id="leadChain">TRADE → HP → WAVE → RESET → ITEM</strong></article>
-        </div>
-      </section>
-
-      <div class="renderer-hooks" aria-hidden="true">
-        <span id="firstSpikeLevel">LV 2</span><p id="firstSpikeText"></p><span id="majorSpikeLevel">LV 6</span><p id="majorSpikeText"></p>
-      </div>
-
-      <section class="power-radar">
-        <div class="arena-section-head"><div><span class="eyebrow">POWER SPIKE RADAR</span><h3>When your fight changes</h3></div><small>Click a level for full detail</small></div>
-        <div id="powerTimeline" class="power-timeline"></div>
-      </section>
-
-      <section class="tactical-board">
-        <div class="arena-section-head"><div><span class="eyebrow">LANE COMMANDS</span><h3>Only remember these first</h3></div><small id="tacticalContext">Matchup plan</small></div>
-        <div class="tactical-grid">
-          <button class="tactical-call trade-call" data-open-tab="trades"><span>01 · TRADE</span><strong id="tacticalTradeTitle">SHORT TRADE → RESET</strong><p id="tacticalTradeCopy">Take the first clean hit, then leave before the trade extends.</p></button>
-          <button class="tactical-call commit-call" data-open-tab="spikes"><span>02 · COMMIT</span><strong id="tacticalCommitTitle">CREATE THE EDGE FIRST</strong><p id="tacticalCommitCopy">All-in after HP, cooldown or wave advantage.</p></button>
-          <button class="tactical-call wave-call" data-open-tab="lead"><span>03 · WAVE</span><strong id="tacticalWaveTitle">MAKE THEM WALK UP</strong><p id="tacticalWaveCopy">Use the wave to force the opponent into your preferred range.</p></button>
-          <button class="tactical-call danger-call" data-open-tab="trades"><span>04 · NEVER</span><strong id="tacticalNeverTitle">DON'T GIVE THEIR FIGHT</strong><p id="tacticalNeverCopy">Do not turn a small advantage into the extended fight they want.</p></button>
-        </div>
-      </section>
-
-      <div class="rules-brief">
-        <div><span>3 THINGS TO REMEMBER</span><small>Read these before loading screen</small></div>
-        <ol id="matchupRules"></ol>
-      </div>
-
-      <details id="laneDuelBrief" class="lane-duel hidden">
-        <summary><div><span class="eyebrow">LANE DETAIL</span><strong id="laneDuelTitle">HOW TO WIN THE MATCHUP</strong></div><b>OPEN</b></summary>
-        <div class="lane-duel-body">
-          <div class="lane-duel-head"><strong id="laneAdvantage">Create the first advantage.</strong></div>
-          <div class="lane-action-grid">
-            <article class="lane-action hero"><span>YOUR PATTERN</span><strong>DO THIS REPEATEDLY</strong><p id="laneYourPattern"></p></article>
-            <article class="lane-action"><span>THEY WANT</span><strong>DENY THIS</strong><p id="laneTheirPattern"></p></article>
-            <article class="lane-action"><span>KILL WINDOW</span><strong>WHEN TO COMMIT</strong><p id="laneKillWindow"></p></article>
-            <article class="lane-action"><span>WAVE</span><strong>WHERE YOU WANT IT</strong><p id="laneWave"></p></article>
-            <article class="lane-action danger"><span>NEVER</span><strong>BIGGEST LANE MISTAKE</strong><p id="laneNever"></p></article>
-          </div>
-        </div>
-      </details>
-
-      <section id="botLaneBrief" class="botlane-brief hidden">
-        <div class="arena-section-head botlane-title"><div><span class="eyebrow">BOT LANE 2V2</span><h3>Fight the lane as four champions</h3></div><span id="botConfidence" class="bot-confidence">ROLE READ</span></div>
-
-        <div class="duo-stage">
-          <div class="duo-team ours">
-            <div class="duo-portraits"><div><img id="botYourAdcImg" alt="Your ADC"></div><div><img id="botYourSupportImg" alt="Your support"></div></div>
-            <div class="duo-copy"><span>OUR BOT LANE</span><strong id="botYourLane">Your duo</strong><small id="botOurIdentity">OUR DUO</small></div>
-          </div>
-          <div class="duo-vs">2V2</div>
-          <div class="duo-team theirs">
-            <div class="duo-copy enemy-copy"><span>THEIR BOT LANE</span><strong id="botEnemyLane">Enemy duo</strong><small id="botTheirIdentity">THEIR DUO</small></div>
-            <div class="duo-portraits"><div><img id="botEnemyAdcImg" alt="Enemy ADC"></div><div><img id="botEnemySupportImg" alt="Enemy support"></div></div>
-          </div>
-        </div>
-
-        <div class="bot-main-call">
-          <span>HOW TO PLAY THE LANE</span>
-          <strong id="botLaneCallLabel">PLAY THE FIRST CLEAN EDGE</strong>
-          <p id="botLaneCallSummary"></p>
-        </div>
-
-        <div class="bot-key-grid">
-          <article><span>LEVEL 2</span><strong id="botLevel2Label">—</strong><p id="botLevel2Summary"></p></article>
-          <article><span>TRADE</span><strong id="botTradeLabel">—</strong><p id="botTradeSummary"></p></article>
-          <article><span>WAVE</span><strong id="botWaveLabel">—</strong><p id="botWaveSummary"></p></article>
-          <article><span>ALL-IN</span><strong id="botAllInLabel">—</strong><p id="botAllInSummary"></p></article>
-        </div>
-
-        <div class="bot-danger"><div><span>THEIR 2V2 WIN CONDITION</span><strong id="botDangerLabel">DENY THEIR ENTRY</strong></div><p id="botDangerSummary"></p></div>
-
-        <details class="bot-engine-details">
-          <summary><div><span>MATCHUP LAB 2V2 MODEL</span><small>4-champion shared-clock simulation</small></div><b>OPEN</b></summary>
-          <div class="bot-engine">
-            <div class="bot-engine-head"><span id="botEngineState">MATCHUP LAB · READY</span><small>Static pregame fight-shape model</small></div>
-            <div class="bot-engine-grid">
-              <div><span>LV 2 READ</span><b id="botEngineLevel2">Waiting…</b></div>
-              <div><span>LV 6 READ</span><b id="botEngineLevel6">Waiting…</b></div>
-              <div><span>FOCUS</span><b id="botEngineFocus">Waiting…</b></div>
-            </div>
-            <small id="botEngineNote"></small>
-          </div>
-        </details>
-
-        <details class="bot-extra">
-          <summary>MORE 2V2 DETAIL <b>OPEN</b></summary>
-          <div><span>FOCUS RULE</span><p id="botFocus"></p></div>
-          <div><span>IF SUPPORT ROAMS</span><p id="botRoam"></p></div>
-          <small id="botRoleNote"></small>
-        </details>
-      </section>
-
-      <section id="teamBrief" class="team-brief hidden">
-        <div class="team-title-row">
-          <div><span class="eyebrow">5V5 ANALYST DESK</span><h3>Our team vs their team</h3></div>
-          <small id="teamNote">Composition still forming.</small>
-        </div>
-
-        <div class="versus-grid">
-          <div class="team-roster ours"><div class="team-label"><span>OUR TEAM</span><b id="ourIdentity">—</b></div><div id="ourTeamPicks" class="pick-row"></div></div>
-          <div class="versus-mark"><span>VS</span></div>
-          <div class="team-roster theirs"><div class="team-label"><span>THEIR TEAM</span><b id="theirIdentity">—</b></div><div id="theirTeamPicks" class="pick-row"></div></div>
-        </div>
-
-        <div class="gameplan-grid">
-          <article class="gameplan-card primary-plan"><span>TEAMFIGHT</span><strong id="teamfightLabel">—</strong><p id="teamfightSummary">Waiting for enough champion data.</p></article>
-          <article class="gameplan-card"><span>SIDELANE</span><strong id="sidelaneLabel">—</strong><p id="sidelaneSummary">Waiting for your role.</p></article>
-          <article class="gameplan-card"><span>WHO STARTS</span><strong>FIRST CONTACT</strong><p id="startFight">Waiting for team composition.</p></article>
-          <article class="gameplan-card"><span>PLAY AROUND</span><strong>FORMATION</strong><p id="playAround">Stay connected to your comp.</p></article>
-          <article class="gameplan-card danger-plan"><span>THEIR WIN CONDITION</span><strong>DENY THIS</strong><p id="theirWin">Waiting for enemy picks.</p></article>
-          <article class="gameplan-card danger-plan"><span>BIGGEST THROW</span><strong>AVOID THIS</strong><p id="biggestThrow">Do not break formation for a low-value chase.</p></article>
-        </div>
-      </section>
-
-      <details id="deepDive" class="deep-dive">
-        <summary><div><span id="deepDiveTitle">FULL CHAMPION ANALYSIS</span><small>Power spikes, trades, item tempo and ahead/even/behind plans</small></div><b>OPEN</b></summary>
-        <div class="deep-body">
-          <div class="matchup-tabs" role="tablist" aria-label="Detailed plan sections">
-            <button class="matchup-tab active" data-matchup-tab="overview" role="tab">OVERVIEW</button>
-            <button class="matchup-tab" data-matchup-tab="spikes" role="tab">POWER SPIKES</button>
-            <button class="matchup-tab" data-matchup-tab="lead" role="tab">GET THE LEAD</button>
-            <button class="matchup-tab" data-matchup-tab="trades" role="tab">TRADES</button>
-            <button class="matchup-tab" data-matchup-tab="items" role="tab">ITEM TEMPO</button>
-            <button class="matchup-tab" data-matchup-tab="states" role="tab">AHEAD / EVEN / BEHIND</button>
-          </div>
-
-          <div class="matchup-panel" data-matchup-panel="overview">
-            <div class="section-title"><span>HOW YOU WIN</span><small>PRECOMPUTED PLAN</small></div>
-            <ol id="winCondition" class="plan-list numbered"></ol>
-          </div>
-          <div class="matchup-panel hidden" data-matchup-panel="spikes"><div class="section-title"><span>POWER SPIKE LADDER</span><small>WHEN YOUR TOOLS CHANGE</small></div><div id="powerSpikes" class="spike-grid"></div></div>
-          <div class="matchup-panel hidden" data-matchup-panel="lead"><div class="three-col"><div class="plan-block"><span>1 · CREATE</span><h3>Manufacture the edge</h3><ul id="leadCreate"></ul></div><div class="plan-block"><span>2 · CONVERT</span><h3>Turn it into tempo</h3><ul id="leadConvert"></ul></div><div class="plan-block"><span>3 · PROTECT</span><h3>Don't give it back</h3><ul id="leadProtect"></ul></div></div></div>
-          <div class="matchup-panel hidden" data-matchup-panel="trades"><div class="three-col"><div class="plan-block good-block"><span>SAFE TRADE</span><h3>Your repeatable pattern</h3><ul id="tradeSafe"></ul></div><div class="plan-block"><span>PRESSURE</span><h3>When to push</h3><ul id="tradePressure"></ul></div><div class="plan-block danger-block"><span>AVOID</span><h3>How you lose it</h3><ul id="tradeAvoid"></ul></div></div></div>
-          <div class="matchup-panel hidden" data-matchup-panel="items"><div class="three-col"><div class="plan-block good-block"><span>ITEM LEAD</span><h3>You bought first</h3><ul id="itemAhead"></ul></div><div class="plan-block"><span>EQUAL ITEMS</span><h3>Still a matchup</h3><ul id="itemEven"></ul></div><div class="plan-block danger-block"><span>ENEMY ITEM LEAD</span><h3>Stabilise first</h3><ul id="itemBehind"></ul></div></div></div>
-          <div class="matchup-panel hidden" data-matchup-panel="states"><div class="three-col"><div class="plan-block good-block"><span>IF AHEAD</span><h3>Choke the lane</h3><ul id="stateAhead"></ul></div><div class="plan-block"><span>IF EVEN</span><h3>Create the edge</h3><ul id="stateEven"></ul></div><div class="plan-block danger-block"><span>IF BEHIND</span><h3>Build the comeback</h3><ul id="stateBehind"></ul></div></div></div>
-        </div>
-      </details>
-
-      <div class="matchup-footer"><span id="matchupPatch">Patch —</span><span id="matchupSource">Champion locked</span><span>Pregame plan only · no live shotcalling</span></div>
-    </div>
-  </section>
-
   <section id="settings" class="card settings-card hidden">
     <div class="setting"><div><b>Start with Windows</b><small>Keep the Companion ready automatically.</small></div><button id="autoStart" class="toggle" aria-label="Start with Windows"></button></div>
     <div class="settings-divider"></div>
@@ -282,12 +127,19 @@
     <pre id="logs" class="logs hidden">No tracker activity yet.</pre>
     <button id="unpair" class="danger">UNPAIR THIS PC</button>
   </section>
-  <footer>YOUR CLIMB → LOCK IN → PLAY → REVIEW. The Companion keeps your development visible between games and your match plan visible when it matters.</footer>
 </main>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="tft-coach-model.js"></script>
 <script src="renderer.js"></script>
 <script src="arena.js"></script>
-<script src="esports-v2.js"></script>
 <script src="review-v2.js"></script>
+<script src="oc-ui.js"></script>
+<script src="home-view.js"></script>
+<script src="draft-view.js"></script>
+<script src="review-view.js"></script>
+<script src="shell.js"></script>
 </body>
 </html>

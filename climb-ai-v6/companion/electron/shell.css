@@ -1,0 +1,526 @@
+/* ==========================================================================
+   OP CLIMB Companion — app shell
+   --------------------------------------------------------------------------
+   Sidebar, header, the "where am I / what next" strip and the content frame.
+   Built only from design-system.css tokens; driven by shell.js.
+
+   Legacy screens render inside .oc-view__inner > main#legacyView. The shell
+   decides which of them belong to the current route; the legacy scripts
+   still decide what they show inside it.
+   ========================================================================== */
+
+.oc-shell {
+  --oc-sidebar-w: 264px;
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  grid-template-columns: var(--oc-sidebar-w) minmax(0, 1fr);
+  isolation: isolate;
+  background:
+    radial-gradient(1100px 520px at 100% -12%, rgb(67 216 239 / .055), transparent 60%),
+    radial-gradient(900px 600px at 18% 120%, rgb(166 139 255 / .045), transparent 60%),
+    var(--oc-bg);
+  color: var(--oc-text);
+  font-family: var(--oc-font-body);
+  font-size: var(--oc-fs-base);
+  line-height: var(--oc-lh-body);
+  -webkit-font-smoothing: antialiased;
+  transition: grid-template-columns var(--oc-dur-slow) var(--oc-ease-out);
+}
+.oc-shell.is-rail { --oc-sidebar-w: 76px; }
+
+/* Reset legacy global `button {}` styling in shell chrome. Zero-specificity
+   wrapper so component classes (.oc-btn, .oc-nav__item) still win. */
+:where(.oc-shell .oc-sidebar, .oc-shell .oc-header, .oc-shell .oc-strip, .oc-shell .oc-route-state) button {
+  margin: 0;
+  box-shadow: none;
+  font: inherit;
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* SIDEBAR                                                                  */
+/* ------------------------------------------------------------------------ */
+
+.oc-sidebar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: var(--oc-space-5);
+  min-width: 0;
+  padding: var(--oc-space-5) var(--oc-space-3) var(--oc-space-4);
+  border-right: 1px solid var(--oc-line);
+  background: linear-gradient(180deg, #0a0f17 0%, #070a10 100%);
+  overflow: hidden auto;
+  scrollbar-width: none;
+}
+.oc-sidebar::-webkit-scrollbar { display: none; }
+
+/* Brand */
+.oc-brand {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: 0 var(--oc-space-2);
+  min-height: 40px;
+  white-space: nowrap;
+}
+.oc-brand__mark {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 34px;
+  background: linear-gradient(180deg, var(--oc-lime-hi), var(--oc-lime));
+  color: var(--oc-text-on-accent);
+  font-family: var(--oc-font-display);
+  font-size: 21px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  clip-path: polygon(9px 0, 100% 0, calc(100% - 9px) 100%, 0 100%);
+}
+.oc-brand__word {
+  display: grid;
+  line-height: 1;
+  font-family: var(--oc-font-display);
+  font-size: 24px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+.oc-brand__word small {
+  margin-top: 3px;
+  font-family: var(--oc-font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: .14em;
+  color: var(--oc-text-3);
+}
+
+/* Player identity */
+.oc-identity {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-items: center;
+  gap: var(--oc-space-3);
+  padding: var(--oc-space-3);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-md);
+  background: linear-gradient(160deg, var(--oc-surface-2), var(--oc-surface-1));
+  box-shadow: var(--oc-highlight);
+}
+.oc-identity__avatar {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--oc-radius-md);
+  background: linear-gradient(150deg, var(--oc-surface-4), var(--oc-surface-2));
+  box-shadow: inset 0 0 0 1px var(--oc-line-strong);
+  font-family: var(--oc-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--oc-text);
+  text-transform: uppercase;
+}
+.oc-identity__avatar::after {
+  /* Connection light. */
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 12px;
+  height: 12px;
+  border: 3px solid #0a0f17;
+  border-radius: 50%;
+  background: var(--oc-identity-light, var(--oc-text-3));
+}
+.oc-identity[data-link="ok"]   { --oc-identity-light: var(--oc-green); }
+.oc-identity[data-link="warn"] { --oc-identity-light: var(--oc-amber); }
+.oc-identity[data-link="bad"]  { --oc-identity-light: var(--oc-red); }
+
+.oc-identity__text { display: grid; gap: 2px; min-width: 0; }
+.oc-identity__name {
+  overflow: hidden;
+  font-size: var(--oc-fs-base);
+  font-weight: 700;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oc-identity__name span { color: var(--oc-text-3); font-weight: 500; }
+.oc-identity__rank {
+  overflow: hidden;
+  font-size: var(--oc-fs-sm);
+  color: var(--oc-text-2);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oc-identity__meta {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-2);
+  min-width: 0;
+}
+.oc-identity__meta:empty { display: none; }
+
+/* Navigation */
+.oc-nav { display: grid; gap: var(--oc-space-4); }
+.oc-nav__group { display: grid; gap: 2px; }
+.oc-nav__heading {
+  padding: 0 var(--oc-space-3) var(--oc-space-1);
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--oc-text-3);
+  white-space: nowrap;
+}
+
+.oc-nav__item {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 var(--oc-space-3);
+  border: 0;
+  border-radius: var(--oc-radius-sm);
+  background: transparent;
+  color: var(--oc-text-2);
+  font-family: var(--oc-font-display);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: .015em;
+  text-align: left;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background var(--oc-dur) var(--oc-ease-out), color var(--oc-dur) var(--oc-ease-out);
+}
+.oc-nav__item > svg { width: 21px; height: 21px; color: var(--oc-text-3); transition: color var(--oc-dur) var(--oc-ease-out); }
+.oc-nav__label { overflow: hidden; text-overflow: ellipsis; }
+.oc-nav__item:hover { background: rgb(255 255 255 / .045); color: var(--oc-text); filter: none; }
+.oc-nav__item:hover > svg { color: var(--oc-text-2); }
+.oc-nav__item:focus-visible { outline: 2px solid var(--oc-cyan); outline-offset: -2px; }
+
+.oc-nav__item[aria-current="page"] {
+  background: linear-gradient(90deg, rgb(182 246 107 / .13), rgb(182 246 107 / .02) 85%);
+  color: var(--oc-text);
+}
+.oc-nav__item[aria-current="page"] > svg { color: var(--oc-lime); }
+.oc-nav__item[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 9px;
+  bottom: 9px;
+  width: 3px;
+  background: var(--oc-lime);
+  box-shadow: 0 0 12px rgb(182 246 107 / .55);
+  transform: skewY(-24deg);
+}
+
+/* Locked by plan — still navigable, so the plan can be explained. */
+.oc-nav__item.is-locked { color: var(--oc-text-3); }
+.oc-nav__item.is-locked > svg { opacity: .7; }
+
+/* Trailing badge: a live dot, a count, a tier or a lock. */
+.oc-nav__badge { display: inline-flex; align-items: center; gap: 6px; }
+.oc-nav__badge:empty { display: none; }
+.oc-nav__badge .oc-chip { height: 22px; padding: 0 7px; font-size: 11px; }
+.oc-nav__badge .oc-tier { height: 20px; font-size: 13px; padding-inline: 10px; }
+.oc-nav__badge > svg { width: 14px; height: 14px; color: var(--oc-text-3); }
+
+.oc-sidebar__spacer { flex: 1; }
+
+.oc-sidebar__footer {
+  display: grid;
+  gap: var(--oc-space-2);
+  padding-top: var(--oc-space-3);
+  border-top: 1px solid var(--oc-line);
+}
+.oc-sidebar__meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-2);
+  padding: 0 var(--oc-space-2) 0 var(--oc-space-3);
+  min-height: 36px;
+}
+.oc-sidebar__version {
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  letter-spacing: .06em;
+  color: var(--oc-text-3);
+  white-space: nowrap;
+}
+.oc-sidebar__collapse > svg { transition: transform var(--oc-dur-slow) var(--oc-ease-out); }
+.oc-shell.is-rail .oc-sidebar__collapse > svg { transform: scaleX(-1); }
+
+/* Rail — icons only. Labels stay in the accessibility tree. */
+.oc-shell.is-rail .oc-sidebar { padding-inline: var(--oc-space-2); }
+.oc-shell.is-rail .oc-brand { justify-content: center; padding: 0; }
+.oc-shell.is-rail .oc-brand__word,
+.oc-shell.is-rail .oc-identity__text,
+.oc-shell.is-rail .oc-identity__meta,
+.oc-shell.is-rail .oc-nav__heading,
+.oc-shell.is-rail .oc-sidebar__version { display: none; }
+.oc-shell.is-rail .oc-identity { grid-template-columns: 1fr; justify-items: center; padding: var(--oc-space-2); border-color: transparent; background: none; box-shadow: none; }
+.oc-shell.is-rail .oc-nav__group { padding-top: var(--oc-space-2); border-top: 1px solid var(--oc-line); }
+.oc-shell.is-rail .oc-nav__group:first-child { border-top: 0; padding-top: 0; }
+.oc-shell.is-rail .oc-nav__item { grid-template-columns: 1fr; justify-items: center; padding: 0; }
+.oc-shell.is-rail .oc-nav__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.oc-shell.is-rail .oc-nav__badge { position: absolute; top: 5px; right: 9px; }
+.oc-shell.is-rail .oc-nav__badge > :not(.oc-dot) { display: none; }
+.oc-shell.is-rail .oc-nav__item:not(.is-locked) .oc-nav__badge:not(:empty):not(:has(.oc-dot))::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--oc-lime);
+}
+.oc-shell.is-rail .oc-sidebar__meta { justify-content: center; padding: 0; }
+
+
+/* ------------------------------------------------------------------------ */
+/* MAIN COLUMN                                                              */
+/* ------------------------------------------------------------------------ */
+
+.oc-main {
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  min-height: 0;
+}
+
+/* Header — where you are, and whether the Companion is healthy. */
+.oc-header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--oc-space-5);
+  padding: var(--oc-space-6) var(--oc-space-8) var(--oc-space-4);
+}
+.oc-header__title { display: grid; gap: 6px; min-width: 0; }
+.oc-header__title h1 { font-size: var(--oc-fs-2xl); line-height: 1; }
+.oc-header__tools { display: flex; align-items: center; gap: var(--oc-space-3); flex: none; }
+.oc-header__tools .oc-chip { cursor: pointer; border-radius: var(--oc-radius-sm); }
+
+/* Strip — where you are in the match loop, and the one next step. */
+.oc-strip {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--oc-space-5);
+  margin: 0 var(--oc-space-8);
+  padding: var(--oc-space-3) var(--oc-space-3) var(--oc-space-3) var(--oc-space-5);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-lg);
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--oc-tone) 9%, transparent), transparent 45%),
+    linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1));
+  box-shadow: var(--oc-highlight), var(--oc-shadow-1);
+  overflow: hidden;
+}
+.oc-strip::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: var(--oc-tone);
+}
+
+/* Match loop: four skewed steps, the current one lit and named. */
+.oc-loop {
+  display: grid;
+  gap: 7px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.oc-loop__steps { display: flex; gap: 4px; }
+.oc-loop__steps > i {
+  width: 22px;
+  height: 6px;
+  background: rgb(150 180 215 / .14);
+  transform: skewX(-28deg);
+  transition: background var(--oc-dur-slow) var(--oc-ease-out), box-shadow var(--oc-dur-slow) var(--oc-ease-out);
+}
+.oc-loop__steps > i.is-past { background: color-mix(in srgb, var(--oc-tone) 38%, transparent); }
+.oc-loop__steps > i.is-now  { background: var(--oc-tone); box-shadow: 0 0 10px color-mix(in srgb, var(--oc-tone) 50%, transparent); }
+.oc-loop__label {
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-md);
+  font-weight: 700;
+  letter-spacing: .06em;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--oc-tone);
+  white-space: nowrap;
+}
+
+.oc-strip__copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  padding-left: var(--oc-space-5);
+  border-left: 1px solid var(--oc-line);
+}
+.oc-strip__next {
+  overflow: hidden;
+  font-size: var(--oc-fs-md);
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--oc-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oc-strip__next b {
+  margin-right: var(--oc-space-2);
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  font-weight: 500;
+  letter-spacing: .1em;
+  color: var(--oc-tone);
+  vertical-align: 2px;
+}
+.oc-strip__now {
+  overflow: hidden;
+  font-size: var(--oc-fs-sm);
+  color: var(--oc-text-3);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.oc-strip__action[hidden] { display: none; }
+.oc-strip__feedback {
+  position: absolute;
+  right: var(--oc-space-4);
+  bottom: 4px;
+  font-size: var(--oc-fs-xs);
+  color: var(--oc-green);
+}
+
+
+/* ------------------------------------------------------------------------ */
+/* CONTENT FRAME                                                            */
+/* ------------------------------------------------------------------------ */
+
+.oc-view {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--oc-space-6) var(--oc-space-8) var(--oc-space-10);
+  scroll-padding-top: var(--oc-space-6);
+}
+.oc-view__inner {
+  display: grid;
+  gap: var(--oc-space-5);
+  max-width: 1240px;
+  margin: 0 auto;
+}
+.oc-view__inner.is-entering { animation: oc-enter var(--oc-dur-slow) var(--oc-ease-out) both; }
+
+/* The legacy screens' own container. Its old `.shell` sizing no longer
+   applies, so it simply fills the frame. */
+#legacyView { display: block; min-width: 0; }
+#legacyView > :first-child { margin-top: 0 !important; }
+
+
+/* ------------------------------------------------------------------------ */
+/* ROUTE STATES — what a screen says when it has nothing to show yet         */
+/* ------------------------------------------------------------------------ */
+
+.oc-route-state {
+  position: relative;
+  display: grid;
+  gap: var(--oc-space-4);
+  justify-items: start;
+  padding: var(--oc-space-9) var(--oc-space-9) var(--oc-space-8);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-xl);
+  background:
+    radial-gradient(70% 120% at 100% 0%, color-mix(in srgb, var(--oc-tone) 10%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1) 75%);
+  box-shadow: var(--oc-highlight), var(--oc-shadow-2);
+  overflow: hidden;
+}
+.oc-route-state[hidden] { display: none; }
+.oc-route-state__mark {
+  /* Large faint route icon as a watermark. */
+  position: absolute;
+  right: -28px;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  color: var(--oc-tone);
+  opacity: .07;
+  transform: translateY(-50%) rotate(-8deg);
+  pointer-events: none;
+}
+.oc-route-state__mark > svg { width: 100%; height: 100%; }
+.oc-route-state > :not(.oc-route-state__mark) { position: relative; max-width: 60ch; }
+.oc-route-state .oc-h2 { font-size: var(--oc-fs-3xl); }
+.oc-route-state__actions { display: flex; flex-wrap: wrap; gap: var(--oc-space-3); margin-top: var(--oc-space-2); }
+.oc-route-state__actions:empty { display: none; }
+
+.oc-route-state__list {
+  display: grid;
+  gap: var(--oc-space-2);
+  width: 100%;
+  margin: var(--oc-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.oc-route-state__list:empty { display: none; }
+.oc-route-state__list li {
+  display: flex;
+  align-items: center;
+  gap: var(--oc-space-3);
+  color: var(--oc-text-2);
+}
+.oc-route-state__list li > svg { width: 16px; height: 16px; flex: none; color: var(--oc-tone); }
+.oc-route-state__list kbd {
+  display: inline-block;
+  min-width: 96px;
+  padding: 3px 8px;
+  border: 1px solid var(--oc-line-strong);
+  border-radius: var(--oc-radius-xs);
+  background: var(--oc-well);
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-sm);
+  color: var(--oc-text);
+  text-align: center;
+}
+.oc-route-state__price {
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-xl);
+  font-weight: 700;
+  color: var(--oc-text);
+}
+.oc-route-state__price small { font-family: var(--oc-font-body); font-size: var(--oc-fs-sm); font-weight: 500; color: var(--oc-text-3); }
+
+
+/* ------------------------------------------------------------------------ */
+/* RESPONSIVE                                                               */
+/* ------------------------------------------------------------------------ */
+
+@media (max-width: 1080px) {
+  .oc-header { padding-inline: var(--oc-space-6); }
+  .oc-strip { margin-inline: var(--oc-space-6); }
+  .oc-view { padding-inline: var(--oc-space-6); }
+  .oc-route-state { padding: var(--oc-space-7); }
+}
+
+@media (max-width: 900px) {
+  .oc-strip { grid-template-columns: minmax(0, 1fr) auto; }
+  .oc-loop { display: none; }
+  .oc-strip__copy { padding-left: 0; border-left: 0; }
+  .oc-header__tools .oc-status__detail { display: none; }
+}

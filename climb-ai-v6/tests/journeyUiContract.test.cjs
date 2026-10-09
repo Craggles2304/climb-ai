@@ -10,6 +10,8 @@ const coach=read('app/coach/page.tsx');
 const review=read('app/analyse/[match]/page.tsx');
 const ilp=read('app/ilp/page.tsx');
 const companion=read('companion/electron/renderer.js');
+const companionHome=read('companion/electron/home-view.js');
+const companionUi=read('companion/electron/oc-ui.js');
 const companionApi=read('app/api/live/companion-home/route.ts');
 
 test('core website pages share one explicit journey status',()=>{
@@ -33,23 +35,29 @@ test('baseline language never pretends provisional coaching is a permanent missi
 test('DNA reveal is a mandatory visible step before active mission coaching',()=>{
   assert.ok(ilp.includes('Checking your DNA journey'));
   assert.ok(shell.includes('Your Game DNA is ready.'));
-  assert.ok(companion.includes('DNA READY · 3/3'));
-  assert.ok(companion.includes('REVEAL MY DNA ↗'));
-  assert.ok(companion.includes("phase:'DNA_REVEAL'"));
+  // Companion: baseline -> reveal -> active, with the reveal as its own step.
+  assert.ok(companionUi.includes("return{stage:revealed?'active':'reveal'"));
+  assert.ok(companionHome.includes('Your ${esc(role)} Game DNA is ready'));
+  assert.ok(companionHome.includes('Reveal my Game DNA'));
+  assert.ok(companionHome.includes("stage.stage==='reveal')return{label:'Reveal your Game DNA'"));
 });
 
 test('active mission phase shows exactly two player-unlocked DNA missions',()=>{
-  assert.ok(companion.includes('TWO UNLOCKED TREES'));
-  assert.ok(companion.includes("'UNLOCKED '+focusOrder+' OF 2'"));
-  assert.ok(companion.includes('Only the two DNA trees you unlocked can bank a proven rep'));
+  assert.ok(companionHome.includes('Your two unlocked trees'));
+  assert.ok(companionHome.includes('Unlocked tree ${num(mission.focusOrder,index+1)} of 2'));
+  assert.ok(companionHome.includes('Only the two DNA trees you unlocked can bank a proven rep'));
   assert.ok(companionApi.includes('priorityMission'));
   assert.ok(companionApi.includes('gameMissionFocusPair'));
   assert.ok(companionApi.includes('const missionLimit=2'));
 });
 
 test('player-facing postgame wording uses proven games instead of rep jargon',()=>{
-  assert.ok(companion.includes('PROVEN GAME ✓'));
-  assert.ok(companion.includes('proven games'));
-  assert.equal(companion.includes('PROVEN REP BANKED ✓'),false);
-  assert.equal(companion.includes('No personalised challenge yet'),false);
+  const review=read('companion/electron/review-view.js');
+  assert.ok(review.includes('Proven this game'));
+  assert.ok(review.includes('Proven games'));
+  assert.ok(companionHome.includes('proven games'));
+  for(const source of [review,companionHome,companion]){
+    assert.equal(source.includes('PROVEN REP BANKED'),false);
+    assert.equal(source.includes('No personalised challenge yet'),false);
+  }
 });
