@@ -1,0 +1,82 @@
+/* OP CLIMB Coach Memory — evidence architecture illustration, not a fake progress bar. */
+body[data-client-view] .arena-memory-journey{
+  overflow:hidden;margin:0 0 20px;padding:23px 25px 21px;
+  border:1px solid rgba(156,118,222,.4);
+  background:radial-gradient(ellipse 56% 80% at 70% 10%,rgba(122,69,189,.13),transparent 100%),
+    linear-gradient(120deg,#142032,#0c1624 80%);
+}
+.arena-memory-journey>header{display:grid;gap:7px}
+.arena-memory-journey>header>span{
+  font:700 10px var(--mono);letter-spacing:.12em;color:#b89ee9;
+}
+.arena-memory-journey h3{
+  margin:0!important;color:#f4f0ff;
+  font:800 clamp(25px,3vw,37px)/.98 var(--display)!important;
+}
+.arena-memory-journey header p{
+  margin:0!important;color:#aebbd0;font:500 13px/1.5 var(--body)!important;max-width:730px;
+}
+.arena-memory-journey ol{
+  list-style:none;margin:27px 0 0;padding:0;
+  display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:12px;
+}
+.arena-memory-journey ol>li{position:relative;display:grid;align-content:start;justify-items:start;gap:8px;min-width:0}
+.arena-memory-node{
+  display:grid;place-items:center;position:relative;
+  width:53px;height:54px;
+  border:1px solid rgba(168,140,219,.4);
+  background:linear-gradient(135deg,#362b4d,#19253c);
+  color:#d8c6ff;
+}
+.arena-memory-node::after{
+  content:"";position:absolute;inset:4px;
+  border:1px solid rgba(185,148,239,.16);pointer-events:none;
+}
+.arena-memory-node>span{
+  position:absolute;right:-2px;bottom:-5px;
+  padding:3px 5px;background:#0b1422;border:1px solid #664a91;
+  color:#bdb0d7;font:700 9px var(--mono);
+}
+.arena-memory-journey li:nth-child(4) .arena-memory-node{
+  border-color:rgba(182,255,46,.5);color:#d9ffa1;
+  background:linear-gradient(133deg,#354638,#1b2a34);
+}
+.arena-memory-journey li:nth-child(5) .arena-memory-node{
+  border-color:rgba(0,245,212,.5);color:#acfef2;
+  background:linear-gradient(133deg,#164348,#1b2a34);
+}
+.arena-memory-journey li:nth-child(7) .arena-memory-node{
+  border-color:#d1be8d;color:#ffdd9f;
+  background:linear-gradient(133deg,#544831,#1b2a34);
+}
+.arena-memory-journey li>b{
+  color:#e7edf6;font:800 15px/.95 var(--display);
+  text-transform:uppercase;overflow-wrap:anywhere;
+}
+.arena-memory-journey li>small{
+  color:#9baec0;font:500 11px/1.45 var(--body);
+  max-width:155px;
+}
+.arena-memory-connector{
+  position:absolute;left:60px;top:26px;right:2px;
+  border-top:1px dashed rgba(172,146,217,.45);
+}
+.arena-memory-journey>footer{
+  border-top:1px solid rgba(165,158,202,.16);
+  margin-top:24px;padding-top:13px;
+  color:#bdaee0;font:700 10px/1.5 var(--mono);letter-spacing:.04em;
+}
+@media(max-width:1000px){
+  .arena-memory-journey ol{grid-template-columns:repeat(4,minmax(0,1fr));row-gap:23px}
+  .arena-memory-journey li:nth-child(4) .arena-memory-connector{display:none}
+}
+@media(max-width:620px){
+  body[data-client-view] .arena-memory-journey{padding:19px 13px}
+  .arena-memory-journey ol{grid-template-columns:repeat(2,minmax(0,1fr));row-gap:22px}
+  .arena-memory-journey li:nth-child(even) .arena-memory-connector{display:none}
+  .arena-memory-journey li>b{font-size:14px}
+  .arena-memory-journey li>small{font-size:11px}
+}
+@media(prefers-reduced-motion:reduce){
+  .arena-memory-journey *{animation:none!important;transition:none!important}
+}

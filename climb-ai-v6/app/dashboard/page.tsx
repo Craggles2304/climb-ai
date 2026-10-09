@@ -11,15 +11,20 @@ import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot'
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
-import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {buildJourneyState} from '@/lib/journeyState';
 import {championSplash} from '@/lib/championArt';
+import {DashboardMatchInsights} from '@/components/DashboardMatchInsights';
+import {DashboardDnaInspector} from '@/components/DashboardDnaInspector';
+import {ArenaChampionsPanel} from '@/components/ArenaChampionsPanel';
+import {ArenaRankPanel} from '@/components/ArenaRankPanel';
+import {ArenaIcon} from '@/components/ArenaIcon';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
 
 export default function Dashboard(){
-  const {active}=useAccount();
+  const {active,hydrated,authenticated}=useAccount();
   const {tasks,allTasks}=useLearningPlan();
   const [devices,setDevices]=useState<Device[]>([]);
   const [deviceLoaded,setDeviceLoaded]=useState(false);
@@ -45,9 +50,9 @@ export default function Dashboard(){
     return()=>{stopped=true;window.clearInterval(timer)};
   },[active.id]);
 
-  const matches=useMemo(()=>matchesFor(active.id)
+  const matches=matchesFor(active.id)
     .filter(match=>match.durationSeconds>=300)
-    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)),[active.id]);
+    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt));
   const baselineGames=dnaBaselineGameCount(matches,active.role);
   const baselineReady=dnaBaselineReady(baselineGames);
   const accountTasks=allTasks[active.id]??tasks;
@@ -65,6 +70,7 @@ export default function Dashboard(){
   const linked=devices.length>0;
   const online=devices.some(device=>recent(device.last_seen_at));
   const latest=matches[0]??null;
+  const heroChampion=latest?.champion&&latest.champion!=='Unknown'?latest.champion:active.champions?.[0]||'Jinx';
 
   const next=buildJourneyState({
     deviceLoaded,
@@ -87,24 +93,39 @@ export default function Dashboard(){
     {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
   ];
 
+  if(!hydrated)return <AppShell><section className="arena-original-loading" role="status">Loading your Riot player data…</section></AppShell>;
+
   return <AppShell>
-    <header className="op-home-head op-home-head-dna arena-player-hero">
-      {latest&&<img className="arena-player-hero-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>}
+    <header className="op-home-head op-home-head-dna arena-player-hero arena-pro-hero">
+      <img className="arena-player-hero-art" src={championSplash(heroChampion)} alt="" aria-hidden="true" onError={event=>{event.currentTarget.hidden=true}}/>
       <div className="arena-player-hero-copy">
+        <span className="arena-pro-hero-kicker"><i/> OP CLIMB <b>COMPETITIVE PERFORMANCE HQ</b><small>SEASON 2026</small></span>
         <div className="eyebrow">YOUR CLIMB · {active.role} PLAYER</div>
         <h1>{active.gameName}<span>{active.tagline}</span></h1>
-        <p>{baselineReady
+        <p><strong className="arena-pro-identity-thesis">Your games build your player identity.</strong> {baselineReady
           ?'Your Game DNA is active. '+(focusPlain?.nextGame||'Take one clear mission into the next game.')
           :'Play '+DNA_BASELINE_GAMES+' tracked '+active.role+' games to reveal a player shape built from evidence.'}</p>
+        <div className="arena-pro-hero-actions"><Link href="/live" className="arena-pro-hero-primary"><ArenaIcon name="match" size={18}/> OPEN MATCH ROOM <span>↗</span></Link><Link href="/ilp" className="arena-pro-hero-secondary"><ArenaIcon name="dna" size={17}/> MY GAME DNA</Link></div>
         <div className="arena-player-hero-meta"><b>{active.rank}</b><span>{active.role}</span><span>{Math.min(baselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} BASELINE GAMES</span></div>
       </div>
+      <ArenaRankPanel rank={active.rank} role={active.role} champion={heroChampion} region={active.region}/>
       <span className={'op-home-connection '+(online?'is-online':linked?'is-paired':'')}>
         <i/>{online?'COMPANION LIVE':linked?'COMPANION PAIRED':'COMPANION NOT CONNECTED'}
       </span>
       {latest&&<small className="arena-player-hero-credit">LAST PLAYED · {latest.champion}</small>}
     </header>
 
-    <section className="op-home-dna op-home-dna-primary">
+    <nav className="arena-pro-fast-nav" aria-label="Player headquarters sections">
+      <Link href="#arena-perf"><ArenaIcon name="signal" size={18}/><span><b>PERFORMANCE</b><small>RECENT FORM</small></span><i>01</i></Link>
+      <Link href="#arena-game-dna"><ArenaIcon name="dna" size={18}/><span><b>GAME DNA</b><small>PLAYER DEVELOPMENT</small></span><i>02</i></Link>
+      <Link href="#arena-mission"><ArenaIcon name="target" size={18}/><span><b>COACHING PLAN</b><small>YOUR NEXT FIX</small></span><i>03</i></Link>
+      <Link href="#arena-champions"><ArenaIcon name="sword" size={18}/><span><b>CHAMPIONS</b><small>YOUR POOL</small></span><i>04</i></Link>
+      <Link href="#arena-match-list"><ArenaIcon name="history" size={18}/><span><b>MATCH HISTORY</b><small>POST-GAME INTEL</small></span><i>05</i></Link>
+    </nav>
+
+    <div id="arena-perf"><DashboardMatchInsights matches={matches} isDemo={!authenticated} mode="form"/></div>
+
+    <section id="arena-game-dna" className="op-home-dna op-home-dna-primary arena-pro-dna-hq">
       <div className="op-home-dna-head">
         <div>
           <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
@@ -115,10 +136,9 @@ export default function Dashboard(){
         </div>
         <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
       </div>
-      <div className="op-home-dna-legend" aria-label="Six Game DNA strands">
-        {DNA_DOMAINS.map(domain=><span key={domain} style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}><i/>{DNA_DOMAIN_LABELS[domain]}</span>)}
-      </div>
-      <div className="op-home-dna-stage">
+      <DashboardDnaInspector tasks={roleTasks} role={active.role} baselineReady={baselineReady} baselineGames={baselineGames} baselineRequired={DNA_BASELINE_GAMES}/>
+      <div className="op-home-dna-stage arena-pro-dna-stage">
+        <div className="arena-pro-dna-stage-top" aria-hidden="true"><span><i/> GAME DNA ENGINE</span><span>LIVE PLAYER MODEL · {active.role}</span></div>
         <ClientGameDna
           player={active.gameName+active.tagline}
           role={active.role}
@@ -147,8 +167,8 @@ export default function Dashboard(){
       </ol>
     </section>
 
-    <section className="op-home-focus-grid">
-      <article className="panel op-home-focus">
+    <section id="arena-mission" className="op-home-focus-grid arena-pro-focus-grid">
+      <article className={"panel op-home-focus arena-pro-focus "+(baselineReady?"is-ready":"is-baseline")}>
         <div className="eyebrow">{baselineReady?'CURRENT FIX':'DNA BASELINE'}</div>
         {baselineReady&&focus?<>
           <span className="op-home-strand" style={({ '--strand-color':DNA_DOMAIN_COLORS[focus.dnaDomain]} as CSSProperties)}>
@@ -157,7 +177,11 @@ export default function Dashboard(){
           <h2>{focusPlain?.name||focus.title}</h2>
           <p>{focusPlain?.meaning||focus.why}</p>
           <div className="op-home-job"><span>YOUR JOB NEXT GAME</span><b>{focusPlain?.nextGame||focus.gameRule}</b></div>
-          <div className="op-home-proof"><span>PROOF</span><b>{focusProof?.confirmed??0}/{focusProof?.required??3} clean games</b></div>
+          <div className="op-home-proof"><span>VERIFIED MATCH EVIDENCE</span><b>{focusProof?.confirmed??0}/{focusProof?.required??3} clean games</b></div>
+          <div className="arena-pro-mission-track" role="progressbar" aria-label="Verified coaching mission progress" aria-valuemin={0} aria-valuemax={focusProof?.required??3} aria-valuenow={Math.min(focusProof?.confirmed??0,focusProof?.required??3)}>
+            <i style={{width:(Math.min(focusProof?.confirmed??0,focusProof?.required??3)/(focusProof?.required??3)*100)+'%'}}/>
+          </div>
+          {secondFocus&&<span className="arena-pro-second-mission">SECOND FOCUS · {secondFocusPlain?.name||secondFocus.title}</span>}
         </>:<>
           <h2>{baselineGames}/{DNA_BASELINE_GAMES} games observed.</h2>
           <p>Do not optimise for the system yet. Play normally. OP CLIMB needs your real habits before it decides what is holding you back.</p>
@@ -165,7 +189,8 @@ export default function Dashboard(){
         </>}
       </article>
 
-      <article className="panel op-home-latest">
+      <article className="panel op-home-latest arena-pro-latest">
+        {latest&&<img className="arena-pro-latest-backdrop" src={championSplash(latest.champion)} alt="" aria-hidden="true" loading="lazy" onError={event=>{event.currentTarget.hidden=true}}/>}
         <div className="eyebrow">LATEST GAME</div>
         {latest?<>
           <h2>{latest.champion} · {latest.result==='WIN'?'VICTORY':'DEFEAT'}</h2>
@@ -182,5 +207,9 @@ export default function Dashboard(){
         </>}
       </article>
     </section>
+
+    <div id="arena-champions"><ArenaChampionsPanel account={active} matches={matches} isDemo={!authenticated}/></div>
+
+    <div id="arena-match-list"><DashboardMatchInsights matches={matches} isDemo={!authenticated} mode="archive"/></div>
   </AppShell>;
 }

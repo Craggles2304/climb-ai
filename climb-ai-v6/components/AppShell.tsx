@@ -20,6 +20,8 @@ import {gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
+import {ArenaIcon,type ArenaIconName} from '@/components/ArenaIcon';
+import {championSplash} from '@/lib/championArt';
 
 type ProgressionPayload={
   ok:boolean;
@@ -38,6 +40,10 @@ const primary=[
   ['Coach','/coach','◎','Ask why · understand more'],
 ] as const;
 const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Climb Plan','/progress'],['Missions','/missions'],['Match','/live']] as const;
+const arenaNavIcons:Record<string,ArenaIconName>={
+ '/dashboard':'home','/ilp':'dna','/progress':'progress','/missions':'missions',
+ '/live':'match','/analyse':'history','/coach':'coach'
+};
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'HOME';
@@ -250,14 +256,14 @@ export function AppShell({children}:{children:React.ReactNode}){
         <span className="brand-mark">OP<span>↗</span></span>
         <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
       </Link>
-      <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
+      <div className="game-label"><span className="game-rune"><ArenaIcon name="shield" size={18}/></span> LEAGUE OF LEGENDS</div>
       <div className="game-switch" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'14px 0 20px'}}><Link className="btn primary" href="/dashboard" aria-current="page" style={{fontSize:11,minHeight:38,padding:'8px'}}>LEAGUE</Link><Link className="btn secondary" href="/tft" style={{fontSize:11,minHeight:38,padding:'8px'}}>TFT</Link></div>
       <p className="nav-caption">YOUR WORKSPACE</p>
       <nav aria-label="Main navigation">
         {primary.map(([name,href,icon,hint])=>{
           const activeLink=isPrimaryActive(path,href);
           return <Link className={'nav-link '+(href==='/ilp'?'nav-link-dna ':'')+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
-            <span className="nav-link-icon" aria-hidden="true">{icon}</span>
+            <span className="nav-link-icon" aria-hidden="true"><ArenaIcon name={arenaNavIcons[href]} size={22}/></span>
             <span className="nav-link-copy"><b>{name}</b><small>{hint}</small></span>
           </Link>;
         })}
@@ -265,11 +271,11 @@ export function AppShell({children}:{children:React.ReactNode}){
       </nav>
       <div className="sidebar-bottom">
         <SidebarTierStep tier={tier}/>
-        <Link className="sidebar-help" href="/client"><span>◎</span> Take a quick tour</Link>
+        <Link className="sidebar-help" href="/client"><span><ArenaIcon name="spark" size={17}/></span> Take a quick tour</Link>
         <div className="mini-profile">
-          <span className="player-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}</span>
+          <span className="player-avatar arena-portrait-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}<img src={championSplash(active.champions?.[0]||"Jinx")} alt="" aria-hidden="true" loading="lazy" onError={event=>{event.currentTarget.hidden=true}}/></span>
           <span><strong>{active.gameName}{active.tagline}</strong><small>{active.rank} · {active.role} · LV {xp.level}</small></span>
-          <Link className="icon-button" href="/settings" aria-label="Player settings">≡</Link>
+          <Link className="icon-button" href="/settings" aria-label="Player settings"><ArenaIcon name="gear" size={18}/></Link>
         </div>
         {accounts.length>1&&<select className="client-account-switch" aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline}</option>)}</select>}
         <SyncHealth sync={progression?.sync??null}/>
@@ -280,12 +286,12 @@ export function AppShell({children}:{children:React.ReactNode}){
     <div className="workspace">
       <header className="topbar">
         <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
-        <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
+        <div className="breadcrumb"><span><ArenaIcon name="dna" size={17}/></span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
         <div className="topbar-right">
           {topbarAction&&<Link className="btn primary btn-small site-cta" href={topbarAction.href}>{topbarAction.label}</Link>}
           <span className="demo-badge">{tier} PLAN</span>
-          <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
-          <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
+          <Link className="icon-button" href="/account" aria-label="Account"><ArenaIcon name="account" size={20}/></Link>
+          <Link className="icon-button" href="/settings" aria-label="Settings"><ArenaIcon name="gear" size={20}/></Link>
         </div>
       </header>
 
