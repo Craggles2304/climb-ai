@@ -407,3 +407,12 @@ body:has(.op-arena-22){background:#070c15!important;color:#f1f6ff}
 @media(prefers-reduced-motion:reduce){
   .op-arena-22 *, .op-arena-22 *::before, .op-arena-22 *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}
 }
+
+/* Support account switching without leaving the premium shell. */
+.op-arena-22 .op-a22-account-picker{
+  background:#111f31;color:#dfebf5;border:1px solid #475e77;
+  max-width:185px;min-width:0;padding:8px 10px;font:800 11px var(--font-mono),monospace;
+}
+@media(max-width:650px){
+ .op-arena-22 .op-a22-account-picker{max-width:105px;font-size:9px;padding:6px}
+}
