@@ -1,0 +1,26 @@
+/* Arena V2.1 — web foundation. Component styles live in CSS modules beside each component. */
+
+/* next/font sets --font-* on <body>, so the Arena font tokens must resolve there too. */
+body{
+  --arena-display:var(--font-display),'Barlow Condensed','Bahnschrift Condensed',Impact,sans-serif;
+  --arena-body:var(--font-body),'DM Sans','Segoe UI',system-ui,sans-serif;
+  --arena-mono:var(--font-mono),'IBM Plex Mono',Consolas,monospace;
+}
+
+/* Pages rebuilt on Arena V2.1 get a calm backdrop: no grid lines, no route watermark behind content. */
+body[data-arena-page][data-client-view]::before{
+  background:
+    radial-gradient(1200px 640px at 88% -12%,rgb(88 214 235 / .075),transparent 62%),
+    radial-gradient(900px 600px at -8% 0%,rgb(184 246 109 / .05),transparent 60%),
+    radial-gradient(800px 520px at 60% 112%,rgb(170 146 255 / .05),transparent 65%),
+    var(--arena-obsidian);
+}
+body[data-arena-page][data-client-view]::after{opacity:0}
+body[data-arena-page][data-client-view] main::before{content:none}
+body[data-arena-page] main#content{max-width:1720px;padding:24px 28px 56px}
+@media (max-width:760px){
+  body[data-arena-page] main#content{padding:14px 12px 104px}
+}
+@media (min-width:2200px){
+  body[data-arena-page] main#content{max-width:1960px}
+}

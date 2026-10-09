@@ -1,33 +1,67 @@
 'use client';
 
-import {useEffect,useMemo,useState,type CSSProperties} from 'react';
-import Link from 'next/link';
+import {useEffect,useMemo,useState} from 'react';
 import {AppShell} from '@/components/AppShell';
 import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
-import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
+import {useSubscription} from '@/components/SubscriptionContext';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
-import {taskAppliesToRole} from '@/lib/roleAwareLearning';
-import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
-import {missionSummary} from '@/lib/missionLoop';
-import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
+import {gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {buildJourneyState} from '@/lib/journeyState';
-import {championSplash} from '@/lib/championArt';
+import {filterHistoryForTier,hasTier,historyWindowLabel} from '@/lib/subscription';
+import {verifiedMissionMastery} from '@/lib/verifiedMissionProof';
+import {careerFor} from '@/lib/dna/career';
+import {buildDNA} from '@/lib/dna/dna';
+import {HABIT_COLOURS} from '@/lib/habits/colours';
+import {getMainChampion,MAIN_CHAMPION_EVENT} from '@/lib/mainChampion';
+import {climbJourney,mainChampion,matchRowViews,missionView,parseRank,recentForm,strandViews} from '@/lib/dashboard/model';
+import {buildLearningLadder,type LearningLadder} from '@/lib/dashboard/learningLadder';
+import {PlayerHero} from '@/components/dashboard/PlayerHero';
+import {ClimbJourney,MissionCard,type MissionPhase} from '@/components/dashboard/MissionPanel';
+import {GameDnaOverview} from '@/components/dashboard/GameDnaOverview';
+import {MatchHistory} from '@/components/dashboard/MatchHistory';
+import {CoachingIntelligence,type HabitsBlock,type Loadable,type MemorySnapshot} from '@/components/dashboard/CoachingIntelligence';
+import s from '@/components/dashboard/Dashboard.module.css';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
+const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const LOCKED={state:'LOCKED' as const,data:null};
 
+/**
+ * Home — the player's coaching HQ (Arena V2.1).
+ * Player identity → next mission → Game DNA → recent matches → coaching intelligence.
+ * Every section reads the same account, plan and match evidence the rest of OP CLIMB uses.
+ */
 export default function Dashboard(){
-  const {active}=useAccount();
-  const {tasks,allTasks}=useLearningPlan();
+  const {active,hydrated,authenticated}=useAccount();
+  const {tasks,allTasks,planReady,planError}=useLearningPlan();
+  const {tier}=useSubscription();
+  const plus=hasTier(tier,'PLUS');
+  const pro=hasTier(tier,'PRO');
   const [devices,setDevices]=useState<Device[]>([]);
   const [deviceLoaded,setDeviceLoaded]=useState(false);
   const [dnaRevealed,setDnaRevealed]=useState(false);
+  const [chosenMain,setChosenMain]=useState<string|null>(null);
+  const [twin,setTwin]=useState<Loadable<LearningLadder>>(LOCKED);
+  const [memory,setMemory]=useState<Loadable<MemorySnapshot>>(LOCKED);
+
+  useEffect(()=>{
+    document.body.dataset.arenaPage='dashboard';
+    return()=>{delete document.body.dataset.arenaPage};
+  },[]);
 
   useEffect(()=>{
     try{setDnaRevealed(localStorage.getItem('op:dna-revealed:'+active.id+':'+active.role)==='1')}catch{setDnaRevealed(false)}
   },[active.id,active.role]);
+
+  useEffect(()=>{
+    const read=()=>setChosenMain(getMainChampion());
+    read();
+    window.addEventListener(MAIN_CHAMPION_EVENT,read);
+    return()=>window.removeEventListener(MAIN_CHAMPION_EVENT,read);
+  },[]);
 
   useEffect(()=>{
     let stopped=false;
@@ -45,26 +79,50 @@ export default function Dashboard(){
     return()=>{stopped=true;window.clearInterval(timer)};
   },[active.id]);
 
+  // PRO: Decision Twin V5 and Coach Memory. Other tiers never call the PRO endpoints.
+  useEffect(()=>{
+    if(!pro||!UUID.test(active.id)){setTwin(LOCKED);setMemory(LOCKED);return}
+    let cancelled=false;
+    setTwin({state:'LOADING',data:null});
+    setMemory({state:'LOADING',data:null});
+    fetch('/api/decision-twin?accountId='+encodeURIComponent(active.id),{cache:'no-store'})
+      .then(async response=>{const body=await response.json().catch(()=>({}));if(!response.ok)throw new Error(body?.error||'The Decision Twin could not be built.');return body})
+      .then(body=>{if(!cancelled)setTwin({state:'READY',data:buildLearningLadder(body)})})
+      .catch(error=>{if(!cancelled)setTwin({state:'ERROR',data:null,error:error instanceof Error?error.message:null})});
+    fetch('/api/coach/memory?accountId='+encodeURIComponent(active.id)+'&role='+encodeURIComponent(active.role),{cache:'no-store'})
+      .then(async response=>{const body=await response.json().catch(()=>({}));if(!response.ok||!body?.ok)throw new Error(body?.error||'Coach Memory unavailable.');return body})
+      .then(body=>{if(!cancelled)setMemory({state:'READY',data:{
+        count:Number(body.count)||0,
+        mastered:Array.isArray(body.mastered)?body.mastered.length:0,
+        due:Array.isArray(body.regression)?body.regression.length:0,
+        transfer:Array.isArray(body.transfer)?body.transfer.length:0,
+        top:body.leagueMind?.summary||body.memories?.[0]?.summary||null,
+      }})})
+      .catch(()=>{if(!cancelled)setMemory({state:'ERROR',data:null})});
+    return()=>{cancelled=true};
+  },[pro,active.id,active.role]);
+
   const matches=useMemo(()=>matchesFor(active.id)
     .filter(match=>match.durationSeconds>=300)
-    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)),[active.id]);
+    .sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt)),[active.id,hydrated,allTasks]);
+  const roleMatches=useMemo(()=>matches.filter(match=>canonicalLeagueRole(match.role)===active.role),[matches,active.role]);
+  const windowMatches=useMemo(()=>filterHistoryForTier(matches,tier),[matches,tier]);
   const baselineGames=dnaBaselineGameCount(matches,active.role);
   const baselineReady=dnaBaselineReady(baselineGames);
   const accountTasks=allTasks[active.id]??tasks;
   const roleTasks=useMemo(()=>accountTasks.filter(task=>taskAppliesToRole(task,active.role)),[accountTasks,active.role]);
-  const dnaMissions=useMemo<ClientDnaMission[]>(()=>gameDnaClientMissions(roleTasks,active.role),[roleTasks,active.role]);
-  const activeMissions=useMemo(()=>baselineReady
-    ?gameMissionFocusPair(roleTasks,active.role).map(({task})=>task)
-    :[],[roleTasks,active.role,baselineReady]);
-  const focus=activeMissions[0]??null;
-  const secondFocus=activeMissions[1]??null;
-  const focusPlain=focus?plainLanguageFocus(focus):null;
-  const secondFocusPlain=secondFocus?plainLanguageFocus(secondFocus):null;
-  const focusProof=focus?missionSummary(focus):null;
-  const mastered=roleTasks.filter(task=>task.status==='MASTERED').length;
+  const focusPair=useMemo(()=>baselineReady?gameMissionFocusPair(roleTasks,active.role):[],[roleTasks,active.role,baselineReady]);
+  const missions=useMemo(()=>focusPair.map(({task})=>missionView(task)),[focusPair]);
+  const primary=missions[0]??null;
+  const secondary=missions[1]??null;
+  const mastered=useMemo(()=>roleTasks.filter(verifiedMissionMastery).length,[roleTasks]);
+  const dna=useMemo(()=>buildDNA(careerFor(roleMatches)),[roleMatches]);
+  const strands=useMemo(()=>strandViews({tasks:roleTasks,role:active.role,baselineReady,dna,allHabits:plus}),[roleTasks,active.role,baselineReady,dna,plus]);
+  const rows=useMemo(()=>matchRowViews(windowMatches,focusPair.map(({task})=>task)),[windowMatches,focusPair]);
+  const form=useMemo(()=>recentForm(windowMatches,10),[windowMatches]);
+  const main=useMemo(()=>mainChampion(roleMatches,active.champions,chosenMain),[roleMatches,active.champions,chosenMain]);
   const linked=devices.length>0;
   const online=devices.some(device=>recent(device.last_seen_at));
-  const latest=matches[0]??null;
 
   const next=buildJourneyState({
     deviceLoaded,
@@ -72,115 +130,71 @@ export default function Dashboard(){
     online,
     baselineGames,
     dnaRevealed,
-    focusName:activeMissions.length===2?'Two DNA trees unlocked':focusPlain?.name||focus?.title,
-    focusJob:activeMissions.length===2?`1. ${focusPlain?.nextGame||focus?.gameRule||''}  2. ${secondFocusPlain?.nextGame||secondFocus?.gameRule||''}`:focusPlain?.nextGame||focus?.gameRule,
-    focusConfirmed:focusProof?.confirmed,
-    focusRequired:focusProof?.required,
+    focusName:missions.length===2?'Two DNA trees unlocked':primary?.name,
+    focusJob:missions.length===2?`1. ${primary?.nextGame||''}  2. ${secondary?.nextGame||''}`:primary?.nextGame,
+    focusConfirmed:primary?.confirmed,
+    focusRequired:primary?.required,
   });
+  const stages=climbJourney({deviceLoaded,linked,online,baselineGames,role:active.role,dnaRevealed,missions,masteredCount:mastered});
 
-  const missionProven=Boolean(focusProof&&focusProof.confirmed>=focusProof.required);
-  const steps=[
-    {label:'CONNECT COMPANION',done:linked,active:!linked},
-    {label:'PLAY 3 GAMES',done:baselineReady,active:linked&&!baselineReady},
-    {label:'REVEAL DNA',done:baselineReady,active:false},
-    {label:'TRAIN 2 MISSIONS',done:missionProven,active:Boolean(baselineReady&&focus&&!missionProven)},
-    {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
-  ];
+  const phase:MissionPhase=!hydrated||(authenticated&&!planReady)?'CHECKING'
+    :planError?'ERROR'
+    :!baselineReady?'BASELINE'
+    :!dnaRevealed?'REVEAL'
+    :primary?'MISSION':'EMPTY';
+
+  const habits:HabitsBlock={
+    stage:dna.stage,
+    careerGames:dna.careerGames,
+    nextAt:dna.next?.at??null,
+    items:(plus?dna.habits.slice(0,3):dna.habits.slice(0,1)).map(reading=>({
+      id:reading.id,name:reading.def.name,occurred:reading.occurred,measured:reading.measured,level:reading.level,
+      colour:HABIT_COLOURS[reading.id],trend:pro?reading.trend?.direction??null:null,
+    })),
+    hidden:plus?0:Math.max(0,dna.habits.length-1),
+  };
+  const formWindow=tier==='PRO'?'Last 10':tier==='PLUS'?'Last 10 · 90 days':'Last 10 · 7 days';
 
   return <AppShell>
-    <header className="op-home-head op-home-head-dna arena-player-hero">
-      {latest&&<img className="arena-player-hero-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>}
-      <div className="arena-player-hero-copy">
-        <div className="eyebrow">YOUR CLIMB · {active.role} PLAYER</div>
-        <h1>{active.gameName}<span>{active.tagline}</span></h1>
-        <p>{baselineReady
-          ?'Your Game DNA is active. '+(focusPlain?.nextGame||'Take one clear mission into the next game.')
-          :'Play '+DNA_BASELINE_GAMES+' tracked '+active.role+' games to reveal a player shape built from evidence.'}</p>
-        <div className="arena-player-hero-meta"><b>{active.rank}</b><span>{active.role}</span><span>{Math.min(baselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} BASELINE GAMES</span></div>
-      </div>
-      <span className={'op-home-connection '+(online?'is-online':linked?'is-paired':'')}>
-        <i/>{online?'COMPANION LIVE':linked?'COMPANION PAIRED':'COMPANION NOT CONNECTED'}
-      </span>
-      {latest&&<small className="arena-player-hero-credit">LAST PLAYED · {latest.champion}</small>}
-    </header>
+    <div className={s.page} data-arena="">
+      <PlayerHero
+        gameName={active.gameName}
+        tagline={active.tagline}
+        region={active.region}
+        rank={parseRank(active.rank)}
+        role={active.role}
+        main={main}
+        form={form}
+        formWindow={formWindow}
+        companion={{loaded:deviceLoaded,linked,online}}
+        baseline={{games:baselineGames,required:DNA_BASELINE_GAMES,ready:baselineReady}}
+      />
 
-    <section className="op-home-dna op-home-dna-primary">
-      <div className="op-home-dna-head">
-        <div>
-          <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
-          <h2>{baselineReady?'This is how you actually play.':'Play three games. Reveal your DNA.'}</h2>
-          <p>{baselineReady
-            ?`Your live ${active.role} profile measures six parts of your game. You choose two DNA trees to keep unlocked for progression while the whole player profile keeps updating.`
-            :`Connect the Companion and play ${DNA_BASELINE_GAMES} normal ${active.role} games. OP CLIMB keeps the profile neutral until it has enough evidence to reveal your real starting shape.`}</p>
-        </div>
-        <Link className="btn primary" href="/ilp">{baselineReady?'EXPLORE MY DNA →':'SEE MY DNA BUILD →'}</Link>
+      <div className={s.rowMission}>
+        <MissionCard phase={phase} role={active.role} baseline={{games:baselineGames,required:DNA_BASELINE_GAMES}} primary={primary} secondary={secondary} error={planError} primaryAction={next.phase==='MISSION'}/>
+        <ClimbJourney stages={stages} next={next}/>
       </div>
-      <div className="op-home-dna-legend" aria-label="Six Game DNA strands">
-        {DNA_DOMAINS.map(domain=><span key={domain} style={({ '--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties)}><i/>{DNA_DOMAIN_LABELS[domain]}</span>)}
-      </div>
-      <div className="op-home-dna-stage">
-        <ClientGameDna
-          player={active.gameName+active.tagline}
-          role={active.role}
-          missions={dnaMissions}
-          baselineGames={baselineGames}
-          baselineRequired={DNA_BASELINE_GAMES}
+
+      <GameDnaOverview
+        key={active.id+':'+active.role}
+        role={active.role}
+        strands={strands}
+        baseline={{games:baselineGames,required:DNA_BASELINE_GAMES,ready:baselineReady}}
+        tier={tier}
+        initialDomain={primary?.domain??null}
+      />
+
+      <div className={s.rowLower}>
+        <MatchHistory rows={rows} windowLabel={historyWindowLabel(tier)} tier={tier} loading={!hydrated} olderHidden={Math.max(0,matches.length-windowMatches.length)}/>
+        <CoachingIntelligence
+          tier={tier}
+          baselineReady={baselineReady}
+          habits={habits}
+          ladder={twin}
+          memory={memory}
+          improvement={{mastered,broken:pro?dna.broken.length:null}}
         />
       </div>
-    </section>
-
-    <section className="op-next-step">
-      <div>
-        <span>{next.status}</span>
-        <h2>{next.title}</h2>
-        <p>{next.body}</p>
-      </div>
-      <Link className="btn primary" href={next.href} aria-disabled={!deviceLoaded}>{next.cta}</Link>
-    </section>
-
-    <section className="op-climb-path" aria-label="Your OP CLIMB journey">
-      <div className="op-climb-path-head"><span>THE DNA LOOP</span><b>{baselineReady?'DNA ACTIVE':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
-      <ol>
-        {steps.map((step,index)=><li key={step.label} className={step.done?'done':step.active?'active':''}>
-          <i>{step.done?'✓':index+1}</i><span>{step.label}</span>
-        </li>)}
-      </ol>
-    </section>
-
-    <section className="op-home-focus-grid">
-      <article className="panel op-home-focus">
-        <div className="eyebrow">{baselineReady?'CURRENT FIX':'DNA BASELINE'}</div>
-        {baselineReady&&focus?<>
-          <span className="op-home-strand" style={({ '--strand-color':DNA_DOMAIN_COLORS[focus.dnaDomain]} as CSSProperties)}>
-            {DNA_DOMAIN_LABELS[focus.dnaDomain]}
-          </span>
-          <h2>{focusPlain?.name||focus.title}</h2>
-          <p>{focusPlain?.meaning||focus.why}</p>
-          <div className="op-home-job"><span>YOUR JOB NEXT GAME</span><b>{focusPlain?.nextGame||focus.gameRule}</b></div>
-          <div className="op-home-proof"><span>PROOF</span><b>{focusProof?.confirmed??0}/{focusProof?.required??3} clean games</b></div>
-        </>:<>
-          <h2>{baselineGames}/{DNA_BASELINE_GAMES} games observed.</h2>
-          <p>Do not optimise for the system yet. Play normally. OP CLIMB needs your real habits before it decides what is holding you back.</p>
-          <div className="op-home-job"><span>NEXT</span><b>Play {active.role} baseline game {Math.min(baselineGames+1,DNA_BASELINE_GAMES)}.</b></div>
-        </>}
-      </article>
-
-      <article className="panel op-home-latest">
-        <div className="eyebrow">LATEST GAME</div>
-        {latest?<>
-          <h2>{latest.champion} · {latest.result==='WIN'?'VICTORY':'DEFEAT'}</h2>
-          <div className="op-home-latest-stats">
-            <span><small>KDA</small><b>{latest.kills}/{latest.deaths}/{latest.assists}</b></span>
-            <span><small>CS / MIN</small><b>{Number.isFinite(latest.metrics.csPerMin)?latest.metrics.csPerMin.toFixed(1):'—'}</b></span>
-            <span><small>ROLE</small><b>{latest.role}</b></span>
-          </div>
-          <Link className="text-btn" href="/live">REVIEW IN MATCH ROOM →</Link>
-        </>:<>
-          <h2>No tracked game yet.</h2>
-          <p>Your first game starts the DNA baseline.</p>
-          <Link className="text-btn" href="/live">CONNECT AND PLAY →</Link>
-        </>}
-      </article>
-    </section>
+    </div>
   </AppShell>;
 }

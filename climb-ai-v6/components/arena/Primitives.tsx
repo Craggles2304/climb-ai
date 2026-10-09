@@ -54,9 +54,9 @@ export function TierBadge({tier,label}:{tier:SubscriptionTier;label?:string}){
 
 export function Stat({label,value,sub,unknown=false,className}:{label:ReactNode;value:ReactNode;sub?:ReactNode;unknown?:boolean;className?:string}){
   return <div className={cx(s.stat,className)}>
-    <span className={s.statLabel}>{label}</span>
-    <strong className={cx(s.statValue,unknown&&s.unknown)}>{value}</strong>
-    {sub&&<span className={s.statSub}>{sub}</span>}
+    <span className={s.statLabel} data-stat-label="">{label}</span>
+    <strong className={cx(s.statValue,unknown&&s.unknown)} data-stat-value="">{value}</strong>
+    {sub&&<span className={s.statSub} data-stat-sub="">{sub}</span>}
   </div>;
 }
 

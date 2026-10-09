@@ -11,6 +11,13 @@
 @container hq (max-width:900px){.rowMission{grid-template-columns:minmax(0,1fr)}}
 
 .sampleRow{display:flex}
+/* Panel surface for sections that manage their own inner padding. */
+.panelShell{
+  position:relative;min-width:0;
+  background:linear-gradient(180deg,rgb(17 26 37 / .94),rgb(11 17 26 / .96));
+  border:1px solid var(--arena-line-soft);border-radius:var(--arena-radius-lg);
+  box-shadow:var(--arena-highlight),var(--arena-shadow-1);
+}
 
 /* ---------- A. Player identity hero ---------- */
 .hero{
@@ -39,15 +46,16 @@
   background:linear-gradient(90deg,var(--arena-lime),rgb(88 214 235 / .6) 40%,transparent 75%);opacity:.75;
 }
 .heroTop{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
-.heroIdentity{display:flex;align-items:center;gap:22px;min-width:0}
-.heroName{min-width:0}
+.heroIdentity{display:grid;grid-template-columns:auto minmax(0,1fr);grid-template-areas:"emblem name" "emblem meta";align-items:center;column-gap:22px;min-width:0}
+.heroEmblem{grid-area:emblem;display:grid;place-items:center}
+.heroName{grid-area:name;min-width:0;align-self:end}
 .heroName h1{
   margin:0;color:var(--arena-white);
   font:800 clamp(44px,4.4vw,76px)/.9 var(--arena-display);text-transform:uppercase;
   overflow-wrap:anywhere;text-shadow:0 4px 30px rgb(0 0 0 / .55);
 }
 .heroName h1 span{margin-left:.18em;color:#9fb0bd;font-size:.42em;font-weight:700;letter-spacing:.04em;vertical-align:.22em;white-space:nowrap}
-.heroMeta{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
+.heroMeta{grid-area:meta;align-self:start;display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-top:14px}
 .heroRank{display:inline-flex;align-items:baseline;gap:8px;padding:5px 11px;border-radius:var(--arena-radius-xs);background:rgb(233 199 131 / .1);box-shadow:inset 0 0 0 1px rgb(233 199 131 / .32)}
 .heroRank b{font:700 19px/1 var(--arena-display);letter-spacing:.04em;text-transform:uppercase;color:var(--rank,var(--arena-gold))}
 .heroRank small{font:500 12px/1 var(--arena-mono);color:var(--arena-muted)}
@@ -80,7 +88,7 @@
 /* ---------- B. Next mission ---------- */
 .mission{
   --strand:var(--arena-lime);
-  position:relative;overflow:hidden;display:grid;gap:18px;align-content:start;
+  position:relative;overflow:hidden;display:flex;flex-direction:column;gap:18px;
   padding:24px 26px;border-radius:var(--arena-radius-lg);
   background:
     radial-gradient(520px 260px at 100% 0%,color-mix(in srgb,var(--strand) 13%,transparent),transparent 70%),
@@ -106,9 +114,13 @@
 .proofNote{margin:0;max-width:40ch;color:var(--arena-muted);font:400 13.5px/1.45 var(--arena-body)}
 .latest{display:inline-flex;align-items:center;gap:8px;font:500 12.5px/1.3 var(--arena-body);color:var(--arena-muted)}
 .actions{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.nextList{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.nextList li{display:grid;grid-template-columns:34px minmax(0,1fr);align-items:center;gap:12px;padding:11px 14px;border-radius:var(--arena-radius-md);background:var(--arena-well);box-shadow:inset 0 0 0 1px var(--arena-line-soft)}
+.nextList b{font:800 18px/1 var(--arena-display);color:var(--strand)}
+.nextList span{font:400 14.5px/1.45 var(--arena-body);color:var(--arena-text-2)}
 .alsoTraining{
   display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:14px;
-  margin-top:2px;padding:12px 14px;border-radius:var(--arena-radius-md);
+  margin-top:auto;padding:12px 14px;border-radius:var(--arena-radius-md);
   background:rgb(255 255 255 / .025);box-shadow:inset 0 0 0 1px var(--arena-line-soft);
   text-decoration:none;color:inherit;transition:background-color var(--arena-dur-2) var(--arena-ease),box-shadow var(--arena-dur-2) var(--arena-ease);
 }
@@ -134,6 +146,8 @@
 .stepDone .stepMark{color:var(--arena-ink-on-accent);background:var(--arena-lime);box-shadow:none}
 .stepCurrent{background:rgb(184 246 109 / .06);box-shadow:inset 0 0 0 1px rgb(184 246 109 / .28)}
 .stepCurrent .stepMark{color:var(--arena-lime);box-shadow:inset 0 0 0 2px var(--arena-lime),0 0 16px -2px rgb(184 246 109 / .55)}
+.stepReady .stepMark{color:var(--arena-cyan);box-shadow:inset 0 0 0 1.5px rgb(88 214 235 / .55)}
+.stepReady .stepState{color:var(--arena-cyan)}
 .stepCopy{display:grid;gap:3px;min-width:0}
 .stepCopy b{font:700 16px/1 var(--arena-display);letter-spacing:.08em;text-transform:uppercase;color:var(--arena-white)}
 .stepLocked .stepCopy b{color:var(--arena-muted)}
@@ -166,7 +180,6 @@
 .rungSelected .rungLabel{color:var(--tone)}
 .scan{position:absolute;top:0;bottom:0;width:22%;left:-22%;background:linear-gradient(90deg,transparent,rgb(184 246 109 / .1),transparent);animation:scanSweep 4.5s var(--arena-ease) infinite}
 @keyframes scanSweep{to{left:100%}}
-.neutralNote{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);display:inline-flex;align-items:center;gap:8px;padding:6px 12px;border-radius:var(--arena-radius-pill);background:rgb(8 13 21 / .85);box-shadow:inset 0 0 0 1px var(--arena-line-strong);font:500 12px/1 var(--arena-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--arena-text-2);white-space:nowrap}
 
 .strandTabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;padding:14px 26px 0}
 .strandTab{
@@ -221,7 +234,7 @@
 .matchRow{
   --result:var(--arena-win);
   position:relative;display:grid;align-items:center;gap:14px;
-  grid-template-columns:52px minmax(118px,1fr) minmax(92px,.8fr) 64px 60px minmax(150px,1.35fr) 28px;
+  grid-template-columns:52px minmax(118px,1fr) minmax(92px,.75fr) 60px 56px minmax(210px,1.75fr) 28px;
   padding:9px 12px 9px 16px;border-radius:var(--arena-radius-md);text-decoration:none;color:inherit;
   background:linear-gradient(90deg,color-mix(in srgb,var(--result) 9%,transparent),rgb(255 255 255 / .015) 38%);
   box-shadow:inset 0 0 0 1px var(--arena-line-soft);
@@ -243,6 +256,22 @@
 .matchMetric{display:grid;gap:4px}
 .matchMetric b{font:700 17px/1 var(--arena-display);font-variant-numeric:tabular-nums;color:var(--arena-white)}
 .matchFocus{display:flex;flex-wrap:wrap;gap:5px;min-width:0}
+.noFocus{font:400 12.5px/1.3 var(--arena-body);color:var(--arena-dim)}
+.evidencePill{
+  display:inline-flex;align-items:center;gap:5px;height:24px;padding:0 8px;border-radius:var(--arena-radius-xs);
+  color:var(--tone);background:color-mix(in srgb,var(--tone) 10%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tone) 32%,transparent);
+}
+.evidencePill>svg:first-child{color:var(--strand)}
+.evidencePill b{font:600 11.5px/1 var(--arena-mono);letter-spacing:.06em;color:var(--arena-text-2)}
+
+/* Mission evidence trail: the last graded games, each with its outcome in words. */
+.trail{display:grid;gap:8px}
+.trailList{list-style:none;margin:0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.trailList li{display:inline-flex;align-items:center;gap:6px;height:26px;padding:0 9px;border-radius:var(--arena-radius-xs);font:500 12px/1 var(--arena-body);color:var(--tone);background:color-mix(in srgb,var(--tone) 9%,transparent);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--tone) 26%,transparent)}
+.trailBANKED{--tone:var(--arena-lime)}
+.trailMISSED{--tone:var(--arena-loss)}
+.trailNOT_OBSERVED{--tone:var(--arena-muted)}
+.trailText{color:var(--arena-text-2)}
 .matchGo{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;color:var(--arena-muted);transition:color var(--arena-dur-2) var(--arena-ease),background-color var(--arena-dur-2) var(--arena-ease)}
 .matchRow:hover .matchGo{color:var(--arena-lime);background:rgb(184 246 109 / .1)}
 .matchesFoot{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:6px 26px 22px}
@@ -267,7 +296,7 @@
 .habitItem small{display:block;margin-top:2px;font:400 12.5px/1.3 var(--arena-body);color:var(--arena-muted)}
 .lockedNote{display:flex;align-items:center;gap:10px;flex-wrap:wrap;color:var(--arena-muted);font:400 13px/1.45 var(--arena-body)}
 .ladderLegend{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
-.ladderLegend span{font:500 9.5px/1.15 var(--arena-mono);letter-spacing:.03em;text-transform:uppercase;color:var(--arena-dim);text-align:center;overflow-wrap:anywhere}
+.ladderLegend span{font:500 9.5px/1.15 var(--arena-mono);letter-spacing:.03em;text-transform:uppercase;color:var(--arena-dim);text-align:center;hyphens:manual}
 .ladderRows{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 .ladderRow{display:grid;gap:7px}
 .ladderTop{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -287,7 +316,7 @@
 .memoryQuote{margin:0;padding-left:12px;box-shadow:inset 2px 0 0 var(--arena-violet);color:var(--arena-text-2);font:400 13.5px/1.5 var(--arena-body)}
 .lockedPreview{display:grid;gap:10px}
 .lockedLadder{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px;opacity:.85}
-.lockedLadder span{display:grid;place-items:center;min-height:38px;padding:4px;border-radius:var(--arena-radius-xs);background:rgb(170 146 255 / .06);box-shadow:inset 0 0 0 1px rgb(170 146 255 / .2);font:500 9.5px/1.15 var(--arena-mono);letter-spacing:.02em;text-transform:uppercase;text-align:center;color:var(--arena-text-2);overflow-wrap:anywhere}
+.lockedLadder span{display:grid;place-items:center;min-height:38px;padding:4px;border-radius:var(--arena-radius-xs);background:rgb(170 146 255 / .06);box-shadow:inset 0 0 0 1px rgb(170 146 255 / .2);font:500 9.5px/1.15 var(--arena-mono);letter-spacing:.02em;text-transform:uppercase;text-align:center;color:var(--arena-text-2);hyphens:manual}
 .improve{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:12px 16px;border-radius:var(--arena-radius-md);background:linear-gradient(110deg,rgb(233 199 131 / .1),transparent 70%);box-shadow:inset 0 0 0 1px rgb(233 199 131 / .22)}
 .improve b{font:800 26px/1 var(--arena-display);color:var(--arena-gold);font-variant-numeric:tabular-nums}
 .improve span{color:var(--arena-text-2);font:400 13.5px/1.4 var(--arena-body)}
@@ -317,8 +346,20 @@
   .detail>*:first-child{box-shadow:none}
 }
 @container hq (max-width:620px){
-  .heroIdentity{gap:14px}
-  .heroName h1{font-size:clamp(36px,11vw,54px)}
+  .heroIdentity{grid-template-areas:"emblem name" "meta meta";column-gap:14px}
+  .heroEmblem svg{width:62px;height:62px}
+  .heroName{align-self:center}
+  .heroName h1{font-size:clamp(34px,10.5vw,52px)}
+  .heroName h1 span{display:block;margin:6px 0 0;vertical-align:baseline;font-size:.42em}
+  .hero{gap:14px}
+  .heroStats>*{padding:10px 14px}
+  .heroStats>*:not(:first-child) [data-stat-sub]{display:none}
+  .heroStats [data-stat-value]{font-size:24px}
+  .formStrip{height:22px}
+  .noFocus{display:none}
+  .step{padding:7px 8px}
+  .step:not(:last-child)::after{top:34px}
+  .stepCopy small{white-space:normal}
   .dnaHeadWrap{padding:18px 16px 0}
   .helixBand{margin:0 16px;height:96px}
   .strandTabs{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:12px 16px 4px;gap:8px;scrollbar-width:none}
@@ -333,3 +374,6 @@
 @media (prefers-reduced-motion:reduce){
   .heroArt,.helixMotion,.scan,.statusLive i,.missionKicker i,.detail{animation:none}
 }
+.intelBlock>a{justify-self:start}
+/* Ultra-wide (2560): use the room instead of leaving wide empty gutters. */
+@media (min-width:2200px){.page{max-width:1880px}}

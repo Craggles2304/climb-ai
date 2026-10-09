@@ -20,6 +20,11 @@ import {gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
+import {parseRank} from '@/lib/dashboard/model';
+import {ArenaIcon,type ArenaIconName} from './arena/ArenaIcon';
+import {RankEmblem} from './arena/RankEmblem';
+import {TierBadge} from './arena/Primitives';
+import st from './AppShell.module.css';
 
 type ProgressionPayload={
   ok:boolean;
@@ -29,15 +34,17 @@ type ProgressionPayload={
 };
 
 const primary=[
-  ['Home','/dashboard','⌂','Your next step'],
-  ['My DNA','/ilp','⬡','Your player identity'],
-  ['Climb Plan','/progress','↗','Your history → next rank'],
-  ['Missions','/missions','✦','Six DNA trackers'],
-  ['Match Room','/live','◇','Prepare · play · review'],
-  ['My Games','/analyse','▤','Past games and evidence'],
-  ['Coach','/coach','◎','Ask why · understand more'],
-] as const;
-const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Climb Plan','/progress'],['Missions','/missions'],['Match','/live']] as const;
+  ['Home','/dashboard','home','Your next step','PLAY'],
+  ['Match Room','/live','match','Prepare · play · review','PLAY'],
+  ['My DNA','/ilp','dna','Your player identity','DEVELOP'],
+  ['Missions','/missions','missions','Six DNA trackers','DEVELOP'],
+  ['Climb Plan','/progress','climb','Your history → next rank','DEVELOP'],
+  ['My Games','/analyse','games','Past games and evidence','UNDERSTAND'],
+  ['Coach','/coach','coach','Ask why · understand more','UNDERSTAND'],
+] as const satisfies ReadonlyArray<readonly [string,string,ArenaIconName,string,string]>;
+const NAV_GROUPS=['PLAY','DEVELOP','UNDERSTAND'] as const;
+const mobile=[['Home','/dashboard','home'],['My DNA','/ilp','dna'],['Climb Plan','/progress','climb'],['Missions','/missions','missions'],['Match','/live','match']] as const satisfies ReadonlyArray<readonly [string,string,ArenaIconName]>;
+const routeIcon=(path:string):ArenaIconName=>primary.find(([,href])=>isPrimaryActive(path,href))?.[2]??'hex';
 
 const routeTitle=(path:string)=>{
   if(path==='/dashboard')return'HOME';
@@ -79,11 +86,10 @@ function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void
 }
 function SidebarTierStep({tier}:{tier:'FREE'|'PLUS'|'PRO'}){
   const next=tier==='FREE'?'Next unlock: the full match coaching loop.':tier==='PLUS'?'Next unlock: a coach that remembers.':'Your full player-model coaching is active.';
-  return <div className="sidebar-plan">
-    <span className="eyebrow">YOUR COACHING PLAN</span>
-    <strong>{tier}<span>{tier==='PRO'?'ACTIVE':'PLAN'}</span></strong>
+  return <div className={st.plan}>
+    <div className={st.planTop}><span>Your plan</span><TierBadge tier={tier} label={tier==='PRO'?'PRO · active':tier}/></div>
     <p>{next}</p>
-    <Link className="btn btn-small" href="/pricing">Explore your unlocks <span>↗</span></Link>
+    <Link className={st.planLink} href="/pricing">Explore your unlocks <ArenaIcon name="arrow" size={14}/></Link>
   </div>;
 }
 
@@ -244,52 +250,60 @@ export function AppShell({children}:{children:React.ReactNode}){
     return()=>window.clearTimeout(timer);
   },[progressToast]);
 
-  return <div className={'app-shell authenticated-client-shell '+(live?'is-live':'')}>
-    <aside className="sidebar" aria-label="Primary navigation">
-      <Link className="brand" href="/dashboard" aria-label="OP Climb home">
-        <span className="brand-mark">OP<span>↗</span></span>
-        <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
+  const companionLabel=!journeyDeviceLoaded?'Checking':journeyOnline?'Companion live':journeyLinked?'Paired · offline':'Not connected';
+  return <div className={'app-shell authenticated-client-shell '+st.shell+(live?' is-live':'')}>
+    <aside className="sidebar" aria-label="Primary navigation" data-arena="">
+      <Link className={st.brand} href="/dashboard" aria-label="OP CLIMB home">
+        <span className={st.mark} aria-hidden="true"><span>OP</span></span>
+        <span className={st.wordmark}><b>OP <span>CLIMB</span></b><small>Personal League coach</small></span>
       </Link>
-      <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
-      <div className="game-switch" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'14px 0 20px'}}><Link className="btn primary" href="/dashboard" aria-current="page" style={{fontSize:11,minHeight:38,padding:'8px'}}>LEAGUE</Link><Link className="btn secondary" href="/tft" style={{fontSize:11,minHeight:38,padding:'8px'}}>TFT</Link></div>
-      <p className="nav-caption">YOUR WORKSPACE</p>
-      <nav aria-label="Main navigation">
-        {primary.map(([name,href,icon,hint])=>{
-          const activeLink=isPrimaryActive(path,href);
-          return <Link className={'nav-link '+(href==='/ilp'?'nav-link-dna ':'')+(activeLink?'active':'')} aria-current={activeLink?'page':undefined} key={href} href={href}>
-            <span className="nav-link-icon" aria-hidden="true">{icon}</span>
-            <span className="nav-link-copy"><b>{name}</b><small>{hint}</small></span>
-          </Link>;
-        })}
-
+      <div className={st.gameSwitch} role="group" aria-label="Game">
+        <Link href="/dashboard" aria-current="page"><ArenaIcon name="sword" size={15}/><span>League</span></Link>
+        <Link href="/tft"><ArenaIcon name="hex" size={15}/><span>TFT</span></Link>
+      </div>
+      <nav className={st.nav} aria-label="Main navigation">
+        {NAV_GROUPS.map(group=><div className={st.group} key={group}>
+          <p className={st.groupLabel}>{group}</p>
+          {primary.filter(item=>item[4]===group).map(([name,href,icon,hint])=>{
+            const activeLink=isPrimaryActive(path,href);
+            return <Link className={st.link} aria-current={activeLink?'page':undefined} key={href} href={href} title={name}>
+              <span className={st.linkIcon} aria-hidden="true"><ArenaIcon name={icon} size={19}/></span>
+              <span className={st.linkCopy}><b>{name}</b><small>{hint}</small></span>
+              {href==='/ilp'&&<span className={st.linkBadge}>Core</span>}
+            </Link>;
+          })}
+        </div>)}
       </nav>
-      <div className="sidebar-bottom">
+      <div className={st.bottom}>
         <SidebarTierStep tier={tier}/>
-        <Link className="sidebar-help" href="/client"><span>◎</span> Take a quick tour</Link>
-        <div className="mini-profile">
-          <span className="player-avatar">{(active.gameName||'P').slice(0,1).toUpperCase()}</span>
-          <span><strong>{active.gameName}{active.tagline}</strong><small>{active.rank} · {active.role} · LV {xp.level}</small></span>
-          <Link className="icon-button" href="/settings" aria-label="Player settings">≡</Link>
+        <Link className={st.tour} href="/client"><ArenaIcon name="help" size={16}/>Take a quick tour</Link>
+        <div className={st.profile}>
+          <RankEmblem rank={parseRank(active.rank)} size={36}/>
+          <span className={st.profileCopy}><b>{active.gameName}{active.tagline}</b><small>{active.rank} · {active.role} · LV {xp.level}</small></span>
+          <Link className={st.iconBtn+' '+st.profileAction} href="/settings" aria-label="Player settings"><ArenaIcon name="settings" size={17}/></Link>
         </div>
-        {accounts.length>1&&<select className="client-account-switch" aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline}</option>)}</select>}
+        {accounts.length>1&&<select className={st.accountSwitch} aria-label="Active Riot account" value={active.id} onChange={e=>setActive(e.target.value)}>{accounts.map(a=><option key={a.id} value={a.id}>{a.gameName}{a.tagline}</option>)}</select>}
         <SyncHealth sync={progression?.sync??null}/>
         <SessionBar/>
       </div>
     </aside>
 
     <div className="workspace">
-      <header className="topbar">
-        <Link className="mobile-brand" href="/dashboard">OP<span>CLIMB</span></Link>
-        <div className="breadcrumb"><span>▦</span><span>Player workspace</span><span className="divider">/</span><strong>{title}</strong></div>
-        <div className="topbar-right">
+      <header className="topbar" data-arena="">
+        <Link className={st.mobileBrand} href="/dashboard" aria-label="OP CLIMB home"><span className={st.mark} aria-hidden="true"><span>OP</span></span><b>OP <span>CLIMB</span></b></Link>
+        <div className={st.crumb}><ArenaIcon name={routeIcon(path)} size={16}/><span>Player workspace</span><span className={st.crumbSep}>/</span><b>{title}</b></div>
+        <div className={st.topRight}>
           {topbarAction&&<Link className="btn primary btn-small site-cta" href={topbarAction.href}>{topbarAction.label}</Link>}
-          <span className="demo-badge">{tier} PLAN</span>
-          <Link className="icon-button" href="/account" aria-label="Account">◉</Link>
-          <Link className="icon-button" href="/settings" aria-label="Settings">⚙</Link>
+          {/* Home shows Companion status in the player hero. */}
+          {path!=='/dashboard'&&<Link className={[st.pill,journeyOnline?st.pillLive:journeyLinked?st.pillPaired:'',st.hideOnPhone].join(' ')} href="/live" aria-label={'Companion status: '+companionLabel}><i aria-hidden="true"/>{companionLabel}</Link>}
+          <Link className={st.tierLink} href="/pricing" aria-label={tier+' plan. View plans'}><TierBadge tier={tier} label={tier+' plan'}/></Link>
+          <Link className={st.iconBtn} href="/account" aria-label="Account"><ArenaIcon name="account" size={19}/></Link>
+          <Link className={st.iconBtn} href="/settings" aria-label="Settings"><ArenaIcon name="settings" size={19}/></Link>
         </div>
       </header>
 
-      {coreJourneyRoute&&<section className={'op-journey-status phase-'+journey.phase.toLowerCase()} aria-label="Your OP CLIMB journey status">
+      {/* Home carries its own mission and journey, so the banner would only repeat it there. */}
+      {coreJourneyRoute&&path!=='/dashboard'&&<section className={'op-journey-status phase-'+journey.phase.toLowerCase()} aria-label="Your OP CLIMB journey status">
         <div className="op-journey-status-step">
           <span>{journey.status}</span>
           {journey.progress&&<b>{journey.progress}</b>}
@@ -306,7 +320,7 @@ export function AppShell({children}:{children:React.ReactNode}){
       </main>
     </div>
 
-    <nav className="mobile-nav" aria-label="Mobile navigation">{mobile.map(([name,href])=><Link className={isPrimaryActive(path,href)?'active':''} key={href} href={href}>{name}</Link>)}</nav>
+    <nav className={st.mobileNav} aria-label="Mobile navigation" data-arena="">{mobile.map(([name,href,icon])=><Link aria-current={isPrimaryActive(path,href)?'page':undefined} key={href} href={href}><ArenaIcon name={icon} size={20}/>{name}</Link>)}</nav>
     {progressToast&&<div className={'op-progress-toast '+(progressToast.kind==='LEVEL'?'is-level':'')} role="status">
       <span>{progressToast.kind==='LEVEL'?'LEVEL UP':'PROGRESSION UPDATED'}</span>
       <b>{progressToast.title}</b>
@@ -352,13 +366,14 @@ export function AppShell({children}:{children:React.ReactNode}){
 }
 
 function SyncHealth({sync}:{sync:ProgressionPayload['sync']|null}){
-  if(!sync)return <div className="op-sync-health"><i/><span>SYNC CHECKING…</span></div>;
+  if(!sync)return <div className={st.sync} title="Sync checking"><i aria-hidden="true"/><span>Sync checking…</span></div>;
   const status=String(sync.status||'').toLowerCase();
   const processing=/sync|process|enrich|pending/.test(status)&&!/ready|complete/.test(status);
   const stamp=sync.lastSyncedAt||sync.latestMatchAt;
-  return <div className={'op-sync-health '+(processing?'is-processing':'is-ready')}>
-    <i/>
-    <span>{processing?'GAME DATA · PROCESSING':stamp?'LAST GAME SYNCED · '+relativeTime(stamp)+' ✓':'WAITING FOR FIRST GAME'}</span>
+  const label=processing?'Game data · processing':stamp?'Last game synced · '+relativeTime(stamp):'Waiting for first game';
+  return <div className={[st.sync,processing?st.syncProcessing:stamp?st.syncReady:''].join(' ')} title={label} role="status">
+    <i aria-hidden="true"/>
+    <span>{label}</span>
   </div>;
 }
 

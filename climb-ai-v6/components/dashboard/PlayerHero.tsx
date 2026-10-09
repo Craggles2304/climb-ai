@@ -40,9 +40,10 @@ export function PlayerHero({gameName,tagline,region,rank,role,main,form,formWind
     </div>
 
     <div className={s.heroIdentity}>
-      <RankEmblem rank={rank} size={92}/>
+      <span className={s.heroEmblem}><RankEmblem rank={rank} size={92}/></span>
       <div className={s.heroName}>
         <h1 id="hq-player-name">{gameName||'Player'}{tagline&&<span>{tag}</span>}</h1>
+      </div>
         <div className={s.heroMeta}>
           <span className={s.heroRank} style={rankStyle}>
             <b>{rank.ranked?rank.label:'Unranked'}</b>
@@ -57,12 +58,11 @@ export function PlayerHero({gameName,tagline,region,rank,role,main,form,formWind
             <span><b>{main.name}</b><small>{main.source==='TRACKED'?`Main · ${main.games} of last ${main.sample}`:'Declared main'}</small></span>
           </span>:<span className={s.heroMain}><span style={{paddingLeft:8}}><b>No main yet</b><small>Play tracked games</small></span></span>}
         </div>
-      </div>
     </div>
 
     <div className={s.heroStats} aria-label={`Recent performance, ${formWindow}`}>
       <div>
-        <Stat label={<>Recent form · {formWindow}</>} value={noGames?'—':<>{form.wins}W <span style={{color:'var(--arena-muted)'}}>{form.losses}L</span></>} unknown={noGames}/>
+        <Stat label="Recent form" value={noGames?'—':<>{form.wins}W <span style={{color:'var(--arena-muted)'}}>{form.losses}L</span></>} unknown={noGames} sub={formWindow}/>
         <div className={s.formStrip} aria-hidden="true">
           {Array.from({length:10},(_,index)=>{
             // Oldest on the left, newest game on the right.

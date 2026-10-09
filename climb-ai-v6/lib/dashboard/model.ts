@@ -166,7 +166,8 @@ export function missionView(task:ILPTask):MissionView{
 /* ---------- the climb journey ---------- */
 
 export type JourneyKey='CONNECT'|'PLAY'|'REVEAL'|'TRAIN'|'VERIFY'|'EVOLVE';
-export type JourneyStatus='DONE'|'CURRENT'|'LOCKED';
+/** CURRENT is the one next step; READY is available now; LOCKED waits on a real prerequisite. */
+export type JourneyStatus='DONE'|'CURRENT'|'READY'|'LOCKED';
 export type JourneyStageView={key:JourneyKey;label:string;status:JourneyStatus;detail:string;href:string;cta:string};
 
 /**
@@ -191,26 +192,34 @@ export function climbJourney(input:{
   const evolveDone=input.masteredCount>0;
   const next=Math.min(games+1,DNA_BASELINE_GAMES);
   const plural=(n:number,word:string)=>`${n} ${word}${n===1?'':'s'}`;
-  return[
-    {key:'CONNECT',label:'CONNECT',status:connectDone?'DONE':'CURRENT',
+  // Each stage is DONE from stored evidence, AVAILABLE when its own prerequisites are met, else LOCKED.
+  // Verification needs tracked games, so it waits on the Companion; revealing the DNA does not.
+  const status=(done:boolean,available:boolean):JourneyStatus=>done?'DONE':available?'READY':'LOCKED';
+  const raw:JourneyStageView[]=[
+    {key:'CONNECT',label:'CONNECT',status:status(connectDone,true),
       detail:!input.deviceLoaded?'Checking this PC…':input.online?'Companion live':connectDone?'Paired · offline':'Pair the Companion once',
       href:'/live',cta:connectDone?'Open Match Room':'Pair Companion'},
-    {key:'PLAY',label:'PLAY',status:playDone?'DONE':connectDone||games>0?'CURRENT':'LOCKED',
+    {key:'PLAY',label:'PLAY',status:status(playDone,connectDone||games>0),
       detail:`${Math.min(games,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES} ${input.role} baseline games`,
       href:'/live',cta:playDone?'Play next game':`Play baseline game ${next}`},
-    {key:'REVEAL',label:'REVEAL DNA',status:revealDone?'DONE':baselineReady?'CURRENT':'LOCKED',
+    {key:'REVEAL',label:'REVEAL DNA',status:status(revealDone,baselineReady),
       detail:revealDone?'Six strands revealed':baselineReady?'Your DNA is ready':`Unlocks after game ${DNA_BASELINE_GAMES}`,
       href:'/ilp',cta:revealDone?'Open My DNA':'Reveal my DNA'},
-    {key:'TRAIN',label:'TRAIN',status:trainDone?'DONE':revealDone&&input.missions.length?'CURRENT':'LOCKED',
+    {key:'TRAIN',label:'TRAIN',status:status(trainDone,revealDone&&input.missions.length>0),
       detail:input.missions.length&&revealDone?`${plural(input.missions.length,'DNA tree')} unlocked`:'Two DNA trees, one job each',
       href:'/missions',cta:'Open missions'},
-    {key:'VERIFY',label:'VERIFY',status:verifyDone?'DONE':trainDone?'CURRENT':'LOCKED',
-      detail:revealDone&&input.missions.length?`${best}/${required} verified games`:'Proof comes from tracked games',
+    {key:'VERIFY',label:'VERIFY',status:status(verifyDone,trainDone&&connectDone),
+      detail:revealDone&&input.missions.length?(connectDone?`${best}/${required} verified games`:'Needs the Companion to verify'):'Proof comes from tracked games',
       href:'/live',cta:'Play next game'},
-    {key:'EVOLVE',label:'EVOLVE',status:evolveDone?'DONE':verifyDone?'CURRENT':'LOCKED',
-      detail:evolveDone?`${plural(input.masteredCount,'mission')} mastered`:'Mastery levels the strand',
+    // EVOLVE is the end of a loop that restarts with every new mission, so it is never "done";
+    // missions mastered before are reported as history, not as this loop's status.
+    {key:'EVOLVE',label:'EVOLVE',status:status(false,verifyDone),
+      detail:evolveDone?`${plural(input.masteredCount,'mission')} mastered so far`:'Mastery levels the strand',
       href:'/ilp',cta:'See strand levels'},
   ];
+  // Exactly one stage is "now": the first one not done.
+  const currentIndex=raw.findIndex(stage=>stage.status!=='DONE');
+  return raw.map((stage,index)=>index===currentIndex?{...stage,status:'CURRENT'}:stage);
 }
 
 /* ---------- Game DNA strands ---------- */

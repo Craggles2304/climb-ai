@@ -32,22 +32,32 @@ test('My DNA explains development in readable language before technical proof',(
   assert.ok(css.includes('.mc-game-example')||css.includes('.mc-moment-list'));
 });
 
-test('Home leads with one next step and makes Game DNA the dominant feature',()=>{
-  assert.ok(dashboard.includes('Your games build your player identity.'));
-  assert.ok(dashboard.includes('THE DNA LOOP'));
-  assert.ok(dashboard.includes('YOUR GAME DNA · THE CENTRE OF OP CLIMB'));
-  assert.ok(dashboard.includes('<ClientGameDna'));
-  assert.ok(dashboard.includes('CURRENT FIX'));
-  assert.ok(dashboard.includes('plainLanguageFocus'));
-  assert.ok(dashboard.includes('YOUR JOB NEXT GAME'));
+// Arena V2.1 Home: player identity, then one next mission, then Game DNA, then evidence.
+const missionPanel=fs.readFileSync(path.join(root,'components','dashboard','MissionPanel.tsx'),'utf8');
+const dnaOverview=fs.readFileSync(path.join(root,'components','dashboard','GameDnaOverview.tsx'),'utf8');
+const dashboardModel=fs.readFileSync(path.join(root,'lib','dashboard','model.ts'),'utf8');
+
+test('Home leads with the player, then one next mission, then Game DNA',()=>{
+  const order=['<PlayerHero','<MissionCard','<GameDnaOverview','<MatchHistory','<CoachingIntelligence'].map(tag=>dashboard.indexOf(tag));
+  assert.ok(order.every(index=>index>0),'every Home section is rendered');
+  assert.deepEqual([...order].sort((a,b)=>a-b),order,'sections keep the priority order');
+  assert.ok(dashboard.includes('buildJourneyState'));
+  assert.ok(missionPanel.includes('Your job next game'));
+  assert.ok(dashboardModel.includes('plainLanguageFocus'));
+});
+
+test('Home mission progress and Game DNA only show verified evidence',()=>{
+  assert.ok(dashboardModel.includes('verifiedMissionRep'));
+  assert.ok(missionPanel.includes('Only tracked games with a verified receipt count. Entering a game is not proof.'));
+  assert.ok(dnaOverview.includes('Your DNA is still neutral'));
+  assert.ok(dnaOverview.includes('XP comes only from verified games'));
 });
 
 test('Home cannot regress into a feature directory',()=>{
   assert.ok(!dashboard.includes('YOUR RANKED SNAPSHOT'));
   assert.ok(!dashboard.includes('THE OP COACHING LOOP'));
   assert.ok(!dashboard.includes('Every game has a lesson.'));
-  assert.ok(dashboard.includes('op-next-step'));
-  assert.ok(dashboard.includes('op-home-dna'));
+  assert.ok(!dashboard.includes('<ClientGameDna'),'the canvas DNA client is not reintroduced on Home');
 });
 
 test('coach is a readable workspace rather than neon chat bubbles across the whole screen',()=>{

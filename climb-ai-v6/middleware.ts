@@ -7,6 +7,13 @@ import {timedFetch} from '@/lib/supabase/timedFetch';
 /** Session refresh + route protection. */
 export async function middleware(req:NextRequest){
   const path=req.nextUrl.pathname;
+
+  // The Arena design lab (/design/*) is a development gallery of sample data. The root
+  // loading boundary streams before a page can call notFound(), so production answers
+  // 404 here unless ARENA_DESIGN_LAB=1 was set for the build.
+  if(path.startsWith('/design/')&&process.env.NODE_ENV==='production'&&process.env.ARENA_DESIGN_LAB!=='1'){
+    return NextResponse.rewrite(new URL('/__arena-design-lab-disabled',req.url));
+  }
   const demoMode=process.env.NEXT_PUBLIC_DEMO_MODE==='true';
   const configured=authConfigured();
   const routeNeedsAuthDecision=isProtected(path)||isAdminRoute(path)||isAuthPage(path);

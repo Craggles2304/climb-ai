@@ -117,6 +117,27 @@ test('journey stages are read from evidence, never from entering a game',()=>{
   assert.notEqual(active[4].status,'DONE');
 });
 
+test('the journey has exactly one current step and EVOLVE is never pre-completed',()=>{
+  const metric='red_state_fights';
+  const training=missionView(task({id:'dna-strand-fights-1',metric,dnaFocusUnlocked:true}));
+  // Riot-synced games completed the baseline, but the Companion was never paired.
+  const unpaired=climbJourney({deviceLoaded:true,linked:false,online:false,baselineGames:12,role:'ADC',dnaRevealed:true,missions:[training],masteredCount:2});
+  assert.deepEqual(unpaired.map(stage=>stage.status),['CURRENT','DONE','DONE','READY','LOCKED','LOCKED']);
+  assert.equal(unpaired.filter(stage=>stage.status==='CURRENT').length,1);
+  // Verification needs tracked games, so it waits on the Companion.
+  assert.equal(unpaired[4].detail,'Needs the Companion to verify');
+  assert.equal(unpaired[5].detail,'2 missions mastered so far');
+  assert.notEqual(unpaired[5].status,'DONE');
+});
+
+test('revealing the DNA is available without the Companion; training waits for the reveal',()=>{
+  const metric='red_state_fights';
+  const training=missionView(task({id:'dna-strand-fights-1',metric,dnaFocusUnlocked:true}));
+  const ready=climbJourney({deviceLoaded:true,linked:false,online:false,baselineGames:30,role:'ADC',dnaRevealed:false,missions:[training],masteredCount:0});
+  assert.deepEqual(ready.map(stage=>stage.status),['CURRENT','DONE','READY','LOCKED','LOCKED','LOCKED']);
+  assert.equal(ready[2].detail,'Your DNA is ready');
+});
+
 test('Game DNA stays neutral until the role baseline is complete',()=>{
   const metric='red_state_fights';
   const tasks=[task({id:'dna-strand-fights-1',metric,dnaFocusUnlocked:true,missionHistory:[attempt('m1',metric,'BANKED')]})];

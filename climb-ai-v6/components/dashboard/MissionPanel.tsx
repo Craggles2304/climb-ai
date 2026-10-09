@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import type {CSSProperties} from 'react';
-import type {Role} from '@/lib/types';
+import type {DnaDomain,Role} from '@/lib/types';
 import type {EvidenceState,JourneyStageView,MissionView} from '@/lib/dashboard/model';
 import type {JourneyState} from '@/lib/journeyState';
 import {ArenaIcon} from '@/components/arena/ArenaIcon';
@@ -17,6 +17,7 @@ const EVIDENCE_COPY:Record<EvidenceState,{label:string;tone:string;icon:'check'|
   MISSED:{label:'Missed',tone:'var(--arena-loss)',icon:'cross'},
   NOT_OBSERVED:{label:'Not observed',tone:'var(--arena-muted)',icon:'eye'},
 };
+const STEP_STATE:Record<JourneyStageView['status'],string>={DONE:'Done',CURRENT:'Now',READY:'Ready',LOCKED:'Locked'};
 const STAGE_HELP:Record<string,string>={
   RECOGNISE:'Waiting for the first game where this moment happens.',
   EXECUTE:'Seen in your games. Not yet verified.',
@@ -29,10 +30,35 @@ export function EvidenceChip({state}:{state:EvidenceState}){
   return <Chip toneColor={copy.tone} icon={copy.icon}>{copy.label}</Chip>;
 }
 
+/** Compact strand + outcome marker for dense rows; the full wording is in its label. */
+export function EvidencePill({domain,state,name}:{domain:DnaDomain;state:EvidenceState;name:string}){
+  const copy=EVIDENCE_COPY[state];
+  const meta=STRAND_META[domain];
+  const label=`${name}: ${copy.label.toLowerCase()} this game`;
+  return <span className={s.evidencePill} style={{'--tone':copy.tone,'--strand':meta.color} as CSSProperties} title={label} aria-label={label} role="img">
+    <ArenaIcon name={meta.icon} size={13}/><b>{meta.code}</b><ArenaIcon name={copy.icon} size={13} strokeWidth={2.4}/>
+  </span>;
+}
+
+/** The last graded games for a mission, oldest to newest. */
+function EvidenceTrail({history}:{history:MissionView['history']}){
+  if(!history.length)return null;
+  return <div className={s.trail}>
+    <span className={s.proofLabel}>Evidence trail · last {history.length} graded</span>
+    <ol className={s.trailList}>
+      {history.map((item,index)=><li key={item.matchId+index} className={s['trail'+item.state]} title={EVIDENCE_COPY[item.state].label}>
+        <ArenaIcon name={EVIDENCE_COPY[item.state].icon} size={13} strokeWidth={2.4}/><span className={s.trailText}>{EVIDENCE_COPY[item.state].label}</span>
+      </li>)}
+    </ol>
+  </div>;
+}
+
 /** B. The next coaching objective — the most visible thing after the player's identity. */
-export function MissionCard({phase,role,baseline,primary,secondary,error}:{
+export function MissionCard({phase,role,baseline,primary,secondary,error,primaryAction=true}:{
   phase:MissionPhase;role:Role;baseline:{games:number;required:number};
   primary:MissionView|null;secondary:MissionView|null;error?:string|null;
+  /** False while the journey's next step is elsewhere (pair the Companion, reveal the DNA). */
+  primaryAction?:boolean;
 }){
   if(phase==='CHECKING')return <section className={s.mission} aria-busy="true" aria-label="Loading your mission">
     <Skeleton width={160} height={14}/><Skeleton width="70%" height={44}/><Skeleton width="90%" height={18}/><Skeleton height={74}/><Skeleton width={220} height={30}/>
@@ -66,7 +92,7 @@ export function MissionCard({phase,role,baseline,primary,secondary,error}:{
         </div>
         <p className={s.proofNote}>Coaching before game {baseline.required} is provisional. Permanent missions unlock after the reveal.</p>
       </div>
-      <div className={s.actions}><ButtonLink href="/live">Open Match Room</ButtonLink><ButtonLink href="/ilp" variant="secondary" icon={null}>How Game DNA works</ButtonLink></div>
+      <div className={s.actions}><ButtonLink href="/live" variant={primaryAction?'primary':'secondary'}>Open Match Room</ButtonLink><ButtonLink href="/ilp" variant="secondary" icon={null}>How Game DNA works</ButtonLink></div>
     </section>;
   }
 
@@ -79,7 +105,12 @@ export function MissionCard({phase,role,baseline,primary,secondary,error}:{
       <h2 className={s.missionTitle} id="hq-mission-title">Your Game DNA is ready.</h2>
       <p className={s.missionMeaning}>All six strands are measured. Reveal your DNA, then choose the two DNA trees that will bank verified progress first.</p>
     </div>
-    <div className={s.actions}><ButtonLink href="/ilp">Reveal my DNA</ButtonLink></div>
+    <ol className={s.nextList} aria-label="What revealing unlocks">
+      <li><b>01</b><span>See all six strands of your {role} DNA and the habits inside them.</span></li>
+      <li><b>02</b><span>Choose the two DNA trees that score first. The other four keep being measured.</span></li>
+      <li><b>03</b><span>From then on, each tracked game can bank verified proof toward a mission.</span></li>
+    </ol>
+    <div className={s.actions}><ButtonLink href="/ilp" variant={primaryAction?'primary':'secondary'}>Reveal my DNA</ButtonLink></div>
   </section>;
 
   if(phase==='EMPTY'||!primary)return <section className={s.mission} aria-labelledby="hq-mission-title">
@@ -118,9 +149,11 @@ export function MissionCard({phase,role,baseline,primary,secondary,error}:{
       </div>
       <p className={s.proofNote}>Only tracked games with a verified receipt count. Entering a game is not proof.</p>
     </div>
+    <EvidenceTrail history={primary.history}/>
     <div className={s.actions}>
-      <ButtonLink href="/missions">Explore the coaching plan</ButtonLink>
-      <ButtonLink href="/live" variant="secondary" icon={null}>Play next game</ButtonLink>
+      {/* The single lime action on the page is whatever the journey says comes next. */}
+      <ButtonLink href="/live" variant={primaryAction?'primary':'secondary'} icon={primaryAction?'arrow':null}>Play next game</ButtonLink>
+      <ButtonLink href="/missions" variant="secondary">Explore the coaching plan</ButtonLink>
     </div>
     {secondary&&<Link className={s.alsoTraining} href="/missions" style={{'--tone':STRAND_META[secondary.domain].color} as CSSProperties}>
       <span className={s.alsoIcon}><ArenaIcon name={STRAND_META[secondary.domain].icon} size={18}/></span>
@@ -144,13 +177,14 @@ export function ClimbJourney({stages,next}:{stages:JourneyStageView[];next:Journ
       <p>{next.body}</p>
     </div>
     <ol className={s.steps}>
-      {stages.map((stage,index)=><li key={stage.key} className={[s.step,stage.status==='DONE'?s.stepDone:stage.status==='CURRENT'?s.stepCurrent:s.stepLocked].join(' ')} aria-current={stage.status==='CURRENT'?'step':undefined}>
+      {stages.map((stage,index)=><li key={stage.key} className={[s.step,stage.status==='DONE'?s.stepDone:stage.status==='CURRENT'?s.stepCurrent:stage.status==='READY'?s.stepReady:s.stepLocked].join(' ')} aria-current={stage.status==='CURRENT'?'step':undefined}>
         <span className={s.stepMark} aria-hidden="true">{stage.status==='DONE'?<ArenaIcon name="check" size={15} strokeWidth={2.6}/>:stage.status==='LOCKED'?<ArenaIcon name="lock" size={13}/>:index+1}</span>
         <span className={s.stepCopy}><b>{stage.label}</b><small>{stage.detail}</small></span>
-        <span className={s.stepState}>{stage.status==='DONE'?'Done':stage.status==='CURRENT'?'Now':'Locked'}</span>
+        <span className={s.stepState}>{STEP_STATE[stage.status]}</span>
       </li>)}
     </ol>
-    <ButtonLink href={next.href} small disabled={next.phase==='CHECKING'}>{next.cta.replace(/\s*→$/,'')}</ButtonLink>
+    {/* In the mission phase the mission card carries the lime action; here it would only repeat it. */}
+    <ButtonLink href={next.href} small variant={next.phase==='MISSION'?'secondary':'primary'} disabled={next.phase==='CHECKING'}>{next.cta.replace(/\s*→$/,'')}</ButtonLink>
     {current&&current.href!==next.href&&<ButtonLink href={current.href} variant="ghost" icon="arrow">{current.cta}</ButtonLink>}
   </Panel>;
 }
