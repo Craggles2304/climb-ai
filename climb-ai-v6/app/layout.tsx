@@ -18,6 +18,7 @@ import './tft-league-ui.css';
 import './arena-client.css';
 import './arena-original-refinement.css';
 import './arena-original-graphics.css';
+import './arena-memory-graphics.css';
 import type {Metadata} from 'next';
 import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
