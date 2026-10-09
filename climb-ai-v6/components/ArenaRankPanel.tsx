@@ -13,8 +13,8 @@ const rankPalette:Record<string,[string,string]>={
  CHALLENGER:['#f9e3ae','#b8a35e'],
 };
 const rankColour=(rank:string)=>{
- const key=Object.keys(rankPalette).find(key=>rank.toUpperCase().startsWith(key))||'SILVER';
- return rankPalette[key];
+ const key=Object.keys(rankPalette).find(item=>rank.toUpperCase().startsWith(item));
+ return key?rankPalette[key]:['#b2c2c9','#52606f'] as [string,string];
 };
 
 /** Decorative first-party ranked identity mark. Not an official Riot rank emblem. */
