@@ -145,6 +145,9 @@
   else{
    // Preview without a match: show what each layout holds, clearly labelled.
    showChampion(null,'OP');
+   put('hudBrandMode','PERFORMANCE HUD');
+   put('identityTag','PLAYER / MATCH ID');
+   show('tftSigil',false);
    put('game',preview?'LAYOUT PREVIEW':'LEAGUE OF LEGENDS');
    put('planState',preview?'DISPLAY EXAMPLE':'PLAN NOT LOCKED');
    put('title',preview?'Your champion':'Your match focus');
