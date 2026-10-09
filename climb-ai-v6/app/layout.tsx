@@ -16,6 +16,7 @@ import './client-system.css';
 import './visual-depth.css';
 import './tft-league-ui.css';
 import './arena-client.css';
+import './arena-v21.css';
 import type {Metadata} from 'next';
 import {Barlow_Condensed,DM_Sans,IBM_Plex_Mono} from 'next/font/google';
 import {SessionProvider} from '@/components/SessionContext';
