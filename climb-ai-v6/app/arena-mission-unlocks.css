@@ -1,0 +1,90 @@
+/* OP CLIMB / ACTIVE GAME DNA MISSION STRIP
+   Makes the selected two missions visible before the six-tree library.
+   These badges show recorded proof only; never invented completion. */
+.missions-page .missions-active-strip{
+  margin:16px 0 20px;
+  padding:0;
+  background:linear-gradient(135deg,#162a34,#0c1828 76%);
+  color:#ecf5f9;
+  border:1px solid rgba(139,197,195,.43);
+  border-top:3px solid #bcff69;
+  box-shadow:0 16px 42px rgba(0,0,0,.17);
+}
+.missions-page .missions-active-strip>header{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:20px 23px 18px;border-bottom:1px solid rgba(144,173,192,.21);
+}
+.missions-page .missions-active-strip h2{
+  color:#f4fafb;font:800 clamp(24px,3vw,35px)/.97 var(--display)!important;
+  text-transform:uppercase;letter-spacing:.03em;margin:7px 0 7px;
+}
+.missions-page .missions-active-strip .eyebrow{
+  font-size:10px!important;color:#b7f588!important;
+}
+.missions-page .missions-active-strip header p{
+  margin:0;color:#a7bfca;font:500 12px/1.45 var(--body);
+}
+.missions-page .missions-active-strip header .btn{
+  min-height:42px;white-space:nowrap;font-size:12px;
+}
+.missions-page .missions-active-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:1px;background:rgba(144,179,197,.23);
+}
+.missions-page .missions-active-item{
+  display:grid;align-content:start;text-align:left;
+  gap:12px;width:100%;padding:20px 22px 17px;
+  color:#edf5fc!important;background:linear-gradient(128deg,#182d37,#101b2a)!important;
+  border:0!important;border-left:3px solid var(--mission-color)!important;
+  min-width:0;cursor:pointer;transition:background .2s,transform .2s;
+}
+.missions-page .missions-active-item:hover,.missions-page .missions-active-item:focus-visible{
+  background:linear-gradient(118deg,#233e41,#17273c)!important;
+}
+.missions-page .missions-active-item:focus-visible{outline:2px solid #d0ff92;outline-offset:-3px}
+.missions-page .missions-active-id{
+  display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  color:var(--mission-color);font:800 15px/.95 var(--display);
+  text-transform:uppercase;
+}
+.missions-page .missions-active-id .arena-v-icon{color:var(--mission-color);flex:0 0 auto}
+.missions-page .missions-active-id small{
+  margin-left:auto;padding:5px 7px;
+  border:1px solid color-mix(in srgb,var(--mission-color) 38%,transparent);
+  font:700 8px var(--mono);color:#c4e9dc;
+  background:rgba(10,25,31,.35);letter-spacing:.03em;
+}
+.missions-page .missions-active-item>strong{
+  display:block;font:800 27px/1 var(--display);
+  text-transform:uppercase;letter-spacing:.025em;color:#fff;
+}
+.missions-page .missions-active-item>span:nth-last-child(2){
+  color:#bdcedb;font:500 13px/1.5 var(--body);
+}
+.missions-page .missions-active-evidence{
+  display:flex;align-items:center;justify-content:space-between;gap:9px;
+  padding-top:11px;border-top:1px solid rgba(144,179,191,.2);
+  color:#a7b8c4;font:700 10px var(--mono);text-transform:uppercase;
+}
+.missions-page .missions-active-evidence b{
+  color:#d0ff90;font:800 13px var(--display);white-space:nowrap;
+}
+.missions-page .missions-active-unavailable{
+  padding:28px;grid-column:1/-1;background:#111f2b;
+}
+.missions-page .missions-active-unavailable strong{font:800 22px var(--display);color:#f6e0ad}
+.missions-page .missions-active-unavailable p{color:#adc2cd}
+.missions-page .missions-focus-message{
+  color:#dcf2eb!important;border-left:3px solid #b6ff73!important;
+  background:linear-gradient(105deg,#203b37,#172b36)!important;
+}
+@media(max-width:780px){
+  .missions-page .missions-active-strip>header{padding:18px 14px;flex-wrap:wrap}
+  .missions-page .missions-active-grid{grid-template-columns:1fr}
+  .missions-page .missions-active-item{padding:18px 14px;gap:10px}
+  .missions-page .missions-active-item>strong{font-size:24px}
+  .missions-page .missions-active-id small{font-size:8px}
+}
+@media(prefers-reduced-motion:reduce){
+  .missions-page .missions-active-item{transition:none!important}
+}
