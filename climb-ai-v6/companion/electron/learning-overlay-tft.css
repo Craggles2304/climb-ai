@@ -1,0 +1,182 @@
+/* OP CLIMB / TFT TACTICIAN HUD — separate visual treatment for the same opt-in Companion overlay.
+   Only the preselected teaching focus and its static cues are displayed.
+   Never reads the board, items, opponents, gold, stage or other live-game details. */
+
+.hud.is-tft {
+  --tft-primary:#dfba73;
+  --tft-secondary:#a8a0ec;
+  --tft-sheen:rgba(222,175,101,.09);
+  --hud-electric:var(--tft-primary);
+  --hud-blueprint:var(--tft-secondary);
+  --hud-strong:#f3ecfa;
+  border:1px solid rgba(162,135,197,.54);
+  border-top:2px solid var(--tft-primary);
+  border-left:2px solid rgba(153,113,200,.8);
+  background:
+    radial-gradient(ellipse 75% 55% at 90% -8%,var(--tft-sheen),transparent 89%),
+    linear-gradient(150deg,rgba(25,23,43,.971),rgba(11,16,33,.971) 70%,rgba(9,16,29,.971));
+  box-shadow:
+    0 17px 48px rgba(0,0,0,.72),
+    inset 0 1px rgba(250,222,187,.09);
+}
+.hud.is-tft.tft-focus-economy {
+  --tft-primary:#f7cf77;
+  --tft-secondary:#eab779;
+  --tft-sheen:rgba(241,195,103,.12);
+}
+.hud.is-tft.tft-focus-tempo {
+  --tft-primary:#7addf2;
+  --tft-secondary:#86c7f5;
+  --tft-sheen:rgba(107,210,248,.12);
+}
+.hud.is-tft.tft-focus-flex {
+  --tft-primary:#c5a7ff;
+  --tft-secondary:#b493f8;
+  --tft-sheen:rgba(171,132,249,.13);
+}
+.hud.is-tft.tft-focus-position {
+  --tft-primary:#ffa6ce;
+  --tft-secondary:#d1b5f8;
+  --tft-sheen:rgba(251,132,199,.12);
+}
+.hud.is-tft::before {
+  background:linear-gradient(180deg,var(--tft-primary),rgba(118,130,223,.3));
+}
+.hud.is-tft::after {
+  background:
+    linear-gradient(116deg,transparent 81%,rgba(207,182,251,.035) 81.1%,transparent 81.5%),
+    repeating-linear-gradient(90deg,transparent 0 60px,rgba(178,149,210,.019) 61px 62px);
+}
+.hud.is-tft .hud-header {border-bottom-color:rgba(162,138,199,.29)}
+.hud.is-tft .hud-mark {
+  background:linear-gradient(135deg,var(--tft-primary),var(--tft-secondary));
+  border-color:var(--tft-primary);
+  color:#121224;
+}
+.hud.is-tft .hud-mark-bolt {color:#423354}
+.hud.is-tft .hud-brand>b {color:#f2eafa}
+.hud.is-tft .hud-brand small {color:#b6aacd}
+.hud.is-tft .hud-mode-id {
+  border-color:rgba(176,151,212,.3);
+  background:rgba(132,101,167,.1);
+}
+.hud.is-tft .hud-mode-id b {color:var(--tft-primary)}
+.hud.is-tft .hud-state {
+  border-color:color-mix(in srgb,var(--tft-primary) 36%,transparent);
+  background:color-mix(in srgb,var(--tft-primary) 9%,transparent);
+  color:var(--tft-primary);
+}
+.hud.is-tft .hud-state i {
+  background:var(--tft-primary);
+  box-shadow:0 0 7px color-mix(in srgb,var(--tft-primary) 52%,transparent);
+}
+.hud.is-tft .hud-identity {
+  gap:11px;min-height:70px;
+  padding:6px 0 6px;
+}
+.hud.is-tft .hud-portrait {display:none}
+.hud.is-tft .hud-tft-sigil {
+  position:relative;
+  flex:0 0 65px;width:65px;height:70px;
+  display:grid;place-items:center;
+  background:
+    radial-gradient(circle at 50% 41%,color-mix(in srgb,var(--tft-primary) 14%,transparent),transparent 76%),
+    linear-gradient(155deg,rgba(49,42,70,.8),rgba(14,19,37,.93));
+  border:1px solid color-mix(in srgb,var(--tft-primary) 42%,transparent);
+  box-shadow:inset 0 0 0 3px #0b1324,0 0 17px color-mix(in srgb,var(--tft-primary) 11%,transparent);
+  clip-path:polygon(0 0,calc(100% - 9px) 0,100% 9px,100% 100%,0 100%);
+}
+.hud.is-tft .hud-tft-sigil::before {
+  position:absolute;content:"";inset:5px;
+  border:1px solid rgba(197,163,228,.14);
+  pointer-events:none;
+}
+.hud.is-tft .hud-tft-sigil svg {width:59px;height:62px;filter:drop-shadow(0 0 7px color-mix(in srgb,var(--tft-primary) 14%,transparent))}
+.hud.is-tft .hud-tft-sigil .sigil-shell {
+  fill:#181e37;stroke:var(--tft-primary);stroke-width:2;
+}
+.hud.is-tft .hud-tft-sigil .sigil-inner {
+  fill:color-mix(in srgb,var(--tft-primary) 17%,#111627);
+  stroke:var(--tft-secondary);stroke-width:1.4;
+}
+.hud.is-tft .hud-tft-sigil .sigil-gem {
+  fill:color-mix(in srgb,var(--tft-primary) 35%,#24334a);
+  stroke:var(--tft-primary);stroke-width:1.7;
+}
+.hud.is-tft .hud-tft-sigil .sigil-grid {
+  stroke:rgba(248,242,255,.8);stroke-width:1;
+}
+.hud.is-tft .hud-tft-sigil .sigil-wings {
+  stroke:var(--tft-primary);stroke-width:1.4;
+}
+.hud.is-tft .hud-identity-tag {
+  color:var(--tft-primary);
+  font-size:9px;
+}
+.hud.is-tft .hud-kicker {color:#aca3c4}
+.hud.is-tft .hud-identity h1{
+  color:#f8f0ff;
+  font-size:22px;
+  overflow-wrap:anywhere;
+  white-space:normal;
+  line-height:.99;
+  text-overflow:clip;
+}
+.hud.is-tft .hud-identity-sub {color:#c2b5d9}
+.hud.is-tft .hud-identity-sub strong {color:var(--tft-primary)}
+.hud.is-tft .hud-freeze-icon {
+  color:#b9a7d1;white-space:nowrap;
+  font-size:8px;
+}
+.hud.is-tft .hud-block {
+  border-color:rgba(142,120,176,.25);
+  border-left-color:var(--hud-block);
+  background:linear-gradient(100deg,rgba(32,29,56,.88),rgba(17,25,45,.87));
+}
+.hud.is-tft .hud-block--mission {
+  --hud-block:var(--tft-primary);
+  border-color:color-mix(in srgb,var(--tft-primary) 35%,rgba(137,113,164,.28));
+  border-left:3px solid var(--tft-primary);
+  background:
+    linear-gradient(115deg,color-mix(in srgb,var(--tft-primary) 12%,#181b32),rgba(17,24,45,.92) 88%);
+}
+.hud.is-tft .hud-block--mission p{
+  color:#fff8ee;line-height:1.36;font-size:16px;
+}
+.hud.is-tft .hud-block--win {--hud-block:var(--tft-secondary)}
+.hud.is-tft .hud-block--avoid {--hud-block:#bb9bdb}
+.hud.is-tft .hud-panel-number {
+  color:var(--hud-block);
+  background:color-mix(in srgb,var(--hud-block) 12%,transparent);
+  border-color:color-mix(in srgb,var(--hud-block) 37%,transparent);
+}
+.hud.is-tft .hud-rule{
+  color:#a392c2;
+  border-top:1px solid rgba(169,143,204,.16);
+  padding-top:5px;
+}
+.hud.is-tft .hud-footer{border-top-color:rgba(170,151,208,.22)}
+.hud.is-tft .hud-rec{color:#c4b4df}
+.hud.is-tft .hud-keys{color:#968aad}
+.hud.is-tft.editing{outline-color:var(--tft-primary)}
+.hud.is-tft .preset.selected{background:var(--tft-primary);color:#1f1930}
+.hud.is-tft .hud-slider input{accent-color:var(--tft-primary)}
+.hud.is-tft .hud-save{background:linear-gradient(90deg,var(--tft-primary),var(--tft-secondary));color:#1f1930}
+
+/* Distinct size presets retain the established game-friendly information gates. */
+.hud.is-tft.mode-minimal{--hud-w:290px;min-width:0}
+.hud.is-tft.mode-minimal .hud-tft-sigil,
+.hud.is-tft.mode-minimal .hud-identity {display:none}
+.hud.is-tft.mode-minimal .hud-block--mission {
+  padding:9px 6px 5px;border:0;background:transparent;
+}
+.hud.is-tft.mode-minimal .hud-block--mission p {
+  font-size:14px;line-height:1.36;
+}
+.hud.is-tft.mode-focus .hud-block--avoid {display:none}
+.hud.is-tft.mode-expanded .hud-block--avoid {display:grid}
+.hud.is-tft.mode-expanded .hud-identity {min-height:73px}
+
+@media(prefers-reduced-motion:reduce) {
+  .hud.is-tft,.hud.is-tft *{animation:none!important;transition:none!important}
+}
