@@ -8,7 +8,8 @@ function areaFor(pathname:string){
   if(pathname.startsWith('/dashboard'))return'hq';
   if(pathname.startsWith('/live')||pathname.startsWith('/session'))return'match';
   if(pathname.startsWith('/analyse')||pathname.startsWith('/advanced-statistics'))return'review';
-  if(pathname.startsWith('/progress')||pathname.startsWith('/ilp')||pathname.startsWith('/missions'))return'climb';
+  if(pathname.startsWith('/ilp')||pathname.startsWith('/game-dna'))return'dna';
+  if(pathname.startsWith('/progress')||pathname.startsWith('/missions'))return'climb';
   if(pathname.startsWith('/coach'))return'coach';
   if(pathname.startsWith('/champions')||pathname.startsWith('/matchups')||pathname.startsWith('/matchup-lab'))return'lab';
   if(pathname.startsWith('/pricing')||pathname.startsWith('/billing'))return'plans';

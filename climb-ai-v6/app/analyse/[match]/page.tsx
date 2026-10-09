@@ -24,6 +24,8 @@ import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {MatchStorySides} from '@/components/MatchStorySides';
+import {ReplayMoments} from '@/components/ReplayMoments';
+import {hasTier} from '@/lib/subscription';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -292,6 +294,8 @@ export default function Analysis(){
         </article>;
       })}</div>
     </section>}
+    {/* Career DNA habit moments to watch back: every game on PLUS, the latest game on FREE. */}
+    {match.source==='riot'&&(hasTier(tier,'PLUS')||match.id===matches[0]?.id)&&<ReplayMoments match={match}/>}
     <section className="ar-strengths">
       <div className="ar-strengths-head">
         <div>

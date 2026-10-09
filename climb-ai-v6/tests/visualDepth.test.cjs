@@ -11,7 +11,7 @@ const landing=fs.readFileSync(path.join(root,'components','BroadcastLanding.modu
 const shell=fs.readFileSync(path.join(root,'components','AppShell.tsx'),'utf8');
 
 test('major League surfaces receive distinct route-aware visual identities',()=>{
-  for(const area of ['hq','match','review','climb','coach','lab','plans','auth','system']){
+  for(const area of ['hq','match','review','climb','dna','coach','lab','plans','auth','system']){
     assert.ok(theme.includes("return'"+area+"'"),'missing route mapping '+area);
     assert.ok(css.includes('data-op-area="'+area+'"'),'missing theme '+area);
   }

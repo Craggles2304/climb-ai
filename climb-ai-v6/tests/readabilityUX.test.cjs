@@ -11,7 +11,7 @@ const css=fs.readFileSync(path.join(root,'app','visual-depth.css'),'utf8');
 
 test('My DNA owns long-term development while Match Room owns the game',()=>{
   assert.ok(ilp.includes('currentGameDnaMissions'));
-  assert.ok(ilp.includes('<ClientGameDna'));
+  assert.ok(ilp.includes('<DnaHelix'));
   assert.ok(ilp.includes('MY DNA · YOUR PLAYER IDENTITY'));
   assert.ok(ilp.includes('Game DNA is the centre of OP CLIMB.'));
   assert.ok(liveCenter.includes('MATCH ROOM · LAST GAME'));

@@ -72,9 +72,11 @@ test('Coach is conversation-first and hands development back to My DNA',()=>{
 
 test('My DNA is the single first-class DNA destination',()=>{
   assert.ok(gameDna.includes("redirect(role?'/ilp?role='"));
-  assert.ok(ilp.includes('<ClientGameDna'));
+  // One helix on My DNA: the game-by-game Career DNA strand, read for the role being viewed.
+  assert.ok(ilp.includes('<DnaHelix'));
+  assert.ok(!ilp.includes('<ClientGameDna'));
   assert.ok(ilp.includes('MY DNA · YOUR PLAYER IDENTITY'));
-  assert.ok(ilp.includes('gameDnaClientMissions'));
+  assert.ok(ilp.includes('careerFor(allRoleMatches)'));
   assert.ok(appShell.includes("['My DNA','/ilp'"));
   assert.equal(appShell.includes("['Game DNA','/game-dna'"),false);
   assert.ok(coach.includes('href="/ilp"'));

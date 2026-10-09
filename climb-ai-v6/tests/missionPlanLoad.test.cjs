@@ -19,7 +19,11 @@ test('My Climb never treats plan loading as zero active missions',()=>{
   assert.ok(context.includes('planError'));
   assert.ok(ilp.includes('LOADING YOUR PLAYER PLAN'));
   assert.ok(ilp.includes('Your plan is still stored.'));
-  assert.ok(ilp.indexOf('if(!planReady)return <AppShell>')<ilp.indexOf('if(!baselineReady)return <AppShell>'));
+  // The plan-loading gate must run before the DNA room (and its baseline state) renders anything.
+  const planGate=ilp.indexOf('if(!planReady)return <AppShell>');
+  assert.ok(planGate>-1);
+  assert.ok(planGate<ilp.indexOf('<div className="dna-page">'));
+  assert.ok(ilp.includes('baselineReady?'));
 });
 
 test('opening the mission plan can materialise a deferred local-first match once',()=>{

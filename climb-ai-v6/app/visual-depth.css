@@ -15,6 +15,8 @@ body[data-op-area="hq"]{--op-a:182,246,107;--op-b:86,217,184;--op-c:232,192,134;
 body[data-op-area="match"]{--op-a:86,217,184;--op-b:232,192,134;--op-c:249,149,148;--accent:#56d9b8;--accent-rgb:86,217,184;--accent-2:#e8c086;--accent-2-rgb:232,192,134;--op-area-label:'MATCH ROOM'}
 body[data-op-area="review"]{--op-a:249,149,148;--op-b:232,192,134;--op-c:86,217,184;--accent:#f99594;--accent-rgb:249,149,148;--accent-2:#e8c086;--accent-2-rgb:232,192,134;--op-area-label:'REVIEW'}
 body[data-op-area="climb"]{--op-a:182,246,107;--op-b:86,217,184;--op-c:183,164,239;--accent:#b6f66b;--accent-rgb:182,246,107;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'MY DNA'}
+/* My DNA room: volt carries results, violet carries the genome; habits bring their own colours (career-dna.css). */
+body[data-op-area="dna"]{--op-a:182,246,107;--op-b:183,164,239;--op-c:86,217,184;--accent:#b6f66b;--accent-rgb:182,246,107;--accent-2:#b7a4ef;--accent-2-rgb:183,164,239;--op-area-label:'MY DNA'}
 body[data-op-area="coach"]{--op-a:183,164,239;--op-b:86,217,184;--op-c:182,246,107;--accent:#b7a4ef;--accent-rgb:183,164,239;--accent-2:#56d9b8;--accent-2-rgb:86,217,184;--op-area-label:'COACH MEMORY'}
 body[data-op-area="lab"]{--op-a:86,217,184;--op-b:183,164,239;--op-c:232,192,134;--accent:#56d9b8;--accent-rgb:86,217,184;--accent-2:#b7a4ef;--accent-2-rgb:183,164,239;--op-area-label:'LAB'}
 body[data-op-area="plans"]{--op-a:232,192,134;--op-b:182,246,107;--op-c:183,164,239;--accent:#e8c086;--accent-rgb:232,192,134;--accent-2:#b6f66b;--accent-2-rgb:182,246,107;--op-area-label:'PLANS'}
