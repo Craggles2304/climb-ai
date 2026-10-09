@@ -74,6 +74,7 @@
   const role=ROLES[text(plan.role).toUpperCase()]||'';
   const champion=text(plan.champion);
   showChampion(champion,'OP');
+  show('tftSigil',false);
   put('game','LEAGUE OF LEGENDS');
   put('planState',plan.baseline?'BASELINE CAPTURE':'PLAN LOCKED');
   put('title',champion&&champion.toUpperCase()!=='YOUR CHAMPION'?champion+(role?' · '+role:''):'Your match focus');
