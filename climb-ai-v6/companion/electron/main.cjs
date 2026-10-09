@@ -312,7 +312,7 @@ async function confirmReviewRendered(sessionId){
     try{win.webContents.send('companion:state',publicState())}catch{}
     try{
       const rendered=await win.webContents.executeJavaScript(
-        `(()=>{const section=document.getElementById('simplePostgameReview');return Boolean(section&&!section.classList.contains('hidden')&&String(window.__opRenderedReviewSessionId||'')===${JSON.stringify(id)});})()`,
+        `(()=>{const section=document.querySelector('#ocNative[data-route="review"] .oc-review');return Boolean(section&&String(window.__opRenderedReviewSessionId||'')===${JSON.stringify(id)});})()`,
         true,
       );
       if(rendered)return true;
@@ -640,7 +640,7 @@ function markMoment(){
 }
 function createWindow(show=true){
   if(mainWindow&&!mainWindow.isDestroyed()){if(show){mainWindow.show();mainWindow.focus()}return mainWindow}
-  mainWindow=new BrowserWindow({width:1040,height:900,minWidth:760,minHeight:680,show:false,backgroundColor:'#090d0a',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
+  mainWindow=new BrowserWindow({width:1240,height:880,minWidth:760,minHeight:680,show:false,backgroundColor:'#05080d',title:APP_NAME,icon:appIcon(),autoHideMenuBar:true,webPreferences:{preload:path.join(__dirname,'preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true}});
   mainWindow.loadFile(path.join(__dirname,'index.html'));
   mainWindow.once('ready-to-show',()=>{if(show)mainWindow.show()});
   mainWindow.on('close',event=>{if(!quitting){event.preventDefault();mainWindow.hide()}});
@@ -676,7 +676,7 @@ ipcMain.handle('companion:restart',()=>{stopTracker();stopTftRecorder();startTra
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});
 ipcMain.handle('companion:open-climb-path',(_event,path)=>{
-  const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse','/tft/timeline']);
+  const safePaths=new Set(['/live','/progress','/ilp','/champions/main','/analyse','/tft/timeline','/pricing','/coach','/missions']);
   let target='/live';
   try{
     const parsed=new URL(String(path||'/live'),'https://opclimb.local');

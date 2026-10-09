@@ -21,6 +21,22 @@ test('League overlay freezes a pre-game plan, excluding live enemy/telemetry dat
  assert.equal(view.plan.winCondition,'Scale as a team');
  assert.equal(JSON.stringify(view).includes('secretEnemyCooldown'),false);
 });
+test('Expanded HUD gets the complete frozen plan, and missing advice is left empty rather than invented',()=>{
+ const steps=['Farm safely','Group with Lulu','Ward dragon','Hit the front line','Take dragon'].map((value,i)=>({label:'S'+i,value}));
+ const paid=freezeLeaguePlan({matchup:{champion:'Jinx',role:'ADC',plan:{rules:['Rule one']}},teamPlan:{ourWinCondition:'Scale',yourJob:'Stay safe',
+   theirWinCondition:'Dive Jinx',biggestThrow:'Chasing',roleWinCondition:{steps},missionTips:[{cue:'Back with the wave'}]}});
+ assert.deepEqual([...paid.actions],['Farm safely','Group with Lulu → Ward dragon','Hit the front line → Take dragon']);
+ assert.equal(paid.threat,'Dive Jinx');assert.equal(paid.job,'Stay safe');assert.equal(paid.mission,'Back with the wave');
+ // FREE: the server sends no paid fields; nothing generic is substituted.
+ const free=freezeLeaguePlan({matchup:{champion:'Jinx',role:'ADC',plan:{rules:['Rule one','Rule two']}},teamPlan:{ourWinCondition:null,biggestThrow:null,yourJob:'Stay safe'}});
+ assert.equal(free.winCondition,'');assert.equal(free.avoid,'');assert.equal(free.threat,'');
+ assert.deepEqual([...free.actions],['Rule one','Rule two']);
+ // Baseline games score no mission.
+ const baseline=freezeLeaguePlan({teamPlan:{dnaBaseline:{ready:false,games:1,required:3},missionTips:[{cue:'Hidden'}]}});
+ assert.equal(baseline.mission,'');assert.deepEqual({...baseline.baseline},{games:1,required:3});
+ const model=fs.readFileSync(path.join(base,'overlay-model.cjs'),'utf8');
+ assert.doesNotMatch(model,/Avoid unnecessary risks|Play your role within the team plan/);
+});
 test('TFT overlay contains a preselected learning focus but no current board, gold or stage',()=>{
  const view=overlayView({paired:true,phase:'WAITING',tftRecorder:{state:'RECORDING',round:'5-4',gold:42,board:[1]}},{enabled:true,tftFocus:'ECONOMY'});
  assert.equal(view.focus,'ECONOMY');assert.equal(view.plan,null);

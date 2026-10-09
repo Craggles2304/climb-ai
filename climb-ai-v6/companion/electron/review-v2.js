@@ -2,7 +2,6 @@
   const load=src=>{const script=document.createElement('script');script.src=src;script.async=false;document.head.appendChild(script)};
   load('plan-recognition-review.cjs');
   load('review-v2-core.js');
-  load('review-esports.js');
   load('review-v3-read-calibration.js');
   load('review-v4-causal-chain.js');
   load('review-v5-causal-coach-router.js');

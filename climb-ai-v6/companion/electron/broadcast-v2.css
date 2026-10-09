@@ -24,7 +24,7 @@ body:after{opacity:.3!important;background-image:
   linear-gradient(90deg,transparent,rgba(214,255,47,.025),transparent)!important;background-size:auto!important;mask-image:none!important}
 .shell{max-width:1240px!important;padding:14px 16px 26px!important}
 .card,.status-card,.settings-card,.matchup-card,.team-roster,.gameplan-card,.plan-block,.spike-card,.lane-action,.bot-main-call,.bot-key-grid article,.bot-danger,.bot-engine,.rules-brief li,.tactical-call,.power-node{border-radius:2px!important}
-button{border-radius:2px!important;text-transform:uppercase;letter-spacing:.08em;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
+:where(#legacyView) button{border-radius:2px!important;text-transform:uppercase;letter-spacing:.08em;clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)}
 button.primary{box-shadow:0 0 22px rgba(214,255,47,.14)}
 .eyebrow{letter-spacing:.18em!important}
 .esports-brand{height:64px!important;margin:0 0 8px!important;padding:0 0 8px!important;position:relative;border-bottom:1px solid rgba(214,255,47,.14)!important}
@@ -73,7 +73,6 @@ body.broadcast-settings-open .settings-card.broadcast-settings{display:block!imp
 .power-radar,.tactical-board{padding:20px 24px!important}.arena-section-head h3{font-size:20px!important;font-style:italic;text-transform:uppercase}.power-node{clip-path:polygon(6px 0,100% 0,100% calc(100% - 6px),calc(100% - 6px) 100%,0 100%,0 6px)}
 .tactical-call{clip-path:polygon(8px 0,100% 0,100% calc(100% - 8px),calc(100% - 8px) 100%,0 100%,0 8px)!important}.tactical-call>strong{font-size:12px!important}.tactical-call>p{font-size:9px!important}
 .team-brief,.botlane-brief{border-radius:0!important;margin-left:0!important;margin-right:0!important;border-left:0!important;border-right:0!important}.team-title-row h3,.botlane-title h3{font-style:italic;text-transform:uppercase;font-size:21px!important}.pick-chip{border-radius:0!important;clip-path:polygon(5px 0,100% 0,100% calc(100% - 5px),calc(100% - 5px) 100%,0 100%,0 5px)}
-footer{margin-top:10px!important;padding:8px 10px!important;border-top:1px solid rgba(214,255,47,.07);font-size:6px!important;letter-spacing:.22em!important;color:#3f4a42!important;text-transform:uppercase}
 @keyframes opSpin{to{transform:rotate(360deg)}}
 @keyframes opSweep{to{transform:rotate(360deg)}}
 @keyframes opPulse{0%,100%{opacity:.35;transform:scale(.8)}50%{opacity:1;transform:scale(1.25)}}

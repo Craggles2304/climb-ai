@@ -81,8 +81,10 @@ test('Companion updater auto-downloads and checks frequently enough for active b
   assert.ok(bootstrap.includes('autoUpdater.autoDownload=true'));
 });
 
-test('running Companion version is always visible in the header',()=>{
-  assert.ok(indexHtml.includes('id="companionVersionBadge"'));
+test('running Companion version is always visible in the shell sidebar',()=>{
+  const shell=fs.readFileSync('companion/electron/shell.js','utf8');
+  assert.ok(indexHtml.includes('id="ocVersion"'));
+  assert.ok(shell.includes("$('ocVersion').textContent=version?`v${version}`:''"));
   assert.ok(desktop.includes("app.setAppUserModelId('com.opclimb.companion')"));
 });
 

@@ -37,7 +37,7 @@ body:after{
 }
 .shell{max-width:1120px!important;padding:24px!important}
 
-h1,h2,h3,.mark,.status-main h2,.arena-vs>strong,.command-main h1,.op-es-champ,.op-es-board-head h2{
+:where(#legacyView) :is(h1,h2,h3),.mark,.status-main h2,.arena-vs>strong,.command-main h1,.op-es-champ,.op-es-board-head h2{
   font-family:var(--display)!important;
   text-transform:uppercase!important;
   letter-spacing:.015em!important;
@@ -101,7 +101,7 @@ h1,h2,h3,.mark,.status-main h2,.arena-vs>strong,.command-main h1,.op-es-champ,.o
 .message{background:#0d1418!important;color:#cbd8d5!important;border:1px solid var(--line)!important}
 
 /* Buttons follow the web/client contract */
-button{
+:where(#legacyView) button{
   border-radius:0!important;
   background:var(--hud2)!important;
   color:var(--white)!important;
@@ -110,8 +110,8 @@ button{
   font-family:var(--body)!important;
   transition:background .18s,border-color .18s,transform .18s!important;
 }
-button:hover{background:#22312c!important;border-color:#8caa97!important;filter:none!important;transform:translateY(-1px)}
-button:focus-visible{outline:2px solid var(--mint)!important;outline-offset:3px!important}
+:where(#legacyView) button:hover{background:#22312c!important;border-color:#8caa97!important;filter:none!important;transform:translateY(-1px)}
+:where(#legacyView) button:focus-visible{outline:2px solid var(--mint)!important;outline-offset:3px!important}
 button.primary{background:var(--mint)!important;color:#12200b!important;border-color:var(--mint)!important}
 button.primary:hover{background:#c7ff8a!important;border-color:#c7ff8a!important}
 button.ghost{background:transparent!important;color:var(--muted)!important;border-color:var(--line)!important}
@@ -271,7 +271,6 @@ body.op-remember-live .rem-lower.mission{border-color:#42623b!important;backgrou
 .update-progress{border-radius:0!important;background:#223036!important;border-color:var(--line)!important}
 .update-progress span{background:var(--mint)!important}
 
-footer{border-top-color:var(--line)!important;color:var(--dim)!important}
 
 /* Keep radar/true status dots circular where they communicate state. */
 .idle-radar .r1,.idle-radar .r2,.idle-radar .r3,.notification-dot,.status-dot,.brand-signal span,.power-node i{border-radius:999px!important}
@@ -371,9 +370,6 @@ body.op-mode-quiet .brand-signal{display:none!important}
 .coach-review-next h3{font-family:var(--display)!important;font-size:26px!important;line-height:1!important;text-transform:uppercase!important;margin:7px 0 6px!important}
 .coach-review-next p{margin:0!important;color:var(--muted)!important;line-height:1.5!important}
 .coach-review-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}
-body:not(.op-review-evidence-open) #opPostGame332{display:none!important}
-body.op-review-evidence-open #simplePostgameReview{border-bottom-color:#42623b!important}
-body.op-review-evidence-open #opPostGame332{margin-top:10px!important}
 
 @media(max-width:760px){
   #opMissionReminders{padding:18px!important}

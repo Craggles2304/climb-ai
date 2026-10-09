@@ -1,0 +1,360 @@
+/* ==========================================================================
+   OP CLIMB Companion — Home and My Game DNA
+   Layout for home-view.js, built on design-system.css tokens/components.
+   ========================================================================== */
+
+.oc-native { display: block; min-width: 0; }
+.oc-native[hidden] { display: none; }
+
+.oc-home { display: grid; gap: var(--oc-space-8); }
+
+/* Section header shared by the dashboard blocks. */
+.oc-section-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+  margin-bottom: var(--oc-space-4);
+}
+.oc-section-head__text { display: grid; gap: 6px; }
+.oc-home-section { min-width: 0; }
+
+
+/* ------------------------------------------------------------------ hero -- */
+
+.oc-home-hero {
+  --oc-art-focus: 72% 18%;
+  min-height: 360px;
+  padding: var(--oc-space-8) var(--oc-space-9);
+}
+.oc-home-hero.is-plain { background:
+  radial-gradient(60% 90% at 88% 10%, rgb(166 139 255 / .16), transparent 60%),
+  radial-gradient(50% 70% at 70% 100%, rgb(182 246 107 / .08), transparent 60%),
+  var(--oc-surface-1); }
+.oc-card--hero > .oc-home-hero__pattern {
+  position: absolute;
+  inset: 0 0 0 40%;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(120deg, rgb(255 255 255 / .025) 0 1px, transparent 1px 22px),
+    repeating-linear-gradient(60deg, rgb(255 255 255 / .02) 0 1px, transparent 1px 22px);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%);
+          mask-image: linear-gradient(90deg, transparent, #000 40%);
+}
+.oc-home-hero__body {
+  display: grid;
+  gap: var(--oc-space-4);
+  justify-items: start;
+  max-width: 640px;
+}
+.oc-home-hero__name {
+  max-width: 100%;
+  font-size: clamp(54px, 6.4vw, 96px);
+  line-height: .9;
+  overflow-wrap: anywhere;
+  text-shadow: 0 4px 30px rgb(0 0 0 / .6);
+}
+.oc-home-hero__name span {
+  margin-left: .12em;
+  font-size: .42em;
+  font-weight: 700;
+  letter-spacing: .04em;
+  color: var(--oc-text-3);
+  vertical-align: .9em;
+}
+.oc-home-hero__rank {
+  display: flex;
+  align-items: baseline;
+  gap: var(--oc-space-3);
+  margin-top: calc(var(--oc-space-2) * -1);
+  font-family: var(--oc-font-display);
+  text-transform: uppercase;
+}
+.oc-home-hero__rank b { font-size: var(--oc-fs-xl); font-weight: 700; letter-spacing: .04em; color: var(--oc-gold); }
+.oc-home-hero__rank span { font-size: var(--oc-fs-lg); font-weight: 600; color: var(--oc-text-2); }
+.oc-home-hero__focus {
+  display: grid;
+  gap: 6px;
+  max-width: 52ch;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border-left: 3px solid var(--oc-lime);
+  background: linear-gradient(90deg, rgb(182 246 107 / .1), transparent);
+}
+.oc-home-hero__focus strong { font-size: var(--oc-fs-lg); line-height: 1.3; color: var(--oc-text); }
+.oc-home-hero__actions { margin-top: var(--oc-space-2); --oc-gap: var(--oc-space-3); }
+.oc-card--hero > .oc-home-hero__credit {
+  position: absolute;
+  right: var(--oc-space-6);
+  bottom: var(--oc-space-4);
+  z-index: 1;
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgb(238 243 248 / .7);
+  text-shadow: 0 1px 6px rgb(0 0 0 / .8);
+}
+
+
+/* ------------------------------------------------------------- Game DNA -- */
+
+.oc-dna {
+  display: grid;
+  grid-template-columns: minmax(300px, 400px) minmax(0, 1fr);
+  gap: var(--oc-space-5);
+}
+.oc-dna__shape {
+  place-items: center;
+  justify-content: center;
+  padding: var(--oc-space-4);
+  background:
+    radial-gradient(60% 60% at 50% 50%, rgb(166 139 255 / .12), transparent 70%),
+    linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1) 70%);
+}
+.oc-dna__strands {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--oc-space-3);
+  align-content: start;
+}
+
+/* Radar */
+.oc-radar-wrap { position: relative; width: 100%; max-width: 440px; }
+.oc-radar { display: block; width: 100%; height: auto; overflow: visible; }
+.oc-radar__grid { fill: none; stroke: rgb(150 180 215 / .1); stroke-width: 1; }
+.oc-radar__grid.is-outer { stroke: rgb(150 180 215 / .22); stroke-dasharray: 3 4; }
+.oc-radar__axis { stroke: rgb(150 180 215 / .1); stroke-width: 1; }
+.oc-radar__shape { transform-origin: 50% 50%; transform-box: view-box; animation: oc-radar-in 900ms var(--oc-ease-out) both; }
+.oc-radar__fill {
+  fill: rgb(166 139 255 / .2);
+  stroke: var(--oc-violet);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  filter: drop-shadow(0 0 10px rgb(166 139 255 / .45));
+}
+.oc-radar__dot { stroke: var(--oc-bg); stroke-width: 2; }
+.oc-radar__label {
+  font-family: var(--oc-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  fill: var(--oc-text-2);
+}
+.oc-radar__level { font-family: var(--oc-font-mono); font-size: 12px; font-weight: 500; }
+.oc-radar__center {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 6px;
+  text-align: center;
+  pointer-events: none;
+}
+.oc-radar__center .oc-steps { width: 110px; }
+.oc-radar__big {
+  font-family: var(--oc-font-display);
+  font-size: 38px;
+  font-weight: 800;
+  line-height: 1;
+  color: var(--oc-text);
+}
+.oc-radar__big > svg { width: 44px; height: 44px; color: var(--oc-violet); }
+@keyframes oc-radar-in { from { transform: scale(.2); opacity: 0; } }
+
+/* Strand tile */
+.oc-strand {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--oc-space-3);
+  min-height: 80px;
+  padding: var(--oc-space-3) var(--oc-space-4) var(--oc-space-3) var(--oc-space-3);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-md);
+  background: linear-gradient(110deg, color-mix(in srgb, var(--oc-tone) 7%, var(--oc-surface-2)), var(--oc-surface-1) 60%);
+  box-shadow: var(--oc-highlight);
+  transition: border-color var(--oc-dur) var(--oc-ease-out), transform var(--oc-dur) var(--oc-ease-out);
+}
+.oc-strand.is-mission {
+  border-color: color-mix(in srgb, var(--oc-tone) 45%, transparent);
+  box-shadow: var(--oc-highlight), inset 3px 0 0 var(--oc-tone);
+}
+.oc-strand.is-locked { background: var(--oc-surface-1); }
+.oc-strand.is-locked .oc-strand__text b { color: var(--oc-text-2); }
+.oc-strand .oc-ring--sm { --oc-ring-size: 54px; }
+.oc-strand .oc-ring--sm .oc-ring__value { font-size: 20px; }
+.oc-strand .oc-ring--sm .oc-ring__label { font-size: 10px; letter-spacing: .1em; }
+.oc-strand .oc-ring__center > svg { width: 18px; height: 18px; color: var(--oc-text-3); }
+.oc-strand__text { display: grid; gap: 2px; min-width: 0; }
+.oc-strand__text b {
+  font-family: var(--oc-font-display);
+  font-size: var(--oc-fs-lg);
+  font-weight: 700;
+  letter-spacing: .03em;
+  line-height: 1.1;
+  text-transform: uppercase;
+}
+.oc-strand__meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px var(--oc-space-2); }
+.oc-strand__meta > span:first-child { font-family: var(--oc-font-mono); font-size: var(--oc-fs-xs); color: var(--oc-text-3); letter-spacing: .04em; }
+.oc-strand__mastered { font-size: var(--oc-fs-xs); color: var(--oc-text-3); white-space: nowrap; }
+.oc-strand .oc-chip { --oc-tone: inherit; }
+
+/* Expanded on My Game DNA: one strand per row, with what it measures. */
+.oc-dna__shape { align-self: start; }
+.oc-dna--expanded { grid-template-columns: minmax(300px, 420px) minmax(0, 1fr); }
+.oc-dna--expanded .oc-dna__strands { grid-template-columns: 1fr; gap: var(--oc-space-2); }
+.oc-dna--expanded .oc-strand { align-items: start; }
+.oc-strand__why { margin-top: 4px; font-size: var(--oc-fs-sm); color: var(--oc-text-2); line-height: 1.45; }
+
+/* Reveal moment: strands arrive one after another. */
+.oc-dna.is-revealing .oc-strand { animation: oc-enter var(--oc-dur-slow) var(--oc-ease-out) both; }
+.oc-dna.is-revealing .oc-strand:nth-child(2) { animation-delay: 90ms; }
+.oc-dna.is-revealing .oc-strand:nth-child(3) { animation-delay: 180ms; }
+.oc-dna.is-revealing .oc-strand:nth-child(4) { animation-delay: 270ms; }
+.oc-dna.is-revealing .oc-strand:nth-child(5) { animation-delay: 360ms; }
+.oc-dna.is-revealing .oc-strand:nth-child(6) { animation-delay: 450ms; }
+
+
+/* -------------------------------------------------------------- missions -- */
+
+.oc-missions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: var(--oc-space-5);
+}
+.oc-mission { gap: var(--oc-space-4); }
+.oc-mission .oc-title { font-size: var(--oc-fs-xl); line-height: 1.2; }
+.oc-mission__rows { display: grid; gap: var(--oc-space-3); margin: 0; }
+.oc-mission__rows > div { display: grid; gap: 3px; }
+.oc-mission__rows dt {
+  font-family: var(--oc-font-mono);
+  font-size: var(--oc-fs-xs);
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--oc-text-3);
+}
+.oc-mission__rows dd { margin: 0; color: var(--oc-text-2); line-height: 1.5; }
+.oc-mission__rows .is-next {
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid color-mix(in srgb, var(--oc-tone) 30%, transparent);
+  border-radius: var(--oc-radius-md);
+  background: color-mix(in srgb, var(--oc-tone) 8%, var(--oc-well));
+}
+.oc-mission__rows .is-next dt { color: var(--oc-tone); }
+.oc-mission__rows .is-next dd { color: var(--oc-text); font-size: var(--oc-fs-md); font-weight: 600; }
+.oc-mission__proof { display: grid; gap: var(--oc-space-2); margin-top: auto; }
+.oc-mission__proof .oc-steps > span { height: 10px; }
+.oc-mission-note { gap: var(--oc-space-3); }
+.oc-mission-note .oc-steps { max-width: 260px; }
+
+
+/* ------------------------------------------------------------------ plan -- */
+
+.oc-home-plan {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+}
+.oc-home-plan__text { display: grid; gap: 2px; }
+.oc-home-plan__text b { font-size: var(--oc-fs-base); }
+.oc-home-plan__text span { font-size: var(--oc-fs-sm); color: var(--oc-text-3); }
+.oc-home-plan__upgrade { gap: var(--oc-space-4); color: var(--oc-text-2); font-size: var(--oc-fs-sm); }
+
+
+/* ------------------------------------------------- My Game DNA specifics -- */
+
+.oc-roles {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--oc-space-4);
+}
+.oc-roles__text { display: grid; gap: 4px; max-width: 36ch; }
+.oc-roles__list { display: grid; grid-template-columns: repeat(5, minmax(96px, 1fr)); gap: var(--oc-space-2); flex: 1; max-width: 640px; }
+.oc-role {
+  display: grid;
+  gap: 2px;
+  min-height: 56px;
+  padding: var(--oc-space-2) var(--oc-space-3);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-sm);
+  background: var(--oc-surface-1);
+  color: var(--oc-text-2);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color var(--oc-dur) var(--oc-ease-out), background var(--oc-dur) var(--oc-ease-out);
+}
+.oc-role b { font-family: var(--oc-font-display); font-size: var(--oc-fs-md); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--oc-text); }
+.oc-role b small { font-family: var(--oc-font-mono); font-size: 10px; font-weight: 500; color: var(--oc-lime); letter-spacing: .08em; }
+.oc-role span { font-family: var(--oc-font-mono); font-size: var(--oc-fs-xs); color: var(--oc-text-3); }
+.oc-role:hover:not(:disabled) { border-color: var(--oc-line-strong); background: var(--oc-surface-2); filter: none; }
+.oc-role.is-active { border-color: color-mix(in srgb, var(--oc-violet) 60%, transparent); background: rgb(166 139 255 / .1); }
+.oc-role:disabled { cursor: not-allowed; opacity: .6; }
+
+.oc-baseline, .oc-reveal {
+  justify-items: start;
+  background:
+    radial-gradient(70% 120% at 100% 0%, rgb(166 139 255 / .14), transparent 60%),
+    linear-gradient(180deg, var(--oc-surface-2), var(--oc-surface-1) 75%);
+}
+.oc-baseline .oc-lead, .oc-reveal .oc-lead { max-width: 60ch; }
+.oc-baseline__games {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--oc-space-3);
+  width: 100%;
+  max-width: 640px;
+  margin: var(--oc-space-2) 0 0;
+  padding: 0;
+  list-style: none;
+}
+.oc-baseline__games li {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto auto;
+  column-gap: var(--oc-space-3);
+  align-items: center;
+  padding: var(--oc-space-3) var(--oc-space-4);
+  border: 1px solid var(--oc-line);
+  border-radius: var(--oc-radius-md);
+  background: var(--oc-well);
+}
+.oc-baseline__games li > span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--oc-surface-3);
+  font-family: var(--oc-font-display);
+  font-weight: 800;
+  color: var(--oc-text-3);
+}
+.oc-baseline__games li > span > svg { width: 16px; height: 16px; }
+.oc-baseline__games li b { font-family: var(--oc-font-display); font-size: var(--oc-fs-md); text-transform: uppercase; letter-spacing: .04em; }
+.oc-baseline__games li small { font-size: var(--oc-fs-xs); color: var(--oc-text-3); }
+.oc-baseline__games li.is-done { border-color: rgb(166 139 255 / .4); }
+.oc-baseline__games li.is-done > span { background: var(--oc-violet); color: var(--oc-text-on-accent); }
+.oc-baseline__games li.is-current { border-color: var(--oc-line-bright); }
+.oc-baseline__games li.is-current > span { box-shadow: 0 0 0 2px var(--oc-violet); color: var(--oc-text); animation: oc-pulse-soft 2s var(--oc-ease-in-out) infinite; }
+
+.oc-dna-links { --oc-gap: var(--oc-space-3); }
+
+
+/* ------------------------------------------------------------ responsive -- */
+
+@media (max-width: 1100px) {
+  .oc-dna, .oc-dna--expanded { grid-template-columns: 1fr; }
+  .oc-dna__shape { max-width: 460px; justify-self: center; width: 100%; }
+}
+@media (max-width: 760px) {
+  .oc-home-hero { padding: var(--oc-space-6); }
+  .oc-dna__strands { grid-template-columns: 1fr; }
+  .oc-roles__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .oc-baseline__games { grid-template-columns: 1fr; }
+}
