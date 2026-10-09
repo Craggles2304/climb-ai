@@ -48,31 +48,123 @@
       hero.id='opEsHero';hero.className='op-es-hero';
       hero.innerHTML=`
         <div id="opEsArt" class="op-es-art"><div class="op-es-art-copy"><div class="op-es-overline">POST MATCH // PERFORMANCE REVIEW</div><div class="op-es-roleline"><b id="opEsRole">ROLE</b><span>·</span><span id="opEsCoach">OP COACH</span></div><h1 id="opEsChamp" class="op-es-champ">CHAMPION</h1></div></div>
-        <div class="op-es-board"><div class="op-es-board-head"><div><div class="eyebrow">MATCH INTELLIGENCE // VERIFIED REVIEW</div><h2>GAME DEBRIEF</h2></div><div class="op-es-ready">REVIEW READY</div></div><div class="op-es-stat-grid"><article class="op-es-stat accent"><span>KDA</span><strong id="opEsKda">—</strong><small>final line</small></article><article class="op-es-stat"><span>CS / MIN</span><strong id="opEsCs">—</strong><small>economy pace</small></article><article class="op-es-stat"><span>MATCH TIME</span><strong id="opEsTime">—</strong><small>recorded duration</small></article><article class="op-es-stat"><span>DECISIONS</span><strong id="opEsEvidence">—</strong><small>reviewed moments</small></article></div><div class="op-es-next-call"><span>NEXT GAME // ONE CALL</span><strong id="opEsNextTitle">REPEAT THE CLEAN DECISIONS</strong><p id="opEsNextRule"></p></div></div>`;
-      const baseline=section.querySelector('.op332-baseline');
-      section.insertBefore(hero,baseline||section.firstChild);
+        <div class="op-es-board"><div class="op-es-board-head"><div><div class="eyebrow">MATCH INTELLIGENCE // VERIFIED REVIEW</div><h2>GAME DEBRIEF</h2></div><div id="opEsReady" class="op-es-ready">REVIEW READY</div></div><div class="op-es-stat-grid"><article class="op-es-stat accent"><span>KDA</span><strong id="opEsKda">—</strong><small>final line</small></article><article class="op-es-stat"><span>CS / MIN</span><strong id="opEsCs">—</strong><small>economy pace</small></article><article class="op-es-stat"><span>MATCH TIME</span><strong id="opEsTime">—</strong><small>recorded duration</small></article><article class="op-es-stat"><span>DECISIONS</span><strong id="opEsEvidence">—</strong><small>reviewed moments</small></article></div><div class="op-es-next-call"><span>NEXT GAME // ONE CALL</span><strong id="opEsNextTitle">REPEAT THE CLEAN DECISIONS</strong><p id="opEsNextRule"></p></div></div>`;
+      // Only direct children may be used as insertBefore references. The
+      // historical .op332-baseline lives INSIDE collapsed match details.
+      const summary=section.querySelector('.op333-summary');
+      section.insertBefore(hero,summary||section.firstChild);
+    }
+    if(!$('opEsProof')){
+      const proof=document.createElement('section');
+      proof.id='opEsProof';proof.className='op-es-proof';
+      proof.innerHTML='<div class="op-es-proof-intro"><span>YOUR DEVELOPMENT · VERIFIED PROGRESSION</span><h3>GAME DNA MISSION PROOF</h3><p id="opEsProofSub">Only timestamped and reliable mission evidence counts towards progression.</p></div><div id="opEsProofGrid" class="op-es-proof-grid"></div>';
+      const proofAnchor=section.querySelector('.op332-development');
+      section.insertBefore(proof,proofAnchor||null);
     }
     if(!$('opEsTimeline')){
-      const timeline=document.createElement('section');timeline.id='opEsTimeline';timeline.className='op-es-timeline';timeline.innerHTML=`<div class="op-es-timeline-head"><b>MATCH MOMENTS</b><span>GREEN = CLEAN CONVERSION · RED = LEAK · PURPLE = YOUR MARK</span></div><div id="opEsRail" class="op-es-rail"></div><div id="opEsMarked" class="op-es-marked"></div>`;
-      const main=section.querySelector('.op332-main');
-      section.insertBefore(timeline,main||section.querySelector('.op332-neutral'));
+      const timeline=document.createElement('section');timeline.id='opEsTimeline';timeline.className='op-es-timeline';timeline.innerHTML=`<div class="op-es-timeline-head"><div><span class="op-es-timeline-overline">MATCH EVIDENCE / GAME REVIEW</span><b>MATCH MOMENTS</b></div><span>GREEN = CLEAN CONVERSION · RED = LEAK · PURPLE = YOUR MARK</span></div><div id="opEsRail" class="op-es-rail"></div><div id="opEsRailAxis" class="op-es-rail-axis"><span>00:00</span><span id="opEsEndTime">—</span></div><div id="opEsMoments" class="op-es-moments" role="list" aria-label="Key reviewed decisions"></div><div id="opEsMarked" class="op-es-marked"></div>`;
+      const timelineAnchor=section.querySelector('.op332-development');
+      section.insertBefore(timeline,timelineAnchor||null);
     }
     return section;
   }
 
+  // Render the same evidence that powers the server-authored review; never create
+  // an invented grade, a success from NOT_OBSERVED, or a decision without a clock.
+  function renderMissionProof(review){
+    const grid=$('opEsProofGrid');if(!grid)return;
+    grid.replaceChildren();
+    const baseline=review?.dnaBaseline||null;
+    const ready=baseline?.ready===true;
+    const missions=safeArray(review?.missionEvidence).slice(0,2);
+    const subtitle=$('opEsProofSub');
+    if(subtitle){
+      subtitle.textContent=!ready
+        ?'BASELINE ACTIVE · Development missions are not graded until three games in this role.'
+        :missions.length
+          ?'Only BANKED results add a proven rep. NOT OBSERVED is neutral, never a failure.'
+          :'No reliable mission evidence was available for this match.';
+    }
+    if(!ready||!missions.length){
+      const card=document.createElement('article');card.className='op-es-proof-card pending';
+      const label=document.createElement('span');label.textContent=ready?'NO EVIDENCE AVAILABLE':'BASELINE NOT COMPLETE';
+      const title=document.createElement('strong');title.textContent=ready?'Mission grading unavailable':'Collect your three baseline games';
+      const detail=document.createElement('p');detail.textContent='We do not guess DNA progress. Review the full mission panel when verified evidence is available.';
+      card.append(label,title,detail);grid.appendChild(card);
+      return;
+    }
+    for(const mission of missions){
+      const raw=clean(mission?.evidenceState).toUpperCase();
+      const result=['BANKED','MISSED','NOT_OBSERVED'].includes(raw)?raw:'NOT_OBSERVED';
+      const count=Math.max(0,Number(mission?.confirmed??mission?.completedGames)||0);
+      const required=Math.max(1,Number(mission?.required??mission?.requiredGames)||3);
+      const progress=Math.min(100,Math.round((count/required)*100));
+      const card=document.createElement('article');card.className='op-es-proof-card '+result.toLowerCase().replace('_','-');
+      const label=document.createElement('span');label.textContent=clean(mission?.dnaDomain).replaceAll('_',' ')||'GAME DNA';
+      const title=document.createElement('strong');title.textContent=clean(mission?.title)||'Your development mission';
+      const status=document.createElement('div');status.className='op-es-proof-result';
+      const chip=document.createElement('b');chip.textContent=result.replace('_',' ');
+      const countElement=document.createElement('small');countElement.textContent=count+'/'+required+' PROVEN GAMES';
+      status.append(chip,countElement);
+      const track=document.createElement('div');track.className='op-es-proof-track';track.setAttribute('role','progressbar');
+      track.setAttribute('aria-label',title.textContent+' proven games');
+      track.setAttribute('aria-valuemin','0');track.setAttribute('aria-valuemax',String(required));
+      track.setAttribute('aria-valuenow',String(Math.min(required,count)));
+      const fill=document.createElement('i');fill.style.width=progress+'%';track.appendChild(fill);
+      const reason=document.createElement('p');reason.textContent=clean(mission?.evidenceReason)||
+        (result==='BANKED'?'Verified target cleared in this match.'
+          :result==='MISSED'?'Target was observed but not cleared.':'No reliable evidence to grade this attempt.');
+      card.append(label,title,status,track,reason);grid.appendChild(card);
+    }
+  }
+
   function renderTimeline(review){
     const rail=$('opEsRail');if(!rail)return;rail.replaceChildren();
-    const duration=Math.max(1,Number(review?.match?.durationSeconds)||1);
-    const good=safeArray(review?.doneWell||review?.good).filter(item=>item?.verified!==false&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'good'}));
-    const fix=safeArray(review?.improve||review?.critical).filter(item=>item?.verified!==false&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'fix'}));
-    [...good,...fix].sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds)).slice(0,7).forEach(item=>{
+    const rawDuration=Number(review?.match?.durationSeconds);
+    const duration=Number.isFinite(rawDuration)&&rawDuration>0?rawDuration:1;
+    set('opEsEndTime',Number.isFinite(rawDuration)&&rawDuration>0?clock(rawDuration):'—');
+    const good=safeArray(review?.doneWell||review?.good).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'good'}));
+    const fix=safeArray(review?.improve||review?.critical).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'fix'}));
+    const chosen=[...good,...fix].sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds)).slice(0,7);
+    chosen.forEach(item=>{
       const seconds=Math.max(0,Math.min(duration,Number(item.atSeconds)||0));
       const marker=document.createElement('div');marker.className=`op-es-marker ${item.kind==='fix'?'fix':''}`;marker.style.setProperty('--pos',`${Math.max(2,Math.min(98,(seconds/duration)*100))}%`);marker.dataset.title=clean(item.title)||'Reviewed moment';
       const label=document.createElement('label');label.textContent=clock(seconds);marker.appendChild(label);rail.appendChild(marker);
     });
+    const moments=$('opEsMoments');if(moments){moments.replaceChildren();
+      // Decision Graph is the evidence source behind the full review. No data
+      // means an explicit empty state rather than made-up coaching.
+      const nodes=safeArray(review?.decisionGraph?.nodes)
+        .filter(node=>['GOOD','IMPROVE'].includes(clean(node?.verdict).toUpperCase()))
+        .filter(node=>node?.atSeconds!=null&&Number.isFinite(Number(node.atSeconds)))
+        .sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds)).slice(0,5);
+      if(!nodes.length){
+        const empty=document.createElement('p');empty.className='op-es-moments-empty';
+        empty.textContent='No time-stamped reviewed decisions met the evidence requirement. Open the full review for observations.';
+        moments.appendChild(empty);
+      }
+      nodes.forEach((node,index)=>{
+        const verdict=clean(node.verdict).toUpperCase();
+        const card=document.createElement('article');
+        card.className='op-es-moment-card '+(verdict==='GOOD'?'good':'fix');
+        card.setAttribute('role','listitem');
+        const lead=document.createElement('div');lead.className='op-es-moment-lead';
+        const number=document.createElement('span');number.textContent=String(index+1).padStart(2,'0');
+        const time=document.createElement('b');time.textContent=clean(node.minuteLabel)||clock(node.atSeconds);
+        const result=document.createElement('em');result.textContent=verdict==='GOOD'?'CLEAN':'REVIEW';
+        lead.append(number,time,result);
+        const copy=document.createElement('div');copy.className='op-es-moment-copy';
+        const title=document.createElement('h4');title.textContent=clean(node.title||node.behaviourLabel)||'Decision moment';
+        const actual=document.createElement('p');actual.textContent=clean(node.decisionRead||node.consequence)||'Decision recorded for review.';
+        const next=document.createElement('small');next.textContent=verdict==='IMPROVE'
+          ?(clean(node?.counterfactual?.alternative)||'See the full review for a possible better decision.')
+          :(clean(node.consequence)||'Positive decision recorded; do not infer mastery from one game.');
+        copy.append(title,actual,next);card.append(lead,copy);moments.appendChild(card);
+      });
+    }
     const marked=$('opEsMarked');if(marked)marked.replaceChildren();
-    safeArray(review?.markedMoments).slice(0,12).forEach(item=>{
-      const seconds=Math.max(0,Math.min(duration,Number(item.atSeconds)||0));
+    safeArray(review?.markedMoments).filter(item=>item?.atSeconds!=null&&Number.isFinite(Number(item.atSeconds))).slice(0,12).forEach(item=>{
+      const seconds=Math.max(0,Math.min(duration,Number(item.atSeconds)));
       const marker=document.createElement('div');marker.className='op-es-marker player';marker.style.setProperty('--pos',`${Math.max(2,Math.min(98,(seconds/duration)*100))}%`);marker.dataset.title='Your mark: '+clean(item.detail);
       const label=document.createElement('label');label.textContent=clock(seconds);marker.appendChild(label);rail.appendChild(marker);
       if(marked){const row=document.createElement('article');const time=document.createElement('b');time.textContent=clock(seconds);const detail=document.createElement('span');detail.className=item.status==='MATCHED'?'':'unmatched';detail.textContent=clean(item.detail);row.append(time,detail);marked.appendChild(row)}
@@ -89,16 +181,19 @@
     const match=review.match||{};
     const champion=clean(match.champion)||'Champion';
     const art=$('opEsArt');if(art){const asset=championAssetId(champion);art.style.setProperty('--op-champ-art',`url("https://ddragon.leagueoflegends.com/cdn/img/champion/splash/${asset}_0.jpg")`)}
+    set('opEsReady',review.partial?'PARTIAL REVIEW':'REVIEW READY');
     set('opEsChamp',champion.toUpperCase(),'CHAMPION');
     set('opEsRole',clean(match.role).toUpperCase(),'ROLE');
-    set('opEsCoach',`${clean(review?.coachLevel?.tier||'OP').toUpperCase()} COACH`,'OP COACH');
+    const accessTier=clean(state?.teamPlan?.strategyAccess?.tier||state?.playerHome?.tier).toUpperCase();
+    set('opEsCoach',['FREE','PLUS','PRO'].includes(accessTier)?accessTier+' COACH':'OP CLIMB COACH','OP CLIMB COACH');
     set('opEsKda',match.kda,'—');
     set('opEsCs',Number.isFinite(match.csPerMin)?Number(match.csPerMin).toFixed(1):'—','—');
     set('opEsTime',Number.isFinite(match.durationSeconds)?clock(match.durationSeconds):'—','—');
-    set('opEsEvidence',Number.isFinite(Number(review.evidenceCount))?String(Number(review.evidenceCount)):'—','—');
+    set('opEsEvidence',review.evidenceCount!=null&&Number.isFinite(Number(review.evidenceCount))&&Number(review.evidenceCount)>=0?String(Number(review.evidenceCount)):'—','—');
     set('opEsNextTitle',review?.nextFocus?.title,'REPEAT THE CLEAN DECISIONS');
     set('opEsNextRule',review?.nextFocus?.rule,'Keep the same CLIMB MISSION and build more evidence next game.');
     const vs=$('op332Vs');const vsCard=vs?.closest('.op332-plan');if(vsCard)vsCard.classList.toggle('op-es-locked',/unavailable|locked/i.test(clean(vs.textContent)));
+    renderMissionProof(review);
     renderTimeline(review);
   }
 

@@ -40,6 +40,8 @@ jobs:
         run: node --test tests/companionRendererPhases.test.cjs
       - name: Verified mission evidence and XP regressions
         run: node --import tsx --test tests/verifiedMissionProof.test.ts
+      - name: Premium verified post-game visual and evidence regressions
+        run: node --test tests/companionPremiumPostgame.test.cjs
       - name: In-game Learning Overlay regressions
         run: node --test tests/companionLearningOverlay.test.cjs
       - name: TFT Companion recorder regressions
