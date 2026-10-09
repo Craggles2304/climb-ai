@@ -1,0 +1,422 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>OP CLIMB Design System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700;800&family=DM+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../electron/design-system.css">
+<style>
+  /* Gallery-only layout. Nothing here belongs in the app. */
+  .g-page { max-width: 1240px; margin: 0 auto; padding: 56px 32px 120px; display: grid; gap: 72px; }
+  .g-section { display: grid; gap: 24px; }
+  .g-section > header { display: grid; gap: 8px; padding-bottom: 16px; border-bottom: 1px solid var(--oc-line); }
+  .g-sub { display: grid; gap: 14px; }
+  .g-sub > h3 { font-family: var(--oc-font-mono); font-size: var(--oc-fs-xs); letter-spacing: .08em; text-transform: uppercase; color: var(--oc-text-3); font-weight: 500; }
+  .g-swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
+  .g-swatch { border: 1px solid var(--oc-line); border-radius: var(--oc-radius-md); overflow: hidden; background: var(--oc-surface-1); }
+  .g-swatch > i { display: block; height: 64px; }
+  .g-swatch > div { padding: 10px 12px; display: grid; gap: 2px; }
+  .g-swatch b { font-size: var(--oc-fs-sm); }
+  .g-swatch code { font-family: var(--oc-font-mono); font-size: var(--oc-fs-xs); color: var(--oc-text-3); }
+  .g-type { display: grid; grid-template-columns: 140px 1fr; gap: 10px 24px; align-items: baseline; }
+  .g-space { display: grid; gap: 8px; }
+  .g-space > div { display: grid; grid-template-columns: 120px 1fr; align-items: center; gap: 16px; }
+  .g-space i { display: block; height: 10px; background: var(--oc-lime); border-radius: 2px; transform: skewX(-20deg); }
+  .g-dna { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .g-dna > div { display: grid; justify-items: center; gap: 10px; text-align: center; }
+  @media (max-width: 900px) { .g-dna { grid-template-columns: repeat(3, 1fr); } }
+</style>
+</head>
+<body class="oc-app">
+
+<!-- Icon sprite. The app will carry its own icon set; these are placeholders. -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><path d="M7 4.5v15l13-7.5z"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></symbol>
+  <symbol id="i-dna" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3c0 6 10 6 10 12s-10 3-10 6M17 3c0 6-10 6-10 12s10 3 10 6M8.5 7h7M8.5 17h7"/></symbol>
+  <symbol id="i-bookmark" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M6 3.5h12v17l-6-4-6 4z"/></symbol>
+  <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></symbol>
+  <symbol id="i-empty" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M3.5 10h17M8 14.5h4"/></symbol>
+</svg>
+
+<main class="g-page">
+
+  <!-- ===== Intro ===== -->
+  <header class="oc-stack" style="--oc-gap:14px">
+    <span class="oc-eyebrow">Companion · design system v1</span>
+    <h1 class="oc-hero">Built to climb</h1>
+    <p class="oc-lead" style="max-width:60ch">Every colour, type style, spacing step and core component for OP CLIMB Companion, rendered from <span class="oc-mono">electron/design-system.css</span>. Sample content on this page is illustrative only.</p>
+  </header>
+
+  <!-- ===== Composition preview ===== -->
+  <section class="g-section" aria-labelledby="s-compose">
+    <header><span class="oc-eyebrow">In context</span><h2 class="oc-h2" id="s-compose">Composition</h2></header>
+
+    <article class="oc-card oc-card--hero">
+      <img class="oc-card__art" src="https://ddragon.leagueoflegends.com/cdn/img/champion/splash/Ahri_0.jpg" alt="" onerror="this.remove()">
+      <div class="oc-cluster">
+        <span class="oc-tier oc-tier--plus">Plus</span>
+        <span class="oc-chip oc-chip--positive"><span class="oc-dot oc-dot--live"></span>Companion ready</span>
+      </div>
+      <div class="oc-stack" style="--oc-gap:8px">
+        <span class="oc-label">Sample#EUW · Mid</span>
+        <h2 class="oc-h1">Emerald II <span class="oc-text-3" style="font-size:.5em">· 64 LP</span></h2>
+        <p class="oc-lead" style="max-width:46ch">Current focus: <b class="oc-text-1">trade around your wave, not your cooldowns.</b></p>
+      </div>
+      <div class="oc-cluster" style="--oc-gap:12px">
+        <button class="oc-btn oc-btn--primary oc-btn--lg"><svg><use href="#i-play"/></svg>Prepare next match</button>
+        <button class="oc-btn oc-btn--tone oc-tone-violet oc-btn--lg"><svg><use href="#i-dna"/></svg>Open Game DNA</button>
+      </div>
+    </article>
+
+    <div class="oc-grid" style="--oc-grid-min:320px">
+      <article class="oc-card oc-card--accent oc-tone-violet">
+        <div class="oc-card__header">
+          <div class="oc-card__heading">
+            <span class="oc-eyebrow">Development mission</span>
+            <h3 class="oc-title">Hold the wave before every first back</h3>
+          </div>
+          <div class="oc-ring oc-ring--sm" style="--oc-value:67">
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="50" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="50" pathLength="100"/></svg>
+            <div class="oc-ring__center"><b class="oc-ring__value">2/3</b></div>
+          </div>
+        </div>
+        <p class="oc-body">Backing on a crashing wave cost you a plate in the last games where it was recorded.</p>
+        <div class="oc-well oc-stack" style="--oc-gap:10px">
+          <span class="oc-label">Next game</span>
+          <p class="oc-body oc-text-1">Freeze near your tower from 3:00, then back once the enemy wave arrives.</p>
+        </div>
+        <div class="oc-card__footer">
+          <span class="oc-small">Verified in 2 of 3 games</span>
+          <button class="oc-btn oc-btn--ghost oc-btn--sm">Details <svg><use href="#i-arrow"/></svg></button>
+        </div>
+      </article>
+
+      <article class="oc-card">
+        <div class="oc-card__header">
+          <div class="oc-card__heading">
+            <span class="oc-eyebrow oc-tone-cyan">Last match</span>
+            <h3 class="oc-title">Victory · 31:42</h3>
+          </div>
+          <div class="oc-portrait oc-portrait--you"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Ahri_0.jpg" alt="Ahri" onerror="this.remove()">AH</div>
+        </div>
+        <div class="oc-grid" style="--oc-grid-min:90px;--oc-gap:16px">
+          <div class="oc-stat"><span class="oc-label">KDA</span><span class="oc-stat__value">7/2/9</span></div>
+          <div class="oc-stat"><span class="oc-label">CS/min</span><span class="oc-stat__value">7.8</span><span class="oc-delta oc-delta--up">+0.6</span></div>
+          <div class="oc-stat is-unavailable"><span class="oc-label">Vision</span><span class="oc-stat__value">Not recorded</span></div>
+        </div>
+        <div class="oc-card__footer">
+          <span class="oc-small">4 decisions reviewed</span>
+          <button class="oc-btn oc-btn--sm">Review game</button>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <!-- ===== Colour ===== -->
+  <section class="g-section" aria-labelledby="s-colour">
+    <header><span class="oc-eyebrow">Tokens</span><h2 class="oc-h2" id="s-colour">Colour</h2><p class="oc-body">Each accent has one job. Lime is the brand and the single main action; violet is Game DNA and advanced coaching; cyan is information and allies.</p></header>
+
+    <div class="g-sub"><h3>Surfaces</h3>
+      <div class="g-swatches">
+        <div class="g-swatch"><i style="background:var(--oc-bg)"></i><div><b>Background</b><code>--oc-bg</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-well)"></i><div><b>Well</b><code>--oc-well</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-surface-1)"></i><div><b>Surface 1</b><code>--oc-surface-1</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-surface-2)"></i><div><b>Surface 2</b><code>--oc-surface-2</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-surface-3)"></i><div><b>Surface 3</b><code>--oc-surface-3</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-surface-4)"></i><div><b>Surface 4</b><code>--oc-surface-4</code></div></div>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Accents</h3>
+      <div class="g-swatches">
+        <div class="g-swatch"><i style="background:var(--oc-lime)"></i><div><b>Lime · brand</b><code>--oc-lime</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-cyan)"></i><div><b>Cyan · info, ally</b><code>--oc-cyan</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-violet)"></i><div><b>Violet · DNA</b><code>--oc-violet</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-green)"></i><div><b>Green · positive</b><code>--oc-green</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-amber)"></i><div><b>Amber · warning</b><code>--oc-amber</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-red)"></i><div><b>Red · negative, enemy</b><code>--oc-red</code></div></div>
+        <div class="g-swatch"><i style="background:var(--oc-gold)"></i><div><b>Gold · PRO, rank</b><code>--oc-gold</code></div></div>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Text</h3>
+      <div class="oc-stack" style="--oc-gap:6px">
+        <p class="oc-text-1" style="font-size:var(--oc-fs-md)">Primary text — headings and anything the player acts on. <code class="oc-mono oc-text-3">--oc-text</code></p>
+        <p class="oc-text-2" style="font-size:var(--oc-fs-md)">Secondary text — coaching explanations and supporting copy. <code class="oc-mono oc-text-3">--oc-text-2</code></p>
+        <p class="oc-text-3" style="font-size:var(--oc-fs-md)">Tertiary text — metadata, labels, timestamps. <code class="oc-mono">--oc-text-3</code></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Typography ===== -->
+  <section class="g-section" aria-labelledby="s-type">
+    <header><span class="oc-eyebrow">Tokens</span><h2 class="oc-h2" id="s-type">Typography</h2><p class="oc-body">Barlow Condensed for display, DM Sans for coaching, IBM Plex Mono for stats and labels. The overlay can't load web fonts, so it falls back to Bahnschrift, Segoe UI and Cascadia Mono.</p></header>
+    <div class="g-type">
+      <span class="oc-label">.oc-hero</span><span class="oc-hero">Climb starts here</span>
+      <span class="oc-label">.oc-h1</span><span class="oc-h1">Match review</span>
+      <span class="oc-label">.oc-h2</span><span class="oc-h2">Your Game DNA</span>
+      <span class="oc-label">.oc-h3</span><span class="oc-h3">Win condition</span>
+      <span class="oc-label">.oc-title</span><span class="oc-title">Hold the wave before every first back</span>
+      <span class="oc-label">.oc-eyebrow</span><span class="oc-eyebrow">Development mission</span>
+      <span class="oc-label">.oc-lead</span><p class="oc-lead">Your lane opponent is strongest at level 2. Give up the first trade and take the cannon wave instead.</p>
+      <span class="oc-label">.oc-body</span><p class="oc-body">The enemy jungler was last seen on the bot side at 3:10, so this was the safest moment of the early game to push for a plate.</p>
+      <span class="oc-label">.oc-small</span><p class="oc-small">Updated after your last ranked game · 2 hours ago</p>
+      <span class="oc-label">.oc-label</span><span class="oc-label">CS / min · Patch 26.20</span>
+      <span class="oc-label">.oc-num</span><span class="oc-num" style="font-size:var(--oc-fs-3xl)">7/2/9 · 8.4</span>
+    </div>
+  </section>
+
+  <!-- ===== Spacing ===== -->
+  <section class="g-section" aria-labelledby="s-space">
+    <header><span class="oc-eyebrow">Tokens</span><h2 class="oc-h2" id="s-space">Spacing &amp; shape</h2><p class="oc-body">A 4px grid. Cards use soft radii; buttons and tags use the chamfered cut from the OP mark.</p></header>
+    <div class="g-space">
+      <div><span class="oc-label">space-1 · 4</span><i style="width:4px"></i></div>
+      <div><span class="oc-label">space-2 · 8</span><i style="width:8px"></i></div>
+      <div><span class="oc-label">space-3 · 12</span><i style="width:12px"></i></div>
+      <div><span class="oc-label">space-4 · 16</span><i style="width:16px"></i></div>
+      <div><span class="oc-label">space-5 · 20</span><i style="width:20px"></i></div>
+      <div><span class="oc-label">space-6 · 24</span><i style="width:24px"></i></div>
+      <div><span class="oc-label">space-7 · 32</span><i style="width:32px"></i></div>
+      <div><span class="oc-label">space-8 · 40</span><i style="width:40px"></i></div>
+      <div><span class="oc-label">space-9 · 48</span><i style="width:48px"></i></div>
+      <div><span class="oc-label">space-10 · 64</span><i style="width:64px"></i></div>
+      <div><span class="oc-label">space-11 · 80</span><i style="width:80px"></i></div>
+    </div>
+  </section>
+
+  <!-- ===== Buttons ===== -->
+  <section class="g-section" aria-labelledby="s-buttons">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-buttons">Buttons</h2><p class="oc-body">One primary per view: the single next action. Locked buttons name the plan they need instead of failing silently.</p></header>
+
+    <div class="g-sub"><h3>Variants</h3>
+      <div class="oc-cluster" style="--oc-gap:12px">
+        <button class="oc-btn oc-btn--primary"><svg><use href="#i-play"/></svg>Prepare next match</button>
+        <button class="oc-btn oc-btn--secondary">Review last game</button>
+        <button class="oc-btn oc-btn--tone oc-tone-violet"><svg><use href="#i-dna"/></svg>Open Game DNA</button>
+        <button class="oc-btn oc-btn--tone oc-tone-cyan">Match preparation</button>
+        <button class="oc-btn oc-btn--ghost">Skip</button>
+        <button class="oc-btn oc-btn--danger">Unpair this PC</button>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Sizes</h3>
+      <div class="oc-cluster" style="--oc-gap:12px">
+        <button class="oc-btn oc-btn--primary oc-btn--sm">Small</button>
+        <button class="oc-btn oc-btn--primary">Medium</button>
+        <button class="oc-btn oc-btn--primary oc-btn--lg">Large hero action</button>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>States</h3>
+      <div class="oc-cluster" style="--oc-gap:12px">
+        <button class="oc-btn oc-btn--primary" disabled>Disabled</button>
+        <button class="oc-btn oc-btn--primary" aria-busy="true">Saving<span class="oc-spinner" aria-hidden="true"></span></button>
+        <button class="oc-btn oc-btn--locked" aria-disabled="true"><svg><use href="#i-lock"/></svg>Decision Twin <span class="oc-tier oc-tier--pro">Pro</span></button>
+        <button class="oc-icon-btn" aria-label="Bookmark"><svg><use href="#i-bookmark"/></svg></button>
+        <button class="oc-icon-btn oc-tone-violet" aria-pressed="true" aria-label="Bookmarked"><svg><use href="#i-bookmark"/></svg></button>
+        <button class="oc-icon-btn" aria-label="Settings"><svg><use href="#i-settings"/></svg></button>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Block</h3>
+      <div style="max-width:360px"><button class="oc-btn oc-btn--primary oc-btn--block oc-btn--lg">Complete your baseline</button></div>
+    </div>
+  </section>
+
+  <!-- ===== Cards ===== -->
+  <section class="g-section" aria-labelledby="s-cards">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-cards">Cards</h2><p class="oc-body">Canvas, then card, then well. A card never nests inside another card. The accent card marks the one thing that matters most in a group.</p></header>
+
+    <div class="oc-grid" style="--oc-grid-min:270px">
+      <article class="oc-card">
+        <span class="oc-eyebrow oc-tone-neutral">Default</span>
+        <h3 class="oc-title">Their win condition</h3>
+        <p class="oc-body">Their bot lane outscales after two items; they want long, slow games.</p>
+      </article>
+      <article class="oc-card oc-card--interactive" tabindex="0">
+        <span class="oc-eyebrow oc-tone-cyan">Interactive</span>
+        <h3 class="oc-title">Hover or focus me</h3>
+        <p class="oc-body">The whole card is the click target. It lifts on hover.</p>
+      </article>
+      <article class="oc-card oc-card--accent">
+        <span class="oc-eyebrow">Accent · lime</span>
+        <h3 class="oc-title">Our win condition</h3>
+        <p class="oc-body">Snowball mid through early skirmishes before 14:00.</p>
+      </article>
+      <article class="oc-card is-selected oc-tone-cyan">
+        <span class="oc-eyebrow">Selected</span>
+        <h3 class="oc-title">14:32 · Dragon fight</h3>
+        <p class="oc-body">The active timeline moment.</p>
+      </article>
+    </div>
+
+    <div class="oc-grid" style="--oc-grid-min:340px">
+      <article class="oc-card">
+        <div class="oc-card__header">
+          <div class="oc-card__heading"><span class="oc-eyebrow oc-tone-amber">With well &amp; footer</span><h3 class="oc-title">Important risk to avoid</h3></div>
+          <span class="oc-chip oc-chip--warning">Risk</span>
+        </div>
+        <div class="oc-well"><p class="oc-body oc-text-1">Don't fight in the enemy jungle before your support has priority.</p></div>
+        <div class="oc-card__footer"><span class="oc-small">Frozen at game start</span><button class="oc-btn oc-btn--ghost oc-btn--sm">Why?</button></div>
+      </article>
+
+      <article class="oc-card oc-locked">
+        <div class="oc-locked__preview oc-stack">
+          <span class="oc-eyebrow oc-tone-violet">Coach Memory</span>
+          <h3 class="oc-title">Patterns across your last 20 games</h3>
+          <div class="oc-progress"><div class="oc-progress__fill" style="--oc-value:60"></div></div>
+          <p class="oc-body">Sample preview text sits blurred behind the panel.</p>
+        </div>
+        <div class="oc-locked__panel">
+          <span class="oc-tier oc-tier--pro">Pro</span>
+          <h3 class="oc-title">Coach Memory is part of PRO</h3>
+          <p class="oc-body">It tracks your recurring decisions across every game you play.</p>
+          <button class="oc-btn oc-btn--tone oc-tone-gold oc-btn--sm">See plans</button>
+        </div>
+      </article>
+    </div>
+
+    <div class="oc-grid" style="--oc-grid-min:340px">
+      <div class="oc-empty">
+        <svg><use href="#i-empty"/></svg>
+        <h3 class="oc-title oc-text-1">No reviewed games yet</h3>
+        <p class="oc-body">Play a ranked or normal game with the Companion running and your review will appear here.</p>
+      </div>
+      <div class="oc-card" aria-busy="true">
+        <span class="oc-label">Skeleton · loading</span>
+        <div class="oc-skeleton" style="height:22px;width:60%"></div>
+        <div class="oc-skeleton" style="height:14px"></div>
+        <div class="oc-skeleton" style="height:14px;width:85%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Stats ===== -->
+  <section class="g-section" aria-labelledby="s-stats">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-stats">Stat tiles</h2><p class="oc-body">Unavailable data is labelled, never shown as zero.</p></header>
+    <div class="oc-card"><div class="oc-grid" style="--oc-grid-min:150px">
+      <div class="oc-stat oc-stat--lg"><span class="oc-label">KDA</span><span class="oc-stat__value">4.25</span><span class="oc-delta oc-delta--up">+0.8</span></div>
+      <div class="oc-stat oc-stat--lg"><span class="oc-label">CS / min</span><span class="oc-stat__value">7.8</span><span class="oc-delta oc-delta--down">−0.3</span></div>
+      <div class="oc-stat oc-stat--lg"><span class="oc-label">Duration</span><span class="oc-stat__value">31<small>m</small>42<small>s</small></span><span class="oc-delta oc-delta--flat">—</span></div>
+      <div class="oc-stat oc-stat--lg is-unavailable"><span class="oc-label">Vision score</span><span class="oc-stat__value">Not recorded</span></div>
+    </div></div>
+  </section>
+
+  <!-- ===== Rings ===== -->
+  <section class="g-section" aria-labelledby="s-rings">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-rings">Progress rings</h2><p class="oc-body">Driven by <span class="oc-mono">--oc-value</span> (0–100). A ghost arc can show the earlier value. Locked rings show nothing until the baseline is verified.</p></header>
+
+    <div class="g-sub"><h3>Sizes &amp; tones</h3>
+      <div class="oc-cluster" style="--oc-gap:28px;align-items:center">
+        <div class="oc-ring oc-ring--sm" style="--oc-value:40"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="50" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="50" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">40</b></div></div>
+        <div class="oc-ring oc-ring--md oc-tone-cyan" style="--oc-value:58"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">58</b></div></div>
+        <div class="oc-ring oc-tone-violet" style="--oc-value:72"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">72</b></div></div>
+        <div class="oc-ring oc-ring--lg oc-tone-violet" style="--oc-value:81;--oc-prev:64"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="54" pathLength="100"/><circle class="oc-ring__ghost" cx="60" cy="60" r="54" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="54" pathLength="100"/><circle class="oc-ring__mark" cx="60" cy="60" r="54" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">81</b><span class="oc-ring__label">was 64</span></div></div>
+        <div class="oc-ring oc-ring--xl" style="--oc-value:93"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="55" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="55" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">93</b><span class="oc-ring__label">Laning</span></div></div>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Game DNA · revealed vs locked (baseline not complete)</h3>
+      <div class="oc-card oc-tone-violet">
+        <div class="g-dna">
+          <div><div class="oc-ring oc-ring--md" style="--oc-value:68;--oc-prev:55"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__ghost" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__mark" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">68</b></div></div><span class="oc-label">Laning</span></div>
+          <div><div class="oc-ring oc-ring--md" style="--oc-value:54"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">54</b></div></div><span class="oc-label">Waves &amp; CS</span></div>
+          <div><div class="oc-ring oc-ring--md" style="--oc-value:41;--oc-prev:52"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__ghost" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__mark" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><b class="oc-ring__value">41</b></div></div><span class="oc-label">Vision &amp; map</span></div>
+          <div><div class="oc-ring oc-ring--md oc-ring--locked"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><svg aria-hidden="true"><use href="#i-lock"/></svg></div></div><span class="oc-label">Objectives</span></div>
+          <div><div class="oc-ring oc-ring--md oc-ring--locked"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><svg aria-hidden="true"><use href="#i-lock"/></svg></div></div><span class="oc-label">Teamfights</span></div>
+          <div><div class="oc-ring oc-ring--md oc-ring--locked"><svg viewBox="0 0 120 120" aria-hidden="true"><circle class="oc-ring__track" cx="60" cy="60" r="52" pathLength="100"/><circle class="oc-ring__fill" cx="60" cy="60" r="52" pathLength="100"/></svg><div class="oc-ring__center"><svg aria-hidden="true"><use href="#i-lock"/></svg></div></div><span class="oc-label">Consistency</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Bars & steps ===== -->
+  <section class="g-section" aria-labelledby="s-bars">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-bars">Progress bars &amp; steps</h2><p class="oc-body">Bars for continuous values; steps for counted, verified progress such as the three-game baseline.</p></header>
+    <div class="oc-grid" style="--oc-grid-min:320px">
+      <div class="oc-card oc-stack" style="--oc-gap:16px">
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Thin · cyan</span><span class="oc-mono oc-small">35%</span></div><div class="oc-progress oc-progress--thin oc-tone-cyan"><div class="oc-progress__fill" style="--oc-value:35"></div></div></div>
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Default · lime</span><span class="oc-mono oc-small">62%</span></div><div class="oc-progress"><div class="oc-progress__fill" style="--oc-value:62"></div></div></div>
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Thick · violet</span><span class="oc-mono oc-small">88%</span></div><div class="oc-progress oc-progress--thick oc-tone-violet"><div class="oc-progress__fill" style="--oc-value:88"></div></div></div>
+      </div>
+      <div class="oc-card oc-stack" style="--oc-gap:16px">
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Baseline</span><span class="oc-mono oc-small">2 of 3 games</span></div><div class="oc-steps oc-tone-violet" role="img" aria-label="2 of 3 baseline games complete"><span class="is-done"></span><span class="is-done"></span><span class="is-current"></span></div></div>
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Mission</span><span class="oc-mono oc-small">3 of 5 verified</span></div><div class="oc-steps" role="img" aria-label="3 of 5 verified"><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span></span><span></span></div></div>
+        <div class="oc-stack" style="--oc-gap:8px"><div class="oc-spread"><span class="oc-label">Draft</span><span class="oc-mono oc-small">Pick 6 of 10</span></div><div class="oc-steps oc-tone-cyan" role="img" aria-label="Pick 6 of 10"><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-done"></span><span class="is-current"></span><span></span><span></span><span></span><span></span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Chips ===== -->
+  <section class="g-section" aria-labelledby="s-chips">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-chips">Status chips</h2><p class="oc-body">Short, uppercase, tinted by meaning. Use the solid chip for at most one status per view.</p></header>
+
+    <div class="g-sub"><h3>Semantic</h3>
+      <div class="oc-cluster">
+        <span class="oc-chip oc-chip--positive">Good decision</span>
+        <span class="oc-chip oc-chip--negative">Needs review</span>
+        <span class="oc-chip oc-chip--dna"><svg><use href="#i-bookmark"/></svg>Bookmarked</span>
+        <span class="oc-chip oc-chip--warning">Risk</span>
+        <span class="oc-chip oc-chip--info">Ally</span>
+        <span class="oc-chip oc-chip--neutral">Unknown</span>
+        <span class="oc-chip">Mission</span>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>With status dot</h3>
+      <div class="oc-cluster">
+        <span class="oc-chip oc-chip--positive"><span class="oc-dot oc-dot--live"></span>Live</span>
+        <span class="oc-chip oc-chip--info"><span class="oc-dot"></span>In champ select</span>
+        <span class="oc-chip oc-chip--warning"><span class="oc-dot"></span>Waiting for League</span>
+        <span class="oc-chip oc-chip--negative"><span class="oc-dot"></span>Tracker offline</span>
+        <span class="oc-chip oc-chip--solid"><span class="oc-dot" style="background:var(--oc-text-on-accent);box-shadow:none"></span>Locked in</span>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Sizes</h3>
+      <div class="oc-cluster">
+        <span class="oc-chip oc-chip--sm oc-chip--info">Small</span>
+        <span class="oc-chip oc-chip--info">Medium</span>
+        <span class="oc-chip oc-chip--lg oc-chip--info">Large</span>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Plan tiers</h3>
+      <div class="oc-cluster" style="--oc-gap:10px">
+        <span class="oc-tier oc-tier--free">Free</span>
+        <span class="oc-tier oc-tier--plus">Plus</span>
+        <span class="oc-tier oc-tier--pro">Pro</span>
+      </div>
+    </div>
+
+    <div class="g-sub"><h3>Header status line</h3>
+      <div class="oc-cluster" style="--oc-gap:12px">
+        <div class="oc-status oc-tone-green"><span class="oc-dot oc-dot--live"></span><div class="oc-status__text"><span class="oc-status__title">Ready</span><span class="oc-status__detail">Waiting for your next queue</span></div></div>
+        <div class="oc-status oc-tone-cyan"><span class="oc-dot oc-dot--live"></span><div class="oc-status__text"><span class="oc-status__title">Champion select</span><span class="oc-status__detail">Pick 6 of 10 · enemy picking</span></div></div>
+        <div class="oc-status oc-tone-amber"><span class="oc-dot"></span><div class="oc-status__text"><span class="oc-status__title">League not detected</span><span class="oc-status__detail">Open the League client to start</span></div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== Portraits ===== -->
+  <section class="g-section" aria-labelledby="s-portraits">
+    <header><span class="oc-eyebrow">Components</span><h2 class="oc-h2" id="s-portraits">Champion portraits</h2><p class="oc-body">Data Dragon tiles with a team ring. If the image fails, the initials show; an unknown pick shows "?" — never a guess.</p></header>
+    <div class="oc-cluster" style="--oc-gap:16px;align-items:center">
+      <div class="oc-portrait oc-portrait--sm oc-portrait--ally"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Leona_0.jpg" alt="Leona" onerror="this.remove()">LE</div>
+      <div class="oc-portrait oc-portrait--ally"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Jinx_0.jpg" alt="Jinx" onerror="this.remove()">JI</div>
+      <div class="oc-portrait oc-portrait--lg oc-portrait--you"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Ahri_0.jpg" alt="Ahri" onerror="this.remove()">AH</div>
+      <div class="oc-portrait oc-portrait--enemy is-hovering"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Zed_0.jpg" alt="Zed (hovering)" onerror="this.remove()">ZE</div>
+      <div class="oc-portrait oc-portrait--enemy">SY</div>
+      <div class="oc-portrait oc-portrait--unknown" aria-label="Unknown champion">?</div>
+      <div class="oc-portrait oc-portrait--xl oc-portrait--enemy"><img src="https://ddragon.leagueoflegends.com/cdn/img/champion/tiles/Syndra_0.jpg" alt="Syndra" onerror="this.remove()">SY</div>
+    </div>
+  </section>
+
+</main>
+</body>
+</html>
