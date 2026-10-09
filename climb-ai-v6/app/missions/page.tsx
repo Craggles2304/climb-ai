@@ -8,6 +8,7 @@ import {ArenaHeroArtwork} from '@/components/ArenaHeroArtwork';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
+import {ArenaDomainIcon} from '@/components/ArenaIcon';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import type {DnaDomain} from '@/lib/types';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
@@ -110,7 +111,7 @@ export default function Missions(){
           return <article key={domain} className={`missions-tree-card ${unlocked?'unlocked':'locked'} ${selectedDomain===domain?'selected':''}`} style={style}>
             <button className="missions-tree-open" type="button" onClick={()=>setSelectedDomain(domain)} aria-label={`Open ${DNA_DOMAIN_LABELS[domain]} mission details`}>
               <div className="missions-tree-top">
-                <div><span>{DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><b>LV {level.level}</b></div>
+                <div><span className="arena-mission-symbol"><ArenaDomainIcon domain={domain} size={25}/>{DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><b>LV {level.level}</b></div>
                 <strong>{unlocked?'UNLOCKED':'LOCKED'}</strong>
               </div>
               <div className="missions-tree-level"><i style={{width:`${level.levelProgress}%`}}/></div>
