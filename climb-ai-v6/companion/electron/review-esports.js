@@ -125,7 +125,7 @@
     set('opEsEndTime',Number.isFinite(rawDuration)&&rawDuration>0?clock(rawDuration):'—');
     const good=safeArray(review?.doneWell||review?.good).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'good'}));
     const fix=safeArray(review?.improve||review?.critical).filter(item=>item?.verified!==false&&item?.atSeconds!=null&&Number.isFinite(Number(item?.atSeconds))).map(item=>({...item,kind:'fix'}));
-    const chosen=[...good,...fix].sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds).slice(0,7);
+    const chosen=[...good,...fix].sort((a,b)=>Number(a.atSeconds)-Number(b.atSeconds)).slice(0,7);
     chosen.forEach(item=>{
       const seconds=Math.max(0,Math.min(duration,Number(item.atSeconds)||0));
       const marker=document.createElement('div');marker.className=`op-es-marker ${item.kind==='fix'?'fix':''}`;marker.style.setProperty('--pos',`${Math.max(2,Math.min(98,(seconds/duration)*100))}%`);marker.dataset.title=clean(item.title)||'Reviewed moment';
