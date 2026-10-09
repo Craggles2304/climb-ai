@@ -47,6 +47,7 @@
   const card=$('overlay');
   for(const m of MODES)card.classList.toggle('mode-'+m.toLowerCase(),m===mode);
   if(card.dataset)card.dataset.mode=mode;
+  put('modeIndicator',mode);
   const all=typeof document.querySelectorAll==='function'?document.querySelectorAll('.preset'):[];
   for(const button of all){
    const selected=button.dataset?.preset===mode;
@@ -74,6 +75,7 @@
   const champion=text(plan.champion);
   showChampion(champion,'OP');
   put('game','LEAGUE OF LEGENDS');
+  put('planState',plan.baseline?'BASELINE CAPTURE':'PLAN LOCKED');
   put('title',champion&&champion.toUpperCase()!=='YOUR CHAMPION'?champion+(role?' · '+role:''):'Your match focus');
 
   // Mission: the development focus, or an honest baseline note.
@@ -107,6 +109,7 @@
   const focus=window.OP_TFT_COACH_MODEL?.mission(focusId);
   showChampion(null,'TFT');
   put('game','TEAMFIGHT TACTICS');
+  put('planState','STATIC TFT FOCUS');
   put('title',focus?.title||'TFT development focus');
   put('missionLabel','Your TFT focus');put('mission',focus?.rule||'Follow the focus you chose before the game.');
   show('missionBlock',true);
@@ -133,6 +136,7 @@
    // Preview without a match: show what each layout holds, clearly labelled.
    showChampion(null,'OP');
    put('game',preview?'LAYOUT PREVIEW':'LEAGUE OF LEGENDS');
+   put('planState',preview?'DISPLAY EXAMPLE':'PLAN NOT LOCKED');
    put('title',preview?'Your champion':'Your match focus');
    put('missionLabel','Your mission');put('mission',preview?'Your development mission appears here.':'No pre-game plan was locked for this game.');
    show('missionBlock',true);
