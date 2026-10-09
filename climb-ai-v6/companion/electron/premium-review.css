@@ -1,0 +1,349 @@
+/* OP CLIMB / POST-MATCH PERFORMANCE STUDIO • Companion 0.10.4
+   Uses only recorded match data and server-scored evidence. */
+:root{
+  --opr-space:#080d14;
+  --opr-panel:#0f1b25;
+  --opr-lime:#b6f66b;
+  --opr-cyan:#5bdbef;
+  --opr-violet:#b8a0ff;
+  --opr-warn:#ff998a;
+  --opr-paper:#f0f7f6;
+  --opr-copy:#becdd3;
+  --opr-line:rgba(205,236,235,.15);
+}
+body.op-mode-coach-review{
+  background:#070d14;
+}
+body #opPostGame332.op-esports-review{
+  overflow:hidden!important;
+  border:1px solid rgba(182,246,107,.25)!important;
+  border-radius:16px!important;
+  background:
+    radial-gradient(ellipse 750px 480px at 100% 1%,rgba(83,126,218,.085),transparent 76%),
+    linear-gradient(180deg,#0c151e,#070d13 72%)!important;
+  box-shadow:0 24px 70px #0008!important;
+  padding:0 0 24px!important;
+  color:var(--opr-paper);
+}
+body #opPostGame332.op-esports-review:before{
+  opacity:.14!important;
+  background-size:72px 72px!important;
+}
+body #opPostGame332 .op-es-hero{
+  display:grid!important;grid-template-columns:minmax(260px,.9fr) minmax(0,1.1fr)!important;
+  min-height:330px!important;
+  border:0!important;border-bottom:1px solid var(--opr-line)!important;
+}
+body #opPostGame332 .op-es-art{
+  min-height:330px!important;
+  background-position:50% 22%!important;
+  background-image:
+    linear-gradient(90deg,rgba(5,12,18,.02) 0%,rgba(5,12,18,.08) 48%,rgba(5,12,18,.95) 100%),
+    linear-gradient(0deg,rgba(5,12,18,.98) 0%,rgba(5,12,18,.07) 76%),
+    var(--op-champ-art,linear-gradient(135deg,#142839,#070e17))!important;
+}
+body #opPostGame332 .op-es-art-copy{bottom:28px!important;left:28px!important;right:20px!important}
+body #opPostGame332 .op-es-overline{
+  color:var(--opr-lime)!important;
+  font:850 11px/1.3 'IBM Plex Mono',Consolas,monospace!important;
+  letter-spacing:.14em!important;
+}
+body #opPostGame332 .op-es-roleline{gap:9px!important;color:#c5d8dc!important;font-size:11px!important}
+body #opPostGame332 .op-es-roleline b{color:#f5f9f8!important}
+body #opPostGame332 .op-es-champ{
+  margin-top:10px!important;color:#f3fbf9!important;
+  font:900 clamp(45px,6.8vw,81px)/.87 'Barlow Condensed',Impact,sans-serif!important;
+  letter-spacing:-.015em!important;overflow-wrap:anywhere;
+  text-shadow:0 5px 24px #000b;
+}
+body #opPostGame332 .op-es-board{
+  display:flex;flex-direction:column;justify-content:center;
+  gap:0;padding:30px 27px!important;
+  background:linear-gradient(123deg,rgba(10,19,27,.98),rgba(8,14,22,.98))!important;
+}
+body #opPostGame332 .op-es-board:before{
+  width:3px!important;background:linear-gradient(180deg,var(--opr-lime),var(--opr-cyan),transparent)!important;
+}
+body #opPostGame332 .op-es-board-head{align-items:center!important}
+body #opPostGame332 .op-es-board-head .eyebrow{
+  font:850 10px/1.4 'IBM Plex Mono',monospace!important;letter-spacing:.11em!important;color:var(--opr-cyan)!important;
+}
+body #opPostGame332 .op-es-board-head h2{
+  margin:7px 0 0!important;font:900 clamp(32px,4.1vw,46px)/.91 'Barlow Condensed',Impact,sans-serif!important;
+  letter-spacing:.005em!important;
+}
+body #opPostGame332 .op-es-ready{
+  border:1px solid rgba(182,246,107,.42)!important;color:#e2ffd5!important;
+  background:rgba(182,246,107,.09)!important;
+  clip-path:none!important;border-radius:7px!important;
+  font:850 10px 'IBM Plex Mono',monospace!important;letter-spacing:.08em!important;
+  padding:9px 11px!important;white-space:nowrap;
+}
+body #opPostGame332 .op-es-stat-grid{gap:9px!important;margin-top:19px!important}
+body #opPostGame332 .op-es-stat{
+  padding:13px 12px!important;min-height:89px!important;min-width:0;
+  border:1px solid var(--opr-line)!important;border-radius:8px!important;
+  clip-path:none!important;background:rgba(255,255,255,.035)!important;
+}
+body #opPostGame332 .op-es-stat:before{height:2px!important;width:52px!important;background:var(--opr-cyan)!important}
+body #opPostGame332 .op-es-stat.accent:before{background:var(--opr-lime)!important}
+body #opPostGame332 .op-es-stat span{
+  font:800 10px 'IBM Plex Mono',monospace!important;letter-spacing:.095em!important;color:#b0c5c9!important;
+}
+body #opPostGame332 .op-es-stat strong{
+  display:block;color:#f7fcfa!important;font:850 clamp(21px,2.2vw,28px)/1 'Barlow Condensed',sans-serif!important;
+  margin-top:8px!important;overflow-wrap:anywhere;
+}
+body #opPostGame332 .op-es-stat small{font:600 10px 'DM Sans',sans-serif!important;color:#aebec5!important;margin-top:6px!important}
+body #opPostGame332 .op-es-next-call{
+  margin-top:13px!important;padding:16px 17px!important;
+  border:1px solid rgba(182,246,107,.25)!important;border-left:4px solid var(--opr-lime)!important;
+  border-radius:8px!important;background:rgba(182,246,107,.055)!important;
+}
+body #opPostGame332 .op-es-next-call span{
+  color:var(--opr-lime)!important;font:850 10px 'IBM Plex Mono',monospace!important;letter-spacing:.1em!important;
+}
+body #opPostGame332 .op-es-next-call strong{
+  display:block;color:var(--opr-paper)!important;margin:8px 0!important;
+  font:850 23px/1.09 'Barlow Condensed',sans-serif!important;
+}
+body #opPostGame332 .op-es-next-call p{
+  margin:0!important;color:#c2d0d3!important;font:550 12px/1.48 'DM Sans',sans-serif!important;
+}
+body #opPostGame332 .op333-summary{
+  padding:24px 25px 0!important;margin:0!important;gap:13px!important;
+}
+body #opPostGame332 .op333-scorebar{gap:10px!important}
+body #opPostGame332 .op333-stat{
+  min-width:0;border:1px solid var(--opr-line)!important;border-radius:9px!important;
+  padding:16px 17px!important;background:linear-gradient(135deg,#13212b,#0b151e)!important;
+}
+body #opPostGame332 .op333-stat span{
+  font:800 10px/1.3 'IBM Plex Mono',monospace!important;
+  letter-spacing:.1em!important;color:#bdcdd0!important;
+}
+body #opPostGame332 .op333-stat strong{font:850 34px 'Barlow Condensed',sans-serif!important;margin-top:7px!important}
+body #opPostGame332 .op333-stat.good strong{color:var(--opr-lime)!important}
+body #opPostGame332 .op333-stat.fix strong{color:var(--opr-warn)!important}
+body #opPostGame332 .op333-summary-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+body #opPostGame332 .op333-summary-card{
+  min-width:0;min-height:149px!important;padding:20px!important;
+  border:1px solid var(--opr-line)!important;border-radius:9px!important;
+  background:linear-gradient(145deg,#12202a,#0a121a)!important;
+}
+body #opPostGame332 .op333-summary-card.win{border-top:3px solid var(--opr-lime)!important}
+body #opPostGame332 .op333-summary-card.leak{border-top:3px solid var(--opr-warn)!important}
+body #opPostGame332 .op333-summary-card.next{border-top:3px solid var(--opr-cyan)!important}
+body #opPostGame332 .op333-summary-card span{
+  font:850 10px 'IBM Plex Mono',monospace!important;letter-spacing:.09em!important;color:#aebfc4!important;
+}
+body #opPostGame332 .op333-summary-card strong{
+  color:var(--opr-paper)!important;font:800 22px/1.14 'Barlow Condensed',sans-serif!important;
+  margin-top:9px!important;overflow-wrap:anywhere;
+}
+body #opPostGame332 .op333-summary-card p{color:#bac9cf!important;font:560 12px/1.5 'DM Sans',sans-serif!important;margin-top:8px!important}
+body #opPostGame332 .op333-key{
+  margin:15px 25px 0!important;padding:18px 20px!important;
+  border:1px solid var(--opr-line)!important;border-radius:11px!important;
+  background:rgba(7,16,23,.86)!important;
+}
+body #opPostGame332 .op333-key-head span{
+  color:var(--opr-lime)!important;font:850 12px 'IBM Plex Mono',monospace!important;letter-spacing:.09em!important;
+}
+body #opPostGame332 .op333-key-head small{
+  color:#a2bcc4!important;font:700 10px 'IBM Plex Mono',monospace!important;
+}
+body #opPostGame332 .op333-key-row{
+  grid-template-columns:72px minmax(0,1fr) 105px!important;
+  gap:16px!important;align-items:start!important;padding:13px 4px!important;
+  border-top:1px solid var(--opr-line)!important;
+}
+body #opPostGame332 .op333-key-time{color:var(--opr-cyan)!important;font:800 18px 'Barlow Condensed',sans-serif!important}
+body #opPostGame332 .op333-key-copy b{color:#e5f2f0!important;font:750 15px/1.3 'DM Sans',sans-serif!important}
+body #opPostGame332 .op333-key-copy p{font:550 12px/1.47 'DM Sans',sans-serif!important;color:#aec1c5!important;margin-top:5px!important}
+body #opPostGame332 .op333-key-badge{
+  justify-self:end;padding:8px 9px!important;border-radius:5px!important;
+  font:850 10px 'IBM Plex Mono',monospace!important;letter-spacing:.055em!important;
+}
+body #opPostGame332 .op333-key-row.good .op333-key-badge{color:var(--opr-lime)!important;border-color:rgba(182,246,107,.4)!important}
+body #opPostGame332 .op333-key-row.improve .op333-key-badge{color:var(--opr-warn)!important;border-color:rgba(255,153,138,.4)!important}
+/* The decision rail and full evidence cards */
+body #opPostGame332 .op-es-timeline{
+  margin:16px 25px 0!important;padding:22px!important;
+  border:1px solid rgba(91,219,239,.26)!important;border-radius:11px!important;
+  background:linear-gradient(130deg,rgba(26,44,55,.6),rgba(7,15,23,.89))!important;
+  overflow:visible!important;
+}
+body #opPostGame332 .op-es-timeline-head{display:flex!important;align-items:end!important}
+body #opPostGame332 .op-es-timeline-head>div{display:grid;gap:5px}
+body #opPostGame332 .op-es-timeline-overline{
+  color:var(--opr-cyan)!important;font:750 10px 'IBM Plex Mono',monospace!important;letter-spacing:.11em!important;
+}
+body #opPostGame332 .op-es-timeline-head b{
+  display:block;color:var(--opr-paper)!important;
+  font:900 30px/.98 'Barlow Condensed',sans-serif!important;letter-spacing:.015em!important;
+}
+body #opPostGame332 .op-es-timeline-head>span{
+  font:700 10px/1.45 'IBM Plex Mono',monospace!important;color:#b1c6cb!important;
+  max-width:270px;text-align:right;letter-spacing:.03em!important;
+}
+body #opPostGame332 .op-es-rail{height:42px!important;margin-top:18px!important}
+body #opPostGame332 .op-es-rail:before{top:16px!important;height:3px!important;background:linear-gradient(90deg,#435e69,#5c91c0,#b6f66b)!important;opacity:.75!important}
+body #opPostGame332 .op-es-marker{top:8px!important;width:19px!important;height:19px!important}
+body #opPostGame332 .op-es-marker.fix{background:var(--opr-warn)!important}
+body #opPostGame332 .op-es-marker label{
+  top:23px!important;color:#b0c4c9!important;font:800 10px 'IBM Plex Mono',monospace!important;
+}
+body #opPostGame332 .op-es-marker.player{top:7px!important;background:var(--opr-violet)!important}
+body #opPostGame332 .op-es-rail-axis{
+  display:flex;justify-content:space-between;gap:12px;padding-top:12px;
+  font:750 10px 'IBM Plex Mono',monospace;color:#a5b8c4;letter-spacing:.05em;
+}
+body #opPostGame332 .op-es-moments{
+  margin-top:21px;display:grid;gap:10px;grid-template-columns:repeat(2,minmax(0,1fr));
+}
+body #opPostGame332 .op-es-moment-card{
+  display:grid;grid-template-columns:60px minmax(0,1fr);gap:13px;
+  border:1px solid var(--opr-line);border-left:3px solid var(--opr-lime);
+  border-radius:9px;padding:16px;background:rgba(14,27,37,.95);min-width:0;
+}
+body #opPostGame332 .op-es-moment-card.fix{border-left-color:var(--opr-warn)}
+body #opPostGame332 .op-es-moment-lead{display:flex;flex-direction:column;align-items:start;gap:7px;min-width:0}
+body #opPostGame332 .op-es-moment-lead>span{
+  color:#92aeba;font:800 11px 'IBM Plex Mono',monospace;
+}
+body #opPostGame332 .op-es-moment-lead>b{
+  color:var(--opr-cyan);font:900 25px/1 'Barlow Condensed',sans-serif;
+}
+body #opPostGame332 .op-es-moment-lead>em{
+  color:var(--opr-lime);font:850 10px 'IBM Plex Mono',monospace;font-style:normal;
+}
+body #opPostGame332 .op-es-moment-card.fix .op-es-moment-lead>em{color:var(--opr-warn)}
+body #opPostGame332 .op-es-moment-copy{min-width:0}
+body #opPostGame332 .op-es-moment-copy h4{
+  margin:0!important;font:750 14px/1.3 'DM Sans',sans-serif!important;
+  color:var(--opr-paper);overflow-wrap:anywhere;
+}
+body #opPostGame332 .op-es-moment-copy p{
+  margin:7px 0!important;font:570 12px/1.48 'DM Sans',sans-serif!important;color:#c0d0d6!important;
+}
+body #opPostGame332 .op-es-moment-copy small{
+  display:block;font:550 11px/1.45 'DM Sans',sans-serif!important;color:#a3bac0!important;
+  border-top:1px solid var(--opr-line);padding-top:7px;
+}
+body #opPostGame332 .op-es-moments-empty{
+  grid-column:1/-1;color:#bbcbd2;font:560 12px/1.5 'DM Sans',sans-serif;
+  border:1px dashed var(--opr-line);padding:16px;border-radius:7px;
+}
+body #opPostGame332 .op-es-marked{margin-top:14px!important}
+body #opPostGame332 .op-es-marked article{font-size:12px!important;line-height:1.45!important}
+body #opPostGame332 .op-es-marked b{color:var(--opr-violet)!important;font-size:14px!important;min-width:47px!important}
+/* One tangible and defensible advantage: two actual, server-scored DNA missions. */
+body #opPostGame332 .op-es-proof{
+  position:relative;z-index:1;margin:16px 25px 0;padding:22px;
+  border:1px solid rgba(184,160,255,.32);border-radius:12px;
+  background:
+    radial-gradient(ellipse 600px 200px at 5% 0%,rgba(184,160,255,.095),transparent 75%),
+    linear-gradient(150deg,#131c2c,#0c151e);
+}
+body #opPostGame332 .op-es-proof-intro>span{
+  color:var(--opr-violet);font:850 10px 'IBM Plex Mono',monospace;letter-spacing:.11em;
+}
+body #opPostGame332 .op-es-proof-intro h3{
+  color:#f5f8ff!important;font:900 31px/1 'Barlow Condensed',sans-serif!important;
+  margin:7px 0 5px;
+}
+body #opPostGame332 .op-es-proof-intro p{
+  color:#b8c8d3!important;font:550 12px/1.44 'DM Sans',sans-serif!important;margin:0;
+}
+body #opPostGame332 .op-es-proof-grid{
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-top:16px;
+}
+body #opPostGame332 .op-es-proof-card{
+  display:grid;gap:8px;min-width:0;padding:18px;border-radius:9px;
+  border:1px solid rgba(184,160,255,.22);background:rgba(5,11,20,.63);
+}
+body #opPostGame332 .op-es-proof-card>span{
+  color:#c6b4ff;font:850 10px 'IBM Plex Mono',monospace;letter-spacing:.10em;
+}
+body #opPostGame332 .op-es-proof-card>strong{
+  color:#f6f8fa;font:800 22px/1.13 'Barlow Condensed',sans-serif;
+  overflow-wrap:anywhere;
+}
+body #opPostGame332 .op-es-proof-result{display:flex;align-items:center;justify-content:space-between;gap:12px}
+body #opPostGame332 .op-es-proof-result b{
+  padding:7px 9px;color:#c7d6dc;border-radius:5px;border:1px solid rgba(184,160,255,.26);
+  font:850 10px 'IBM Plex Mono',monospace;
+}
+body #opPostGame332 .op-es-proof-card.banked .op-es-proof-result b{color:var(--opr-lime);border-color:rgba(182,246,107,.34)}
+body #opPostGame332 .op-es-proof-card.missed .op-es-proof-result b{color:var(--opr-warn);border-color:rgba(255,153,138,.34)}
+body #opPostGame332 .op-es-proof-result small{color:#afc0cb;font:750 10px 'IBM Plex Mono',monospace;text-align:right}
+body #opPostGame332 .op-es-proof-track{
+  height:8px;border-radius:6px;overflow:hidden;background:rgba(232,242,247,.12);
+}
+body #opPostGame332 .op-es-proof-track i{
+  display:block;height:100%;border-radius:6px;background:linear-gradient(90deg,var(--opr-violet),var(--opr-lime));
+}
+body #opPostGame332 .op-es-proof-card p{
+  color:#b8c8d0!important;font:550 12px/1.48 'DM Sans',sans-serif!important;margin:0!important;
+}
+body #opPostGame332 .op332-development,
+body #opPostGame332 .op333-details,
+body #opPostGame332 .op332-actions{
+  position:relative;z-index:1;margin-left:25px!important;margin-right:25px!important;
+}
+body #opPostGame332 .op332-development{margin-top:16px!important;border-radius:9px!important}
+body #opPostGame332 .op333-details{
+  border:1px solid var(--opr-line)!important;border-radius:9px!important;
+  background:rgba(8,17,25,.83)!important;overflow:hidden;
+}
+body #opPostGame332 .op333-details summary{
+  padding:15px 18px!important;color:#e0f1ee!important;
+  font:850 11px 'IBM Plex Mono',monospace!important;letter-spacing:.075em!important;
+}
+body #opPostGame332 .op333-details>summary:after{color:var(--opr-lime)!important}
+body #opPostGame332 .op332-actions{
+  display:flex;gap:9px;flex-wrap:wrap;padding:16px 0 12px!important;
+}
+body #opPostGame332 .op332-actions button{
+  clip-path:none!important;border:1px solid rgba(182,246,107,.28)!important;
+  border-radius:7px!important;background:rgba(182,246,107,.05)!important;
+  color:#e6f5ef!important;padding:13px 16px!important;
+  font:800 11px 'DM Sans',sans-serif!important;
+}
+body #opPostGame332 #op332Ready{
+  color:#112015!important;background:var(--opr-lime)!important;
+}
+body #opPostGame332 .op332-actions button:hover{filter:brightness(1.15)}
+@media(max-width:930px){
+  body #opPostGame332 .op-es-hero{grid-template-columns:1fr!important}
+  body #opPostGame332 .op-es-art{min-height:275px!important}
+  body #opPostGame332 .op-es-board{padding:22px!important}
+  body #opPostGame332 .op-es-stat-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+}
+@media(max-width:650px){
+  body #opPostGame332 .op-es-art{min-height:218px!important}
+  body #opPostGame332 .op-es-stat-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  body #opPostGame332 .op333-summary{padding:15px 15px 0!important}
+  body #opPostGame332 .op333-summary-grid{grid-template-columns:1fr!important}
+  body #opPostGame332 .op333-key,
+  body #opPostGame332 .op-es-timeline,
+  body #opPostGame332 .op-es-proof,
+  body #opPostGame332 .op332-development,
+  body #opPostGame332 .op333-details,
+  body #opPostGame332 .op332-actions{
+    margin-left:15px!important;margin-right:15px!important;
+  }
+  body #opPostGame332 .op333-key{padding:14px!important}
+  body #opPostGame332 .op333-key-row{grid-template-columns:52px minmax(0,1fr)!important;gap:10px!important}
+  body #opPostGame332 .op333-key-badge{grid-column:2;justify-self:start}
+  body #opPostGame332 .op-es-timeline-head{align-items:start!important;flex-direction:column}
+  body #opPostGame332 .op-es-timeline-head>span{text-align:left}
+  body #opPostGame332 .op-es-moments,
+  body #opPostGame332 .op-es-proof-grid{grid-template-columns:1fr!important}
+  body #opPostGame332 .op-es-art-copy{left:19px!important}
+}
+@media(prefers-reduced-motion:reduce){
+  body #opPostGame332 .op-es-art:after{animation:none!important;opacity:0}
+  body #opPostGame332 *{scroll-behavior:auto!important;transition:none!important}
+}
