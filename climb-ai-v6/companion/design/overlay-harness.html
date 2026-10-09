@@ -1,0 +1,13 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>HUD harness</title>
+<!-- Dev only: loads the real electron/learning-overlay.html (with its CSP) and a
+     mocked overlay bridge. Serve the companion folder and open this page. -->
+<script>
+fetch('../electron/learning-overlay.html').then(res=>res.text()).then(html=>{
+  html=html
+    .replace('<head>','<head><base href="../electron/">')
+    .replace('<script src="tft-coach-model.js">','<script src="../design/mock-overlay.js"><\/script><script src="tft-coach-model.js">');
+  document.open();document.write(html);document.close();
+});
+</script>

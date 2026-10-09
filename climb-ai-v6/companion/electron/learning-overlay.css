@@ -1,102 +1,280 @@
-/* OP CLIMB • premium in-game learning HUD 0.10.3
-   Minimal first, actual legibility at 1080p, no decorative stat fabrication. */
-:root{
- --lime:#b6f66b;--mint:#55f2c5;--cyan:#67dfff;--purple:#bd9fff;
- --paper:#eff8f6;--muted:#a6c0c6;--thin:rgba(208,241,238,.14);
+/* ==========================================================================
+   OP CLIMB Companion — in-game learning HUD
+   Built on design-system.css tokens. Three layouts:
+     MINIMAL   compact development mission
+     FOCUS     champion, mission, frozen win condition
+     EXPANDED  the complete frozen pre-game plan
+   The window is click-through except while editing (Alt+B). Web fonts are
+   blocked by the CSP, so text uses the Windows fallbacks in the tokens.
+   ========================================================================== */
+
+html, body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  background: transparent !important;
+  color: var(--oc-text);
+  font-family: var(--oc-font-body);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
 }
-*{box-sizing:border-box}
-html,body{width:100%;height:100%;margin:0;overflow:hidden;background:transparent!important;color:var(--paper);
- font-family:'Segoe UI',system-ui,sans-serif;user-select:none;-webkit-font-smoothing:antialiased}
-.hud{
- position:absolute;top:4.5vh;left:68vw;width:364px;max-width:calc(100vw - 24px);
- transform-origin:top left;isolation:isolate;overflow:hidden;
- border:1px solid rgba(182,246,107,.4);border-radius:12px;
- background:linear-gradient(135deg,rgba(13,25,34,.985),rgba(5,12,20,.985));
- box-shadow:0 15px 40px rgba(0,0,0,.58),inset 0 1px 0 rgba(200,255,233,.11);
+.hud [hidden] { display: none !important; }
+
+/* ------------------------------------------------------------------ card -- */
+
+.hud {
+  --hud-w: 360px;
+  --hud-accent: var(--oc-lime);
+  position: absolute;
+  top: 4.5vh;
+  left: 68vw;
+  display: grid;
+  gap: 10px;
+  width: var(--hud-w);
+  max-width: calc(100vw - 24px);
+  padding: 12px 14px 12px 16px;
+  border: 1px solid rgb(190 215 240 / .16);
+  border-radius: 12px;
+  background:
+    linear-gradient(160deg, rgb(20 29 41 / .94), rgb(7 11 17 / .94));
+  box-shadow: 0 18px 40px -12px rgb(0 0 0 / .75), inset 0 1px 0 rgb(255 255 255 / .06);
+  transform-origin: top left;
+  isolation: isolate;
+  transition: width var(--oc-dur-slow) var(--oc-ease-out), opacity var(--oc-dur) var(--oc-ease-out);
 }
-.hud:before{content:"";pointer-events:none;position:absolute;inset:0 0 auto 0;height:3px;
- background:linear-gradient(90deg,var(--lime),var(--cyan) 57%,var(--purple));z-index:2}
-.hud-aura{position:absolute;inset:0;pointer-events:none;z-index:-1;
- background:radial-gradient(ellipse 290px 240px at 100% 1%,rgba(64,149,178,.14),transparent 75%),
-  radial-gradient(ellipse 240px 200px at 0% 90%,rgba(182,246,107,.08),transparent 70%);
+.hud::before {
+  /* Left accent: the one bright line on the card. */
+  content: "";
+  position: absolute;
+  inset: 12px auto 12px 0;
+  width: 3px;
+  border-radius: 0 3px 3px 0;
+  background: linear-gradient(180deg, var(--oc-violet), var(--hud-accent));
 }
-.hud-header{height:60px;display:flex;align-items:center;justify-content:space-between;gap:10px;
- padding:11px 16px;border-bottom:1px solid var(--thin);background:rgba(255,255,255,.025)}
-.hud-logo{display:flex;gap:10px;align-items:center;min-width:0}
-.logo-mark{flex:none;display:grid;place-items:center;width:34px;height:34px;border-radius:8px;
- border:1px solid rgba(182,246,107,.45);background:rgba(182,246,107,.07);
- color:var(--lime);font:950 16px/1 'Bahnschrift','Segoe UI',sans-serif;letter-spacing:-.065em}
-.logo-mark-slash{color:var(--cyan);padding-left:1px}
-.logo-text{display:block;color:#f5fbf8;font:950 15px/1 'Bahnschrift','Segoe UI',sans-serif;letter-spacing:.025em}
-.logo-text b{color:var(--lime)}.logo-text small{display:block;margin-top:5px;color:#8faeb7;font:750 9px/1.1 'Consolas',monospace;letter-spacing:.14em}
-.state-badge{display:flex;flex:none;align-items:center;gap:7px;padding:7px 8px;border:1px solid rgba(85,242,197,.24);
- border-radius:6px;background:rgba(85,242,197,.055);color:#bcffe8;
- font:850 10px/1 'Consolas',monospace;letter-spacing:.05em}
-.state-led{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 10px rgba(85,242,197,.65)}
-.hud-content{padding:16px}
-.player-banner{display:grid;grid-template-columns:56px minmax(0,1fr);gap:12px;align-items:center;
- padding:0 0 15px;border-bottom:1px solid var(--thin)}
-.champion-portrait{height:56px;width:56px;display:grid;place-items:center;border:1px solid rgba(182,246,107,.35);
- border-radius:8px;overflow:hidden;background:linear-gradient(135deg,#1c3344,#192b24);color:var(--lime)}
-.champion-portrait img{width:100%;height:100%;object-fit:cover;display:block}
-.champion-portrait img[hidden],.champion-portrait span[hidden]{display:none}
-.champion-portrait>span{font:900 23px 'Bahnschrift','Segoe UI',sans-serif}
-.champion-info{min-width:0}.kicker{font:800 10px/1.2 'Consolas',monospace;letter-spacing:.09em;color:var(--cyan)}
-.champion-info h1{overflow-wrap:anywhere;font:900 25px/.99 'Bahnschrift SemiCondensed','Bahnschrift',Impact,sans-serif;
- text-transform:uppercase;letter-spacing:-.025em;margin:5px 0 6px;color:#f2faf9}
-.plan-frozen{font:750 9px/1.25 'Consolas',monospace;letter-spacing:.035em;color:var(--lime)}
-section{margin:0}.hero-mission{position:relative;margin-top:14px;padding:16px 16px 18px;border:1px solid rgba(182,246,107,.39);
- border-left:3px solid var(--lime);border-radius:8px;background:linear-gradient(120deg,rgba(182,246,107,.125),rgba(182,246,107,.025))}
-.section-cap{display:flex;align-items:center;gap:8px;font:850 10px 'Consolas',monospace;letter-spacing:.08em;color:#c3d4d8}
-.number{font:850 11px 'Consolas',monospace;color:var(--lime)}
-.mission-icon{margin-left:auto;color:var(--lime);font:900 17px 'Segoe UI',sans-serif}
-.hero-mission p{font:760 17px/1.35 'Segoe UI',sans-serif;color:#f6fff9;margin:10px 0 0;overflow-wrap:anywhere}
-.secondary-panel,.third-panel{margin-top:10px;padding:13px 15px;border:1px solid var(--thin);
- border-radius:7px;background:rgba(255,255,255,.035)}
-.secondary-panel .number{color:var(--cyan)}
-.secondary-panel strong{display:block;color:#e6f4f5;font:690 13px/1.48 'Segoe UI',sans-serif;margin-top:8px}
-.third-panel{border-color:rgba(255,152,152,.21);background:rgba(255,145,138,.045)}
-.third-panel .number{color:#ffa49c}
-.third-panel p{color:#dae4e8;font:620 12px/1.44 'Segoe UI',sans-serif;margin:8px 0 0}
-.hud-footer{display:flex;gap:9px;align-items:center;justify-content:space-between;padding:13px 16px 8px;
- border-top:1px solid var(--thin);font:800 9px 'Consolas',monospace;color:#a8c0c8;letter-spacing:.035em}
-.recording{display:flex;gap:6px;align-items:center;color:#83ffcc;white-space:nowrap}
-.recording i{width:6px;height:6px;border-radius:50%;background:var(--mint);box-shadow:0 0 9px rgba(85,242,197,.45)}
-.hud-rule{font:750 9px/1.2 'Consolas',monospace;text-align:center;letter-spacing:.07em;color:#93aeb3;padding:0 14px 13px}
-.hud-shortcuts{white-space:nowrap}
-.hud.mode-minimal{width:307px}.hud.mode-minimal .hud-header{height:51px;padding:9px 13px}
-.hud.mode-minimal .logo-mark{width:29px;height:29px;font-size:14px}
-.hud.mode-minimal .logo-text{font-size:13px}.hud.mode-minimal .logo-text small{font-size:8px}
-.hud.mode-minimal .state-badge{font-size:9px;padding:6px}
-.hud.mode-minimal .player-banner,.hud.mode-minimal .secondary-panel,.hud.mode-minimal .third-panel,.hud.mode-minimal .hud-rule{display:none}
-.hud.mode-minimal .hud-content{padding:10px 11px}
-.hud.mode-minimal .hero-mission{margin-top:0;padding:12px 13px}
-.hud.mode-minimal .hero-mission p{font-size:15px;line-height:1.37}
-.hud.mode-minimal .hud-footer{padding:9px 12px 11px;font-size:8px}
-.hud.mode-focus{width:364px}.hud.mode-focus .third-panel{display:none}
-.hud.mode-expanded{width:420px}.hud.mode-expanded .hud-content{padding:20px}
-.hud.mode-expanded .champion-portrait{width:66px;height:66px}
-.hud.mode-expanded .player-banner{grid-template-columns:66px minmax(0,1fr)}
-.hud.mode-expanded .champion-info h1{font-size:31px}
-.hud.mode-expanded .hero-mission p{font-size:19px}
-.hud.preview .recording,.hud.preview .state-led,.hud.preview .plan-frozen{color:#b9c7ff}
-.hud.preview .state-led,.hud.preview .recording i{background:#b9c7ff;box-shadow:none}
-.hud.editing{outline:2px dashed var(--cyan);outline-offset:2px}
-.hud.editing #handle{cursor:grab}.hud.editing #handle:active{cursor:grabbing}
-.editor{background:rgba(12,26,33,.99);border-top:1px dashed rgba(103,223,255,.5);padding:15px}
-.editor[hidden]{display:none}
-.editor-title{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:11px;color:#f4fff9}
-.editor-title span,.editor-hint{color:#b8cfd5;font-size:10px;line-height:1.4}
-.editor-hint{margin:8px 0 13px}
-.preset-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-bottom:14px}
-.preset-row button{border:1px solid rgba(192,225,233,.2);background:#1b303a;color:#dbe9eb;
- border-radius:5px;padding:9px 4px;font:800 10px 'Consolas',monospace;cursor:pointer}
-.preset-row button.selected{color:#142117;background:var(--lime);border-color:var(--lime)}
-.slider{display:grid;grid-template-columns:70px minmax(0,1fr) 40px;align-items:center;gap:10px;
- font:750 10px 'Consolas',monospace;color:#dbedf0;margin:11px 0}
-.slider input{accent-color:var(--lime);width:100%}
-.slider output{text-align:right;color:#b9d0d5}
-.save-button{margin-top:8px;width:100%;padding:10px;border:0;border-radius:6px;
- background:var(--lime);color:#10210f;font:850 12px 'Segoe UI',sans-serif;cursor:pointer}
-.save-button:hover{background:#ccff97}
-@media(prefers-reduced-motion:reduce){.draft-read-track i,.preset-row button{transition:none}}
+.hud.mode-minimal  { --hud-w: 300px; gap: 6px; padding: 10px 12px 10px 14px; }
+.hud.mode-focus    { --hud-w: 360px; }
+.hud.mode-expanded { --hud-w: 420px; }
+
+/* ---------------------------------------------------------------- header -- */
+
+.hud-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 22px;
+  cursor: default;
+}
+.hud-mark {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 18px;
+  background: var(--oc-lime);
+  color: var(--oc-text-on-accent);
+  font-family: var(--oc-font-display);
+  font-size: 12px;
+  font-weight: 800;
+  clip-path: polygon(5px 0, 100% 0, calc(100% - 5px) 100%, 0 100%);
+}
+.hud-brand {
+  font-family: var(--oc-font-display);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  color: var(--oc-text-2);
+}
+.hud-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  padding: 3px 8px;
+  border: 1px solid rgb(240 98 106 / .3);
+  border-radius: 999px;
+  background: rgb(240 98 106 / .1);
+  font-family: var(--oc-font-mono);
+  font-size: 10.5px;
+  letter-spacing: .08em;
+  color: #ffb3b6;
+}
+.hud-state i { width: 6px; height: 6px; border-radius: 50%; background: var(--oc-red); animation: oc-pulse-soft 2s ease-in-out infinite; }
+.hud.preview .hud-state { border-color: rgb(230 173 79 / .35); background: rgb(230 173 79 / .1); color: #ffd99a; }
+.hud.preview .hud-state i { background: var(--oc-amber); }
+.hud.is-tft { --hud-accent: var(--oc-blue); }
+.hud.editing .hud-header { cursor: grab; }
+.hud.editing .hud-header:active { cursor: grabbing; }
+
+/* -------------------------------------------------------------- identity -- */
+
+.hud-identity { display: flex; align-items: center; gap: 10px; }
+.hud-portrait {
+  position: relative;
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--oc-surface-3);
+  box-shadow: inset 0 0 0 2px rgb(182 246 107 / .55);
+  font-family: var(--oc-font-display);
+  font-size: 14px;
+  font-weight: 800;
+  color: var(--oc-text-3);
+}
+.hud-portrait img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; transform: scale(1.1); }
+.hud-identity__text { display: grid; gap: 1px; min-width: 0; }
+.hud-kicker { font-family: var(--oc-font-mono); font-size: 10.5px; letter-spacing: .1em; color: var(--oc-text-3); }
+.hud-identity h1 {
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--oc-font-display);
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  line-height: 1.05;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------- blocks -- */
+
+.hud-block {
+  display: grid;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: rgb(255 255 255 / .035);
+  border-left: 2px solid var(--hud-block, var(--oc-line-strong));
+}
+.hud-label {
+  font-family: var(--oc-font-display);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--hud-block, var(--oc-text-3));
+}
+.hud-block p { margin: 0; font-size: 14.5px; font-weight: 600; line-height: 1.38; color: var(--oc-text); text-wrap: pretty; }
+.hud-block--mission { --hud-block: var(--oc-violet); background: rgb(166 139 255 / .09); }
+.hud-block--mission p { font-size: 15.5px; }
+.hud-block--win     { --hud-block: var(--oc-lime); }
+.hud-block--avoid   { --hud-block: var(--oc-amber); }
+.hud-block--threat  { --hud-block: var(--oc-red); }
+.hud-block--actions { --hud-block: var(--oc-cyan); }
+.hud-block ol { display: grid; gap: 4px; margin: 2px 0 0; padding: 0; list-style: none; counter-reset: hud; }
+.hud-block li {
+  position: relative;
+  padding-left: 22px;
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  counter-increment: hud;
+}
+.hud-block li::before {
+  content: counter(hud);
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-family: var(--oc-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--oc-cyan);
+}
+
+/* --------------------------------------------------------------- footer -- */
+
+.hud-footer { display: flex; justify-content: space-between; gap: 8px; font-family: var(--oc-font-mono); font-size: 10.5px; letter-spacing: .06em; color: var(--oc-text-3); }
+.hud-rec { color: #ff9ea2; }
+.hud-rule { font-family: var(--oc-font-mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--oc-text-3); opacity: .8; }
+
+/* ---------------------------------------------------------- layout rules -- */
+
+/* MINIMAL: the mission only, plus a slim header. */
+.hud.mode-minimal .hud-identity,
+.hud.mode-minimal .hud-block:not(.hud-block--mission),
+.hud.mode-minimal .hud-footer,
+.hud.mode-minimal .hud-rule,
+.hud.mode-minimal .hud-brand { display: none; }
+.hud.mode-minimal .hud-block--mission { padding: 6px 8px; background: none; border-left: 0; }
+.hud.mode-minimal .hud-block--mission p { font-size: 14.5px; }
+
+/* FOCUS: champion, mission, win condition. */
+.hud.mode-focus .hud-block--actions,
+.hud.mode-focus .hud-block--avoid,
+.hud.mode-focus .hud-block--threat,
+.hud.mode-focus .hud-rule { display: none; }
+
+/* EXPANDED shows every block the frozen plan has. */
+.hud.mode-expanded .hud-identity h1 { font-size: 24px; }
+
+/* --------------------------------------------------------------- editor -- */
+
+.hud.editing { outline: 2px dashed rgb(67 216 239 / .7); outline-offset: 4px; }
+.hud-resizer { display: none; }
+.hud.editing .hud-resizer {
+  display: block;
+  position: absolute;
+  right: -6px;
+  bottom: -6px;
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  background: linear-gradient(135deg, transparent 45%, var(--oc-cyan) 46% 54%, transparent 55% 65%, var(--oc-cyan) 66% 74%, transparent 75%), var(--oc-surface-3);
+  box-shadow: 0 0 0 1px var(--oc-line-strong);
+  cursor: nwse-resize;
+}
+.hud-editor {
+  display: grid;
+  gap: 10px;
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid var(--oc-line-strong);
+  border-radius: 10px;
+  background: var(--oc-surface-1);
+}
+.hud-editor__title { display: flex; justify-content: space-between; align-items: baseline; }
+.hud-editor__title b { font-family: var(--oc-font-display); font-size: 16px; letter-spacing: .06em; text-transform: uppercase; }
+.hud-editor__title span, .hud-editor__hint { font-size: 12px; color: var(--oc-text-3); margin: 0; }
+.hud-presets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 3px; border-radius: 8px; background: var(--oc-well); }
+.preset {
+  height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--oc-text-2);
+  font-family: var(--oc-font-display);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.preset:hover { color: var(--oc-text); background: rgb(255 255 255 / .05); }
+.preset.selected { background: var(--oc-lime); color: var(--oc-text-on-accent); }
+.hud-slider { display: grid; grid-template-columns: 64px 1fr 44px; align-items: center; gap: 8px; font-size: 12px; color: var(--oc-text-2); }
+.hud-slider span { font-family: var(--oc-font-mono); letter-spacing: .08em; text-transform: uppercase; font-size: 11px; color: var(--oc-text-3); }
+.hud-slider input { accent-color: var(--oc-lime); }
+.hud-slider output { font-family: var(--oc-font-mono); text-align: right; }
+.hud-editor__keys { display: grid; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--oc-text-2); }
+.hud-editor__keys kbd { display: inline-block; min-width: 92px; margin-right: 8px; padding: 1px 6px; border: 1px solid var(--oc-line-strong); border-radius: 4px; font-family: var(--oc-font-mono); font-size: 11px; color: var(--oc-text); text-align: center; }
+.hud-save {
+  height: 34px;
+  border: 0;
+  background: linear-gradient(180deg, var(--oc-lime-hi), var(--oc-lime));
+  color: var(--oc-text-on-accent);
+  font-family: var(--oc-font-display);
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hud, .hud * { animation: none !important; transition: none !important; }
+}
