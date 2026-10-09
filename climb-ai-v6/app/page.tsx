@@ -1,5 +1,5 @@
 import type {Metadata} from 'next';
-import {BroadcastLanding} from '@/components/BroadcastLanding';
+import {ArenaLanding} from '@/components/ArenaLanding';
 import {TrackView} from '@/components/TrackView';
 
 export const metadata:Metadata={
@@ -11,6 +11,6 @@ export const metadata:Metadata={
 export default function Landing(){
   return <>
     <TrackView event="landing_view"/>
-    <BroadcastLanding/>
+    <ArenaLanding/>
   </>;
 }

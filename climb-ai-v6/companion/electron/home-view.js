@@ -58,11 +58,13 @@
     const tier=tierOf(state);
     const champ=ui.lastChampion();
     const art=champ?ui.splashUrl(champ.name):'';
+    const featured=!art;
     const action=mainAction(state,stage);
     const secondary=action.go!=='dna'?`<button class="oc-btn oc-btn--ghost" type="button" data-go="dna">${icon('dna')}Open Game DNA</button>`:'';
     return `
-      <section class="oc-card oc-card--hero oc-home-hero${art?'':' is-plain'}" aria-label="Player">
-        ${art?`<img class="oc-card__art" src="${esc(art)}" alt="" onerror="this.remove()">`:'<div class="oc-home-hero__pattern" aria-hidden="true"></div>'}
+      <section class="oc-card oc-card--hero oc-home-hero${featured?' is-featured':''}" aria-label="Player">
+        <img class="oc-card__art" src="${esc(art||'assets/featured-jinx.jpg')}" alt="" onerror="this.remove()">
+        <div class="oc-home-hero__pattern" aria-hidden="true"></div>
         <div class="oc-home-hero__body">
           <div class="oc-cluster">
             ${primary?`<span class="oc-chip oc-chip--neutral">${esc(primary)} main</span>`:''}
@@ -82,8 +84,31 @@
             ${secondary}
           </div>
         </div>
-        ${champ?`<span class="oc-home-hero__credit">Last played · ${esc(champ.name)}</span>`:''}
+        <span class="oc-home-hero__credit">${champ?`Last played · ${esc(champ.name)}`:'Featured champion art · Jinx'}</span>
       </section>`;
+  }
+
+  function nextMissionSection(home,stage){
+    const mission=stage.stage==='active'?(home.priorityMission||missionsOf(home)[0]):null;
+    const confirmed=Math.max(0,num(mission?.confirmed));
+    const required=Math.max(1,num(mission?.required,3));
+    const title=stage.stage==='baseline'
+      ?`Complete ${roleName(stage.role)||'your'} baseline game ${Math.min(stage.games+1,stage.required)}`
+      :stage.stage==='reveal'?'Reveal your Game DNA'
+      :text(mission?.title)||'Prepare your next match';
+    const rule=stage.stage==='baseline'
+      ?'Play normally. Your three tracked role games establish a real starting point.'
+      :stage.stage==='reveal'?'See your six strands and the two missions chosen from your tracked games.'
+      :text(mission?.nextGame||mission?.gameRule)||'Open Match Preparation when the next draft begins.';
+    const status=stage.stage==='baseline'?`${stage.games}/${stage.required} GAMES RECORDED`
+      :stage.stage==='reveal'?'BASELINE COMPLETE'
+      :mission?`${Math.min(confirmed,required)}/${required} PROVEN GAMES`:'AWAITING EVIDENCE';
+    const target=stage.stage==='active'?'prep':'dna';
+    return `<section class="oc-next-mission" aria-label="Your next mission">
+      <div class="oc-next-mission__index"><span>01 / NEXT UP</span><b>YOUR NEXT<br>MISSION</b></div>
+      <div class="oc-next-mission__copy"><span class="oc-eyebrow">${esc(status)}</span><h2>${esc(title)}</h2><p>${esc(rule)}</p></div>
+      <button class="oc-btn oc-btn--primary oc-next-mission__action" type="button" data-go="${target}">${stage.stage==='reveal'?'Reveal DNA':stage.stage==='baseline'?'View baseline':'Open match plan'}${icon('arrow')}</button>
+    </section>`;
   }
 
   function strandTile(strand,stage,missionDomains,{why=false}={}){
@@ -310,6 +335,7 @@
       paint(root,keyFor('home',state,home,stage),`
         <div class="oc-home">
           ${hero(state,home,stage)}
+          ${nextMissionSection(home,stage)}
           ${dnaSection(state,home,stage)}
           ${missionsSection(home,stage)}
           ${planSection(state,home)}

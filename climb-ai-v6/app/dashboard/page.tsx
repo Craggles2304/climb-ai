@@ -13,6 +13,7 @@ import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAINS,DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {buildJourneyState} from '@/lib/journeyState';
+import {championSplash} from '@/lib/championArt';
 
 type Device={account_key:string;last_seen_at:string|null};
 const recent=(value:string|null,ms=90_000)=>Boolean(value&&Date.now()-Date.parse(value)<ms);
@@ -87,15 +88,20 @@ export default function Dashboard(){
   ];
 
   return <AppShell>
-    <header className="op-home-head op-home-head-dna">
-      <div>
-        <div className="eyebrow">GAME DNA · {active.gameName}{active.tagline}</div>
-        <h1>Your games build your player identity.</h1>
-        <p>Six strands. One living profile. Every tracked game gives OP CLIMB more evidence about the player you are becoming.</p>
+    <header className="op-home-head op-home-head-dna arena-player-hero">
+      {latest&&<img className="arena-player-hero-art" src={championSplash(latest.champion)} alt="" aria-hidden="true"/>}
+      <div className="arena-player-hero-copy">
+        <div className="eyebrow">YOUR CLIMB · {active.role} PLAYER</div>
+        <h1>{active.gameName}<span>{active.tagline}</span></h1>
+        <p>{baselineReady
+          ?'Your Game DNA is active. '+(focusPlain?.nextGame||'Take one clear mission into the next game.')
+          :'Play '+DNA_BASELINE_GAMES+' tracked '+active.role+' games to reveal a player shape built from evidence.'}</p>
+        <div className="arena-player-hero-meta"><b>{active.rank}</b><span>{active.role}</span><span>{Math.min(baselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} BASELINE GAMES</span></div>
       </div>
       <span className={'op-home-connection '+(online?'is-online':linked?'is-paired':'')}>
         <i/>{online?'COMPANION LIVE':linked?'COMPANION PAIRED':'COMPANION NOT CONNECTED'}
       </span>
+      {latest&&<small className="arena-player-hero-credit">LAST PLAYED · {latest.champion}</small>}
     </header>
 
     <section className="op-home-dna op-home-dna-primary">
