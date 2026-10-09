@@ -1,6 +1,10 @@
 import {Match} from './types';
 import {METRIC_SPECS,MetricSpec} from './metrics';
 import {benchmarkBarText,benchmarkPass,missionBenchmark} from './rankMissionBenchmarks';
+import {HABITS,HabitId} from './habits/library';
+import {habitsOf} from './habits/detect';
+
+const HABIT_PREFIX='habit:';
 
 /**
  * Cost of leak — what a behaviour is actually costing this player.
@@ -68,6 +72,7 @@ function confidenceFor(total:number,a:number,b:number):Confidence{
 }
 
 export function priceLeak(matches:Match[],metric:string,rankOverride?:string|null):LeakPrice{
+  if(metric.startsWith(HABIT_PREFIX))return priceHabit(matches,metric);
   const spec=METRIC_SPECS[metric];
   if(!spec){
     return unavailable(metric,null,'This behaviour is not scored against a match metric yet.');
@@ -144,6 +149,53 @@ export function rankLeaks(matches:Match[],metrics:string[],rankOverride?:string|
   return metrics
     .map(m=>priceLeak(matches,m,rankOverride))
     .sort((a,b)=>(b.gapPoints??-999)-(a.gapPoints??-999));
+}
+
+/**
+ * The same honest gate as metrics, for a DNA habit: win rate in games where the
+ * habit did not happen vs games where it did. The spec is synthesised so the
+ * existing display works, and its label reads naturally ("no solo deaths").
+ */
+function priceHabit(matches:Match[],metric:string):LeakPrice{
+  const id=metric.slice(HABIT_PREFIX.length) as HabitId;
+  const def=HABITS[id];
+  const spec:MetricSpec={key:'deaths',label:def?def.name.toLowerCase():metric,behaviour:def?def.name.toLowerCase():metric,
+    format:n=>String(n)};
+  // A habit has one bar for every rank: the game is clean or it is not.
+  const bar='a clean game',rank='ALL RANKS';
+  if(!def)return unavailable(metric,null,'This habit is not recognised.');
+
+  const cleared:Match[]=[],missed:Match[]=[];
+  for(const m of matches){
+    if(m.habitRelevant===false)continue;
+    const n=habitsOf(m)[id];
+    if(typeof n!=='number')continue;
+    (n<def.occursAt?cleared:missed).push(m);
+  }
+  const wins=(xs:Match[])=>xs.filter(m=>m.result==='WIN').length;
+  const c:Side={games:cleared.length,wins:wins(cleared),winRate:rate(wins(cleared),cleared.length)};
+  const x:Side={games:missed.length,wins:wins(missed),winRate:rate(wins(missed),missed.length)};
+  const sample=c.games+x.games;
+  if(!sample)return unavailable(metric,spec,`None of your games could measure ${spec.label} yet.`,c,x);
+
+  const needed=Math.max(MIN_TOTAL-sample,MIN_PER_SIDE-Math.min(c.games,x.games),0);
+  if(needed>0){
+    return {metric,spec,status:'INSUFFICIENT_SAMPLE',sample,cleared:c,missed:x,
+      gapPoints:null,estimatedWinsLost:null,confidence:null,gamesNeeded:needed,bar,rank,
+      fact:`${sample} of the ${MIN_TOTAL} games needed to price this habit.`,inference:null,
+      suggestion:`Play ${needed} more ranked ${needed===1?'game':'games'} and this becomes a number.`};
+  }
+  const gapPoints=Math.round((c.winRate-x.winRate)*100);
+  const confidence=confidenceFor(sample,c.games,x.games);
+  const estimatedWinsLost=confidence==='HIGH'?Math.round(x.games*(c.winRate-x.winRate)):null;
+  return {metric,spec,status:'READY',sample,cleared:c,missed:x,gapPoints,estimatedWinsLost,confidence,gamesNeeded:0,bar,rank,
+    fact:`In your last ${sample} games, you won ${c.wins} of ${c.games} without ${spec.label}, and ${x.wins} of ${x.games} with it.`,
+    inference:gapPoints>0?`That is a ${gapPoints}-point win-rate gap on the same account, over the same period.`
+      :gapPoints===0?'Your win rate is the same either way, so this habit is not currently deciding your games.'
+      :`You are currently winning ${Math.abs(gapPoints)} points more often in games where it happens, so it is not the habit to chase right now.`,
+    suggestion:gapPoints>0?(estimatedWinsLost&&estimatedWinsLost>0
+      ?`Roughly ${estimatedWinsLost} of those losses came in games with ${spec.label}. Cutting it out is the highest-value change available to you.`
+      :`Your wins are concentrated in games without ${spec.label}. Keep the sample growing before reading too much into the size of the gap.`):null};
 }
 
 function unavailable(metric:string,spec:MetricSpec|null,why:string,cleared?:Side,missed?:Side):LeakPrice{

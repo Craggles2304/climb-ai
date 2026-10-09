@@ -74,7 +74,8 @@ async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveRe
       solo_deaths:m.metrics.soloDeaths??null,teamfight_deaths:m.metrics.teamfightDeaths??null,
       first_item_minute:m.metrics.firstItemMinute??null,second_item_minute:m.metrics.secondItemMinute??null,third_item_minute:m.metrics.thirdItemMinute??null,
       damage_share:m.metrics.damageShare??null,unavailable_metrics:detail?.unavailable||[],
-      raw:{metrics:m.metrics,proAnalysis:detail?.proAnalysis??null,moments:detail?.moments??[],unavailableMetrics:detail?.unavailable??[]},
+      raw:{metrics:m.metrics,proAnalysis:detail?.proAnalysis??null,moments:detail?.moments??[],unavailableMetrics:detail?.unavailable??[],
+        habits:m.habits??null,habitRelevant:m.habitRelevant??null,habitMoments:m.habitMoments??null},
     };
   });
   const {error:metricsError}=await db.from('match_metrics').insert(metricRows);

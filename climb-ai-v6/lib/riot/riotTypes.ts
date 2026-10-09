@@ -35,6 +35,8 @@ export interface RiotParticipant{
   champLevel?:number;
   item0?:number;item1?:number;item2?:number;item3?:number;item4?:number;item5?:number;item6?:number;
   summoner1Id?:number;summoner2Id?:number;
+  /** True on remakes. Those games say nothing about habits. */
+  gameEndedInEarlySurrender?:boolean;
   challenges?:{
     killParticipation?:number;
     teamDamagePercentage?:number;
@@ -82,6 +84,8 @@ export interface RiotTimelineEvent{
   towerType?:string;
   buildingType?:string;
   teamId?:number;
+  /** Map position of the event (CHAMPION_KILL and others). */
+  position?:{x:number;y:number};
 }
 
 export interface RiotTimelineFrame{

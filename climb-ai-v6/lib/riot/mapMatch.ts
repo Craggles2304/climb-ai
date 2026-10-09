@@ -1,6 +1,7 @@
 import {Match,MatchMetrics,Role,MatchResult} from '../types';
 import {RiotMatchDto,RiotTimelineDto,RiotParticipant,RiotTimelineFrame,RiotTimelineEvent,RiotParticipantFrame} from './riotTypes';
 import {canonicalLeaguePatch} from '../patchIntelligence';
+import {analyseHabits,inputFromRiot,isHabitRelevant} from '../habits/detect';
 
 /**
  * Turns a Riot MATCH-V5 match (+ its timeline) into this app's internal Match model.
@@ -117,7 +118,7 @@ export function mapRiotMatch(
     unavailable.push('csAt10','csAt15','laneCsPerMin','post15CsPerMin','goldDiffAt15','xpDiffAt15',
       'levelAt15','deathsPre10','deaths10to20','deathsPost20','soloDeaths','teamfightDeaths',
       'firstItemMinute','secondItemMinute','thirdItemMinute','objectiveParticipation');
-    return {match:buildMatch(dto,me,role,secs,metrics,opts),unavailable};
+    return {match:withHabits(buildMatch(dto,me,role,secs,metrics,opts),dto,null,me),unavailable};
   }
 
   const frames=timeline.info.frames;
@@ -193,7 +194,15 @@ export function mapRiotMatch(
     unavailable.push('objectiveParticipation');
   }
 
-  return {match:buildMatch(dto,me,role,secs,metrics,opts),unavailable};
+  return {match:withHabits(buildMatch(dto,me,role,secs,metrics,opts),dto,timeline,me),unavailable};
+}
+
+/** Stamp the game's habit fingerprint. Remakes are kept but marked irrelevant. */
+function withHabits(match:Match,dto:RiotMatchDto,timeline:RiotTimelineDto|null,me:RiotParticipant):Match{
+  const habitRelevant=isHabitRelevant(match.durationSeconds,!!me.gameEndedInEarlySurrender);
+  if(!habitRelevant)return {...match,habitRelevant,habits:{},habitMoments:[]};
+  const {counts,moments}=analyseHabits(inputFromRiot(dto,timeline,me,match.role,match.durationSeconds,match.metrics));
+  return {...match,habitRelevant,habits:counts,habitMoments:moments};
 }
 
 function isMyTeamObjective(e:RiotTimelineEvent,me:RiotParticipant,dto:RiotMatchDto):boolean{

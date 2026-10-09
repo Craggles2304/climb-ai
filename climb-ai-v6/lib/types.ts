@@ -13,7 +13,13 @@ export interface MatchMetrics{
   firstItemMinute?:number;secondItemMinute?:number;thirdItemMinute?:number;levelAt15?:number;wardsPlaced?:number;controlWards?:number;
 }
 export interface Match{ id:string; riotAccountId:string; champion:string; opponent?:string; role:Role; result:MatchResult; kills:number; deaths:number; assists:number; durationSeconds:number; rank:string; metrics:MatchMetrics; items?:string[]; summoners?:string[]; source:'demo'|'manual'|'screenshot'|'riot'|'live_tracker'; createdAt:string; patch?:string|null; gameVersion?:string|null; patchSource?:'MATCH_V5'|'DATA_DRAGON_CURRENT_AT_RECORDING'|'UNKNOWN';
-  moments?:KeyMoment[]; proAnalysis?:ProMatchAnalysis }
+  moments?:KeyMoment[]; proAnalysis?:ProMatchAnalysis;
+  /** Bad-habit counts for this game, keyed by habit id. Absent key = could not be measured. */
+  habits?:Partial<Record<string,number>>;
+  /** False for remakes; such games are kept but never read for habits. */
+  habitRelevant?:boolean;
+  /** Timestamped habit occurrences, for replay review. {h: habit id, t: ms, d: description} */
+  habitMoments?:{h:string;t:number;d:string}[] }
 export type IssueCategory='FARMING'|'POSITIONING'|'DEATHS'|'LANING'|'TRADING'|'WAVE_MANAGEMENT'|'TEMPO'|'OBJECTIVES'|'VISION'|'TEAMFIGHTING'|'TARGET_SELECTION'|'RECALL_TIMING'|'RESOURCE_COLLECTION'|'MAP_AWARENESS'|'CHAMPION_MASTERY'|'ITEMISATION'|'MATCHUPS'|'CONSISTENCY';
 export type DnaDomain='LANING'|'WAVES_CS'|'VISION_MAP'|'OBJECTIVES'|'TEAMFIGHTS'|'CONSISTENCY';
 export interface Signal{category:IssueCategory;severity:number;confidence:number;facts:string[];inference:string;suggestion:string}
