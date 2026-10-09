@@ -1,0 +1,454 @@
+/* OP CLIMB / ESPORTS PERFORMANCE HQ
+   Original Arena retained. New identity graphics and HUD are first-party SVG/CSS;
+   champion imagery comes from Riot's Data Dragon, not synthetic faces.
+   No performance stats or mastery progress are invented. */
+
+body[data-client-view="overview"] .arena-pro-hero {
+  min-height:420px;
+  padding:35px clamp(22px,3.5vw,48px) 31px;
+  border:1px solid rgba(155,193,208,.43);
+  border-left:3px solid #b6ff2e;
+  background:#0a1220;
+  box-shadow:0 22px 60px #0006, inset 0 1px #e5ffff16;
+}
+body[data-client-view="overview"] .arena-pro-hero::before {
+  content:"";
+  position:absolute;inset:0;z-index:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,rgba(168,205,226,.055) 0px,rgba(168,205,226,.055) 1px,transparent 1px,transparent 82px),
+  linear-gradient(128deg,transparent 80%,rgba(182,255,46,.075) 80.05%,transparent 80.5%);
+  -webkit-mask-image:linear-gradient(0deg,#000,transparent 94%);
+  mask-image:linear-gradient(0deg,#000,transparent 94%);
+}
+body[data-client-view="overview"] .arena-pro-hero::after{
+  background:linear-gradient(90deg,#07111efc 6%,rgba(7,17,30,.98) 35%,rgba(7,17,30,.77) 60%,rgba(7,17,30,.28) 100%),
+    linear-gradient(0deg,rgba(7,12,23,.86),transparent 55%);
+}
+body[data-client-view="overview"] .arena-pro-hero>.arena-player-hero-art{
+  width:79%;object-fit:cover;object-position:68% 33%;
+  filter:saturate(1.13) contrast(1.09);
+  -webkit-mask-image:linear-gradient(90deg,transparent 4%,#000 50%);
+  mask-image:linear-gradient(90deg,transparent 4%,#000 50%);
+}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy{max-width:675px;padding-right:5px}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy h1{
+  font:800 clamp(64px,6.4vw,104px)/.79 var(--display)!important;
+  letter-spacing:-.012em!important;max-width:670px;overflow-wrap:anywhere;
+  margin-top:24px;
+}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy h1 span{
+  display:block;margin-left:0;margin-top:11px;vertical-align:baseline;
+  color:#c1d1d7;font-size:.32em;letter-spacing:.03em!important;
+}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy>p{
+  max-width:570px;font:500 15px/1.55 var(--body)!important;color:#c6d8e6!important;
+  margin-top:15px;
+}
+.arena-pro-hero-kicker{
+  display:flex;flex-wrap:wrap;align-items:center;gap:10px;
+  width:max-content;max-width:100%;
+  color:#deeed9;letter-spacing:.075em;font:800 11px var(--mono);
+}
+.arena-pro-hero-kicker>i{
+  width:8px;height:8px;background:#b6ff2e;
+  box-shadow:0 0 13px rgba(182,255,46,.65);
+}
+.arena-pro-hero-kicker b{font:700 10px var(--mono);letter-spacing:.13em;color:#a9bdc9;border-left:1px solid #658b85;padding-left:9px}
+.arena-pro-hero-kicker small{font:700 10px var(--mono);color:#c2d0a6;border:1px solid #a4be5e77;padding:5px 7px}
+body[data-client-view="overview"] .arena-pro-hero .eyebrow{
+  color:#9eaec0!important;margin-top:19px;
+  font-size:10px!important;
+}
+.arena-pro-hero-actions{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-top:22px}
+.arena-pro-hero-actions>a{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  min-height:43px;padding:10px 16px;
+  font:800 15px var(--display)!important;letter-spacing:.07em;
+  text-decoration:none!important;
+  transition:transform .2s,background .2s,border-color .2s;
+}
+.arena-pro-hero-primary{
+  background:linear-gradient(120deg,#c2ff67,#a4e84d);
+  border:1px solid #c6ff80;color:#0f1b0c!important;
+  box-shadow:0 7px 23px rgba(182,255,46,.13);
+}
+.arena-pro-hero-primary span{font-size:19px}
+.arena-pro-hero-secondary{border:1px solid rgba(153,196,204,.65);background:#121e2bdc;color:#d5eff1!important}
+.arena-pro-hero-actions>a:hover{transform:translateY(-2px)}
+.arena-pro-hero-primary:hover{background:#dcff9c}
+.arena-pro-hero-secondary:hover{border-color:#bdffd0;background:#203b3e}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-meta{margin-top:17px}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-meta>*{
+  background:rgba(12,24,37,.84);border-color:#718b9b80;
+  color:#d8edf0;padding:7px 10px;
+  font:800 11px var(--mono);letter-spacing:.055em
+}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-meta b{
+  color:#e8d9a9;font:800 14px var(--display);
+}
+body[data-client-view="overview"] .arena-pro-hero .op-home-connection{
+  top:17px;right:21px;border:1px solid rgba(137,180,176,.3);
+  padding:8px 10px;letter-spacing:.08em;font-size:9px;
+}
+body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-credit{
+  bottom:10px;right:22px;color:#b7c6d6;font-size:9px;
+  border:1px solid rgba(156,186,205,.25);
+}
+
+/* Decorational identity mark uses actual rank text. It is not presented as a Riot crest. */
+.arena-pro-rank-panel{
+  --rank-hue:#9cdbcd;--rank-shade:#2b8998;
+  position:absolute;right:26px;bottom:62px;z-index:2;
+  width:246px;overflow:hidden;
+  border:1px solid color-mix(in srgb,var(--rank-hue) 45%,#536477);
+  background:linear-gradient(150deg,rgba(15,27,41,.94),rgba(7,18,31,.96));
+  box-shadow:0 15px 40px #0008,0 0 0 1px rgba(255,255,255,.018) inset;
+  backdrop-filter:blur(8px);
+}
+.arena-pro-rank-top,.arena-pro-rank-bottom{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  font:700 9px var(--mono);letter-spacing:.1em;
+}
+.arena-pro-rank-top{
+  color:var(--rank-hue);border-bottom:1px solid color-mix(in srgb,var(--rank-hue) 20%,#213144);
+  padding:11px 12px;
+}
+.arena-pro-rank-league{color:#8195a5}
+.arena-pro-rank-main{display:flex;align-items:center;gap:6px;padding:12px 8px}
+.arena-pro-rank-main svg{width:78px;height:91px;flex:0 0 auto;filter:drop-shadow(0 0 12px color-mix(in srgb,var(--rank-hue) 20%,transparent))}
+.arena-pro-rank-main>div{display:grid;min-width:0;gap:7px}
+.arena-pro-rank-main>div span{font:700 8px var(--mono);letter-spacing:.05em;color:#8b9eae}
+.arena-pro-rank-main>div strong{font:800 23px/.95 var(--display);text-transform:uppercase;color:var(--rank-hue);overflow-wrap:anywhere}
+.arena-pro-rank-main>div small{font:700 9px var(--mono);color:#b2c7d6;text-transform:uppercase}
+.arena-pro-rank-bottom{padding:10px 12px;background:#0b1827;border-top:1px solid rgba(152,186,206,.15);font-size:8px;color:#a6bbc6}
+.arena-pro-rank-bottom>span{display:flex;align-items:center;gap:5px}
+.arena-pro-rank-bottom b{color:var(--rank-hue)}
+
+/* Fast directional navigation creates a genuine application-level command HUD. */
+.arena-pro-fast-nav{
+  display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:1px;margin:12px 0 18px;border:1px solid rgba(125,159,186,.26);
+  background:rgba(128,162,183,.15);
+  box-shadow:0 10px 29px rgba(0,0,0,.12);
+}
+.arena-pro-fast-nav>a{
+  display:flex;align-items:center;gap:12px;min-width:0;min-height:70px;
+  background:linear-gradient(145deg,#142335,#0e1927);
+  padding:13px 15px;text-decoration:none!important;color:#cbdce8!important;
+  transition:background .2s,transform .2s;
+}
+.arena-pro-fast-nav>a>.arena-v-icon{
+  flex:0 0 auto;color:#a7c6db;
+  transition:color .2s,transform .2s;
+}
+.arena-pro-fast-nav>a>span{display:grid;gap:6px;min-width:0}
+.arena-pro-fast-nav>a b{
+  font:800 15px/.95 var(--display);letter-spacing:.07em;
+  white-space:nowrap;
+}
+.arena-pro-fast-nav>a small{
+  color:#778ea3;font:700 9px var(--mono);
+  letter-spacing:.02em;white-space:nowrap;
+}
+.arena-pro-fast-nav>a i{color:#405f73;font:700 9px var(--mono);font-style:normal;margin-left:auto}
+.arena-pro-fast-nav>a:hover{background:linear-gradient(130deg,#294239,#192b39)}
+.arena-pro-fast-nav>a:hover>.arena-v-icon{color:#b6ff2e;transform:translateY(-1px)}
+.arena-pro-fast-nav>a:hover b{color:#ddffa9}
+#arena-game-dna,#arena-mission,#arena-champions,#arena-perf,#arena-match-list{scroll-margin-top:22px}
+#arena-perf .arena-original-insights{margin:0 0 25px!important}
+
+/* Game DNA now reads like a combat-analysis workstation, retaining the original renderer. */
+body[data-client-view="overview"] .arena-pro-dna-hq{
+  position:relative;overflow:hidden;
+  border:1px solid rgba(159,190,205,.37)!important;
+  box-shadow:0 16px 40px rgba(0,0,0,.19),inset 0 2px rgba(182,255,46,.18)!important;
+}
+body[data-client-view="overview"] .arena-pro-dna-hq::after{
+  content:"";position:absolute;right:15px;top:8px;width:86px;height:86px;
+  border-top:1px solid rgba(182,255,46,.15);border-right:1px solid rgba(182,255,46,.15);
+  pointer-events:none;transform:rotate(0deg);
+}
+body[data-client-view="overview"] .arena-pro-dna-stage{
+  position:relative;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 42%,#263c4f55,transparent 66%),#081421;
+  border:1px solid rgba(130,185,200,.27);
+  margin:12px 16px 18px!important;
+  box-shadow:inset 0 0 65px rgba(0,0,0,.35);
+}
+.arena-pro-dna-stage::before{
+  content:"";position:absolute;inset:0;pointer-events:none;opacity:.45;
+  background-image:linear-gradient(rgba(124,171,185,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(124,171,185,.05) 1px,transparent 1px);
+  background-size:43px 43px;
+}
+.arena-pro-dna-stage-top{
+  pointer-events:none;position:relative;z-index:1;
+  display:flex;justify-content:space-between;align-items:center;gap:12px;
+  margin:0 0 -8px;padding:15px 17px;
+  font:700 9px var(--mono);letter-spacing:.09em;color:#8fb5b4;
+}
+.arena-pro-dna-stage-top span{display:inline-flex;align-items:center;gap:8px}
+.arena-pro-dna-stage-top i{width:7px;height:7px;background:#b6ff2e;box-shadow:0 0 9px #b6ff2e}
+.arena-pro-dna-stage :is(.client-original-dna-host){position:relative;z-index:1}
+
+/* Next coaching instruction should look like a high-value objective card. */
+body[data-client-view="overview"] .arena-pro-focus-grid{gap:13px}
+body[data-client-view="overview"] .arena-pro-focus{
+  border:1px solid #50685788!important;
+  background:radial-gradient(ellipse at 92% 0%,rgba(182,255,46,.09),transparent 56%),linear-gradient(115deg,#1a2b25,#101b25 70%)!important;
+  box-shadow:0 16px 35px #0002;
+}
+body[data-client-view="overview"] .arena-pro-focus::before{
+  content:"BASELINE SCAN";position:absolute;top:18px;right:15px;
+  color:#90b076;font:700 9px var(--mono);letter-spacing:.1em;
+  pointer-events:none;
+}
+body[data-client-view="overview"] .arena-pro-focus.is-ready::before{content:"ACTIVE PROTOCOL"}
+body[data-client-view="overview"] .arena-pro-focus .op-home-job{
+  border-left:3px solid #c6ff7e;
+  background:linear-gradient(95deg,#283c2b,#162634);
+}
+.arena-pro-mission-track{
+  height:7px;margin:12px 0 7px;
+  overflow:hidden;border:1px solid rgba(163,209,137,.28);
+  background:#091f20;
+}
+.arena-pro-mission-track i{
+  display:block;height:100%;
+  background:linear-gradient(90deg,#64cb83,#b6ff2e);
+  box-shadow:0 0 13px #b6ff2e44;
+  transition:width .4s ease;
+}
+.arena-pro-second-mission{
+  display:block;margin-top:9px;color:#9ec4bb;
+  font:700 10px/1.4 var(--mono);letter-spacing:.025em;
+}
+body[data-client-view="overview"] .arena-pro-latest{position:relative;isolation:isolate;overflow:hidden}
+body[data-client-view="overview"] .arena-pro-latest::after{
+  content:"";position:absolute;inset:0;z-index:-1;pointer-events:none;
+  background:linear-gradient(90deg,#101923fa,#101923d2 58%,#10192399 100%);
+}
+.arena-pro-latest-backdrop{
+  position:absolute;inset:0 0 0 auto;width:83%;height:100%;z-index:-2;
+  object-fit:cover;object-position:69% 26%;
+  filter:contrast(1.1) saturate(1.08);
+  pointer-events:none;
+}
+.arena-pro-latest-backdrop[hidden]{display:none}
+body[data-client-view="overview"] .arena-pro-latest> :not(.arena-pro-latest-backdrop){
+  position:relative;z-index:1;
+}
+body[data-client-view="overview"] .arena-pro-latest .op-home-latest-stats>span{
+  background:rgba(11,24,36,.76);
+  border-color:rgba(141,188,200,.29);
+}
+
+/* Champion pool = biggest new esports expression. */
+.arena-pro-champion-card{
+  margin:20px 0 22px;overflow:hidden;
+  color:#e8f4fb;
+  background:linear-gradient(136deg,#131e2c,#0a1521);
+  border:1px solid rgba(133,172,196,.34);
+  box-shadow:0 15px 38px rgba(0,0,0,.19);
+}
+.arena-pro-champ-header{
+  display:flex;align-items:center;justify-content:space-between;gap:18px;
+  padding:22px 24px 19px;border-bottom:1px solid rgba(139,173,195,.19);
+}
+.arena-pro-system-tag{
+  color:#9fb2c3;font:700 10px var(--mono);letter-spacing:.115em;
+  text-transform:uppercase;
+}
+.arena-pro-champ-header h2,.arena-pro-head h2{
+  margin:9px 0 0;font:800 clamp(30px,3.3vw,43px)/.97 var(--display)!important;
+  color:#f1f8fc;text-transform:uppercase;
+}
+.arena-pro-champ-header h2 em,.arena-pro-head h2 em{font-style:normal;color:#b6ff2e}
+.arena-pro-champ-header p{
+  margin:8px 0 0;color:#94acbf;font:500 12px/1.5 var(--body);
+}
+.arena-pro-champ-link{
+  display:flex;align-items:center;justify-content:center;gap:7px;flex:0 0 auto;
+  padding:10px 12px;border:1px solid rgba(170,212,200,.43);
+  color:#c4ffe4!important;font:800 12px var(--display);letter-spacing:.06em;
+  transition:background .2s;
+}
+.arena-pro-champ-link:hover{background:#18382f}
+.arena-pro-champ-main{
+  display:grid;grid-template-columns:minmax(0,1.25fr) minmax(330px,.95fr);
+  min-height:358px;
+}
+.arena-pro-champ-showcase{
+  position:relative;isolation:isolate;overflow:hidden;
+  display:flex;align-items:flex-end;
+  background:#10202e;border-right:1px solid rgba(135,176,194,.22);
+}
+.arena-pro-champ-portrait{
+  position:absolute;z-index:-3;inset:0;width:100%;height:100%;
+  object-fit:cover;object-position:64% 24%;
+  filter:saturate(1.13) contrast(1.08);
+  animation:arena-pro-champ-enter .35s ease both;
+}
+.arena-pro-champ-portrait[hidden]{display:none}
+.arena-pro-champ-vignette{
+  position:absolute;z-index:-2;inset:0;
+  background:linear-gradient(90deg,#091526ce,#0915263b 80%),
+    linear-gradient(0deg,#071221fc 0%,#071221c7 24%,transparent 78%);
+}
+.arena-pro-champ-showcase::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:-1;opacity:.65;
+  background:linear-gradient(116deg,transparent 75%,rgba(182,255,46,.09) 75.2%,transparent 75.5%);
+}
+.arena-pro-champ-showcase-copy{width:100%;padding:34px 30px 26px}
+.arena-pro-champ-hero-caption{
+  display:flex;align-items:center;gap:9px;
+  font:800 10px var(--mono);letter-spacing:.11em;color:#c9ead5;
+}
+.arena-pro-champ-hero-caption i{width:7px;height:7px;background:#b6ff2e}
+.arena-pro-champ-showcase h3{
+  margin:12px 0 0;
+  font:800 clamp(59px,5.6vw,91px)/.78 var(--display)!important;
+  text-transform:uppercase;letter-spacing:.025em!important;
+  text-shadow:0 4px 24px #000b;overflow-wrap:anywhere;
+}
+.arena-pro-champ-showcase-ribbon{
+  display:block;margin-top:19px;color:#b5cce1;
+  font:700 10px var(--mono);letter-spacing:.08em;
+}
+.arena-pro-champ-statline{
+  display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:1px;background:rgba(133,165,185,.3);margin-top:13px;
+  border:1px solid rgba(165,184,197,.22);
+}
+.arena-pro-champ-statline>div{
+  padding:13px 11px;display:grid;gap:7px;
+  background:rgba(6,19,31,.77);
+}
+.arena-pro-champ-statline small{font:700 9px var(--mono);color:#a1bac8}
+.arena-pro-champ-statline strong{font:800 30px/.9 var(--display);color:#f1f7fd;font-variant-numeric:tabular-nums}
+.arena-pro-champ-statline>div:nth-child(2) strong{color:#d7ff94}
+.arena-pro-champ-demo{
+  display:inline-block;margin-top:12px;padding:4px 7px;border:1px solid #cfa66a66;color:#ebca9e;
+  font:700 9px var(--mono);letter-spacing:.1em;
+}
+.arena-pro-champ-roster{min-width:0;display:grid;align-content:start;padding:13px;background:#0d1724}
+.arena-pro-champ-roster-title{
+  display:flex;align-items:center;justify-content:space-between;gap:9px;
+  padding:7px 9px 16px;color:#9ab2c3;
+  font:700 10px var(--mono);letter-spacing:.11em;
+}
+.arena-pro-champ-roster-title small{color:#69899f;font-size:9px}
+.arena-pro-champ-pick{
+  display:flex;align-items:center;gap:10px;width:100%;min-width:0;min-height:62px;
+  padding:9px 9px;background:transparent!important;color:#dbe9f2!important;
+  border:1px solid transparent!important;border-left:2px solid transparent!important;
+  border-bottom:1px solid rgba(127,158,179,.17)!important;
+  text-align:left;cursor:pointer;
+  transition:background .2s,border-color .2s,transform .2s;
+}
+.arena-pro-champ-pick:hover,.arena-pro-champ-pick.is-selected{
+  background:linear-gradient(90deg,#21372e,#1a2739)!important;
+  border-left-color:#b6ff2e!important;
+}
+.arena-pro-champ-pick:hover{transform:translateX(2px)}
+.arena-pro-champ-order{color:#738da0;font:700 10px var(--mono)}
+.arena-pro-champ-tile{
+  flex:0 0 0;width:46px;height:48px;overflow:hidden;
+  border:1px solid #617a8b;background:#24374d;
+}
+.arena-pro-champ-tile img{width:100%;height:100%;display:block;object-fit:cover;object-position:68% 22%}
+.arena-pro-champ-tile img[hidden]{display:none}
+.arena-pro-champ-pick-name{display:grid;gap:6px;min-width:0;flex:1}
+.arena-pro-champ-pick-name strong{
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  color:#eaf4fc;font:800 19px/.95 var(--display);text-transform:uppercase;
+}
+.arena-pro-champ-pick-name small{color:#91aabb;font:700 9px var(--mono);letter-spacing:.015em}
+.arena-pro-champ-pick-performance{display:grid;gap:6px;flex:0 0 49px;text-align:right;color:#d6ff97;font:800 20px/.95 var(--display)}
+.arena-pro-champ-pick-performance small{color:#788fa2;font:700 8px var(--mono)}
+.arena-pro-champ-pick-arrow{font:800 18px var(--display);color:#8fbea6}
+.arena-pro-champ-scout{display:flex;align-items:center;gap:10px;margin:11px 8px 4px;
+  padding:10px 11px;border:1px solid rgba(124,163,174,.16);background:#121e2a}
+.arena-pro-champ-scout .arena-v-icon{color:#90cfbe;flex:0 0 auto}
+.arena-pro-champ-scout p{margin:0;color:#7999a9;font:500 10px/1.5 var(--body)}
+.arena-pro-champ-empty .arena-pro-head{padding:22px 24px;border-bottom:1px solid #324355}
+.arena-pro-champ-await{display:flex;align-items:center;gap:15px;padding:28px 24px}
+.arena-pro-champ-await svg{color:#b6ff2e}
+.arena-pro-champ-await p{flex:1;margin:0;color:#adbece}
+.arena-pro-champ-await a{color:#bcff88!important;font:800 13px var(--display)}
+@keyframes arena-pro-champ-enter{
+  from{opacity:.5;transform:scale(1.04)}
+  to{opacity:1;transform:scale(1)}
+}
+
+/* Roster density, hero identity and workspace navigation across small screens. */
+@media(max-width:1440px){
+  .arena-pro-fast-nav>a{gap:8px;padding:11px 10px}
+  .arena-pro-fast-nav>a b{font-size:13px}
+  .arena-pro-fast-nav>a small{font-size:8px}
+  body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy h1{
+    font-size:clamp(57px,5.8vw,85px)!important;
+  }
+}
+@media(max-width:1240px){
+  .arena-pro-rank-panel{right:17px;bottom:50px;width:216px}
+  .arena-pro-rank-main svg{width:64px}
+  .arena-pro-rank-main>div strong{font-size:21px}
+  body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy{max-width:600px}
+  .arena-pro-champ-main{grid-template-columns:1fr}
+  .arena-pro-champ-showcase{min-height:344px;border-right:0;border-bottom:1px solid #49627677}
+  .arena-pro-champ-roster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 9px}
+  .arena-pro-champ-roster-title,.arena-pro-champ-scout{grid-column:1/-1}
+}
+@media(max-width:1010px){
+  .arena-pro-fast-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .arena-pro-fast-nav>a{justify-content:center;min-height:58px}
+  .arena-pro-fast-nav>a>.arena-v-icon{width:21px;height:21px}
+  .arena-pro-fast-nav>a small,.arena-pro-fast-nav>a i{display:none}
+  .arena-pro-rank-panel{display:none}
+}
+@media(max-width:740px){
+  body[data-client-view="overview"] .arena-pro-hero{min-height:387px;padding:28px 19px 24px}
+  body[data-client-view="overview"] .arena-pro-hero>.arena-player-hero-art{width:100%;opacity:.65;object-position:61% 25%}
+  body[data-client-view="overview"] .arena-pro-hero::after{
+    background:linear-gradient(90deg,#081421ef,rgba(8,20,33,.81) 62%,rgba(8,20,33,.52)),
+      linear-gradient(0deg,#081421e6,transparent 80%);
+  }
+  body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy h1{
+    font-size:clamp(52px,10vw,78px)!important;margin-top:16px;
+  }
+  body[data-client-view="overview"] .arena-pro-hero .arena-player-hero-copy>p{
+    font-size:13px!important;max-width:510px;margin-top:10px;
+  }
+  .arena-pro-hero-kicker{font-size:9px;gap:6px}
+  .arena-pro-hero-kicker b{font-size:9px}
+  .arena-pro-hero-kicker small{display:none}
+  .arena-pro-hero-actions{margin-top:15px;gap:7px}
+  .arena-pro-hero-actions>a{min-height:38px;font-size:12px!important;padding:9px 10px}
+  .arena-pro-fast-nav{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .arena-pro-fast-nav>a{flex-direction:column;min-height:64px;gap:6px;padding:10px 3px}
+  .arena-pro-fast-nav>a b{font-size:10px;white-space:normal;text-align:center;line-height:1}
+  .arena-pro-dna-stage-top{padding:12px 11px;font-size:8px}
+  body[data-client-view="overview"] .arena-pro-dna-stage{margin:9px 7px 12px!important}
+  .arena-pro-champ-header{padding:18px 15px}
+  .arena-pro-champ-header h2{font-size:30px!important}
+  .arena-pro-champ-link{font-size:10px;padding:8px;max-width:118px;text-align:center}
+  .arena-pro-champ-showcase{min-height:322px}
+  .arena-pro-champ-showcase-copy{padding:22px 15px}
+  .arena-pro-champ-showcase h3{font-size:clamp(55px,12vw,78px)!important}
+  .arena-pro-champ-roster{grid-template-columns:1fr;padding:9px}
+  .arena-pro-champ-tile{width:42px;height:43px;flex-basis:42px}
+  .arena-pro-champ-pick{min-height:56px}
+}
+@media(max-width:430px){
+  body[data-client-view="overview"] .arena-pro-hero{min-height:417px}
+  .arena-pro-hero-kicker b{font-size:8px}
+  .arena-pro-fast-nav>a b{font-size:9px}
+  .arena-pro-fast-nav>a>.arena-v-icon{width:18px;height:18px}
+  .arena-pro-champ-statline strong{font-size:24px}
+  .arena-pro-champ-statline>div{padding:12px 8px}
+  .arena-pro-champ-header{flex-direction:column;align-items:flex-start;gap:12px}
+}
+@media(prefers-reduced-motion:reduce){
+  .arena-pro-champ-portrait,.arena-pro-champ-pick,
+  .arena-pro-fast-nav>a,.arena-pro-mission-track i,
+  .arena-pro-hero-actions>a {animation:none!important;transition:none!important}
+}
