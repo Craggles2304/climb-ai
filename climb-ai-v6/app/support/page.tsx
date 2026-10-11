@@ -16,7 +16,7 @@ export default function Support(){return <>
       <h2>Privacy or deletion request</h2>
       <p>Use the same support address and clearly state that your request concerns access, correction or deletion of your OP CLIMB data.</p>
       <h2>Before creating an account</h2>
-      <p><Link className="text-link" href="/demo">OPEN THE PUBLIC DEMO →</Link></p>
+      <p><Link className="text-link" href="/client">TAKE THE TOUR →</Link></p>
     </article>
   </main>
   <PublicFooter compact/>

@@ -322,6 +322,7 @@ function MissionHub({tasks,focusDomain,levels,role,onSelect}:{tasks:ILPTask[];fo
         <div className="eyebrow">YOUR 6 DNA STRANDS · PLAYER PLAN</div>
         <h2>One primary Climb. Two live missions. Six strands developing.</h2>
         <p>OP CLIMB ranks the evidence and highlights the most important DNA skill as Your Next Climb. Your two unlocked trees can still bank progress in each tracked {role} game while all six strands keep developing over time.</p>
+        <Link className="text-link" href="/missions">CHANGE MY TWO TREES →</Link>
       </div>
       <div className="dna-mission-how" aria-label="How missions work">
         <span><b>1</b><small>DO</small><em>one clear behaviour</em></span>

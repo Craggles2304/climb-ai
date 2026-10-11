@@ -72,6 +72,8 @@ function QuickPreview(){
       track('public_riot_preview_failed',{placement:'arena_landing',region});
     }finally{setBusy(false)}
   };
+  // Only show scouting when Riot lookups are live; a disabled form mid-page reads as broken.
+  if(enabled!==true)return null;
   return <section className={styles.preview} id="preview" aria-labelledby="preview-title">
     <div className={styles.previewIntro}>
       <span className={styles.kicker}>A LOOK AT YOUR GAMES</span>
@@ -82,9 +84,8 @@ function QuickPreview(){
         <input id="arena-riot-id" value={riotId} onChange={event=>setRiotId(event.target.value)} placeholder="Name#TAG" autoComplete="off"/>
         <label className={styles.srOnly} htmlFor="arena-region">Region</label>
         <select id="arena-region" value={region} onChange={event=>setRegion(event.target.value)}>{REGIONS.map(item=><option key={item}>{item}</option>)}</select>
-        <button type="submit" disabled={busy||enabled!==true}>{busy?'CHECKING…':'SCOUT MY GAMES'}</button>
+        <button type="submit" disabled={busy}>{busy?'CHECKING…':'SCOUT MY GAMES'}</button>
       </form>
-      {enabled===false&&<p className={styles.formNote}>Live scouting is unavailable at the moment. You can still start with the Companion.</p>}
       {error&&<p className={styles.formError} role="alert">{error}</p>}
     </div>
     <div className={styles.previewResult} aria-live="polite">
@@ -106,7 +107,7 @@ export function ArenaLanding(){
     <a className={styles.skip} href="#main">Skip to content</a>
     <header className={styles.nav}>
       <Link className={styles.brand} href="/" aria-label="OP CLIMB home"><span className={styles.brandMark}><OpMark/></span><span>OP <b>CLIMB</b></span></Link>
-      <nav aria-label="Public navigation"><a href="#experience">Experience</a><a href="#dna">Game DNA</a><Link href="/pricing">Pricing</Link><a href="#download">Download</a></nav>
+      <nav aria-label="Public navigation"><a href="#experience">Experience</a><a href="#dna">Game DNA</a><a href="/client">Tour</a><Link href="/pricing">Pricing</Link><a href="#download">Download</a></nav>
       <div className={styles.navEnd}><Link href="/login">SIGN IN</Link><Link className={styles.navCta} href="/signup">START FREE <span aria-hidden="true">↗</span></Link></div>
     </header>
 
@@ -120,7 +121,7 @@ export function ArenaLanding(){
             <span className={styles.kicker}><i/> PERSONAL LEAGUE COACHING</span>
             <h1 id="hero-title">STOP GUESSING.<br/><em>START CLIMBING.</em></h1>
             <p>Your personal League of Legends AI coach. Understand your matches, fix your habits and build measurable improvement.</p>
-            <div className={styles.heroActions}><Link className={styles.primaryButton} href="/signup">START CLIMBING FREE <span aria-hidden="true">↗</span></Link><a className={styles.secondaryButton} href="#experience">EXPLORE THE COMPANION <span aria-hidden="true">↓</span></a></div>
+            <div className={styles.heroActions}><Link className={styles.primaryButton} href="/signup">START CLIMBING FREE <span aria-hidden="true">↗</span></Link><a className={styles.secondaryButton} href="/client">TAKE THE TOUR <span aria-hidden="true">↗</span></a></div>
           </div>
           <div className={styles.heroFoot}><span>CONNECT <i/> PREPARE <i/> PLAY <i/> REVIEW <i/> IMPROVE</span><span>SCROLL TO ENTER THE ARENA ↓</span></div>
         </div>
@@ -180,7 +181,7 @@ export function ArenaLanding(){
 
       <section className={styles.download} id="download" aria-labelledby="download-title">
         <div className={styles.downloadArt}><img src="/assets/jinx-splash.jpg" alt=""/></div>
-        <div className={styles.downloadBody}><span className={styles.kicker}>05 / WINDOWS COMPANION</span><h2 id="download-title">READY WHEN<br/><em>YOU QUEUE.</em></h2><p>Download the Windows Companion, sign in to OP CLIMB and pair this PC from the Match Room. The app will guide you through the first tracked game.</p><ol><li><b>01</b> Install the Companion on Windows</li><li><b>02</b> Pair this PC with your account</li><li><b>03</b> Play normally and build your baseline</li></ol><div className={styles.downloadActions}><a className={styles.primaryButton} href="/download/windows">DOWNLOAD FOR WINDOWS ↗</a><Link href="/live">PAIRING GUIDE ↗</Link></div><small>The download link serves the currently published installer. This redesign remains a preview until approved.</small></div>
+        <div className={styles.downloadBody}><span className={styles.kicker}>05 / WINDOWS COMPANION</span><h2 id="download-title">READY WHEN<br/><em>YOU QUEUE.</em></h2><p>Download the Windows Companion, sign in to OP CLIMB and pair this PC from the Match Room. The app will guide you through the first tracked game.</p><ol><li><b>01</b> Install the Companion on Windows</li><li><b>02</b> Pair this PC with your account</li><li><b>03</b> Play normally and build your baseline</li></ol><div className={styles.downloadActions}><a className={styles.primaryButton} href="/download/windows">DOWNLOAD FOR WINDOWS ↗</a><Link href="/login?next=/live">SIGN IN TO PAIR ↗</Link></div></div>
       </section>
     </main>
     <footer className={styles.footer}><Link href="/" className={styles.footerBrand}>OP <b>CLIMB</b></Link><span>YOUR GAMES. YOUR COACH. YOUR CLIMB.</span><div><Link href="/privacy">PRIVACY</Link><Link href="/terms">TERMS</Link><Link href="/support">SUPPORT</Link></div><small>OP CLIMB is not endorsed by Riot Games. League of Legends and related artwork are trademarks of Riot Games.</small></footer>

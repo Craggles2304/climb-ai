@@ -32,16 +32,18 @@ type ProgressionPayload={
 
 const primary=[
   ['Home','/dashboard','⌂','Your next step'],
-  ['My DNA','/ilp','⬡','Your player identity'],
-  ['Climb Plan','/progress','↗','Your history → next rank'],
-  ['Missions','/missions','✦','Six DNA trackers'],
+  ['My DNA','/ilp','⬡','Strands · missions · plan'],
   ['Match Room','/live','◇','Prepare · play · review'],
   ['My Games','/analyse','▤','Past games and evidence'],
   ['Coach','/coach','◎','Ask why · understand more'],
 ] as const;
-const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Climb Plan','/progress'],['Missions','/missions'],['Match','/live']] as const;
+const mobile=[['Home','/dashboard'],['My DNA','/ilp'],['Match','/live'],['Games','/analyse'],['Coach','/coach']] as const;
+// Missions and Climb Plan live inside My DNA as tabs, so the six strands,
+// the two unlocked trees and the PRO plan read as one place.
+const dnaSection=[['Strands','/ilp'],['Missions','/missions'],['Climb Plan','/progress']] as const;
+const inDnaSection=(path:string)=>path==='/ilp'||path==='/game-dna'||path==='/progress'||path==='/missions'||path.startsWith('/missions/');
 const arenaNavIcons:Record<string,ArenaIconName>={
- '/dashboard':'home','/ilp':'dna','/progress':'progress','/missions':'missions',
+ '/dashboard':'home','/ilp':'dna',
  '/live':'match','/analyse':'history','/coach':'coach'
 };
 
@@ -69,10 +71,20 @@ const routeTitle=(path:string)=>{
   return'OP CLIMB';
 };
 function isPrimaryActive(path:string,href:string){
-  if(href==='/ilp')return path==='/ilp'||path==='/game-dna';
+  if(href==='/ilp')return inDnaSection(path);
   if(href==='/analyse')return path==='/analyse'||path.startsWith('/analyse/');
   if(href==='/coach')return path==='/coach';
   return path===href;
+}
+function DnaSectionTabs({path,tier}:{path:string;tier:string}){
+  return <nav className="op-dna-tabs" aria-label="My DNA sections">
+    {dnaSection.map(([name,href])=>{
+      const current=href==='/ilp'?path==='/ilp'||path==='/game-dna':path===href||path.startsWith(href+'/');
+      return <Link key={href} href={href} className={current?'active':undefined} aria-current={current?'page':undefined}>
+        {name}{href==='/progress'&&tier!=='PRO'&&<span className="op-dna-tab-badge">PRO</span>}
+      </Link>;
+    })}
+  </nav>;
 }
 function RankLabGate({tier,path,onOpen}:{tier:string;path:string;onOpen:()=>void}){
   const isChampion=path.startsWith('/champions/main');
@@ -308,7 +320,7 @@ export function AppShell({children}:{children:React.ReactNode}){
       </section>}
 
       <main id="content" tabIndex={-1}>
-        {live?<><LivePregameMount/><LiveCommandCenter/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{children}</div>}
+        {live?<><LivePregameMount/><LiveCommandCenter/></>:gatedLab&&!advancedOpen?<RankLabGate tier={coaching.tier} path={path} onOpen={()=>setAdvancedOpen(true)}/>:<div className="page">{inDnaSection(path)&&<DnaSectionTabs path={path} tier={tier}/>}{children}</div>}
       </main>
     </div>
 
@@ -329,7 +341,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <div className="op-learning-strength-count">PROVISIONAL COACHING ONLY · {DNA_BASELINE_GAMES-journeyBaselineGames} GAME{DNA_BASELINE_GAMES-journeyBaselineGames===1?'':'S'} UNTIL DNA REVEAL</div>
       </div>:journeyBaselineGames===DNA_BASELINE_GAMES&&latestLearningMatchData&&canonicalLeagueRole(latestLearningMatchData.role)===active.role?<div className="op-learning-receipt-body">
         <h2>Your Game DNA is ready.</h2>
-        <p>Baseline complete. All six strands are visible. Choose the two DNA trees you want to keep unlocked first.</p>
+        <p>Baseline complete. All six strands are visible. Your first two DNA trees are picked from the evidence; swap either one any time under My DNA → Missions.</p>
         <div className="op-learning-mastered">◆ 3/3 BASELINE COMPLETE · DNA UNLOCKED</div>
       </div>:<div className="op-learning-receipt-body">
         <h2>{latestLearning.length

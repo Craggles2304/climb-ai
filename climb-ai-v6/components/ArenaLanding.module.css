@@ -161,7 +161,7 @@
   .dnaLayout{grid-template-columns:1fr 1fr}.domainPanel{padding:25px}
 }
 @media(max-width:760px){
-  .nav{min-height:66px;padding-inline:18px}.nav nav,.navEnd>a:first-child{display:none}.navEnd{margin-left:auto}.navCta{min-width:0}
+  .nav{min-height:66px;padding-inline:18px}.nav nav{display:none}.navEnd{margin-left:auto;gap:16px}.navEnd>a:first-child{font-size:13px}.navCta{min-width:0}
   .hero,.heroInner{min-height:700px}.heroArt img{width:100%;object-position:66% center}
   .heroArt::after{background:linear-gradient(90deg,#070b11e8,#070b1199 80%),linear-gradient(0deg,#070b11 0%,transparent 70%)}
   .heroInner{padding:22px 22px 28px}.heroCopy{margin:auto 0 55px}.heroCopy h1{font-size:clamp(64px,14vw,98px)}.heroCopy p{font-size:18px}
@@ -177,7 +177,7 @@
   .footer{grid-template-columns:1fr 1fr;padding:30px 22px}.footer>span{display:none}.footer>div{gap:12px;font-size:12px}
 }
 @media(max-width:480px){
-  .brand{font-size:21px}.navCta{font-size:12px;padding:8px 10px}
+  .brand{font-size:21px}.navCta{font-size:12px;padding:8px 10px}.navEnd{gap:12px}.navEnd>a:first-child{font-size:12px}
   .hero,.heroInner{min-height:650px}.heroCopy h1{font-size:clamp(57px,15vw,75px)}.heroActions{align-items:stretch;flex-direction:column}.heroActions a{width:100%}
   .frameHeading h2,.sectionLead h2,.dnaHeader h2,.plansIntro h2,.downloadBody h2{font-size:clamp(42px,12vw,58px)}
   .domainChoices{grid-template-columns:1fr}.previewForm button{width:100%}.previewResult h3{font-size:37px}
