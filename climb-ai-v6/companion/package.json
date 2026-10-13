@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.11.4",
+  "version": "0.11.5",
   "private": true,
   "description": "OP CLIMB Windows companion for League tracking and TFT pre-game learning with post-game decision review.",
   "main": "electron/bootstrap.cjs",
