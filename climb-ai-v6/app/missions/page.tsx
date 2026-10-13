@@ -43,6 +43,16 @@ export default function Missions(){
 
   useEffect(()=>{setSelectedDomain(current=>current??persistedDomains[0]??missions[0]?.domain??null)},[persistedDomains.join('|'),active.id,active.role]);
 
+  function openLibrary(){
+    setShowAllTrees(true);
+    window.setTimeout(()=>document.getElementById('mission-library')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+  }
+  function openMissionDetails(domain:DnaDomain){
+    setSelectedDomain(domain);
+    setShowAllTrees(true);
+    window.setTimeout(()=>document.getElementById('mission-focus-detail')?.scrollIntoView({behavior:'smooth',block:'start'}),60);
+  }
+
   const latestMatch=[...matches].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   const selectedMission=missions.find(row=>row.domain===selectedDomain)??missions[0];
   async function confirmRecommended(){
@@ -125,11 +135,11 @@ export default function Missions(){
           <div className="mission-next-main">
             <h2>{playerConfirmed?'PLAY YOUR NEXT GAME WITH THESE TWO JOBS':'CONFIRM YOUR TWO COACHING MISSIONS'}</h2>
             <p>{playerConfirmed
-              ?'Both missions are saved. Read the two actions below, then play one tracked game. After the match, OP CLIMB checks what the evidence actually shows.'
+              ?'Both missions are saved. Focus on Mission 1 first; keep Mission 2 in mind. After one tracked game, OP CLIMB checks the evidence and shows what to practise next.'
               :'Your coach has suggested two areas based on your games. Read the actions below. Keep both, or choose another one. Nothing is marked as your personal choice until you confirm.'}</p>
             {playerConfirmed
               ?<Link href="/live" className="btn primary mission-next-cta">OPEN MATCH ROOM →</Link>
-              :<div className="mission-next-buttons"><button className="btn primary mission-next-cta" type="button" onClick={()=>void confirmRecommended()} disabled={saving||persistedDomains.length!==2}>{saving?'SAVING…':'YES — CONFIRM THESE TWO →'}</button><button className="btn secondary" type="button" onClick={()=>setShowAllTrees(true)}>CHANGE A MISSION</button></div>}
+              :<div className="mission-next-buttons"><button className="btn primary mission-next-cta" type="button" onClick={()=>void confirmRecommended()} disabled={saving||persistedDomains.length!==2}>{saving?'SAVING…':'YES — CONFIRM THESE TWO →'}</button><button className="btn secondary" type="button" onClick={openLibrary}>CHANGE A MISSION</button></div>}
           </div>
           <ol className="mission-next-steps">
             <li className={playerConfirmed?'is-complete':'is-current'}><b>{playerConfirmed?'✓':'01'}</b><span><strong>CHOOSE</strong><small>{playerConfirmed?'You confirmed your two missions':'Read both missions and confirm'}</small></span></li>
@@ -152,8 +162,8 @@ export default function Missions(){
           const task=missions.find(row=>row.domain===domain)?.task;
           const plain=task?plainLanguageFocus(task):null;
           const proof=task?missionSummary(task):null;
-          return <button type="button" key={domain} className="missions-active-item" style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>{setSelectedDomain(domain);setShowAllTrees(true)}}>
-            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>MISSION {index+1} · {DNA_DOMAIN_LABELS[domain]}</b></span>
+          return <button type="button" key={domain} className="missions-active-item" style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>openMissionDetails(domain)}>
+            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>MISSION {index+1} · {index===0?'MAIN FOCUS':'SECOND FOCUS'} · {DNA_DOMAIN_LABELS[domain]}</b></span>
             <strong>{plain?.name||task?.title||'Mission loading'}</strong>
             <span className="mission-active-tag">DO THIS IN YOUR NEXT GAME</span>
             <span className="mission-active-instruction">{plain?.nextGame||task?.gameRule||'Your coach will show your action when your plan loads.'}</span>
@@ -161,7 +171,7 @@ export default function Missions(){
             <span className="mission-active-proof">{plain?.success||task?.target||'OP CLIMB needs verifiable game evidence.'}</span>
             <span className="missions-active-evidence"><span>{proof?proof.confirmed+'/'+proof.required+' PROVEN GAMES':'WAITING FOR EVIDENCE'}</span><b>FULL DETAILS ↗</b></span>
           </button>;
-        })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR TWO MISSIONS ARE NOT READY YET</strong><p>Choose your priorities from the six areas below, then save them.</p><button type="button" className="btn primary" onClick={()=>setShowAllTrees(true)}>CHOOSE MY MISSIONS →</button></div>}</div>
+        })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR TWO MISSIONS ARE NOT READY YET</strong><p>Choose your priorities from the six areas below, then save them.</p><button type="button" className="btn primary" onClick={openLibrary}>CHOOSE MY MISSIONS →</button></div>}</div>
       </section>
 
       {saveMessage&&<div className="missions-focus-message" role="status" aria-live="polite">{saveMessage}</div>}
@@ -172,7 +182,7 @@ export default function Missions(){
           <p><b>PROVEN</b> means the tracked game supports your behaviour. <b>MISSED</b> means it did not meet the goal. <b>NOT OBSERVED</b> means there wasn't enough evidence — no made-up progress. When you earn the required verified games, your coaching moves to the next challenge.</p></div>
       </section>
 
-      <section className="mission-library" aria-label="Explore and switch Game DNA missions">
+      <section id="mission-library" className="mission-library" aria-label="Explore and switch Game DNA missions">
         <button className="mission-library-toggle" type="button" aria-expanded={showAllTrees} onClick={()=>setShowAllTrees(current=>!current)}>
           <span><small>OPTIONAL · CHANGE OR EXPLORE</small><strong>{showAllTrees?'HIDE THE SIX DNA AREAS':'VIEW ALL 6 DNA AREAS / CHANGE A MISSION'}</strong><em>Your two chosen areas are highlighted. The others stay measured.</em></span>
           <b aria-hidden="true">{showAllTrees?'−':'＋'}</b>
@@ -207,13 +217,13 @@ export default function Missions(){
               </div>
               <div className="missions-switch-track"><i style={{width:`${rep?.progress??0}%`}}/></div>
             </button>
-            <button className={`missions-tree-toggle ${unlocked?'on':''}`} type="button" onClick={()=>requestUnlock(domain)}>
+            <button className={`missions-tree-toggle ${unlocked?'on':''}`} type="button" onClick={()=>void requestUnlock(domain)}>
               <span>{unlocked?(playerConfirmed?'ACTIVE DNA TREE':'RECOMMENDED TREE'):'UNLOCK THIS TREE'}</span><b>{unlocked?'✓':'＋'}</b>
             </button>
             {swapTarget===domain&&!unlocked&&<div className="missions-tree-swap">
               <span>YOU ALREADY HAVE 2 ACTIVE TREES</span>
               <b>Which one should this replace?</b>
-              <div>{persistedDomains.map(activeDomain=><button key={activeDomain} type="button" onClick={()=>replaceActiveTree(activeDomain)}>REPLACE {DNA_DOMAIN_LABELS[activeDomain].toUpperCase()}</button>)}</div>
+              <div>{persistedDomains.map(activeDomain=><button key={activeDomain} type="button" onClick={()=>void replaceActiveTree(activeDomain)}>REPLACE {DNA_DOMAIN_LABELS[activeDomain].toUpperCase()}</button>)}</div>
               <button className="missions-tree-swap-cancel" type="button" onClick={()=>{setSwapTarget(null);setSaveMessage('')}}>CANCEL</button>
             </div>}
           </article>;
@@ -230,7 +240,7 @@ export default function Missions(){
         const rep=missionRepView(task);
         const comparison=missionComparisonForMatch(task,latestMatch?.id);
         const level=dnaStrandLevel(roleTasks,domain,active.role);
-        return <article className="panel missions-focus-card" style={style}>
+        return <article id="mission-focus-detail" className="panel missions-focus-card" style={style}>
           <div className="missions-focus-top">
             <div><span>{DNA_DOMAIN_LABELS[domain].toUpperCase()} · LV {level.level} · {unlocked?(playerConfirmed?'PLAYER CHOSEN':'RECOMMENDED'):'LOCKED'}</span><small>{unlocked?(playerConfirmed?'Player-confirmed priority for your next tracked game':'Coach suggestion. Confirm this pair to make it your chosen plan.'):'Fully measured, but progression is locked until you choose this as one of your two active trees'}</small></div>
             <MissionMeasurementBadge metric={task.metric} compact/>
