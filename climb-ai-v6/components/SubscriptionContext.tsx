@@ -1,5 +1,5 @@
 'use client';
-import {createContext,useContext,useEffect,useMemo,useState} from 'react';
+import {createContext,useContext,useEffect,useMemo,useRef,useState} from 'react';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {normalizeTier,SubscriptionProduct,SubscriptionTier,TIER_RANK} from '@/lib/subscription';
 
@@ -19,7 +19,9 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
   const [lolTier,setLolTier]=useState<SubscriptionTier>('FREE');
   const [tftTier,setTftTier]=useState<SubscriptionTier>('FREE');
   const [loading,setLoading]=useState(true);
+  const refreshGeneration=useRef(0);
   const refresh=async()=>{
+    const generation=++refreshGeneration.current;
     setLoading(true);
     try{
       const client=await getBrowserClient();
@@ -35,6 +37,7 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
         client.from('product_entitlements').select('product,tier,status,current_period_end').eq('user_id',user.id),
       ]);
 
+      if(generation!==refreshGeneration.current)return;
       const founderByProfile=profile?.is_founder===true;
       const founderByRiot=(riotAccounts??[]).some(account=>FOUNDER_RIOT_ACCOUNTS.some(founder=>
         String(account.game_name??'').trim().toLowerCase()===founder.gameName&&
@@ -58,9 +61,22 @@ export function SubscriptionProvider({children}:{children:React.ReactNode}){
       const sharedTier=TIER_RANK[oldTftTier]>TIER_RANK[leagueTier]?oldTftTier:leagueTier;
       setLolTier(sharedTier);
       setTftTier(sharedTier);
-    }finally{setLoading(false)}
+    }finally{if(generation===refreshGeneration.current)setLoading(false)}
   };
-  useEffect(()=>{void refresh()},[]);
+  useEffect(()=>{
+    void refresh();
+    let unsubscribe:(()=>void)|undefined;
+    let stopped=false;
+    void getBrowserClient().then(client=>{
+      if(!client||stopped)return;
+      const {data}=client.auth.onAuthStateChange(()=>{
+        // Run after Supabase finishes applying cookies/session change.
+        queueMicrotask(()=>{if(!stopped)void refresh()});
+      });
+      unsubscribe=()=>data.subscription.unsubscribe();
+    });
+    return()=>{stopped=true;unsubscribe?.()};
+  },[]);
   const value=useMemo<Ctx>(()=>({
     tier:lolTier,lolTier,tftTier,tierFor:(product)=>product==='TFT'?tftTier:lolTier,loading,refresh,
   }),[lolTier,tftTier,loading]);
