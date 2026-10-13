@@ -14,7 +14,7 @@ test('TFT esports HUD is distinct and retains all three low-distraction presets'
  for(const focus of ['economy','tempo','flex','position'])assert.match(css,new RegExp('tft-focus-'+focus));
  for(const mode of ['minimal','focus','expanded'])assert.match(css,new RegExp('is-tft\\.mode-'+mode));
  assert.match(js,/TACTICIAN HUD/);
- assert.match(js,/STATIC TFT FOCUS/);
+ assert.match(js,/ACCOUNT MISSION LOCKED/);
  assert.doesNotMatch(js,/enemyCooldown|winProbability|liveHud/);
 });
 test('The TFT learning coach exposes four PRESELECTED focuses, not live values',()=>{

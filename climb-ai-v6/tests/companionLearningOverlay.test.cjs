@@ -80,11 +80,11 @@ test('overlay renderer changes from League mission to locked TFT focus without b
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(element('win').textContent,'Hold range');
  assert.equal(element('mission').textContent,'Position safely');
- stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY'});
- assert.equal(element('title').textContent,'ECONOMY DISCIPLINE');
- assert.equal(element('mission').textContent,'Plan your spending');
- assert.equal(element('win').textContent,'Keep options open');
- assert.equal(element('avoid').textContent,'Protect your economy');
+ stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY',tftMission:{title:'CONVERT GOLD BEFORE HP',nextGame:'Spend deliberately to stabilise.',cues:['Review your economy','Check your stabilisation']}});
+ assert.equal(element('title').textContent,'CONVERT GOLD BEFORE HP');
+ assert.equal(element('mission').textContent,'Spend deliberately to stabilise.');
+ assert.equal(element('win').textContent,'Review your economy');
+ assert.equal(element('avoid').textContent,'Check your stabilisation');
  assert.ok(!element('editor').hidden===false || element('editor').hidden);
 });
 
@@ -191,7 +191,7 @@ test('esports HUD preserves click-through safety and frozen-plan, low-distractio
  assert.match(styles,/\.hud\.mode-focus \.hud-block--actions/);
  assert.match(styles,/\.hud\.mode-minimal \.hud-identity/);
  assert.match(script,/put\('modeIndicator',mode\)/);
- assert.match(script,/put\('planState','STATIC TFT FOCUS'\)/);
+ assert.match(script,/ACCOUNT MISSION LOCKED/);
  assert.doesNotMatch(script,/\.innerHTML=/);
  assert.doesNotMatch(script,/winProbability|enemyCooldown|liveHud|enemyPosition/i);
  assert.doesNotMatch(styles,/animation:[^;]*infinite/i);

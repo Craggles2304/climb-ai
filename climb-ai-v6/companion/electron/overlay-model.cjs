@@ -56,6 +56,12 @@ function overlayView(state,options={}){
   return {
     show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
     focus:allowedFocus.has(String(options.tftFocus||''))?String(options.tftFocus):'ECONOMY',
+    tftMission:game==='TFT'&&options.tftMission?{
+      id:limit(options.tftMission.id,80),status:limit(options.tftMission.status,20),domain:limit(options.tftMission.domain,30),
+      title:limit(options.tftMission.title,130),nextGame:limit(options.tftMission.nextGame,400),
+      cues:Array.isArray(options.tftMission.cues)?options.tftMission.cues.slice(0,2).map(item=>limit(item,160)):[],
+      progress:Math.max(0,Number(options.tftMission.progress)||0),goal:Math.max(0,Number(options.tftMission.goal)||0),
+    }:null,
     status:game==='TFT'?'TFT · RECORDING':game==='LOL'?'LEAGUE · RECORDING':'PREVIEW · EDITING',
     plan:game==='LOL'?(options.frozenLeague||null):null,
     disclaimer:'FROZEN BEFORE THE GAME · REVIEW AFTER',
