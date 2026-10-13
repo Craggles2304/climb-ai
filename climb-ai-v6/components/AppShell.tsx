@@ -16,7 +16,7 @@ import {missionSummary} from '@/lib/missionLoop';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {gameDnaFocusSource,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {buildJourneyState} from '@/lib/journeyState';
@@ -147,6 +147,7 @@ export function AppShell({children}:{children:React.ReactNode}){
     online:journeyOnline,
     baselineGames:journeyBaselineGames,
     dnaRevealed:journeyDnaRevealed,
+    focusSelectionSource:gameDnaFocusSource(journeyRoleTasks,active.role),
     focusName:journeyFocusPair.length===2?'Two DNA trees unlocked':journeyFocusPlain?.name,
     focusJob:journeyFocusPair.length===2?`1. ${journeyFocusPlain?.nextGame||''}  2. ${journeySecondPlain?.nextGame||''}`:journeyFocusPlain?.nextGame,
     focusConfirmed:journeyFocusSummary?.confirmed,
