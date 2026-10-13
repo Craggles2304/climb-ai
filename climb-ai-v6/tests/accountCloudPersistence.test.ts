@@ -23,7 +23,7 @@ test('account browser hydrates from cloud, never silently imports anonymous prof
   const ctx=source('components/AccountContext.tsx');
   assert.match(ctx,/selected_riot_account_id/);
   assert.match(ctx,/preferredRiotAccountId/);
-  assert.match(ctx,/client\.from\('profiles'\)\.update\(\{selected_riot_account_id:id\}\)/);
+  assert.match(ctx,/client\.from\('profiles'\)\s*\.update\(\{selected_riot_account_id:id\}\)/);
   assert.doesNotMatch(ctx,/if\(!profileRow&&local\)\{/);
   assert.match(ctx,/generation!==hydrationGeneration\.current/);
   assert.match(ctx,/authenticatedUserId\.current!==nextUserId/);
