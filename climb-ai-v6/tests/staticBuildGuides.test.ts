@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {overlayView} from '../companion/electron/overlay-model.cjs';
+const {overlayView}=require('../companion/electron/overlay-model.cjs');
 
 const src=(file:string)=>readFileSync(file,'utf8');
 
