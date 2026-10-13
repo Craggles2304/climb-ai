@@ -26,6 +26,8 @@ export default function Missions(){
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
   const [swapTarget,setSwapTarget]=useState<DnaDomain|null>(null);
   const [saveMessage,setSaveMessage]=useState('');
+  const [saving,setSaving]=useState(false);
+  const [showAllTrees,setShowAllTrees]=useState(false);
   const matches=matchesFor(active.id).filter(match=>match.durationSeconds>=300&&canonicalLeagueRole(match.role)===active.role);
   const baselineGames=dnaBaselineGameCount(matches,active.role);
   const baselineReady=dnaBaselineReady(baselineGames);
@@ -44,16 +46,21 @@ export default function Missions(){
   const latestMatch=[...matches].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   const selectedMission=missions.find(row=>row.domain===selectedDomain)??missions[0];
   async function confirmRecommended(){
-    if(persistedDomains.length!==2)return;
-    setSaveMessage('Confirming your two DNA trees across your account and Companion…');
-    const saved=await setDnaFocusDomains(persistedDomains);
-    setSaveMessage(saved
-      ?'Confirmed and saved. These are now your two player-chosen missions for your next tracked match.'
-      :'The confirmation could not be saved. Your recommended pair remains visible; please retry.');
+    if(persistedDomains.length!==2||saving)return;
+    setSaving(true);
+    setSaveMessage('Saving your two chosen missions…');
+    try{
+      const saved=await setDnaFocusDomains(persistedDomains);
+      setSaveMessage(saved
+        ?'Your two missions are saved to your account. Next: take them into a tracked match.'
+        :'Could not save your choice. Your recommended missions remain visible. Please try again.');
+    }finally{setSaving(false)}
   }
 
   async function requestUnlock(domain:DnaDomain){
     setSelectedDomain(domain);
+    setShowAllTrees(true);
+    if(saving)return;
     if(persistedDomains.includes(domain)){
       setSwapTarget(null);
       setSaveMessage(playerConfirmed?`${DNA_DOMAIN_LABELS[domain]} is already one of your confirmed trees. Choose a locked tree to swap it.`:'This tree is recommended, but not yet player-confirmed. Use CONFIRM THESE TWO above, or swap a tree first.');
@@ -63,7 +70,8 @@ export default function Missions(){
       const next=[...persistedDomains,domain];
       if(next.length===2){
         setSaveMessage('Saving your two DNA tree choices…');
-        const saved=await setDnaFocusDomains(next);
+        setSaving(true);
+        const saved=await setDnaFocusDomains(next).finally(()=>setSaving(false));
         if(saved){
         setSwapTarget(null);
         setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is now saved as an active mission. Your two missions appear above the trees.`);
@@ -78,12 +86,13 @@ export default function Missions(){
   }
 
   async function replaceActiveTree(replaceDomain:DnaDomain){
-    if(!swapTarget)return;
+    if(!swapTarget||saving)return;
     const next=persistedDomains.filter(domain=>domain!==replaceDomain).concat(swapTarget);
     if(next.length!==2){setSaveMessage('Could not build a valid two-tree selection. Refresh and try again.');return}
     const incoming=swapTarget;
     setSaveMessage('Saving your active mission choices…');
-    const ok=await setDnaFocusDomains(next);
+    setSaving(true);
+    const ok=await setDnaFocusDomains(next).finally(()=>setSaving(false));
     if(ok){
       setSelectedDomain(incoming);
       setSwapTarget(null);
@@ -97,44 +106,82 @@ export default function Missions(){
     <header className="missions-head arena-visual-arthead arena-visual-missions"><ArenaHeroArtwork champion={active.champions?.[0]||"Jinx"} tag="YOUR MAIN" />
       <div>
         <div className="eyebrow">LEAGUE · {active.role} · GAME DNA</div>
-        <h1>Choose your two DNA trees</h1>
-        <p>All six strands stay fully visible, measured and levelled. You choose which two stay unlocked for progression. Only those two can bank mission reps until you swap one out.</p>
+        <h1>Your mission. Your next move.</h1>
+        <p>Two coaching focuses. Clear actions for your next game. Real proof afterwards. You can explore all six Game DNA areas whenever you want.</p>
       </div>
-      <div className="missions-head-actions"><span>{persistedDomains.length}/2 {playerConfirmed?"PLAYER CHOSEN":"SUGGESTED"}</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
+      <div className="missions-head-actions"><span>{baselineReady?(playerConfirmed?'MISSIONS CONFIRMED':'YOUR COACH HAS 2 SUGGESTIONS'):'BASELINE IN PROGRESS'}</span><Link className="btn secondary" href="/ilp">EXPLORE GAME DNA →</Link></div>
     </header>
 
     {!planReady?<section className="panel panel-padding"><div className="eyebrow">LOADING MISSIONS</div><h2>Checking your current plan…</h2></section>:
     planError?<section className="panel panel-padding"><div className="eyebrow">PLAN LOAD ERROR</div><h2>Your missions could not be loaded.</h2><p>{planError}</p><button className="btn secondary" type="button" onClick={()=>window.location.reload()}>RETRY</button></section>:
-    !baselineReady?<section className="panel panel-padding missions-baseline"><div className="eyebrow">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} GAMES</div><h2>All six DNA trees unlock after the baseline.</h2><p>Play normally for {DNA_BASELINE_GAMES-baselineGames} more tracked {active.role} game{DNA_BASELINE_GAMES-baselineGames===1?'':'s'}. After game {DNA_BASELINE_GAMES}, all six trees appear at the same level of detail and you choose the two you want to develop first.</p><div className="missions-track" role="progressbar" aria-label="DNA baseline games" aria-valuenow={baselineGames} aria-valuemin={0} aria-valuemax={DNA_BASELINE_GAMES}><span style={{width:`${baselineGames/DNA_BASELINE_GAMES*100}%`}}/></div><Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link></section>:
+    !baselineReady?<section className="panel panel-padding missions-baseline"><div className="eyebrow">STEP 1 OF 3 · BUILD YOUR GAME DNA</div>
+    <h2>Your next job: play {DNA_BASELINE_GAMES-baselineGames} more tracked {active.role} game{DNA_BASELINE_GAMES-baselineGames===1?'':'s'}.</h2>
+    <p>Play as normal. We need {DNA_BASELINE_GAMES} tracked games in the same role before coaching missions can be based on your play. You're at {baselineGames}/{DNA_BASELINE_GAMES}.</p>
+    <div className="mission-simple-baseline-steps"><span><b>1 · NOW</b> Play a tracked game</span><span><b>2 · NEXT</b> Reveal your six Game DNA areas</span><span><b>3 · THEN</b> Confirm two coaching missions</span></div><div className="missions-track" role="progressbar" aria-label="DNA baseline games" aria-valuenow={baselineGames} aria-valuemin={0} aria-valuemax={DNA_BASELINE_GAMES}><span style={{width:`${baselineGames/DNA_BASELINE_GAMES*100}%`}}/></div><Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link></section>:
     <section className="missions-tree-workspace">
-      <div className="missions-tree-toolbar panel">
-        <div><div className="eyebrow">YOUR 6 DNA TREES</div><h2>Unlock two. Keep all six visible.</h2><p>The lock only controls progression. Locked trees still keep their level, mission, history and evidence.</p></div>
-        <div className="missions-tree-save">
-          <span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 {playerConfirmed?"CONFIRMED":"RECOMMENDED"}</span>
-          <small>Changes save instantly</small>
+      <section className="mission-next-action" aria-label="Your next coaching step">
+        <div className="mission-next-eyebrow"><span className="mission-next-live-dot" /> YOUR NEXT STEP · {playerConfirmed?'READY TO PLAY':'ONE CHOICE TO MAKE'}</div>
+        <div className="mission-next-layout">
+          <div className="mission-next-main">
+            <h2>{playerConfirmed?'PLAY YOUR NEXT GAME WITH THESE TWO JOBS':'CONFIRM YOUR TWO COACHING MISSIONS'}</h2>
+            <p>{playerConfirmed
+              ?'Both missions are saved. Read the two actions below, then play one tracked game. After the match, OP CLIMB checks what the evidence actually shows.'
+              :'Your coach has suggested two areas based on your games. Read the actions below. Keep both, or choose another one. Nothing is marked as your personal choice until you confirm.'}</p>
+            {playerConfirmed
+              ?<Link href="/live" className="btn primary mission-next-cta">OPEN MATCH ROOM →</Link>
+              :<div className="mission-next-buttons"><button className="btn primary mission-next-cta" type="button" onClick={()=>void confirmRecommended()} disabled={saving||persistedDomains.length!==2}>{saving?'SAVING…':'YES — CONFIRM THESE TWO →'}</button><button className="btn secondary" type="button" onClick={()=>setShowAllTrees(true)}>CHANGE A MISSION</button></div>}
+          </div>
+          <ol className="mission-next-steps">
+            <li className={playerConfirmed?'is-complete':'is-current'}><b>{playerConfirmed?'✓':'01'}</b><span><strong>CHOOSE</strong><small>{playerConfirmed?'You confirmed your two missions':'Read both missions and confirm'}</small></span></li>
+            <li className={playerConfirmed?'is-current':''}><b>02</b><span><strong>PLAY</strong><small>Practise the actions in one tracked game</small></span></li>
+            <li><b>03</b><span><strong>REVIEW</strong><small>See what was proven, missed or not observed</small></span></li>
+          </ol>
         </div>
-      </div>
-      <section className="missions-active-strip" aria-label="Your two active coaching missions">
-        <header><div><span className="eyebrow">{playerConfirmed?'PLAYER-CONFIRMED PLAN':'COACH SUGGESTION · NEEDS YOUR CONFIRMATION'}</span><h2>{playerConfirmed?'YOUR 2 ACTIVE MISSIONS':'2 RECOMMENDED MISSIONS'}</h2><p>{playerConfirmed
-          ?'You selected these two trees. They are saved and can earn verified progress in your next tracked '+active.role+' game.'
-          :'OP CLIMB suggested these two trees from your evidence. They are NOT yet your personal selection. Confirm them or swap one below.'}</p></div>
-          {playerConfirmed?<Link href="/live" className="btn primary">TAKE MISSIONS INTO MATCH ROOM →</Link>
-            :<button type="button" className="btn primary" onClick={()=>void confirmRecommended()} disabled={persistedDomains.length!==2}>CONFIRM THESE TWO →</button>}</header>
-        <div className="missions-active-grid">{persistedDomains.map(domain=>{
-          const task=missions.find(row=>row.domain===domain)?.task;
-          const proof=task?missionSummary(task):null;
-          const plain=task?plainLanguageFocus(task):null;
-          return <button className="missions-active-item" type="button" key={domain} style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>setSelectedDomain(domain)}>
-            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>{DNA_DOMAIN_LABELS[domain]}</b><small>{playerConfirmed?"PLAYER CONFIRMED":"RECOMMENDED · NOT CONFIRMED"}</small></span>
-            <strong>{plain?.name||task?.title||'Waiting for your next mission'}</strong>
-            <span>{plain?.nextGame||task?.gameRule||'Your mission will appear after the coaching plan loads.'}</span>
-            <span className="missions-active-evidence">{proof?proof.confirmed+'/'+proof.required+' verified games':'NOT OBSERVED'} <b>VIEW MISSION ↗</b></span>
-          </button>;
-        })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR ACTIVE MISSIONS NEED SETTING UP</strong><p>Select two unlocked Game DNA trees below. If your selection does not save, retry or use the error message above.</p></div>}</div>
       </section>
-      {saveMessage&&<div className="missions-focus-message" role="status" aria-live="polite">{saveMessage}</div>}
-      <MissionFlowVerification/>
 
+      <section className="missions-active-strip" aria-label="Two missions for your next game">
+        <header>
+          <div>
+            <span className="eyebrow">{playerConfirmed?'YOUR SAVED COACHING PLAN':'SUGGESTED BY YOUR COACH · NOT CONFIRMED YET'}</span>
+            <h2>{playerConfirmed?'YOUR TWO MISSIONS FOR NEXT GAME':'THESE ARE YOUR TWO SUGGESTED MISSIONS'}</h2>
+            <p>{playerConfirmed?'Focus on the actions. Progress is awarded only when real match evidence supports it.':'You can accept these suggestions or change one before playing.'}</p>
+          </div>
+          <span className="mission-confirm-status">{playerConfirmed?'✓ SAVED TO YOUR ACCOUNT':'CONFIRM YOUR CHOICE ABOVE'}</span>
+        </header>
+        <div className="missions-active-grid">{persistedDomains.map((domain,index)=>{
+          const task=missions.find(row=>row.domain===domain)?.task;
+          const plain=task?plainLanguageFocus(task):null;
+          const proof=task?missionSummary(task):null;
+          return <button type="button" key={domain} className="missions-active-item" style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>{setSelectedDomain(domain);setShowAllTrees(true)}}>
+            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>MISSION {index+1} · {DNA_DOMAIN_LABELS[domain]}</b></span>
+            <strong>{plain?.name||task?.title||'Mission loading'}</strong>
+            <span className="mission-active-tag">DO THIS IN YOUR NEXT GAME</span>
+            <span className="mission-active-instruction">{plain?.nextGame||task?.gameRule||'Your coach will show your action when your plan loads.'}</span>
+            <span className="mission-active-proof-label">HOW PROGRESS IS CHECKED</span>
+            <span className="mission-active-proof">{plain?.success||task?.target||'OP CLIMB needs verifiable game evidence.'}</span>
+            <span className="missions-active-evidence"><span>{proof?proof.confirmed+'/'+proof.required+' PROVEN GAMES':'WAITING FOR EVIDENCE'}</span><b>FULL DETAILS ↗</b></span>
+          </button>;
+        })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR TWO MISSIONS ARE NOT READY YET</strong><p>Choose your priorities from the six areas below, then save them.</p><button type="button" className="btn primary" onClick={()=>setShowAllTrees(true)}>CHOOSE MY MISSIONS →</button></div>}</div>
+      </section>
+
+      {saveMessage&&<div className="missions-focus-message" role="status" aria-live="polite">{saveMessage}</div>}
+
+      <section className="mission-after-game" aria-labelledby="mission-after-title">
+        <span className="mission-after-icon" aria-hidden="true">↳</span>
+        <div><span className="eyebrow">AFTER YOUR NEXT TRACKED GAME</span><h2 id="mission-after-title">WE CHECK THE EVIDENCE. YOU GET YOUR NEXT JOB.</h2>
+          <p><b>PROVEN</b> means the tracked game supports your behaviour. <b>MISSED</b> means it did not meet the goal. <b>NOT OBSERVED</b> means there wasn't enough evidence — no made-up progress. When you earn the required verified games, your coaching moves to the next challenge.</p></div>
+      </section>
+
+      <section className="mission-library" aria-label="Explore and switch Game DNA missions">
+        <button className="mission-library-toggle" type="button" aria-expanded={showAllTrees} onClick={()=>setShowAllTrees(current=>!current)}>
+          <span><small>OPTIONAL · CHANGE OR EXPLORE</small><strong>{showAllTrees?'HIDE THE SIX DNA AREAS':'VIEW ALL 6 DNA AREAS / CHANGE A MISSION'}</strong><em>Your two chosen areas are highlighted. The others stay measured.</em></span>
+          <b aria-hidden="true">{showAllTrees?'−':'＋'}</b>
+        </button>
+        {showAllTrees&&<>
+          <div className="missions-tree-toolbar panel">
+            <div><div className="eyebrow">YOUR SIX GAME DNA AREAS</div><h2>Choose which two to work on.</h2><p>Pick a different area to swap one of your active missions. Locked areas still track your performance.</p></div>
+            <div className="missions-tree-save"><span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 {playerConfirmed?'CONFIRMED':'SUGGESTED'}</span><small>{saving?'Saving to your account…':'Confirm or swap to save'}</small></div>
+          </div>
       <div className="missions-six-grid">
         {missions.map(({domain,task})=>{
           const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
@@ -207,6 +254,9 @@ export default function Missions(){
           </div>
         </article>;
       })()}
+        </>}
+      </section>
+      <details className="mission-advanced-check"><summary>OPTIONAL · CHECK COMPANION AND MISSION TRACKING <span>+</span></summary><MissionFlowVerification/></details>
     </section>}
   </main></AppShell>;
 }
