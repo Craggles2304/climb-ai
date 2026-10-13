@@ -7,7 +7,7 @@ import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {gameDnaClientMissions,gameDnaFocusSource,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
