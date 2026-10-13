@@ -7,6 +7,7 @@ import {useSubscription} from '@/components/SubscriptionContext';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {summarizeTft,tftCoachingRead,type TftDecisionReview,type TftGamePlan,type TftMatch} from '@/lib/tft/types';
 import {buildTacticianProfile} from '@/lib/tft/advancedCoach';
+import type {TftAccountMission} from '@/lib/tft/currentMission';
 
 function map(row:any):TftMatch{
   const raw=row.raw&&typeof row.raw==='object'?row.raw:{};
@@ -17,7 +18,17 @@ function scoreTone(score:number|null){if(score===null)return 'UNKNOWN';if(score>
 
 export default function TftCoach(){
   const {active}=useAccount();const {tftTier}=useSubscription();const [matches,setMatches]=useState<TftMatch[]>([]);const [loading,setLoading]=useState(true);
+  const [syncedMission,setSyncedMission]=useState<TftAccountMission|null>(null);
   useEffect(()=>{void (async()=>{setLoading(true);const client=await getBrowserClient();if(!client){setLoading(false);return;}const {data:userData}=await client.auth.getUser();if(!userData.user){setLoading(false);return;}const {data}=await client.from('tft_matches').select('*').eq('user_id',userData.user.id).eq('riot_account_id',active.id).order('game_datetime',{ascending:false}).limit(20);setMatches((data||[]).map(map));setLoading(false);})()},[active.id]);
+  useEffect(()=>{
+    let cancelled=false;
+    setSyncedMission(null);
+    void fetch('/api/tft/current-mission?riotAccountId='+encodeURIComponent(active.id),{cache:'no-store'})
+      .then(async response=>response.ok?response.json():null)
+      .then(data=>{if(!cancelled)setSyncedMission(data?.mission||null)})
+      .catch(()=>{if(!cancelled)setSyncedMission(null)});
+    return()=>{cancelled=true};
+  },[active.id]);
   const summary=useMemo(()=>summarizeTft(matches),[matches]);
   const read=useMemo(()=>tftCoachingRead(matches),[matches]);
   const profile=useMemo(()=>buildTacticianProfile(matches),[matches]);
@@ -74,10 +85,11 @@ export default function TftCoach(){
 
     <section className="tft-focus-grid">
       <article className="tft-focus">
-        <span>PRIORITY TFT MISSION</span>
-        <h2>{profile.primaryLeak?.label||read.title}</h2>
-        <p>{profile.primaryLeak?.rationale||read.detail}</p>
-        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{nextAction}</b></div>
+        <span>YOUR ACCOUNT-SYNCED TFT MISSION</span>
+        <h2>{syncedMission?.title||'SYNCING YOUR TFT DNA'}</h2>
+        <p>{syncedMission?.why||'Your account mission will appear here when your profile is available.'}</p>
+        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{syncedMission?.nextGame||'Connect your account and build decision evidence.'}</b></div>
+        {syncedMission&&<p style={{marginTop:10,fontSize:12}}> {syncedMission.status==='BASELINE'?'BASELINE · NEED MORE EVIDENCE':syncedMission.progress+'/'+syncedMission.goal+' model-derived indicators'} · Sent to your paired Companion and frozen for the match.</p>}
       </article>
       <aside className="tft-grade">
         <span>TACTICIAN GRADE</span>
@@ -88,7 +100,7 @@ export default function TftCoach(){
 
     <section className="tft-mission-board">
       <div className="tft-mission-board-head">
-        <div><div className="eyebrow">YOUR ACTIVE DEVELOPMENT</div><h2>5 TFT MISSIONS</h2></div>
+        <div><div className="eyebrow">SUPPORTING DEVELOPMENT</div><h2>YOUR TFT DNA BACKLOG</h2></div>
         <Link href="/tft/decision-lab" className="btn secondary">OPEN DECISION LAB</Link>
       </div>
       <div className="tft-mission-list">
