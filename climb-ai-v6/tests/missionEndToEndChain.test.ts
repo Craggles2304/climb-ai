@@ -59,3 +59,23 @@ test('synthetic full pipeline: recommended -> player-confirmed -> cloud -> times
  const other=graded.filter(task=>!['LANING','WAVES_CS'].includes(task.dnaDomain));
  assert.ok(other.every(task=>!(task.missionHistory??[]).some(row=>row.matchId==='real-path-fixture-1')));
 });
+
+
+test('changing DNA trees never banks historical matches played before the player selected them',()=>{
+ const starting=ensureOneMissionPerDnaStrand([],'account-test','ADC').tasks.map(task=>({
+   ...task,history:[{at:baselineTime,type:'PROMOTED' as const,note:'Baseline completed'}],
+   dnaFocusUnlocked:task.dnaDomain==='LANING'||task.dnaDomain==='WAVES_CS',
+   dnaFocusSelectionSource:'RECOMMENDED' as const,
+ }));
+ const selected=applyDnaFocusSelection(starting,['LANING','WAVES_CS'],'ADC','2026-10-13T18:20:00.000Z')!;
+ const before:any[]=[{
+   matchId:'before-confirmation',role:'ADC',champion:'Jinx',createdAt:'2026-10-13T18:10:00.000Z',
+   analysis:{version:1,evidenceSources:['LIVE_TELEMETRY'],metrics:{
+     red_state_fights:{key:'red_state_fights',label:'RED STATE',score:95,value:'95/100',
+       status:'DERIVED',confidence:'HIGH',sources:['LIVE_TELEMETRY'],
+       summary:'Good score from past game.',evidence:[{atSeconds:510,label:'Lane',detail:'Past decision'}]}
+   },leakSignals:[],fingerprint:{primary:'',sequence:[],explanation:'',confidence:'HIGH'}}
+ }];
+ const graded=gradeDnaStrandMissionsFromHistory(selected,before).tasks;
+ assert.ok(graded.every(task=>!(task.missionHistory??[]).some(a=>a.matchId==='before-confirmation')));
+});
