@@ -37,7 +37,9 @@ test('Home leads with one next step and makes Game DNA the dominant feature',()=
   assert.ok(dashboard.includes('THE DNA LOOP'));
   assert.ok(dashboard.includes('YOUR GAME DNA · THE CENTRE OF OP CLIMB'));
   assert.ok(dashboard.includes('<ClientGameDna'));
-  assert.ok(dashboard.includes('CURRENT FIX'));
+  assert.ok(dashboard.includes('YOUR NEXT-GAME MISSION'));
+  assert.ok(dashboard.includes('TWO MISSIONS TO CONFIRM'));
+  assert.ok(dashboard.includes('YOUR NEXT MOVE'));
   assert.ok(dashboard.includes('plainLanguageFocus'));
   assert.ok(dashboard.includes('YOUR JOB NEXT GAME'));
 });
