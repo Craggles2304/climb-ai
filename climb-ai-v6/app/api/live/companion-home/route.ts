@@ -6,7 +6,7 @@ import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
 import {canonicalGameDnaTasks,gameDnaStrands,gameMissionFocusPair,gameDnaFocusSource,missionRepView} from '@/lib/gameDnaSnapshot';
 import type {ILPTask,Role} from '@/lib/types';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
-import {LEAGUE_ROLES} from '@/lib/roleAwareLearning';
+import {LEAGUE_ROLES,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 
 export const runtime='nodejs';
@@ -48,9 +48,10 @@ export async function GET(req:NextRequest){
     .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??''),updatedAt:row?.updated_at??null}))
     .filter((task:any)=>task?.id) as Array<ILPTask&{updatedAt?:string|null}>;
   const roleKey=(role||null) as Role|null;
+  const scopedTasks=roleKey?storedTasks.filter(task=>taskAppliesToRole(task,roleKey)):storedTasks;
   const strandReady=roleKey&&account?.id
-    ?ensureOneMissionPerDnaStrand(storedTasks,String(account.id),roleKey).tasks
-    :storedTasks;
+    ?ensureOneMissionPerDnaStrand(scopedTasks,String(account.id),roleKey).tasks
+    :scopedTasks;
   const allTasks=canonicalGameDnaTasks(strandReady,roleKey);
   const focusPair=gameMissionFocusPair(allTasks,roleKey);
   const focusSource=gameDnaFocusSource(allTasks,roleKey);
