@@ -12,7 +12,7 @@ import {ArenaDomainIcon} from '@/components/ArenaIcon';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import type {DnaDomain} from '@/lib/types';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {currentGameDnaMissions,gameMissionFocusPair,missionRepView} from '@/lib/gameDnaSnapshot';
+import {currentGameDnaMissions,gameMissionFocusPair,gameDnaFocusSource,missionRepView} from '@/lib/gameDnaSnapshot';
 import {missionSummary} from '@/lib/missionLoop';
 import {missionComparisonForMatch} from '@/lib/missionComparison';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
@@ -31,6 +31,8 @@ export default function Missions(){
   const roleTasks=(allTasks[active.id]??tasks).filter(task=>taskAppliesToRole(task,active.role));
   const missions=currentGameDnaMissions(roleTasks,active.role);
   const fallbackPair=baselineReady?gameMissionFocusPair(roleTasks,active.role):[];
+  const focusSource=gameDnaFocusSource(roleTasks,active.role);
+  const playerConfirmed=focusSource==='PLAYER';
   const persistedDomains=useMemo(()=>{
     const direct=missions.filter(row=>row.task?.dnaFocusUnlocked===true).map(row=>row.domain);
     return direct.length===2?direct:fallbackPair.map(row=>row.domain);
@@ -40,11 +42,20 @@ export default function Missions(){
 
   const latestMatch=[...matches].sort((a,b)=>Date.parse(b.createdAt)-Date.parse(a.createdAt))[0];
   const selectedMission=missions.find(row=>row.domain===selectedDomain)??missions[0];
+  async function confirmRecommended(){
+    if(persistedDomains.length!==2)return;
+    setSaveMessage('Confirming your two DNA trees across your account and Companion…');
+    const saved=await setDnaFocusDomains(persistedDomains);
+    setSaveMessage(saved
+      ?'Confirmed and saved. These are now your two player-chosen missions for your next tracked match.'
+      :'The confirmation could not be saved. Your recommended pair remains visible; please retry.');
+  }
+
   async function requestUnlock(domain:DnaDomain){
     setSelectedDomain(domain);
     if(persistedDomains.includes(domain)){
       setSwapTarget(null);
-      setSaveMessage(`${DNA_DOMAIN_LABELS[domain]} is already one of your two active DNA trees. Choose a locked tree if you want to swap it out.`);
+      setSaveMessage(playerConfirmed?`${DNA_DOMAIN_LABELS[domain]} is already one of your confirmed trees. Choose a locked tree to swap it.`:'This tree is recommended, but not yet player-confirmed. Use CONFIRM THESE TWO above, or swap a tree first.');
       return;
     }
     if(persistedDomains.length<2){
@@ -88,7 +99,7 @@ export default function Missions(){
         <h1>Choose your two DNA trees</h1>
         <p>All six strands stay fully visible, measured and levelled. You choose which two stay unlocked for progression. Only those two can bank mission reps until you swap one out.</p>
       </div>
-      <div className="missions-head-actions"><span>{persistedDomains.length}/2 UNLOCKED</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
+      <div className="missions-head-actions"><span>{persistedDomains.length}/2 {playerConfirmed?"PLAYER CHOSEN":"SUGGESTED"}</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
     </header>
 
     {!planReady?<section className="panel panel-padding"><div className="eyebrow">LOADING MISSIONS</div><h2>Checking your current plan…</h2></section>:
@@ -98,18 +109,22 @@ export default function Missions(){
       <div className="missions-tree-toolbar panel">
         <div><div className="eyebrow">YOUR 6 DNA TREES</div><h2>Unlock two. Keep all six visible.</h2><p>The lock only controls progression. Locked trees still keep their level, mission, history and evidence.</p></div>
         <div className="missions-tree-save">
-          <span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 ACTIVE</span>
+          <span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 {playerConfirmed?"CONFIRMED":"RECOMMENDED"}</span>
           <small>Changes save instantly</small>
         </div>
       </div>
       <section className="missions-active-strip" aria-label="Your two active coaching missions">
-        <header><div><span className="eyebrow">YOUR CURRENT COACHING PLAN</span><h2>YOUR 2 ACTIVE MISSIONS</h2><p>These are the two missions that can earn verified progress in your next tracked {active.role} game.</p></div><Link href="/live" className="btn primary">TAKE MISSIONS INTO MATCH ROOM →</Link></header>
+        <header><div><span className="eyebrow">{playerConfirmed?'PLAYER-CONFIRMED PLAN':'COACH SUGGESTION · NEEDS YOUR CONFIRMATION'}</span><h2>{playerConfirmed?'YOUR 2 ACTIVE MISSIONS':'2 RECOMMENDED MISSIONS'}</h2><p>{playerConfirmed
+          ?'You selected these two trees. They are saved and can earn verified progress in your next tracked '+active.role+' game.'
+          :'OP CLIMB suggested these two trees from your evidence. They are NOT yet your personal selection. Confirm them or swap one below.'}</p></div>
+          {playerConfirmed?<Link href="/live" className="btn primary">TAKE MISSIONS INTO MATCH ROOM →</Link>
+            :<button type="button" className="btn primary" onClick={()=>void confirmRecommended()} disabled={persistedDomains.length!==2}>CONFIRM THESE TWO →</button>}</header>
         <div className="missions-active-grid">{persistedDomains.map(domain=>{
           const task=missions.find(row=>row.domain===domain)?.task;
           const proof=task?missionSummary(task):null;
           const plain=task?plainLanguageFocus(task):null;
           return <button className="missions-active-item" type="button" key={domain} style={{'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties} onClick={()=>setSelectedDomain(domain)}>
-            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>{DNA_DOMAIN_LABELS[domain]}</b><small>UNLOCKED · SCORING ENABLED</small></span>
+            <span className="missions-active-id"><ArenaDomainIcon domain={domain} size={24}/><b>{DNA_DOMAIN_LABELS[domain]}</b><small>{playerConfirmed?"PLAYER CONFIRMED":"RECOMMENDED · NOT CONFIRMED"}</small></span>
             <strong>{plain?.name||task?.title||'Waiting for your next mission'}</strong>
             <span>{plain?.nextGame||task?.gameRule||'Your mission will appear after the coaching plan loads.'}</span>
             <span className="missions-active-evidence">{proof?proof.confirmed+'/'+proof.required+' verified games':'NOT OBSERVED'} <b>VIEW MISSION ↗</b></span>
@@ -131,7 +146,7 @@ export default function Missions(){
             <button className="missions-tree-open" type="button" onClick={()=>setSelectedDomain(domain)} aria-label={`Open ${DNA_DOMAIN_LABELS[domain]} mission details`}>
               <div className="missions-tree-top">
                 <div><span className="arena-mission-symbol"><ArenaDomainIcon domain={domain} size={25}/>{DNA_DOMAIN_LABELS[domain].toUpperCase()}</span><b>LV {level.level}</b></div>
-                <strong>{unlocked?'UNLOCKED':'LOCKED'}</strong>
+                <strong>{unlocked?(playerConfirmed?'PLAYER CHOSEN':'RECOMMENDED'):'LOCKED'}</strong>
               </div>
               <div className="missions-tree-level"><i style={{width:`${level.levelProgress}%`}}/></div>
               <h3>{plain?.name??'Mission building'}</h3>
@@ -144,7 +159,7 @@ export default function Missions(){
               <div className="missions-switch-track"><i style={{width:`${rep?.progress??0}%`}}/></div>
             </button>
             <button className={`missions-tree-toggle ${unlocked?'on':''}`} type="button" onClick={()=>requestUnlock(domain)}>
-              <span>{unlocked?'ACTIVE DNA TREE':'UNLOCK THIS TREE'}</span><b>{unlocked?'✓':'＋'}</b>
+              <span>{unlocked?(playerConfirmed?'ACTIVE DNA TREE':'RECOMMENDED TREE'):'UNLOCK THIS TREE'}</span><b>{unlocked?'✓':'＋'}</b>
             </button>
             {swapTarget===domain&&!unlocked&&<div className="missions-tree-swap">
               <span>YOU ALREADY HAVE 2 ACTIVE TREES</span>
@@ -168,7 +183,7 @@ export default function Missions(){
         const level=dnaStrandLevel(roleTasks,domain,active.role);
         return <article className="panel missions-focus-card" style={style}>
           <div className="missions-focus-top">
-            <div><span>{DNA_DOMAIN_LABELS[domain].toUpperCase()} · LV {level.level} · {unlocked?'UNLOCKED':'LOCKED'}</span><small>{unlocked?'This tree can bank progression in your next tracked game':'Fully measured, but progression is locked until you choose this as one of your two active trees'}</small></div>
+            <div><span>{DNA_DOMAIN_LABELS[domain].toUpperCase()} · LV {level.level} · {unlocked?(playerConfirmed?'PLAYER CHOSEN':'RECOMMENDED'):'LOCKED'}</span><small>{unlocked?(playerConfirmed?'Player-confirmed priority for your next tracked game':'Coach suggestion. Confirm this pair to make it your chosen plan.'):'Fully measured, but progression is locked until you choose this as one of your two active trees'}</small></div>
             <MissionMeasurementBadge metric={task.metric} compact/>
           </div>
           <div className="missions-focus-main">
