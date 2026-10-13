@@ -13,13 +13,13 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
-let overlayWindow=null,overlayEditing=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null;
+let overlayWindow=null,overlayEditing=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null;
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
-let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
+let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
 let pairingAuthInvalid=false;
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null};
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -54,7 +54,7 @@ function publicState(){const cfg=currentConfig();return{...state,logs:recentLogs
 function overlayPayload(){
   const cfg=currentConfig();
   return overlayView(state,{enabled:cfg.overlayEnabled,editing:overlayEditing,layout:cfg.overlayLayout,
-    frozenLeague:overlayFrozenLeague,tftFocus:overlayFrozenTftFocus||cfg.tftFocus});
+    frozenLeague:overlayFrozenLeague,tftFocus:overlayFrozenTftFocus||cfg.tftFocus,tftMission:overlayFrozenTftMission});
 }
 function createOverlayWindow(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
@@ -154,8 +154,13 @@ function setState(patch){
   }else if(!['CHAMP_SELECT','RECORDING'].includes(state.phase)){
     overlayFrozenLeague=null;
   }
-  if(state.tftRecorder?.state==='RECORDING'&&previousTftState!=='RECORDING')overlayFrozenTftFocus=currentConfig().tftFocus;
-  else if(state.tftRecorder?.state!=='RECORDING')overlayFrozenTftFocus=null;
+  if(state.tftRecorder?.state==='RECORDING'&&previousTftState!=='RECORDING'){
+    overlayFrozenTftFocus=currentConfig().tftFocus;
+    overlayFrozenTftMission=state.tftMission?.mission?{...state.tftMission.mission}:null;
+  }else if(state.tftRecorder?.state!=='RECORDING'){
+    overlayFrozenTftFocus=null;
+    overlayFrozenTftMission=null;
+  }
   if(state.phase==='WAITING'&&previousPhase!=='WAITING'){
     const detectedRole=normalizedRole(state.postGameReview?.match?.role||state.matchup?.role||state.matchup?.plan?.role);
     if(['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(detectedRole))dnaViewRole=detectedRole;
@@ -192,6 +197,7 @@ function schedulePlayerHomePoll(delay=60_000){
   playerHomeTimer=setTimeout(()=>{playerHomeTimer=null;void pollPlayerHome()},delay);
 }
 async function pollPlayerHome(roleOverride=dnaViewRole){
+  if(state.phase==='WAITING')void pollTftMission();
   if(playerHomeInFlight||state.phase!=='WAITING')return false;
   const cfg=currentConfig();if(!cfg.token)return false;
   playerHomeInFlight=true;
@@ -210,6 +216,25 @@ async function pollPlayerHome(roleOverride=dnaViewRole){
   }catch{}
   finally{clearTimeout(timeout);playerHomeInFlight=false;if(state.phase==='WAITING')schedulePlayerHomePoll()}
   return false;
+}
+
+// The companion fetches the same account-scoped mission as the TFT website.
+async function pollTftMission(){
+  if(tftMissionInFlight||state.phase!=='WAITING'||!paired())return;
+  const cfg=currentConfig();if(!cfg.token)return;
+  tftMissionInFlight=true;
+  const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),8000);
+  try{
+    const response=await fetch(cfg.webUrl+'/api/tft/current-mission',{headers:{authorization:'Bearer '+cfg.token},signal:controller.signal});
+    const payload=await response.json().catch(()=>({}));
+    if(response.ok&&payload?.ok&&payload?.mission&&state.phase==='WAITING'){
+      setState({tftMission:payload,tftMissionError:null});
+    }else if(state.phase==='WAITING'){
+      setState({tftMissionError:response.status===401?'Reconnect the Companion to sync your TFT mission.':'TFT mission sync unavailable; your previous mission is retained.'});
+    }
+  }catch{
+    if(state.phase==='WAITING')setState({tftMissionError:'TFT mission sync unavailable; your previous mission is retained.'});
+  }finally{clearTimeout(timeout);tftMissionInFlight=false}
 }
 
 async function selectDnaRole(role){
@@ -671,7 +696,7 @@ ipcMain.handle('companion:overlay-cycle',()=>cycleOverlayLayout());
 ipcMain.handle('companion:set-tft-focus',(_event,focus)=>selectTftFocus(focus));
 ipcMain.handle('companion:get-state',()=>publicState());
 ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
-ipcMain.handle('companion:unpair',()=>{stopTracker();stopTftRecorder();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null});return{ok:true}});
+ipcMain.handle('companion:unpair',()=>{stopTracker();stopTftRecorder();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null,tftMission:null,tftMissionError:null});return{ok:true}});
 ipcMain.handle('companion:restart',()=>{stopTracker();stopTftRecorder();startTracker();startTftRecorder();return{ok:true}});
 ipcMain.handle('companion:auto-start',(_event,enabled)=>{applyAutoStart(enabled);return{ok:true}});
 ipcMain.handle('companion:open-climb',()=>{shell.openExternal(`${currentConfig().webUrl}/live`);return{ok:true}});

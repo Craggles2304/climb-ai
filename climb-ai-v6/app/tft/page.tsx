@@ -8,6 +8,7 @@ import {useSubscription} from '@/components/SubscriptionContext';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {summarizeTft,tftCoachingRead,type TftDecisionReview,type TftGamePlan,type TftMatch} from '@/lib/tft/types';
 import {buildTacticianProfile} from '@/lib/tft/advancedCoach';
+import type {TftAccountMission} from '@/lib/tft/currentMission';
 import {track} from '@/lib/analytics';
 
 function mapRow(row:any):TftMatch{
@@ -32,6 +33,7 @@ export default function TftHome(){
   const [syncing,setSyncing]=useState(false);
   const [syncAvailable,setSyncAvailable]=useState<boolean|null>(null);
   const [message,setMessage]=useState('');
+  const [syncedMission,setSyncedMission]=useState<TftAccountMission|null>(null);
 
   const load=useCallback(async()=>{
     setLoading(true);
@@ -46,6 +48,11 @@ export default function TftHome(){
     if(error)setMessage(error.message);
     setMatches((rows||[]).map(mapRow));
     setRank(profile?.rank_tier?`${profile.rank_tier} ${profile.rank_division||''} · ${profile.league_points??0} LP`.trim():'UNRANKED');
+    try{
+      const response=await fetch('/api/tft/current-mission?riotAccountId='+encodeURIComponent(active.id),{cache:'no-store'});
+      const payload=response.ok?await response.json():null;
+      setSyncedMission(payload?.mission||null);
+    }catch{setSyncedMission(null)}
     setLoading(false);
   },[active.id]);
 
@@ -115,10 +122,11 @@ export default function TftHome(){
 
     <section className="tft-focus-grid">
       <article className="tft-focus">
-        <span>CURRENT TFT FIX</span>
-        <h2>{profile.primaryLeak?.label||read.title}</h2>
-        <p>{profile.primaryLeak?.rationale||read.detail}</p>
-        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{profile.primaryLeak?profile.ilp.find(task=>task.skill===profile.primaryLeak?.key)?.target||read.target:read.target}</b></div>
+        <span>YOUR CURRENT ACCOUNT-SYNCED MISSION</span>
+        <h2>{syncedMission?.title||'BUILD YOUR TFT DNA'}</h2>
+        <p>{syncedMission?.why||'Play normally, collect decision evidence and unlock your personal mission.'}</p>
+        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{syncedMission?.nextGame||'Connect your Companion and play TFT normally.'}</b></div>
+        {syncedMission&&<p style={{marginTop:10,fontSize:12}}>{syncedMission.status==='BASELINE'?'BASELINE · COLLECTING EVIDENCE':syncedMission.progress+'/'+syncedMission.goal+' MODEL-DERIVED INDICATORS'} · Same mission in the Companion and overlay.</p>}
       </article>
       <aside className="tft-grade"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong><small>{profile.confidence}% confidence<br/>built from tracked decision evidence</small></aside>
     </section>
