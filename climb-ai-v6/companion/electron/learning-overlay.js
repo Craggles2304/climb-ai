@@ -131,6 +131,50 @@
   put('threat','');show('threatBlock',false);
  }
 
+ function renderBuildGuide(next){
+  const guide=next?.buildGuide||null,rows=[];
+  const showing=Boolean(next?.buildsOpen)&&['LOL','TFT'].includes(next?.game);
+  $('overlay').classList.toggle('builds-open',showing);
+  show('buildGuidePanel',showing);
+  if(guide?.game==='TFT'){
+    put('buildGuideTitle','TFT COMP OPTIONS');
+    const builds=Array.isArray(guide.builds)?guide.builds:[];
+    const selected=builds.find(b=>b.id===guide.selectedId)||null;
+    const ordered=selected?[selected,...builds.filter(b=>b.id!==selected.id)]:builds;
+    for(const [index,row] of ordered.entries()){
+      rows.push((index===0&&selected?'★ YOUR PREFERRED ROUTE':'OPTION '+(index+1))+' · '+row.title+' ['+row.tier+']');
+      rows.push('Carry: '+row.primary+' · '+row.tempo);
+      rows.push('Core items: '+(row.items||[]).join(' / '));
+      if(row.secondaryItems?.length)rows.push('Second carry: '+row.secondaryItems.join(' / '));
+      rows.push(row.rationale);rows.push('');
+    }
+    put('buildGuideHint','Three patch-labelled choices. Your preferred route was locked before this match.');
+    put('buildGuidePatch','PATCH '+(guide.patch||'UNVERIFIED')+' · SOURCE SNAPSHOT '+(guide.asOf||'UNKNOWN'));
+    const quick=selected||ordered[0];
+    put('buildQuickCopy',quick?quick.title+' · '+(quick.items||[]).join(' → '):'');
+    put('buildQuickPatch','PATCH '+(guide.patch||'—')+' · CTRL+SHIFT+B FOR ALTERNATIVES');
+    show('buildQuick',Boolean(quick));
+  }else if(guide?.game==='LOL'){
+    put('buildGuideTitle',(guide.champion||'CHAMPION')+' · '+guide.role);
+    if(guide.items?.length)rows.push('PREGAME ITEM PATH\n'+guide.items.join(' → ')+'\n');
+    if(guide.runes?.length)rows.push('RUNES\n'+guide.runes.join(' · ')+'\n');
+    if(guide.skillOrder?.length)rows.push('SKILL ORDER\n'+guide.skillOrder.join(' → ')+'\n');
+    if(guide.summoners?.length)rows.push('SUMMONERS\n'+guide.summoners.join(' / '));
+    if(guide.note)rows.push('\n'+guide.note);
+    put('buildGuideHint','Current patch guide fetched in champion select, then frozen. Review alternatives yourself.');
+    put('buildGuidePatch','PATCH '+(guide.patch||'UNVERIFIED')+' · '+(guide.source||'CURRENT PATCH DATA'));
+    put('buildQuickCopy',guide.items?.length?guide.items.slice(0,3).join(' → '):'');
+    put('buildQuickPatch','PATCH '+(guide.patch||'—')+' · CTRL+SHIFT+B FOR FULL GUIDE');
+    show('buildQuick',Boolean(guide.items?.length));
+  }else{
+    put('buildGuideTitle','BUILD OPTIONS UNAVAILABLE');
+    put('buildGuideHint','No pre-game build snapshot was loaded. Live gameplay will not generate replacement advice.');
+    put('buildGuidePatch','NO LOCKED BUILD DATA');
+    show('buildQuick',false);
+  }
+  put('buildGuideRows',rows.length?rows.join('\n'):'No pre-game build suggestions are available for this match.');
+ }
+
  function coachTranscript(){
   const lines=['AI Coach: Ask about your locked mission or general game principles.'];
   for(const row of coachHistory.slice(-8)){
@@ -203,6 +247,7 @@
    put('threat',preview?'Their win condition appears here.':'');show('threatBlock',preview);
   }
   renderCoachPanel(next);
+  renderBuildGuide(next);
   place();
  }
 
@@ -259,10 +304,12 @@
  $('done').addEventListener('click',async()=>{await save();await window.opOverlay.finishEditing()});
  $('coachForm').addEventListener('submit',submitCoachQuestion);
  $('coachClose').addEventListener('click',()=>{void window.opOverlay.toggleAssistant?.()});
+ $('buildGuideClose').addEventListener('click',()=>{void window.opOverlay.toggleBuilds?.()});
  document.addEventListener?.('keydown',event=>{
-   if(event.key==='Escape'&&state?.assistantOpen){
+   if(event.key==='Escape'&&(state?.assistantOpen||state?.buildsOpen)){
      event.preventDefault?.();
-     void window.opOverlay.toggleAssistant?.();
+     if(state?.buildsOpen)void window.opOverlay.toggleBuilds?.();
+     else void window.opOverlay.toggleAssistant?.();
    }
  });
  window.addEventListener('resize',place);

@@ -7,6 +7,8 @@ contextBridge.exposeInMainWorld('opCompanion',{
   editOverlay:()=>ipcRenderer.invoke('companion:overlay-edit'),
   cycleOverlay:()=>ipcRenderer.invoke('companion:overlay-cycle'),
   setTftFocus:(id)=>ipcRenderer.invoke('companion:set-tft-focus',id),
+  getTftBuilds:()=>ipcRenderer.invoke('companion:get-tft-builds'),
+  setTftBuild:(id)=>ipcRenderer.invoke('companion:set-tft-build',id),
   unpair:()=>ipcRenderer.invoke('companion:unpair'),
   restart:()=>ipcRenderer.invoke('companion:restart'),
   setAutoStart:(enabled)=>ipcRenderer.invoke('companion:auto-start',enabled),

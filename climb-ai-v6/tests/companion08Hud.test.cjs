@@ -13,7 +13,7 @@ test('Companion keeps its main window and an optional click-through learning-onl
   assert.ok(main.includes("mainWindow=new BrowserWindow("));
   assert.ok(main.includes("createWindow(!hidden)"));
   assert.ok(main.includes("createOverlayWindow()"));
-  assert.ok(main.includes("setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen),{forward:true})"));
+  assert.ok(main.includes("setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true})"));
   assert.ok(main.includes("overlayEnabled:raw.overlayEnabled===true"));
   assert.equal(main.includes("setAlwaysOnTop(true,'screen-saver')"),false);
   for(const file of ['overlay.html','overlay.css'])assert.equal(fs.existsSync(`companion/electron/${file}`),false);
