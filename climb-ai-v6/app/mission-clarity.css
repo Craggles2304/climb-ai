@@ -1,0 +1,132 @@
+/* OP CLIMB / mission-first player experience. One task to do next,
+ * then two behaviours, then evidence and optional depth. */
+.missions-page .mission-next-action{
+  position:relative;
+  margin:18px 0 18px;
+  padding:22px 25px 23px;
+  overflow:hidden;
+  color:#f6fbff;
+  border:1px solid rgba(190,255,108,.55);
+  border-top:4px solid #c8ff71;
+  background:radial-gradient(ellipse at 100% 0%,rgba(190,255,107,.12),transparent 45%),linear-gradient(115deg,#17322e,#101e31 77%);
+  box-shadow:0 18px 46px rgba(0,0,0,.22);
+}
+.missions-page .mission-next-action::after{
+  content:"";position:absolute;right:0;top:0;bottom:0;width:22%;
+  background:repeating-linear-gradient(120deg,transparent 0 39px,rgba(188,248,193,.035) 40px 41px);
+  pointer-events:none;
+}
+.missions-page .mission-next-eyebrow{
+  display:flex;align-items:center;gap:9px;
+  font:800 11px/1.3 var(--mono);letter-spacing:.12em;color:#c5fd8c;
+  margin-bottom:19px;
+}
+.missions-page .mission-next-live-dot{width:9px;height:9px;border-radius:50%;background:#baff79;box-shadow:0 0 0 4px rgba(194,255,129,.11)}
+.missions-page .mission-next-layout{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(245px,.8fr);gap:26px;align-items:start;position:relative;z-index:1}
+.missions-page .mission-next-main h2{
+  max-width:740px;color:#f4fcfd;
+  font:900 clamp(29px,3.6vw,50px)/.97 var(--display)!important;
+  margin:0 0 13px;text-transform:uppercase;letter-spacing:.02em;
+}
+.missions-page .mission-next-main p{max-width:670px;font:500 15px/1.6 var(--body);color:#c5d7df;margin:0 0 22px}
+.missions-page .mission-next-cta{min-height:47px;padding:13px 19px!important;font-size:14px!important}
+.missions-page .mission-next-buttons{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.missions-page .mission-next-buttons button{cursor:pointer}
+.missions-page .mission-next-buttons button:disabled{opacity:.6;cursor:wait}
+.missions-page .mission-next-steps{
+  display:grid;gap:9px;list-style:none;padding:0;margin:0;
+}
+.missions-page .mission-next-steps li{
+  display:flex;align-items:center;gap:13px;padding:13px;
+  border:1px solid rgba(139,180,194,.17);background:rgba(8,22,33,.56);
+}
+.missions-page .mission-next-steps li>b{
+  width:37px;height:37px;flex:0 0 37px;display:grid;place-items:center;
+  font:900 16px var(--display);background:#1b3140;color:#adc0cb;border:1px solid rgba(147,186,195,.27);
+}
+.missions-page .mission-next-steps li.is-current{border-color:rgba(199,255,114,.52);background:rgba(102,146,100,.16)}
+.missions-page .mission-next-steps li.is-current>b{background:#c9ff71;color:#18232a;border-color:#c9ff71}
+.missions-page .mission-next-steps li.is-complete>b{background:#284c40;color:#bcffa0;border-color:#689d73}
+.missions-page .mission-next-steps li span{display:grid;gap:4px}
+.missions-page .mission-next-steps strong{font:850 16px/1 var(--display);letter-spacing:.045em;color:#f1f8f7}
+.missions-page .mission-next-steps small{font:500 11px/1.45 var(--body);color:#b0c4cd}
+.missions-page .mission-confirm-status{
+  align-self:center;padding:9px 10px;white-space:nowrap;
+  font:800 10px var(--mono);color:#d7ffb9;background:rgba(110,180,90,.11);border:1px solid rgba(168,238,118,.28)
+}
+.missions-page .mission-active-tag,.missions-page .mission-active-proof-label{
+  font:850 10px/1.3 var(--mono);letter-spacing:.085em;color:#c7fb88!important;
+}
+.missions-page .mission-active-instruction{
+  color:#f9fdfd!important;font:700 17px/1.42 var(--body)!important;
+  padding:11px 12px;background:rgba(162,239,165,.075);
+  border-left:3px solid var(--mission-color);
+}
+.missions-page .mission-active-proof-label{color:#93c4d1!important;margin-top:2px}
+.missions-page .mission-active-proof{color:#bdcedc!important;font:500 12px/1.5 var(--body)!important}
+.missions-page .missions-active-item>strong{font-size:clamp(23px,2.4vw,32px)}
+.missions-page .missions-active-item .missions-active-evidence{
+  margin-top:auto;padding-top:14px;
+}
+.missions-page .mission-after-game{
+  display:flex;align-items:flex-start;gap:19px;padding:20px 22px;margin:0 0 22px;
+  border:1px solid rgba(100,178,195,.28);border-left:3px solid #66e6d0;
+  background:linear-gradient(115deg,#122e35,#101c2f 80%);color:#e8f7fb;
+}
+.missions-page .mission-after-icon{font:900 39px/1 var(--display);color:#88e9d6;flex:0 0 auto}
+.missions-page .mission-after-game .eyebrow{font-size:10px!important;color:#99ead9!important}
+.missions-page .mission-after-game h2{font:800 clamp(20px,2.4vw,30px)/1.05 var(--display)!important;color:#f5f9fe;margin:7px 0 8px}
+.missions-page .mission-after-game p{font:500 12px/1.7 var(--body);color:#b6cdd8;margin:0}
+.missions-page .mission-after-game p b{color:#e7f6fa}
+.missions-page .mission-library{margin:0 0 18px}
+.missions-page .mission-library-toggle{
+  width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;
+  padding:17px 19px;text-align:left;cursor:pointer;
+  border:1px solid rgba(135,172,193,.37);background:linear-gradient(105deg,#172736,#101b29);color:#e8f3f9;
+}
+.missions-page .mission-library-toggle:focus-visible{outline:3px solid #bcff80;outline-offset:2px}
+.missions-page .mission-library-toggle>span{display:grid;gap:5px}
+.missions-page .mission-library-toggle small{font:750 10px var(--mono);letter-spacing:.07em;color:#88b8c4}
+.missions-page .mission-library-toggle strong{font:850 clamp(18px,2.1vw,25px)/1 var(--display);letter-spacing:.02em;color:#e8f3f9}
+.missions-page .mission-library-toggle em{font:400 12px/1.4 var(--body);font-style:normal;color:#aac0cf}
+.missions-page .mission-library-toggle>b{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border:1px solid rgba(166,211,217,.4);font:800 25px var(--display);color:#beff8a}
+.missions-page .mission-library .missions-tree-toolbar{margin-top:13px}
+.missions-page .mission-advanced-check{
+  padding:0;margin:0 0 20px;border:1px solid rgba(140,175,194,.26);
+  background:#101b29;
+}
+.missions-page .mission-advanced-check>summary{
+  cursor:pointer;padding:15px 17px;display:flex;align-items:center;justify-content:space-between;gap:13px;
+  color:#abbece;font:800 12px/1.3 var(--mono);list-style:none;
+}
+.missions-page .mission-advanced-check>summary::-webkit-details-marker{display:none}
+.missions-page .mission-advanced-check>summary span{font:900 20px var(--display);color:#9ad5ce}
+.missions-page .mission-advanced-check[open]>summary span{transform:rotate(45deg)}
+.missions-page .mission-advanced-check .mission-health{margin:0!important;border-left:0!important;border-right:0!important;border-bottom:0!important}
+.missions-page .mission-simple-baseline-steps{display:flex;gap:10px;flex-wrap:wrap;margin:17px 0 18px}
+.missions-page .mission-simple-baseline-steps span{display:grid;gap:6px;flex:1 1 155px;padding:12px;background:rgba(99,143,152,.09);border:1px solid rgba(119,163,174,.2);font:500 12px/1.45 var(--body)}
+.missions-page .mission-simple-baseline-steps b{color:#b8ef8a;font:800 12px var(--mono)}
+@media(max-width:850px){
+  .missions-page .mission-next-layout{grid-template-columns:1fr}
+  .missions-page .mission-next-steps{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+  .missions-page .mission-next-steps li{padding:9px;align-items:flex-start;gap:8px}
+  .missions-page .mission-next-steps li>b{width:27px;height:27px;flex-basis:27px;font-size:11px}
+}
+@media(max-width:640px){
+  .missions-page .mission-next-action{padding:17px 14px}
+  .missions-page .mission-next-eyebrow{font-size:9px}
+  .missions-page .mission-next-main h2{font-size:31px}
+  .missions-page .mission-next-main p{font-size:13px}
+  .missions-page .mission-next-steps{grid-template-columns:1fr}
+  .missions-page .mission-next-steps li{align-items:center}
+  .missions-page .mission-after-game{padding:16px 13px;gap:10px}
+  .missions-page .mission-after-icon{font-size:26px}
+  .missions-page .mission-confirm-status{white-space:normal;font-size:9px}
+  .missions-page .mission-next-cta{width:100%;justify-content:center}
+  .missions-page .mission-next-buttons{display:grid;grid-template-columns:1fr}
+  .missions-page .mission-next-buttons button{width:100%}
+  .missions-page .missions-active-item .mission-active-instruction{font-size:15px!important}
+}
+@media(prefers-reduced-motion:reduce){
+ .missions-page .mission-library-toggle{transition:none!important}
+}
