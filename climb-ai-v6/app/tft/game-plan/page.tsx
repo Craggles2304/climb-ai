@@ -3,11 +3,15 @@ import {useEffect,useState} from 'react';
 import Link from 'next/link';
 import {TftShell} from '@/components/TftShell';
 import type {TftGamePlan} from '@/lib/tft/types';
+import {useAccount} from '@/components/AccountContext';
+import type {TftAccountMission} from '@/lib/tft/currentMission';
 
 const PLAN_KEY='op_tft_game_plan';
 const empty={economyRule:'',stabilizeRule:'',flexRule:'',positioningCue:''};
 
 export default function TftGamePlanPage(){
+  const {active}=useAccount();
+  const [mission,setMission]=useState<TftAccountMission|null>(null);
   const [draft,setDraft]=useState(empty);
   const [locked,setLocked]=useState<TftGamePlan|null>(null);
   const [message,setMessage]=useState('');
@@ -16,6 +20,15 @@ export default function TftGamePlanPage(){
     try{const raw=localStorage.getItem(PLAN_KEY);if(raw){const plan=JSON.parse(raw) as TftGamePlan;setLocked(plan);setDraft({economyRule:plan.economyRule,stabilizeRule:plan.stabilizeRule,flexRule:plan.flexRule,positioningCue:plan.positioningCue});}}catch{/* ignore malformed local state */}
   },[]);
 
+  useEffect(()=>{
+    let cancelled=false;
+    setMission(null);
+    void fetch('/api/tft/current-mission?riotAccountId='+encodeURIComponent(active.id),{cache:'no-store'})
+      .then(async r=>r.ok?r.json():null)
+      .then(payload=>{if(!cancelled)setMission(payload?.mission||null)})
+      .catch(()=>{if(!cancelled)setMission(null)});
+    return()=>{cancelled=true};
+  },[active.id]);
   const set=(key:keyof typeof empty,value:string)=>setDraft(d=>({...d,[key]:value}));
   const ready=Object.values(draft).some(v=>v.trim().length>0);
   const lock=()=>{
@@ -26,7 +39,14 @@ export default function TftGamePlanPage(){
   const clear=()=>{localStorage.removeItem(PLAN_KEY);setLocked(null);setDraft(empty);setMessage('Plan cleared.');};
 
   return <TftShell><main className="container section tft-lab-page">
-    <div className="eyebrow">STATIC PRE-GAME PREPARATION</div><h1>LOCK THE RULES BEFORE THE RESULT.</h1><p className="muted" style={{maxWidth:820}}>Choose the decision rules you want to execute before queueing. After the game, your review records whether you actually followed them. OP CLIMB can then separate planning quality from execution quality without reading the live game.</p>
+    <div className="eyebrow">YOUR ACCOUNT-LINKED TFT GAME PLAN</div><h1>ONE MISSION. EVERY SCREEN.</h1>
+    <section className="glass card" style={{marginTop:18}}>
+      <div className="eyebrow">YOUR CURRENT TFT DNA MISSION</div>
+      <h2>{mission?.title||'BUILD YOUR TFT DNA'}</h2>
+      <p className="muted">{mission?.why||'Your account mission appears here after synchronisation.'}</p>
+      <div className="tft-focus-rule"><small>YOUR NEXT GAME</small><b>{mission?.nextGame||'Play normally and collect decision evidence.'}</b></div>
+      <p className="muted" style={{marginTop:12,marginBottom:0}}>This mission syncs to your Companion and is frozen in the in-game overlay before play. Personal notes below stay in this browser and do not replace your TFT DNA mission.</p>
+    </section>
 
     {locked&&<section className="glass card" style={{marginTop:18}}>
       <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><div className="eyebrow">CURRENT LOCKED PLAN</div><h2 style={{marginBottom:4}}>READY FOR NEXT GAME</h2><p className="muted" style={{margin:0}}>Locked {new Date(locked.lockedAt).toLocaleString()}</p></div><span className="op-tier op-tier-plus">PLAN LOCKED</span></div>
@@ -37,7 +57,7 @@ export default function TftGamePlanPage(){
     </section>}
 
     <section className="glass card" style={{marginTop:18}}>
-      <div className="eyebrow">4 NON-NEGOTIABLE CUES</div><h2>SHORT ENOUGH TO EXECUTE. SPECIFIC ENOUGH TO REVIEW.</h2>
+      <div className="eyebrow">OPTIONAL PERSONAL NOTES · THIS BROWSER ONLY</div><h2>WRITE ADDITIONAL CUES WITHOUT CHANGING YOUR MAIN MISSION.</h2>
       <div style={{display:'grid',gap:12,marginTop:14}}>
         <Rule label="ECONOMY RULE" value={draft.economyRule} set={v=>set('economyRule',v)} placeholder="e.g. Below 50 HP on stage 4, convert gold instead of protecting interest."/>
         <Rule label="STABILISE RULE" value={draft.stabilizeRule} set={v=>set('stabilizeRule',v)} placeholder="e.g. If I lose two fights badly, improve board strength before the next level push."/>
