@@ -85,7 +85,7 @@ function syncOverlay(){
   }
   const win=createOverlayWindow();
   if(win.webContents.isLoading())return;
-  win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen),{forward:true});
+  win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
   if(!win.isVisible())win.showInactive();
   win.webContents.send('overlay:state',view);
 }
