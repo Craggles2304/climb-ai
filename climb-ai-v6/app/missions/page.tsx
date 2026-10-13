@@ -9,6 +9,7 @@ import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {MissionMeasurementBadge} from '@/components/MissionMeasurementBadge';
 import {ArenaDomainIcon} from '@/components/ArenaIcon';
+import {MissionFlowVerification} from '@/components/MissionFlowVerification';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import type {DnaDomain} from '@/lib/types';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
@@ -132,6 +133,7 @@ export default function Missions(){
         })}{persistedDomains.length!==2&&<div className="missions-active-unavailable"><strong>YOUR ACTIVE MISSIONS NEED SETTING UP</strong><p>Select two unlocked Game DNA trees below. If your selection does not save, retry or use the error message above.</p></div>}</div>
       </section>
       {saveMessage&&<div className="missions-focus-message" role="status" aria-live="polite">{saveMessage}</div>}
+      <MissionFlowVerification/>
 
       <div className="missions-six-grid">
         {missions.map(({domain,task})=>{
