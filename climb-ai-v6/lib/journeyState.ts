@@ -20,6 +20,7 @@ export function buildJourneyState(input:{
   focusJob?:string|null;
   focusConfirmed?:number|null;
   focusRequired?:number|null;
+  focusSelectionSource?:'PLAYER'|'RECOMMENDED'|'UNSET';
 }):JourneyState{
   const games=Math.max(0,Math.min(DNA_BASELINE_GAMES,input.baselineGames||0));
   if(!input.deviceLoaded)return{
@@ -67,7 +68,16 @@ export function buildJourneyState(input:{
     href:'/ilp',
     progress:'3/3',
   };
-  const confirmed=Math.max(0,input.focusConfirmed??0);
+  if(input.focusSelectionSource==='RECOMMENDED')return{
+    phase:'DNA_REVEAL',
+    status:'STEP 3 OF 4 · TWO COACH RECOMMENDATIONS',
+    title:'Confirm your two suggested DNA trees.',
+    body:'OP CLIMB has suggested two priorities. Open Missions to confirm these trees or choose different ones before treating them as your personal plan.',
+    cta:'CONFIRM MY TWO MISSIONS →',
+    href:'/missions',
+    progress:'2 SUGGESTED',
+  };
+    const confirmed=Math.max(0,input.focusConfirmed??0);
   const required=Math.max(1,input.focusRequired??3);
   return{
     phase:'MISSION',
