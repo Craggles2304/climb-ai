@@ -28,11 +28,13 @@ test('Missions page keeps six equal trees and lets the player unlock exactly two
   assert.ok(missionsPage.includes('currentGameDnaMissions'));
   assert.ok(missionsPage.includes('setDnaFocusDomains'));
   assert.ok(missionsPage.includes('missions-six-grid'));
-  assert.ok(missionsPage.includes('Choose your two DNA trees'));
+  assert.ok(missionsPage.includes('Your mission. Your next move.'));
+  assert.ok(missionsPage.includes('VIEW ALL 6 DNA AREAS / CHANGE A MISSION'));
   assert.ok(missionsPage.includes('UNLOCK THIS TREE'));
   assert.ok(missionsPage.includes('replaceActiveTree'));
   assert.ok(missionsPage.includes('Which one should this replace?'));
-  assert.ok(missionsPage.includes('Changes save instantly'));
+  assert.ok(missionsPage.includes('Confirm or swap to save'));
+  assert.ok(missionsPage.includes('HOW PROGRESS IS CHECKED'));
   assert.ok(missionsPage.includes('missionComparisonForMatch(task,latestMatch?.id)'));
   assert.ok(missionsPage.includes('comparison.events'));
   assert.ok(appShell.includes("['Missions','/missions'"));

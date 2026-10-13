@@ -104,9 +104,11 @@ export default function Dashboard(){
         <div className="eyebrow">YOUR CLIMB · {active.role} PLAYER</div>
         <h1>{active.gameName}<span>{active.tagline}</span></h1>
         <p><strong className="arena-pro-identity-thesis">Your games build your player identity.</strong> {baselineReady
-          ?'Your Game DNA is active. '+(focusPlain?.nextGame||'Take one clear mission into the next game.')
+          ?gameDnaFocusSource(roleTasks,active.role)==='PLAYER'
+            ?'Your two missions are confirmed. '+(focusPlain?.nextGame||'Open Missions to see your next-game action.')
+            :'Your coach has two suggestions ready. Confirm them in Missions before treating them as your chosen plan.'
           :'Play '+DNA_BASELINE_GAMES+' tracked '+active.role+' games to reveal a player shape built from evidence.'}</p>
-        <div className="arena-pro-hero-actions"><Link href="/live" className="arena-pro-hero-primary"><ArenaIcon name="match" size={18}/> OPEN MATCH ROOM <span>↗</span></Link><Link href="/ilp" className="arena-pro-hero-secondary"><ArenaIcon name="dna" size={17}/> MY GAME DNA</Link></div>
+        <div className="arena-pro-hero-actions"><Link href={baselineReady&&gameDnaFocusSource(roleTasks,active.role)!=='PLAYER'?'/missions':'/live'} className="arena-pro-hero-primary"><ArenaIcon name={baselineReady&&gameDnaFocusSource(roleTasks,active.role)!=='PLAYER'?'target':'match'} size={18}/> {baselineReady&&gameDnaFocusSource(roleTasks,active.role)!=='PLAYER'?'CHOOSE MY MISSIONS':'OPEN MATCH ROOM'} <span>↗</span></Link><Link href="/ilp" className="arena-pro-hero-secondary"><ArenaIcon name="dna" size={17}/> MY GAME DNA</Link></div>
         <div className="arena-player-hero-meta"><b>{active.rank}</b><span>{active.role}</span><span>{Math.min(baselineGames,DNA_BASELINE_GAMES)}/{DNA_BASELINE_GAMES} BASELINE GAMES</span></div>
       </div>
       <ArenaRankPanel rank={active.rank} role={active.role} champion={heroChampion} region={active.region}/>
@@ -115,6 +117,15 @@ export default function Dashboard(){
       </span>
       {latest&&<small className="arena-player-hero-credit">LAST PLAYED · {latest.champion}</small>}
     </header>
+
+    <section className="op-next-step arena-mission-first-next" aria-label="Your next action">
+      <div>
+        <span>YOUR NEXT MOVE · {next.status}</span>
+        <h2>{next.title}</h2>
+        <p>{next.body}</p>
+      </div>
+      <Link className="btn primary" href={next.href} aria-disabled={!deviceLoaded}>{next.cta}</Link>
+    </section>
 
     <nav className="arena-pro-fast-nav" aria-label="Player headquarters sections">
       <Link href="#arena-perf"><ArenaIcon name="signal" size={18}/><span><b>PERFORMANCE</b><small>RECENT FORM</small></span><i>01</i></Link>
@@ -150,14 +161,7 @@ export default function Dashboard(){
       </div>
     </section>
 
-    <section className="op-next-step">
-      <div>
-        <span>{next.status}</span>
-        <h2>{next.title}</h2>
-        <p>{next.body}</p>
-      </div>
-      <Link className="btn primary" href={next.href} aria-disabled={!deviceLoaded}>{next.cta}</Link>
-    </section>
+
 
     <section className="op-climb-path" aria-label="Your OP CLIMB journey">
       <div className="op-climb-path-head"><span>THE DNA LOOP</span><b>{baselineReady?'DNA ACTIVE':`BASELINE ${Math.min(baselineGames,DNA_BASELINE_GAMES)}/${DNA_BASELINE_GAMES}`}</b></div>
@@ -170,7 +174,7 @@ export default function Dashboard(){
 
     <section id="arena-mission" className="op-home-focus-grid arena-pro-focus-grid">
       <article className={"panel op-home-focus arena-pro-focus "+(baselineReady?"is-ready":"is-baseline")}>
-        <div className="eyebrow">{baselineReady?'CURRENT FIX':'DNA BASELINE'}</div>
+        <div className="eyebrow">{baselineReady?(gameDnaFocusSource(roleTasks,active.role)==='PLAYER'?'YOUR NEXT-GAME MISSION':'TWO MISSIONS TO CONFIRM'):'DNA BASELINE'}</div>
         {baselineReady&&focus?<>
           <span className="op-home-strand" style={({ '--strand-color':DNA_DOMAIN_COLORS[focus.dnaDomain]} as CSSProperties)}>
             {DNA_DOMAIN_LABELS[focus.dnaDomain]}
@@ -182,7 +186,8 @@ export default function Dashboard(){
           <div className="arena-pro-mission-track" role="progressbar" aria-label="Verified coaching mission progress" aria-valuemin={0} aria-valuemax={focusProof?.required??3} aria-valuenow={Math.min(focusProof?.confirmed??0,focusProof?.required??3)}>
             <i style={{width:(Math.min(focusProof?.confirmed??0,focusProof?.required??3)/(focusProof?.required??3)*100)+'%'}}/>
           </div>
-          {secondFocus&&<span className="arena-pro-second-mission">SECOND FOCUS · {secondFocusPlain?.name||secondFocus.title}</span>}
+          {secondFocus&&<span className="arena-pro-second-mission">MISSION 2 · {secondFocusPlain?.name||secondFocus.title}</span>}
+          <Link href="/missions" className="text-btn">SEE BOTH MISSIONS AND WHAT TO DO NEXT →</Link>
         </>:<>
           <h2>{baselineGames}/{DNA_BASELINE_GAMES} games observed.</h2>
           <p>Do not optimise for the system yet. Play normally. OP CLIMB needs your real habits before it decides what is holding you back.</p>

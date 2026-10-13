@@ -31,6 +31,27 @@ export function buildJourneyState(input:{
     cta:'CHECKING…',
     href:'/live',
   };
+  // Coaching choices are part of a player's account, not tied to the PC with
+  // League installed. A player with three reviewed matches can confirm and read
+  // their missions on any computer—even without a running Companion here.
+  if(games>=DNA_BASELINE_GAMES&&input.focusName&&input.focusSelectionSource==='RECOMMENDED')return{
+    phase:'DNA_REVEAL',
+    status:'NEXT STEP · CONFIRM YOUR PLAN',
+    title:'Your two suggested missions are ready.',
+    body:'Read the two actions OP CLIMB recommends. Confirm them or swap one. This works on any computer—League does not need to be installed here.',
+    cta:'CHOOSE MY TWO MISSIONS →',
+    href:'/missions',
+    progress:'2 SUGGESTED',
+  };
+  if(games>=DNA_BASELINE_GAMES&&input.focusName&&input.focusSelectionSource==='PLAYER'&&(!input.linked||!input.online))return{
+    phase:'MISSION',
+    status:'YOUR TWO MISSIONS ARE SAVED',
+    title:'Know what to practise next.',
+    body:'Your coaching plan is available on this PC. When you play, open the Companion on your gaming PC so the next match can be measured.',
+    cta:'READ MY NEXT-GAME MISSIONS →',
+    href:'/missions',
+    progress:`${Math.max(0,input.focusConfirmed??0)}/${Math.max(1,input.focusRequired??3)} proven`,
+  };
   if(!input.linked)return{
     phase:'CONNECT',
     status:'STEP 1 OF 4 · START HERE',

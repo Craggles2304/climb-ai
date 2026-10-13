@@ -70,3 +70,23 @@ test('connection failures always take priority over coaching state',()=>{
   assert.equal(buildJourneyState({deviceLoaded:true,linked:false,online:false,baselineGames:2}).phase,'CONNECT');
   assert.equal(buildJourneyState({deviceLoaded:true,linked:true,online:false,baselineGames:3,dnaRevealed:true,focusName:'Test'}).phase,'RECONNECT');
 });
+
+
+test('confirmed and recommended missions remain accessible from a PC without League installed',()=>{
+  const recommended=buildJourneyState({
+    deviceLoaded:true,linked:false,online:false,baselineGames:3,
+    dnaRevealed:false,focusName:'Two DNA trees unlocked',focusSelectionSource:'RECOMMENDED',
+  });
+  assert.equal(recommended.href,'/missions');
+  assert.equal(recommended.phase,'DNA_REVEAL');
+  assert.match(recommended.cta,/CHOOSE MY TWO MISSIONS/);
+  const confirmed=buildJourneyState({
+    deviceLoaded:true,linked:true,online:false,baselineGames:3,
+    dnaRevealed:false,focusName:'Two DNA trees unlocked',focusSelectionSource:'PLAYER',
+    focusConfirmed:1,focusRequired:3,
+  });
+  assert.equal(confirmed.href,'/missions');
+  assert.equal(confirmed.phase,'MISSION');
+  assert.equal(confirmed.progress,'1/3 proven');
+  assert.match(confirmed.body,/gaming PC/);
+});
