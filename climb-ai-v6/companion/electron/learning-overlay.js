@@ -15,6 +15,7 @@
   "Vel'Koz":'Velkoz','Wukong':'MonkeyKing','Xin Zhao':'XinZhao',
  };
  let state=null,drag=null,resize=null,portraitId='';
+ let coachGame='',coachHistory=[],coachPending=false,coachWasOpen=false;
  let layout={x:0.68,y:0.045,scale:1,opacity:0.96,mode:'FOCUS'};
  const put=(id,value)=>{$(id).textContent=String(value??'')};
  const show=(id,visible)=>{$(id).hidden=!visible};
@@ -130,6 +131,48 @@
   put('threat','');show('threatBlock',false);
  }
 
+ function coachTranscript(){
+  const lines=['AI Coach: Ask about your locked mission or general game principles.'];
+  for(const row of coachHistory.slice(-8)){
+    lines.push((row.role==='user'?'You':'AI Coach')+': '+String(row.content||'').slice(0,1100));
+  }
+  $('coachThread').textContent=lines.join('\n\n');
+  $('coachThread').scrollTop=$('coachThread').scrollHeight||0;
+ }
+ function renderCoachPanel(next){
+  const open=Boolean(next?.assistantOpen)&&['LOL','TFT'].includes(next?.game);
+  if(coachGame!==next?.game){coachHistory=[];coachGame=next?.game||'';coachTranscript()}
+  $('overlay').classList.toggle('coach-open',open);
+  show('coachPanel',open);
+  if(open&&!coachWasOpen)$('coachInput').focus?.();
+  coachWasOpen=open;
+ }
+ async function submitCoachQuestion(event){
+  event?.preventDefault?.();
+  const input=$('coachInput');
+  const message=String(input?.value||'').trim().slice(0,350);
+  if(!message||coachPending||!state?.assistantOpen)return;
+  if(typeof window.opOverlay?.askCoach!=='function'){
+    put('coachStatus','Update OP CLIMB Companion to activate AI Coach.');
+    return;
+  }
+  const previous=coachHistory.slice(-6);
+  coachHistory.push({role:'user',content:message});coachHistory=coachHistory.slice(-8);
+  input.value='';coachPending=true;$('coachSend').disabled=true;
+  put('coachStatus','COACH IS THINKING · GAME IS STILL RECORDING');
+  coachTranscript();
+  try{
+    const result=await window.opOverlay.askCoach(message,previous);
+    const answer=result?.ok?String(result.answer||'').slice(0,1100):String(result?.error||'Coach unavailable.').slice(0,300);
+    coachHistory.push({role:'assistant',content:answer});coachHistory=coachHistory.slice(-8);
+    put('coachStatus',result?.ok?'GENERAL LEARNING · NO LIVE SHOTCALLING':'SERVICE UNAVAILABLE · GAMEPLAY UNAFFECTED');
+    coachTranscript();
+  }catch{
+    coachHistory.push({role:'assistant',content:'Coach temporarily unavailable. Your game continues to record normally.'});
+    coachTranscript();put('coachStatus','OFFLINE · GAMEPLAY UNAFFECTED');
+  }finally{coachPending=false;$('coachSend').disabled=false;if(state?.assistantOpen)$('coachInput').focus?.()}
+ }
+
  function render(next){
   if(!next)return;
   state=next;
@@ -159,6 +202,7 @@
    put('avoidLabel','Avoid');put('avoid',preview?'The one risk to avoid appears here.':'');show('avoidBlock',preview);
    put('threat',preview?'Their win condition appears here.':'');show('threatBlock',preview);
   }
+  renderCoachPanel(next);
   place();
  }
 
@@ -213,6 +257,14 @@
   }
  }
  $('done').addEventListener('click',async()=>{await save();await window.opOverlay.finishEditing()});
+ $('coachForm').addEventListener('submit',submitCoachQuestion);
+ $('coachClose').addEventListener('click',()=>{void window.opOverlay.toggleAssistant?.()});
+ document.addEventListener?.('keydown',event=>{
+   if(event.key==='Escape'&&state?.assistantOpen){
+     event.preventDefault?.();
+     void window.opOverlay.toggleAssistant?.();
+   }
+ });
  window.addEventListener('resize',place);
  window.opOverlay.onState(render);
  void window.opOverlay.getState().then(render);

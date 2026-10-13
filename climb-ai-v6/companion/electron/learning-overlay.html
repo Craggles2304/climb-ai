@@ -6,7 +6,8 @@
 <link rel="stylesheet" href="design-system.css">
 <link rel="stylesheet" href="learning-overlay.css">
 <link rel="stylesheet" href="learning-overlay-esports.css">
-<link rel="stylesheet" href="learning-overlay-tft.css"></head>
+<link rel="stylesheet" href="learning-overlay-tft.css">
+<link rel="stylesheet" href="learning-overlay-coach.css"></head>
 <body>
 <main id="overlay" class="hud mode-focus" data-mode="FOCUS" aria-label="OP CLIMB in-game learning HUD">
   <header id="handle" class="hud-header">
@@ -55,8 +56,22 @@
     <p id="threat"></p>
   </section>
 
-  <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+M bookmark</span></footer>
+  <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+K · ASK AI COACH</span></footer>
   <div id="ruleNote" class="hud-rule">◆ LOCKED PRE-GAME INTEL · LEARN AFTER MATCH</div>
+  <section id="coachPanel" class="hud-coach-panel" aria-label="Ask OP CLIMB AI Coach" hidden>
+    <div class="hud-coach-head">
+      <div><small>OP CLIMB / EDUCATION MODE</small><strong>ASK YOUR AI COACH</strong></div>
+      <button id="coachClose" class="hud-coach-close" type="button" aria-label="Close AI Coach">✕</button>
+    </div>
+    <p id="coachStatus" class="hud-coach-notice">General learning and your locked mission. No live move-by-move instructions.</p>
+    <div id="coachThread" class="hud-coach-thread" role="log" aria-live="polite" aria-relevant="additions text">AI Coach: Ask what your mission means, or how a game concept works.</div>
+    <form id="coachForm" class="hud-coach-form">
+      <label for="coachInput" class="sr-only">Your coaching question</label>
+      <input id="coachInput" type="text" placeholder="Ask about economy, tempo, your mission…" maxlength="350" autocomplete="off" spellcheck="true">
+      <button id="coachSend" type="submit">ASK</button>
+    </form>
+    <small class="hud-coach-disclaimer">AI powered · May be inaccurate · Decisions stay yours · Esc closes</small>
+  </section>
   <div id="resizer" class="hud-resizer" aria-hidden="true"></div>
 
   <div id="editor" class="hud-editor" hidden>

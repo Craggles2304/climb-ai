@@ -1,0 +1,34 @@
+/* OP CLIMB Coach: compact Porofessor-style education panel.
+   Shown only after player toggles interaction. No live shotcalling. */
+.hud-coach-panel {
+  display:grid;gap:10px;margin-top:4px;padding:14px;
+  border:1px solid rgba(183,164,239,.36);border-radius:12px;
+  background:linear-gradient(140deg,rgba(17,24,40,.97),rgba(8,11,19,.99));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.08);
+  user-select:text;
+}
+.hud.coach-open {--hud-w:420px;max-height:calc(100vh - 36px);overflow-y:auto;overscroll-behavior:contain;}
+.hud.coach-open.mode-minimal {--hud-w:400px;}
+.hud-coach-head {display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.hud-coach-head>div {display:grid;gap:2px;}
+.hud-coach-head small {font:600 10px var(--oc-font-mono);letter-spacing:.09em;color:#b7a4ef;}
+.hud-coach-head strong {font:800 20px var(--oc-font-display);letter-spacing:.05em;color:#f1f1ff;}
+.hud-coach-close {width:29px;height:29px;border:1px solid rgba(255,255,255,.2);border-radius:8px;background:#20273a;color:#fff;cursor:pointer;}
+.hud-coach-notice {margin:0;font-size:12px;line-height:1.35;color:#abb7ca;}
+.hud-coach-thread {min-height:92px;max-height:200px;overflow-y:auto;padding:12px;
+  background:rgba(4,9,17,.75);border:1px solid rgba(255,255,255,.09);border-radius:9px;
+  font-size:13px;line-height:1.5;color:#f5f7fb;white-space:pre-wrap;overflow-wrap:anywhere;}
+.hud-coach-form {display:flex;gap:7px;align-items:center;}
+.hud-coach-form input {min-width:0;flex:1;height:38px;box-sizing:border-box;padding:8px 10px;
+  border:1px solid rgba(183,164,239,.5);border-radius:8px;background:#0b1020;color:#fff;
+  font:500 13px var(--oc-font-body);user-select:text;}
+.hud-coach-form input:focus {outline:2px solid #b7a4ef;outline-offset:1px;}
+.hud-coach-form button {height:38px;padding:0 14px;border:0;border-radius:8px;
+  background:#b6f66b;color:#10130d;font:800 14px var(--oc-font-display);cursor:pointer;}
+.hud-coach-form button:disabled {opacity:.4;cursor:wait;}
+.hud-coach-disclaimer {font-size:10px;line-height:1.4;letter-spacing:.02em;color:#8692a8;}
+.sr-only {position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;
+  clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+.hud.is-tft .hud-coach-panel {border-color:rgba(223,186,115,.43);}
+.hud.is-tft .hud-coach-head small {color:#dfba73;}
+@media (max-height:740px) {.hud.coach-open .hud-coach-thread {max-height:120px;}}
