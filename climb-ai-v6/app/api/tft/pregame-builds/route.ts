@@ -8,7 +8,7 @@ import {NextResponse} from 'next/server';
 export const dynamic='force-static';
 export const revalidate=86400;
 
-export const pregameTftBuilds=[
+const pregameTftBuilds=[
   {
     id:'riftbeast-reroll',title:'RIFTBEAST REROLL',tier:'S',tempo:'LEVEL 5 REROLL',
     primary:'Pebbles',secondary:'Cinderling',style:'AP + AD REROLL',
