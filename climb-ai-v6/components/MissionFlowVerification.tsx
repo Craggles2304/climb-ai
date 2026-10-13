@@ -48,7 +48,7 @@ export function MissionFlowVerification(){
       const recent=focus.flatMap(({task})=>(task.missionHistory??[]).map(attempt=>({task,attempt})))
         .filter(item=>item.attempt.matchId&&Number.isFinite(Date.parse(item.attempt.at)))
         .sort((a,b)=>Date.parse(b.attempt.at)-Date.parse(a.attempt.at))[0];
-      const state=recent?(verifiedMissionRep(recent.task,recent.attempt)?'PROVEN':recent.attempt.evidenceV2?.state==='MISSED'?'MISSED':'NOT OBSERVED'):null;
+      const state:'PROVEN'|'MISSED'|'NOT OBSERVED'|null=recent?(verifiedMissionRep(recent.task,recent.attempt)?'PROVEN':recent.attempt.evidenceV2?.state==='MISSED'?'MISSED':'NOT OBSERVED'):null;
       const proof=recent&&state?{
         outcome:state,when:recent.attempt.at,
         reason:String(recent.attempt.evidenceV2?.reason||'No timestamped proof was available for this attempt.'),
