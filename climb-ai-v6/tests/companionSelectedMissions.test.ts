@@ -26,7 +26,7 @@ test('Different-role missions and unrelated generic priorities cannot replace se
   ...item,roleScope:'TOP' as const,priority:10000,dnaFocusUnlocked:true,
  }));
  const extra={...adc[0],id:'generic-ad-hoc',title:'UNRELATED PRIORITY',priority:100000,roleScope:'GLOBAL' as const,dnaDomain:undefined,dnaFocusUnlocked:false,source:'COACH' as const};
- const selected=companionPregameMissions([...top,extra as ILPTask,...adc],accountId,'ADC');
+ const selected=companionPregameMissions([...top,extra as unknown as ILPTask,...adc],accountId,'ADC');
  assert.deepEqual(selected.missions.map(x=>x.task.dnaDomain),gameMissionFocusPair(adc,'ADC').map(x=>x.domain));
  assert.equal(selected.missions.length,2);
  assert.ok(selected.missions.every(x=>x.title!=='UNRELATED PRIORITY'));
