@@ -121,6 +121,20 @@ export function unlockedDnaDomains(input:DnaTask[],role:Role|null|undefined){
     .map(row=>row.domain);
 }
 
+/** The active pair can be used for coaching before it has been player-confirmed.
+ * Do not describe an automatically chosen pair as manually selected. */
+export function gameDnaFocusSource(input:DnaTask[],role:Role|null|undefined):'PLAYER'|'RECOMMENDED'|'UNSET'{
+  const current=currentGameDnaMissions(input,role).filter(row=>row.task?.dnaFocusUnlocked===true);
+  if(current.length!==2)return'UNSET';
+  if(current.every(row=>row.task?.dnaFocusSelectionSource==='PLAYER'))return'PLAYER';
+  if(current.some(row=>row.task?.dnaFocusSelectionSource==='RECOMMENDED'))return'RECOMMENDED';
+  // Earlier releases recorded explicit selection in task history before they
+  // had a separate source field. Honour that legacy player intent.
+  return current.some(row=>(row.task?.history??[]).some(event=>
+    event.type==='COACH_EDIT'&&/DNA tree unlocked by player for scored progression/i.test(event.note)
+  ))?'PLAYER':'RECOMMENDED';
+}
+
 export function gameMissionFocusPair(input:DnaTask[],role:Role|null|undefined){
   const rows=currentGameDnaMissions(input,role)
     .filter((row):row is {domain:DnaDomain;task:DnaTask}=>Boolean(row.task));
