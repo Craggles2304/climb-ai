@@ -242,7 +242,11 @@ function setState(patch){
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null,liveHud:null}}
   const previousTftState=String(state.tftRecorder?.state||'');
+  const previousLeagueChampion=String(state.matchup?.champion||'').trim().toLowerCase();
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
+  if(state.phase==='CHAMP_SELECT'&&state.matchup?.champion&&String(state.matchup.champion).trim().toLowerCase()!==previousLeagueChampion){
+    state.leagueBuild=null;leagueBuildKey='';
+  }
   // Update the learning contract ONLY during Champion Select, before play.
   // Later plan-recovery responses must never silently change the in-game HUD.
   if(enteringChampSelect){overlayFrozenLeague=null;overlayFrozenLeagueBuild=null;leagueBuildKey='';}
