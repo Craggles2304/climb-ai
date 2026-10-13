@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {applyDnaFocusSelection} from '../lib/dnaFocusSelection';
 import {mergeIlpCloudSnapshot,type CloudIlpRow} from '../lib/ilpCloudMerge';
+import {gameDnaFocusSource} from '../lib/gameDnaSnapshot';
 import type {DnaDomain,ILPTask,Role} from '../lib/types';
 
 const t1='2026-10-09T10:00:00.000Z';
@@ -19,6 +20,7 @@ function mission(domain:DnaDomain,unlocked:boolean,role:Role='ADC'):ILPTask {
     missionHistory:[],masteryRequired:3,successfulGames:0,
   };
 }
+function row(task:ILPTask,updated_at:string):CloudIlpRow{return{id:task.id,payload:task,updated_at}}
 function pair(tasks:ILPTask[],role:Role='ADC'){
  return tasks.filter(task=>task.roleScope===role&&task.dnaFocusUnlocked&&task.status==='ACTIVE').map(task=>task.dnaDomain);
 }
@@ -65,8 +67,35 @@ test('invalid tree count or off-role tree never modifies the plan',()=>{
  assert.equal(next.find(t=>t.roleScope==='TOP')?.dnaFocusUnlocked,true);
 });
 
-test('selecting the same pair does not falsely add new mission proof',()=>{
- const original=domains.map((domain,index)=>mission(domain,index<2));
+test('confirming a recommended pair explicitly marks PLAYER origin without giving free reps',()=>{
+ const original=domains.map((domain,index)=>({...mission(domain,index<2),dnaFocusSelectionSource:'RECOMMENDED' as const}));
+ assert.equal(gameDnaFocusSource(original,'ADC'),'RECOMMENDED');
  const next=applyDnaFocusSelection(original,['LANING','WAVES_CS'],'ADC',t3)!;
- assert.ok(next.every((task,index)=>task===original[index]));
+ assert.equal(gameDnaFocusSource(next,'ADC'),'PLAYER');
+ assert.deepEqual(pair(next),['LANING','WAVES_CS']);
+ assert.ok(next.every(task=>task.dnaFocusSelectionSource==='PLAYER'));
+ assert.ok(next.every(task=>task.successfulGames===0&&!(task.missionHistory??[]).length));
+ const again=applyDnaFocusSelection(next,['LANING','WAVES_CS'],'ADC',t3)!;
+ assert.ok(again.every((task,index)=>task===next[index]));
+});
+
+test('remote cloud reconciliation preserves confirmed recommendation selection',()=>{
+ const original=domains.map((domain,index)=>({...mission(domain,index<2),dnaFocusSelectionSource:'RECOMMENDED' as const}));
+ const confirmed=applyDnaFocusSelection(original,['LANING','WAVES_CS'],'ADC',t3)!;
+ const merged=mergeIlpCloudSnapshot(confirmed,original.map(task=>row(task,t2)),'riot-1');
+ assert.equal(gameDnaFocusSource(merged.tasks,'ADC'),'PLAYER');
+ assert.equal(merged.writes.length,6);
+});
+
+test('legacy player selection events remain identifiable',()=>{
+ const original=domains.map((domain,index)=>mission(domain,index<2));
+ const local=applyDnaFocusSelection(original,['VISION_MAP','TEAMFIGHTS'],'ADC',t3)!;
+ const legacy=local.map(task=>{const {dnaFocusSelectionSource,...rest}=task;return rest as ILPTask});
+ assert.equal(gameDnaFocusSource(legacy,'ADC'),'PLAYER');
+});
+
+test('unconfirmed trees and unset plan are never labelled player-chosen',()=>{
+ const automatic=domains.map((domain,index)=>({...mission(domain,index<2),dnaFocusSelectionSource:'RECOMMENDED' as const}));
+ assert.equal(gameDnaFocusSource(automatic,'ADC'),'RECOMMENDED');
+ assert.equal(gameDnaFocusSource([],'ADC'),'UNSET');
 });
