@@ -90,11 +90,18 @@ export function ActivationRiotForm(){
       };
       const {error:profileError}=await client.from('profiles').upsert(profileData,{onConflict:'id'});
       if(profileError)throw new Error('Your player profile could not be saved. Please retry.');
-      const {data:owned}=await client.from('riot_accounts').select('id').eq('user_id',userId).limit(1);
+      const {data:owned,error:ownershipError}=await client.from('riot_accounts')
+        .select('id,game_name,tagline,region,is_primary').eq('user_id',userId);
+      if(ownershipError)throw new Error('Your linked accounts could not be loaded. Please retry.');
+      const existing=(owned??[]).find(row=>
+        String(row.game_name).trim().toLowerCase()===cleanName.toLowerCase()&&
+        String(row.tagline).replace(/^#/,'').toUpperCase()===cleanTag&&
+        String(row.region).toUpperCase()===region);
+      const isPrimary=existing?Boolean(existing.is_primary):!(owned??[]).length;
       const {error:accountError}=await client.from('riot_accounts').upsert({
         user_id:userId,game_name:cleanName,tagline:cleanTag,region,
-        label:(owned??[]).length?'ACCOUNT':'PRIMARY',
-        is_primary:!(owned??[]).length,sync_status:'pending',
+        label:isPrimary?'PRIMARY':'ACCOUNT',
+        is_primary:isPrimary,sync_status:'pending',
         role:fallbackRole,champions:[],frustration:goal,updated_at:now,
       },{onConflict:'user_id,game_name,tagline,region'});
       if(accountError)throw new Error('Your Riot profile could not be linked. Please retry.');
