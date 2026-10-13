@@ -58,7 +58,9 @@ export async function POST(req:NextRequest){
       ?'I can explain TFT economy, tempo, positioning, flexibility and decision principles. Your personal mission appears after enough recorded evidence is available.'
       :'I can explain League fundamentals and your locked pre-game plan. Review recorded match evidence after the game for specific improvements.';
 
-  if(!process.env.OPENAI_API_KEY){
+  const gatewayToken=process.env.AI_GATEWAY_API_KEY||process.env.VERCEL_OIDC_TOKEN;
+  const directToken=process.env.OPENAI_API_KEY;
+  if(!gatewayToken&&!directToken){
     return NextResponse.json({ok:true,answer:fallback,source:'mission-fallback'});
   }
   try{
@@ -75,11 +77,11 @@ export async function POST(req:NextRequest){
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),10500);
     try{
-      const response=await fetch('https://api.openai.com/v1/chat/completions',{
+      const response=await fetch(gatewayToken?'https://ai-gateway.vercel.sh/v1/chat/completions':'https://api.openai.com/v1/chat/completions',{
         method:'POST',signal:controller.signal,
-        headers:{authorization:'Bearer '+process.env.OPENAI_API_KEY,'content-type':'application/json'},
+        headers:{authorization:'Bearer '+(gatewayToken||directToken),'content-type':'application/json'},
         body:JSON.stringify({
-          model:process.env.OPENAI_COACH_MODEL||'gpt-4o-mini',
+          model:gatewayToken?(process.env.AI_GATEWAY_MODEL||'openai/gpt-4o-mini'):(process.env.OPENAI_COACH_MODEL||'gpt-4o-mini'),
           temperature:0.25,max_tokens:220,
           messages:[
             {role:'system',content:system},
