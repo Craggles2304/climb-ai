@@ -4,7 +4,8 @@ import {FormEvent,useEffect,useMemo,useState} from 'react';
 import {useRouter} from 'next/navigation';
 import {Wordmark} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
-import {saveProfile,seedFor} from '@/lib/profile';
+import {seedFor} from '@/lib/profile';
+import {getBrowserClient} from '@/lib/supabase/client';
 import {track} from '@/lib/analytics';
 import type {Role} from '@/lib/types';
 
@@ -71,10 +72,47 @@ export function ActivationRiotForm(){
   };
 
   const continueManual=async()=>{
-    const profile=saveProfile({gameName:gameName.trim()||'Your account',tagline:tagline.startsWith('#')?tagline:`#${tagline}`,region,role:fallbackRole,rank:'UNRANKED',champions:[],frustration:goal});
-    track('signup_completed',{role:profile.role,rank:profile.rank,fallback:true});track('riot_profile_added',{region,verified:false,fallback:true});
-    track('first_mission_generated',{metric:seed.metric,category:seed.category,fromFrustration:goal});
-    await refresh();router.push('/activate');router.refresh();
+    if(!authenticated||!gameName.trim())return;
+    setBusy(true);setError('');
+    try{
+      const client=await getBrowserClient();
+      if(!client)throw new Error('Sign in before saving your Riot profile.');
+      const {data}=await client.auth.getUser();
+      if(!data.user)throw new Error('Your session expired. Sign in to continue.');
+      const userId=data.user.id;
+      const cleanName=gameName.trim();
+      const cleanTag=tagline.replace(/^#/,'').trim().toUpperCase();
+      const now=new Date().toISOString();
+      const profileData={
+        id:userId,game_name:cleanName,tagline:cleanTag,region,
+        role:fallbackRole,rank:'UNRANKED',champions:[],
+        frustration:goal,updated_at:now,
+      };
+      const {error:profileError}=await client.from('profiles').upsert(profileData,{onConflict:'id'});
+      if(profileError)throw new Error('Your player profile could not be saved. Please retry.');
+      const {data:owned,error:ownershipError}=await client.from('riot_accounts')
+        .select('id,game_name,tagline,region,is_primary').eq('user_id',userId);
+      if(ownershipError)throw new Error('Your linked accounts could not be loaded. Please retry.');
+      const existing=(owned??[]).find(row=>
+        String(row.game_name).trim().toLowerCase()===cleanName.toLowerCase()&&
+        String(row.tagline).replace(/^#/,'').toUpperCase()===cleanTag&&
+        String(row.region).toUpperCase()===region);
+      const isPrimary=existing?Boolean(existing.is_primary):!(owned??[]).length;
+      const {error:accountError}=await client.from('riot_accounts').upsert({
+        user_id:userId,game_name:cleanName,tagline:cleanTag,region,
+        label:isPrimary?'PRIMARY':'ACCOUNT',
+        is_primary:isPrimary,sync_status:'pending',
+        role:fallbackRole,champions:[],frustration:goal,updated_at:now,
+      },{onConflict:'user_id,game_name,tagline,region'});
+      if(accountError)throw new Error('Your Riot profile could not be linked. Please retry.');
+      track('signup_completed',{role:fallbackRole,rank:'UNRANKED',fallback:true});
+      track('riot_profile_added',{region,verified:false,fallback:true});
+      track('first_mission_generated',{metric:seed.metric,category:seed.category,fromFrustration:goal});
+      await refresh();
+      router.push('/activate');router.refresh();
+    }catch(err){
+      setError(err instanceof Error?err.message:'Could not save your profile. Please try again.');
+    }finally{setBusy(false)}
   };
 
   if(!hydrated)return <main className="container section onboarding-page"><Wordmark/><section className="glass card" style={{maxWidth:760,margin:'42px auto',textAlign:'center'}}><div className="eyebrow">GETTING READY</div><h1>Loading your account…</h1></section></main>;
