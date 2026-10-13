@@ -35,7 +35,7 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
   if(focusLive.length!==2){
     const recommended=new Set(recommendedGameMissionFocusPair(strandTasks,role).map(row=>row.domain));
     strandTasks=strandTasks.map(task=>taskAppliesToRole(task,role)&&isDnaStrandMission(task)&&task.status!=='MASTERED'&&task.status!=='PAUSED'
-      ?{...task,dnaFocusUnlocked:recommended.has(task.dnaDomain)}
+      ?{...task,dnaFocusUnlocked:recommended.has(task.dnaDomain),dnaFocusSelectionSource:'RECOMMENDED' as const}
       :task);
   }
   return[...foreign,...strandTasks];
