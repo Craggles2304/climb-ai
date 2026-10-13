@@ -110,21 +110,22 @@
   show('threatBlock',Boolean(text(plan.threat)));
  }
 
- function renderTft(focusId){
-  const focus=window.OP_TFT_COACH_MODEL?.mission(focusId);
-  for(const id of ['ECONOMY','TEMPO','FLEX','POSITION'])$('overlay').classList.toggle('tft-focus-'+id.toLowerCase(),(focus?.id||'ECONOMY')===id);
+ function renderTft(focusId,mission){
+  const domain=String(mission?.domain||'');
+  for(const id of ['ECONOMY','TEMPO','FLEX','POSITION'])$('overlay').classList.toggle('tft-focus-'+id.toLowerCase(),(domain==='FLEXIBILITY'?'FLEX':domain==='CONVERSION'?'TEMPO':domain||'ECONOMY')===id);
   showChampion(null,'TFT');
   put('identityTag','TACTICIAN / LEARNING FOCUS');
   put('hudBrandMode','TACTICIAN HUD');
   put('game','TEAMFIGHT TACTICS');
   put('freezeNote','PRESELECTED BEFORE PLAY');
   put('ruleNote','SELECTED BEFORE PLAY · REVIEW AFTER');
-  put('planState','STATIC TFT FOCUS');
-  put('title',focus?.title||'TFT development focus');
-  put('missionLabel','Your TFT focus');put('mission',focus?.rule||'Follow the focus you chose before the game.');
+  put('planState',mission?.status==='BASELINE'?'DNA BASELINE':'ACCOUNT MISSION LOCKED');
+  put('title',mission?.title||'BUILD YOUR TFT DNA');
+  put('missionLabel',mission?.status==='BASELINE'?'Baseline mission':'Your TFT DNA mission');
+  put('mission',mission?.nextGame||'Play normally and collect decision evidence before a mission can be assigned.');
   show('missionBlock',true);
-  put('winLabel','Remember');put('win',focus?.cues?.[0]||'');show('winBlock',Boolean(focus?.cues?.[0]));
-  put('avoidLabel','Also remember');put('avoid',focus?.cues?.[1]||'');show('avoidBlock',Boolean(focus?.cues?.[1]));
+  put('winLabel','Remember');put('win',mission?.cues?.[0]||'');show('winBlock',Boolean(mission?.cues?.[0]));
+  put('avoidLabel','Also remember');put('avoid',mission?.cues?.[1]||'');show('avoidBlock',Boolean(mission?.cues?.[1]));
   putList('actions',[]);show('actionsBlock',false);
   put('threat','');show('threatBlock',false);
  }
@@ -140,7 +141,7 @@
   $('overlay').classList.toggle('is-tft',next.game==='TFT');
   put('status',preview?'LAYOUT PREVIEW':next.game==='TFT'?'TFT RECORDING':'LEAGUE RECORDING');
   put('recordingStatus',preview?'● EDITOR PREVIEW':'● TRACKING ACTIVE');
-  if(next.game==='TFT')renderTft(next.focus);
+  if(next.game==='TFT')renderTft(next.focus,next.tftMission);
   else if(next.plan)renderLeague(next.plan);
   else{
    // Preview without a match: show what each layout holds, clearly labelled.
