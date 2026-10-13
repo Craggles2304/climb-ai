@@ -13,9 +13,9 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
-let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayCoachBusy=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null;
+let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBuildsOpen=false,overlayCoachBusy=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null,overlayFrozenTftBuilds=null,overlayFrozenLeagueBuild=null;
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
-let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
+let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,tftBuildsInFlight=false,leagueBuildInFlight='',leagueBuildKey='',reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
 let pairingAuthInvalid=false;
 let recentLogs=[];
@@ -46,15 +46,16 @@ function configFile(){return path.join(configDir(),'companion.json')}
 function readConfig(){try{return JSON.parse(readFileSync(configFile(),'utf8'))}catch{return{webUrl:DEFAULT_WEB,tokenCipher:'',autoStart:false}}}
 function decryptToken(cfg){if(!cfg?.tokenCipher||!safeStorage.isEncryptionAvailable())return'';try{return safeStorage.decryptString(Buffer.from(cfg.tokenCipher,'base64'))}catch{return''}}
 function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync(configFile(),JSON.stringify(next,null,2),'utf8')}
-function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),overlayEnabled:raw.overlayEnabled===true,overlayLayout:safeLayout(raw.overlayLayout),tftFocus:String(raw.tftFocus||'ECONOMY'),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
+function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),overlayEnabled:raw.overlayEnabled===true,overlayLayout:safeLayout(raw.overlayLayout),tftFocus:String(raw.tftFocus||'ECONOMY'),tftBuildId:String(raw.tftBuildId||''),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
 function paired(){return Boolean(currentConfig().token)}
-function publicState(){const cfg=currentConfig();return{...state,logs:recentLogs.slice(-80),webUrl:cfg.webUrl,tftFocus:cfg.tftFocus,overlay:{enabled:cfg.overlayEnabled,editing:overlayEditing,layout:cfg.overlayLayout}}}
+function publicState(){const cfg=currentConfig();return{...state,logs:recentLogs.slice(-80),webUrl:cfg.webUrl,tftFocus:cfg.tftFocus,tftBuildId:cfg.tftBuildId,overlay:{enabled:cfg.overlayEnabled,editing:overlayEditing,buildsOpen:overlayBuildsOpen,layout:cfg.overlayLayout}}}
 // The optional overlay never injects into League/TFT, touches game memory, or
 // supplies live prescriptions. It shows only the frozen pre-game learning model.
 function overlayPayload(){
   const cfg=currentConfig();
   return overlayView(state,{enabled:cfg.overlayEnabled,editing:overlayEditing,layout:cfg.overlayLayout,
-    frozenLeague:overlayFrozenLeague,tftFocus:overlayFrozenTftFocus||cfg.tftFocus,tftMission:overlayFrozenTftMission,assistantOpen:overlayAssistantOpen});
+    frozenLeague:overlayFrozenLeague,tftFocus:overlayFrozenTftFocus||cfg.tftFocus,tftMission:overlayFrozenTftMission,assistantOpen:overlayAssistantOpen,buildsOpen:overlayBuildsOpen,
+    tftBuilds:overlayFrozenTftBuilds,leagueBuild:overlayFrozenLeagueBuild});
 }
 function createOverlayWindow(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
@@ -67,7 +68,7 @@ function createOverlayWindow(){
     }});
   overlayWindow=win;
   win.setAlwaysOnTop(true,'floating');
-  win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen),{forward:true});
+  win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('did-finish-load',()=>syncOverlay());
   win.on('closed',()=>{if(overlayWindow===win)overlayWindow=null});
@@ -78,7 +79,7 @@ function syncOverlay(){
   if(quitting)return;
   const view=overlayPayload();
   if(!view.show){
-    overlayEditing=false;overlayAssistantOpen=false;
+    overlayEditing=false;overlayAssistantOpen=false;overlayBuildsOpen=false;
     if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.hide();
     return;
   }
@@ -90,14 +91,14 @@ function syncOverlay(){
 }
 function applyOverlayEnabled(enabled){
   const cfg=readConfig();cfg.overlayEnabled=Boolean(enabled);writeConfig(cfg);
-  if(!enabled){overlayEditing=false;overlayAssistantOpen=false;}
+  if(!enabled){overlayEditing=false;overlayAssistantOpen=false;overlayBuildsOpen=false;}
   syncOverlay();setState({});
   return{ok:true,enabled:cfg.overlayEnabled};
 }
 function toggleOverlayEditor(forced){
   if(!currentConfig().overlayEnabled)return{ok:false,error:'Enable the overlay first in Companion settings.'};
   overlayEditing=typeof forced==='boolean'?forced:!overlayEditing;
-  if(overlayEditing)overlayAssistantOpen=false;
+  if(overlayEditing){overlayAssistantOpen=false;overlayBuildsOpen=false;}
   syncOverlay();setState({});
   return{ok:true,editing:overlayEditing};
 }
@@ -106,7 +107,7 @@ function toggleOverlayAssistant(forced){
   const next=typeof forced==='boolean'?forced:!overlayAssistantOpen;
   if(next&&!overlayPayload().show)return{ok:false,error:'Start a League or TFT game with Companion recording first.'};
   overlayAssistantOpen=next;
-  if(next)overlayEditing=false;
+  if(next){overlayEditing=false;overlayBuildsOpen=false;}
   syncOverlay();setState({});
   if(next&&overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.focus();
   else if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.blur();
@@ -137,6 +138,67 @@ async function askOverlayCoach(input){
   }finally{clearTimeout(timer);overlayCoachBusy=false}
 }
 
+function toggleOverlayBuilds(forced){
+  if(!currentConfig().overlayEnabled)return{ok:false,error:'Enable the overlay first.'};
+  const next=typeof forced==='boolean'?forced:!overlayBuildsOpen;
+  if(next&&!overlayPayload().show)return{ok:false,error:'The build guide opens during a recorded match.'};
+  overlayBuildsOpen=next;
+  if(next){overlayEditing=false;overlayAssistantOpen=false;}
+  syncOverlay();setState({});
+  if(next&&overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.focus();
+  else if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.blur();
+  return{ok:true,open:next};
+}
+
+async function refreshTftBuilds(){
+  if(tftBuildsInFlight||state.phase!=='WAITING'||!paired())return;
+  tftBuildsInFlight=true;
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),9000);
+  try{
+    const response=await fetch(currentConfig().webUrl+'/api/tft/pregame-builds',{signal:controller.signal});
+    const data=await response.json().catch(()=>({}));
+    if(response.ok&&data?.ok&&Array.isArray(data.builds)&&state.phase==='WAITING'){
+      const selected=currentConfig().tftBuildId;
+      setState({tftBuilds:{patch:String(data.patch||''),asOf:String(data.asOf||''),builds:data.builds.slice(0,5)},tftBuildError:null});
+      if(selected&&!data.builds.some(build=>build.id===selected)){
+        const cfg=readConfig();cfg.tftBuildId='';writeConfig(cfg);
+        setState({});
+      }
+    }else if(state.phase==='WAITING')setState({tftBuildError:'Static build references temporarily unavailable.'});
+  }catch{if(state.phase==='WAITING')setState({tftBuildError:'Static build references temporarily unavailable.'});}
+  finally{clearTimeout(timer);tftBuildsInFlight=false}
+}
+function selectTftBuild(id){
+  if(state.tftRecorder?.state==='RECORDING')return{ok:false,error:'Build preference is frozen for this TFT match.'};
+  const next=String(id||'');
+  if(next&&!state.tftBuilds?.builds?.some(build=>build.id===next))return{ok:false,error:'Select a currently available build.'};
+  const cfg=readConfig();cfg.tftBuildId=next;writeConfig(cfg);setState({});
+  return{ok:true,id:next};
+}
+// Champion-select guide is fetched from already existing current-patch League routes.
+// If it arrives after play starts, it is NEVER inserted into the live game.
+async function refreshLeagueBuild(champion,role){
+  const key=champion.trim().toLowerCase()+'|'+role;
+  if(leagueBuildInFlight===key||leagueBuildKey===key||state.phase!=='CHAMP_SELECT')return;
+  leagueBuildInFlight=key;
+  try{
+    const result=await championGuide(currentConfig().webUrl,champion,role);
+    if(state.phase!=='CHAMP_SELECT'||leagueBuildInFlight!==key)return;
+    const build=result?.build?.ok?result.build:null;
+    const meta=result?.meta?.ok?result.meta:null;
+    leagueBuildKey=key;
+    setState({leagueBuild:build||meta?{
+      champion,role,patch:String(build?.patch||meta?.patch||''),
+      source:String(build?.source||meta?.source||''),
+      items:Array.isArray(build?.items)?build.items.slice(0,6).map(item=>String(item.name||'')):[],
+      runes:Array.isArray(meta?.runePage?.perks)?meta.runePage.perks.slice(0,6).map(rune=>String(rune.name||'')):[],
+      skillOrder:Array.isArray(meta?.skillPriority)?meta.skillPriority.slice(0,4).map(String):[],
+      summoners:Array.isArray(meta?.summoners)?meta.summoners.slice(0,2).map(s=>String(s.name||'')):[],
+      note:String(build?.note||'').slice(0,220),
+    }:null});
+  }catch{if(state.phase==='CHAMP_SELECT')setState({leagueBuild:null});}
+  finally{if(leagueBuildInFlight===key)leagueBuildInFlight=''}
+}
 function saveOverlayLayout(raw){
   const cfg=readConfig();cfg.overlayLayout=safeLayout(raw);writeConfig(cfg);
   syncOverlay();setState({});
@@ -183,7 +245,7 @@ function setState(patch){
   state={...state,...patch,paired:paired(),autoStart:currentConfig().autoStart};
   // Update the learning contract ONLY during Champion Select, before play.
   // Later plan-recovery responses must never silently change the in-game HUD.
-  if(enteringChampSelect)overlayFrozenLeague=null;
+  if(enteringChampSelect){overlayFrozenLeague=null;overlayFrozenLeagueBuild=null;leagueBuildKey='';}
   else if(state.phase==='CHAMP_SELECT'&&state.matchup?.status==='READY'){
     overlayFrozenLeague=freezeLeaguePlan(state)||overlayFrozenLeague;
   }else if(enteringRecording&&!overlayFrozenLeague){
@@ -191,12 +253,21 @@ function setState(patch){
   }else if(!['CHAMP_SELECT','RECORDING'].includes(state.phase)){
     overlayFrozenLeague=null;
   }
+  if(enteringRecording){overlayFrozenLeagueBuild=state.leagueBuild?{...state.leagueBuild}:null;}
+  if(state.phase==='CHAMP_SELECT'&&state.matchup?.champion){
+    const champion=String(state.matchup.champion||'').trim();
+    const role=normalizedRole(state.matchup.role||state.matchup.plan?.role);
+    if(champion&&['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(role))void refreshLeagueBuild(champion,role);
+  }
   if(state.tftRecorder?.state==='RECORDING'&&previousTftState!=='RECORDING'){
+    const available=state.tftBuilds?.builds||[];
+    overlayFrozenTftBuilds={patch:state.tftBuilds?.patch||'',asOf:state.tftBuilds?.asOf||'',selectedId:currentConfig().tftBuildId,builds:available.map(build=>({...build}))};
     overlayFrozenTftFocus=currentConfig().tftFocus;
     overlayFrozenTftMission=state.tftMission?.mission?{...state.tftMission.mission}:null;
   }else if(state.tftRecorder?.state!=='RECORDING'){
     overlayFrozenTftFocus=null;
     overlayFrozenTftMission=null;
+    overlayFrozenTftBuilds=null;
   }
   if(state.phase==='WAITING'&&previousPhase!=='WAITING'){
     const detectedRole=normalizedRole(state.postGameReview?.match?.role||state.matchup?.role||state.matchup?.plan?.role);
@@ -204,12 +275,13 @@ function setState(patch){
     scheduleMissedReviewRecovery(4500);
     stopPlayerHomePoll();
     void pollPlayerHome();
+    void refreshTftBuilds();
   }else if(previousPhase==='WAITING'&&state.phase!=='WAITING'){
     stopMissedReviewRecovery();
     stopPlayerHomePoll();
   }
   if(enteringChampSelect){
-    matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null};startChampionPlanPoll();
+    matchupSignature='';state={...state,matchup:null,teamPlan:null,draft:null,leagueBuild:null};startChampionPlanPoll();
   }else if(enteringRecording){
     if(needsRecordingPlanRecovery())startChampionPlanPoll();else stopChampionPlanPoll();
   }else{
@@ -718,6 +790,7 @@ function updateTray(){
     {label:'Edit overlay layout (Alt+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayEditor()},
     {label:'Cycle HUD size (Ctrl+Shift+L)',enabled:currentConfig().overlayEnabled,click:()=>cycleOverlayLayout()},
     {label:'Ask AI Coach (Ctrl+Shift+K)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayAssistant()},
+    {label:'View static build ideas (Ctrl+Shift+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayBuilds()}, 
     {label:'Open OP CLIMB',click:()=>shell.openExternal(`${currentConfig().webUrl}/live`)},
     {label:'Restart Tracker',enabled:paired(),click:()=>{stopTracker();startTracker()}},{type:'separator'},
     {label:'Quit',click:()=>{quitting=true;app.quit()}}]));
@@ -729,11 +802,14 @@ ipcMain.handle('overlay:get-state',()=>overlayPayload());
 ipcMain.handle('overlay:save-layout',(_event,layout)=>saveOverlayLayout(layout));
 ipcMain.handle('overlay:finish-edit',()=>toggleOverlayEditor(false));
 ipcMain.handle('overlay:assistant-toggle',()=>toggleOverlayAssistant());
+ipcMain.handle('overlay:builds-toggle',()=>toggleOverlayBuilds());
 ipcMain.handle('overlay:ask-coach',(event,input)=>event.sender===overlayWindow?.webContents?askOverlayCoach(input):{ok:false,error:'Unrecognised overlay window.'});
 ipcMain.handle('companion:overlay-enabled',(_event,enabled)=>applyOverlayEnabled(enabled));
 ipcMain.handle('companion:overlay-edit',()=>toggleOverlayEditor());
 ipcMain.handle('companion:overlay-cycle',()=>cycleOverlayLayout());
 ipcMain.handle('companion:set-tft-focus',(_event,focus)=>selectTftFocus(focus));
+ipcMain.handle('companion:get-tft-builds',()=>state.tftBuilds||null);
+ipcMain.handle('companion:set-tft-build',(_event,id)=>selectTftBuild(id));
 ipcMain.handle('companion:get-state',()=>publicState());
 ipcMain.handle('companion:set-dna-role',(_event,role)=>selectDnaRole(role));
 ipcMain.handle('companion:unpair',()=>{stopTracker();stopTftRecorder();const cfg=readConfig();cfg.tokenCipher='';writeConfig(cfg);pairingAuthInvalid=false;recentLogs=[];matchupSignature='';setState({phase:'SETUP',detail:'This PC is unpaired. Pair it again from OP CLIMB.',trackerRunning:false,matchup:null,teamPlan:null,postGameReview:null,tftMission:null,tftMissionError:null});return{ok:true}});
@@ -775,6 +851,7 @@ app.whenReady().then(()=>{
   try{globalShortcut.register('Alt+B',()=>toggleOverlayEditor())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+L',()=>cycleOverlayLayout())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+K',()=>toggleOverlayAssistant())}catch{}
+  try{globalShortcut.register('CommandOrControl+Shift+B',()=>toggleOverlayBuilds())}catch{}
   screen.on('display-metrics-changed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   screen.on('display-removed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired){startTracker();startTftRecorder()}else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
