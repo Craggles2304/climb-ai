@@ -24,11 +24,11 @@ export function applyDnaFocusSelection(
   return input.map(task=>{
     if(!taskAppliesToRole(task,role)||!isDnaStrandMission(task)||task.status==='MASTERED'||task.status==='PAUSED')return task;
     const unlocked=chosen.has(task.dnaDomain);
-    if(task.dnaFocusUnlocked===unlocked)return task;
+    if(task.dnaFocusUnlocked===unlocked&&task.dnaFocusSelectionSource==='PLAYER')return task;
     const note=unlocked
       ?'DNA tree unlocked by player for scored progression.'
       :'DNA tree locked by player; remains visible and measured but does not bank mission progress.';
-    return {...task,dnaFocusUnlocked:unlocked,lastUpdatedReason:note,
+    return {...task,dnaFocusUnlocked:unlocked,dnaFocusSelectionSource:'PLAYER' as const,lastUpdatedReason:note,
       history:[...(task.history??[]),{at,type:'COACH_EDIT' as const,note}].slice(-12)};
   });
 }
