@@ -16,7 +16,7 @@ import {analyseMatch} from '@/lib/engine';
 import {buildReview} from '@/lib/review';
 import {positiveEvidenceForMatch} from '@/lib/positiveEvidence';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
-import {gameMissionFocusPair,missionRepView} from '@/lib/gameDnaSnapshot';
+import {gameMissionFocusPair,gameDnaFocusSource,missionRepView} from '@/lib/gameDnaSnapshot';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {missionComparisonForMatch} from '@/lib/missionComparison';
 import type {CSSProperties} from 'react';
@@ -38,6 +38,7 @@ const baselineReady=dnaBaselineReady(baselineGames);
 const climbGames=session?gamesInSession(session,accountMatches):[];
 const sessionTask=session?tasks.find(task=>task.id===session.taskId):undefined;
 const gameFocus=baselineReady?gameMissionFocusPair(tasks,active.role):[];
+const focusWasChosen=gameDnaFocusSource(tasks,active.role)==='PLAYER';
 const activeMissions=gameFocus.map(item=>item.task);
 const nextGame=Math.min((climbGames.length+1),session?.targetGames||3);
 const latestSessionGame=climbGames.at(-1);
@@ -129,7 +130,8 @@ return <div className="match-room">
 
   <section className="panel match-room-missions" aria-label="Your two focus missions">
     <div className="match-room-missions-head">
-      <div><div className="eyebrow">YOUR TWO UNLOCKED MISSIONS</div><h2>Only the two trees you unlocked can score this match.</h2><p>{recording?'The Companion is measuring your two unlocked missions quietly.':latestMissionMatch?`Compared with your last ${active.role} game. Each result needs timestamped proof before it can bank.`:'The missions from your two unlocked DNA trees will be graded after the tracked game is reviewed.'}</p></div>
+      <div><div className="eyebrow">{focusWasChosen?'YOUR TWO UNLOCKED MISSIONS':'TWO COACH-RECOMMENDED MISSIONS'}</div>
+        <h2>{focusWasChosen?'Only the two trees you unlocked can score this match.':'These are suggested priorities, not yet player-confirmed.'}</h2><p>{recording?'The Companion is measuring your two unlocked missions quietly.':latestMissionMatch?`Compared with your last ${active.role} game. Each result needs timestamped proof before it can bank.`:'The two coaching priorities will be reviewed after a tracked game. You can confirm or swap them in Missions.'}</p></div>
       <Link className="btn secondary" href="/missions">OPEN ALL MISSIONS →</Link>
     </div>
     {!baselineReady?<div className="match-room-missions-baseline">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} {active.role} GAMES · Permanent missions unlock after game {DNA_BASELINE_GAMES}.</div>:

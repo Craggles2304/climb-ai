@@ -263,7 +263,10 @@ export function ensureOneMissionPerDnaStrand(tasks:ILPTask[],accountId:string,ro
 
     const cycle=cycleFor(next,domain);
     const inheritedFocus=next.some(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&task.dnaFocusUnlocked===true);
-    const mission={...createDnaStrandMission(accountId,role,domain,cycle),dnaFocusUnlocked:inheritedFocus};
+    const inheritedSource=next.some(task=>isDnaStrandMission(task)&&task.dnaDomain===domain&&task.dnaFocusSelectionSource==='PLAYER')
+      ?'PLAYER' as const:'RECOMMENDED' as const;
+    const mission={...createDnaStrandMission(accountId,role,domain,cycle),
+      dnaFocusUnlocked:inheritedFocus,dnaFocusSelectionSource:inheritedSource};
     next.push(mission);
     changes.push(`${DNA_DOMAIN_LABELS[domain]}: ${mission.title}`);
   }
@@ -327,6 +330,16 @@ export function gradeDnaStrandMissionsFromHistory(tasks:ILPTask[],history:Histor
       if(!isDnaStrandMission(task)||task.status==='MASTERED'||task.status==='PAUSED')return false;
       const start=(task.history??[]).filter(event=>event.type==='PROMOTED').at(-1)?.at;
       const startedAt=start&&Number.isFinite(Date.parse(start))?Date.parse(start):Number.NEGATIVE_INFINITY;
+      // Never retrospectively award a mission for matches before the player
+      // explicitly chose that tree. Focus selections are timestamped on all
+      // six strands, so switching trees cannot rewrite old game history.
+      const choices=(task.history??[]).filter(event=>
+        event.type==='COACH_EDIT'&&/DNA tree (unlocked|locked) by player/i.test(event.note)
+      ).sort((a,b)=>Date.parse(a.at)-Date.parse(b.at));
+      if(choices.length){
+        const atGame=choices.filter(event=>Number.isFinite(Date.parse(event.at))&&Date.parse(event.at)<=rowTime).at(-1);
+        if(!atGame||!/DNA tree unlocked by player/i.test(atGame.note))return false;
+      }
       return rowTime>=startedAt;
     });
     const role=(eligible[0]?.roleScope||row.role||'ADC') as Role;

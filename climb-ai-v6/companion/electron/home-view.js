@@ -219,8 +219,8 @@
         <header class="oc-section-head">
           <div class="oc-section-head__text">
             <span class="oc-eyebrow">Development missions</span>
-            <h2 class="oc-h2">${stage.stage==='active'?'Your two unlocked trees':'Your missions'}</h2>
-            <p class="oc-small">Only the two DNA trees you unlocked can bank a proven rep.</p>
+            <h2 class="oc-h2">${stage.stage==='active'?(home?.focusSelection?.confirmed===false?'Two coach-recommended trees':'Your two unlocked trees'):'Your missions'}</h2>
+            <p class="oc-small">${home?.focusSelection?.confirmed===false?'These two priorities were suggested by OP CLIMB, not chosen by you. Confirm or swap them on the Missions page.':'Only the two DNA trees you unlocked can bank a proven rep.'}</p>
           </div>
         </header>
         <div class="oc-missions">${body}</div>

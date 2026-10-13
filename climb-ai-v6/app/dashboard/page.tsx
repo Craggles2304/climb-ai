@@ -7,7 +7,7 @@ import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
 import {ClientGameDna,type ClientDnaMission} from '@/components/ClientGameDna';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
-import {gameDnaClientMissions,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {gameDnaClientMissions,gameDnaFocusSource,gameMissionFocusPair} from '@/lib/gameDnaSnapshot';
 import {taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {missionSummary} from '@/lib/missionLoop';
@@ -78,6 +78,7 @@ export default function Dashboard(){
     online,
     baselineGames,
     dnaRevealed,
+    focusSelectionSource:gameDnaFocusSource(roleTasks,active.role),
     focusName:activeMissions.length===2?'Two DNA trees unlocked':focusPlain?.name||focus?.title,
     focusJob:activeMissions.length===2?`1. ${focusPlain?.nextGame||focus?.gameRule||''}  2. ${secondFocusPlain?.nextGame||secondFocus?.gameRule||''}`:focusPlain?.nextGame||focus?.gameRule,
     focusConfirmed:focusProof?.confirmed,

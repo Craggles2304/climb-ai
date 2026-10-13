@@ -3,7 +3,7 @@ import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {companionDnaRoleBaselines,COMPANION_DNA_BASELINE_REQUIRED} from '@/lib/server/companionDnaBaseline';
 import {normalizeTier,type SubscriptionTier} from '@/lib/subscription';
-import {canonicalGameDnaTasks,gameDnaStrands,gameMissionFocusPair,missionRepView} from '@/lib/gameDnaSnapshot';
+import {canonicalGameDnaTasks,gameDnaStrands,gameMissionFocusPair,gameDnaFocusSource,missionRepView} from '@/lib/gameDnaSnapshot';
 import type {ILPTask,Role} from '@/lib/types';
 import {ensureOneMissionPerDnaStrand} from '@/lib/dnaStrandMissions';
 import {LEAGUE_ROLES} from '@/lib/roleAwareLearning';
@@ -53,6 +53,9 @@ export async function GET(req:NextRequest){
     :storedTasks;
   const allTasks=canonicalGameDnaTasks(strandReady,roleKey);
   const focusPair=gameMissionFocusPair(allTasks,roleKey);
+  const focusSource=gameDnaFocusSource(allTasks,roleKey);
+  const focusIsPlayerConfirmed=focusSource==='PLAYER';
+  const pairDescription=focusIsPlayerConfirmed?'2 player-confirmed DNA trees':'2 coach-recommended DNA trees · confirm on Missions';
 
   const missionLimit=2;
   const missions=baseline.ready?focusPair.map(({task},index)=>missionView(task,index)):[];
@@ -74,15 +77,16 @@ export async function GET(req:NextRequest){
     selectedRole:role||primaryRole||'ADC',
     primaryRole:primaryRole||role||'ADC',
     roleProfiles:LEAGUE_ROLES.map(item=>({...roleBaselines[item]})),
+    focusSelection:{source:focusSource,confirmed:focusIsPlayerConfirmed},
     tierView:tier==='FREE'
-      ?{label:'CURRENT SNAPSHOT',detail:'2 player-unlocked DNA trees · 7-day progress view',missionLimit:2,persistentMemory:false}
+      ?{label:'CURRENT SNAPSHOT',detail:pairDescription+' · 7-day progress view',missionLimit:2,persistentMemory:false}
       :tier==='PLUS'
-        ?{label:'DEEPER DEVELOPMENT',detail:'2 player-unlocked DNA trees · 90-day progress view',missionLimit:2,persistentMemory:false}
-        :{label:'PLAYER MEMORY',detail:'2 player-unlocked DNA trees · long-term learning memory',missionLimit:2,persistentMemory:true},
+        ?{label:'DEEPER DEVELOPMENT',detail:pairDescription+' · 90-day progress view',missionLimit:2,persistentMemory:false}
+        :{label:'PLAYER MEMORY',detail:pairDescription+' · long-term learning memory',missionLimit:2,persistentMemory:true},
     baseline:{...baseline,required:COMPANION_DNA_BASELINE_REQUIRED},
     journey:baseline.ready
       ?priorityMission
-        ?{phase:'MISSION',status:'DNA ACTIVE · TWO TREES UNLOCKED',title:priorityMission.title,body:'Mission 1: '+priorityMission.nextGame+(missions[1]?(' · Mission 2: '+missions[1].title):''),progress:'2 UNLOCKED TREES',cta:'PLAY NEXT GAME'}
+        ?{phase:'MISSION',status:focusIsPlayerConfirmed?'DNA ACTIVE · TWO TREES CONFIRMED':'DNA SUGGESTED · PLAYER CONFIRMATION NEEDED',title:priorityMission.title,body:(focusIsPlayerConfirmed?'':'These priorities were suggested by OP CLIMB. Open Missions to confirm or change them. · ')+'Mission 1: '+priorityMission.nextGame+(missions[1]?(' · Mission 2: '+missions[1].title):''),progress:focusIsPlayerConfirmed?'2 PLAYER-CHOSEN TREES':'2 RECOMMENDED TREES',cta:focusIsPlayerConfirmed?'PLAY NEXT GAME':'CONFIRM MISSIONS'}
         :{phase:'DNA_REVEAL',status:'DNA READY',title:'Your Game DNA is ready.',body:'Open My DNA to reveal your six strands and first priority mission.',progress:'3/3',cta:'REVEAL MY DNA'}
       :{phase:'BASELINE',status:'BASELINE '+Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,title:baseline.games?'Play baseline game '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)+'.':'Play your first baseline game.',body:'Play normally. Coaching is provisional until the three-game role baseline is complete.',progress:Math.min(baseline.games,COMPANION_DNA_BASELINE_REQUIRED)+'/'+COMPANION_DNA_BASELINE_REQUIRED,cta:'PLAY BASELINE GAME '+Math.min(baseline.games+1,COMPANION_DNA_BASELINE_REQUIRED)},
     dna,

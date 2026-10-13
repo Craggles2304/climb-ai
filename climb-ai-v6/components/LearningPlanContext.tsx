@@ -11,7 +11,7 @@ import {mergeIlpCloudSnapshot,taskFreshness,type CloudIlpRow} from '@/lib/ilpClo
 import {canonicalLeagueRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaDomainForTask,ensureDnaDomain} from '@/lib/dnaDomain';
 import {ensureOneMissionPerDnaStrand,isDnaStrandMission} from '@/lib/dnaStrandMissions';
-import {recommendedGameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {recommendedGameMissionFocusPair,gameDnaFocusSource} from '@/lib/gameDnaSnapshot';
 import {applyDnaFocusSelection} from '@/lib/dnaFocusSelection';
 
 type CoachTaskInput={title:string;category:ILPTask['category'];why:string;gameRule:string;metric:string;target:string;source?:'COACH';priority?:number};
@@ -35,7 +35,7 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
   if(focusLive.length!==2){
     const recommended=new Set(recommendedGameMissionFocusPair(strandTasks,role).map(row=>row.domain));
     strandTasks=strandTasks.map(task=>taskAppliesToRole(task,role)&&isDnaStrandMission(task)&&task.status!=='MASTERED'&&task.status!=='PAUSED'
-      ?{...task,dnaFocusUnlocked:recommended.has(task.dnaDomain)}
+      ?{...task,dnaFocusUnlocked:recommended.has(task.dnaDomain),dnaFocusSelectionSource:'RECOMMENDED' as const}
       :task);
   }
   return[...foreign,...strandTasks];
@@ -104,7 +104,7 @@ const setDnaFocusDomains=async(domains:DnaDomain[]):Promise<boolean>=>{
   const saved=normalisePlan(cloud,matchesFor(active.id),active.id,active.role,active.rank);
   const unlocked=saved.filter(task=>taskAppliesToRole(task,active.role)&&isDnaStrandMission(task)&&task.status!=='MASTERED'&&task.status!=='PAUSED'&&task.dnaFocusUnlocked===true)
     .map(task=>task.dnaDomain);
-  const verified=unlocked.length===2&&domains.length===2&&domains.every(domain=>unlocked.includes(domain));
+  const verified=unlocked.length===2&&domains.length===2&&domains.every(domain=>unlocked.includes(domain))&&gameDnaFocusSource(saved,active.role)==='PLAYER';
   setAllTasks(prev=>({...prev,[active.id]:verified?saved:current}));
   return verified;
 };
