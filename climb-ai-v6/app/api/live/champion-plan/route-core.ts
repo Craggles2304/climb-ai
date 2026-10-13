@@ -14,7 +14,9 @@ import {popularBuild} from '@/lib/champions/popularBuildSource';
 import {toBuildItems} from '@/lib/champions/build';
 import {humanError} from '@/lib/errors';
 import {coachingLevelFor} from '@/lib/coachingLevel';
-import {buildLiveMissionTips,nextRankTier,type LiveMissionTask} from '@/lib/liveMissionCoach';
+import {buildLiveMissionTips,nextRankTier} from '@/lib/liveMissionCoach';
+import {companionPregameMissions} from '@/lib/companionPregameMissions';
+import type {ILPTask,Role} from '@/lib/types';
 import {hasTier,normalizeTier,type SubscriptionTier} from '@/lib/subscription';
 
 export const runtime='nodejs';
@@ -94,15 +96,31 @@ export async function GET(req:NextRequest){
       resolveStrategyAccess(db,device.userId),
     ]);
     const coach=coachingLevelFor(playerRank);
+    // This is the SAME selected two-tree plan used by the website Missions
+    // page and Companion Home. Do not re-rank the latest generic ILP tasks.
+    const roleForMission=normalizeRole(role) as Role;
+    const selected=roleForMission&&['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(roleForMission)
+      ?companionPregameMissions(missionTasks,String(device.riotAccountId||''),roleForMission)
+      :{source:'UNSET' as const,missions:[]};
     // Mission guidance is intentionally frozen to pre-game player context. The
     // endpoint can recover the briefing after match start, but it must not turn
     // current telemetry into new tactical calls while the game is being played.
     const missionTips=buildLiveMissionTips({
-      tasks:missionTasks,
+      tasks:selected.missions.map(({task})=>task),
       snapshot:null,
       history:null,
       currentTier:coach.tier,
       depth:coach.depth,
+    }).map((tip,index)=>{
+      const matching=selected.missions[index];
+      if(!matching)return tip;
+      const cue=matching.nextGame||tip.cue;
+      return{
+        ...tip,
+        title:matching.title,
+        cue:selected.source==='PLAYER'?cue:'COACH SUGGESTION · '+cue,
+        evidence:matching.success||tip.evidence,
+      };
     });
     const roster=await championRoster(patch);
     const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
@@ -173,7 +191,7 @@ export async function GET(req:NextRequest){
     }
 
     const coachLevel={rank:playerRank,tier:coach.tier,nextTier:nextRankTier(coach.tier),depth:coach.depth,visiblePoints:coach.visiblePoints,reviewPoints:coach.reviewPoints,summary:coach.summary};
-    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),adaptiveBuild,coachLevel,missionTips,strategyAccess};
+    const teamPlan={...teamBase,botLane:adaptBotLaneForRank(botLane,coach.depth),adaptiveBuild,coachLevel,missionTips,focusSelection:{source:selected.source,confirmed:selected.source==='PLAYER'},strategyAccess};
     return NextResponse.json({
       ok:true,
       ready:true,
@@ -225,27 +243,22 @@ async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:Subscri
   };
 }
 
-async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:string|null}):Promise<LiveMissionTask[]>{
+async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:string|null}):Promise<ILPTask[]>{
   if(!device.riotAccountId)return[];
   const {data,error}=await db.from('ilp_tasks')
     .select('id,payload,updated_at')
     .eq('user_id',device.userId)
     .eq('riot_account_id',device.riotAccountId)
     .order('updated_at',{ascending:false})
-    .limit(20);
+    // Match Companion Home's 80-row scope, not a smaller set of latest edits.
+    .limit(80);
   if(error)throw new Error(error.message);
   return (data??[])
-    .map((row:any)=>({...((row?.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row?.id??'')}))
-    .filter((task:any)=>{
-      const status=String(task?.status??'ACTIVE').toUpperCase();
-      return status!=='MASTERED'&&status!=='PAUSED'&&String(task?.gameRule??'').trim();
-    })
-    .sort((a:any,b:any)=>{
-      const priority=(Number(b?.priority)||50)-(Number(a?.priority)||50);
-      if(priority!==0)return priority;
-      return (Number(a?.progress)||0)-(Number(b?.progress)||0);
-    })
-    .slice(0,3);
+    .map((row:any)=>({
+      ...((row?.payload&&typeof row.payload==='object')?row.payload:{}),
+      id:String(row?.id??''),updatedAt:row?.updated_at??null,
+    }))
+    .filter((task:any)=>Boolean(task.id)) as ILPTask[];
 }
 
 async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:string|null}){
