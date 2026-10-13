@@ -7,12 +7,30 @@
  section.id='tftBuildPicker';section.className='card tft-build-picker hidden';
  section.innerHTML='<div class="tft-build-picker__top"><div class="eyebrow">TFT · PRE-GAME BUILDS</div><h2>THREE VIABLE ROUTES. YOU DECIDE.</h2><p>Compare patch-labelled comps and item packages before queue. Your preferred route is frozen in the game overlay; nothing changes based on live shops, boards or opponents.</p></div><div class="tft-build-picker__meta" id="buildPickerPatch"></div><div class="tft-build-picker__grid" id="buildPickerGrid"></div><p class="tft-build-picker__notice" id="buildPickerNotice" role="status">Loading reference options…</p>';
  $('status').after(section);
+ const league=document.createElement('section');league.id='leagueBuildPanel';league.className='card tft-build-picker hidden';
+ league.innerHTML='<div class="eyebrow">LEAGUE · CURRENT-PATCH PREGAME GUIDE</div><h2 id="leagueBuildTitle">CHAMPION BUILD</h2><p id="leagueBuildIntro">Item, rune and skill builds are fetched during champion select. The in-game HUD receives only the locked pre-game reference.</p><div id="leagueBuildContent" class="tft-build-picker__league"></div><small id="leagueBuildPatch"></small>';
+ section.after(league);
  const write=(node,copy)=>{node.textContent=String(copy||'')};
  const add=(element,tag,className,copy)=>{const n=document.createElement(tag);n.className=className;write(n,copy);element.appendChild(n);return n};
  function render(state){
    if(state)current=state;
    const connected=Boolean(current?.paired);
-   section.classList.toggle('hidden',!connected);
+   const leagueOpen=connected&&['CHAMP_SELECT','RECORDING'].includes(current?.phase);
+   league.classList.toggle('hidden',!leagueOpen);
+   section.classList.toggle('hidden',!connected||leagueOpen);
+   if(leagueOpen){
+     const snapshot=current?.leagueBuild;
+     write($('leagueBuildTitle'),snapshot?.champion?snapshot.champion.toUpperCase()+' · '+snapshot.role:'FETCHING CHAMPION DATA…');
+     const rows=$('leagueBuildContent');rows.replaceChildren();
+     if(snapshot){
+       if(snapshot.items?.length)add(rows,'p','','ITEM PATH  ·  '+snapshot.items.join(' → '));
+       if(snapshot.runes?.length)add(rows,'p','','RUNES  ·  '+snapshot.runes.join(' / '));
+       if(snapshot.skillOrder?.length)add(rows,'p','','SKILLS  ·  '+snapshot.skillOrder.join(' → '));
+       if(snapshot.summoners?.length)add(rows,'p','','SPELLS  ·  '+snapshot.summoners.join(' / '));
+     }
+     if(!rows.childNodes?.length)add(rows,'p','','No verified current-patch build loaded for this champion. Your game continues normally.');
+     write($('leagueBuildPatch'),snapshot?.patch?'PATCH '+snapshot.patch+' · '+snapshot.source+' · '+(current.phase==='RECORDING'?'LOCKED FROM CHAMP SELECT':'CHAMP SELECT PREVIEW'):'UNVERIFIED · NO GUESSED BUILD');
+   }
    if(!connected)return;
    const builds=current.tftBuilds?.builds||[];
    const recording=current.tftRecorder?.state==='RECORDING';
