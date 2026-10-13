@@ -7,7 +7,8 @@
 <link rel="stylesheet" href="learning-overlay.css">
 <link rel="stylesheet" href="learning-overlay-esports.css">
 <link rel="stylesheet" href="learning-overlay-tft.css">
-<link rel="stylesheet" href="learning-overlay-coach.css"></head>
+<link rel="stylesheet" href="learning-overlay-coach.css">
+<link rel="stylesheet" href="learning-overlay-builds.css"></head>
 <body>
 <main id="overlay" class="hud mode-focus" data-mode="FOCUS" aria-label="OP CLIMB in-game learning HUD">
   <header id="handle" class="hud-header">
@@ -56,7 +57,7 @@
     <p id="threat"></p>
   </section>
 
-  <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+K · ASK AI COACH</span></footer>
+  <footer class="hud-footer"><span id="recordingStatus" class="hud-rec">● TRACKING ACTIVE</span><span class="hud-keys">Ctrl+Shift+B BUILDS · Ctrl+Shift+K COACH</span></footer>
   <div id="ruleNote" class="hud-rule">◆ LOCKED PRE-GAME INTEL · LEARN AFTER MATCH</div>
   <section id="coachPanel" class="hud-coach-panel" aria-label="Ask OP CLIMB AI Coach" hidden>
     <div class="hud-coach-head">
@@ -71,6 +72,13 @@
       <button id="coachSend" type="submit">ASK</button>
     </form>
     <small class="hud-coach-disclaimer">AI powered · May be inaccurate · Decisions stay yours · Esc closes</small>
+  </section>
+  <section id="buildGuidePanel" class="hud-build-panel" aria-label="Pregame static build guide" hidden>
+    <div class="hud-build-head"><div><small>PATCH-LABELLED · LOCKED BEFORE PLAY</small><strong id="buildGuideTitle">BUILD OPTIONS</strong></div><button id="buildGuideClose" type="button" aria-label="Close build guide">✕</button></div>
+    <p id="buildGuideHint">Options prepared before the match. Not based on a live board.</p>
+    <pre id="buildGuideRows" class="hud-build-rows" role="note"></pre>
+    <small id="buildGuidePatch">Snapshot source not available</small>
+    <small class="hud-build-disclaimer">STATIC REFERENCE · CHOOSE FOR YOURSELF · ESC CLOSES</small>
   </section>
   <div id="resizer" class="hud-resizer" aria-hidden="true"></div>
 
