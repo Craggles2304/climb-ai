@@ -130,3 +130,23 @@
 @media(prefers-reduced-motion:reduce){
  .missions-page .mission-library-toggle{transition:none!important}
 }
+
+
+/* Dashboard makes the player's next useful move visible before statistics. */
+.arena-mission-first-next{
+  margin:15px 0 22px!important;
+  border-top:3px solid #c1ff82!important;
+  border-left:1px solid rgba(173,232,154,.35)!important;
+  background:linear-gradient(120deg,#152f2c,#121d2e 78%)!important;
+  box-shadow:0 13px 32px rgba(0,0,0,.15);
+}
+.arena-mission-first-next h2{color:#f4ffef!important}
+.arena-mission-first-next p{max-width:850px;line-height:1.55!important}
+.arena-mission-first-next>div>span{color:#bfff89!important}
+.missions-page .missions-active-item>.mission-active-proof{
+  color:#c0d0da!important;font:500 12px/1.6 var(--body)!important
+}
+.missions-page .missions-active-item>.mission-active-instruction{
+  color:#f9fdfd!important;font:700 16px/1.5 var(--body)!important
+}
+.missions-page .mission-library, .missions-page #mission-focus-detail{scroll-margin-top:82px}
