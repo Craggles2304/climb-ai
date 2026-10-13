@@ -26,6 +26,8 @@ test('account browser hydrates from cloud, never silently imports anonymous prof
   assert.match(ctx,/client\.from\('profiles'\)\.update\(\{selected_riot_account_id:id\}\)/);
   assert.doesNotMatch(ctx,/if\(!profileRow&&local\)\{/);
   assert.match(ctx,/generation!==hydrationGeneration\.current/);
+  assert.match(ctx,/authenticatedUserId\.current!==nextUserId/);
+  assert.match(ctx,/runtimeMatches\.clear\(\)/);
 });
 
 test('manual onboarding is saved to authenticated Supabase rows, not just one computer',()=>{
