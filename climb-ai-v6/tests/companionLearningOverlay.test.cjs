@@ -53,7 +53,7 @@ test('isolated overlay never injects scripts or receives pairing secrets',()=>{
  assert.match(html,/Content-Security-Policy/);
  assert.match(js,/\.textContent=/);assert.doesNotMatch(js,/\.innerHTML=/);
  assert.doesNotMatch(bridge,/token|webUrl/i);
- assert.match(main,/setIgnoreMouseEvents\(!overlayEditing,\{forward:true\}\)/);
+ assert.match(main,/setIgnoreMouseEvents\(!\(overlayEditing\|\|overlayAssistantOpen\),\{forward:true\}\)/);
  assert.match(main,/CommandOrControl\+Shift\+O/);assert.match(main,/Alt\+B/);
  assert.match(main,/overlayEnabled:raw\.overlayEnabled===true/);
 });

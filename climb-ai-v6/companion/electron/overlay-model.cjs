@@ -54,7 +54,7 @@ function overlayView(state,options={}){
   const game=state?.phase==='RECORDING'?'LOL':tft.state==='RECORDING'?'TFT':options.editing===true?'PREVIEW':null;
   const show=options.enabled===true&&Boolean(state?.paired)&&Boolean(game);
   return {
-    show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
+    show,editing:show&&options.editing===true,assistantOpen:show&&options.assistantOpen===true,game,layout:safeLayout(options.layout),
     focus:allowedFocus.has(String(options.tftFocus||''))?String(options.tftFocus):'ECONOMY',
     tftMission:game==='TFT'&&options.tftMission?{
       id:limit(options.tftMission.id,80),status:limit(options.tftMission.status,20),domain:limit(options.tftMission.domain,30),
