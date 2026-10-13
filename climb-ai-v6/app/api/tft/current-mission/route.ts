@@ -82,8 +82,10 @@ export async function GET(req:NextRequest){
     .order('game_datetime',{ascending:false}).limit(20);
   if(matchError)return NextResponse.json({ok:false,error:'Could not load TFT decision evidence.'},{status:503});
   const profile=buildTacticianProfile((rows||[]).map(match));
-  const leak=profile.primaryLeak;
-  const task=leak&&leak.confidence>=35?profile.ilp.find(item=>item.skill===leak.key):null;
+  const eligible=profile.ilp.filter(item=>(profile.skills.find(skill=>skill.key===item.skill)?.confidence||0)>=35);
+  // Advance after evidence completes the current task, rather than reselecting a completed task.
+  const task=eligible.find(item=>item.progress<item.goal)||eligible[0]||null;
+  const leak=task?profile.skills.find(skill=>skill.key===task.skill):null;
   // Progress comes from existing match/review evidence, never invented from stage telemetry.
   const mission=task&&leak?{
     id:task.id,
