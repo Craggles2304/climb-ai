@@ -2,6 +2,7 @@ import type {ILPTask,Role} from './types';
 import {ensureOneMissionPerDnaStrand} from './dnaStrandMissions';
 import {canonicalGameDnaTasks,gameMissionFocusPair,gameDnaFocusSource} from './gameDnaSnapshot';
 import {plainLanguageFocus} from './plainLanguageCoaching';
+import {taskAppliesToRole} from './roleAwareLearning';
 
 export type PregameMissionFocus={
   task:ILPTask;
@@ -22,7 +23,8 @@ export function companionPregameMissions(
   accountId:string,
   role:Role,
 ):{source:'PLAYER'|'RECOMMENDED'|'UNSET';missions:PregameMissionFocus[]}{
-  const strands=ensureOneMissionPerDnaStrand(stored,accountId,role).tasks;
+  const roleTasks=stored.filter(task=>taskAppliesToRole(task,role));
+  const strands=ensureOneMissionPerDnaStrand(roleTasks,accountId,role).tasks;
   const scoped=canonicalGameDnaTasks(strands,role);
   const source=gameDnaFocusSource(scoped,role);
   const missions=gameMissionFocusPair(scoped,role).slice(0,2).map(({task})=>{
