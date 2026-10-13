@@ -78,6 +78,7 @@ export default function Dashboard(){
     online,
     baselineGames,
     dnaRevealed,
+    focusSelectionSource:gameDnaFocusSource(roleTasks,active.role),
     focusName:activeMissions.length===2?'Two DNA trees unlocked':focusPlain?.name||focus?.title,
     focusJob:activeMissions.length===2?`1. ${focusPlain?.nextGame||focus?.gameRule||''}  2. ${secondFocusPlain?.nextGame||secondFocus?.gameRule||''}`:focusPlain?.nextGame||focus?.gameRule,
     focusConfirmed:focusProof?.confirmed,
