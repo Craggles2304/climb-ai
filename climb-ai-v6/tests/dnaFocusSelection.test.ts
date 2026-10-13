@@ -31,9 +31,9 @@ test('player changing active DNA trees records explicit new action on changed st
  assert.ok(selected);
  assert.deepEqual(pair(selected!),['VISION_MAP','TEAMFIGHTS']);
  for(const task of selected!){
-   const changed=task.dnaDomain==='LANING'||task.dnaDomain==='WAVES_CS'||task.dnaDomain==='VISION_MAP'||task.dnaDomain==='TEAMFIGHTS';
-   assert.equal(task.history?.at(-1)?.type,changed?'COACH_EDIT':'PROMOTED');
-   assert.equal(task.history?.at(-1)?.at,changed?t3:t1);
+   assert.equal(task.history?.at(-1)?.type,'COACH_EDIT');
+   assert.equal(task.history?.at(-1)?.at,t3);
+   assert.equal(task.dnaFocusSelectionSource,'PLAYER');
    assert.equal(task.missionProgress,undefined);
    assert.equal(task.successfulGames,0);
  }
@@ -45,7 +45,7 @@ test('remote saved unlocked pair no longer erases the player selection after rel
  const remote:CloudIlpRow[]=original.map(item=>({id:item.id,payload:item,updated_at:t2}));
  const saved=mergeIlpCloudSnapshot(changed,remote,'riot-1');
  assert.deepEqual(pair(saved.tasks),['VISION_MAP','TEAMFIGHTS']);
- assert.equal(saved.writes.length,4);
+ assert.equal(saved.writes.length,6);
 });
 
 test('player focus action survives a server-managed record without replacing server evidence',()=>{
