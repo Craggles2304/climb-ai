@@ -1,5 +1,5 @@
 import {NextRequest,NextResponse} from 'next/server';
-import {getCurrentUser} from '@/lib/supabase/server';
+import {getCurrentUser,getServerClient} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
 import {materializeDeferredLocalMatch} from '@/lib/server/liveTrackerRepository';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
@@ -12,8 +12,10 @@ export async function GET(req:NextRequest){
   if(!limit.ok)return NextResponse.json({ok:false,error:'Too many plan requests.'},{status:429});
 
   const user=await getCurrentUser();
-  const db=getSupabaseAdmin();
-  if(!user||!db)return NextResponse.json({ok:false,error:'Authentication required.'},{status:401});
+  if(!user)return NextResponse.json({ok:false,error:'Authentication required.'},{status:401});
+  const admin=getSupabaseAdmin();
+  const db=admin??await getServerClient();
+  if(!db)return NextResponse.json({ok:false,error:'Player database unavailable.'},{status:503});
 
   const accountId=String(req.nextUrl.searchParams.get('accountId')||'').trim();
   if(!accountId)return NextResponse.json({ok:false,error:'Riot account required.'},{status:400});
@@ -26,7 +28,7 @@ export async function GET(req:NextRequest){
   if(accountError)return NextResponse.json({ok:false,error:'Could not verify Riot account.'},{status:503});
   if(!account)return NextResponse.json({ok:false,error:'Riot account not found.'},{status:404});
 
-  await materializeDeferredLocalMatch(user.id,accountId)
+  if(admin)await materializeDeferredLocalMatch(user.id,accountId)
     .catch(error=>console.warn('[ilp-plan] deferred match materialisation failed',error));
 
   const {data,error}=await db.from('ilp_tasks')
