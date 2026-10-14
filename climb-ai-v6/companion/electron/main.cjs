@@ -74,7 +74,9 @@ function chosenOverlayDisplay(preferCursor=false){
 }
 function setOverlayScreen(display){
   if(!display||!overlayWindow||overlayWindow.isDestroyed())return;
-  if(overlayBoundDisplayId===display.id)return;
+  const current=overlayWindow.getBounds();
+  const target=display.bounds;
+  if(overlayBoundDisplayId===display.id&&['x','y','width','height'].every(key=>current[key]===target[key]))return;
   overlayWindow.setBounds(display.bounds);
   overlayBoundDisplayId=display.id;
 }
