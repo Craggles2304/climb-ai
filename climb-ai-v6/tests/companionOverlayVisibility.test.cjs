@@ -17,11 +17,11 @@ test('Overlay follows selected game monitor, not always primary display',()=>{
   assert.doesNotMatch(main,/getPrimaryDisplay\(\)\.bounds;\s*const win=new BrowserWindow/);
 });
 test('The HUD stays click-through but raises above borderless game without injecting',()=>{
-  assert.match(main,/setAlwaysOnTop\(true,'pop-up-menu'\)/);
+  assert.match(main,/setAlwaysOnTop\(true,'screen-saver'\)/);
   assert.match(main,/win\.moveTop\(\)/);
   assert.match(main,/win\.showInactive\(\)/);
   assert.match(main,/win\.setIgnoreMouseEvents\(!\(overlayEditing\|\|overlayAssistantOpen\|\|overlayBuildsOpen\),\{forward:true\}\)/);
-  assert.doesNotMatch(main,/screen-saver/);
+  assert.match(main,/startOverlayWatchdog\(\)/);
   assert.match(main,/Borderless in League/);
 });
 test('Interactive editing receives focus, with a preview when not in game',()=>{
