@@ -45,7 +45,7 @@ test('no enemy data means a neutral bar with no invented win odds',()=>{
  assert.match(advice.edge.label,/NOT VERIFIED WIN ODDS/);
 });
 test('more revealed data can enable a bounded draft comparison but never a 90% victory prediction',()=>{
- const advice=buildDraftPickAdvice(input({allies:picks(['Ahri','Vi','Darius','Lulu']),enemies:picks(['Zed','Malphite','Leona','Ashe','Lux'])}));
+ const advice=buildDraftPickAdvice(input({localChampion:'Jinx',allies:picks(['Ahri','Vi','Darius','Lulu']),enemies:picks(['Zed','Malphite','Leona','Ashe','Lux'])}));
  assert.equal(advice.edge.confidence,'FULL');
  assert.ok(advice.edge.ours>=40&&advice.edge.ours<=60);
  assert.equal(advice.edge.ours+advice.edge.theirs,100);
