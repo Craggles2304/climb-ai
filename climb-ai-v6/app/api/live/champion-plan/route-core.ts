@@ -7,6 +7,7 @@ import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib
 import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
 import {buildCompositionStrategy} from '@/lib/champions/compositionIntelligence';
+import {buildDraftPickAdvice} from '@/lib/champions/draftPickAdvisor';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
 import {buildAdaptiveItemPlan,type AdaptiveBuildPlayer} from '@/lib/adaptiveBuildPlanner';
@@ -79,22 +80,47 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     const locked=Boolean(context?.localLockedIn);
     const draft=draftSnapshot(context);
+    // Run before the player hovers or locks a champion: the point of this
+    // feature is to advise the PICK, not merely analyse it afterwards.
+    let advicePatch:string|null=null;
+    let adviceRoster:Awaited<ReturnType<typeof championRoster>>|null=null;
+    let draftAdvice:ReturnType<typeof buildDraftPickAdvice>|null=null;
+    if(['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(normalizeRole(role))){
+      try{
+        advicePatch=await latestPatch();
+        adviceRoster=await championRoster(advicePatch);
+        draftAdvice=buildDraftPickAdvice({
+          roster:adviceRoster,
+          role,
+          localChampion:champion,
+          localLocked:locked,
+          allies:Array.isArray(context?.allies)?context.allies.map((p:any)=>({name:String(p?.championName||''),role:p?.role||null,lockedIn:Boolean(p?.lockedIn)})):[],
+          enemies:Array.isArray(context?.enemies)?context.enemies.map((p:any)=>({name:String(p?.championName||''),role:p?.role||null,lockedIn:Boolean(p?.lockedIn)})):[],
+          bans:[...(Array.isArray(context?.bans?.allies)?context.bans.allies:[]),
+                ...(Array.isArray(context?.bans?.enemies)?context.bans.enemies:[])]
+            .map((ban:any)=>String(ban?.championName||'')).filter(Boolean),
+          patch:advicePatch,
+        });
+      }catch(error){console.warn('[champion-plan] pick adviser unavailable',String(error))}
+    }
     if(!champion)return NextResponse.json({
       ok:true,
       ready:false,
       stage:'WAITING_SELECTION',
       draft,
+      draftAdvice,
       locked:false,
       provisional:true,
       selectionState:String(context?.localSelectionState??'WAITING'),
     });
 
-    const [patch,playerRank,missionTasks,strategyAccess]=await Promise.all([
-      latestPatch(),
+    const [playerRank,missionTasks,strategyAccess]=await Promise.all([
       resolvePlayerRank(db,device),
       loadMissionTasks(db,device),
       resolveStrategyAccess(db,device.userId),
     ]);
+    const patch=advicePatch??await latestPatch();
+    const roster=adviceRoster??await championRoster(patch);
     const coach=coachingLevelFor(playerRank);
     // This is the SAME selected two-tree plan used by the website Missions
     // page and Companion Home. Do not re-rank the latest generic ILP tasks.
@@ -122,7 +148,6 @@ export async function GET(req:NextRequest){
         evidence:matching.success||tip.evidence,
       };
     });
-    const roster=await championRoster(patch);
     const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
       .filter((pick:any)=>String(pick?.championName??'').trim())
       .map((pick:any)=>({name:String(pick.championName),role:pick.role??null,lockedIn:Boolean(pick.lockedIn)}));
@@ -204,6 +229,7 @@ export async function GET(req:NextRequest){
       missionTips,
       strategyAccess,
       draft,
+      draftAdvice,
       locked,
       provisional:!locked,
       selectionState:String(context?.localSelectionState??(locked?'LOCKED':'HOVER')),
