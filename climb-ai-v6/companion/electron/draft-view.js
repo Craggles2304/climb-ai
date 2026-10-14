@@ -358,13 +358,13 @@
     if(open.length)root.querySelectorAll('details > summary').forEach(s=>{if(open.includes(s.textContent))s.parentElement.open=true});
     bind(root,ctx);
   }
-  const keyFor=(route,state,extra)=>JSON.stringify([route,phaseOf(state),tierOf(state),state.draft||null,state.matchup||null,state.teamPlan||null,extra]);
+  const keyFor=(route,state,extra)=>JSON.stringify([route,phaseOf(state),tierOf(state),state.draft||null,state.draftAdvice||null,state.matchup||null,state.teamPlan||null,extra]);
 
   views.draft={
     render(root,state,ctx){
       const phase=phaseOf(state);
       if(!state.paired||!state.draft||!['CHAMP_SELECT','RECORDING'].includes(phase))return false;
-      paint(root,keyFor('draft',state,state.playerHome?.priorityMission||null),`<div class="oc-champ">${draftBoard(state)}${matchPlan(state)}</div>`,ctx);
+      paint(root,keyFor('draft',state,state.playerHome?.priorityMission||null),`<div class="oc-champ">${window.ocDraftAdvisor?.render(state)||''}${draftBoard(state)}${matchPlan(state)}</div>`,ctx);
       return true;
     },
   };
