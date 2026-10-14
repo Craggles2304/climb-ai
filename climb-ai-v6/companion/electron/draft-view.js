@@ -131,7 +131,8 @@
     const draft=state.draft||{};
     const engine=window.OPDraftRecommendations;
     if(!engine||phaseOf(state)!=='CHAMP_SELECT')return'';
-    const role=roleKey(draft.localRole||state.playerHome?.player?.role);
+    // Use the assigned LCU lane, never the account's preferred role: autofill matters.
+    const role=roleKey(draft.localRole);
     const saved=state.playerHome?.player?.champions||[];
     const result=engine.recommend(draft,{role,preferred:saved,limit:3});
     const locked=Boolean(draft.localLockedIn);
