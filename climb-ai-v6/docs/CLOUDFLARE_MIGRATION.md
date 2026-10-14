@@ -16,7 +16,7 @@
 
 Recommended target: **Cloudflare Workers Paid** (currently $5 USD/month minimum plus usage); a full server-rendered Next.js application may exceed Free tier's 10ms CPU limit. Do not assume actual costs or compatibility until tested.
 
-This branch includes `wrangler.jsonc`, `open-next.config.ts` and a GitHub Actions smoke-build workflow. The current app has an npm lockfile without the Cloudflare adapter; to avoid breaking `npm ci` on the live deployment, the smoke build and first Cloudflare deployment can install the adapter as **CI-only ephemeral dependencies**, then we should lock compatible pinned versions after verifying a successful build.
+This branch includes `wrangler.jsonc`, `open-next.config.ts` and a GitHub Actions smoke-build workflow. OpenNext 1.20.11 requires Next.js 15.5.27 or newer, while the existing Vercel lockfile pins 15.5.24. The first GitHub smoke run confirmed this incompatibility. The Cloudflare build therefore installs 15.5.27 ephemerally alongside the adapter, leaving the existing Vercel install unchanged. The current app has an npm lockfile without the Cloudflare adapter; to avoid breaking `npm ci` on the live deployment, the smoke build and first Cloudflare deployment can install the adapter as **CI-only ephemeral dependencies**, then we should lock compatible pinned versions after verifying a successful build.
 
 At Cloudflare dashboard > Workers & Pages > Create application > Import a repository:
 
@@ -25,7 +25,7 @@ At Cloudflare dashboard > Workers & Pages > Create application > Import a reposi
 - Framework/build type: **Workers**, not static Cloudflare Pages.
 - Root directory: `climb-ai-v6`.
 - Production branch: `main` **only after tests/PR are reviewed and merged**.
-- Build command: `npm ci && npm install --no-save @opennextjs/cloudflare@latest wrangler@latest && npx opennextjs-cloudflare build`
+- Build command: `npm ci && npm install --no-save next@15.5.27 @opennextjs/cloudflare@latest wrangler@latest && npx opennextjs-cloudflare build`
 - Production deploy command: `npx opennextjs-cloudflare deploy`
 - Non-production deploy command: `npx opennextjs-cloudflare upload`
 - Next.js output is in `.open-next/`; Wrangler provides the Worker entry point and static assets.
