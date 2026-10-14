@@ -156,6 +156,25 @@
 }
 
 
+/* Draft advice extends the current design system without moving or restyling
+   the 5v5 board. It updates only during champion select. */
+.oc-pick-advisor{--oc-card-pad:var(--oc-space-5);gap:var(--oc-space-3);border-color:rgb(182 246 107 / .3);background:linear-gradient(110deg,rgb(182 246 107 / .07),var(--oc-surface-1) 68%)}
+.oc-pick-advisor__head{display:flex;align-items:center;justify-content:space-between;gap:var(--oc-space-4);flex-wrap:wrap}
+.oc-pick-advisor__head .oc-h2{margin:5px 0 0}
+.oc-pick-advisor__context{margin:0;color:var(--oc-text-2)}
+.oc-pick-advisor__list{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--oc-space-3);list-style:none;padding:0;margin:var(--oc-space-2) 0}
+.oc-pick-advisor__item{display:grid;grid-template-columns:auto auto minmax(0,1fr);gap:var(--oc-space-2);align-items:center;min-width:0;padding:var(--oc-space-3);border:1px solid var(--oc-line);border-radius:var(--oc-radius-md);background:var(--oc-surface-2)}
+.oc-pick-advisor__item:first-child{border-color:rgb(182 246 107 / .55);box-shadow:inset 3px 0 var(--oc-lime)}
+.oc-pick-advisor__rank{font-family:var(--oc-font-mono);color:var(--oc-lime);font-size:var(--oc-fs-sm);font-weight:700}
+.oc-pick-advisor__item .oc-portrait{--oc-portrait-size:46px}
+.oc-pick-advisor__text{display:grid;gap:5px;min-width:0}
+.oc-pick-advisor__text strong{color:var(--oc-text);font-family:var(--oc-font-display);font-size:var(--oc-fs-xl);text-transform:uppercase}
+.oc-pick-advisor__text small{color:var(--oc-text-2);line-height:1.35}
+.oc-pick-advisor__item .oc-chip{grid-column:1/-1;justify-self:start}
+.oc-pick-advisor__note{margin:0;color:var(--oc-text-3);font-size:var(--oc-fs-xs);line-height:1.45}
+@media(max-width:1120px){.oc-pick-advisor__list{grid-template-columns:1fr}}
+@media(max-width:620px){.oc-pick-advisor__head{align-items:flex-start}.oc-pick-advisor__item{grid-template-columns:auto auto minmax(0,1fr)}}
+
 /* ------------------------------------------------------------ match plan -- */
 
 .oc-plan { display: grid; gap: var(--oc-space-4); }
