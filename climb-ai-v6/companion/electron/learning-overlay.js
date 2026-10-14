@@ -97,28 +97,29 @@
   // Keep just one clear instruction on Focus/Minimal. Deep explanations are
   // still available when the player deliberately selects Expanded.
   const compact=layout.mode!=='EXPANDED';
+  const brief=(type,value)=>window.OPCoachBrief?.cue?.(type,value,role)||'Play for a safer fight.';
   if(plan.baseline){
    put('missionLabel','Baseline game '+Math.min(Number(plan.baseline.games||0)+1,Number(plan.baseline.required||3))+' of '+Number(plan.baseline.required||3));
    put('mission','Play normally. Collect your baseline.');
   }else{
    put('missionLabel',compact?'DO THIS':'Your mission');
-   put('mission',compact?cue(plan.mission,76)||'Play your locked game plan.':text(plan.mission)||'No development mission was locked for this game.');
+   put('mission',plan.mission?brief('MISSION',plan.mission):'Follow your pre-game focus.');
   }
   show('missionBlock',true);
 
   const win=text(plan.winCondition),job=text(plan.job);
   put('winLabel',compact?'TEAM PLAN':win?'Win condition':'Your job');
-  put('win',compact?cue(job||win,82):win||job);
+  put('win',job?brief('MOVE',job):win?brief('WIN',win):'');
   show('winBlock',Boolean(win||job));
 
-  const actions=Array.isArray(plan.actions)?plan.actions.map(text).filter(Boolean).slice(0,3):[];
+  const actions=Array.isArray(plan.actions)?plan.actions.map(text).filter(Boolean).slice(0,3).map(x=>brief('STEP',x)):[];
   putList('actions',actions);
   show('actionsBlock',actions.length>0);
 
   put('avoidLabel','Avoid');
-  put('avoid',text(plan.avoid));
+  put('avoid',plan.avoid?brief('AVOID',plan.avoid):'');
   show('avoidBlock',Boolean(text(plan.avoid)));
-  put('threat',text(plan.threat));
+  put('threat',plan.threat?brief('AVOID',plan.threat):'');
   show('threatBlock',Boolean(text(plan.threat)));
  }
 
