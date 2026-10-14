@@ -1,0 +1,49 @@
+/* Live Champ Select — one decisive top pick, alternatives and an honest
+ * composition-index bar. Doesn't represent calibrated win probability. */
+.oc-pick-advisor{display:grid;gap:14px;padding:18px 20px!important;border:1px solid rgba(189,247,106,.38)!important;
+  border-top:3px solid var(--oc-lime)!important;
+  background:radial-gradient(circle at 96% 0%,rgba(186,249,95,.11),transparent 42%),linear-gradient(126deg,#172c2b,#0d1c2d 78%)!important}
+.oc-pick-advisor__heading{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.oc-pick-advisor__heading h2,.oc-pick-advisor.is-loading h2{margin:5px 0 4px;color:#f0faf5;font:900 clamp(23px,3vw,32px)/1 var(--oc-font-display),sans-serif;text-transform:uppercase}
+.oc-pick-advisor__heading p{margin:4px 0 0;color:#aabfc9;font-size:12px}
+.oc-pick-advisor__patch{padding:6px 9px;flex:0 0 auto;font:700 10px var(--oc-font-mono),monospace;
+  color:#b8ced0;border:1px solid rgba(123,177,181,.36);background:rgba(8,21,28,.5)}
+.oc-pick-advisor__best{display:flex;gap:14px;align-items:center;padding:13px 17px;position:relative;
+  background:linear-gradient(95deg,rgba(190,244,95,.13),rgba(11,36,38,.37));border-left:4px solid var(--oc-lime);
+  border-top:1px solid rgba(189,249,113,.24);border-bottom:1px solid rgba(189,249,113,.24)}
+.oc-pick-advisor__best .oc-portrait{flex:0 0 auto}
+.oc-pick-advisor__primary{flex:1;min-width:0}
+.oc-pick-advisor__primary>small{font:800 9px var(--oc-font-mono),monospace;color:#cafa83;letter-spacing:.07em}
+.oc-pick-advisor__primary>strong{display:block;margin:3px 0 7px;font:900 clamp(28px,3.8vw,42px)/.98 var(--oc-font-display),sans-serif;
+  letter-spacing:.025em;color:#fcfff2;text-transform:uppercase}
+.oc-pick-advisor__primary p{display:grid;gap:5px;margin:0}
+.oc-pick-advisor__primary p>span{font:600 11px/1.45 var(--oc-font-body),sans-serif;color:#c8dee0}
+.oc-pick-advisor__rank{align-self:flex-start;font:900 27px var(--oc-font-display),sans-serif;color:#cefc81}
+.oc-pick-advisor__alternatives{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.oc-pick-advisor__alt{display:flex;align-items:center;gap:8px;padding:8px 10px;min-width:0;background:#13242e;
+ border:1px solid rgba(136,179,194,.23)}
+.oc-pick-advisor__alt>b{font:850 13px var(--oc-font-display),sans-serif;color:#9ecbcd}
+.oc-pick-advisor__alt>.oc-portrait{flex:0 0 auto}
+.oc-pick-advisor__alt>span{font:850 17px var(--oc-font-display),sans-serif;color:#ecf8ff;white-space:nowrap}
+.oc-pick-advisor__alt>small{color:#9db3c0;font:500 10px/1.4 var(--oc-font-body),sans-serif;min-width:0;overflow-wrap:anywhere}
+.oc-pick-advisor__pool{grid-column:1/-1;font:600 10px/1.4 var(--oc-font-mono),monospace;color:#92abb7}
+.oc-pick-advisor__edge{display:grid;gap:9px;margin-top:2px}
+.oc-pick-advisor__edge-title{display:flex;align-items:center;justify-content:space-between;gap:5px}
+.oc-pick-advisor__edge-title>span{font:800 10px var(--oc-font-mono),monospace;color:#abc3d0}
+.oc-pick-advisor__edge-title>span:first-child{color:#93eff1}
+.oc-pick-advisor__edge-title>span:last-child{color:#feabab}
+.oc-pick-advisor__edge-title b{font:850 17px var(--oc-font-display),sans-serif}
+.oc-pick-advisor__meter{display:flex;height:16px;border:1px solid rgba(147,173,194,.3);overflow:hidden;background:#1a1d28}
+.oc-pick-advisor__meter-ally{height:100%;flex:0 0 var(--oc-draft-ally);background:linear-gradient(90deg,#2f7d8d,#a0f5e1)}
+.oc-pick-advisor__meter-enemy{height:100%;flex:1;background:linear-gradient(90deg,#fa8b95,#ad354c)}
+.oc-pick-advisor__confidence{display:flex;justify-content:space-between;gap:12px;color:#a9c0cb;
+  font:700 9px/1.3 var(--oc-font-mono),monospace}
+.oc-pick-advisor__confidence>span:last-child{color:#ffb9ac}
+.oc-pick-advisor__edge p,.oc-pick-advisor__caveat{margin:0;color:#a9bccb;font:500 11px/1.55 var(--oc-font-body),sans-serif}
+.oc-pick-advisor__caveat{padding-top:10px;border-top:1px solid rgba(160,185,200,.19)}
+@media(max-width:700px){.oc-pick-advisor{padding:13px!important}
+.oc-pick-advisor__alternatives{grid-template-columns:1fr}
+.oc-pick-advisor__heading{flex-wrap:wrap}
+.oc-pick-advisor__alt{flex-wrap:wrap}
+.oc-pick-advisor__edge-title>span{font-size:9px}
+.oc-pick-advisor__edge-title>span:nth-child(2){font-size:8px;text-align:center}}
