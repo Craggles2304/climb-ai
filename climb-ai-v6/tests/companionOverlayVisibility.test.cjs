@@ -33,6 +33,7 @@ test('Interactive editing receives focus, with a preview when not in game',()=>{
   assert.match(main,/function nudgeOverlayLayout/);
   assert.match(main,/ipcMain\.handle\('overlay:nudge'/);
   assert.match(main,/ipcMain\.handle\('companion:overlay-move-here'/);
+  assert.match(main,/globalShortcut\.register\('CommandOrControl\+Shift\+H'/);
   assert.match(preload,/moveOverlayHere/);
   assert.match(preload,/centerOverlay/);
   assert.match(bridge,/nudge:/);
