@@ -6,6 +6,7 @@ import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 import {latestPatch,championRoster,resolveChampionId,championDetail} from '@/lib/champions/source';
 import {buildChampionPowerPlan} from '@/lib/champions/championPowerPlan';
 import {buildPregameTeamPlan} from '@/lib/champions/teamCompPlan';
+import {adviseChampionDraft} from '@/lib/champions/draftPickAdvisor';
 import {buildCompositionStrategy} from '@/lib/champions/compositionIntelligence';
 import {buildPregameBotLanePlan} from '@/lib/champions/botLanePregame';
 import {matchupItemCatalogue} from '@/lib/combat/itemSource';
@@ -79,18 +80,38 @@ export async function GET(req:NextRequest){
     const role=String(context?.localRole??'').trim();
     const locked=Boolean(context?.localLockedIn);
     const draft=draftSnapshot(context);
+    const roleKnown=['TOP','JUNGLE','MID','ADC','SUPPORT'].includes(normalizeRole(role));
+    const patch=roleKnown?await latestPatch():null;
+    const roster=patch?await championRoster(patch):null;
+    const {data:linkedAccount}=device.riotAccountId
+      ?await db.from('riot_accounts').select('champions').eq('id',device.riotAccountId).eq('user_id',device.userId).maybeSingle()
+      :{data:null};
+    const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
+      .filter((pick:any)=>String(pick?.championName??'').trim())
+      .map((pick:any)=>({name:String(pick.championName),role:pick.role??null,lockedIn:Boolean(pick.lockedIn)}));
+    const enemyPicks=(Array.isArray(context?.enemies)?context.enemies:[])
+      .filter((pick:any)=>String(pick?.championName??'').trim())
+      .map((pick:any)=>({name:String(pick.championName),role:pick.role??null,lockedIn:Boolean(pick.lockedIn)}));
+    const draftAdvisor=roster&&patch&&trackerState!=='RECORDING'
+      ?adviseChampionDraft({
+        roster,patch,role,allies:allyPicks,enemies:enemyPicks,
+        banned:[...(Array.isArray(context?.bans?.allies)?context.bans.allies:[]),
+          ...(Array.isArray(context?.bans?.enemies)?context.bans.enemies:[])].map((b:any)=>String(b?.championName||'')),
+        hover:champion,
+        familiar:Array.isArray(linkedAccount?.champions)?linkedAccount.champions.map((c:any)=>typeof c==='string'?c:String(c?.name||'')):[],
+      }):null;
     if(!champion)return NextResponse.json({
       ok:true,
       ready:false,
       stage:'WAITING_SELECTION',
       draft,
+      draftAdvisor,
       locked:false,
       provisional:true,
       selectionState:String(context?.localSelectionState??'WAITING'),
     });
 
-    const [patch,playerRank,missionTasks,strategyAccess]=await Promise.all([
-      latestPatch(),
+    const [playerRank,missionTasks,strategyAccess]=await Promise.all([
       resolvePlayerRank(db,device),
       loadMissionTasks(db,device),
       resolveStrategyAccess(db,device.userId),
@@ -122,13 +143,7 @@ export async function GET(req:NextRequest){
         evidence:matching.success||tip.evidence,
       };
     });
-    const roster=await championRoster(patch);
-    const allyPicks=(Array.isArray(context?.allies)?context.allies:[])
-      .filter((pick:any)=>String(pick?.championName??'').trim())
-      .map((pick:any)=>({name:String(pick.championName),role:pick.role??null,lockedIn:Boolean(pick.lockedIn)}));
-    const enemyPicks=(Array.isArray(context?.enemies)?context.enemies:[])
-      .filter((pick:any)=>String(pick?.championName??'').trim())
-      .map((pick:any)=>({name:String(pick.championName),role:pick.role??null,lockedIn:Boolean(pick.lockedIn)}));
+    if(!roster||!patch)return NextResponse.json({ok:false,error:'Champion roster unavailable.'},{status:503});
     const names=[...new Set([champion,...allyPicks.map((p:any)=>p.name),...enemyPicks.map((p:any)=>p.name)])];
     const idPairs=await Promise.all(names.map(async name=>({name,id:await resolveChampionId(name,patch)})));
     const detailPairs=await Promise.all(idPairs.filter((item):item is {name:string;id:string}=>Boolean(item.id)).map(async item=>({name:item.name,detail:await championDetail(item.id,patch)})));
@@ -199,6 +214,7 @@ export async function GET(req:NextRequest){
       role:plan.role,
       plan,
       teamPlan,
+      draftAdvisor,
       adaptiveBuild,
       coachLevel,
       missionTips,
