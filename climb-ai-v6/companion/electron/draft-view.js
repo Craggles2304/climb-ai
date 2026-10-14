@@ -77,6 +77,38 @@
       </div>`;
   }
 
+  /** Recommendations are provisional draft-fit evaluations, NOT calibrated win odds. */
+  function draftAdvisorCard(state){
+    const advisor=state.draftAdvisor;
+    const phase=phaseOf(state);
+    if(phase!=='CHAMP_SELECT'||!advisor)return'';
+    const picks=list(advisor.top).slice(0,3);
+    const ranked=picks.map((pick,index)=>{
+      const reasons=list(pick.reasons).slice(0,3).map(r=>esc(text(r))).join(' · ');
+      return `<li class="oc-adviser-pick${index===0?' is-best':''}">
+        <span class="oc-adviser-place">${index===0?'BEST FIT':`ALT ${index}`}</span>
+        ${portrait(text(pick.champion),{size:'lg'})}
+        <div class="oc-adviser-name"><b>${esc(pick.champion)}</b><small>${reasons||'Role-appropriate draft option'}</small></div>
+        <strong class="oc-adviser-score" title="Heuristic composition-fit rating, not champion win rate">${Math.round(num(pick.score,0))}<small>/100 FIT</small></strong>
+      </li>`;
+    }).join('');
+    const edge=advisor.draftEdge;
+    const bar=edge?`<div class="oc-draft-edge" aria-label="Draft composition-fit comparison. Your team ${edge.ours} points, opponents ${edge.theirs} points. Not a match win probability.">
+      <div class="oc-draft-edge__labels"><b>OUR COMP FIT · ${edge.ours}</b><strong>${esc(edge.label)}</strong><b>THEIR COMP FIT · ${edge.theirs}</b></div>
+      <div class="oc-draft-edge__track"><span style="width:${Math.max(0,Math.min(100,num(edge.ours,50)))}%"></span></div>
+      <p>${esc(edge.confidence)} confidence · ${edge.knownAllies}/4 allies and ${edge.knownEnemies}/5 opponents revealed. <b>This bar is a heuristic draft-fit comparison, not predicted win odds.</b></p>
+    </div>`:`<div class="oc-adviser-wait">Draft outlook appears once at least two allies and two opponents are revealed. Unknown picks are never treated as weaker champions.</div>`;
+    return `<section class="oc-card oc-draft-adviser" aria-label="Best available pick for your team">
+      <header class="oc-draft-adviser__head"><div><span class="oc-eyebrow oc-tone-lime">OP CLIMB / DRAFT INTELLIGENCE</span>
+        <h2 class="oc-h2">${advisor.role?`Best ${esc(roleName(advisor.role)||advisor.role)} pick for this draft`:'Waiting for your role'}</h2>
+        <p class="oc-small">Re-ranks available champions when your allies, revealed opponents, bans or hover change. Team fit + a preference for champions in your saved pool.</p>
+      </div><span class="oc-chip oc-chip--sm oc-chip--info">${esc(advisor.status==='READY'?'ENEMY PICKS DETECTED':advisor.status==='FORMING'?'DRAFT FORMING':'ROLE UNKNOWN')}</span></header>
+      ${picks.length?`<ol class="oc-adviser-picks">${ranked}</ol>`:'<p class="oc-small">Waiting for a known role and eligible champions. No unsupported pick recommendation.</p>'}
+      ${bar}
+      <footer><span>PATCH ${esc(advisor.patch||'?')}</span><span>Ranked by currently revealed champion composition, not a verified global win-rate model. Comfort and champion mastery still matter.</span></footer>
+    </section>`;
+  }
+
   function draftBoard(state){
     const draft=state.draft||{};
     const allies=pad5(draft.allies);
@@ -364,7 +396,7 @@
     render(root,state,ctx){
       const phase=phaseOf(state);
       if(!state.paired||!state.draft||!['CHAMP_SELECT','RECORDING'].includes(phase))return false;
-      paint(root,keyFor('draft',state,state.playerHome?.priorityMission||null),`<div class="oc-champ">${draftBoard(state)}${matchPlan(state)}</div>`,ctx);
+      paint(root,keyFor('draft',state,[state.playerHome?.priorityMission||null,state.draftAdvisor||null]),`<div class="oc-champ">${draftBoard(state)}${draftAdvisorCard(state)}${matchPlan(state)}</div>`,ctx);
       return true;
     },
   };
