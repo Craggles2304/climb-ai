@@ -5,6 +5,7 @@ import Link from 'next/link';
 import {AppShell} from '@/components/AppShell';
 import {useAccount,matchesFor} from '@/components/AccountContext';
 import {useLearningPlan} from '@/components/LearningPlanContext';
+import {MissionHistoryTimeline} from '@/components/MissionHistoryTimeline';
 import {useSubscription} from '@/components/SubscriptionContext';
 import {filterHistoryForTier,historyWindowLabel} from '@/lib/subscription';
 import {AnimatedBar} from '@/components/Motion';
@@ -242,6 +243,7 @@ export default function PlayerDevelopmentCentre(){
         <Archive title="MASTERED" empty="Nothing mastered yet." tasks={mastered}/>
         <Archive title="PAUSED" empty="No paused missions." tasks={paused}/>
       </section>
+      <MissionHistoryTimeline accountId={active.id} missions={accountTasks}/>
     </div>}
   </AppShell>;
 }
