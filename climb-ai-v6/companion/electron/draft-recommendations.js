@@ -149,8 +149,27 @@
     const rows=options.map(p=>({name:p.name,role:p.role,fromPool:pool.has(norm(p.name)),
       ...abilityScore(p,known,lockedEnemies,ownRole,lockedEnemies.length,pool.has(norm(p.name)))}))
       .sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name)).slice(0,Math.max(1,Math.min(5,Number(opts.limit)||3)));
+    // Explicit draft reads tell the player WHY recommendations are changing.
+    // These are simple composition observations, never implied probability.
+    const allyFront=known.some(x=>has(x.p,'F'));
+    const allyAp=known.filter(x=>x.p?.damage==='AP').length;
+    const allyAd=known.filter(x=>x.p?.damage==='AD').length;
+    const allyCC=known.some(x=>has(x.p,'C'));
+    const needs=[];
+    if(known.length>=2&&!allyFront)needs.push('FRONTLINE');
+    if(known.length>=2&&allyAd>=2&&allyAp===0)needs.push('MAGIC DAMAGE');
+    if(known.length>=2&&allyAp>=2&&allyAd===0)needs.push('PHYSICAL DAMAGE');
+    if(known.length>=2&&!allyCC)needs.push('RELIABLE CC');
+    const seenDive=lockedEnemies.filter(x=>has(x.p,'E')||has(x.p,'M')).length;
+    const seenTanks=lockedEnemies.filter(x=>has(x.p,'F')).length;
+    const seenPoke=lockedEnemies.filter(x=>has(x.p,'O')).length;
+    const threats=[];
+    if(seenDive>=1)threats.push('DIVE');
+    if(seenTanks>=1)threats.push('FRONTLINE');
+    if(seenPoke>=2)threats.push('POKE');
     return{
       role:ownRole,rows,enemyKnown:lockedEnemies.length,allyKnown:known.length,
+      needs:needs.slice(0,2),threats:threats.slice(0,2),
       source:pool.size?'PLAYER_POOL':'GENERAL',
       locked:ownLocked,
       message:ownLocked?'Your champion is locked. Recommendations are frozen for this draft.':
