@@ -125,6 +125,44 @@
       </section>`;
   }
 
+  /* ----------------------------------------------------- pick advisor -- */
+
+  function draftPickAdvisor(state){
+    const draft=state.draft||{};
+    const engine=window.OPDraftRecommendations;
+    if(!engine||phaseOf(state)!=='CHAMP_SELECT')return'';
+    const role=roleKey(draft.localRole||state.playerHome?.player?.role);
+    const saved=state.playerHome?.player?.champions||[];
+    const result=engine.recommend(draft,{role,preferred:saved,limit:3});
+    const locked=Boolean(draft.localLockedIn);
+    const confidence=result.enemyKnown>=4?'HIGHER DRAFT COVERAGE':result.enemyKnown>=2?'PARTIAL DRAFT':'EARLY DRAFT';
+    const caption=locked?'Your choice is locked. These were the draft-fit options.':
+      result.message;
+    const cards=(result.rows||[]).map((row,i)=>`
+      <li class="oc-pick-advisor__item" style="--oc-i:${i}" aria-label="Option ${i+1}: ${esc(row.name)}">
+        <span class="oc-pick-advisor__rank">0${i+1}</span>
+        ${portrait(row.name,{size:'sm',label:row.name})}
+        <div class="oc-pick-advisor__text">
+          <strong>${esc(row.name)}</strong>
+          <small>${esc(row.reason)}</small>
+        </div>
+        ${row.fromPool?'<span class="oc-chip oc-chip--sm oc-chip--positive">YOUR POOL</span>':''}
+      </li>`).join('');
+    const empty=result.role?'Every tracked option is picked or banned. Hover your own champion for its game plan.':
+      'Your assigned role has not been revealed yet.';
+    return `
+      <section class="oc-card oc-pick-advisor" aria-label="Champion recommendations">
+        <div class="oc-pick-advisor__head">
+          <div><span class="oc-eyebrow oc-tone-lime">Draft assistant · recommendations</span>
+            <h2 class="oc-h2">${locked?'Your draft-fit shortlist':'Who should I play?'}</h2></div>
+          <span class="oc-chip oc-chip--sm">${esc(confidence)} · ${num(result.enemyKnown)}/5 ENEMIES</span>
+        </div>
+        <p class="oc-small oc-pick-advisor__context">${esc(caption)}</p>
+        ${cards?`<ol class="oc-pick-advisor__list">${cards}</ol>`:`<p class="oc-small">${esc(empty)}</p>`}
+        <p class="oc-pick-advisor__note">${result.source==='GENERAL'?'General role options — add your champion pool on the OP CLIMB website for familiar picks. ':'Your saved champions are prioritised. '}This is a composition fit suggestion, not a patch win-rate forecast. Only revealed picks and bans count.</p>
+      </section>`;
+  }
+
   /* ------------------------------------------------------- match plan -- */
 
   // Generic role guidance, only used and labelled as such when the server sends no job.
@@ -364,7 +402,7 @@
     render(root,state,ctx){
       const phase=phaseOf(state);
       if(!state.paired||!state.draft||!['CHAMP_SELECT','RECORDING'].includes(phase))return false;
-      paint(root,keyFor('draft',state,state.playerHome?.priorityMission||null),`<div class="oc-champ">${draftBoard(state)}${matchPlan(state)}</div>`,ctx);
+      paint(root,keyFor('draft',state,[state.playerHome?.priorityMission||null,state.playerHome?.player?.champions||[]]),`<div class="oc-champ">${draftBoard(state)}${draftPickAdvisor(state)}${matchPlan(state)}</div>`,ctx);
       return true;
     },
   };
