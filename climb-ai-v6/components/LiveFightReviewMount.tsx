@@ -11,8 +11,9 @@ import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import type {ProLearningProfile} from '@/lib/riot/proHistory';
 import {coachingLevelFor} from '@/lib/coachingLevel';
 import {MatchStorySides} from './MatchStorySides';
+import {DecisionMomentsReview} from './DecisionMomentsReview';
 
-type Review={sessionId:string;matchId?:string|null;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null};
+type Review={sessionId:string;matchId?:string|null;status:string;snapshotCount:number;summary?:{fightReviews?:FightReview[]};proAnalysis?:ProMatchAnalysis|null;historyProfile?:ProLearningProfile|null;markedMoments?:Array<{atSeconds:number;detail?:string;status?:string}>};
 type Pick={championId:number;championName:string|null;role:string|null;lockedIn:boolean};
 type Ban={championId:number;championName:string|null};
 type Pregame={linkedSessionId:string|null;status:'CHAMP_SELECT'|'ENDED';context:{localChampionName:string|null;localRole:string|null;allies:Pick[];enemies:Pick[];bans:{allies:Ban[];enemies:Ban[]}}};
@@ -63,7 +64,11 @@ export function LiveFightReviewMount(){
       <p>{review.status==='ABORTED'?'Partial capture — useful, but not enough for mastery.':detail.depth<=2?'One good point. One problem. One thing next game.':`${detail.reviewPoints} useful point${detail.reviewPoints===1?'':'s'} each side, then one focus for the next game.`}</p>
     </div>
 
-    <MatchStorySides analysis={review.proAnalysis} fights={fights} compact title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={review.matchId}/>
+    <DecisionMomentsReview analysis={review.proAnalysis} fights={fights} bookmarks={review.markedMoments}/>
+    <details className="glass card op-quiet-details">
+      <summary>OPEN DETAILED MATCH RECONSTRUCTION</summary>
+      <div style={{marginTop:16}}><MatchStorySides analysis={review.proAnalysis} fights={fights} compact title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={review.matchId}/></div>
+    </details>
 
     <div className="glass card" style={{padding:20,borderColor:'rgba(182,246,107,.34)'}}>
       <div className="eyebrow">ONE THING NEXT GAME</div>
