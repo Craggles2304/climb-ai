@@ -1,0 +1,38 @@
+name: OP CLIMB Cloudflare migration smoke test
+on:
+  pull_request:
+    paths:
+      - 'climb-ai-v6/**'
+      - '.github/workflows/cloudflare-migration-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cloudflare-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: climb-ai-v6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: climb-ai-v6/package-lock.json
+      - name: Install locked application dependencies
+        run: npm ci
+      - name: Install Cloudflare adapter in CI only
+        run: npm install --no-save next@15.5.27 @opennextjs/cloudflare@latest wrangler@latest
+      - name: Build full Next.js application for Cloudflare Workers
+        run: npx opennextjs-cloudflare build
+      - name: Check generated Worker and assets
+        run: |
+          test -f .open-next/worker.js
+          test -d .open-next/assets
+          echo "OpenNext Worker generated successfully"
+      - name: Validate Worker bundle with Wrangler without deploying
+        run: npx wrangler deploy --dry-run --outdir .cloudflare-dryrun
