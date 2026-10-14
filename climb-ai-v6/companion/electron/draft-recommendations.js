@@ -99,7 +99,7 @@
     const enemyPoke=enemies.filter(x=>has(x.p,'O')||has(x.p,'R')).length;
     const reasons=[],add=(n,why)=>{score+=n;reasons.push({weight:n,reason:why})};
     let score=50;
-    if(preferred)add(24,'One of your saved champions');
+    if(preferred)add(16,'One of your saved champions');
     if(ad>=2&&p.damage==='AP')add(13,'Adds magic damage to your team');
     if(ap>=2&&p.damage==='AD')add(13,'Adds physical damage to your team');
     if(allies.length>=2&&alliedFront===0&&has(p,'F'))add(15,'Gives your team a frontline');
@@ -148,7 +148,9 @@
       .filter(p=>!taken.has(norm(p.name))&&!banned.has(norm(p.name)));
     const rows=options.map(p=>({name:p.name,role:p.role,fromPool:pool.has(norm(p.name)),
       ...abilityScore(p,known,lockedEnemies,ownRole,lockedEnemies.length,pool.has(norm(p.name)))}))
-      .sort((a,b)=>b.score-a.score||a.name.localeCompare(b.name)).slice(0,Math.max(1,Math.min(5,Number(opts.limit)||3)));
+      // Preserve the curated role shortlist (and the player's own pool order)
+      // when draft evidence is tied; alphabetical order is not a ranking.
+      .sort((a,b)=>b.score-a.score||options.findIndex(p=>p.name===a.name)-options.findIndex(p=>p.name===b.name)).slice(0,Math.max(1,Math.min(5,Number(opts.limit)||3)));
     // Explicit draft reads tell the player WHY recommendations are changing.
     // These are simple composition observations, never implied probability.
     const allyFront=known.some(x=>has(x.p,'F'));
