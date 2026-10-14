@@ -132,7 +132,10 @@
     const allPicks=picks(draft.allies),enemies=picks(draft.enemies);
     const others=picks(draft.allies,draft.localPlayerCellId>=0?draft.localPlayerCellId:null);
     const known=others.filter(p=>p.locked);
-    const lockedEnemies=enemies.filter(p=>p.locked);
+    // LCU reveals an enemy champion only once the opposing pick is available.
+    // Its action.completed flag is not reliably supplied for the other team,
+    // so count revealed names even when the local normalizer says HOVER.
+    const lockedEnemies=enemies;
     const taken=new Set([...others,...lockedEnemies].map(x=>norm(x.name)));
     const banned=new Set([...draft.bans?.allies||[],...draft.bans?.enemies||[]].map(nameOf).map(norm).filter(Boolean));
     const ownLocked=Boolean(draft.localLockedIn);
@@ -152,7 +155,7 @@
       locked:ownLocked,
       message:ownLocked?'Your champion is locked. Recommendations are frozen for this draft.':
         lockedEnemies.length===0?'Early draft: no enemy picks confirmed yet. Suggestions favour your saved pool and team needs.':
-        `Based on ${lockedEnemies.length}/5 confirmed enemy picks and ${known.length} locked ally picks. Updates as the draft develops.`,
+        `Based on ${lockedEnemies.length}/5 revealed enemy picks and ${known.length} locked ally picks. Updates as the draft develops.`,
     };
   }
   return Object.freeze({recommend,championProfiles:profiles.map(p=>({name:p.name,role:p.role}))});
