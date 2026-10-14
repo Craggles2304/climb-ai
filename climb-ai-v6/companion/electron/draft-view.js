@@ -139,16 +139,29 @@
     const confidence=result.enemyKnown>=4?'HIGHER DRAFT COVERAGE':result.enemyKnown>=2?'PARTIAL DRAFT':'EARLY DRAFT';
     const caption=locked?'Your choice is locked. These were the draft-fit options.':
       result.message;
-    const cards=(result.rows||[]).map((row,i)=>`
-      <li class="oc-pick-advisor__item" style="--oc-i:${i}" aria-label="Option ${i+1}: ${esc(row.name)}">
-        <span class="oc-pick-advisor__rank">0${i+1}</span>
-        ${portrait(row.name,{size:'sm',label:row.name})}
-        <div class="oc-pick-advisor__text">
-          <strong>${esc(row.name)}</strong>
-          <small>${esc(row.reason)}</small>
+    const cards=(result.rows||[]).map((row,i)=>{
+      const [mainReason,secondReason]=String(row.reason||'').split(' · ');
+      const best=i===0;
+      return `
+      <li class="oc-pick-advisor__item${best?' is-best':''}" style="--oc-i:${i}" aria-label="Option ${i+1}: ${esc(row.name)}">
+        ${best?`<div class="oc-pick-advisor__hero-art" style="background-image:url('${esc(ui.splashUrl(row.name))}')"></div>`:''}
+        <div class="oc-pick-advisor__item-top">
+          <span class="oc-pick-advisor__rank">${best?'#1 DRAFT FIT':'0'+(i+1)+' · ALTERNATIVE'}</span>
+          ${row.fromPool?'<span class="oc-chip oc-chip--sm oc-chip--positive">YOUR POOL</span>':''}
         </div>
-        ${row.fromPool?'<span class="oc-chip oc-chip--sm oc-chip--positive">YOUR POOL</span>':''}
-      </li>`).join('');
+        <div class="oc-pick-advisor__identity">
+          ${portrait(row.name,{size:best?'lg':'sm',label:row.name})}
+          <div class="oc-pick-advisor__text">
+            <strong>${esc(row.name)}</strong>
+            <span>${esc(roleName(row.role))}</span>
+          </div>
+        </div>
+        <div class="oc-pick-advisor__reasons">
+          <span>${icon('check')}${esc(mainReason||'Fits your selected role')}</span>
+          ${secondReason?`<span>${icon('check')}${esc(secondReason)}</span>`:''}
+        </div>
+      </li>`;
+    }).join('');
     const empty=result.role?'Every tracked option is picked or banned. Hover your own champion for its game plan.':
       'Your assigned role has not been revealed yet.';
     return `
@@ -158,9 +171,9 @@
             <h2 class="oc-h2">${locked?'Your draft-fit shortlist':'Who should I play?'}</h2></div>
           <span class="oc-chip oc-chip--sm">${esc(confidence)} · ${num(result.enemyKnown)}/5 ENEMIES</span>
         </div>
-        <p class="oc-small oc-pick-advisor__context">${esc(caption)}</p>
+        <div class="oc-pick-advisor__context"><span class="oc-pick-advisor__pulse" aria-hidden="true"></span><span>${esc(caption)}</span></div>
         ${cards?`<ol class="oc-pick-advisor__list">${cards}</ol>`:`<p class="oc-small">${esc(empty)}</p>`}
-        <p class="oc-pick-advisor__note">${result.source==='GENERAL'?'General role options — add your champion pool on the OP CLIMB website for familiar picks. ':'Your saved champions are prioritised. '}This is a composition fit suggestion, not a patch win-rate forecast. Only revealed picks and bans count.</p>
+        <div class="oc-pick-advisor__foot"><span>${icon('shield')}Only publicly revealed draft picks are used.</span><span>${result.source==='GENERAL'?'Build your champion pool to personalise picks.':'Your saved champions are prioritised.'}</span></div>
       </section>`;
   }
 
@@ -247,6 +260,16 @@
     return planCard({tone:'var(--oc-amber)',eyebrow:'Build for this draft',title:'',body:`<ol class="oc-items">${icons}</ol>${flex?`<p class="oc-small">${esc(flex)}</p>`:''}`});
   }
 
+  // Glance-first: high-signal coaching appears above the optional full report.
+  function shortCue(value,max=96){
+    const full=text(value).replace(/\\s+/g,' ');
+    if(!full)return'';
+    const sentence=full.split(/(?:\\.\\s+|;\\s*|\\s+→\\s+)/)[0]||full;
+    if(sentence.length<=max)return sentence.replace(/[.;,:]$/,'');
+    const cut=sentence.slice(0,max-1).replace(/\\s+\\S*$/,'').trim();
+    return (cut||sentence.slice(0,max-1))+'…';
+  }
+
   function matchPlan(state,{standalone=false}={}){
     const matchup=state.matchup||null;
     const team=state.teamPlan||null;
@@ -310,6 +333,21 @@
       ?`<article class="oc-card oc-plan-deep">${more('Why this plan works',[['First contact',list(read.firstContact).join(' · ')],['Your protection',list(read.protectors).join(' · ')],['Main threats',list(read.enemyThreats).join(' · ')],['Fight shape',text(read.fightGeometry)],['Deny their plan',text(read.matchupRule)]])}</article>`
       :paid&&!deep?`<p class="oc-small oc-plan-note">${icon('lock')}Why this plan works, the full composition read, is part of PRO.</p>`:'';
 
+    const keyMove=shortCue(job||actions[0]?.value||ROLE_BASICS[role]||'',88)||'Wait for your matchup read';
+    const winPath=paid?shortCue(ourWin,82)||'Still forming as picks are revealed':shortCue(actions[1]?.value||actions[0]?.value||'',82)||'Play for safe advantages';
+    const danger=paid?shortCue(team?.biggestThrow||theirWin,82)||'Watch their revealed threats':shortCue(plan.rules?.[0]||'Respect the enemy engage',82);
+    const missionTop=mission?shortCue(mission.title,80):'';
+    const hero=`
+      <div class="oc-plan-glance" aria-label="Three key points for this match">
+        <article class="oc-plan-glance__primary">
+          <div class="oc-plan-glance__top"><span>01 / YOUR MOVE</span><span>${esc(roleName(role)||'YOUR ROLE')}</span></div>
+          <strong>${esc(keyMove)}</strong>
+          ${missionTop?`<div class="oc-plan-glance__mission"><span>DNA MISSION</span><b>${esc(missionTop)}</b></div>`:''}
+        </article>
+        <article class="oc-plan-glance__secondary is-win"><span class="oc-plan-glance__label">02 / HOW WE WIN</span><strong>${esc(winPath)}</strong></article>
+        <article class="oc-plan-glance__secondary is-avoid"><span class="oc-plan-glance__label">03 / DON'T DO THIS</span><strong>${esc(danger)}</strong></article>
+      </div>`;
+
     return `
       <section class="oc-plan" aria-label="Match plan">
         <header class="oc-section-head">
@@ -320,15 +358,21 @@
           </div>
           <div class="oc-cluster">${tier?`<span class="oc-tier oc-tier--${tier.toLowerCase()}">${tier}</span>`:''}${chip}</div>
         </header>
-        <div class="oc-plan__grid">
-          <div class="oc-plan__duel">${winCards}</div>
-          ${roleCard}
-          ${missionCard}
-          ${actionsCard}
-          ${avoid}
-          ${buildRow(team,provisional)}
-        </div>
-        ${deepCard}
+        ${hero}
+        <details class="oc-full-plan">
+          <summary>${icon('bookmark')} FULL PRE-GAME BREAKDOWN <span>OPEN REPORT + BUILD →</span></summary>
+          <div class="oc-full-plan__inner">
+            <div class="oc-plan__grid">
+              <div class="oc-plan__duel">${winCards}</div>
+              ${roleCard}
+              ${missionCard}
+              ${actionsCard}
+              ${avoid}
+              ${buildRow(team,provisional)}
+            </div>
+            ${deepCard}
+          </div>
+        </details>
         <p class="oc-plan__boundary">${icon('shield')}Pre-game plan only. No live shotcalling, scouting or decisions during the match.</p>
       </section>`;
   }
