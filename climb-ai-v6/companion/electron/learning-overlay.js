@@ -20,6 +20,16 @@
  const put=(id,value)=>{$(id).textContent=String(value??'')};
  const show=(id,visible)=>{$(id).hidden=!visible};
  const text=value=>String(value??'').trim();
+ // The in-game default is a glanceable reminder, not the full coach briefing.
+ // Expanded mode preserves the exact long-form pregame wording.
+ const cue=(value,max=82)=>{
+  const raw=text(value).replace(/\\s+/g,' ');
+  if(!raw)return'';
+  const first=raw.split(/(?:\\.\\s+|;\\s*|\\s+→\\s+|\\s+[—–]\\s+)/)[0]?.trim()||raw;
+  if(first.length<=max)return first.replace(/[.;,:]$/,'');
+  const clipped=first.slice(0,max-1).replace(/\\s+\\S*$/,'').trim();
+  return (clipped||first.slice(0,max-1))+'…';
+ };
 
  function championKey(champion){
   const cleaned=text(champion);
@@ -84,20 +94,21 @@
   put('planState',plan.baseline?'BASELINE CAPTURE':'PLAN LOCKED');
   put('title',champion&&champion.toUpperCase()!=='YOUR CHAMPION'?champion+(role?' · '+role:''):'Your match focus');
 
-  // Mission: the development focus, or an honest baseline note.
+  // Keep just one clear instruction on Focus/Minimal. Deep explanations are
+  // still available when the player deliberately selects Expanded.
+  const compact=layout.mode!=='EXPANDED';
   if(plan.baseline){
    put('missionLabel','Baseline game '+Math.min(Number(plan.baseline.games||0)+1,Number(plan.baseline.required||3))+' of '+Number(plan.baseline.required||3));
-   put('mission','Play normally. No mission is scored this game.');
+   put('mission','Play normally. Collect your baseline.');
   }else{
-   put('missionLabel','Your mission');
-   put('mission',text(plan.mission)||'No development mission was locked for this game.');
+   put('missionLabel',compact?'DO THIS':'Your mission');
+   put('mission',compact?cue(plan.mission,76)||'Play your locked game plan.':text(plan.mission)||'No development mission was locked for this game.');
   }
   show('missionBlock',true);
 
-  // Win condition if the plan has one, otherwise the player's job.
   const win=text(plan.winCondition),job=text(plan.job);
-  put('winLabel',win?'Win condition':'Your job');
-  put('win',win||job);
+  put('winLabel',compact?'TEAM PLAN':win?'Win condition':'Your job');
+  put('win',compact?cue(job||win,82):win||job);
   show('winBlock',Boolean(win||job));
 
   const actions=Array.isArray(plan.actions)?plan.actions.map(text).filter(Boolean).slice(0,3):[];
@@ -258,7 +269,9 @@
  }
  function setMode(mode){
   if(!MODES.includes(mode))return;
-  layout.mode=mode;place();void save();
+  layout.mode=mode;
+  if(state?.game==='LOL'&&state.plan)renderLeague(state.plan);
+  place();void save();
  }
 
  // Move: drag the header while editing.

@@ -42,6 +42,8 @@ jobs:
         run: node --import tsx --test tests/verifiedMissionProof.test.ts
       - name: Premium verified post-game visual and evidence regressions
         run: node --test tests/companionReviewView.test.cjs
+      - name: Live draft recommendation and in-game clarity regressions
+        run: node --check companion/electron/draft-recommendations.js && node --check companion/electron/live-mission-hud.js && node --test tests/companionDraftRecommendations.test.cjs
       - name: Companion V2 native Home and draft regressions
         run: node --test tests/companionHomeView.test.cjs tests/companionDraftView.test.cjs
       - name: In-game Learning Overlay regressions
