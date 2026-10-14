@@ -26,7 +26,7 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci
       - name: Install Cloudflare adapter in CI only
-        run: npm install --no-save @opennextjs/cloudflare@latest wrangler@latest
+        run: npm install --no-save next@15.5.27 @opennextjs/cloudflare@latest wrangler@latest
       - name: Build full Next.js application for Cloudflare Workers
         run: npx opennextjs-cloudflare build
       - name: Check generated Worker and assets
