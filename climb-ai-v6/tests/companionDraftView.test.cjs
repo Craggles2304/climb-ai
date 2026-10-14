@@ -192,7 +192,7 @@ test('native Champion Select shows actual top-three suggestion and its draft-ind
   edge:{ours:55,theirs:45,confidence:'PARTIAL',
         label:'DRAFT ADVANTAGE INDEX · NOT VERIFIED WIN ODDS'},
  };
- const out=render('draft',state({draftAdvice:advice})).html;
+ const out=render('draft',state({draft:{...fullDraft(),localLockedIn:false},draftAdvice:advice})).html;
  assert.match(out,/BEST AVAILABLE ADC PICK/);
  assert.match(out,/#1 RECOMMENDED NOW/);
  assert.match(out,/Jinx/);
