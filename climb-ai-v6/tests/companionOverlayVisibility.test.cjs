@@ -27,6 +27,7 @@ test('The HUD stays click-through but raises above borderless game without injec
 test('Interactive editing receives focus, with a preview when not in game',()=>{
   assert.match(main,/if\(!wasVisible\)win\.show\(\)/);
   assert.match(main,/if\(enteredInteraction\)win\.focus\(\)/);
+  assert.match(main,/if\(overlayInteractionMode!=='play'&&win\.isFocused\(\)\)win\.blur\(\)/);
   assert.match(main,/toggleOverlayEditor\(true\)/);
   assert.match(main,/function centerOverlayLayout/);
   assert.match(main,/function nudgeOverlayLayout/);
