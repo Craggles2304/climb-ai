@@ -13,6 +13,7 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
+let overlayBoundDisplayId=null,overlayLastRaisedAt=0;
 let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBuildsOpen=false,overlayCoachBusy=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null,overlayFrozenTftBuilds=null,overlayFrozenLeagueBuild=null;
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,tftBuildsInFlight=false,leagueBuildInFlight='',leagueBuildKey='',reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
@@ -46,7 +47,7 @@ function configFile(){return path.join(configDir(),'companion.json')}
 function readConfig(){try{return JSON.parse(readFileSync(configFile(),'utf8'))}catch{return{webUrl:DEFAULT_WEB,tokenCipher:'',autoStart:false}}}
 function decryptToken(cfg){if(!cfg?.tokenCipher||!safeStorage.isEncryptionAvailable())return'';try{return safeStorage.decryptString(Buffer.from(cfg.tokenCipher,'base64'))}catch{return''}}
 function writeConfig(next){mkdirSync(configDir(),{recursive:true});writeFileSync(configFile(),JSON.stringify(next,null,2),'utf8')}
-function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),overlayEnabled:raw.overlayEnabled===true,overlayLayout:safeLayout(raw.overlayLayout),tftFocus:String(raw.tftFocus||'ECONOMY'),tftBuildId:String(raw.tftBuildId||''),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
+function currentConfig(){const raw=readConfig();return{webUrl:(raw.webUrl||DEFAULT_WEB).replace(/\/$/,''),token:decryptToken(raw),tokenCipher:raw.tokenCipher||'',autoStart:Boolean(raw.autoStart),overlayEnabled:raw.overlayEnabled===true,overlayLayout:safeLayout(raw.overlayLayout),overlayDisplayId:Number.isFinite(Number(raw.overlayDisplayId))&&raw.overlayDisplayId!=null?Number(raw.overlayDisplayId):null,tftFocus:String(raw.tftFocus||'ECONOMY'),tftBuildId:String(raw.tftBuildId||''),lastReviewSessionId:String(raw.lastReviewSessionId||''),lastReviewRenderedSessionId:String(raw.lastReviewRenderedSessionId||'')}}
 function paired(){return Boolean(currentConfig().token)}
 function publicState(){const cfg=currentConfig();return{...state,logs:recentLogs.slice(-80),webUrl:cfg.webUrl,tftFocus:cfg.tftFocus,tftBuildId:cfg.tftBuildId,overlay:{enabled:cfg.overlayEnabled,editing:overlayEditing,buildsOpen:overlayBuildsOpen,layout:cfg.overlayLayout}}}
 // The optional overlay never injects into League/TFT, touches game memory, or
@@ -57,9 +58,39 @@ function overlayPayload(){
     frozenLeague:overlayFrozenLeague,tftFocus:overlayFrozenTftFocus||cfg.tftFocus,tftMission:overlayFrozenTftMission,assistantOpen:overlayAssistantOpen,buildsOpen:overlayBuildsOpen,
     tftBuilds:overlayFrozenTftBuilds,leagueBuild:overlayFrozenLeagueBuild});
 }
+// A regular Electron window can appear above borderless/windowed League.
+// Exclusive fullscreen bypasses the desktop compositor: users must choose
+// Borderless in League > Video. Never hook into League or Vanguard.
+function cursorDisplay(){
+  try{return screen.getDisplayNearestPoint(screen.getCursorScreenPoint())}catch{return screen.getPrimaryDisplay()}
+}
+function chosenOverlayDisplay(preferCursor=false){
+  const saved=currentConfig().overlayDisplayId;
+  if(!preferCursor&&saved!=null){
+    const found=screen.getAllDisplays().find(display=>display.id===saved);
+    if(found)return found;
+  }
+  return cursorDisplay();
+}
+function setOverlayScreen(display){
+  if(!display||!overlayWindow||overlayWindow.isDestroyed())return;
+  if(overlayBoundDisplayId===display.id)return;
+  overlayWindow.setBounds(display.bounds);
+  overlayBoundDisplayId=display.id;
+}
+function raiseOverlay(win,{force=false}={}){
+  if(!win||win.isDestroyed()||!win.isVisible())return;
+  if(!force&&Date.now()-overlayLastRaisedAt<6000)return;
+  overlayLastRaisedAt=Date.now();
+  // "floating" is below Windows' taskbar and may fall behind borderless games.
+  // This changes window z-order, never game input or its memory.
+  win.setAlwaysOnTop(true,'pop-up-menu');
+  try{win.moveTop()}catch{}
+}
 function createOverlayWindow(){
   if(overlayWindow&&!overlayWindow.isDestroyed())return overlayWindow;
-  const bounds=screen.getPrimaryDisplay().bounds;
+  const display=chosenOverlayDisplay();
+  const bounds=display.bounds;
   const win=new BrowserWindow({x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height,
     show:false,transparent:true,frame:false,skipTaskbar:true,resizable:false,
     fullscreenable:false,focusable:true,hasShadow:false,alwaysOnTop:true,
@@ -67,11 +98,12 @@ function createOverlayWindow(){
       preload:path.join(__dirname,'overlay-preload.cjs'),contextIsolation:true,nodeIntegration:false,sandbox:true,
     }});
   overlayWindow=win;
-  win.setAlwaysOnTop(true,'floating');
+  overlayBoundDisplayId=display.id;
+  win.setAlwaysOnTop(true,'pop-up-menu');
   win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('did-finish-load',()=>syncOverlay());
-  win.on('closed',()=>{if(overlayWindow===win)overlayWindow=null});
+  win.on('closed',()=>{if(overlayWindow===win){overlayWindow=null;overlayBoundDisplayId=null}});
   win.loadFile(path.join(__dirname,'learning-overlay.html'));
   return win;
 }
@@ -85,9 +117,49 @@ function syncOverlay(){
   }
   const win=createOverlayWindow();
   if(win.webContents.isLoading())return;
+  const wasVisible=win.isVisible();
   win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
-  if(!win.isVisible())win.showInactive();
+  if(overlayEditing||overlayAssistantOpen||overlayBuildsOpen){
+    // Drag controls need keyboard and mouse focus; showInactive made the editor
+    // appear but left it underneath the game without a usable mouse target.
+    win.show();win.focus();raiseOverlay(win,{force:true});
+  }else if(!wasVisible){
+    win.showInactive();raiseOverlay(win,{force:true});
+  }else{
+    // Windowed/borderless League may re-order desktop windows on game load.
+    // Reassert TOPMOST without focusing or interrupting League controls.
+    raiseOverlay(win);
+  }
   win.webContents.send('overlay:state',view);
+}
+// Works even outside a match (editable preview). The mouse position selects
+// the actual game monitor, not an assumed primary display.
+function placeOverlayOnCursorScreen(){
+  if(!currentConfig().overlayEnabled)return{ok:false,error:'Enable the overlay first.'};
+  const display=cursorDisplay();
+  const cfg=readConfig();
+  cfg.overlayDisplayId=display.id;
+  cfg.overlayLayout={...safeLayout(cfg.overlayLayout),x:0.5,y:0.12};
+  writeConfig(cfg);
+  setOverlayScreen(display);
+  toggleOverlayEditor(true);
+  return{ok:true,displayId:display.id,layout:cfg.overlayLayout};
+}
+function centerOverlayLayout(){
+  if(!currentConfig().overlayEnabled)return{ok:false,error:'Enable the overlay first.'};
+  const cfg=readConfig();
+  cfg.overlayLayout={...safeLayout(cfg.overlayLayout),x:0.4,y:0.2};
+  writeConfig(cfg);
+  syncOverlay();setState({});
+  return{ok:true,layout:cfg.overlayLayout};
+}
+function nudgeOverlayLayout(dx=0,dy=0){
+  if(!overlayEditing||!currentConfig().overlayEnabled)return{ok:false,error:'Open Edit HUD first.'};
+  const cfg=readConfig(),p=safeLayout(cfg.overlayLayout);
+  const next=safeLayout({...p,x:p.x+Math.max(-0.1,Math.min(0.1,Number(dx)||0)),y:p.y+Math.max(-0.1,Math.min(0.1,Number(dy)||0))});
+  cfg.overlayLayout=next;writeConfig(cfg);
+  syncOverlay();setState({});
+  return{ok:true,layout:next};
 }
 function applyOverlayEnabled(enabled){
   const cfg=readConfig();cfg.overlayEnabled=Boolean(enabled);writeConfig(cfg);
@@ -258,6 +330,7 @@ function setState(patch){
     overlayFrozenLeague=null;
   }
   if(enteringRecording){overlayFrozenLeagueBuild=state.leagueBuild?{...state.leagueBuild}:null;}
+  if(enteringRecording&&!overlayEditing&&currentConfig().overlayDisplayId==null)setOverlayScreen(cursorDisplay());
   if(state.phase==='CHAMP_SELECT'&&state.matchup?.champion){
     const champion=String(state.matchup.champion||'').trim();
     const role=normalizedRole(state.matchup.role||state.matchup.plan?.role);
@@ -266,6 +339,7 @@ function setState(patch){
   if(state.tftRecorder?.state==='RECORDING'&&previousTftState!=='RECORDING'){
     const available=state.tftBuilds?.builds||[];
     overlayFrozenTftBuilds={patch:state.tftBuilds?.patch||'',asOf:state.tftBuilds?.asOf||'',selectedId:currentConfig().tftBuildId,builds:available.map(build=>({...build}))};
+    if(!overlayEditing&&currentConfig().overlayDisplayId==null)setOverlayScreen(cursorDisplay());
     overlayFrozenTftFocus=currentConfig().tftFocus;
     overlayFrozenTftMission=state.tftMission?.mission?{...state.tftMission.mission}:null;
   }else if(state.tftRecorder?.state!=='RECORDING'){
@@ -792,6 +866,8 @@ function updateTray(){
     {label:'Open Companion',click:()=>createWindow(true)},
     {label:'Enable in-game learning overlay',type:'checkbox',checked:currentConfig().overlayEnabled,click:item=>applyOverlayEnabled(item.checked)},
     {label:'Edit overlay layout (Alt+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayEditor()},
+    {label:'Move overlay to this monitor',enabled:currentConfig().overlayEnabled,click:()=>placeOverlayOnCursorScreen()},
+    {label:'Centre overlay on its monitor',enabled:currentConfig().overlayEnabled,click:()=>centerOverlayLayout()},
     {label:'Cycle HUD size (Ctrl+Shift+L)',enabled:currentConfig().overlayEnabled,click:()=>cycleOverlayLayout()},
     {label:'Ask AI Coach (Ctrl+Shift+K)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayAssistant()},
     {label:'View static build ideas (Ctrl+Shift+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayBuilds()}, 
@@ -804,12 +880,16 @@ function applyAutoStart(enabled){const next=Boolean(enabled);try{app.setLoginIte
 
 ipcMain.handle('overlay:get-state',()=>overlayPayload());
 ipcMain.handle('overlay:save-layout',(_event,layout)=>saveOverlayLayout(layout));
+ipcMain.handle('overlay:nudge',(_event,dx,dy)=>nudgeOverlayLayout(dx,dy));
+ipcMain.handle('overlay:center',()=>centerOverlayLayout());
 ipcMain.handle('overlay:finish-edit',()=>toggleOverlayEditor(false));
 ipcMain.handle('overlay:assistant-toggle',()=>toggleOverlayAssistant());
 ipcMain.handle('overlay:builds-toggle',()=>toggleOverlayBuilds());
 ipcMain.handle('overlay:ask-coach',(event,input)=>event.sender===overlayWindow?.webContents?askOverlayCoach(input):{ok:false,error:'Unrecognised overlay window.'});
 ipcMain.handle('companion:overlay-enabled',(_event,enabled)=>applyOverlayEnabled(enabled));
 ipcMain.handle('companion:overlay-edit',()=>toggleOverlayEditor());
+ipcMain.handle('companion:overlay-move-here',()=>placeOverlayOnCursorScreen());
+ipcMain.handle('companion:overlay-center',()=>centerOverlayLayout());
 ipcMain.handle('companion:overlay-cycle',()=>cycleOverlayLayout());
 ipcMain.handle('companion:set-tft-focus',(_event,focus)=>selectTftFocus(focus));
 ipcMain.handle('companion:get-tft-builds',()=>state.tftBuilds||null);
@@ -856,7 +936,7 @@ app.whenReady().then(()=>{
   try{globalShortcut.register('CommandOrControl+Shift+L',()=>cycleOverlayLayout())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+K',()=>toggleOverlayAssistant())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+B',()=>toggleOverlayBuilds())}catch{}
-  screen.on('display-metrics-changed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
+  screen.on('display-metrics-changed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){setOverlayScreen(chosenOverlayDisplay());syncOverlay()}});
   screen.on('display-removed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired){startTracker();startTftRecorder()}else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
   syncOverlay();
