@@ -25,7 +25,8 @@ test('The HUD stays click-through but raises above borderless game without injec
   assert.match(main,/Borderless in League/);
 });
 test('Interactive editing receives focus, with a preview when not in game',()=>{
-  assert.match(main,/win\.show\(\);win\.focus\(\)/);
+  assert.match(main,/if\(!wasVisible\)win\.show\(\)/);
+  assert.match(main,/if\(enteredInteraction\)win\.focus\(\)/);
   assert.match(main,/toggleOverlayEditor\(true\)/);
   assert.match(main,/function centerOverlayLayout/);
   assert.match(main,/function nudgeOverlayLayout/);
