@@ -120,7 +120,7 @@ export function buildDraftPickAdvice(input:DraftAdvisorInput):DraftAdvice{
   // win probabilities. With too few enemy picks, we refuse to fabricate an
   // advantage: an even bar signals insufficient information.
   const forming=enemies.length<3||allies.length<2;
-  const confidence=forming?'FORMING':(enemies.length>=5&&known.allies>=5?'FULL':'PARTIAL');
+  const confidence:DraftAdvice['edge']['confidence']=forming?'FORMING':(enemies.length>=5&&known.allies>=5?'FULL':'PARTIAL');
   const meanOwn=allies.length?((allyTraits.front+allyTraits.peel+allyTraits.sustained)/allies.length):1;
   const meanTheir=enemies.length?((enemyTraits.front+enemyTraits.peel+enemyTraits.sustained)/enemies.length):1;
   const ownScore=evaluated?.score??50;
