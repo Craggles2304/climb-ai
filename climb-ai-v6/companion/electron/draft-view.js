@@ -172,6 +172,10 @@
           <span class="oc-chip oc-chip--sm">${esc(confidence)} · ${num(result.enemyKnown)}/5 ENEMIES</span>
         </div>
         <div class="oc-pick-advisor__context"><span class="oc-pick-advisor__pulse" aria-hidden="true"></span><span>${esc(caption)}</span></div>
+        <div class="oc-draft-reads">
+          <div class="oc-draft-reads__group"><span>YOUR TEAM NEEDS</span>${result.needs?.length?result.needs.map(x=>`<b>${esc(x)}</b>`).join(''):'<em>WAITING FOR ALLY LOCKS</em>'}</div>
+          <div class="oc-draft-reads__group is-enemy"><span>THEY HAVE SHOWN</span>${result.threats?.length?result.threats.map(x=>`<b>${esc(x)}</b>`).join(''):'<em>NO CLEAR THREAT YET</em>'}</div>
+        </div>
         ${cards?`<ol class="oc-pick-advisor__list">${cards}</ol>`:`<p class="oc-small">${esc(empty)}</p>`}
         <div class="oc-pick-advisor__foot"><span>${icon('shield')}Only publicly revealed draft picks are used.</span><span>${result.source==='GENERAL'?'Build your champion pool to personalise picks.':'Your saved champions are prioritised.'}</span></div>
       </section>`;
