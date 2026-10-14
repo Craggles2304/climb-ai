@@ -658,6 +658,9 @@ function applyTrackerState(raw){
   if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
     if(origin==='SERVER'&&state.phase==='CHAMP_SELECT'&&Date.now()-lastLocalChampSelectAt<15_000)return;
     if(state.phase==='RECORDING'){
+      // Never interpret a delayed cloud status as the end of a local game.
+      // The installed tracker or explicit recording-close event owns the end.
+      if(origin==='SERVER')return;
       scheduleRecordingExit('Match finished. Pulling out the key good points and critical points.');
       return;
     }
