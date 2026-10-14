@@ -873,7 +873,7 @@ function updateTray(){
     {label:'Open Companion',click:()=>createWindow(true)},
     {label:'Enable in-game learning overlay',type:'checkbox',checked:currentConfig().overlayEnabled,click:item=>applyOverlayEnabled(item.checked)},
     {label:'Edit overlay layout (Alt+B)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayEditor()},
-    {label:'Move overlay to this monitor',enabled:currentConfig().overlayEnabled,click:()=>placeOverlayOnCursorScreen()},
+    {label:'Move overlay to cursor monitor (Ctrl+Shift+H)',enabled:currentConfig().overlayEnabled,click:()=>placeOverlayOnCursorScreen()},
     {label:'Centre overlay on its monitor',enabled:currentConfig().overlayEnabled,click:()=>centerOverlayLayout()},
     {label:'Cycle HUD size (Ctrl+Shift+L)',enabled:currentConfig().overlayEnabled,click:()=>cycleOverlayLayout()},
     {label:'Ask AI Coach (Ctrl+Shift+K)',enabled:currentConfig().overlayEnabled,click:()=>toggleOverlayAssistant()},
@@ -940,6 +940,7 @@ app.whenReady().then(()=>{
   try{globalShortcut.register('CommandOrControl+Shift+M',()=>markMoment())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+O',()=>applyOverlayEnabled(!currentConfig().overlayEnabled))}catch{}
   try{globalShortcut.register('Alt+B',()=>toggleOverlayEditor())}catch{}
+  try{globalShortcut.register('CommandOrControl+Shift+H',()=>placeOverlayOnCursorScreen())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+L',()=>cycleOverlayLayout())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+K',()=>toggleOverlayAssistant())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+B',()=>toggleOverlayBuilds())}catch{}
