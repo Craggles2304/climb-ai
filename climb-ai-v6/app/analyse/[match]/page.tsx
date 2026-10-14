@@ -24,6 +24,7 @@ import type {ProLeakSignal,ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {DNA_BASELINE_GAMES,dnaBaselineGameCount,dnaBaselineReady} from '@/lib/dnaGrowth';
 import {MatchStorySides} from '@/components/MatchStorySides';
+import {DecisionMomentsReview} from '@/components/DecisionMomentsReview';
 
 const pct=(n?:number)=>n===undefined?'Unavailable':`${Math.round(n*100)}%`;
 const num=(n?:number,suffix='')=>n===undefined?'Unavailable':`${n>0&&suffix==='g'?'+':''}${Number.isInteger(n)?n:n.toFixed(1)}${suffix}`;
@@ -124,6 +125,7 @@ export default function Analysis(){
     </nav>
 
     {section==='overview'&&<>
+      <DecisionMomentsReview analysis={proAnalysis} match={match}/>
       <section className="ar-overview-story panel">
         <div>
           <span>YOUR GAME IN PLAIN ENGLISH</span>
@@ -194,7 +196,11 @@ export default function Analysis(){
         </aside>
       </header>
 
-      <MatchStorySides analysis={proAnalysis} title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={id}/>
+      <DecisionMomentsReview analysis={proAnalysis} match={match}/>
+      <details className="ar-coaching-detail">
+        <summary>OPEN DETAILED MATCH RECONSTRUCTION</summary>
+        <MatchStorySides analysis={proAnalysis} title="GOOD VS CRITICAL · THIS GAME" tasks={tasks} matchId={id}/>
+      </details>
 
       <details className="ar-coaching-detail">
         <summary>OPEN MORE COACHING DETAIL</summary>
