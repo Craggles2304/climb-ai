@@ -129,11 +129,12 @@ function syncOverlay(){
     if(!wasVisible)win.show();
     if(enteredInteraction)win.focus();
     raiseOverlay(win,{force:enteredInteraction||!wasVisible});
-  }else if(!wasVisible){
-    win.showInactive();raiseOverlay(win,{force:true});
   }else{
-    // Reassert topmost without taking keyboard or mouse focus from League.
-    raiseOverlay(win);
+    // Immediately return keyboard input to League when closing the editor.
+    // Click-through alone does not release keyboard focus on Windows.
+    if(overlayInteractionMode!=='play'&&win.isFocused())win.blur();
+    if(!wasVisible){win.showInactive();raiseOverlay(win,{force:true})}
+    else raiseOverlay(win); // Z-order only; no focus is taken from League.
   }
   overlayInteractionMode=interaction;
   win.webContents.send('overlay:state',view);
