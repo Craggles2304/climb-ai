@@ -34,3 +34,5 @@ jobs:
           test -f .open-next/worker.js
           test -d .open-next/assets
           echo "OpenNext Worker generated successfully"
+      - name: Validate Worker bundle with Wrangler without deploying
+        run: npx wrangler deploy --dry-run --outdir .cloudflare-dryrun
