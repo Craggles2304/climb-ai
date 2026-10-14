@@ -231,7 +231,8 @@
  function render(next){
   if(!next)return;
   state=next;
-  layout={...layout,...next.layout};
+  // Live tracker updates must never reset the HUD mid-drag/mid-resize.
+  if(!drag&&!resize)layout={...layout,...next.layout};
   const editing=Boolean(next.editing),preview=next.game==='PREVIEW';
   $('editor').hidden=!editing;
   $('overlay').classList.toggle('editing',editing);
@@ -277,6 +278,7 @@
  // Move: drag the header while editing.
  $('handle').addEventListener('pointerdown',event=>{
   if(!state?.editing||event.button!==0)return;
+  event.preventDefault?.();
   drag={x:event.clientX,y:event.clientY,left:layout.x,top:layout.y};
   $('handle').setPointerCapture(event.pointerId);
  });
@@ -293,6 +295,7 @@
  // Resize: drag the corner grip while editing.
  $('resizer').addEventListener('pointerdown',event=>{
   if(!state?.editing||event.button!==0)return;
+  event.preventDefault?.();
   resize={x:event.clientX,scale:layout.scale,width:($('overlay').offsetWidth||364)};
   $('resizer').setPointerCapture?.(event.pointerId);
  });
@@ -314,11 +317,35 @@
    button.addEventListener('click',()=>setMode(String(button.dataset?.preset||'')));
   }
  }
- $('done').addEventListener('click',async()=>{await save();await window.opOverlay.finishEditing()});
+ const move=async(dx,dy)=>{
+  if(!state?.editing)return;
+  const result=await window.opOverlay.nudge?.(dx,dy).catch?.(()=>null);
+  if(result?.ok&&result.layout){layout={...layout,...result.layout};place()}
+ };
+ const moveButtons=[['hudMoveLeft',-.02,0],['hudMoveRight',.02,0],['hudMoveUp',0,-.02],['hudMoveDown',0,.02]];
+ for(const [id,dx,dy] of moveButtons)$(id).addEventListener('click',()=>{void move(dx,dy)});
+ $('hudCentre').addEventListener('click',async()=>{
+  if(!state?.editing)return;
+  const result=await window.opOverlay.center?.().catch?.(()=>null);
+  if(result?.ok&&result.layout){layout={...layout,...result.layout};place()}
+ });
+ $('done').addEventListener('click',async()=>{
+  const saved=await save();
+  if(saved?.ok===false)return;
+  await window.opOverlay.finishEditing();
+ });
  $('coachForm').addEventListener('submit',submitCoachQuestion);
  $('coachClose').addEventListener('click',()=>{void window.opOverlay.toggleAssistant?.()});
  $('buildGuideClose').addEventListener('click',()=>{void window.opOverlay.toggleBuilds?.()});
  document.addEventListener?.('keydown',event=>{
+   if(state?.editing&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(event.key)){
+     if(event.target?.matches?.('input,textarea,select,[contenteditable]'))return;
+     event.preventDefault?.();
+     const step=event.shiftKey?.05:.01;
+     const moves={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]};
+     void move(...moves[event.key]);
+     return;
+   }
    if(event.key==='Escape'&&(state?.assistantOpen||state?.buildsOpen)){
      event.preventDefault?.();
      if(state?.buildsOpen)void window.opOverlay.toggleBuilds?.();

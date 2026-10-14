@@ -90,6 +90,8 @@ function render(state){
     $('overlayToggle').setAttribute('aria-pressed',String(Boolean(current.overlay?.enabled)));
   }
   if($('overlayEdit'))$('overlayEdit').disabled=!current.overlay?.enabled;
+  if($('overlayMoveHere'))$('overlayMoveHere').disabled=!current.overlay?.enabled;
+  if($('overlayCenter'))$('overlayCenter').disabled=!current.overlay?.enabled;
   if($('overlayModeCycle'))$('overlayModeCycle').disabled=!current.overlay?.enabled;
   if($('overlayModeLabel')){
     const mode=String(current.overlay?.layout?.mode||'FOCUS').toUpperCase();
@@ -305,6 +307,8 @@ bind('unpair','click',async()=>{if(confirm('Unpair this PC from OP CLIMB? You ca
 bind('autoStart','click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
 bind('overlayToggle','click',async()=>{await window.opCompanion.setOverlayEnabled(!current?.overlay?.enabled)});
 bind('overlayEdit','click',()=>window.opCompanion.editOverlay());
+bind('overlayMoveHere','click',()=>window.opCompanion.moveOverlayHere());
+bind('overlayCenter','click',()=>window.opCompanion.centerOverlay());
 bind('overlayModeCycle','click',()=>window.opCompanion.cycleOverlay());
 bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());
