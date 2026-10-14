@@ -1,0 +1,31 @@
+/* Champion-select intelligence: compact professional esports presentation. */
+.oc-draft-adviser{margin-top:16px;border:1px solid rgba(162,238,133,.27);border-top:3px solid #b8f66d;background:linear-gradient(135deg,#172d2d,#101c2b 75%);padding:20px;color:#eaf7fa}
+.oc-draft-adviser__head{display:flex;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;gap:14px;margin-bottom:16px}
+.oc-draft-adviser__head h2{font-size:clamp(23px,3vw,32px);line-height:1.04;margin:6px 0 8px;color:#f3fff4;text-transform:uppercase}
+.oc-draft-adviser__head p{max-width:750px}
+.oc-adviser-picks{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.oc-adviser-pick{min-width:0;display:flex;align-items:center;flex-wrap:wrap;gap:10px;background:rgba(14,29,42,.74);border:1px solid rgba(151,179,195,.27);padding:12px}
+.oc-adviser-pick.is-best{background:rgba(129,182,110,.11);border-color:rgba(188,249,129,.66)}
+.oc-adviser-place{flex:0 0 100%;font:800 10px 'IBM Plex Mono',monospace;letter-spacing:.06em;color:#a1c5cd}
+.oc-adviser-pick.is-best .oc-adviser-place{color:#c8ff84}
+.oc-adviser-pick .oc-portrait{flex:0 0 auto}
+.oc-adviser-name{flex:1;min-width:100px;display:grid;gap:4px}
+.oc-adviser-name>b{font:800 23px/1 'Barlow Condensed',sans-serif;color:#f3fbff}
+.oc-adviser-name small{font:500 11px/1.5 'DM Sans',sans-serif;color:#b8c8d5;overflow-wrap:anywhere}
+.oc-adviser-score{font:800 21px/1 'Barlow Condensed',sans-serif;color:#c1fdb0;margin-left:auto}
+.oc-adviser-score small{display:block;font:700 9px/1.6 'IBM Plex Mono',monospace;color:#a7bdc9}
+.oc-draft-edge{margin-top:18px;padding:16px;background:#0e1c2a;border:1px solid rgba(124,161,181,.27)}
+.oc-draft-edge__labels{display:flex;justify-content:space-between;gap:12px;align-items:center;font:800 12px/1.3 'IBM Plex Mono',monospace}
+.oc-draft-edge__labels>b:first-child{color:#b8f66d}
+.oc-draft-edge__labels>b:last-child{color:#f5979e}
+.oc-draft-edge__labels>strong{text-align:center;color:#d1e4e5;font:800 13px/1.1 'Barlow Condensed',sans-serif}
+.oc-draft-edge__track{height:16px;background:linear-gradient(90deg,#984150,#ed8c95);overflow:hidden;position:relative;border:1px solid rgba(255,255,255,.15);margin:12px 0}
+.oc-draft-edge__track>span{display:block;background:linear-gradient(90deg,#66b6a6,#b8f66d);height:100%;transition:width .18s ease}
+.oc-draft-edge__track::after{position:absolute;content:"";height:100%;left:50%;top:0;border-left:2px solid rgba(241,246,255,.78)}
+.oc-draft-edge p,.oc-adviser-wait{font:500 11px/1.6 'DM Sans',sans-serif;color:#b1c6d2;margin:0}
+.oc-draft-edge p b{color:#e7efe5}
+.oc-adviser-wait{margin-top:12px;padding:14px;background:rgba(36,59,74,.43);border-left:2px solid #7daaba}
+.oc-draft-adviser footer{display:flex;flex-wrap:wrap;gap:12px;justify-content:space-between;border-top:1px solid rgba(135,184,187,.2);margin-top:16px;padding-top:12px;color:#9fbbc9;font:500 10px/1.5 'IBM Plex Mono',monospace}
+@media(max-width:1000px){.oc-adviser-picks{grid-template-columns:1fr}.oc-adviser-pick .oc-adviser-place{flex:0 0 auto;width:66px}.oc-adviser-score{margin-left:auto}}
+@media(max-width:600px){.oc-draft-adviser{padding:12px}.oc-draft-edge__labels{font-size:9px}.oc-draft-edge__labels>strong{font-size:10px}.oc-adviser-pick{gap:8px}.oc-adviser-name>b{font-size:20px}}
+@media(prefers-reduced-motion:reduce){.oc-draft-edge__track>span{transition:none}}

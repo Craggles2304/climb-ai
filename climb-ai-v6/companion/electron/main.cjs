@@ -19,7 +19,7 @@ let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=fa
 let lastLocalChampSelectAt=0;
 let pairingAuthInvalid=false;
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
+let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,draftAdvisor:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -384,9 +384,9 @@ async function pollChampionPlan(){
       nextPollDelay=Math.max(1600,Math.min(60_000,(Number(response.headers.get('retry-after'))||3)*1000));
       return;
     }
-    if(body?.draft)setState({draft:freshestDraft(state.draft,body.draft)});
+    if(body?.draft)setState({draft:freshestDraft(state.draft,body.draft),draftAdvisor:body.draftAdvisor??null});
     if(response.ok&&!body?.ready){
-      if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,body?.draft),matchup:null,teamPlan:null});
+      if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,body?.draft),draftAdvisor:body.draftAdvisor??null,matchup:null,teamPlan:null});
       return;
     }
     if(!response.ok||!body?.plan||!body?.champion)return;
@@ -396,7 +396,7 @@ async function pollChampionPlan(){
     const locked=Boolean(body.locked);
     const source=body.recoveredFromEndedPregame?'PREGAME_RECOVERY':locked?'CHAMPION_LOCK':'CHAMPION_HOVER';
     const fullOpponent=Boolean(state.matchup?.opponent&&String(state.matchup?.champion||'').toLowerCase()===champion.toLowerCase()&&['CHAMP_SELECT','IN_GAME'].includes(String(state.matchup?.source||'')));
-    if(fullOpponent){setState({teamPlan,draft:freshestDraft(state.draft,body.draft)});return}
+    if(fullOpponent){setState({teamPlan,draftAdvisor:body.draftAdvisor??null,draft:freshestDraft(state.draft,body.draft)});return}
     const signature=`self|${champion}|${role}|${locked?'locked':'preview'}|${JSON.stringify(teamPlan?.ourTeam||[])}|${JSON.stringify(teamPlan?.theirTeam||[])}`.toLowerCase();
     if(signature!==matchupSignature||state.matchup?.status!=='READY'){
       matchupSignature=signature;
@@ -405,8 +405,8 @@ async function pollChampionPlan(){
         :locked
           ?`${champion} locked. Final plan ready; it will keep upgrading as enemy picks appear.`
           :`${champion} preview ready. Change your hover freely — lock in to freeze the final plan.`;
-      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source,plan:body.plan,error:null,provisional:!locked},teamPlan,draft:freshestDraft(state.draft,body.draft),detail});
-    }else if(teamPlan)setState({teamPlan,draft:freshestDraft(state.draft,body.draft)});
+      setState({matchup:{status:'READY',champion,opponent:null,role:role||null,source,plan:body.plan,error:null,provisional:!locked},teamPlan,draftAdvisor:body.draftAdvisor??null,draft:freshestDraft(state.draft,body.draft),detail});
+    }else if(teamPlan)setState({teamPlan,draftAdvisor:body.draftAdvisor??null,draft:freshestDraft(state.draft,body.draft)});
   }catch{}
   finally{
     clearTimeout(timeout);championPlanInFlight=false;
