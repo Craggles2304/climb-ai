@@ -14,12 +14,14 @@ const vm=require('node:vm');
 const electron=path.join(process.cwd(),'companion/electron');
 const ocUi=fs.readFileSync(path.join(electron,'oc-ui.js'),'utf8');
 const draftView=fs.readFileSync(path.join(electron,'draft-view.js'),'utf8');
+const draftAdvisorView=fs.readFileSync(path.join(electron,'draft-advisor-view.js'),'utf8');
 const html=fs.readFileSync(path.join(electron,'index.html'),'utf8');
 
 function makeViews(){
   const window={};
   const context=vm.createContext({window,localStorage:{getItem:()=>null,setItem(){}},console,JSON,Math,Number,String,Array,Object,Boolean,Date,Set});
   vm.runInContext(ocUi,context);
+  vm.runInContext(draftAdvisorView,context);
   vm.runInContext(draftView,context);
   return(route,state)=>{
     const root={dataset:{},innerHTML:'',querySelectorAll:()=>[]};
@@ -175,4 +177,40 @@ test('the desktop loads the native draft view and no longer ships the legacy boa
   assert.match(html,/<script src="draft-view\.js"><\/script>/);
   assert.match(html,/href="draft\.css"/);
   assert.doesNotMatch(html,/id="matchup"|premium-champ-select\.css|lane\.css/);
+});
+
+test('native Champion Select shows actual top-three suggestion and its draft-index disclosure',()=>{
+ const render=makeViews();
+ const advice={
+  available:true,role:'ADC',patch:'16.21.1',locked:false,considered:24,
+  known:{allies:3,enemies:4},
+  recommended:[
+   {champion:'Jinx',reason:['Fits the revealed frontline'],score:79},
+   {champion:'Ashe',reason:['Offers engage from range'],score:73},
+   {champion:'Caitlyn',reason:['Adds long-range poke'],score:66},
+  ],
+  edge:{ours:55,theirs:45,confidence:'PARTIAL',
+        label:'DRAFT ADVANTAGE INDEX · NOT VERIFIED WIN ODDS'},
+ };
+ const out=render('draft',state({draftAdvice:advice})).html;
+ assert.match(out,/BEST AVAILABLE ADC PICK/);
+ assert.match(out,/#1 RECOMMENDED NOW/);
+ assert.match(out,/Jinx/);
+ assert.match(out,/Ashe/);
+ assert.match(out,/Caitlyn/);
+ assert.match(out,/DRAFT EDGE INDEX/);
+ assert.match(out,/55%/);
+ assert.match(out,/45%/);
+ assert.match(out,/NOT REAL WIN ODDS/);
+ assert.match(out,/4\/5 ENEMIES/);
+});
+test('native Champion Select keeps uncertain drafts neutral and never claims win odds',()=>{
+ const render=makeViews();
+ const advice={available:true,role:'ADC',patch:'16.21.1',locked:false,considered:12,
+  known:{allies:1,enemies:0},recommended:[{champion:'Jinx',reason:['Known role'],score:50}],
+  edge:{ours:50,theirs:50,confidence:'FORMING',label:'DRAFT ADVANTAGE INDEX'}};
+ const out=render('draft',state({draftAdvice:advice})).html;
+ assert.match(out,/WAITING FOR MORE PICKS/);
+ assert.match(out,/Insufficient picks/);
+ assert.doesNotMatch(out,/50% WIN/);
 });
