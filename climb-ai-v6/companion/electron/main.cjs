@@ -13,7 +13,7 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
-let overlayBoundDisplayId=null,overlayLastRaisedAt=0;
+let overlayBoundDisplayId=null,overlayLastRaisedAt=0,overlayInteractionMode='';
 let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBuildsOpen=false,overlayCoachBusy=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null,overlayFrozenTftBuilds=null,overlayFrozenLeagueBuild=null;
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,tftBuildsInFlight=false,leagueBuildInFlight='',leagueBuildKey='',reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
@@ -111,25 +111,29 @@ function syncOverlay(){
   if(quitting)return;
   const view=overlayPayload();
   if(!view.show){
-    overlayEditing=false;overlayAssistantOpen=false;overlayBuildsOpen=false;
+    overlayEditing=false;overlayAssistantOpen=false;overlayBuildsOpen=false;overlayInteractionMode='';
     if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.hide();
     return;
   }
   const win=createOverlayWindow();
   if(win.webContents.isLoading())return;
   const wasVisible=win.isVisible();
+  const interaction=overlayEditing?'editor':overlayAssistantOpen?'coach':overlayBuildsOpen?'builds':'play';
+  const enteredInteraction=interaction!=='play'&&interaction!==overlayInteractionMode;
   win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
-  if(overlayEditing||overlayAssistantOpen||overlayBuildsOpen){
-    // Drag controls need keyboard and mouse focus; showInactive made the editor
-    // appear but left it underneath the game without a usable mouse target.
-    win.show();win.focus();raiseOverlay(win,{force:true});
+  if(interaction!=='play'){
+    // Focus once when a player deliberately opens the editor/coach, not on
+    // every tracker update: repeatedly focusing here steals League controls.
+    if(!wasVisible)win.show();
+    if(enteredInteraction)win.focus();
+    raiseOverlay(win,{force:enteredInteraction||!wasVisible});
   }else if(!wasVisible){
     win.showInactive();raiseOverlay(win,{force:true});
   }else{
-    // Windowed/borderless League may re-order desktop windows on game load.
-    // Reassert TOPMOST without focusing or interrupting League controls.
+    // Reassert topmost without taking keyboard or mouse focus from League.
     raiseOverlay(win);
   }
+  overlayInteractionMode=interaction;
   win.webContents.send('overlay:state',view);
 }
 // Works even outside a match (editable preview). The mouse position selects
