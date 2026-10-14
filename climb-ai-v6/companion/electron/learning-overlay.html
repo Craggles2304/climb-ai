@@ -90,7 +90,14 @@
 
   <div id="editor" class="hud-editor" hidden>
     <div class="hud-editor__title"><b>Customise your HUD</b><span>Alt+B closes</span></div>
-    <p class="hud-editor__hint">Drag the header to move. Drag the corner to resize.</p>
+    <p class="hud-editor__hint">Drag the header to position your HUD. Or use the arrow buttons below. Press <kbd>Alt+B</kbd> to close editing.</p>
+    <div class="hud-move-controls" role="group" aria-label="Move overlay without dragging">
+      <button type="button" id="hudMoveLeft" aria-label="Move HUD left">←</button>
+      <button type="button" id="hudMoveUp" aria-label="Move HUD up">↑</button>
+      <button type="button" id="hudMoveDown" aria-label="Move HUD down">↓</button>
+      <button type="button" id="hudMoveRight" aria-label="Move HUD right">→</button>
+      <button type="button" id="hudCentre" class="hud-move-center">CENTRE HUD</button>
+    </div>
     <div class="hud-presets" role="group" aria-label="HUD layout">
       <button type="button" class="preset" data-preset="MINIMAL">Minimal</button>
       <button type="button" class="preset" data-preset="FOCUS">Focus</button>
