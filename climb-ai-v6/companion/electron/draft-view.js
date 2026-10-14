@@ -264,6 +264,8 @@
     return planCard({tone:'var(--oc-amber)',eyebrow:'Build for this draft',title:'',body:`<ol class="oc-items">${icons}</ol>${flex?`<p class="oc-small">${esc(flex)}</p>`:''}`});
   }
 
+  const brief=(type,value,role)=>window.OPCoachBrief?.cue?.(type,value,role)||'Choose a safe team play.';
+
   // Glance-first: high-signal coaching appears above the optional full report.
   function shortCue(value,max=96){
     const full=text(value).replace(/\\s+/g,' ');
@@ -308,39 +310,39 @@
     const theirWin=text(team?.theirWinCondition||team?.roleWinCondition?.lossCondition);
     const threats=list(team?.compositionRead?.enemyThreats).map(text).filter(Boolean);
     const winCards=paid
-      ?planCard({tone:'var(--oc-lime)',eyebrow:'Our win condition',title:ourWin||'Forming as the draft fills in',
-          extra:more('How it plays out',roleSteps.map(s=>[text(s?.label)||'Step',text(s?.value)]).concat([['Team shape',text(team?.roleWinCondition?.compPlan||team?.teamfight?.label)]]))})
-        +planCard({tone:'var(--oc-red)',eyebrow:'Their win condition',title:theirWin||'Forming as their picks appear',
-          extra:more('What to watch',[['Their style',text(team?.theirIdentity)],['Main threats',threats.slice(0,3).join(' · ')]])})
+      ?planCard({tone:'var(--oc-lime)',eyebrow:'Our win condition',title:ourWin?brief('WIN',ourWin,role):'Forming as the draft fills in',
+          extra:more('See why',[['Full win condition',ourWin],...roleSteps.map(s=>[text(s?.label)||'Step',text(s?.value)]),['Team shape',text(team?.roleWinCondition?.compPlan||team?.teamfight?.label)]])})
+        +planCard({tone:'var(--oc-red)',eyebrow:'Their win condition',title:theirWin?brief('AVOID',theirWin,role):'Forming as their picks appear',
+          extra:more('See why',[['Full threat assessment',theirWin],['Their style',text(team?.theirIdentity)],['Main threats',threats.slice(0,3).join(' · ')]])})
       :lockedCard('PLUS','Win conditions','Our win condition, their win condition and the biggest throw for this draft are part of the PLUS match read.',tier);
 
     const job=text(team?.yourJob);
     const roleCard=planCard({tone:'var(--oc-cyan)',eyebrow:`Your role in the match${roleName(role)?` · ${roleName(role)}`:''}`,
-      title:job||ROLE_BASICS[role]||'',
-      body:job?'':(ROLE_BASICS[role]?'<p class="oc-small">Role basics. A draft-specific job appears when the plan has one.</p>':''),
-      extra:more('More on your role',[['Side lanes',text(team?.sidelane?.summary)],['Teamfights',text(team?.teamfight?.summary)],['Your style',text(team?.ourIdentity)]])});
+      title:job?brief('MOVE',job,role):ROLE_BASICS[role]||'',
+      body:job?'':(ROLE_BASICS[role]?'<p class="oc-small">Role basics. Your draft-specific job appears when a plan is available.</p>':''),
+      extra:more('Role explanation',[['Full role instruction',job],['Side lanes',text(team?.sidelane?.summary)],['Teamfights',text(team?.teamfight?.summary)],['Your style',text(team?.ourIdentity)]])});
 
     const mission=missionLine(state);
-    const missionCard=mission?planCard({tone:mission.baseline?'var(--oc-text-3)':'var(--oc-violet)',eyebrow:'Your development mission',title:mission.title,
-      body:`${mission.body?`<p class="oc-body">${esc(mission.body)}</p>`:''}<p class="oc-small">Kept separate from the team plan.</p>`}):'';
+    const missionCard=mission?planCard({tone:mission.baseline?'var(--oc-text-3)':'var(--oc-violet)',eyebrow:'Your development mission',title:brief('MISSION',mission.title,role),
+      body:more('Mission explanation',[['Full mission',mission.title],['Coaching note',mission.body]])}):'';
 
     const actions=threeActions(team,plan,role);
     const actionsCard=actions.length?`
       <article class="oc-card oc-plan-actions">
         <span class="oc-eyebrow oc-tone-lime">${actions.length===3?'Three important actions':'Important actions'}</span>
-        <ol>${actions.map((a,i)=>`<li><b class="oc-plan-actions__n">${String(i+1).padStart(2,'0')}</b><div><span class="oc-label">${esc(a.label)}</span><strong>${esc(a.value)}</strong></div></li>`).join('')}</ol>
+        <ol>${actions.map((a,i)=>`<li><b class="oc-plan-actions__n">${String(i+1).padStart(2,'0')}</b><div><span class="oc-label">${esc(a.label)}</span><strong>${esc(brief('STEP',a.value,role))}</strong>${more('Explanation',[['Full sequence',a.value]])}</div></li>`).join('')}</ol>
       </article>`:'';
 
-    const avoid=paid&&text(team?.biggestThrow)?planCard({tone:'var(--oc-amber)',eyebrow:'Avoid · biggest throw',title:text(team.biggestThrow)}):'';
+    const avoid=paid&&text(team?.biggestThrow)?planCard({tone:'var(--oc-amber)',eyebrow:'Avoid · biggest throw',title:brief('AVOID',team.biggestThrow,role),extra:more('Why to avoid',[['Full threat read',team.biggestThrow]])}):'';
     const read=team?.compositionRead;
     const deepCard=deep&&read
       ?`<article class="oc-card oc-plan-deep">${more('Why this plan works',[['First contact',list(read.firstContact).join(' · ')],['Your protection',list(read.protectors).join(' · ')],['Main threats',list(read.enemyThreats).join(' · ')],['Fight shape',text(read.fightGeometry)],['Deny their plan',text(read.matchupRule)]])}</article>`
       :paid&&!deep?`<p class="oc-small oc-plan-note">${icon('lock')}Why this plan works, the full composition read, is part of PRO.</p>`:'';
 
-    const keyMove=shortCue(job||actions[0]?.value||ROLE_BASICS[role]||'',88)||'Wait for your matchup read';
-    const winPath=paid?shortCue(ourWin,82)||'Still forming as picks are revealed':shortCue(actions[1]?.value||actions[0]?.value||'',82)||'Play for safe advantages';
-    const danger=paid?shortCue(team?.biggestThrow||theirWin,82)||'Watch their revealed threats':shortCue(plan.rules?.[0]||'Respect the enemy engage',82);
-    const missionTop=mission?shortCue(mission.title,80):'';
+    const keyMove=job?brief('MOVE',job,role):actions.length?brief('STEP',actions[0].value,role):ROLE_BASICS[role]||'Play with your team.';
+    const winPath=paid&&ourWin?brief('WIN',ourWin,role):actions.length?brief('WIN',actions[0].value,role):'Play for safe advantages.';
+    const danger=paid&&(team?.biggestThrow||theirWin)?brief('AVOID',team.biggestThrow||theirWin,role):'Do not force fights alone.';
+    const missionTop=mission?brief('MISSION',mission.title,role):'';
     const hero=`
       <div class="oc-plan-glance" aria-label="Three key points for this match">
         <article class="oc-plan-glance__primary">
@@ -358,13 +360,13 @@
           <div class="oc-section-head__text">
             <span class="oc-eyebrow oc-tone-cyan">${standalone?'Your match blueprint':'Match preparation'}</span>
             <h2 class="oc-h2">${esc(title)}</h2>
-            <p class="oc-small">${frozen?'Locked in champion select. It stays the same for the whole game.':provisional?'Preview. The plan freezes when you lock in and sharpens as the draft appears.':'Read it once before the game loads.'}</p>
+            <p class="oc-small">${frozen?'Your plan was locked before the match.':'Three simple actions for this draft. Details are optional.'}</p>
           </div>
           <div class="oc-cluster">${tier?`<span class="oc-tier oc-tier--${tier.toLowerCase()}">${tier}</span>`:''}${chip}</div>
         </header>
         ${hero}
         <details class="oc-full-plan">
-          <summary>${icon('bookmark')} FULL PRE-GAME BREAKDOWN <span>OPEN REPORT + BUILD →</span></summary>
+          <summary>${icon('bookmark')} TACTICAL DETAILS + ITEM BUILD <span>OPTIONAL · OPEN →</span></summary>
           <div class="oc-full-plan__inner">
             <div class="oc-plan__grid">
               <div class="oc-plan__duel">${winCards}</div>
