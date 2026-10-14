@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "op-climb",
+  "name": "climb-ai",
   "main": ".open-next/worker.js",
   "compatibility_date": "2026-10-14",
   "compatibility_flags": ["nodejs_compat"],
