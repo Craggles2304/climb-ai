@@ -18,7 +18,7 @@ let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBu
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,tftBuildsInFlight=false,leagueBuildInFlight='',leagueBuildKey='',reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
-let recordingExitTimer=null,recordingExitPendingAt=0,lastLocalRecordingSignalAt=0,lastLiveTelemetryAt=0,overlayWatchdog=null;
+let recordingExitTimer=null,recordingExitPendingAt=0,recordingStartedAt=0,lastLocalRecordingSignalAt=0,lastLiveTelemetryAt=0,overlayWatchdog=null;
 const RECORDING_END_GRACE_MS=22000;
 let pairingAuthInvalid=false;
 let recentLogs=[];
@@ -81,7 +81,10 @@ function scheduleRecordingExit(detail){
     setState({phase:'UPLOADING',detail:detail||'Match finished. Preparing your review.'});
     startPostGameReviewPoll();
   };
-  recordingExitTimer=setTimeout(check,RECORDING_END_GRACE_MS);
+  // League's first loading screen can exceed 20s; allow 90s for the
+  // initial handoff, then a shorter interval for mid-game disconnections.
+  const initialHandoff=recordingStartedAt>0&&Date.now()-recordingStartedAt<120000;
+  recordingExitTimer=setTimeout(check,initialHandoff?90000:RECORDING_END_GRACE_MS);
   addLog('Waiting for confirmed game end before hiding the match HUD.');
 }
 function startOverlayWatchdog(){
@@ -363,7 +366,7 @@ function setState(patch){
   }
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
-  if(enteringRecording){cancelRecordingExit();lastLocalRecordingSignalAt=Date.now()}
+  if(enteringRecording){cancelRecordingExit();recordingStartedAt=Date.now();lastLocalRecordingSignalAt=Date.now()}
   if(requestedPhase==='UPLOADING'||requestedPhase==='REVIEW'||requestedPhase==='WAITING'||requestedPhase==='SETUP'||requestedPhase==='AUTH_ERROR')cancelRecordingExit();
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null,liveHud:null}}
   const previousTftState=String(state.tftRecorder?.state||'');
