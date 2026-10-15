@@ -127,12 +127,13 @@
     const baseline=next?.playerHome?.baseline?.ready===false&&!mission&&!job;
     const protectCarry=/\bcarry\b|\bkeep\s+\w+\s+playable\b/i.test(job);
     const title=baseline?'BASELINE GAME':names[metric]||(mission?short(mission.title,32):protectCarry?'CARRY PRESERVATION':job?'MATCH PLAN':'PLAY YOUR GAME');
-    const action=baseline?'Play normally. Build your baseline.':mission?(rule?.[0]||short(mission.action||mission.gameRule||mission.cue,58)):jobParts.length>1?short(jobParts[1],58):short(jobParts[0]||'Follow the frozen match plan.',58);
+    const brief=(type,value)=>window.OPCoachBrief?.cue?.(type,value,role(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role))||'Make a safe team play.';
+    const action=baseline?'Play normally. Build your baseline.':mission?(rule?.[0]||brief('MISSION',mission.action||mission.gameRule||mission.cue)):job?brief('MOVE',job):'Follow your match plan.';
     put('opmDomain',clean(mission?.domain||mission?.dnaDomain||'GAME DNA').replace(/_/g,' '));
     put('opmRole',clean(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role||''));
     put('opmTitle',title);put('opmAction',action);
-    put('opmCueOne',rule?.[1]||short(jobParts[0]||'Check the situation',32));
-    put('opmCueTwo',rule?.[2]||short(jobParts[2]||'Stay in a safe position',32));
+    put('opmCueOne',rule?.[1]||(job?'Check the enemy threat first.':'Check the situation.'));
+    put('opmCueTwo',rule?.[2]||(job?'Stay with your team.':'Keep a safe position.'));
     const [first,second]=metricSet(metric,next?.liveHud);
     put('opmMetricOneLabel',first[0]);put('opmMetricOne',first[1]);
     put('opmMetricTwoLabel',second[0]);put('opmMetricTwo',second[1]);
