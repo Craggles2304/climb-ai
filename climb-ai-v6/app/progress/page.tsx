@@ -12,6 +12,7 @@ import {CareerDevelopmentMap} from '@/components/CareerDevelopmentMap';
 import {LearningJourneyTimeline} from '@/components/LearningJourneyTimeline';
 import {DNA_DOMAIN_COLORS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import type {DnaDomain} from '@/lib/types';
+import {skillJudging,SKILL_JUDGING_FOOTER,type HowJudged} from '@/lib/howJudged';
 import '../climb-plan-tabs.css';
 
 type DnaCard={domain:DnaDomain;label:string;score:number|null;lifetime:number|null;delta:number|null;trend:string;games:number;good:number;critical:number};
@@ -36,7 +37,7 @@ type ClimbPlan={
   ok:boolean;
   account:{gameName:string;tagline:string;role:string|null;rank:string;currentTier:string;nextTier:string};
   coverage:{gamesAnalyzed:number;totalHistoryRows:number;from:string|null;to:string|null;champions:string[];measuredMetrics:number;reconstructedMoments:number;goodMoments:number;criticalMoments:number};
-  now:{skill:string;phase:string;rule:string;whyNow:string;evidence:string;completion:number|null;state:string;graduateWhen:string;nextSkill:string|null;ageGames?:number|null;gates?:Gate[];task:PlanTask|null}|null;
+  now:{skill:string;behaviourKey?:string|null;phase:string;rule:string;whyNow:string;evidence:string;completion:number|null;state:string;graduateWhen:string;nextSkill:string|null;ageGames?:number|null;gates?:Gate[];task:PlanTask|null}|null;
   route:Array<{step:string;title:string;detail:string;state:string}>;
   dna:DnaCard[];
   patterns:Pattern[];
@@ -70,6 +71,19 @@ const strandStyle=(domain:DnaDomain)=>({'--strand-color':DNA_DOMAIN_COLORS[domai
 const date=(value:string|null)=>value?new Date(value).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'2-digit'}):'—';
 const titleCase=(value:string)=>String(value||'').toLowerCase().replace(/(^|\s|-)\S/g,char=>char.toUpperCase());
 const pct=(gate:Gate)=>gate.target>0?Math.max(0,Math.min(100,Math.round(gate.current/gate.target*100))):0;
+
+function JudgingBox({judging,footer}:{judging:HowJudged;footer?:boolean}){
+  return <div className="cp-judge">
+    <span>HOW EACH GAME IS JUDGED</span>
+    <dl>
+      <div><dt>What OP CLIMB watches</dt><dd>{judging.watches}</dd></div>
+      <div className="good"><dt>✓ Clean game</dt><dd>{judging.clean}</dd></div>
+      <div className="bad"><dt>✗ Needs work</dt><dd>{judging.miss}</dd></div>
+      <div className="nocount"><dt>– Doesn't count</dt><dd>{judging.skipped}</dd></div>
+    </dl>
+    {footer&&<small>{SKILL_JUDGING_FOOTER}</small>}
+  </div>;
+}
 
 function readTab():TabId{
   if(typeof window==='undefined')return'plan';
@@ -144,6 +158,7 @@ export default function ClimbPlanPage(){
   const skillPercent=now?.completion!=null?Math.round(now.completion):gates.length?Math.round(gatesMet/gates.length*100):task?.required?Math.round((task.proven??0)/task.required*100):0;
   const currentDomain=task?.dnaDomain??plan.dna.find(item=>item.score!==null)?.domain??'CONSISTENCY';
   const nextGate=gates.find(gate=>!gate.met)??null;
+  const judging=skillJudging(now?.behaviourKey);
   const done=plan.curriculum.graduated.slice(-3);
   const upcoming=plan.curriculum.queue.slice(0,3);
   const ladder=[
@@ -159,7 +174,7 @@ export default function ClimbPlanPage(){
   const checklist=[
     now?.rule?{label:'Your in-game rule',text:now.rule}:null,
     task?.plainNextGame?{label:'What to do',text:task.plainNextGame}:null,
-    task?.target&&task.target!==task.plainSuccess?{label:'Your target',text:task.target}:null,
+    judging?{label:'A clean game means',text:judging.clean}:null,
     nextGate?{label:'What this game counts towards',text:GATE_COPY[nextGate.id].title+' ('+GATE_COPY[nextGate.id].unit(nextGate)+')'}:null,
   ].filter(Boolean) as Array<{label:string;text:string}>;
   const counts:Partial<Record<TabId,number>>={mistakes:repeated.length,games:plan.recentGames.length};
@@ -198,10 +213,10 @@ export default function ClimbPlanPage(){
         {now?<div className="cp-two">
           <section className="cp-section panel cp-now" style={strandStyle(currentDomain)}>
             <div className="cp-section-head"><h2>Right now: {now.skill}</h2></div>
-            <div className="cp-pass">
+            {judging?<JudgingBox judging={judging}/>:<div className="cp-pass">
               <span>TO PASS THIS SKILL</span>
               <strong>{task?.plainSuccess||now.graduateWhen}</strong>
-            </div>
+            </div>}
             <div className="cp-bar" aria-label={'Skill progress '+skillPercent+'%'}><i style={{width:skillPercent+'%'}}/></div>
             <p className="cp-bar-note">{gates.length?`${gatesMet} of ${gates.length} steps passed.`:task?.required?`${task.proven??0} of ${task.required} proven games.`:'Progress builds with each tracked game.'}{nextGate?` Next step: ${GATE_COPY[nextGate.id].title.toLowerCase()} (${GATE_COPY[nextGate.id].unit(nextGate)}).`:''}</p>
             <button type="button" className="cp-link" onClick={()=>openTab('skill')}>See every step →</button>
@@ -223,6 +238,7 @@ export default function ClimbPlanPage(){
             <div className="cp-section-head"><h2>{now.skill}</h2><p>{task?.plainMeaning||now.whyNow}</p></div>
             <div className="cp-rule"><span>THE RULE</span><strong>{now.rule}</strong></div>
             {task?.plainWhy&&<p className="cp-why"><b>Why it matters:</b> {task.plainWhy}</p>}
+            {judging&&<JudgingBox judging={judging} footer/>}
           </section>
 
           <section className="cp-section panel">

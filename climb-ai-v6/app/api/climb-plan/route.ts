@@ -322,6 +322,7 @@ export async function GET(req:Request){
       },
       now:currentLesson?{
         skill:currentLesson.label,
+        behaviourKey:currentLesson.behaviourKey??null,
         phase:currentLesson.phase,
         rule:currentLesson.gameRule,
         whyNow:currentLesson.whyNow,

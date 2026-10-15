@@ -16,9 +16,21 @@ import {missionComparisonForMatch} from '@/lib/missionComparison';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
+import {missionJudging,type MissionJudging} from '@/lib/howJudged';
 import '../climb-plan-tabs.css';
 
 type MissionTab='active'|'trees';
+
+function MissionJudgingBox({judging}:{judging:MissionJudging}){
+  return <div className="cp-judge">
+    <span>HOW EACH GAME IS JUDGED</span>
+    <dl>
+      <div><dt>What OP CLIMB measures</dt><dd>{judging.measures}</dd></div>
+      <div className="good"><dt>✓ Proven game</dt><dd>{judging.pass}</dd></div>
+      <div className="nocount"><dt>– Doesn't count</dt><dd>{judging.doesNotCount}</dd></div>
+    </dl>
+  </div>;
+}
 
 export default function Missions(){
   const {active}=useAccount();
@@ -131,8 +143,8 @@ export default function Missions(){
           <p>{plain.meaning}</p>
           <ol className="cp-checklist">
             <li><i>1</i><div><span>Next game, do this</span><b>{plain.nextGame}</b></div></li>
-            <li><i>2</i><div><span>Pass mark</span><b>{plain.success}</b></div></li>
           </ol>
+          <MissionJudgingBox judging={missionJudging(task,plain.success)}/>
           <div>
             <div className="ms-count"><span>PROVEN GAMES</span><strong>{summary.confirmed} / {summary.required}</strong></div>
             <div className="cp-bar" style={{'--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties}><i style={{width:`${Math.min(100,Math.round(summary.confirmed/Math.max(1,summary.required)*100))}%`}}/></div>
@@ -219,6 +231,7 @@ export default function Missions(){
               <h2>{plain.name}</h2><p className="missions-meaning">{plain.meaning}</p>
               <div className="missions-job"><span>YOUR JOB WHEN THIS TREE IS ACTIVE</span><strong>{plain.nextGame}</strong></div>
               <div className="missions-job"><span>PASS MARK</span><strong>{plain.success}</strong></div>
+              <MissionJudgingBox judging={missionJudging(task,plain.success)}/>
             </div>
             <aside className="missions-focus-proof">
               <div className="missions-progress-head"><span>PROVEN GAMES</span><strong>{summary.confirmed}/{summary.required}</strong></div>
