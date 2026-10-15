@@ -21,6 +21,7 @@ export default {
     // Read to ensure the request finishes within this scheduled invocation.
     const body = await response.json();
     if (!body.ok) throw new Error('OP CLIMB post-game queue reported failure');
-    ctx.waitUntil(Promise.resolve());
+    console.log(JSON.stringify({ event: 'postgame-drain', claimed: body.claimed, completed: body.completed, failed: body.failed }));
+    if (body.failed > 0) throw new Error('OP CLIMB post-game queue had failed jobs');
   },
 };
