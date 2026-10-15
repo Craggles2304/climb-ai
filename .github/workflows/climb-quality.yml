@@ -46,6 +46,8 @@ jobs:
         run: node --check companion/electron/draft-recommendations.js && node --check companion/electron/live-mission-hud.js && node --test tests/companionDraftRecommendations.test.cjs
       - name: Companion V2 native Home and draft regressions
         run: node --test tests/companionHomeView.test.cjs tests/companionDraftView.test.cjs
+      - name: Short coaching and live-match overlay continuity regressions
+        run: node --check companion/electron/coach-brief.js && node --check companion/electron/main.cjs && node --test tests/companionShortCoachingAndOverlay.test.cjs
       - name: Overlay visibility and movement regressions
         run: node --check companion/electron/main.cjs && node --check companion/electron/learning-overlay.js && node --test tests/companionOverlayVisibility.test.cjs
       - name: In-game Learning Overlay regressions

@@ -18,6 +18,8 @@ let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBu
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
 let championPlanInFlight=false,reviewPollInFlight=false,trackerStatusInFlight=false,playerHomeInFlight=false,tftMissionInFlight=false,tftBuildsInFlight=false,leagueBuildInFlight='',leagueBuildKey='',reviewPollAttempts=0,quitting=false,matchupSignature='',dnaViewRole='';
 let lastLocalChampSelectAt=0;
+let recordingExitTimer=null,recordingExitPendingAt=0,recordingStartedAt=0,lastLocalRecordingSignalAt=0,lastLiveTelemetryAt=0,overlayWatchdog=null;
+const RECORDING_END_GRACE_MS=22000;
 let pairingAuthInvalid=false;
 let recentLogs=[];
 let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
@@ -52,6 +54,51 @@ function paired(){return Boolean(currentConfig().token)}
 function publicState(){const cfg=currentConfig();return{...state,logs:recentLogs.slice(-80),webUrl:cfg.webUrl,tftFocus:cfg.tftFocus,tftBuildId:cfg.tftBuildId,overlay:{enabled:cfg.overlayEnabled,editing:overlayEditing,buildsOpen:overlayBuildsOpen,layout:cfg.overlayLayout}}}
 // The optional overlay never injects into League/TFT, touches game memory, or
 // supplies live prescriptions. It shows only the frozen pre-game learning model.
+// League's client briefly drops out of the LCU during the loading-screen
+// handoff. A server's earlier WAITING status also arrives late. Neither
+// signal alone proves the live game ended: avoid hiding the HUD mid-match.
+function cancelRecordingExit(){
+  if(recordingExitTimer)clearTimeout(recordingExitTimer);
+  recordingExitTimer=null;recordingExitPendingAt=0;
+}
+function markRecordingAlive(telemetry=false){
+  if(telemetry)lastLiveTelemetryAt=Date.now();
+  else lastLocalRecordingSignalAt=Date.now();
+  cancelRecordingExit();
+}
+function scheduleRecordingExit(detail){
+  if(recordingExitTimer||state.phase!=='RECORDING')return;
+  recordingExitPendingAt=Date.now();
+  const check=()=>{
+    recordingExitTimer=null;
+    if(quitting||state.phase!=='RECORDING'){recordingExitPendingAt=0;return;}
+    const latest=Math.max(lastLocalRecordingSignalAt,lastLiveTelemetryAt);
+    if(Date.now()-latest<10000){
+      recordingExitTimer=setTimeout(check,12000);
+      return;
+    }
+    recordingExitPendingAt=0;
+    setState({phase:'UPLOADING',detail:detail||'Match finished. Preparing your review.'});
+    startPostGameReviewPoll();
+  };
+  // League's first loading screen can exceed 20s; allow 90s for the
+  // initial handoff, then a shorter interval for mid-game disconnections.
+  const initialHandoff=recordingStartedAt>0&&Date.now()-recordingStartedAt<120000;
+  recordingExitTimer=setTimeout(check,initialHandoff?90000:RECORDING_END_GRACE_MS);
+  addLog('Waiting for confirmed game end before hiding the match HUD.');
+}
+function startOverlayWatchdog(){
+  if(overlayWatchdog)return;
+  overlayWatchdog=setInterval(()=>{
+    if(quitting||!overlayWindow||overlayWindow.isDestroyed())return;
+    const view=overlayPayload();
+    if(!view.show)return;
+    const win=overlayWindow;
+    if(!win.isVisible()&&!win.webContents.isLoading()){syncOverlay();return}
+    // Only refresh Z-order; never focus or capture mouse while playing.
+    if(!overlayEditing&&!overlayAssistantOpen&&!overlayBuildsOpen)raiseOverlay(win);
+  },2500);
+}
 function overlayPayload(){
   const cfg=currentConfig();
   return overlayView(state,{enabled:cfg.overlayEnabled,editing:overlayEditing,layout:cfg.overlayLayout,
@@ -86,7 +133,7 @@ function raiseOverlay(win,{force=false}={}){
   overlayLastRaisedAt=Date.now();
   // "floating" is below Windows' taskbar and may fall behind borderless games.
   // This changes window z-order, never game input or its memory.
-  win.setAlwaysOnTop(true,'pop-up-menu');
+  win.setAlwaysOnTop(true,'screen-saver');
   try{win.moveTop()}catch{}
 }
 function createOverlayWindow(){
@@ -101,7 +148,7 @@ function createOverlayWindow(){
     }});
   overlayWindow=win;
   overlayBoundDisplayId=display.id;
-  win.setAlwaysOnTop(true,'pop-up-menu');
+  win.setAlwaysOnTop(true,'screen-saver');
   win.setIgnoreMouseEvents(!(overlayEditing||overlayAssistantOpen||overlayBuildsOpen),{forward:true});
   win.webContents.setWindowOpenHandler(()=>({action:'deny'}));
   win.webContents.on('did-finish-load',()=>syncOverlay());
@@ -319,6 +366,8 @@ function setState(patch){
   }
   const enteringChampSelect=patch?.phase==='CHAMP_SELECT'&&previousPhase!=='CHAMP_SELECT';
   const enteringRecording=patch?.phase==='RECORDING'&&previousPhase!=='RECORDING';
+  if(enteringRecording){cancelRecordingExit();recordingStartedAt=Date.now();lastLocalRecordingSignalAt=Date.now()}
+  if(requestedPhase==='UPLOADING'||requestedPhase==='REVIEW'||requestedPhase==='WAITING'||requestedPhase==='SETUP'||requestedPhase==='AUTH_ERROR')cancelRecordingExit();
   if(enteringChampSelect||enteringRecording){stopPostGameReviewPoll();reviewPollAttempts=0;patch={...patch,postGameReview:null,liveHud:null}}
   const previousTftState=String(state.tftRecorder?.state||'');
   const previousLeagueChampion=String(state.matchup?.champion||'').trim().toLowerCase();
@@ -594,8 +643,16 @@ async function pollPostGameReview(){
 function applyTrackerState(raw){
   const source=arguments.length>1?arguments[1]:'LOCAL';
   const next=String(raw?.state||'').toUpperCase(),detail=String(raw?.detail||'').trim(),origin=String(source||'LOCAL').toUpperCase();
-  if(next==='RECORDING')return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
-  if(next==='GAME_STARTING')return setState({phase:'RECORDING',detail:detail||'League match detected. Connecting live telemetry…'});
+  if(next==='RECORDING'){
+    // Cloud status can lag behind the machine; local signals and live data
+    // cancel premature end-of-match transitions.
+    if(origin==='LOCAL')markRecordingAlive();
+    return setState({phase:'RECORDING',detail:detail||'Match detected. Recording quietly in the background.'});
+  }
+  if(next==='GAME_STARTING'){
+    if(origin==='LOCAL')markRecordingAlive();
+    return setState({phase:'RECORDING',detail:detail||'League match detected. Connecting live telemetry…'});
+  }
   if(next==='CHAMP_SELECT'&&origin==='SERVER'&&state.phase==='RECORDING')return;
   if(next==='CHAMP_SELECT'){
     if(origin==='LOCAL')lastLocalChampSelectAt=Date.now();
@@ -604,8 +661,11 @@ function applyTrackerState(raw){
   if(next==='WAITING'||next==='LCU_UNAVAILABLE'){
     if(origin==='SERVER'&&state.phase==='CHAMP_SELECT'&&Date.now()-lastLocalChampSelectAt<15_000)return;
     if(state.phase==='RECORDING'){
-      setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});
-      startPostGameReviewPoll();return;
+      // Never interpret a delayed cloud status as the end of a local game.
+      // The installed tracker or explicit recording-close event owns the end.
+      if(origin==='SERVER')return;
+      scheduleRecordingExit('Match finished. Pulling out the key good points and critical points.');
+      return;
     }
     if(state.phase==='UPLOADING'||state.phase==='REVIEW')return;
     return setState({phase:'WAITING',detail:detail||'Connected. Waiting for League.'});
@@ -642,7 +702,7 @@ async function reconcileTrackerStatus(){
 }
 function parseTrackerLine(line,kind){
   if(line.startsWith('OPCLIMB_HUD_JSON=')){
-    try{if(state.phase==='RECORDING')setState({liveHud:JSON.parse(line.slice('OPCLIMB_HUD_JSON='.length))})}catch{}
+    try{if(state.phase==='RECORDING'){markRecordingAlive(true);setState({liveHud:JSON.parse(line.slice('OPCLIMB_HUD_JSON='.length))})}}catch{}
     return;
   }
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
@@ -651,11 +711,11 @@ function parseTrackerLine(line,kind){
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});
   if(lower.includes('champ select detected'))return setState({phase:'CHAMP_SELECT',detail:'Champ select detected. Reading the live draft — hover a champion for a preview.'});
-  if(lower.includes('match recording closed')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
+  if(lower.includes('match recording closed')){cancelRecordingExit();setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
   if(lower.includes('recording')||lower.includes('match telemetry'))return setState({phase:'RECORDING',detail:'Match detected. Recording quietly in the background.'});
   if(lower.includes('review')&&lower.includes('post')){setState({phase:'UPLOADING',detail:'Match finished. Pulling out the key good points and critical points.'});startPostGameReviewPoll();return}
-  if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
-  if(lower.includes('league client connected'))return setState({phase:'WAITING',detail:'League detected. Waiting for champ select or match.'});
+  if(lower.includes('waiting for the match')||lower.includes('waiting for league')||lower.includes('waiting.'))return state.phase==='RECORDING'?scheduleRecordingExit('Match finished. Preparing your review.'):setState({phase:'WAITING',detail:'Connected. Waiting for League.'});
+  if(lower.includes('league client connected'))return state.phase==='RECORDING'?undefined:setState({phase:'WAITING',detail:'League detected. Waiting for champ select or match.'});
   if(kind==='error'&&state.phase!=='RECORDING')setState({detail:line});
 }
 
@@ -771,6 +831,7 @@ function bindTrackerStream(stream,kind){
   stream.on('end',()=>{if(buffer.trim())addLog(buffer,kind);buffer=''});
 }
 function stopTracker(){
+  cancelRecordingExit();
   stopChampionPlanPoll();stopPostGameReviewPoll();stopMissedReviewRecovery();stopTrackerStatusReconcile();if(trackerRestartTimer){clearTimeout(trackerRestartTimer);trackerRestartTimer=null}
   if(tracker&&!tracker.killed){try{tracker.kill()}catch{}}tracker=null;setState({trackerRunning:false});
 }
@@ -933,7 +994,7 @@ ipcMain.handle('companion:mark-moment',()=>markMoment());
 
 app.on('second-instance',(_event,argv)=>{createWindow(true);const link=deepLinkFromArgs(argv);if(link)void handlePairUrl(link)});
 app.on('open-url',(event,url)=>{event.preventDefault();void handlePairUrl(url)});
-app.on('before-quit',()=>{quitting=true;try{globalShortcut.unregisterAll()}catch{}if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.destroy();stopTftRecorder();stopTracker()});app.on('window-all-closed',()=>{});
+app.on('before-quit',()=>{quitting=true;cancelRecordingExit();if(overlayWatchdog){clearInterval(overlayWatchdog);overlayWatchdog=null}try{globalShortcut.unregisterAll()}catch{}if(overlayWindow&&!overlayWindow.isDestroyed())overlayWindow.destroy();stopTftRecorder();stopTracker()});app.on('window-all-closed',()=>{});
 app.whenReady().then(()=>{
   const cfg=readConfig();state={...state,paired:Boolean(decryptToken(cfg)),autoStart:Boolean(cfg.autoStart)};createTray();
   const initialLink=deepLinkFromArgs(process.argv),hidden=process.argv.includes('--hidden')&&!initialLink;createWindow(!hidden);
@@ -944,6 +1005,7 @@ app.whenReady().then(()=>{
   try{globalShortcut.register('CommandOrControl+Shift+L',()=>cycleOverlayLayout())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+K',()=>toggleOverlayAssistant())}catch{}
   try{globalShortcut.register('CommandOrControl+Shift+B',()=>toggleOverlayBuilds())}catch{}
+  startOverlayWatchdog();
   screen.on('display-metrics-changed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){setOverlayScreen(chosenOverlayDisplay());syncOverlay()}});
   screen.on('display-removed',()=>{if(overlayWindow&&!overlayWindow.isDestroyed()){const b=screen.getPrimaryDisplay().bounds;overlayWindow.setBounds(b);syncOverlay()}});
   if(initialLink)void handlePairUrl(initialLink);else if(state.paired){startTracker();startTftRecorder()}else setState({phase:'SETUP',detail:'Open OP CLIMB and pair this PC to start live tracking.'});
