@@ -15,7 +15,7 @@ export default {
     const response = await fetch(endpoint, {
       method: 'GET',
       headers: { Authorization: `Bearer ${env.CRON_SECRET}` },
-      redirect: 'error',
+      redirect: 'manual',
     });
     if (!response.ok) throw new Error(`OP CLIMB post-game queue HTTP ${response.status}`);
     // Read to ensure the request finishes within this scheduled invocation.
