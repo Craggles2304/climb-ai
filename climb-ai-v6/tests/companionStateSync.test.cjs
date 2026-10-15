@@ -50,7 +50,8 @@ test('auth rejection is sticky until the Companion is explicitly paired again',(
 test('desktop self-heals match end when a prose end log is missed',()=>{
   assert.ok(desktop.includes("if(state.phase==='RECORDING'){"));
   assert.ok(desktop.includes("setState({phase:'UPLOADING'"));
-  assert.ok(desktop.includes('startPostGameReviewPoll();return;'));
+  assert.ok(desktop.includes('scheduleRecordingExit(')); // Deferred until local end is confirmed.
+  assert.ok(desktop.includes('startPostGameReviewPoll();'));;
 });
 
 test('tracker stdout and stderr are line-buffered so split chunks cannot lose state messages',()=>{
