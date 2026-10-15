@@ -97,7 +97,7 @@
   // Keep just one clear instruction on Focus/Minimal. Deep explanations are
   // still available when the player deliberately selects Expanded.
   const compact=layout.mode!=='EXPANDED';
-  const brief=(type,value)=>window.OPCoachBrief?.cue?.(type,value,role)||'Play for a safer fight.';
+  const brief=(type,value)=>window.OPCoachBrief?.cue?.(type,value,role)||cue(value,82)||'Play for a safer fight.';
   if(plan.baseline){
    put('missionLabel','Baseline game '+Math.min(Number(plan.baseline.games||0)+1,Number(plan.baseline.required||3))+' of '+Number(plan.baseline.required||3));
    put('mission','Play normally. Collect your baseline.');
