@@ -1,6 +1,7 @@
 'use client';
 import {useEffect,useMemo,useState} from 'react';
 import {track} from '@/lib/analytics';
+import {TFT_SKILL_KEYS} from '@/lib/tft/advancedCoach';
 import type {TftGamePlan} from '@/lib/tft/types';
 
 type Props={riotAccountId:string;disabled?:boolean;onSaved:()=>Promise<void>|void};
@@ -19,6 +20,10 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
   const [units,setUnits]=useState('');
   const [note,setNote]=useState('');
   const [advanced,setAdvanced]=useState(false);
+  const [reviewSkill,setReviewSkill]=useState('ECONOMY');
+  const [reviewRound,setReviewRound]=useState('');
+  const [reviewVerdict,setReviewVerdict]=useState('UNCERTAIN');
+  const [reviewReason,setReviewReason]=useState('');
   const [weakStage,setWeakStage]=useState('NEVER');
   const [rollTiming,setRollTiming]=useState('UNKNOWN');
   const [economyChoice,setEconomyChoice]=useState('UNKNOWN');
@@ -30,7 +35,9 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
   const [plan,setPlan]=useState<TftGamePlan|null>(null);
   const [saving,setSaving]=useState(false);
   const [message,setMessage]=useState('');
-  const valid=useMemo(()=>comp.trim().length>0&&!saving&&!disabled,[comp,saving,disabled]);
+  const reviewStarted=advanced&&(reviewRound.trim().length>0||reviewReason.trim().length>0);
+  const reviewValid=!reviewStarted||/^[1-9]\d?-[0-9]\d?$/.test(reviewRound.trim())&&reviewReason.trim().length>=10;
+  const valid=comp.trim().length>0&&!saving&&!disabled&&reviewValid;
 
   useEffect(()=>{
     try{const raw=localStorage.getItem(PLAN_KEY);if(raw)setPlan(JSON.parse(raw) as TftGamePlan);}catch{/* malformed local state is ignored */}
@@ -46,14 +53,15 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
         augments:augments.split(',').map(x=>x.trim()).filter(Boolean).slice(0,3),
         units:units.split(',').map(x=>x.trim()).filter(Boolean).slice(0,12).map(name=>({name,itemNames:[]})),
         note:note.trim()||undefined,
-        review:advanced?{weakStage,rollTiming,economyChoice,pivotQuality,itemChoice,positioningResult,planFollowed,contested}:undefined,
+        review:advanced?{weakStage,rollTiming,economyChoice,pivotQuality,itemChoice,positioningResult,planFollowed,contested,
+          assessments:reviewRound.trim()&&reviewReason.trim()?{[reviewSkill]:{round:reviewRound.trim(),verdict:reviewVerdict,reason:reviewReason.trim()}}:undefined}:undefined,
         planSnapshot:plan||undefined,
       };
       const res=await fetch('/api/tft/manual',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
       const data=await res.json();if(!res.ok)throw new Error(data.error||'Could not save TFT game.');
       track('tft_manual_game_added',{placement,hasAdvanced:advanced,hasAugments:body.augments.length>0,hasUnits:body.units.length>0,hasPlan:Boolean(plan)});
-      setMessage(advanced?'Game + decision review saved. Your Tactician Profile and ILP have been recalculated.':'Game saved. Add Decision Review next time for deeper coaching.');
-      setComp('');setGold('');setRound('');setDamage('');setElims('');setAugments('');setUnits('');setNote('');
+      setMessage(advanced?'Game and self-review saved. Your reflection can update the profile; no verified mastery is awarded.':'Game saved. Add Decision Review next time for deeper coaching.');
+      setReviewRound('');setReviewReason('');setReviewVerdict('UNCERTAIN');setComp('');setGold('');setRound('');setDamage('');setElims('');setAugments('');setUnits('');setNote('');
       if(plan){localStorage.removeItem(PLAN_KEY);setPlan(null);}
       await onSaved();
     }catch(err){setMessage(err instanceof Error?err.message:'Could not save TFT game.')}finally{setSaving(false)}
@@ -61,7 +69,7 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
 
   return <form className="glass card" onSubmit={submit} style={{marginTop:18}}>
     <div style={{display:'flex',justifyContent:'space-between',gap:12,alignItems:'flex-start',flexWrap:'wrap'}}>
-      <div><div className="eyebrow">NO-API MODE · EVIDENCE LOG</div><h2 style={{marginBottom:6}}>LOG + REVIEW A FINISHED TFT GAME</h2><p className="muted" style={{margin:0,maxWidth:760}}>Placement gives outcome data. Decision Review tells OP CLIMB why it happened, so Economy, Tempo, Flexibility, Positioning and Conversion can be scored separately.</p></div>
+      <div><div className="eyebrow">NO-API MODE · EVIDENCE LOG</div><h2 style={{marginBottom:6}}>LOG + REVIEW A FINISHED TFT GAME</h2><p className="muted" style={{margin:0,maxWidth:760}}>Results provide context. Explain a specific decision to build a clearly labelled self-review score. Your own assessment never becomes verified mastery.</p></div>
       <span className="op-tier op-tier-plus">TACTICIAN DATA</span>
     </div>
 
@@ -76,6 +84,14 @@ export function ManualTftMatchForm({riotAccountId,disabled,onSaved}:Props){
 
     <button type="button" className="text-link" onClick={()=>setAdvanced(v=>!v)} style={{marginTop:14}}>{advanced?'HIDE DECISION REVIEW ↑':'OPEN ADVANCED DECISION REVIEW ↓'}</button>
     {advanced&&<div style={{display:'grid',gap:16,marginTop:14}}>
+      <fieldset className="glass" style={{padding:14,border:'1px solid rgba(255,255,255,.12)'}}>
+        <legend>EXPLAIN ONE DECISION · SELF-REPORTED</legend>
+        <p className="muted">Choose uncertain when the evidence cannot establish whether the decision helped. Placement alone is not an explanation.</p>
+        <label>Skill<select value={reviewSkill} onChange={e=>setReviewSkill(e.target.value)}>{TFT_SKILL_KEYS.map(key=><option key={key} value={key}>{key.replaceAll('_',' ')}</option>)}</select></label>
+        <label>Round<input value={reviewRound} onChange={e=>setReviewRound(e.target.value)} placeholder="4-2" pattern="[1-9][0-9]?-[0-9][0-9]?"/></label>
+        <label>Your assessment<select value={reviewVerdict} onChange={e=>setReviewVerdict(e.target.value)}><option value="UNCERTAIN">Uncertain — do not score</option><option value="HELPED">Helped the intended decision</option><option value="HURT">Worked against the intended decision</option></select></label>
+        <label>What did you choose, why, and what evidence supports your assessment?<textarea value={reviewReason} onChange={e=>setReviewReason(e.target.value)} minLength={10} maxLength={500} rows={3}/></label>
+      </fieldset>
       <div className="glass" style={{padding:14,border:'1px solid rgba(255,255,255,.08)'}}>
         <div className="eyebrow">DECISION REVIEW · THIS IS THE IMPORTANT PART</div>
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(190px,1fr))',gap:10,marginTop:10}}>

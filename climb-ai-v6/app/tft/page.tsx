@@ -8,6 +8,7 @@ import {useSubscription} from '@/components/SubscriptionContext';
 import {getBrowserClient} from '@/lib/supabase/client';
 import {summarizeTft,tftCoachingRead,type TftDecisionReview,type TftGamePlan,type TftMatch} from '@/lib/tft/types';
 import {buildTacticianProfile} from '@/lib/tft/advancedCoach';
+import {useTftDevelopment} from '@/lib/hooks/useTftDevelopment';
 import {track} from '@/lib/analytics';
 
 function mapRow(row:any):TftMatch{
@@ -25,6 +26,7 @@ function mapRow(row:any):TftMatch{
 
 export default function TftHome(){
   const {active,authenticated}=useAccount();
+  const {data:development,error:developmentError,refresh:refreshDevelopment}=useTftDevelopment(active.id);
   const {tftTier}=useSubscription();
   const [matches,setMatches]=useState<TftMatch[]>([]);
   const [rank,setRank]=useState('UNRANKED');
@@ -53,7 +55,7 @@ export default function TftHome(){
   useEffect(()=>{let cancelled=false;void fetch('/api/tft/sync').then(r=>r.json()).then(x=>{if(!cancelled)setSyncAvailable(Boolean(x.enabled))}).catch(()=>{if(!cancelled)setSyncAvailable(false)});return()=>{cancelled=true}},[]);
   const summary=useMemo(()=>summarizeTft(matches),[matches]);
   const read=useMemo(()=>tftCoachingRead(matches),[matches]);
-  const profile=useMemo(()=>buildTacticianProfile(matches),[matches]);
+  const profile=development?.profile??buildTacticianProfile([]);
 
   const sync=async()=>{
     setSyncing(true);setMessage('');track('tft_sync_started',{accountId:active.id});
@@ -63,7 +65,7 @@ export default function TftHome(){
       if(!res.ok)throw new Error(body.error||'TFT sync failed.');
       track('tft_match_synced',{inserted:body.matchesImported||0});
       setMessage(`${body.matchesImported||0} new TFT match${body.matchesImported===1?'':'es'} imported.`);
-      await load();
+      await load();refreshDevelopment();
     }catch(err){setMessage(err instanceof Error?err.message:'TFT sync failed.')}finally{setSyncing(false)}
   };
 
@@ -72,7 +74,7 @@ export default function TftHome(){
       <div className="tft-hero-copy">
         <div className="eyebrow">OP CLIMB · TEAMFIGHT TACTICS</div>
         <h1>YOUR TFT CLIMB STARTS WITH YOUR DECISIONS.</h1>
-        <p>Same coaching system as League. Your Companion records the game, TFT DNA turns repeated decisions into a player profile, and Decision Twin chooses what you should train next.</p>
+        <p>Your Companion records visible actions for post-game review. Explained self-reviews build your TFT profile, and one account mission follows you into the next game.</p>
         <div className="tft-hero-actions">
           <Link className="btn primary" href="/tft/coach">OPEN MY TFT DNA →</Link>
           <Link className="btn secondary" href="/tft/timeline">REVIEW LAST GAME</Link>
@@ -80,9 +82,9 @@ export default function TftHome(){
         </div>
       </div>
       <div className="tft-hero-side">
-        <div className="tft-hero-signal primary"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong></div>
-        <div className="tft-hero-signal"><span>PRIMARY LEAK</span><strong>{profile.primaryLeak?.label||read.title}</strong></div>
-        <div className="tft-hero-signal"><span>MODEL CONFIDENCE</span><strong>{profile.confidence}%</strong></div>
+        <div className="tft-hero-signal primary"><span>SELF-REVIEW GRADE</span><strong>{profile.grade??'—'}</strong></div>
+        <div className="tft-hero-signal"><span>REVIEW PRIORITY</span><strong>{profile.primaryLeak?.label||read.title}</strong></div>
+        <div className="tft-hero-signal"><span>ASSESSMENT SOURCE</span><strong>SELF-REPORTED</strong></div>
       </div>
     </section>
 
@@ -97,10 +99,11 @@ export default function TftHome(){
       </ol>
     </section>
 
+    {developmentError&&<p role="alert">{developmentError}</p>}
     {message&&<div className="glass card" style={{marginBottom:14,padding:14}}><b>{message}</b></div>}
 
     <section className="tft-stat-strip">
-      <div className="tft-stat"><span>TACTICIAN GRADE</span><b>{profile.grade??'—'}</b><small>{profile.confidence}% evidence confidence</small></div>
+      <div className="tft-stat"><span>SELF-REVIEW GRADE</span><b>{profile.grade??'—'}</b><small>Self-reported decision assessment</small></div>
       <div className="tft-stat"><span>TFT RANK</span><b>{rank}</b><small>{syncAvailable?'Riot profile':'Connect sync to populate'}</small></div>
       <div className="tft-stat"><span>AVG PLACE</span><b>{summary.games?summary.averagePlacement.toFixed(2):'—'}</b><small>{summary.games?'last '+summary.games+' tracked games':'No games yet'}</small></div>
       <div className="tft-stat"><span>TOP 4</span><b>{summary.games?Math.round(summary.top4Rate*100)+'%':'—'}</b><small>Outcome context</small></div>
@@ -116,11 +119,11 @@ export default function TftHome(){
     <section className="tft-focus-grid">
       <article className="tft-focus">
         <span>CURRENT TFT FIX</span>
-        <h2>{profile.primaryLeak?.label||read.title}</h2>
-        <p>{profile.primaryLeak?.rationale||read.detail}</p>
-        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{profile.primaryLeak?profile.ilp.find(task=>task.skill===profile.primaryLeak?.key)?.target||read.target:read.target}</b></div>
+        <h2>{development?.mission.title||'LOADING ACCOUNT MISSION'}</h2>
+        <p>{development?.mission.progressLabel}</p><p>{development?.mission.progress??0}/{development?.mission.goal??3} recorded games ready to review · not verified mastery</p>
+        <div className="tft-focus-rule"><small>YOUR JOB NEXT GAME</small><b>{development?.mission.nextGame||'Connect to load your shared account mission.'}</b></div>
       </article>
-      <aside className="tft-grade"><span>TACTICIAN GRADE</span><strong>{profile.grade??'—'}</strong><small>{profile.confidence}% confidence<br/>built from tracked decision evidence</small></aside>
+      <aside className="tft-grade"><span>SELF-REVIEW GRADE</span><strong>{profile.grade??'—'}</strong><small>SELF-REPORTED<br/>self-reported decision assessment</small></aside>
     </section>
 
     <div className="tft-section-head">
@@ -140,7 +143,7 @@ export default function TftHome(){
       <Link href="/tft/matches" className="text-link">ALL MATCHES →</Link>
     </div>
     <section className="glass card" style={{padding:22}}>
-      {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><h3>NO TFT EVIDENCE YET</h3><p className="muted">Play normally with the Companion running. Your first recorded games will start building the profile.</p></div>:<div style={{display:'grid',gap:0}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'13px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}><strong style={{fontSize:24}}>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11,marginTop:3}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left · {m.decisionReview?'Decision Review ready':'scoreboard context'}</div></div><span className="muted" style={{fontSize:11}}>{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
+      {loading?<p className="muted">Loading TFT history…</p>:matches.length===0?<div><h3>NO OFFICIAL MATCH RESULTS YET</h3><p className="muted">{development?.recordedGames?development.recordedGames+' local recordings are available in your Decision Timeline.':'Play with the Companion running to collect your first recorded decisions.'}</p></div>:<div style={{display:'grid',gap:0}}>{matches.slice(0,6).map(m=><div key={m.id} style={{display:'grid',gridTemplateColumns:'70px minmax(0,1fr) auto',gap:12,alignItems:'center',padding:'13px 0',borderBottom:'1px solid rgba(255,255,255,.07)'}}><strong style={{fontSize:24}}>#{m.placement}</strong><div><b>{m.compSignature}</b><div className="muted" style={{fontSize:11,marginTop:3}}>Level {m.level||'—'} · Round {m.lastRound||'—'} · {m.goldLeft??'—'}g left · {m.decisionReview?'Decision Review ready':'scoreboard context'}</div></div><span className="muted" style={{fontSize:11}}>{new Date(m.playedAt).toLocaleDateString()}</span></div>)}</div>}
     </section>
 
     <details className="glass card" style={{marginTop:14,padding:18}}>
@@ -157,7 +160,7 @@ export default function TftHome(){
 
     <details className="glass card" style={{marginTop:14,padding:18}}>
       <summary style={{cursor:'pointer',fontWeight:800}}>MANUAL MATCH ENTRY / FALLBACK</summary>
-      <div style={{marginTop:14}}><ManualTftMatchForm riotAccountId={active.id} disabled={!authenticated} onSaved={load}/></div>
+      <div style={{marginTop:14}}><ManualTftMatchForm riotAccountId={active.id} disabled={!authenticated} onSaved={async()=>{await load();refreshDevelopment()}}/></div>
     </details>
   </main></TftShell>;
 }
