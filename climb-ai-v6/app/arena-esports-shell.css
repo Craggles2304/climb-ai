@@ -167,3 +167,26 @@ body[data-client-view] :is(.nav-link,.arena-pro-fast-nav>a,.arena-pro-champ-pick
 @media(prefers-reduced-motion:reduce){
   body[data-client-view] .sidebar .nav-link{transition:none!important}
 }
+/* My DNA section tabs: Strands · Missions · Climb Plan share one destination. */
+.op-dna-tabs{
+  display:flex;gap:4px;margin:0 0 22px;padding:4px;width:max-content;max-width:100%;
+  overflow-x:auto;scrollbar-width:none;
+  border:1px solid rgba(132,176,193,.28);background:rgba(11,25,38,.82);
+}
+.op-dna-tabs::-webkit-scrollbar{display:none}
+.op-dna-tabs>a{
+  display:inline-flex;align-items:center;gap:8px;flex:none;min-height:40px;padding:8px 18px;
+  font:800 14px var(--arena-display);letter-spacing:.06em;text-transform:uppercase;
+  color:#b9c8d3;border:1px solid transparent;transition:color .15s,background .15s,border-color .15s;
+}
+.op-dna-tabs>a:hover{color:#f2f5f1;background:rgba(182,255,46,.05)}
+.op-dna-tabs>a.active{color:#c4ff7b;border-color:rgba(182,255,46,.45);background:rgba(182,255,46,.08)}
+.op-dna-tabs>a:focus-visible{outline:2px solid #b6ff2e;outline-offset:2px}
+.op-dna-tab-badge{
+  padding:2px 6px;font:700 10px var(--arena-mono);letter-spacing:.06em;
+  color:#e9c783;border:1px solid rgba(233,199,131,.4);
+}
+@media(max-width:560px){
+  .op-dna-tabs{width:100%}
+  .op-dna-tabs>a{flex:1 0 auto;justify-content:center;padding:8px 12px;font-size:13px}
+}

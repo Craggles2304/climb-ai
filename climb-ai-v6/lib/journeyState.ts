@@ -84,7 +84,7 @@ export function buildJourneyState(input:{
     phase:'DNA_REVEAL',
     status:'STEP 3 OF 4 · DNA READY',
     title:'Your Game DNA is ready to reveal.',
-    body:'Your three-game baseline is complete. Open My DNA to see all six strands, then choose the two DNA trees you want to keep unlocked.',
+    body:'Your three-game baseline is complete. Open My DNA to see all six strands. Your first two DNA trees are picked from the evidence; swap them any time on the Missions tab.',
     cta:'REVEAL MY DNA →',
     href:'/ilp',
     progress:'3/3',

@@ -32,7 +32,7 @@ function LoginForm(){
       <Wordmark/>
       <div className="glass card form" style={{margin:'55px auto'}}>
         <div className="eyebrow">WELCOME BACK</div><h1>Log in</h1>
-        {!configured&&<div className="auth-message">Accounts are not switched on in this build. <Link href="/demo" className="text-link">Open the public demo instead →</Link></div>}
+        {!configured&&<div className="auth-message">Accounts are not switched on in this build. <Link href="/client" className="text-link">Take the tour instead →</Link></div>}
         <form onSubmit={submit}>
           <label className="field"><span>Email</span><input className="input" type="email" autoComplete="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@example.com"/></label>
           <label className="field"><span>Password</span><input className="input" type="password" autoComplete="current-password" required value={password} onChange={e=>setPassword(e.target.value)}/></label>
@@ -44,7 +44,7 @@ function LoginForm(){
         {resent&&<div className="auth-message" role="status">New confirmation email sent. Open the newest email; it will return you to OP CLIMB onboarding.</div>}
         <div className="divider"/>
         <p className="muted">No account? <Link href="/signup" className="text-link">CREATE ONE →</Link></p>
-        <p className="muted" style={{fontSize:12}}>Trying it out? <Link href="/demo" className="text-link" onClick={()=>track('landing_view',{via:'demo_from_login'})}>ENTER DEMO MODE →</Link></p>
+        <p className="muted" style={{fontSize:12}}>Trying it out? <Link href="/client" className="text-link" onClick={()=>track('landing_view',{via:'demo_from_login'})}>TAKE THE TOUR →</Link></p>
         <div className="auth-trust"><Link href="/privacy">PRIVACY</Link><Link href="/terms">TERMS</Link><Link href="/support">SUPPORT</Link></div>
       </div>
     </main>

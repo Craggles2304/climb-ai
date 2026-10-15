@@ -57,12 +57,11 @@ export async function middleware(req:NextRequest){
   }
 
   // /live is also a product-discovery URL. A visitor with no session gets a
-  // real public product preview instead of an unexplained login bounce.
+  // the interactive client tour instead of an unexplained login bounce.
   if(path==='/live'&&configured&&authReachable&&!signedIn){
     const url=req.nextUrl.clone();
-    url.pathname='/demo';
+    url.pathname='/client';
     url.search='';
-    url.searchParams.set('focus','live');
     const redirect=NextResponse.redirect(url);
     for(const cookie of response.cookies.getAll())redirect.cookies.set(cookie);
     return redirect;
