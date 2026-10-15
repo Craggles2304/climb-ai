@@ -30,7 +30,8 @@ test('a missed draft can recover a full in-game plan from the live roster',()=>{
 test('desktop consumes authoritative tracker state instead of relying only on prose logs',()=>{
   assert.ok(desktop.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
   assert.ok(desktop.includes('function applyTrackerState(raw)'));
-  assert.ok(desktop.includes("if(next==='RECORDING')return setState({phase:'RECORDING'"));
+  assert.ok(desktop.includes("if(next==='RECORDING'){"));
+  assert.ok(desktop.includes("if(origin==='LOCAL')markRecordingAlive()"));;
   assert.ok(desktop.includes("if(next==='CHAMP_SELECT'){"));
   assert.ok(desktop.includes("if(origin==='LOCAL')lastLocalChampSelectAt=Date.now()"));
   assert.ok(desktop.includes("if(next==='WAITING'||next==='LCU_UNAVAILABLE')"));
