@@ -11,6 +11,8 @@ import {buildSkillTransferGraph} from '@/lib/climbSkillTransferGraph';
 import {nextRankTier} from '@/lib/liveMissionCoach';
 import {DNA_DOMAINS,DNA_DOMAIN_LABELS} from '@/lib/dnaDomain';
 import {canonicalLeagueRole,rowsForRole} from '@/lib/roleAwareLearning';
+import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
+import {missionSummary} from '@/lib/missionLoop';
 import type {DnaDomain,Role} from '@/lib/types';
 import type {HistoryAnalysisRow} from '@/lib/riot/proHistory';
 import type {ProMatchAnalysis,ProMetric} from '@/lib/riot/proAnalysis';
@@ -81,6 +83,17 @@ function safeStories(analysis:ProMatchAnalysis){
 }
 function metricRows(analysis:ProMatchAnalysis){
   return Object.values(analysis.metrics??{}).filter((metric):metric is ProMetric=>Boolean(metric&&typeof metric.score==='number'&&metric.status!=='UNAVAILABLE'&&metric.status!=='BUILDING'));
+}
+/** Plain-English mission wording so the plan shows a pass mark, not engine jargon. */
+function plainTask(task:any){
+  try{
+    const plain=plainLanguageFocus(task);
+    let proven:number|null=null,required:number|null=null;
+    try{const summary=missionSummary(task);proven=summary.confirmed;required=summary.required}catch{}
+    return{plainName:plain.name,plainMeaning:plain.meaning,plainNextGame:plain.nextGame,plainSuccess:plain.success,plainWhy:plain.why,proven,required};
+  }catch{
+    return{plainName:null,plainMeaning:null,plainNextGame:null,plainSuccess:null,plainWhy:null,proven:null,required:null};
+  }
 }
 function rankLabel(account:any){
   const tier=String(account?.rank_tier||'').trim().toUpperCase();
@@ -317,7 +330,9 @@ export async function GET(req:Request){
         state:contract?.state??currentLesson.phase,
         graduateWhen:contract?.graduateWhen??currentLesson.graduationRule,
         nextSkill:curriculum.nextLesson?.label??queue[0]?.label??null,
-        task:activeTask?{title:activeTask.title,dnaDomain:activeTask.dnaDomain,metric:activeTask.metric,target:activeTask.target,progress:activeTask.progress}:null,
+        ageGames:contract?.ageGames??null,
+        gates:(contract?.gates??[]).map(gate=>({id:gate.id,current:Number(gate.current)||0,target:Number(gate.target)||0,unit:gate.unit,met:Boolean(gate.met)})),
+        task:activeTask?{title:activeTask.title,dnaDomain:activeTask.dnaDomain,metric:activeTask.metric,target:activeTask.target,progress:activeTask.progress,...plainTask(activeTask)}:null,
       }:null,
       route:[
         currentLesson?{step:'NOW',title:currentLesson.label,detail:currentLesson.gameRule,state:contract?.state??currentLesson.phase}:null,

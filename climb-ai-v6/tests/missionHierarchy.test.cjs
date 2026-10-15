@@ -28,7 +28,7 @@ test('Missions page keeps six equal trees and lets the player unlock exactly two
   assert.ok(missionsPage.includes('currentGameDnaMissions'));
   assert.ok(missionsPage.includes('setDnaFocusDomains'));
   assert.ok(missionsPage.includes('missions-six-grid'));
-  assert.ok(missionsPage.includes('Choose your two DNA trees'));
+  assert.ok(missionsPage.includes('Pick which two you work on'));
   assert.ok(missionsPage.includes('UNLOCK THIS TREE'));
   assert.ok(missionsPage.includes('replaceActiveTree'));
   assert.ok(missionsPage.includes('Which one should this replace?'));

@@ -16,10 +16,14 @@ import {missionComparisonForMatch} from '@/lib/missionComparison';
 import {plainLanguageFocus} from '@/lib/plainLanguageCoaching';
 import {canonicalLeagueRole,taskAppliesToRole} from '@/lib/roleAwareLearning';
 import {dnaStrandLevel} from '@/lib/dnaLevel';
+import '../climb-plan-tabs.css';
+
+type MissionTab='active'|'trees';
 
 export default function Missions(){
   const {active}=useAccount();
   const {tasks,allTasks,planReady,planError,setDnaFocusDomains}=useLearningPlan();
+  const [tab,setTab]=useState<MissionTab>('active');
   const [selectedDomain,setSelectedDomain]=useState<DnaDomain|null>(null);
   const [swapTarget,setSwapTarget]=useState<DnaDomain|null>(null);
   const [saveMessage,setSaveMessage]=useState('');
@@ -74,22 +78,82 @@ export default function Missions(){
     }
   }
 
-  return <AppShell><main className="missions-page">
-    <header className="missions-head">
+  useEffect(()=>{
+    const read=()=>setTab(window.location.hash==='#trees'?'trees':'active');
+    read();
+    window.addEventListener('hashchange',read);
+    return()=>window.removeEventListener('hashchange',read);
+  },[]);
+  function openTab(next:MissionTab,domain?:DnaDomain){
+    setTab(next);
+    if(domain)setSelectedDomain(domain);
+    try{window.history.replaceState(null,'','#'+next)}catch{}
+  }
+
+  const activeCards=persistedDomains.map(domain=>missions.find(row=>row.domain===domain)).filter(Boolean) as typeof missions;
+
+  return <AppShell><main className="missions-page cp-page">
+    <header className="ms-head panel">
       <div>
-        <div className="eyebrow">LEAGUE · {active.role} · GAME DNA</div>
-        <h1>Choose your two DNA trees</h1>
-        <p>All six strands stay fully visible, measured and levelled. You choose which two stay unlocked for progression. Only those two can bank mission reps until you swap one out.</p>
+        <div className="eyebrow">LEAGUE · {active.role} · MISSIONS</div>
+        <h1>Your missions</h1>
+        <p>You work on two missions at a time. Each one has a pass mark. Hit it in enough tracked games and the mission is passed, then the next one on that DNA tree starts.</p>
       </div>
-      <div className="missions-head-actions"><span>{persistedDomains.length}/2 UNLOCKED</span><Link className="btn secondary" href="/ilp">OPEN MY DNA →</Link></div>
+      <Link className="btn secondary" href="/progress">OPEN MY CLIMB PLAN →</Link>
     </header>
+
+    {planReady&&!planError&&baselineReady&&<nav className="cp-tabs ms-tabs" role="tablist" aria-label="Mission sections">
+      <button type="button" role="tab" aria-selected={tab==='active'} className={tab==='active'?'active':''} onClick={()=>openTab('active')}><b>My 2 missions<em>{activeCards.length}</em></b><small>What to do + progress</small></button>
+      <button type="button" role="tab" aria-selected={tab==='trees'} className={tab==='trees'?'active':''} onClick={()=>openTab('trees')}><b>All 6 DNA trees</b><small>Swap which two are active</small></button>
+      <Link href="/ilp" className="cp-tab-link"><b>My DNA →</b><small>Full strand details</small></Link>
+    </nav>}
+
+    {planReady&&!planError&&baselineReady&&tab==='active'&&<section className="ms-active">
+      {activeCards.length?activeCards.map(({domain,task})=>{
+        const style={'--mission-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties;
+        const level=dnaStrandLevel(roleTasks,domain,active.role);
+        if(!task)return <article key={domain} className="panel ms-card" style={style}>
+          <div className="ms-card-top"><span>{DNA_DOMAIN_LABELS[domain].toUpperCase()} · LV {level.level}</span><em className="ms-status locked">BUILDING</em></div>
+          <h2>Mission being prepared</h2>
+          <p>Keep playing tracked games so this tree has enough evidence for a fair mission.</p>
+        </article>;
+        const plain=plainLanguageFocus(task);
+        const summary=missionSummary(task);
+        const comparison=missionComparisonForMatch(task,latestMatch?.id);
+        const passed=summary.remaining===0;
+        const started=summary.confirmed>0||summary.reviewed>0;
+        return <article key={domain} className="panel ms-card" style={style}>
+          <div className="ms-card-top">
+            <span>{DNA_DOMAIN_LABELS[domain].toUpperCase()} · LV {level.level}</span>
+            <em className={'ms-status '+(passed?'passed':'progress')}>{passed?'PASSED':started?'IN PROGRESS':'NOT STARTED'}</em>
+          </div>
+          <h2>{plain.name}</h2>
+          <p>{plain.meaning}</p>
+          <ol className="cp-checklist">
+            <li><i>1</i><div><span>Next game, do this</span><b>{plain.nextGame}</b></div></li>
+            <li><i>2</i><div><span>Pass mark</span><b>{plain.success}</b></div></li>
+          </ol>
+          <div>
+            <div className="ms-count"><span>PROVEN GAMES</span><strong>{summary.confirmed} / {summary.required}</strong></div>
+            <div className="cp-bar" style={{'--strand-color':DNA_DOMAIN_COLORS[domain]} as CSSProperties}><i style={{width:`${Math.min(100,Math.round(summary.confirmed/Math.max(1,summary.required)*100))}%`}}/></div>
+            <p className="cp-bar-note">{passed?'Pass mark reached. The next mission on this tree starts automatically.':`${summary.remaining} more proven game${summary.remaining===1?'':'s'} to pass.`}</p>
+          </div>
+          <div className="ms-latest"><span>Last game</span><b>{comparison.result==='NOT OBSERVED'?'NO RESULT YET':comparison.result}</b></div>
+          <div className="ms-actions">
+            <Link href="/live" className="btn primary">TAKE INTO MATCH ROOM →</Link>
+            <button type="button" className="btn secondary" onClick={()=>openTab('trees',domain)}>DETAILS</button>
+          </div>
+        </article>;
+      }):<article className="panel ms-card"><h2>Pick your two missions</h2><p>Choose which two DNA trees you want to work on first.</p><div className="ms-actions"><button type="button" className="btn primary" onClick={()=>openTab('trees')}>CHOOSE DNA TREES →</button></div></article>}
+    </section>}
 
     {!planReady?<section className="panel panel-padding"><div className="eyebrow">LOADING MISSIONS</div><h2>Checking your current plan…</h2></section>:
     planError?<section className="panel panel-padding"><div className="eyebrow">PLAN LOAD ERROR</div><h2>Your missions could not be loaded.</h2><p>{planError}</p><button className="btn secondary" type="button" onClick={()=>window.location.reload()}>RETRY</button></section>:
     !baselineReady?<section className="panel panel-padding missions-baseline"><div className="eyebrow">DNA BASELINE · {baselineGames}/{DNA_BASELINE_GAMES} GAMES</div><h2>All six DNA trees unlock after the baseline.</h2><p>Play normally for {DNA_BASELINE_GAMES-baselineGames} more tracked {active.role} game{DNA_BASELINE_GAMES-baselineGames===1?'':'s'}. After game {DNA_BASELINE_GAMES}, all six trees appear at the same level of detail and you choose the two you want to develop first.</p><div className="missions-track" role="progressbar" aria-label="DNA baseline games" aria-valuenow={baselineGames} aria-valuemin={0} aria-valuemax={DNA_BASELINE_GAMES}><span style={{width:`${baselineGames/DNA_BASELINE_GAMES*100}%`}}/></div><Link className="btn primary" href="/live">OPEN MATCH ROOM →</Link></section>:
+    tab!=='trees'?null:
     <section className="missions-tree-workspace">
       <div className="missions-tree-toolbar panel">
-        <div><div className="eyebrow">YOUR 6 DNA TREES</div><h2>Unlock two. Keep all six visible.</h2><p>The lock only controls progression. Locked trees still keep their level, mission, history and evidence.</p></div>
+        <div><div className="eyebrow">YOUR 6 DNA TREES</div><h2>Pick which two you work on</h2><p>Only your two active trees count progress. Locked trees keep their level and history, so you can swap at any time without losing anything.</p></div>
         <div className="missions-tree-save">
           <span className={persistedDomains.length===2?'ready':'not-ready'}>{persistedDomains.length}/2 ACTIVE</span>
           <small>Changes save instantly</small>
@@ -154,6 +218,7 @@ export default function Missions(){
             <div className="missions-focus-copy">
               <h2>{plain.name}</h2><p className="missions-meaning">{plain.meaning}</p>
               <div className="missions-job"><span>YOUR JOB WHEN THIS TREE IS ACTIVE</span><strong>{plain.nextGame}</strong></div>
+              <div className="missions-job"><span>PASS MARK</span><strong>{plain.success}</strong></div>
             </div>
             <aside className="missions-focus-proof">
               <div className="missions-progress-head"><span>PROVEN GAMES</span><strong>{summary.confirmed}/{summary.required}</strong></div>
