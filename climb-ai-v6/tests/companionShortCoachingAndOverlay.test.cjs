@@ -4,8 +4,13 @@ const assert=require('node:assert/strict');
 const path=require('node:path');
 const fs=require('node:fs');
 const root=path.join(__dirname,'../companion/electron');
-const brief=require(path.join(root,'coach-brief.js'));
+const vm=require('node:vm');
 const source=file=>fs.readFileSync(path.join(root,file),'utf8');
+// The Companion package uses ESM but this helper is a browser script.
+// Execute in a browser-like VM so this test exercises the shipped global.
+const browser={window:{}};
+vm.runInNewContext(source('coach-brief.js'),browser);
+const brief=browser.window.OPCoachBrief;
 
 test('screenshot: ADC match move is a real instruction, not a chopped source paragraph',()=>{
  const raw='SURVIVE THE DIVE → DPS. Keep range, hit the nearest safe target and make their divers cross your team before they reach you.';
