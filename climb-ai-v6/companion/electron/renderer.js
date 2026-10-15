@@ -123,7 +123,7 @@ function renderTftPrep(visible){
   section.querySelector('#tftPrepRule').textContent=mission?.nextGame||'Connect and collect more TFT decision evidence to unlock your personal mission.';
   section.querySelector('#tftPrepStatus').textContent=current?.tftMissionError||(
     mission?.status==='BASELINE'?'BASELINE · PLAY TO BUILD EVIDENCE':
-    mission?'SYNCED WITH OPCLIMB.COM · '+mission.progress+'/'+mission.goal+' INDICATORS':'CONNECTING TO YOUR ACCOUNT…');
+    mission?'SYNCED WITH OPCLIMB.COM · '+mission.progress+'/'+mission.goal+' RECORDED GAMES FOR REVIEW · NOT MASTERY':'CONNECTING TO YOUR ACCOUNT…');
 }
 
 function ensureTftPrep(){

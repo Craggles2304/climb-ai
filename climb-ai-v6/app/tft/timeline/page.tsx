@@ -1,6 +1,7 @@
 'use client';
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import {TftShell} from '@/components/TftShell';
+import {TftDecisionReviewForm} from '@/components/TftDecisionReviewForm';
 import {useAccount} from '@/components/AccountContext';
 import {analyzeTftTimeline,parseTftTimeline,type TftFinding,type TftTimeline} from '@/lib/tft/timeline';
 
@@ -74,7 +75,7 @@ export default function TftTimelinePage(){
       <div className="tft-hero-side">
         <div className="tft-hero-signal primary"><span>RECORDER</span><strong>{loading?'CHECKING':session?.status==='ABORTED'?'CAPTURE FAILED':source==='AUTO'?'GAME READY':'WAITING'}</strong></div>
         <div className="tft-hero-signal"><span>CHECKPOINTS</span><strong>{timeline?.points.length??0}</strong></div>
-        <div className="tft-hero-signal"><span>PROVEN FINDINGS</span><strong>{findings.filter(f=>f.status==='OBSERVED').length}</strong></div>
+        <div className="tft-hero-signal"><span>OBSERVED PATTERNS</span><strong>{findings.filter(f=>f.status==='OBSERVED').length}</strong></div>
       </div>
     </section>
 
@@ -119,8 +120,9 @@ export default function TftTimelinePage(){
         </div>
       </section>
 
+      {source==='AUTO'&&session?.status==='COMPLETE'&&<TftDecisionReviewForm key={session.id} sessionId={session.id} rounds={[...new Set(timeline.points.map(p=>p.round))]}/>}
       <div className="tft-section-head">
-        <div><div className="eyebrow">DECISION TWIN · KEY FINDINGS</div><h2>WHAT HELPED. WHAT HURT.</h2><p>Only evidence-backed findings are treated as real coaching signals. Everything else stays NOT OBSERVED.</p></div>
+        <div><div className="eyebrow">DECISION TWIN · KEY FINDINGS</div><h2>RECORDED ACTIONS TO REVIEW.</h2><p>These findings describe captured actions or possible patterns. They do not establish whether a decision was correct; missing fields stay NOT OBSERVED.</p></div>
       </div>
       <section className="tft-review-grid">
         {findings.map(f=><article className={'tft-review-card '+(f.status==='OBSERVED'?'fix':'good')} key={f.key}>

@@ -54,6 +54,10 @@ jobs:
         run: node --test tests/companionLearningOverlay.test.cjs tests/tftHudEsports.test.cjs
       - name: TFT Companion recorder regressions
         run: node --import tsx --test tests/tftCompanionRecorder.test.ts
+      - name: TFT evidence grading and shared mission flow
+        run: |
+          node --import tsx --test tests/tftEvidenceDevelopment.test.ts tests/tftCompanionCoachHud.test.ts
+          npx vitest run tests/tftDevelopmentFlow.test.ts tests/tftTimeline.test.ts --maxWorkers=1 --no-file-parallelism
       - name: Adaptive ILP evidence regressions
         run: node --import tsx --test tests/adaptiveIlpEvidence.test.ts tests/decisionTwin.test.ts tests/decisionTwinV2.test.ts tests/decisionSimulation.test.ts tests/scenarioMemory.test.ts tests/decisionTransfer.test.ts tests/climbCurriculum.test.ts tests/climbRepLadder.test.ts tests/climbMissionDesign.test.ts tests/decisionPremortem.test.ts tests/decisionGraph.test.ts tests/learningJourney.test.ts tests/ilpCloudMerge.test.ts tests/ilpExplainability.test.ts
       - name: CLIMB Coach Twin adaptation
