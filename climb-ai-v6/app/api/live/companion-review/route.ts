@@ -138,6 +138,11 @@ export async function GET(req:NextRequest){
   if(!device)return NextResponse.json({ok:false,error:'Tracker token is invalid or revoked.'},{status:401});
 
   const latest:any=await latestLiveRead(device.userId,device.accountKey,{lean:true});
+  // Upload acceptance closes the telemetry session before durable analysis and
+  // DNA writes finish. Do not acknowledge an incomplete review to the desktop.
+  const processing=String(latest?.summary?.processing?.status||'');
+  if(latest?.status==='COMPLETE'&&['QUEUED','PROCESSING'].includes(processing))
+    return NextResponse.json({ok:true,ready:false,processing:true},{status:202});
   const riotReview=await recentRiotReview(device,latest);
   if(riotReview){
     const baseline=await companionDnaBaseline({
