@@ -23,15 +23,16 @@ export default function Signup(){
 
   return <><main className="container section auth-page"><Wordmark/><div className="auth-signup-shell">
     <section className="auth-value-panel" aria-labelledby="signup-value-title">
-      <div className="eyebrow">YOUR FIRST WIN</div>
-      <h2 id="signup-value-title">ONE USEFUL JOB FOR YOUR NEXT GAME.</h2>
-      <p>Connect your Riot ID after signup. OP CLIMB looks for the repeated decision costing you games and turns it into one clear focus.</p>
+      <div className="eyebrow">GAME DNA · YOUR PLAYER IDENTITY</div>
+      <h2 id="signup-value-title">PLAY 3 GAMES. REVEAL YOUR DNA.</h2>
+      <p>After signup, link your Riot ID and connect the Windows Companion. Play three normal games in your role and your Game DNA appears across six strands. From there, every game trains one weakness.</p>
       <div className="auth-value-list">
         <div><span>01</span><strong>CREATE YOUR FREE ACCOUNT</strong><small>No card required.</small></div>
-        <div><span>02</span><strong>CONNECT YOUR RIOT ID</strong><small>Your first setup takes about two minutes.</small></div>
-        <div><span>03</span><strong>GET YOUR NEXT-GAME FOCUS</strong><small>A clear action—not another wall of statistics.</small></div>
+        <div><span>02</span><strong>LINK RIOT ID + COMPANION</strong><small>About two minutes. The Companion runs on Windows.</small></div>
+        <div><span>03</span><strong>PLAY 3 GAMES</strong><small>Normal games in your main role. No special setup.</small></div>
+        <div><span>04</span><strong>REVEAL YOUR GAME DNA</strong><small>Six strands, then one mission at a time.</small></div>
       </div>
-      <div className="auth-proof-strip"><span>LAST 20 RANKED GAMES</span><span>ONE PERSONAL FOCUS</span><span>START FREE</span></div>
+      <div className="auth-proof-strip"><span>3-GAME BASELINE</span><span>6 DNA STRANDS</span><span>ONE MISSION AT A TIME</span></div>
     </section>
     <div className="glass card form auth-signup-form"><div className="eyebrow">START YOUR CLIMB</div><h1>Create account</h1>
       {!configured&&<><p className="muted">Accounts are not switched on in this build. You can still inspect the product without signing up.</p><Link className="btn primary" href="/demo">OPEN PUBLIC DEMO</Link><div className="divider"/></>}
