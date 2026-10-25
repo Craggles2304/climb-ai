@@ -1,3 +1,4 @@
+import {resolveSoloRank} from '@/lib/server/soloRank';
 import {NextRequest,NextResponse} from 'next/server';
 import {verifiedMissionRep,verifiedMissionAttempts,verifiedMissionMastery} from '@/lib/verifiedMissionProof';
 import {authenticateTrackerToken,type TrackerDevice} from '@/lib/server/liveTrackerRepository';
@@ -51,11 +52,12 @@ async function recentRiotReview(device:TrackerDevice,latest:any){
         .eq('id',device.riotAccountId).eq('user_id',device.userId).maybeSingle();
       if(error)throw error;
       if(!account?.puuid||!account.region)return null;
-      const ids=await riotService.getRecentMatches(account.puuid,account.region,{count:1});
+      const ids=await riotService.getRecentMatches(account.puuid,account.region,{count:1,queue:420});
       const id=ids[0];
       if(!id)return null;
       const rank=[account.rank_tier,account.rank_division].filter(Boolean).join(' ')||undefined;
       const details=await riotService.getMatchDetails(id,account.region,{riotAccountId:account.id,puuid:account.puuid,rank});
+      if(details.match.queueId!==420)return null;
       if(!isNewRecentRiotMatch(details.match.createdAt,latest?.endedAt??null))return null;
       const activeStarted=latest&&!['COMPLETE','ABORTED'].includes(String(latest.status))?Date.parse(String(latest.startedAt||'')):NaN;
       if(Number.isFinite(activeStarted)&&Date.parse(details.match.createdAt)<activeStarted)return null;
@@ -74,7 +76,7 @@ async function missionEvidenceForMatch(userId:string,riotAccountId:string|null,m
   const role=canonicalLeagueRole(roleValue);
   if(!db||!riotAccountId||!matchId||!role)return{primary:null,missions:[]};
   const {data,error}=await db.from('ilp_tasks')
-    .select('id,payload,updated_at')
+    .select('id,payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1')
     .eq('user_id',userId)
     .eq('riot_account_id',riotAccountId);
   if(error){
@@ -189,7 +191,7 @@ export async function GET(req:NextRequest){
   const markedMoments=reviewMarkedMoments(summary?.capture?.markedMoments,summary?.fightReviews,summary?.points,Number(snapshot?.gameTime||0));
   const db=getSupabaseAdmin();
   const {data:storedMatch}=db
-    ?await db.from('matches').select('id').eq('user_id',device.userId).eq('live_session_id',latest.sessionId).maybeSingle()
+    ?await db.from('matches').select('id').eq('queue_id',420).eq('user_id',device.userId).eq('live_session_id',latest.sessionId).maybeSingle()
     :{data:null};
   const matchId=storedMatch?.id?String(storedMatch.id):null;
   const dnaBaseline=await companionDnaBaseline({
@@ -334,14 +336,8 @@ async function refreshPlayerRank(userId:string,riotAccountId:string|null):Promis
 
 async function resolvePlayerRank(userId:string,riotAccountId:string|null){
   const db=getSupabaseAdmin();
-  if(!db)return'UNRANKED';
-  const profilePromise=db.from('profiles').select('rank').eq('id',userId).maybeSingle();
-  const riotPromise=riotAccountId?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',riotAccountId).maybeSingle():Promise.resolve({data:null,error:null});
-  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
-  const tier=String(riotResult?.data?.rank_tier??'').trim();
-  const division=String(riotResult?.data?.rank_division??'').trim();
-  if(tier)return`${tier}${division?` ${division}`:''}`;
-  return String(profileResult?.data?.rank||'UNRANKED');
+  return db?resolveSoloRank(db,userId,riotAccountId):'UNRANKED';
+
 }
 
 const TIER_ORDER=['IRON','BRONZE','SILVER','GOLD','PLATINUM','EMERALD','DIAMOND','MASTER','GRANDMASTER','CHALLENGER'];

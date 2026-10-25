@@ -71,7 +71,7 @@ export async function POST(req:Request){
     const tier=(await resolveLeagueEntitlement(user.id)).tier;
 
     const {data:row,error:matchError}=await db.from('matches')
-      .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
+      .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at').eq('queue_id',420)
       .eq('user_id',user.id).eq('id',matchId).maybeSingle();
     if(matchError){console.error('[analyse] match load failed',matchError);return NextResponse.json({error:'We could not load this match.'},{status:500})}
     if(!row)return NextResponse.json({error:'Match not found.'},{status:404});
@@ -89,14 +89,14 @@ export async function POST(req:Request){
     const {data:metric,error:metricError}=await db.from('match_metrics').select('*').eq('user_id',user.id).eq('match_id',row.id).maybeSingle();
     if(metricError){console.error('[analyse] metrics load failed',metricError);return NextResponse.json({error:'We could not load this match evidence.'},{status:500})}
 
-    const {data:proRow,error:proError}=await db.from('op_match_analysis').select('analysis,evidence_sources').eq('user_id',user.id).eq('match_id',row.id).maybeSingle();
+    const {data:proRow,error:proError}=await db.from('op_match_analysis').select('analysis,evidence_sources').eq('queue_id',420).eq('user_id',user.id).eq('match_id',row.id).maybeSingle();
     if(proError){console.error('[analyse] PRO evidence load failed',proError);return NextResponse.json({error:'We could not load the coaching evidence.'},{status:500})}
     const rawProAnalysis=proRow?.analysis&&typeof proRow.analysis==='object'?proRow.analysis as ProMatchAnalysis:undefined;
     const proAnalysis=proAnalysisForTier(rawProAnalysis,tier);
     const match=reconcileFarmEvidence(toMatch(row,metric,proAnalysis));
 
     let recentQuery=db.from('matches')
-      .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
+      .select('id,riot_account_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at').eq('queue_id',420)
       .eq('user_id',user.id).eq('riot_account_id',row.riot_account_id).neq('id',row.id)
       .in('result',['WIN','LOSS']);
     if(cutoff)recentQuery=recentQuery.gte('occurred_at',cutoff);

@@ -1,4 +1,6 @@
 import 'server-only';
+import {resolveSoloRank} from './soloRank';
+import {isRankedSolo,scopeMissionsToRanked} from '@/lib/rankedSolo';
 import {getSupabaseAdmin} from './supabaseAdmin';
 import type {ProMatchAnalysis} from '@/lib/riot/proAnalysis';
 import {buildProLearningProfile,type ProLearningProfile,type HistoryAnalysisRow} from '@/lib/riot/proHistory';
@@ -61,8 +63,9 @@ export interface PostGameIlpSyncResult{
 }
 
 export async function persistProMatchAnalysis(input:PersistProAnalysisInput){
+  if(!isRankedSolo(input.analysis.queueId))return null;
   const db=getSupabaseAdmin();if(!db)return null;
-  const row={user_id:input.userId,riot_account_id:input.riotAccountId,session_id:input.sessionId,match_id:input.matchId,external_match_id:input.externalMatchId??null,champion:input.champion,role:input.role,evidence_sources:input.analysis.evidenceSources,analysis:input.analysis,patch:input.patch??null,game_version:input.gameVersion??null,patch_context:input.patchContext??{},updated_at:new Date().toISOString()};
+  const row={queue_id:input.analysis.queueId,user_id:input.userId,riot_account_id:input.riotAccountId,session_id:input.sessionId,match_id:input.matchId,external_match_id:input.externalMatchId??null,champion:input.champion,role:input.role,evidence_sources:input.analysis.evidenceSources,analysis:input.analysis,patch:input.patch??null,game_version:input.gameVersion??null,patch_context:input.patchContext??{},updated_at:new Date().toISOString()};
   let query:any;
   if(input.sessionId)query=db.from('op_match_analysis').upsert(row,{onConflict:'session_id'});
   else if(input.matchId)query=db.from('op_match_analysis').upsert(row,{onConflict:'match_id'});
@@ -70,7 +73,7 @@ export async function persistProMatchAnalysis(input:PersistProAnalysisInput){
   const {data,error}=await query.select('id').maybeSingle();if(error)throw new Error(error.message);return data?.id??null;
 }
 
-export async function getProMatchAnalysisBySession(sessionId:string):Promise<ProMatchAnalysis|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('op_match_analysis').select('analysis').eq('session_id',sessionId).maybeSingle();if(error)throw new Error(error.message);return(data?.analysis as ProMatchAnalysis|undefined)??null}
+export async function getProMatchAnalysisBySession(sessionId:string):Promise<ProMatchAnalysis|null>{const db=getSupabaseAdmin();if(!db)return null;const {data,error}=await db.from('op_match_analysis').select('analysis').eq('queue_id',420).eq('session_id',sessionId).maybeSingle();if(error)throw new Error(error.message);return(data?.analysis as ProMatchAnalysis|undefined)??null}
 
 function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,patchContext:any,previous:any){
   const profile=buildProLearningProfile(rows);
@@ -115,16 +118,17 @@ function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,p
 async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const [historyResult,learningResult]=await Promise.all([
-    db.from('op_match_analysis').select('match_id,champion,role,created_at,patch,game_version,analysis').eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
-    db.from('op_player_learning_profiles').select('recent_change,role_profiles').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle(),
+    db.from('op_match_analysis').select('match_id,champion,role,created_at,patch,game_version,analysis').eq('queue_id',420).eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
+    db.from('op_player_learning_profiles').select('recent_change,role_profiles,learning_model_version').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle(),
   ]);
   if(historyResult.error)throw new Error(historyResult.error.message);
   if(learningResult.error)throw new Error(learningResult.error.message);
   const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({matchId:row.match_id?String(row.match_id):null,champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),patch:row.patch?String(row.patch):null,gameVersion:row.game_version?String(row.game_version):null,analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
-  const previousCurriculum=((learningResult.data?.recent_change as any)?.curriculum??null);
-  const previousPlayerCoachingIdentity=((learningResult.data?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
-  const previousAdaptiveCoachingSession=((learningResult.data?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
-  const previousLearningVelocity=((learningResult.data?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
+  const previousLearning=learningResult.data?.learning_model_version===CURRENT_LEARNING_MODEL_VERSION?learningResult.data:null;
+  const previousCurriculum=((previousLearning?.recent_change as any)?.curriculum??null);
+  const previousPlayerCoachingIdentity=((previousLearning?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;
+  const previousAdaptiveCoachingSession=((previousLearning?.recent_change as any)?.adaptiveCoachingSession??null) as AdaptiveCoachingSession|null;
+  const previousLearningVelocity=((previousLearning?.recent_change as any)?.learningVelocity??null) as LearningVelocityProfile|null;
   const now=new Date().toISOString();
   const globalRows=globalLearningRows(rows);
   const rawProfile=buildProLearningProfile(rows);
@@ -156,7 +160,7 @@ async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string
   const learningJourney=buildLearningJourney(globalRows,now);
   const careerExperience=buildClimbCareerExperience(curriculum,learningJourney,now);
   const roleAwareLearning=buildRoleAwareLearningSummary(rows,now);
-  const previousRoleProfiles=((learningResult.data?.role_profiles&&typeof learningResult.data.role_profiles==='object')?learningResult.data.role_profiles:{}) as Record<string,any>;
+  const previousRoleProfiles=((previousLearning?.role_profiles&&typeof previousLearning.role_profiles==='object')?previousLearning.role_profiles:{}) as Record<string,any>;
   const roleProfiles:Record<string,any>={};
   for(const role of LEAGUE_ROLES){
     const roleRows=rowsForRole(rows,role);
@@ -339,10 +343,16 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
   if(accountResult.error)throw new Error(accountResult.error.message);
   const latestEvidenceRole=[...history].reverse().map(row=>canonicalLeagueRole(row.role)).find((role):role is Role=>Boolean(role))??null;
   const preferredRole=canonicalLeagueRole(accountResult.data?.role)??latestEvidenceRole??'ADC';
-  const rankLabel=accountResult.data?.rank_tier
-    ?String(accountResult.data.rank_tier)+(accountResult.data.rank_division?' '+String(accountResult.data.rank_division):'')
-    :'SILVER';
+  const rankLabel=await resolveSoloRank(db,userId,riotAccountId);
   let tasks:ILPTask[]=(storedResult.data??[]).map((row:any)=>({...((row.payload&&typeof row.payload==='object')?row.payload:{}),id:String(row.id),accountId:riotAccountId}));
+  const proofIds=[...new Set(tasks.flatMap(task=>(task.missionHistory??[]).map(a=>a.matchId)).filter(id=>/^[0-9a-f-]{36}$/i.test(id)))];
+  const rankedIds=new Set<string>();
+  for(let offset=0;offset<proofIds.length;offset+=100){
+    const proof=await db.from('matches').select('id').eq('queue_id',420).eq('user_id',userId).eq('riot_account_id',riotAccountId).in('id',proofIds.slice(offset,offset+100));
+    if(proof.error)throw new Error(proof.error.message);
+    for(const row of proof.data??[])rankedIds.add(String(row.id));
+  }
+  tasks=scopeMissionsToRanked(tasks,rankedIds);
   tasks=tasks.map(task=>{
     const stamped=stampLegacyTaskScope(task,preferredRole);
     return{...stamped,target:benchmarkTargetText(stamped.metric,rankLabel,stamped.target)};
@@ -357,7 +367,7 @@ export async function syncRepeatedEvidenceToIlp(userId:string,riotAccountId:stri
     const seeded=ensureOneMissionPerDnaStrand(roleTasks,riotAccountId,role);
     const graded=gradeDnaStrandMissionsFromHistory(seeded.tasks,roleHistory);
     const advanced=ensureOneMissionPerDnaStrand(graded.tasks,riotAccountId,role);
-    const stamped=advanced.tasks.map(task=>({...task,roleScope:role,roleEvidence:[role]} as ILPTask));
+    const stamped=advanced.tasks.map(task=>({...task,queueScope:'RANKED_SOLO_V1',roleScope:role,roleEvidence:[role]} as ILPTask));
     tasks=[...otherTasks,...stamped];
     changes.push(...seeded.changes.map(change=>`${role}: ${change}`));
     changes.push(...graded.changes.map(change=>`${role}: ${change}`));

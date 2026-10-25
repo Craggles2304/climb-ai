@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import {FormEvent,useEffect,useMemo,useRef,useState} from 'react';
+import {useEffect,useMemo,useRef,useState} from 'react';
 import {Wordmark} from '@/components/UI';
 import {matchesFor,useAccount} from '@/components/AccountContext';
 import {useProMatch} from '@/components/useProMatch';
@@ -10,17 +10,6 @@ import {buildReview} from '@/lib/review';
 import {track} from '@/lib/analytics';
 
 interface SyncStatus{enabled:boolean;regions:string[];message:string}
-
-function durationSeconds(raw:string):number|null{
-  const value=raw.trim();
-  const clock=value.match(/^(\d{1,2}):(\d{2})$/);
-  if(clock){
-    const minutes=Number(clock[1]),seconds=Number(clock[2]);
-    if(seconds<60)return minutes*60+seconds;
-  }
-  const minutes=Number(value);
-  return Number.isFinite(minutes)&&minutes>=5?Math.round(minutes*60):null;
-}
 
 export default function Activate(){
   const {active,profile,authenticated,hydrated,refresh}=useAccount();
@@ -39,20 +28,6 @@ export default function Activate(){
   const completionTracked=useRef('');
   const ladderTracked=useRef('');
   const nextStepsRef=useRef<HTMLElement|null>(null);
-
-  const [champion,setChampion]=useState('');
-  const [result,setResult]=useState<'WIN'|'LOSS'>('WIN');
-  const [kills,setKills]=useState('');
-  const [deaths,setDeaths]=useState('');
-  const [assists,setAssists]=useState('');
-  const [cs,setCs]=useState('');
-  const [duration,setDuration]=useState('');
-  const [manualBusy,setManualBusy]=useState(false);
-  const [manualError,setManualError]=useState('');
-
-  useEffect(()=>{
-    if(hydrated&&!champion&&active.isPrimary&&active.champions[0])setChampion(active.champions[0]);
-  },[hydrated,active.id,active.isPrimary,active.champions,champion]);
 
   useEffect(()=>{
     if(!hydrated||latest||activationTracked.current)return;
@@ -85,7 +60,7 @@ export default function Activate(){
       track('match_synced',{source:'activation',matches:imported});
       if(imported>0)track('first_match_added',{source:'riot'});
       await refresh();
-      if(imported===0)setSyncError('No recent Ranked Solo/Duo game was found. Add your last match below instead.');
+      if(imported===0)setSyncError('No recent Ranked Solo/Duo game was found. Connect Companion and record your next Ranked Solo/Duo game.');
     }catch(err){setSyncError(err instanceof Error?err.message:'Riot could not import your latest ranked game.');}
     finally{setSyncing(false)}
   };
@@ -114,23 +89,6 @@ export default function Activate(){
     observer.observe(node);return()=>observer.disconnect();
   },[latest,report,proLoading]);
 
-  const submitManual=async(e:FormEvent)=>{
-    e.preventDefault();setManualError('');
-    const seconds=durationSeconds(duration);
-    if(!champion.trim()){setManualError('Enter the champion you played.');return}
-    if(seconds===null){setManualError('Enter game length as MM:SS, for example 31:42.');return}
-    const values=[kills,deaths,assists,cs].map(Number);
-    if(values.some(v=>!Number.isInteger(v)||v<0)){setManualError('Kills, deaths, assists and CS must be whole numbers.');return}
-    setManualBusy(true);track('analysis_started',{source:'manual_activation'});
-    try{
-      const res=await fetch('/api/matches/manual',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({champion:champion.trim(),result,kills:values[0],deaths:values[1],assists:values[2],cs:values[3],durationSeconds:seconds})});
-      const body=await res.json().catch(()=>({}));
-      if(!res.ok||!body.ok)throw new Error(body.error||'The match could not be saved.');
-      track('match_uploaded',{source:'manual_activation'});track('first_match_added',{source:'manual'});await refresh();
-    }catch(err){setManualError(err instanceof Error?err.message:'The match could not be saved.')}
-    finally{setManualBusy(false)}
-  };
-
   if(!hydrated||(latest&&proLoading))return <main className="container section onboarding-page"><Wordmark/><section className="glass card" style={{maxWidth:780,margin:'42px auto',textAlign:'center'}}><div className="eyebrow">GETTING YOUR GAME READY</div><h1>{latest?'Reading the full game evidence…':'Finding something worth fixing…'}</h1><p className="muted">We’ll show you the focus before we show you the rest of the app.</p></section></main>;
 
   if(latest&&report&&review&&score!==null){
@@ -147,7 +105,7 @@ export default function Activate(){
     <section className="glass card" style={{textAlign:'center',padding:'clamp(24px,4vw,44px)'}}><div className="eyebrow">START WITH ONE REAL GAME</div><h1 style={{fontSize:'clamp(34px,6vw,62px)',lineHeight:.95,marginBottom:14}}>Let’s find the first thing worth fixing.</h1><p className="muted" style={{fontSize:16,lineHeight:1.65,maxWidth:650,margin:'0 auto'}}>We would rather wait for a real game than fill your screen with guesses.</p></section>
     {syncStatus===null&&<section className="glass card" style={{textAlign:'center'}}><div className="eyebrow">CHECKING RIOT</div><h3>Looking for your latest ranked game…</h3></section>}
     {syncStatus?.enabled&&!syncError&&<section className="glass card"><div className="eyebrow">LATEST RANKED GAME</div><h2>{syncing?'Getting your latest game…':'Your Riot account is connected.'}</h2><p className="muted">One game is enough to give you a useful starting focus. We’ll learn more as you play.</p>{!syncing&&<button className="btn primary" onClick={()=>void runSync()}>GET MY LATEST GAME</button>}</section>}
-    {syncError&&<div className="glass card"><div className="eyebrow">RIOT DIDN'T GIVE US THE GAME</div><p>{syncError}</p><p className="muted">You can still start with the basics below.</p></div>}
-    {manualFallback&&<form className="glass card" onSubmit={submitManual}><div className="eyebrow">QUICK FALLBACK · ABOUT 30 SECONDS</div><h2>Tell us about your last ranked game</h2><p className="muted">This is enough for a starting focus. We won’t pretend KDA and CS can tell us exact spacing, target choice or fight timing.</p><div className="grid two" style={{marginTop:18}}><label className="field">Champion<input className="input" value={champion} onChange={e=>setChampion(e.target.value)} placeholder="e.g. Galio" autoFocus/></label><label className="field">Result<select className="input" value={result} onChange={e=>setResult(e.target.value as 'WIN'|'LOSS')}><option value="WIN">Victory</option><option value="LOSS">Defeat</option></select></label><label className="field">Kills<input className="input" inputMode="numeric" value={kills} onChange={e=>setKills(e.target.value)} placeholder="8"/></label><label className="field">Deaths<input className="input" inputMode="numeric" value={deaths} onChange={e=>setDeaths(e.target.value)} placeholder="4"/></label><label className="field">Assists<input className="input" inputMode="numeric" value={assists} onChange={e=>setAssists(e.target.value)} placeholder="10"/></label><label className="field">CS<input className="input" inputMode="numeric" value={cs} onChange={e=>setCs(e.target.value)} placeholder="221"/></label><label className="field">Game length<input className="input" value={duration} onChange={e=>setDuration(e.target.value)} placeholder="32:10"/></label></div>{manualError&&<p style={{marginTop:14}}>{manualError}</p>}{!authenticated&&<p className="muted">Your session is not signed in. Log in again so this game can be attached to your player profile.</p>}<button className="btn primary" disabled={manualBusy||!authenticated} style={{marginTop:18}}>{manualBusy?'CHECKING THE GAME…':'FIND MY FIRST FOCUS'}</button></form>}
+    {syncError&&<div className="glass card"><div className="eyebrow">RIOT DIDN'T GIVE US THE GAME</div><p>{syncError}</p><p className="muted">Connect Companion below to record your next ranked game.</p></div>}
+    {manualFallback&&<section className="glass card"><div className="eyebrow">RANKED SOLO/DUO · 5V5</div><h2>Record your next ranked game.</h2><p className="muted">Connect Companion 0.12.0 or newer, then play Ranked Solo/Duo. Reviews, DNA, missions and XP use that account’s recorded ranked evidence. Older games without a verified queue stay saved, but do not count towards this climb.</p><div className="hero-actions"><Link className="btn primary" href="/download/windows">GET COMPANION →</Link><Link className="btn secondary" href="/live">CONNECT MY PC →</Link></div></section>}
   </div></main>;
 }

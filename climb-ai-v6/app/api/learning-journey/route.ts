@@ -24,7 +24,7 @@ export async function GET(req:Request){
     if(!account)return NextResponse.json({error:'That Riot account is not linked to this user.'},{status:403});
 
     const {data,error}=await db.from('op_match_analysis')
-      .select('champion,role,created_at,analysis')
+      .select('champion,role,created_at,analysis').eq('queue_id',420)
       .eq('user_id',user.id)
       .eq('riot_account_id',input.accountId)
       .order('created_at',{ascending:true})

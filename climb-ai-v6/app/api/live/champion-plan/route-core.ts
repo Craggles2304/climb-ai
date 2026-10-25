@@ -1,3 +1,4 @@
+import {resolveSoloRank} from '@/lib/server/soloRank';
 import {NextRequest,NextResponse} from 'next/server';
 import type {ChampionDetail} from '@/lib/champions/ddragon';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
@@ -36,6 +37,7 @@ export async function GET(req:NextRequest){
     const {data,error}=await db.from('live_tracker_devices').select('pregame_context,pregame_updated_at,tracker_status').eq('id',device.id).maybeSingle();
     if(error)throw new Error(error.message);
     let context=(data?.pregame_context??null) as any;
+    if(context?.queueId!==420)context=null;
     let recoveredFromEndedPregame=false;
     let recoveredAt:string|null=null;
     const trackerState=String((data?.tracker_status as any)?.state??'').trim().toUpperCase();
@@ -45,7 +47,7 @@ export async function GET(req:NextRequest){
     // desktop cannot sit on SELECTING / 0 ENEMIES while the server already has the draft.
     if(trackerState==='CHAMP_SELECT'||!context){
       const {data:active,error:activeError}=await db.from('live_pregame_contexts')
-        .select('context,last_seen_at')
+        .select('context,last_seen_at').eq('context->>queueId','420')
         .eq('device_id',device.id)
         .is('ended_at',null)
         .order('last_seen_at',{ascending:false})
@@ -63,7 +65,7 @@ export async function GET(req:NextRequest){
     }
 
     if(!context&&trackerState==='RECORDING'){
-      const {data:recent,error:recentError}=await db.from('live_pregame_contexts').select('context,ended_at,last_seen_at').eq('device_id',device.id).not('ended_at','is',null).order('ended_at',{ascending:false}).limit(1).maybeSingle();
+      const {data:recent,error:recentError}=await db.from('live_pregame_contexts').select('context,ended_at,last_seen_at').eq('context->>queueId','420').eq('device_id',device.id).not('ended_at','is',null).order('ended_at',{ascending:false}).limit(1).maybeSingle();
       if(recentError)throw new Error(recentError.message);
       const endedAt=recent?.ended_at?new Date(recent.ended_at).getTime():NaN;
       const age=Number.isFinite(endedAt)?Date.now()-endedAt:Number.POSITIVE_INFINITY;
@@ -73,6 +75,7 @@ export async function GET(req:NextRequest){
         recoveredAt=recent.ended_at??recent.last_seen_at??null;
       }
     }
+    if(context?.queueId!==420)context=null;
     const champion=String(context?.localChampionName??'').trim();
     const role=String(context?.localRole??'').trim();
     const locked=Boolean(context?.localLockedIn);
@@ -228,7 +231,7 @@ async function resolveStrategyAccess(db:any,userId:string):Promise<{tier:Subscri
 async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:string|null}):Promise<LiveMissionTask[]>{
   if(!device.riotAccountId)return[];
   const {data,error}=await db.from('ilp_tasks')
-    .select('id,payload,updated_at')
+    .select('id,payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1')
     .eq('user_id',device.userId)
     .eq('riot_account_id',device.riotAccountId)
     .order('updated_at',{ascending:false})
@@ -249,15 +252,8 @@ async function loadMissionTasks(db:any,device:{userId:string;riotAccountId:strin
 }
 
 async function resolvePlayerRank(db:any,device:{userId:string;riotAccountId:string|null}){
-  const profilePromise=db.from('profiles').select('rank').eq('id',device.userId).maybeSingle();
-  const riotPromise=device.riotAccountId
-    ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
-    :Promise.resolve({data:null,error:null});
-  const [profileResult,riotResult]=await Promise.all([profilePromise,riotPromise]);
-  const tier=String(riotResult?.data?.rank_tier??'').trim();
-  const division=String(riotResult?.data?.rank_division??'').trim();
-  if(tier)return`${tier}${division?` ${division}`:''}`;
-  return String(profileResult?.data?.rank||'UNRANKED');
+  return resolveSoloRank(db,device.userId,device.riotAccountId);
+
 }
 
 function adaptPlanForRank(plan:any,depth:number,visiblePoints:number){

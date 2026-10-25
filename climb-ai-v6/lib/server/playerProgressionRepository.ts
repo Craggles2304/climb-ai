@@ -16,7 +16,7 @@ type TaskRow={riot_account_id:string;id:string;payload:ILPTask};
 type XpLedgerRow={user_id:string;riot_account_id:string|null;transaction_key:string;mission_id:string;match_id:string|null;kind:'MISSION_REP'|'MISSION_MASTERED';xp:number;metadata:{title:string;role:string|null;source?:string;outcome?:string};created_at:string};
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function verifiedXpRows(db:any,userId:string){
-  const {data,error}=await db.from('ilp_tasks').select('riot_account_id,id,payload').eq('user_id',userId);
+  const {data,error}=await db.from('ilp_tasks').select('riot_account_id,id,payload').eq('payload->>queueScope','RANKED_SOLO_V1').eq('user_id',userId);
   if(error)throw new Error(error.message);
   const rows=(data??[]) as TaskRow[];
   const candidates=[...new Set(rows.flatMap(row=>verifiedMissionAttempts(row.payload??{} as ILPTask).map(a=>a.matchId).filter(id=>uuid.test(id))))];
@@ -26,8 +26,8 @@ async function verifiedXpRows(db:any,userId:string){
   for(let i=0;i<candidates.length;i+=100){
     const batch=candidates.slice(i,i+100);
     const [result,analysisResult,metricsResult]=await Promise.all([
-      db.from('matches').select('id,riot_account_id,deaths').eq('user_id',userId).in('id',batch),
-      db.from('op_match_analysis').select('match_id,analysis').eq('user_id',userId).in('match_id',batch),
+      db.from('matches').select('id,riot_account_id,deaths').eq('queue_id',420).eq('user_id',userId).in('id',batch),
+      db.from('op_match_analysis').select('match_id,analysis').eq('queue_id',420).eq('user_id',userId).in('match_id',batch),
       db.from('match_metrics').select('*').eq('user_id',userId).in('match_id',batch),
     ]);
     for(const response of [result,analysisResult,metricsResult])if(response.error)throw new Error(response.error.message);
@@ -117,7 +117,7 @@ async function loadSyncHealth(db:any,userId:string,accountId:string|null){
   if(!accountId)return{accountId:null,status:'NO_ACCOUNT',lastSyncedAt:null,latestMatchAt:null,latestMatchId:null,latestMatchChampion:null,latestMatchRole:null};
   const [a,m]=await Promise.all([
     db.from('riot_accounts').select('id,sync_status,last_synced_at').eq('user_id',userId).eq('id',accountId).maybeSingle(),
-    db.from('matches').select('id,champion,role,occurred_at,created_at').eq('user_id',userId).eq('riot_account_id',accountId)
+    db.from('matches').select('id,champion,role,occurred_at,created_at').eq('queue_id',420).eq('user_id',userId).eq('riot_account_id',accountId)
       .in('result',['WIN','LOSS']).order('occurred_at',{ascending:false}).limit(1).maybeSingle(),
   ]);
   if(a.error)throw new Error(a.error.message);

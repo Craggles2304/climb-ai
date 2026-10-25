@@ -55,7 +55,7 @@ const routeTitle=(path:string)=>{
   if(path==='/champions/main')return'MY MAIN CHAMP';
   if(path.startsWith('/champions'))return'CHAMPIONS';
   if(path==='/missions')return'MISSIONS';
-  if(path==='/uploads')return'ADD A GAME';
+  if(path==='/uploads')return'RANKED RECORDINGS';
   if(path==='/account')return'ACCOUNT';
   if(path==='/billing')return'SUBSCRIPTION';
   if(path==='/pricing')return'SUBSCRIPTION';
@@ -251,7 +251,7 @@ export function AppShell({children}:{children:React.ReactNode}){
         <span>OP<span className="mint">CLIMB</span><small>THE PERSONAL LEAGUE COACH</small></span>
       </Link>
       <div className="game-label"><span className="game-rune">L</span> LEAGUE OF LEGENDS</div>
-      <div className="game-switch" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,margin:'14px 0 20px'}}><Link className="btn primary" href="/dashboard" aria-current="page" style={{fontSize:11,minHeight:38,padding:'8px'}}>LEAGUE</Link><Link className="btn secondary" href="/tft" style={{fontSize:11,minHeight:38,padding:'8px'}}>TFT</Link></div>
+      <div className="game-switch" style={{margin:'14px 0 20px'}}><Link className="btn primary" href="/dashboard" style={{width:'100%',fontSize:11}}>RANKED SOLO/DUO · 5V5</Link></div>
       <p className="nav-caption">YOUR WORKSPACE</p>
       <nav aria-label="Main navigation">
         {primary.map(([name,href,icon,hint])=>{

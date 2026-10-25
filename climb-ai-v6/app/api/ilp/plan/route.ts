@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from 'next/server';
 import {getCurrentUser,getServerClient} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {ensureLearningModelCurrent} from '@/lib/server/proLearningRepository';
 import {materializeDeferredLocalMatch} from '@/lib/server/liveTrackerRepository';
 import {rateLimit,clientKey} from '@/lib/server/rateLimit';
 
@@ -28,11 +29,12 @@ export async function GET(req:NextRequest){
   if(accountError)return NextResponse.json({ok:false,error:'Could not verify Riot account.'},{status:503});
   if(!account)return NextResponse.json({ok:false,error:'Riot account not found.'},{status:404});
 
+  if(admin)await ensureLearningModelCurrent(user.id,accountId);
   if(admin)await materializeDeferredLocalMatch(user.id,accountId)
     .catch(error=>console.warn('[ilp-plan] deferred match materialisation failed',error));
 
   const {data,error}=await db.from('ilp_tasks')
-    .select('id,payload,updated_at')
+    .select('id,payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1')
     .eq('user_id',user.id)
     .eq('riot_account_id',accountId)
     .order('updated_at',{ascending:false});

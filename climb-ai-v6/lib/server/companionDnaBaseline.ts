@@ -18,7 +18,7 @@ export async function companionDnaBaseline(input:{
   }
 
   const {data,error}=await db.from('matches')
-    .select('id,role,duration_seconds,result,occurred_at')
+    .select('id,role,duration_seconds,result,occurred_at').eq('queue_id',420)
     .eq('user_id',input.userId)
     .eq('riot_account_id',input.riotAccountId)
     .in('result',['WIN','LOSS'])
@@ -55,7 +55,7 @@ export async function companionDnaRoleBaselines(input:{
   if(!db||!input.riotAccountId)return empty;
 
   const {data,error}=await db.from('matches')
-    .select('id,role,duration_seconds,result,occurred_at')
+    .select('id,role,duration_seconds,result,occurred_at').eq('queue_id',420)
     .eq('user_id',input.userId)
     .eq('riot_account_id',input.riotAccountId)
     .in('result',['WIN','LOSS'])

@@ -224,6 +224,7 @@ function buildMatch(
 
   return {
     id:dto.metadata.matchId,
+    queueId:dto.info.queueId??null,
     riotAccountId:opts.riotAccountId,
     champion:me.championName,
     opponent:opponent?.championName,

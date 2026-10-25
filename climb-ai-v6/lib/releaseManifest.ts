@@ -1,7 +1,8 @@
 export const RELEASE_MANIFEST={
   channel:'BETA',
+  rankedFocus:{game:'LOL',queueId:420,label:'Ranked Solo/Duo 5v5'},
   webVersion:'0.4.0',
-  companionVersion:'0.11.9',
+  companionVersion:'0.12.0',
   companionReleaseTag:'companion-beta',
   windowsDownloadPath:'/download/windows',
   supportPath:'/support',

@@ -12,6 +12,7 @@ import {canonicalLeagueRole,stampLegacyTaskScope,taskAppliesToRole} from '@/lib/
 import {dnaDomainForTask,ensureDnaDomain} from '@/lib/dnaDomain';
 import {ensureOneMissionPerDnaStrand,isDnaStrandMission} from '@/lib/dnaStrandMissions';
 import {recommendedGameMissionFocusPair} from '@/lib/gameDnaSnapshot';
+import {scopeMissionsToRanked,RANKED_SOLO_SCOPE} from '@/lib/rankedSolo';
 
 type CoachTaskInput={title:string;category:ILPTask['category'];why:string;gameRule:string;metric:string;target:string;source?:'COACH';priority?:number};
 type Ctx={tasks:ILPTask[];ordering:OrderedTask[];orderNote:string;allTasks:Record<string,ILPTask[]>;planReady:boolean;planError:string|null;addTask:(task:CoachTaskInput)=>void;replaceTask:(oldId:string,task:CoachTaskInput)=>void;pauseTask:(id:string)=>void;completeTask:(id:string)=>void;recordMissionResult:(taskId:string,attempt:ILPMissionAttempt)=>void;setDnaFocusDomains:(domains:DnaDomain[])=>boolean;refreshFromMatches:()=>string[]};
@@ -21,7 +22,9 @@ function dedupeTasks(tasks:ILPTask[]){const map=new Map<string,ILPTask>();for(co
 function matchesForRole(matches:ReturnType<typeof matchesFor>,role:Role){return matches.filter(match=>canonicalLeagueRole(match.role)===role)}
 function stampRole(task:ILPTask,role:Role):ILPTask{return task.roleScope?task:{...task,roleScope:role,roleEvidence:[role]}}
 function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,accountId:string,role:Role,rank?:string|null){
-  const stamped=dedupeTasks(tasks.map(task=>ensureDnaDomain(task as ILPTask&{dnaDomain?:ILPTask['dnaDomain']}))).map(task=>stampLegacyTaskScope(task,role));
+  const rankedIds=new Set(matches.map(m=>m.id));
+  const scoped=accountId.startsWith('acct-')?tasks:tasks.map(task=>task.queueScope===RANKED_SOLO_SCOPE?task:scopeMissionsToRanked([task],rankedIds)[0]!);
+  const stamped=dedupeTasks(scoped.map(task=>ensureDnaDomain(task as ILPTask&{dnaDomain?:ILPTask['dnaDomain']}))).map(task=>stampLegacyTaskScope(task,role));
   const relevant=stamped.filter(task=>taskAppliesToRole(task,role));
   const foreign=stamped.filter(task=>!taskAppliesToRole(task,role));
   const roleMatches=matchesForRole(matches,role);
@@ -37,7 +40,7 @@ function normalisePlan(tasks:ILPTask[],matches:ReturnType<typeof matchesFor>,acc
       ?{...task,dnaFocusUnlocked:recommended.has(task.dnaDomain)}
       :task);
   }
-  return[...foreign,...strandTasks];
+  return accountId.startsWith('acct-')?[...foreign,...strandTasks]:[...foreign,...strandTasks].map(task=>({...task,queueScope:RANKED_SOLO_SCOPE}));
 }
 
 async function loadCloudRows(accountId:string):Promise<CloudIlpRow[]|null>{

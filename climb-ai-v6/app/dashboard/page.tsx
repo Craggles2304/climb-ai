@@ -80,7 +80,7 @@ export default function Dashboard(){
   const missionProven=Boolean(focusProof&&focusProof.confirmed>=focusProof.required);
   const steps=[
     {label:'CONNECT COMPANION',done:linked,active:!linked},
-    {label:'PLAY 3 GAMES',done:baselineReady,active:linked&&!baselineReady},
+    {label:'PLAY 3 SOLO/DUO GAMES',done:baselineReady,active:linked&&!baselineReady},
     {label:'REVEAL DNA',done:baselineReady,active:false},
     {label:'TRAIN 2 MISSIONS',done:missionProven,active:Boolean(baselineReady&&focus&&!missionProven)},
     {label:'EVOLVE DNA',done:mastered>0,active:Boolean(missionProven&&mastered===0)},
@@ -102,7 +102,7 @@ export default function Dashboard(){
       <div className="op-home-dna-head">
         <div>
           <div className="eyebrow">YOUR GAME DNA · THE CENTRE OF OP CLIMB</div>
-          <h2>{baselineReady?'This is how you actually play.':'Play three games. Reveal your DNA.'}</h2>
+          <h2>{baselineReady?'This is how you actually play.':'Play three Solo/Duo games. Reveal your DNA.'}</h2>
           <p>{baselineReady
             ?`Your live ${active.role} profile measures six parts of your game. You choose two DNA trees to keep unlocked for progression while the whole player profile keeps updating.`
             :`Connect the Companion and play ${DNA_BASELINE_GAMES} normal ${active.role} games. OP CLIMB keeps the profile neutral until it has enough evidence to reveal your real starting shape.`}</p>

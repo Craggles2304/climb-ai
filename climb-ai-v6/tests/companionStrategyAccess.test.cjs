@@ -70,5 +70,5 @@ test('subscription badge never falls back to player Elo as a membership plan',()
   assert.doesNotMatch(renderer,/activeCoachLevel\.tier\?\x60/);
   assert.doesNotMatch(preload,/access\?\.tier\|\|team\?\.coachLevel\?\.tier/);
   assert.match(review,/const planTier=clean\(state\?\.teamPlan\?\.strategyAccess\?\.tier/);
-  assert.match(plan,/return String\(profileResult\?\.data\?\.rank\|\|'UNRANKED'\)/);
+  assert.match(plan,/return resolveSoloRank\(db,device.userId,device.riotAccountId\)/);
 });

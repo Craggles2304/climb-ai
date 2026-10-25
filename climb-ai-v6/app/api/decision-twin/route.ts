@@ -53,14 +53,14 @@ export async function GET(req:Request){
     const [historyResult,learningResult]=await Promise.all([
       db
         .from('op_match_analysis')
-        .select('champion,role,created_at,analysis')
+        .select('champion,role,created_at,analysis').eq('queue_id',420)
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .order('created_at',{ascending:true})
         .limit(50),
       db
         .from('op_player_learning_profiles')
-        .select('recent_change')
+        .select('recent_change').eq('learning_model_version',3)
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .maybeSingle(),

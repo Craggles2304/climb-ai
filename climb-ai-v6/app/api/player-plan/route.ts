@@ -92,18 +92,18 @@ export async function GET(req:Request){
 
     const [historyResult,learningResult,taskResult]=await Promise.all([
       db.from('op_match_analysis')
-        .select('champion,role,created_at,analysis')
+        .select('champion,role,created_at,analysis').eq('queue_id',420)
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .order('created_at',{ascending:true})
         .limit(90),
       db.from('op_player_learning_profiles')
-        .select('recent_change,role_profiles')
+        .select('recent_change,role_profiles').eq('learning_model_version',3)
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .maybeSingle(),
       db.from('ilp_tasks')
-        .select('payload')
+        .select('payload').eq('payload->>queueScope','RANKED_SOLO_V1')
         .eq('user_id',user.id)
         .eq('riot_account_id',input.accountId)
         .limit(120),

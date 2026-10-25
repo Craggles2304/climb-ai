@@ -1,5 +1,6 @@
 import 'server-only';
 import {Match} from '../types';
+import {isRankedSolo} from '../rankedSolo';
 import type {ProMatchAnalysis} from '../riot/proAnalysis';
 import {getSupabaseAdmin} from './supabaseAdmin';
 import {isUnreachable} from '../auth/config';
@@ -18,28 +19,28 @@ export async function saveMatches(userId:string,synced:SyncedMatch[]):Promise<Sa
 }
 
 async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveResult>{
-  const matches=synced.map(s=>s.match);
+  const matches=synced.map(s=>s.match).filter(m=>isRankedSolo(m.queueId)&&m.source==='riot');
   const syncedById=new Map(synced.map(s=>[s.match.id,s]));
   const db=getSupabaseAdmin();
   if(!db)return{persisted:false,inserted:0,skipped:matches.length,reason:'Supabase is not configured.'};
   if(!matches.length)return{persisted:true,inserted:0,skipped:0};
 
-  const {data:existing,error:readError}=await db.from('matches').select('id,external_match_id,patch,game_version').eq('user_id',userId).in('external_match_id',matches.map(m=>m.id));
+  const {data:existing,error:readError}=await db.from('matches').select('id,external_match_id,patch,game_version,queue_id').eq('user_id',userId).in('external_match_id',matches.map(m=>m.id));
   if(readError)return failed(matches.length,readError);
   const existingByExternal=new Map((existing||[]).map(r=>[r.external_match_id as string,r]));
   const seen=new Set(existingByExternal.keys());
   const touchedAccounts=new Set<string>();
   for(const m of matches){
     const stored=existingByExternal.get(m.id);
-    if(!stored||!m.patch)continue;
-    if(stored.patch===m.patch&&stored.game_version===(m.gameVersion??null))continue;
+    if(!stored)continue;
+    if(stored.queue_id===m.queueId&&stored.patch===m.patch&&stored.game_version===(m.gameVersion??null))continue;
     const observedAt=new Date().toISOString();
     const update=await db.from('matches').update({
-      patch:m.patch,game_version:m.gameVersion??null,patch_source:m.patchSource??'MATCH_V5',patch_observed_at:observedAt,
+      queue_id:m.queueId,patch:m.patch??null,game_version:m.gameVersion??null,patch_source:m.patchSource??'MATCH_V5',patch_observed_at:observedAt,
     }).eq('id',stored.id);
     if(update.error)console.warn('[match-sync] patch backfill failed',update.error.message);
     else{
-      const analysisUpdate=await db.from('op_match_analysis').update({patch:m.patch,game_version:m.gameVersion??null}).eq('match_id',stored.id);
+      const analysisUpdate=await db.from('op_match_analysis').update({queue_id:m.queueId,patch:m.patch??null,game_version:m.gameVersion??null}).eq('match_id',stored.id);
       if(analysisUpdate.error)console.warn('[match-sync] analysis patch backfill failed',analysisUpdate.error.message);
       if(m.riotAccountId)touchedAccounts.add(m.riotAccountId);
     }
@@ -52,7 +53,7 @@ async function persistMatches(userId:string,synced:SyncedMatch[]):Promise<SaveRe
   }
 
   const {data:rows,error:insertError}=await db.from('matches').insert(fresh.map(m=>({
-    user_id:userId,external_match_id:m.id,riot_account_id:m.riotAccountId||null,
+    user_id:userId,queue_id:m.queueId,external_match_id:m.id,riot_account_id:m.riotAccountId||null,
     champion:m.champion,role:m.role,result:m.result,kills:m.kills,deaths:m.deaths,assists:m.assists,
     duration_seconds:m.durationSeconds,rank:m.rank,source:m.source,occurred_at:m.createdAt,
     patch:m.patch??null,game_version:m.gameVersion??null,patch_source:m.patchSource??'UNKNOWN',patch_observed_at:m.patch?new Date().toISOString():null,
