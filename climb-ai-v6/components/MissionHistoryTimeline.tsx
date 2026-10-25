@@ -52,6 +52,7 @@ export function MissionHistoryTimeline({accountId,missions}:{accountId:string;mi
   const [loading,setLoading]=useState(false);
   const [moreLoading,setMoreLoading]=useState(false);
   const [error,setError]=useState<string|null>(null);
+  const evidenceVersion=useMemo(()=>JSON.stringify(missions.map(m=>[m.id,m.status,m.progress,m.missionHistory,m.history])),[missions]);
   const titles=useMemo(()=>new Map(missions.map(mission=>[mission.id,mission.title])),[missions]);
 
   const load=useCallback(async(before:string|null,signal?:AbortSignal)=>{
@@ -80,7 +81,7 @@ export function MissionHistoryTimeline({accountId,missions}:{accountId:string;mi
       if(!controller.signal.aborted)setError(err instanceof Error?err.message:'Could not load mission history.');
     }).finally(()=>{if(!controller.signal.aborted)setLoading(false)});
     return()=>controller.abort();
-  },[load]);
+  },[load,evidenceVersion]);
 
   const loadMore=async()=>{
     if(!cursor||moreLoading)return;

@@ -1,6 +1,6 @@
 {
   "name": "op-climb-companion",
-  "version": "0.11.9",
+  "version": "0.11.10",
   "private": true,
   "description": "OP CLIMB Windows companion for League tracking and TFT pre-game learning with post-game decision review.",
   "main": "electron/bootstrap.cjs",
@@ -56,6 +56,10 @@
       {
         "from": "src/pregame-normalizer.mjs",
         "to": "tracker/pregame-normalizer.mjs"
+      },
+      {
+        "from": "src/pending-matches.mjs",
+        "to": "tracker/pending-matches.mjs"
       },
       {
         "from": "build/icon.ico",

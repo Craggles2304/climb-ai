@@ -162,10 +162,11 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
   if(error){
     if(error.code!=='23505')throw new Error(error.message);
     const {data:existing,error:existingError}=await db.from('live_telemetry_sessions')
-      .select('id').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
+      .select('id,status,summary').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();
     if(existingError)throw new Error(existingError.message);
     sessionId=(existing?.id as string|undefined)??null;
-    if(sessionId){
+    // A retry after an accepted upload must not erase its analysis or DNA sync.
+    if(sessionId&&existing?.status!=='COMPLETE'){
       const {error:updateExistingError}=await db.from('live_telemetry_sessions').update({
         last_seen_at:now,
         status:'COMPLETE',
@@ -377,13 +378,17 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const matchId=matchResult.status==='fulfilled'?matchResult.value:null;
   if(proAnalysis){
     const persisted=await persistProMatchAnalysis({userId:session.user_id,riotAccountId:session.riot_account_id,sessionId:session.id,matchId,externalMatchId:null,champion:proAnalysis.champion,role:proAnalysis.role,analysis:proAnalysis,patch:session.patch??null,gameVersion:session.game_version??null}).catch(err=>{console.warn('[live-finalize] PRO analysis failed',err);return null});
-    if(persisted)await syncLearningPlanForSession(session.id,session.user_id,session.riot_account_id,'FINALIZE',proAnalysis);
+    if(!persisted)throw new Error('Post-game analysis was not saved; retry required.');
+    const learning=await syncLearningPlanForSession(session.id,session.user_id,session.riot_account_id,'FINALIZE',proAnalysis);
+    if(session.riot_account_id&&!learning)throw new Error('Post-game DNA history was not saved; retry required.');
   }
   const {data:latest}=await db.from('live_telemetry_sessions').select('summary').eq('id',sessionId).maybeSingle();
   const latestSummary=(latest?.summary&&typeof latest.summary==='object')?latest.summary as any:{};
-  await db.from('live_telemetry_sessions').update({
+  if(!matchId)throw new Error('Completed match history was not saved; retry required.');
+  const {error:completeError}=await db.from('live_telemetry_sessions').update({
     summary:{...latestSummary,processing:{...(latestSummary?.processing??{}),status:'COMPLETE',completedAt:new Date().toISOString()}},
   }).eq('id',sessionId);
+  if(completeError)throw new Error(completeError.message);
 }
 
 async function persistReviewEvents(session:any,summary:StrengthTimeline){const db=getSupabaseAdmin();if(!db||!summary.opportunities.length)return;await db.from('live_review_events').delete().eq('session_id',session.id);const {error}=await db.from('live_review_events').insert(summary.opportunities.map(window=>({user_id:session.user_id,riot_account_id:session.riot_account_id,session_id:session.id,game_time:window.atSeconds,event_type:window.type,opponent:window.opponent,confidence:window.confidence,headline:window.headline,detail:window.detail,evidence:{...window.evidence,score:window.score,limitation:window.limitation}})));if(error)throw new Error(error.message)}
