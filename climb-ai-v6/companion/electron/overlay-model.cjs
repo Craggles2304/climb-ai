@@ -54,8 +54,33 @@ function overlayView(state,options={}){
   const game=state?.phase==='RECORDING'?'LOL':tft.state==='RECORDING'?'TFT':options.editing===true?'PREVIEW':null;
   const show=options.enabled===true&&Boolean(state?.paired)&&Boolean(game);
   return {
-    show,editing:show&&options.editing===true,game,layout:safeLayout(options.layout),
+    show,editing:show&&options.editing===true,assistantOpen:show&&options.assistantOpen===true,buildsOpen:show&&options.buildsOpen===true,game,layout:safeLayout(options.layout),
+    buildGuide:game==='TFT'&&options.tftBuilds?{
+      game:'TFT',patch:limit(options.tftBuilds.patch,20),asOf:limit(options.tftBuilds.asOf,30),
+      selectedId:limit(options.tftBuilds.selectedId,80),
+      builds:(Array.isArray(options.tftBuilds.builds)?options.tftBuilds.builds:[]).slice(0,5).map(row=>({
+        id:limit(row.id,80),title:limit(row.title,100),tier:limit(row.tier,10),tempo:limit(row.tempo,55),
+        primary:limit(row.primary,50),secondary:limit(row.secondary,50),
+        items:Array.isArray(row.items)?row.items.slice(0,3).map(item=>limit(item,70)):[],
+        secondaryItems:Array.isArray(row.secondaryItems)?row.secondaryItems.slice(0,3).map(item=>limit(item,70)):[],
+        rationale:limit(row.rationale,230),source:limit(row.source,100),
+      })),
+    }:game==='LOL'&&options.leagueBuild?{
+      game:'LOL',patch:limit(options.leagueBuild.patch,20),source:limit(options.leagueBuild.source,60),
+      champion:limit(options.leagueBuild.champion,40),role:limit(options.leagueBuild.role,20),
+      items:Array.isArray(options.leagueBuild.items)?options.leagueBuild.items.slice(0,6).map(item=>limit(item,70)):[],
+      runes:Array.isArray(options.leagueBuild.runes)?options.leagueBuild.runes.slice(0,6).map(item=>limit(item,70)):[],
+      skillOrder:Array.isArray(options.leagueBuild.skillOrder)?options.leagueBuild.skillOrder.slice(0,4).map(item=>limit(item,20)):[],
+      summoners:Array.isArray(options.leagueBuild.summoners)?options.leagueBuild.summoners.slice(0,2).map(item=>limit(item,60)):[],
+      note:limit(options.leagueBuild.note,220),
+    }:null,
     focus:allowedFocus.has(String(options.tftFocus||''))?String(options.tftFocus):'ECONOMY',
+    tftMission:game==='TFT'&&options.tftMission?{
+      id:limit(options.tftMission.id,80),status:limit(options.tftMission.status,20),domain:limit(options.tftMission.domain,30),
+      title:limit(options.tftMission.title,130),nextGame:limit(options.tftMission.nextGame,400),
+      cues:Array.isArray(options.tftMission.cues)?options.tftMission.cues.slice(0,2).map(item=>limit(item,160)):[],
+      progress:Math.max(0,Number(options.tftMission.progress)||0),goal:Math.max(0,Number(options.tftMission.goal)||0),
+    }:null,
     status:game==='TFT'?'TFT · RECORDING':game==='LOL'?'LEAGUE · RECORDING':'PREVIEW · EDITING',
     plan:game==='LOL'?(options.frozenLeague||null):null,
     disclaimer:'FROZEN BEFORE THE GAME · REVIEW AFTER',

@@ -90,6 +90,8 @@ function render(state){
     $('overlayToggle').setAttribute('aria-pressed',String(Boolean(current.overlay?.enabled)));
   }
   if($('overlayEdit'))$('overlayEdit').disabled=!current.overlay?.enabled;
+  if($('overlayMoveHere'))$('overlayMoveHere').disabled=!current.overlay?.enabled;
+  if($('overlayCenter'))$('overlayCenter').disabled=!current.overlay?.enabled;
   if($('overlayModeCycle'))$('overlayModeCycle').disabled=!current.overlay?.enabled;
   if($('overlayModeLabel')){
     const mode=String(current.overlay?.layout?.mode||'FOCUS').toUpperCase();
@@ -108,7 +110,7 @@ function render(state){
 
 const tftCoach=window.OP_TFT_COACH_MODEL;
 let tftChosenFocus=(()=>{try{return tftCoach.normalize(localStorage.getItem(tftCoach.STORAGE_KEY))}catch{return'ECONOMY'}})();
-let tftFrozenFocus=null;
+let tftFrozenMission=null;
 let tftLastRecording=false;
 let tftGuideId='ECONOMY';
 
@@ -116,40 +118,22 @@ function renderTftPrep(visible){
   const section=ensureTftPrep();
   setHidden(section,!visible);
   if(!visible)return;
-  const focus=tftCoach.mission(tftChosenFocus);
-  section.querySelector('#tftPrepTitle').textContent=focus.title;
-  section.querySelector('#tftPrepRule').textContent=focus.rule;
-  section.querySelectorAll('[data-tft-focus]').forEach(button=>{
-    const selected=button.dataset.tftFocus===focus.id;
-    button.setAttribute('aria-pressed',String(selected));
-    button.querySelector('small').textContent=selected?'SELECTED':'CHOOSE FOCUS';
-  });
+  const mission=current?.tftMission?.mission;
+  section.querySelector('#tftPrepTitle').textContent=mission?.title||'BUILD YOUR TFT DNA';
+  section.querySelector('#tftPrepRule').textContent=mission?.nextGame||'Connect and collect more TFT decision evidence to unlock your personal mission.';
+  section.querySelector('#tftPrepStatus').textContent=current?.tftMissionError||(
+    mission?.status==='BASELINE'?'BASELINE · PLAY TO BUILD EVIDENCE':
+    mission?'SYNCED WITH OPCLIMB.COM · '+mission.progress+'/'+mission.goal+' RECORDED GAMES FOR REVIEW · NOT MASTERY':'CONNECTING TO YOUR ACCOUNT…');
 }
 
 function ensureTftPrep(){
   let section=$('tftPrep');
   if(section)return section;
   section=document.createElement('section');section.id='tftPrep';section.className='card tft-coach-prep hidden';
-  section.innerHTML='<div class="tft-coach-head"><div class="tft-coach-kicker">OP CLIMB / TFT / BEFORE QUEUE</div><span class="tft-coach-badge">LEARNING MODE</span></div>'+
-    '<h2>ONE FOCUS. ONE MATCH.</h2><p class="tft-coach-intro">Choose a lesson before queueing. It stays fixed while you play.</p>'+
-    '<div class="tft-coach-picks" id="tftPrepPicks" aria-label="TFT learning focus"></div>'+
-    '<div class="tft-coach-prep-preview"><div><span>YOUR NEXT MATCH MISSION</span><strong id="tftPrepTitle">ECONOMY DISCIPLINE</strong><p id="tftPrepRule"></p></div><button class="primary" id="tftPrepGamePlan" type="button">TFT GAME PLAN ↗</button></div>';
-  const picks=section.querySelector('#tftPrepPicks');
-  tftCoach.MISSIONS.forEach(focus=>{
-    const button=document.createElement('button');
-    button.type='button';button.className='tft-coach-pick';button.dataset.tftFocus=focus.id;
-    const label=document.createElement('strong');label.textContent=focus.label;
-    const small=document.createElement('small');small.textContent='CHOOSE FOCUS';
-    button.append(label,small);
-    button.addEventListener('click',()=>{
-      tftChosenFocus=focus.id;
-      try{localStorage.setItem(tftCoach.STORAGE_KEY,focus.id)}catch{}
-      void window.opCompanion.setTftFocus(focus.id);
-      renderTftPrep(true);
-    });
-    picks.appendChild(button);
-  });
-  section.querySelector('#tftPrepGamePlan').addEventListener('click',()=>window.opCompanion.openClimbPath('/tft/game-plan'));
+  section.innerHTML='<div class="tft-coach-head"><div class="tft-coach-kicker">OP CLIMB / TFT / BEFORE QUEUE</div><span class="tft-coach-badge">ACCOUNT SYNC</span></div>'+
+    '<h2>ONE MISSION. EVERY SCREEN.</h2><p class="tft-coach-intro">Your mission comes directly from your TFT DNA. It is locked when the match begins and reviewed after the game.</p>'+
+    '<div class="tft-coach-prep-preview"><div><span>YOUR NEXT MATCH MISSION</span><strong id="tftPrepTitle">BUILD YOUR TFT DNA</strong><p id="tftPrepRule"></p><small id="tftPrepStatus">CONNECTING TO YOUR ACCOUNT…</small></div><button class="primary" id="tftPrepGamePlan" type="button">MY TFT DNA ↗</button></div>';
+  section.querySelector('#tftPrepGamePlan').addEventListener('click',()=>window.opCompanion.openClimbPath('/tft/coach'));
   $('status').after(section);
   return section;
 }
@@ -177,16 +161,17 @@ function renderTftHome(state,visible){
   const tft=state?.tftRecorder||{};
   const status=String(tft.state||'STARTING').toUpperCase();
   if(status==='RECORDING'&&!tftLastRecording){
-    tftFrozenFocus=tftChosenFocus;
+    tftFrozenMission=state?.tftMission?.mission?{...state.tftMission.mission}:null;
     section.querySelector('#tftCoachGuides').open=false;
   }
   if(status==='RECORDING')tftLastRecording=true;
   if(status==='ARMED'||status==='READY'||status==='STOPPED')tftLastRecording=false;
-  const focus=tftCoach.mission(tftFrozenFocus||tftChosenFocus);
-  section.querySelector('#tftHomeTitle').textContent=focus.title;
-  section.querySelector('#tftHomeRule').textContent=focus.rule;
-  section.querySelector('#tftHomeCueOne').textContent=focus.cues[0];
-  section.querySelector('#tftHomeCueTwo').textContent=focus.cues[1];
+  if(status==='ARMED'||status==='STOPPED')tftFrozenMission=null;
+  const mission=tftFrozenMission||state?.tftMission?.mission;
+  section.querySelector('#tftHomeTitle').textContent=mission?.title||'BUILD YOUR TFT DNA';
+  section.querySelector('#tftHomeRule').textContent=mission?.nextGame||'Play normally and review decisions after the game.';
+  section.querySelector('#tftHomeCueOne').textContent=mission?.cues?.[0]||'No live shotcalling.';
+  section.querySelector('#tftHomeCueTwo').textContent=mission?.cues?.[1]||'Review after the match.';
   const recordText=status==='RECORDING'?'RECORDING':status==='PROCESSING'?'PROCESSING':status==='READY'?'REVIEW READY':'PREPARING';
   section.querySelector('#tftHomeStatus').textContent=recordText;
   section.querySelector('#tftHomePhase').textContent=status==='RECORDING'?'CAPTURING':status==='PROCESSING'?'BUILDING REVIEW':status==='READY'?'COMPLETE':'WAITING';
@@ -201,7 +186,7 @@ function ensureTftHome(){
   if(section)return section;
   section=document.createElement('section');section.id='tftHome';section.className='card tft-coach-live hidden';
   section.innerHTML='<div class="tft-coach-head"><div class="tft-coach-kicker">OP CLIMB / TFT / YOUR LEARNING HUD</div><span id="tftHomeStatus" class="tft-coach-badge">PREPARING</span></div>'+
-    '<article class="tft-coach-mission"><span class="tft-coach-overline">PRE-GAME MISSION / LOCKED FOR THIS MATCH</span><h2 id="tftHomeTitle">ECONOMY DISCIPLINE</h2><strong id="tftHomeRule">Make every spend part of a plan.</strong>'+
+    '<article class="tft-coach-mission"><span class="tft-coach-overline">TFT DNA MISSION / LOCKED FOR THIS MATCH</span><h2 id="tftHomeTitle">BUILD YOUR TFT DNA</h2><strong id="tftHomeRule">Play normally and review after the game.</strong>'+
     '<div class="tft-coach-cues"><span id="tftHomeCueOne"></span><span id="tftHomeCueTwo"></span></div></article>'+
     '<div class="tft-coach-mini"><div><span>RECORDER</span><strong id="tftHomePhase">CAPTURING</strong></div><div><span>STAGE READ</span><strong id="tftHomeRound">—</strong></div><div><span>COACH MODE</span><strong id="tftHomeStageNote">LESSON LOCKED</strong></div></div>'+
     '<details id="tftCoachGuides" class="tft-coach-guides"><summary>QUICK LEARNING GUIDES <span>STATIC REFERENCE / OPTIONAL</span></summary>'+
@@ -322,6 +307,8 @@ bind('unpair','click',async()=>{if(confirm('Unpair this PC from OP CLIMB? You ca
 bind('autoStart','click',async()=>{await window.opCompanion.setAutoStart(!current?.autoStart)});
 bind('overlayToggle','click',async()=>{await window.opCompanion.setOverlayEnabled(!current?.overlay?.enabled)});
 bind('overlayEdit','click',()=>window.opCompanion.editOverlay());
+bind('overlayMoveHere','click',()=>window.opCompanion.moveOverlayHere());
+bind('overlayCenter','click',()=>window.opCompanion.centerOverlay());
 bind('overlayModeCycle','click',()=>window.opCompanion.cycleOverlay());
 bind('checkUpdate','click',()=>window.opCompanion.checkUpdate());
 bind('downloadUpdate','click',()=>window.opCompanion.downloadUpdate());

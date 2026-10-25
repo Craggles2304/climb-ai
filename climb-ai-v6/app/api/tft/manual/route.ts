@@ -2,8 +2,10 @@ import {NextResponse} from 'next/server';
 import {z} from 'zod';
 import {getServerClient} from '@/lib/supabase/server';
 import {getSupabaseAdmin} from '@/lib/server/supabaseAdmin';
+import {tftAssessmentSchema as Assessment} from '@/lib/tft/reviewSchema';
 
 const Review=z.object({
+  assessments:z.object({ECONOMY:Assessment.optional(),TEMPO:Assessment.optional(),BOARD_BUILDING:Assessment.optional(),FLEXIBILITY:Assessment.optional(),ITEMS_AUGMENTS:Assessment.optional(),CONVERSION:Assessment.optional()}).strict().optional(),
   weakStage:z.enum(['NEVER','STAGE_2','STAGE_3','STAGE_4','STAGE_5_PLUS']).optional(),
   rollTiming:z.enum(['EARLY','ON_TIME','LATE','DID_NOT_ROLL','UNKNOWN']).optional(),
   economyChoice:z.enum(['SPENT_TO_STABILISE','HELD_FOR_ECON','FAST_LEVEL','PANIC_ROLL','UNKNOWN']).optional(),

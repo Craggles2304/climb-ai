@@ -31,7 +31,13 @@ export interface TftGamePlan{
   lockedAt:string;
 }
 
+export interface TftReviewAssessment{
+  round:string;
+  verdict:'HELPED'|'HURT'|'UNCERTAIN';
+  reason:string;
+}
 export interface TftDecisionReview{
+  assessments?:Partial<Record<'ECONOMY'|'TEMPO'|'BOARD_BUILDING'|'FLEXIBILITY'|'ITEMS_AUGMENTS'|'CONVERSION',TftReviewAssessment>>;
   weakStage?:TftWeakStage;
   rollTiming?:TftRollTiming;
   economyChoice?:TftEconomyChoice;
@@ -98,18 +104,5 @@ export function summarizeTft(matches:TftMatch[]):TftSummary{
 
 export function tftCoachingRead(matches:TftMatch[]):{title:string;detail:string;target:string}{
   if(!matches.length)return{title:'BUILD YOUR TFT BASELINE',detail:'Log finished TFT games or sync them later. OP CLIMB can build your placement, comp and consistency model without Riot API access.',target:'Track at least 5 finished games — manual and Riot-imported games count together.'};
-  const s=summarizeTft(matches);
-  const bottom4=matches.filter(m=>m.placement>=5).length;
-  const highGold=matches.filter(m=>(m.goldLeft||0)>=10&&m.placement>=5).length;
-  const lateRolls=matches.filter(m=>m.decisionReview?.rollTiming==='LATE'&&m.placement>=5).length;
-  const forcedContested=matches.filter(m=>m.decisionReview?.pivotQuality==='FORCED_CONTESTED').length;
-  const planBroken=matches.filter(m=>m.planSnapshot&&m.decisionReview?.planFollowed==='NO').length;
-  if(planBroken>=2)return{title:'EXECUTION BEFORE MORE THEORY',detail:`You locked a plan and then marked it as not followed in ${planBroken} recent games. The biggest leak is execution against your own rules, not another comp guide.`,target:'For the next 3 games, lock only one non-negotiable rule and score whether you executed it before judging placement.'};
-  if(highGold>=2||lateRolls>=2)return{title:'SPEND BEFORE YOU BLEED OUT',detail:`${highGold+lateRolls} recent danger-state signals show resources or your roll-down arriving after the board had already lost control.`,target:'For the next 3 danger-state games, define the stabilisation trigger before stage 4 and review whether you acted on time.'};
-  if(forcedContested>=2)return{title:'STOP PAYING THE CONTEST TAX',detail:`You recorded ${forcedContested} recent games where you stayed on a heavily contested line. That is now a repeatable flexibility leak, not one unlucky shop.`,target:'Use a two-player contest rule: if two opponents clearly occupy your line before the midgame, record the best viable pivot instead of forcing the same cap.'};
-  const lowLevel=matches.filter(m=>(m.level||0)<=7&&m.placement>=5).length;
-  if(lowLevel>=2)return{title:'TEMPO IS FALLING BEHIND',detail:`${lowLevel} bottom-four games ended at level 7 or below. The result pattern points to lobby tempo or economy conversion arriving too late.`,target:'Review the stage where your HP first becomes unstable and define the level/roll trigger before the next queue.'};
-  if(bottom4>matches.length/2)return{title:'STABILISE THE FLOOR',detail:`Your recent sample is ${Math.round(bottom4/matches.length*100)}% bottom-four. The first job is reducing 7th/8th outcomes before chasing more firsts.`,target:'Aim for 3 top-four finishes in the next 5 ranked games with no 8th.'};
-  if(s.top4Rate>=.6)return{title:'TURN TOP FOURS INTO WINS',detail:`You are top-four in ${Math.round(s.top4Rate*100)}% of this sample. The next leak is conversion: preserving enough HP/economy to upgrade the final board.`,target:'After every top-four, record the final missing upgrade, item mismatch or positioning loss that stopped the win.'};
-  return{title:'MAKE THE MIDGAME REPEATABLE',detail:`Average placement is ${s.averagePlacement.toFixed(2)}. Your next gain is consistency rather than forcing one comp or one high-roll line.`,target:'Use one clear stage-3 stabilisation rule for the next 5 games and compare placement spread.'};
+  return{title:'REVIEW A DECISION, NOT JUST THE RESULT',detail:'Your match results provide context. Add a round and an explanation of a spending, board, item or pivot decision before OP CLIMB grades that skill.',target:'Record a game, open its timeline and review one concrete decision. Missing evidence stays ungraded.'};
 }

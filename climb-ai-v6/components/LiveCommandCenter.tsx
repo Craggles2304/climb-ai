@@ -238,7 +238,7 @@ return <div className="match-room">
     </div>
   </section>}
 
-  <details className="panel panel-padding match-room-setup" open={!online||Boolean(pairCode)}>
+  <details id="companion-connect" className="panel panel-padding match-room-setup" open={!online||Boolean(pairCode)}>
     <summary>{online?'COMPANION SETUP & DEVICES':linked?'COMPANION OFFLINE — RECONNECT':'CONNECT THIS WINDOWS PC'}</summary>
     <div style={{marginTop:16}}>
       <p className="muted">Already installed? Connect it directly below. Only download the installer if this PC does not have OP CLIMB Companion yet.</p>

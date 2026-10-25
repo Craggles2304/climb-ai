@@ -24,7 +24,7 @@ export async function GET(req:NextRequest){
 
   const [accountResult,tasksResult,tier]=await Promise.all([
     device.riotAccountId
-      ?db.from('riot_accounts').select('id,game_name,tagline,role,rank_tier,rank_division,league_points').eq('user_id',device.userId).eq('id',device.riotAccountId).maybeSingle()
+      ?db.from('riot_accounts').select('id,game_name,tagline,role,rank_tier,rank_division,league_points,champions').eq('user_id',device.userId).eq('id',device.riotAccountId).maybeSingle()
       :Promise.resolve({data:null,error:null}),
     device.riotAccountId
       ?db.from('ilp_tasks').select('id,payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
@@ -69,6 +69,8 @@ export async function GET(req:NextRequest){
       primaryRole:primaryRole||'—',
       rank,
       leaguePoints:Number(account?.league_points)||0,
+      // Saved champion pool powers opt-in personal draft recommendations.
+      champions:Array.isArray(account?.champions)?account.champions.slice(0,24):[],
     },
     tier,
     selectedRole:role||primaryRole||'ADC',

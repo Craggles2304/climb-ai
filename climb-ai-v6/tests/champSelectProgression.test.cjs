@@ -46,7 +46,7 @@ test('desktop shows a live draft board instead of a repeated lock prompt',()=>{
     assert.ok(view.includes(text),text);
   }
   assert.ok(view.includes("champion?`Hovering ${champion}`"));
-  assert.ok(view.includes('Preview. The plan freezes when you lock in and sharpens as the draft appears.'));
+  assert.ok(view.includes('Three simple actions for this draft. Details are optional.'));
   assert.ok(!renderer.includes('function renderDraftBoard'));
 });
 

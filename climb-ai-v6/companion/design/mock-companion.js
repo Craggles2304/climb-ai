@@ -103,7 +103,7 @@
   };
 
   let current=SCENARIOS['Home · missions (PLUS)'];
-  let updateState={status:'CURRENT',currentVersion:'0.10.5',latestVersion:null,progress:0};
+  let updateState={status:'CURRENT',currentVersion:'0.11.9',latestVersion:null,progress:0};
   const stateListeners=[],updateListeners=[];
   const ok=()=>Promise.resolve({ok:true});
   window.opCompanion={

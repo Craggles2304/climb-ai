@@ -64,8 +64,8 @@
       live=document.createElement('section');live.id='opLiveMissionHud';live.className='op-live-mission';
       live.innerHTML=`<div class="opm-top"><span class="opm-brand">MATCH HUD</span><span class="opm-signal">● LIVE</span></div>
         <div class="opm-card"><div class="opm-overline"><span id="opmDomain">GAME DNA</span><span id="opmRole"></span></div>
-        <h2 id="opmTitle">CURRENT MISSION</h2><strong id="opmAction">Play your next decision well</strong>
-        <div class="opm-cues"><span id="opmCueOne"></span><span id="opmCueTwo"></span></div></div>
+        <h2 id="opmTitle">CURRENT MISSION</h2><span class="opm-action-label">ONE ACTION THIS GAME</span><strong id="opmAction">Play your next decision well</strong>
+        <div class="opm-cues" aria-label="Two quick reminders"><span id="opmCueOne"></span><span id="opmCueTwo"></span></div></div>
         <div class="opm-metrics" aria-label="Live mission metrics"><div><span id="opmMetricOneLabel">Deaths</span><b id="opmMetricOne">—</b></div><div><span id="opmMetricTwoLabel">CS</span><b id="opmMetricTwo">—</b></div><div><span id="opmMetricThreeLabel">Proven games</span><b id="opmMetricThree">—</b></div></div>
         <div id="opmAlert" class="opm-alert" role="status" hidden></div>`;
       body.prepend(live);
@@ -73,7 +73,7 @@
     let details=$('opLiveMissionDetails');
     if(!details){
       details=document.createElement('details');details.id='opLiveMissionDetails';
-      details.innerHTML='<summary>DETAILS / WHY <span>OPEN</span></summary><div id="opLiveMissionDetailBody"></div>';
+      details.innerHTML='<summary>WHY THIS FOCUS? <span>OPEN</span></summary><div id="opLiveMissionDetailBody"></div>';
       live.insertAdjacentElement('afterend',details);
     }
     const detailBody=$('opLiveMissionDetailBody');
@@ -127,12 +127,13 @@
     const baseline=next?.playerHome?.baseline?.ready===false&&!mission&&!job;
     const protectCarry=/\bcarry\b|\bkeep\s+\w+\s+playable\b/i.test(job);
     const title=baseline?'BASELINE GAME':names[metric]||(mission?short(mission.title,32):protectCarry?'CARRY PRESERVATION':job?'MATCH PLAN':'PLAY YOUR GAME');
-    const action=baseline?'Play normally. Build your baseline.':mission?(rule?.[0]||short(mission.action||mission.gameRule||mission.cue,72)):jobParts.length>1?short(jobParts[1],72):short(jobParts[0]||'Follow the frozen match plan.',72);
+    const brief=(type,value)=>window.OPCoachBrief?.cue?.(type,value,role(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role))||'Make a safe team play.';
+    const action=baseline?'Play normally. Build your baseline.':mission?(rule?.[0]||brief('MISSION',mission.action||mission.gameRule||mission.cue)):job?brief('MOVE',job):'Follow your match plan.';
     put('opmDomain',clean(mission?.domain||mission?.dnaDomain||'GAME DNA').replace(/_/g,' '));
     put('opmRole',clean(next?.matchup?.role||next?.teamPlan?.rememberPlan?.role||''));
     put('opmTitle',title);put('opmAction',action);
-    put('opmCueOne',rule?.[1]||short(jobParts[0]||'Watch the next decision',38));
-    put('opmCueTwo',rule?.[2]||short(jobParts[2]||'Keep your safe position',38));
+    put('opmCueOne',rule?.[1]||(job?'Check the enemy threat first.':'Check the situation.'));
+    put('opmCueTwo',rule?.[2]||(job?'Stay with your team.':'Keep a safe position.'));
     const [first,second]=metricSet(metric,next?.liveHud);
     put('opmMetricOneLabel',first[0]);put('opmMetricOne',first[1]);
     put('opmMetricTwoLabel',second[0]);put('opmMetricTwo',second[1]);

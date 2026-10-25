@@ -14,12 +14,14 @@ const vm=require('node:vm');
 const electron=path.join(process.cwd(),'companion/electron');
 const ocUi=fs.readFileSync(path.join(electron,'oc-ui.js'),'utf8');
 const draftView=fs.readFileSync(path.join(electron,'draft-view.js'),'utf8');
+const coachBrief=fs.readFileSync(path.join(electron,'coach-brief.js'),'utf8');
 const html=fs.readFileSync(path.join(electron,'index.html'),'utf8');
 
 function makeViews(){
   const window={};
   const context=vm.createContext({window,localStorage:{getItem:()=>null,setItem(){}},console,JSON,Math,Number,String,Array,Object,Boolean,Date,Set});
   vm.runInContext(ocUi,context);
+  vm.runInContext(coachBrief,context);
   vm.runInContext(draftView,context);
   return(route,state)=>{
     const root={dataset:{},innerHTML:'',querySelectorAll:()=>[]};

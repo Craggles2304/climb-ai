@@ -53,7 +53,7 @@ test('isolated overlay never injects scripts or receives pairing secrets',()=>{
  assert.match(html,/Content-Security-Policy/);
  assert.match(js,/\.textContent=/);assert.doesNotMatch(js,/\.innerHTML=/);
  assert.doesNotMatch(bridge,/token|webUrl/i);
- assert.match(main,/setIgnoreMouseEvents\(!overlayEditing,\{forward:true\}\)/);
+ assert.match(main,/setIgnoreMouseEvents\(!\(overlayEditing\|\|overlayAssistantOpen\|\|overlayBuildsOpen\),\{forward:true\}\)/);
  assert.match(main,/CommandOrControl\+Shift\+O/);assert.match(main,/Alt\+B/);
  assert.match(main,/overlayEnabled:raw\.overlayEnabled===true/);
 });
@@ -80,11 +80,11 @@ test('overlay renderer changes from League mission to locked TFT focus without b
  await new Promise(resolve=>setImmediate(resolve));
  assert.equal(element('win').textContent,'Hold range');
  assert.equal(element('mission').textContent,'Position safely');
- stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY'});
- assert.equal(element('title').textContent,'ECONOMY DISCIPLINE');
- assert.equal(element('mission').textContent,'Plan your spending');
- assert.equal(element('win').textContent,'Keep options open');
- assert.equal(element('avoid').textContent,'Protect your economy');
+ stateHandler({...gameState,game:'TFT',status:'TFT · RECORDING',plan:null,focus:'ECONOMY',tftMission:{title:'CONVERT GOLD BEFORE HP',nextGame:'Spend deliberately to stabilise.',cues:['Review your economy','Check your stabilisation']}});
+ assert.equal(element('title').textContent,'CONVERT GOLD BEFORE HP');
+ assert.equal(element('mission').textContent,'Spend deliberately to stabilise.');
+ assert.equal(element('win').textContent,'Review your economy');
+ assert.equal(element('avoid').textContent,'Check your stabilisation');
  assert.ok(!element('editor').hidden===false || element('editor').hidden);
 });
 
@@ -173,4 +173,26 @@ test('preset buttons persist mode and status clearly distinguishes preview from 
  assert.equal(fake('mission').textContent,'Protect positioning');
  assert.equal(fake('status').textContent,'LEAGUE RECORDING');
  assert.match(fake('championArt').src,/Jinx_0\.jpg/);
+});
+
+
+test('esports HUD preserves click-through safety and frozen-plan, low-distraction modes',()=>{
+ const html=fs.readFileSync(path.join(base,'learning-overlay.html'),'utf8');
+ const styles=fs.readFileSync(path.join(base,'learning-overlay-esports.css'),'utf8');
+ const script=fs.readFileSync(path.join(base,'learning-overlay.js'),'utf8');
+ assert.match(html,/learning-overlay-esports\.css/);
+ assert.match(html,/id="modeIndicator"/);
+ assert.match(html,/id="planState"/);
+ assert.match(html,/FROZEN BEFORE PLAY/);
+ assert.match(styles,/\.hud\.mode-minimal/);
+ assert.match(styles,/\.hud\.mode-focus/);
+ assert.match(styles,/\.hud\.mode-expanded/);
+ assert.match(styles,/prefers-reduced-motion/);
+ assert.match(styles,/\.hud\.mode-focus \.hud-block--actions/);
+ assert.match(styles,/\.hud\.mode-minimal \.hud-identity/);
+ assert.match(script,/put\('modeIndicator',mode\)/);
+ assert.match(script,/ACCOUNT MISSION LOCKED/);
+ assert.doesNotMatch(script,/\.innerHTML=/);
+ assert.doesNotMatch(script,/winProbability|enemyCooldown|liveHud|enemyPosition/i);
+ assert.doesNotMatch(styles,/animation:[^;]*infinite/i);
 });

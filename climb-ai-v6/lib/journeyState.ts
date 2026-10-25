@@ -36,7 +36,7 @@ export function buildJourneyState(input:{
     title:'Connect OP CLIMB Companion.',
     body:'Pair this PC once. OP CLIMB can then track your games automatically.',
     cta:'CONNECT COMPANION →',
-    href:'/live',
+    href:'/live#companion-connect',
   };
   if(!input.online)return{
     phase:'RECONNECT',
@@ -44,7 +44,7 @@ export function buildJourneyState(input:{
     title:'Reconnect before you queue.',
     body:'This PC is paired, but OP CLIMB is not receiving a live heartbeat right now.',
     cta:'RECONNECT COMPANION →',
-    href:'/live',
+    href:'/live#companion-connect',
   };
   if(games<DNA_BASELINE_GAMES){
     const next=games+1;

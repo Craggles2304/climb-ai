@@ -6,6 +6,7 @@ import {riotEnabled} from '@/lib/riot/client';
 import {riotService} from '@/lib/services/riotService';
 import {getRecentTftMatchIds,getTftMatch,getTftRank} from '@/lib/tft/service';
 import {saveTftMatches} from './tftRepository';
+import {loadTftDevelopment} from './tftDevelopmentRepository';
 
 export type TftTelemetryEventKind='MATCH_START'|'ROUND_START'|'ROUND_END'|'MATCH_END'|'CHECKPOINT';
 export interface TftRecorderPoint extends TftTelemetryPoint{
@@ -35,6 +36,7 @@ export async function startTftTelemetrySession(device:TrackerDevice,input:TftRec
     .eq('device_id',device.id).eq('user_id',device.userId).eq('pseudo_match_id',input.pseudoMatchId).maybeSingle();
   if(existingError)throw new Error(existingError.message);
   if(existing)return existing;
+  const development=device.riotAccountId?await loadTftDevelopment(device.userId,device.riotAccountId,db).catch(error=>{console.warn('[tft-development] mission snapshot unavailable',error);return null}):null;
   const payload={
     user_id:device.userId,
     riot_account_id:device.riotAccountId,
@@ -45,7 +47,7 @@ export async function startTftTelemetrySession(device:TrackerDevice,input:TftRec
     started_at:input.startedAt??now,
     last_seen_at:now,
     updated_at:now,
-    metadata:{deviceName:device.deviceName,...(input.metadata??{})},
+    metadata:{...(input.metadata??{}),deviceName:device.deviceName,developmentMission:development?.mission??null},
   };
   const {data,error}=await db.from('tft_telemetry_sessions')
     .upsert(payload,{onConflict:'device_id,pseudo_match_id'})
@@ -65,7 +67,12 @@ export async function recordTftTelemetryPoint(device:TrackerDevice,pseudoMatchId
     .maybeSingle();
   if(sessionError)throw new Error(sessionError.message);
   if(!session)throw new Error('TFT telemetry session is not active.');
-  if(session.status!=='RECORDING')throw new Error('TFT telemetry session has already ended.');
+  if(session.status!=='RECORDING'){
+    const existing=await db.from('tft_telemetry_points').select('client_point_id').eq('session_id',session.id).eq('client_point_id',point.clientPointId).maybeSingle();
+    if(existing.error)throw new Error(existing.error.message);
+    if(existing.data)return{sessionId:session.id};
+    throw new Error('TFT telemetry session has already ended.');
+  }
   const row={
     session_id:session.id,
     client_point_id:point.clientPointId,
@@ -176,7 +183,7 @@ export async function completeTftTelemetrySession(device:TrackerDevice,pseudoMat
   const db=dbOrThrow();
   const now=new Date().toISOString();
   const {data:session,error:sessionError}=await db.from('tft_telemetry_sessions')
-    .select('id,pseudo_match_id,started_at,ended_at')
+    .select('id,pseudo_match_id,status,started_at,ended_at,summary')
     .eq('device_id',device.id)
     .eq('user_id',device.userId)
     .eq('pseudo_match_id',pseudoMatchId)
@@ -185,7 +192,9 @@ export async function completeTftTelemetrySession(device:TrackerDevice,pseudoMat
   if(!session)throw new Error('TFT telemetry session was not found.');
   const timeline=await readTimeline(session.id,pseudoMatchId);
   const findings=analyzeTftTimeline(timeline);
+  if(session.status==='COMPLETE')return{sessionId:session.id,timeline,findings,linkedMatch:null,pointCount:timeline.points.length,evidenceReady:timeline.points.length>0};
   const summary={
+    ...(session.summary??{}),
     mode:'OP_CLIMB_NATIVE_WINDOW_OCR_V1',
     pointCount:timeline.points.length,
     quality:timeline.points.length?'RECORDED':'NO_EVIDENCE',

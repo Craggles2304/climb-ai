@@ -3,6 +3,11 @@ const {contextBridge,ipcRenderer}=require('electron');
 contextBridge.exposeInMainWorld('opOverlay',{
   getState:()=>ipcRenderer.invoke('overlay:get-state'),
   saveLayout:layout=>ipcRenderer.invoke('overlay:save-layout',layout),
+  nudge:(dx,dy)=>ipcRenderer.invoke('overlay:nudge',dx,dy),
+  center:()=>ipcRenderer.invoke('overlay:center'),
   finishEditing:()=>ipcRenderer.invoke('overlay:finish-edit'),
+  toggleAssistant:()=>ipcRenderer.invoke('overlay:assistant-toggle'),
+  toggleBuilds:()=>ipcRenderer.invoke('overlay:builds-toggle'),
+  askCoach:(message,history=[])=>ipcRenderer.invoke('overlay:ask-coach',{message,history}),
   onState:callback=>{const listener=(_event,payload)=>callback(payload);ipcRenderer.on('overlay:state',listener);return()=>ipcRenderer.removeListener('overlay:state',listener)},
 });

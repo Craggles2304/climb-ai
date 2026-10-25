@@ -30,7 +30,8 @@ test('a missed draft can recover a full in-game plan from the live roster',()=>{
 test('desktop consumes authoritative tracker state instead of relying only on prose logs',()=>{
   assert.ok(desktop.includes("const TRACKER_STATE_PREFIX='OP_TRACKER_STATE '"));
   assert.ok(desktop.includes('function applyTrackerState(raw)'));
-  assert.ok(desktop.includes("if(next==='RECORDING')return setState({phase:'RECORDING'"));
+  assert.ok(desktop.includes("if(next==='RECORDING'){"));
+  assert.ok(desktop.includes("if(origin==='LOCAL')markRecordingAlive()"));;
   assert.ok(desktop.includes("if(next==='CHAMP_SELECT'){"));
   assert.ok(desktop.includes("if(origin==='LOCAL')lastLocalChampSelectAt=Date.now()"));
   assert.ok(desktop.includes("if(next==='WAITING'||next==='LCU_UNAVAILABLE')"));
@@ -49,7 +50,8 @@ test('auth rejection is sticky until the Companion is explicitly paired again',(
 test('desktop self-heals match end when a prose end log is missed',()=>{
   assert.ok(desktop.includes("if(state.phase==='RECORDING'){"));
   assert.ok(desktop.includes("setState({phase:'UPLOADING'"));
-  assert.ok(desktop.includes('startPostGameReviewPoll();return;'));
+  assert.ok(desktop.includes('scheduleRecordingExit(')); // Deferred until local end is confirmed.
+  assert.ok(desktop.includes('startPostGameReviewPoll();'));;
 });
 
 test('tracker stdout and stderr are line-buffered so split chunks cannot lose state messages',()=>{
