@@ -58,6 +58,10 @@
         "to": "tracker/pregame-normalizer.mjs"
       },
       {
+        "from": "src/pending-matches.mjs",
+        "to": "tracker/pending-matches.mjs"
+      },
+      {
         "from": "build/icon.ico",
         "to": "icon.ico"
       },

@@ -118,12 +118,12 @@ function buildRoleLearningStack(role:Role,rows:HistoryAnalysisRow[],now:string,p
 async function buildAndSaveProLearningProfile(userId:string,riotAccountId:string){
   const db=getSupabaseAdmin();if(!db)return null;
   const [historyResult,learningResult]=await Promise.all([
-    db.from('op_match_analysis').select('match_id,champion,role,created_at,patch,game_version,analysis').eq('queue_id',420).eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:true}).limit(50),
+    db.from('op_match_analysis').select('match_id,champion,role,created_at,patch,game_version,analysis').eq('queue_id',420).eq('user_id',userId).eq('riot_account_id',riotAccountId).order('created_at',{ascending:false}).limit(50),
     db.from('op_player_learning_profiles').select('recent_change,role_profiles,learning_model_version').eq('user_id',userId).eq('riot_account_id',riotAccountId).maybeSingle(),
   ]);
   if(historyResult.error)throw new Error(historyResult.error.message);
   if(learningResult.error)throw new Error(learningResult.error.message);
-  const rows:HistoryAnalysisRow[]=(historyResult.data??[]).map(row=>({matchId:row.match_id?String(row.match_id):null,champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),patch:row.patch?String(row.patch):null,gameVersion:row.game_version?String(row.game_version):null,analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
+  const rows:HistoryAnalysisRow[]=[...(historyResult.data??[])].reverse().map(row=>({matchId:row.match_id?String(row.match_id):null,champion:String(row.champion||'Unknown'),role:row.role?String(row.role):null,createdAt:String(row.created_at),patch:row.patch?String(row.patch):null,gameVersion:row.game_version?String(row.game_version):null,analysis:row.analysis as ProMatchAnalysis})).filter(row=>row.analysis?.version===1);
   const previousLearning=learningResult.data?.learning_model_version===CURRENT_LEARNING_MODEL_VERSION?learningResult.data:null;
   const previousCurriculum=((previousLearning?.recent_change as any)?.curriculum??null);
   const previousPlayerCoachingIdentity=((previousLearning?.recent_change as any)?.playerCoachingIdentity??null) as PlayerCoachingIdentity|null;

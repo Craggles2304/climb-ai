@@ -57,7 +57,8 @@ jobs:
       - name: Ranked Solo/Duo eligibility and database flow
         run: |
           node --test tests/companionRankedQueue.test.cjs
-          npx vitest run tests/rankedSoloFlow.test.ts --maxWorkers=1 --no-file-parallelism
+          node --import tsx --test tests/pendingMatches.test.ts
+          npx vitest run tests/rankedSoloFlow.test.ts tests/postgamePersistence.test.ts tests/postgameQueueRetry.test.ts --maxWorkers=1 --no-file-parallelism
       - name: TFT evidence grading and shared mission flow
         run: |
           node --import tsx --test tests/tftEvidenceDevelopment.test.ts tests/tftCompanionCoachHud.test.ts

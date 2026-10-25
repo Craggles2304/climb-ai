@@ -5,6 +5,7 @@ import {existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:f
 import {dirname,join} from 'node:path';
 import {recoveryPregameContext,gameActiveNow,isGameActivePhase,trackerHeartbeatState,queueIdFromGameflow} from './in-game-recovery.mjs';
 import {normalizePregame} from './pregame-normalizer.mjs';
+import {pendingMatchStore} from './pending-matches.mjs';
 
 const LIVE_CLIENT='https://127.0.0.1:2999/liveclientdata/allgamedata';
 const WEB=(process.env.OP_WEB_URL||process.env.CLIMB_WEB_URL||'http://localhost:3000').replace(/\/$/,'');
@@ -20,10 +21,11 @@ const UPLOAD_TIMEOUT_MS=Math.max(3000,Number(process.env.OP_UPLOAD_TIMEOUT_MS||8
 const UPLOAD_RETRY_MS=Math.max(1000,Number(process.env.OP_UPLOAD_RETRY_MS||5000));
 const MAX_UPLOAD_QUEUE=Math.max(30,Number(process.env.OP_MAX_UPLOAD_QUEUE||180));
 const HEARTBEAT_MS=15_000;
-const RUNTIME_VERSION='2026.10.05.2';
+const RUNTIME_VERSION='2026.10.25.1';
 const TRACKER_HOME=process.env.LOCALAPPDATA?join(process.env.LOCALAPPDATA,'OVERPOWERED','Tracker'):null;
 const SESSION_FILE=TRACKER_HOME?join(TRACKER_HOME,'active-session.json'):null;
 const PENDING_MATCH_FILE=TRACKER_HOME?join(TRACKER_HOME,'pending-match.json'):null;
+const pendingMatches=pendingMatchStore(PENDING_MATCH_FILE);
 const READ_CHECKPOINT_FILE=TRACKER_HOME?join(TRACKER_HOME,'read-checkpoints.json'):null;
 const MARKED_MOMENTS_FILE=TRACKER_HOME?join(TRACKER_HOME,'marked-moments.json'):null;
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
@@ -282,7 +284,8 @@ async function postStatus(force=false){
 function queueEnvelope(envelope){
   if(uploadQueue.length>=MAX_UPLOAD_QUEUE){
     const oldestSnapshot=uploadQueue.findIndex(item=>item.type==='SNAPSHOT');
-    if(oldestSnapshot>=0){uploadQueue.splice(oldestSnapshot,1);droppedSnapshots+=1}else uploadQueue.shift();
+    if(oldestSnapshot>=0){uploadQueue.splice(oldestSnapshot,1);droppedSnapshots+=1}
+    // Completed games are durable and must never be evicted by a queue cap.
     if(droppedSnapshots===1||droppedSnapshots%20===0)console.warn(`OVERPOWERED Companion: upload queue is full; ${droppedSnapshots} old snapshot(s) dropped while preserving live recording.`);
   }
   uploadQueue.push(envelope);void flushUploadQueue();
@@ -297,7 +300,7 @@ async function flushUploadQueue(){
       const result=await postEnvelope(current);
       if(result.ok){
         uploadQueue.shift();
-        if(current?.type==='FINAL')clearPendingMatch();
+        if(current?.type==='FINAL'){try{pendingMatches.acknowledge(current.clientSessionId)}catch(error){console.warn('Could not acknowledge saved game:',error.message)}}
         continue;
       }
       if(!result.retryable){uploadQueue.shift();continue}
@@ -496,19 +499,16 @@ function persistSession(snapshot){
 }
 
 function clearPersistedSession(){if(!SESSION_FILE)return;try{unlinkSync(SESSION_FILE)}catch{}}
-function clearPendingMatch(){if(!PENDING_MATCH_FILE)return;try{unlinkSync(PENDING_MATCH_FILE)}catch{}}
 function clearLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE)return;try{unlinkSync(READ_CHECKPOINT_FILE)}catch{}}
 function clearLocalMarkedMoments(){if(!MARKED_MOMENTS_FILE)return;try{unlinkSync(MARKED_MOMENTS_FILE)}catch{}}
 function readLocalMarkedMoments(sessionId){if(!MARKED_MOMENTS_FILE||!existsSync(MARKED_MOMENTS_FILE))return[];try{const rows=JSON.parse(readFileSync(MARKED_MOMENTS_FILE,'utf8'));return Array.isArray(rows)?rows.filter(row=>!sessionId||String(row?.clientSessionId||'')===String(sessionId)).slice(-12):[]}catch{return[]}}
 function readLocalReadCheckpoints(){if(!READ_CHECKPOINT_FILE||!existsSync(READ_CHECKPOINT_FILE))return[];try{const rows=JSON.parse(readFileSync(READ_CHECKPOINT_FILE,'utf8'));return Array.isArray(rows)?rows.slice(0,3):[]}catch{return[]}}
-function persistPendingMatch(envelope){if(!PENDING_MATCH_FILE)return;try{writeFileSync(PENDING_MATCH_FILE,JSON.stringify(envelope),'utf8')}catch{}}
+function persistPendingMatch(envelope){
+  try{pendingMatches.save(envelope)}catch(error){console.error('Could not save pending game:',error.message)}
+}
 function restorePendingMatchUpload(){
-  if(!PENDING_MATCH_FILE||!existsSync(PENDING_MATCH_FILE))return;
-  try{
-    const envelope=JSON.parse(readFileSync(PENDING_MATCH_FILE,'utf8'));
-    if(envelope?.type==='FINAL'&&Array.isArray(envelope?.snapshots)&&envelope.snapshots.length)queueEnvelope(envelope);
-    else clearPendingMatch();
-  }catch{clearPendingMatch()}
+  try{for(const envelope of pendingMatches.read())queueEnvelope(envelope)}
+  catch(error){console.error('Could not restore pending games:',error.message)}
 }
 function localPlayer(snapshot){
   const players=Array.isArray(snapshot?.players)?snapshot.players:[];
