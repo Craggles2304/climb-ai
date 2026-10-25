@@ -25,3 +25,9 @@ queues; independent persisted-match checks for XP; baseline ownership; selected
 account rank isolation; and the full existing regression/build gates. The schema
 was verified on the live database without deleting historical records. A real
 Solo/Duo recording with Companion 0.12.0 remains the live capture validation.
+
+The release also upgrades to Next.js 16.4.3 with the existing Webpack build and
+Edge middleware. OpenNext now rejects the previous Next.js 15 branch as outside
+its support window. Production, preview base settings and CI use the same pinned
+Cloudflare adapter/CLI versions; new previews no longer inherit the obsolete
+Next.js 15.5.27 override.
