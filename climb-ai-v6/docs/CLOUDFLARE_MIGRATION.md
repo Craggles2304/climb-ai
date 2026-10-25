@@ -16,16 +16,18 @@
 
 Recommended target: **Cloudflare Workers Paid** (currently $5 USD/month minimum plus usage); a full server-rendered Next.js application may exceed Free tier's 10ms CPU limit. Do not assume actual costs or compatibility until tested.
 
-This branch includes `wrangler.jsonc`, `open-next.config.ts` and a GitHub Actions smoke-build workflow. OpenNext 1.20.11 requires Next.js 15.5.27 or newer, while the existing Vercel lockfile pins 15.5.24. The first GitHub smoke run confirmed this incompatibility. The Cloudflare build therefore installs 15.5.27 ephemerally alongside the adapter, leaving the existing Vercel install unchanged. The current app has an npm lockfile without the Cloudflare adapter; to avoid breaking `npm ci` on the live deployment, the smoke build and first Cloudflare deployment can install the adapter as **CI-only ephemeral dependencies**, then we should lock compatible pinned versions after verifying a successful build.
+This branch includes `wrangler.jsonc`, `open-next.config.ts` and a GitHub Actions smoke-build workflow. The adapter requires a newer Next.js than the existing Vercel lockfile's 15.5.24, so the Cloudflare build installs a compatible Next.js ephemerally alongside the adapter, leaving the existing Vercel install unchanged. The current app has an npm lockfile without the Cloudflare adapter; to avoid breaking `npm ci` on the live deployment, the smoke build and the Cloudflare deployment install the adapter as **CI-only ephemeral dependencies**.
+
+**Pin all three versions exactly, and change them in this document and `.github/workflows/cloudflare-migration-check.yml` together.** `@opennextjs/cloudflare@latest` is not safe here: 1.20.13 (21 October 2026) raised its peer floor to `next >=15.5.28 <16 || >=16.4.1`, so every Workers build still pinning `next@15.5.27` began failing at `npm install` with `ERESOLVE` — no commit required, and production stopped deploying while the live Worker kept serving its last good build. The GitHub smoke test stayed green throughout, because it already pinned 15.5.28. A green `cloudflare-build` check therefore does **not** prove the dashboard build works; the two commands have to match.
 
 At Cloudflare dashboard > Workers & Pages > Create application > Import a repository:
 
 - Connect GitHub repository: `Craggles2304/climb-ai`.
-- Worker name: `op-climb` (must match `wrangler.jsonc`).
+- Worker name: must match the `name` in `wrangler.jsonc`, currently `climb-ai` (changed from `op-climb` in commit `2758ab85` to match the connected service). Confirm which Workers service is connected to this repository before deploying; the GitHub check reports as `Workers Builds: op-climb`, so verify the two names agree and that only one service builds from `main`.
 - Framework/build type: **Workers**, not static Cloudflare Pages.
 - Root directory: `climb-ai-v6`.
 - Production branch: `main` **only after tests/PR are reviewed and merged**.
-- Build command: `npm ci && npm install --no-save next@15.5.27 @opennextjs/cloudflare@latest wrangler@latest && npx opennextjs-cloudflare build`
+- Build command: `npm ci && npm install --no-save next@15.5.28 @opennextjs/cloudflare@1.20.13 wrangler@4.152.0 && npx opennextjs-cloudflare build`
 - Production deploy command: `npx opennextjs-cloudflare deploy`
 - Non-production deploy command: `npx opennextjs-cloudflare upload`
 - Next.js output is in `.open-next/`; Wrangler provides the Worker entry point and static assets.
@@ -54,7 +56,7 @@ Verify on the temporary Cloudflare Worker hostname:
 - Billing checkout, server-side Stripe webhook signature verification, entitlements and Billing Portal. Use Stripe **test mode** on the preview.
 - Companion pairings, telemetry uploads, overlay and post-game evidence against the new origin (some Companion settings may need URL updates).
 - Image optimisation, error handling, timeouts, memory and CPU limits under realistic traffic.
-- Inspect Cloudflare Worker bundle compressed size: Free tier 3 MiB, Paid tier 10 MiB. If oversized, split functions or rework imports rather than removing needed functionality.
+- Inspect Cloudflare Worker bundle compressed size: Free tier 3 MiB, Paid tier 10 MiB. If oversized, split functions or rework imports rather than removing needed functionality. Measured on 25 October 2026 with the pinned versions above: `16437.74 KiB / gzip: 3131.42 KiB`, i.e. roughly 3.06 MiB — **already past the Free tier limit**, so this needs Workers Paid. Re-check with `npx wrangler deploy --dry-run` whenever dependencies change.
 - Check compatibility of Next.js middleware, cache/ISR and the server's in-process rate limiter with the Workers execution model.
 
 The GitHub smoke build is **only an adapter build check**; passing it is not equivalent to the above runtime acceptance.

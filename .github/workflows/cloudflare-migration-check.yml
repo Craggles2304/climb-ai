@@ -26,6 +26,10 @@ jobs:
       - name: Install locked application dependencies
         run: npm ci
       - name: Install Cloudflare adapter in CI only
+        # Keep these pins in step with the Cloudflare dashboard build command in
+        # docs/CLOUDFLARE_MIGRATION.md. An unpinned adapter breaks production
+        # builds on its own: 1.20.13 raised its Next.js peer floor, which left
+        # every Workers build pinning an older Next.js unable to install.
         run: npm install --no-save @opennextjs/cloudflare@1.20.13 wrangler@4.151.0
       - name: Build full Next.js application for Cloudflare Workers
         run: npx opennextjs-cloudflare build
