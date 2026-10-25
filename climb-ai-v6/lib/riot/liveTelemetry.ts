@@ -22,6 +22,7 @@ export interface LiveTelemetryPlayer{
 }
 
 export interface LiveTelemetrySnapshot{
+  queueId?:number|null;
   version:1;
   gameTime:number;
   gameMode:string|null;

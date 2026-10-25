@@ -26,8 +26,8 @@ export async function GET(req:Request){
 
     const [{data:account,error:accountError},historyResult,learningResult]=await Promise.all([
       db.from('riot_accounts').select('id').eq('id',input.accountId).eq('user_id',user.id).maybeSingle(),
-      db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',user.id).eq('riot_account_id',input.accountId).order('created_at',{ascending:true}).limit(50),
-      db.from('op_player_learning_profiles').select('recent_change').eq('user_id',user.id).eq('riot_account_id',input.accountId).maybeSingle(),
+      db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('queue_id',420).eq('user_id',user.id).eq('riot_account_id',input.accountId).order('created_at',{ascending:true}).limit(50),
+      db.from('op_player_learning_profiles').select('recent_change').eq('learning_model_version',3).eq('user_id',user.id).eq('riot_account_id',input.accountId).maybeSingle(),
     ]);
     if(accountError)throw new Error(accountError.message);
     if(!account)return NextResponse.json({error:'That Riot account is not linked to this user.'},{status:403});

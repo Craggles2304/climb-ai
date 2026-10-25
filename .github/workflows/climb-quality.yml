@@ -54,6 +54,11 @@ jobs:
         run: node --test tests/companionLearningOverlay.test.cjs tests/tftHudEsports.test.cjs
       - name: TFT Companion recorder regressions
         run: node --import tsx --test tests/tftCompanionRecorder.test.ts
+      - name: Ranked Solo/Duo eligibility and database flow
+        run: |
+          node --test tests/companionRankedQueue.test.cjs
+          node --import tsx --test tests/pendingMatches.test.ts
+          npx vitest run tests/rankedSoloFlow.test.ts tests/postgamePersistence.test.ts tests/postgameQueueRetry.test.ts --maxWorkers=1 --no-file-parallelism
       - name: TFT evidence grading and shared mission flow
         run: |
           node --import tsx --test tests/tftEvidenceDevelopment.test.ts tests/tftCompanionCoachHud.test.ts

@@ -1,3 +1,4 @@
+import {resolveSoloRank} from '@/lib/server/soloRank';
 import {NextRequest,NextResponse} from 'next/server';
 import {z} from 'zod';
 import {authenticateTrackerToken} from '@/lib/server/liveTrackerRepository';
@@ -228,18 +229,18 @@ async function playerContext(db:any,device:{userId:string;riotAccountId:string|n
     ?db.from('riot_accounts').select('rank_tier,rank_division').eq('id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
   const taskPromise=device.riotAccountId
-    ?db.from('ilp_tasks').select('payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
+    ?db.from('ilp_tasks').select('payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
     :Promise.resolve({data:[],error:null});
   const learningPromise=device.riotAccountId
-    ?db.from('op_player_learning_profiles').select('learning_identity,recent_change,role_profiles').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
+    ?db.from('op_player_learning_profiles').select('learning_identity,recent_change,role_profiles').eq('learning_model_version',3).eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).maybeSingle()
     :Promise.resolve({data:null,error:null});
   const historyPromise=device.riotAccountId
-    ?db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('created_at',{ascending:true}).limit(50)
+    ?db.from('op_match_analysis').select('champion,role,created_at,analysis').eq('queue_id',420).eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('created_at',{ascending:true}).limit(50)
     :Promise.resolve({data:[],error:null});
   const [profileResult,riotResult,taskResult,learningResult,historyResult]=await Promise.all([profilePromise,riotPromise,taskPromise,learningPromise,historyPromise]);
   const tier=clean(riotResult?.data?.rank_tier);
   const division=clean(riotResult?.data?.rank_division);
-  const rank=tier?(tier+(division?' '+division:'')):(clean(profileResult?.data?.rank)||'UNRANKED');
+  const rank=await resolveSoloRank(db,device.userId,device.riotAccountId);
   const tasks=(taskResult?.data??[]).map((row:any)=>row?.payload??{}).filter((task:any)=>{
     const status=clean(task?.status||'ACTIVE').toUpperCase();
     return status!=='MASTERED'&&status!=='PAUSED'&&clean(task?.gameRule);
@@ -603,7 +604,7 @@ async function aiCoach(champion:string,userRole:string,ours:Player[],enemies:Pla
 async function persistLockedCoachForPregame(db:any,device:any,input:{champion:string;role:string|null;source:string;coach:DraftCoach;playerCoachingIdentity:PlayerCoachingIdentity|null;learningVelocity:LearningVelocityProfile|null;skillTransferGraph:SkillTransferGraph|null;skillBridgePrime:SkillBridgePrime|null;decisionPrincipleEngine:DecisionPrincipleEngine|null;decisionPrinciplePrime:DecisionPrinciplePrime|null;adaptiveCoachingSession:AdaptiveCoachingSession|null;personalTrap:PersonalTrap|null;decisionPremortem:DecisionPremortem|null;decisionSimulation:DecisionSimulation|null;scenarioPrime:ScenarioPrime|null;decisionTransferPrime:DecisionTransferPrime|null;autonomousCurriculum:ClimbAutonomousCurriculum|null;climbMission:ClimbMatchMission|null;intentProbe:ClimbIntentProbe|null;experimentSchedule:ClimbExperimentSchedule|null;coachingStrategy:ClimbCoachingStrategy|null;causalCoachRoute:CausalCoachRoute|null;coachIntervention:ClimbCoachIntervention|null;situationContext:DraftSituationContext;quality:any;playbook:any;matchContract:CompanionMatchContract}){
   try{
     const {data,error}=await db.from('live_pregame_contexts')
-      .select('id,context,last_seen_at,started_at')
+      .select('id,context,last_seen_at,started_at').eq('context->>queueId','420')
       .eq('device_id',device.id)
       .eq('user_id',device.userId)
       .order('started_at',{ascending:false})
@@ -682,6 +683,10 @@ export async function POST(req:NextRequest){
 
     const db=getSupabaseAdmin();
     if(!db)return NextResponse.json({ok:false,error:'Draft coach is unavailable.'},{status:503});
+    const rankedDraft=await db.from('live_pregame_contexts').select('last_seen_at').eq('context->>queueId','420').eq('device_id',device.id).eq('user_id',device.userId).order('last_seen_at',{ascending:false}).limit(1).maybeSingle();
+    if(rankedDraft.error)throw new Error(rankedDraft.error.message);
+    const rankedSeenAt=Date.parse(String(rankedDraft.data?.last_seen_at||''));
+    if(!Number.isFinite(rankedSeenAt)||Date.now()-rankedSeenAt>120_000)return NextResponse.json({ok:false,error:'Connect Companion 0.12.0 or newer in Ranked Solo/Duo to load your draft coach.'},{status:409});
     const [subscriptionTier,context]=await Promise.all([leagueSubscriptionTier(db,device.userId),playerContext(db,device)]);
     if(!hasTier(subscriptionTier,'PLUS'))return NextResponse.json({ok:false,error:'PLUS or PRO is required for the full draft coach.'},{status:403});
     const playerPlan=hasTier(subscriptionTier,'PLUS');

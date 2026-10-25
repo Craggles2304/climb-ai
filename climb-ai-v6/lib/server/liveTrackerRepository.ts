@@ -1,4 +1,6 @@
 import 'server-only';
+import {resolveSoloRank} from './soloRank';
+import {recordedQueueId,isRankedSolo,rankedEligibility} from '@/lib/rankedSolo';
 import {createHash,randomBytes} from 'node:crypto';
 import {getSupabaseAdmin} from './supabaseAdmin';
 import {buildStrengthTimeline,type StrengthTimeline} from '@/lib/riot/liveStrength';
@@ -128,7 +130,9 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
   if(!snapshots.length)throw new Error('Completed match bundle requires at least one keyframe.');
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');
   const now=new Date().toISOString();
+  const queueId=recordedQueueId(snapshots);
   const summary={
+    rankedEligibility:rankedEligibility(queueId),
     capture:{
       mode:'LOCAL_FIRST_QUEUE_V1',
       count:snapshots.length,
@@ -146,6 +150,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     riot_account_id:device.riotAccountId,
     device_id:device.id,
     account_key:device.accountKey,
+    queue_id:queueId,
     client_session_id:envelope.clientSessionId,
     started_at:envelope.startedAt??snapshots[0]?.receivedAt??now,
     last_seen_at:now,
@@ -168,6 +173,7 @@ export async function saveCompletedMatchBundle(device:TrackerDevice,envelope:Liv
     // A retry after an accepted upload must not erase its analysis or DNA sync.
     if(sessionId&&existing?.status!=='COMPLETE'){
       const {error:updateExistingError}=await db.from('live_telemetry_sessions').update({
+        queue_id:queueId,
         last_seen_at:now,
         status:'COMPLETE',
         ended_at:envelope.endedAt??now,
@@ -196,8 +202,8 @@ export async function saveLiveEnvelope(device:TrackerDevice,envelope:LiveEnvelop
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is not configured.');const now=new Date().toISOString();
   const existing=await db.from('live_telemetry_sessions').select('id,started_at').eq('device_id',device.id).eq('client_session_id',envelope.clientSessionId).maybeSingle();if(existing.error)throw new Error(existing.error.message);
   let sessionId=existing.data?.id as string|undefined;
-  if(!sessionId){const gameVersion=await latestPatch().catch(()=>null),patch=canonicalLeaguePatch(gameVersion);const {data,error}=await db.from('live_telemetry_sessions').insert({user_id:device.userId,riot_account_id:device.riotAccountId,device_id:device.id,account_key:device.accountKey,client_session_id:envelope.clientSessionId,started_at:envelope.startedAt??now,last_seen_at:now,status:envelope.type==='END'?'COMPLETE':'ACTIVE',ended_at:envelope.type==='END'?(envelope.endedAt??now):null,patch,game_version:gameVersion,patch_source:patch?'DATA_DRAGON_CURRENT_AT_RECORDING':'UNKNOWN',metadata:{deviceName:device.deviceName}}).select('id').single();if(error)throw new Error(error.message);sessionId=data?.id as string|undefined}
-  else{const patch:Record<string,unknown>={last_seen_at:now};if(envelope.type==='END'){patch.status='COMPLETE';patch.ended_at=envelope.endedAt??now}const {error}=await db.from('live_telemetry_sessions').update(patch).eq('id',sessionId);if(error)throw new Error(error.message)}
+  if(!sessionId){const gameVersion=await latestPatch().catch(()=>null),patch=canonicalLeaguePatch(gameVersion);const {data,error}=await db.from('live_telemetry_sessions').insert({user_id:device.userId,riot_account_id:device.riotAccountId,device_id:device.id,account_key:device.accountKey,queue_id:envelope.snapshot?.queueId??null,client_session_id:envelope.clientSessionId,started_at:envelope.startedAt??now,last_seen_at:now,status:envelope.type==='END'?'COMPLETE':'ACTIVE',ended_at:envelope.type==='END'?(envelope.endedAt??now):null,patch,game_version:gameVersion,patch_source:patch?'DATA_DRAGON_CURRENT_AT_RECORDING':'UNKNOWN',metadata:{deviceName:device.deviceName}}).select('id').single();if(error)throw new Error(error.message);sessionId=data?.id as string|undefined}
+  else{const patch:Record<string,unknown>={last_seen_at:now};if(envelope.snapshot?.queueId!=null)patch.queue_id=envelope.snapshot.queueId;if(envelope.type==='END'){patch.status='COMPLETE';patch.ended_at=envelope.endedAt??now}const {error}=await db.from('live_telemetry_sessions').update(patch).eq('id',sessionId);if(error)throw new Error(error.message)}
   if(!sessionId)throw new Error('Live session could not be created.');
   if(envelope.type==='SNAPSHOT'&&envelope.snapshot){const {error}=await db.from('live_telemetry_snapshots').insert({session_id:sessionId,game_time:envelope.snapshot.gameTime,payload:envelope.snapshot});if(error)throw new Error(error.message)}
   if(envelope.type==='END'){
@@ -237,7 +243,7 @@ export async function materializeDeferredLocalMatch(userId:string,accountKey:str
 
 export async function latestLiveReview(userId:string,accountKey:string){
   const db=getSupabaseAdmin();if(!db)return null;
-  const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
+  const {data:session,error}=await db.from('live_telemetry_sessions').select('id,status,started_at,ended_at,last_seen_at,summary,metadata,riot_account_id,patch,game_version,patch_source').eq('queue_id',420).eq('user_id',userId).eq('account_key',accountKey).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error)throw new Error(error.message);if(!session)return null;
   const capture=(session.summary as any)?.capture;
   const queueProcessing=['QUEUED','PROCESSING'].includes(String((session.summary as any)?.processing?.status??''));
@@ -342,7 +348,7 @@ export async function processQueuedPostGameSession(sessionId:string,envelope?:Li
 async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)return;
   const [{data:session,error:sessionError},{data,error}]=await Promise.all([
-    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source,summary').eq('id',sessionId).single(),
+    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source,summary,queue_id').eq('id',sessionId).single(),
     db.from('live_telemetry_snapshots').select('payload').eq('session_id',sessionId).order('game_time',{ascending:true}),
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
@@ -350,6 +356,13 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const queuedSnapshots=[...(queuedEnvelope?.snapshots??[])].sort((a,b)=>a.gameTime-b.gameTime);
   const snapshots=queuedSnapshots.length?queuedSnapshots:(data??[]).map(row=>row.payload as LiveTelemetrySnapshot);
   if(!snapshots.length)throw new Error('Queued post-game session has no keyframes.');
+  const queueId=recordedQueueId(snapshots);
+  if(!isRankedSolo(queueId)){
+    const skipped=await db.from('live_telemetry_sessions').update({queue_id:queueId,summary:{...existingSummary,capture:existingSummary.capture,rankedEligibility:rankedEligibility(queueId),proAnalysis:null,decisionGraph:null,learningPlanSync:{status:'SKIPPED',reason:'RANKED_SOLO_ONLY'},processing:{status:'COMPLETE',completedAt:new Date().toISOString()}}}).eq('id',sessionId);
+    if(skipped.error)throw new Error(skipped.error.message);
+    return;
+  }
+  session.queue_id=queueId;
   const summary=buildStrengthTimeline(snapshots);
   const queuedReadCheckpoints=Array.isArray(queuedEnvelope?.readCheckpoints)?queuedEnvelope?.readCheckpoints??[]:[];
   const embeddedReadCheckpoints=Array.isArray(existingSummary?.capture?.readCheckpoints)?existingSummary.capture.readCheckpoints:[];
@@ -370,7 +383,7 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
     riotEnrichment:existingSummary?.riotEnrichment??{status:riotEnabled()?'PENDING':'DISABLED'},
     processing:{...(existingSummary?.processing??{}),status:'PROCESSING'},
   };
-  const {error:updateError}=await db.from('live_telemetry_sessions').update({summary:storedSummary}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);
+  const {error:updateError}=await db.from('live_telemetry_sessions').update({queue_id:queueId,summary:{...storedSummary,rankedEligibility:rankedEligibility(queueId)}}).eq('id',sessionId);if(updateError)throw new Error(updateError.message);
 
   const reviewResult=await Promise.allSettled([persistReviewEvents(session,summary),persistLiveMatchWithRetry(session,snapshots,summary,proAnalysis),verifyObservedRiotIdentity(session.riot_account_id,snapshots[snapshots.length-1])]);
   for(const result of reviewResult)if(result.status==='rejected')console.warn('[live-finalize] secondary persistence failed',result.reason);
@@ -394,10 +407,12 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
 async function persistReviewEvents(session:any,summary:StrengthTimeline){const db=getSupabaseAdmin();if(!db||!summary.opportunities.length)return;await db.from('live_review_events').delete().eq('session_id',session.id);const {error}=await db.from('live_review_events').insert(summary.opportunities.map(window=>({user_id:session.user_id,riot_account_id:session.riot_account_id,session_id:session.id,game_time:window.atSeconds,event_type:window.type,opponent:window.opponent,confidence:window.confidence,headline:window.headline,detail:window.detail,evidence:{...window.evidence,score:window.score,limitation:window.limitation}})));if(error)throw new Error(error.message)}
 
 async function persistLiveMatch(session:any,snapshots:LiveTelemetrySnapshot[],summary:StrengthTimeline,proAnalysis:ProMatchAnalysis|null):Promise<string|null>{
+  if(!isRankedSolo(recordedQueueId(snapshots)))return null;
   const db=getSupabaseAdmin();if(!db)return null;const final=snapshots[snapshots.length-1],me=findMe(final);if(!me)return null;
   const {data:existing,error:existingError}=await db.from('matches').select('id').eq('live_session_id',session.id).maybeSingle();if(existingError)throw new Error(existingError.message);
   let matchId=existing?.id as string|undefined;
-  if(!matchId){const {data:match,error}=await db.from('matches').insert({user_id:session.user_id,riot_account_id:session.riot_account_id,live_session_id:session.id,external_match_id:null,champion:me.championName||final.active.championName||'Unknown',role:final.active.position||me.position||'UNKNOWN',result:inferResult(snapshots),kills:me.scores.kills,deaths:me.scores.deaths,assists:me.scores.assists,duration_seconds:Math.max(1,Math.round(final.gameTime)),rank:null,source:'LIVE_TRACKER',occurred_at:session.started_at||new Date().toISOString(),patch:session.patch??null,game_version:session.game_version??null,patch_source:session.patch_source??'UNKNOWN',patch_observed_at:session.patch?new Date().toISOString():null}).select('id').single();if(error||!match)throw new Error(error?.message||'Live match could not be saved.');matchId=match.id}
+  const rank=await resolveSoloRank(db,session.user_id,session.riot_account_id);
+  if(!matchId){const {data:match,error}=await db.from('matches').insert({queue_id:420,user_id:session.user_id,riot_account_id:session.riot_account_id,live_session_id:session.id,external_match_id:null,champion:me.championName||final.active.championName||'Unknown',role:final.active.position||me.position||'UNKNOWN',result:inferResult(snapshots),kills:me.scores.kills,deaths:me.scores.deaths,assists:me.scores.assists,duration_seconds:Math.max(1,Math.round(final.gameTime)),rank,source:'LIVE_TRACKER',occurred_at:session.started_at||new Date().toISOString(),patch:session.patch??null,game_version:session.game_version??null,patch_source:session.patch_source??'UNKNOWN',patch_observed_at:session.patch?new Date().toISOString():null}).select('id').single();if(error||!match)throw new Error(error?.message||'Live match could not be saved.');matchId=match.id}
   const minutes=Math.max(final.gameTime/60,1/60);
   const {error:metricError}=await db.from('match_metrics').upsert({match_id:matchId,user_id:session.user_id,cs:me.scores.creepScore,cs_per_min:Math.round((me.scores.creepScore/minutes)*100)/100,vision_score:me.scores.wardScore,raw:{source:'LIVE_TRACKER',currentGold:final.active.currentGold,summary,proAnalysis}},{onConflict:'match_id'});if(metricError)throw new Error(metricError.message);
   return matchId??null;
@@ -420,12 +435,13 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
   let puuid=account.puuid as string|null;
   if(!puuid){const resolved=await riotService.getAccountByRiotId(account.game_name,account.tagline,account.region);puuid=resolved.puuid;await db.from('riot_accounts').update({puuid,updated_at:new Date().toISOString()}).eq('id',account.id)}
   if(!puuid)return null;
-  const ids=await riotService.getRecentMatches(puuid,account.region,{count:3});
+  const ids=await riotService.getRecentMatches(puuid,account.region,{count:3,queue:420});
   const rank=account.rank_tier?`${account.rank_tier}${account.rank_division?` ${account.rank_division}`:''}`:undefined;
   let best:any=null,bestScore=-1;
   for(const id of ids){
     try{
       const detail=await riotService.getMatchDetails(id,account.region,{riotAccountId:account.id,puuid,rank});
+      if(!isRankedSolo(detail.match.queueId))continue;
       const score=matchCandidateScore(detail.match,session,snapshots);
       if(score>bestScore){best={id,detail};bestScore=score}
       if(score>=13)break;
@@ -437,7 +453,7 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
   const liveMatchId=await findMatchIdForSession(session.id);
   if(!liveMatchId)return null;
   const m=mapped.match;
-  const {error:matchError}=await db.from('matches').update({external_match_id:m.id,champion:m.champion,role:m.role,result:m.result,kills:m.kills,deaths:m.deaths,assists:m.assists,duration_seconds:m.durationSeconds,rank:m.rank,source:'riot',occurred_at:m.createdAt,patch:m.patch??null,game_version:m.gameVersion??null,patch_source:m.patchSource??'MATCH_V5',patch_observed_at:m.patch?new Date().toISOString():null}).eq('id',liveMatchId);if(matchError)throw new Error(matchError.message);
+  const {error:matchError}=await db.from('matches').update({queue_id:m.queueId,external_match_id:m.id,champion:m.champion,role:m.role,result:m.result,kills:m.kills,deaths:m.deaths,assists:m.assists,duration_seconds:m.durationSeconds,rank:m.rank,source:'riot',occurred_at:m.createdAt,patch:m.patch??null,game_version:m.gameVersion??null,patch_source:m.patchSource??'MATCH_V5',patch_observed_at:m.patch?new Date().toISOString():null}).eq('id',liveMatchId);if(matchError)throw new Error(matchError.message);
   const mm=m.metrics;
   const {error:metricError}=await db.from('match_metrics').upsert({
     match_id:liveMatchId,user_id:session.user_id,cs:mm.cs,cs_per_min:mm.csPerMin,gold_per_min:mm.goldPerMin??null,damage_per_min:mm.damagePerMin??null,kill_participation:mm.killParticipation??null,vision_score:mm.visionScore??null,farm_after_15:mm.post15CsPerMin??null,objective_participation:mm.objectiveParticipation??null,lane_cs_per_min:mm.laneCsPerMin??null,post15_cs_per_min:mm.post15CsPerMin??null,cs_at_10:mm.csAt10??null,cs_at_15:mm.csAt15??null,gold_diff_at_15:mm.goldDiffAt15??null,xp_diff_at_15:mm.xpDiffAt15??null,deaths_pre_10:mm.deathsPre10??null,deaths_10_to_20:mm.deaths10to20??null,deaths_post_20:mm.deathsPost20??null,solo_deaths:mm.soloDeaths??null,teamfight_deaths:mm.teamfightDeaths??null,first_item_minute:mm.firstItemMinute??null,second_item_minute:mm.secondItemMinute??null,third_item_minute:mm.thirdItemMinute??null,damage_share:mm.damageShare??null,unavailable_metrics:mapped.unavailable??[],raw:{source:'RIOT_ENRICHED',metrics:mm,proAnalysis:merged,moments:mapped.moments??[],unavailableMetrics:mapped.unavailable??[],liveSummary:strength}
@@ -451,13 +467,14 @@ async function enrichLiveSessionFromRiot(session:any,snapshots:LiveTelemetrySnap
 
 async function linkedDecisionPlan(sessionId:string):Promise<LockedDecisionPlan|null>{
   const db=getSupabaseAdmin();if(!db)return null;
-  const {data,error}=await db.from('live_pregame_contexts').select('context').eq('linked_session_id',sessionId).order('started_at',{ascending:false}).limit(1).maybeSingle();
+  const {data,error}=await db.from('live_pregame_contexts').select('context').eq('context->>queueId','420').eq('linked_session_id',sessionId).order('started_at',{ascending:false}).limit(1).maybeSingle();
   if(error){console.warn('[decision-graph] linked pregame lookup failed',error.message);return null}
   return lockedPlanFromPregameContext(data?.context??null);
 }
 
 function matchCandidateScore(match:any,session:any,snapshots:LiveTelemetrySnapshot[]){const final=snapshots[snapshots.length-1],me=findMe(final);if(!me)return 0;let score=0;if(String(match.champion).toLowerCase()===String(me.championName).toLowerCase())score+=5;if(match.kills===me.scores.kills&&match.deaths===me.scores.deaths&&match.assists===me.scores.assists)score+=4;const durationDelta=Math.abs(Number(match.durationSeconds)-Number(final.gameTime));if(durationDelta<=120)score+=3;else if(durationDelta<=300)score+=1;const ended=session.ended_at?new Date(session.ended_at).getTime():Date.now(),occurred=match.createdAt?new Date(match.createdAt).getTime():0,delta=Math.abs(ended-occurred);if(delta<=5*60_000)score+=4;else if(delta<=15*60_000)score+=2;return score}
 async function syncLearningPlanForSession(sessionId:string,userId:string,riotAccountId:string|null,trigger:string,analysis:ProMatchAnalysis|null):Promise<PostGameIlpSyncResult|null>{
+  if(!isRankedSolo(analysis?.queueId))return null;
   const signature=analysis?analysisSignature(analysis):'';
   const existing=await sessionLearningPlanStatus(sessionId);
   if(existing?.status==='COMPLETE'&&existing.xpSyncStatus==='COMPLETE'&&signature&&existing.analysisSignature===signature)return{...existing,reused:true} as PostGameIlpSyncResult;

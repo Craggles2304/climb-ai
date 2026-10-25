@@ -51,7 +51,7 @@ export async function POST(req:Request){
     if(!account)return NextResponse.json({error:'That Riot account is not linked to this user.'},{status:403});
 
     let analysisQuery=db.from('op_match_analysis')
-      .select('match_id,champion,role,created_at,analysis')
+      .select('match_id,champion,role,created_at,analysis').eq('queue_id',420)
       .eq('user_id',user.id).eq('riot_account_id',input.accountId)
       .not('match_id','is',null);
     const cutoff=historyCutoffIso(tier);
@@ -62,7 +62,7 @@ export async function POST(req:Request){
     if(!ids.length)return NextResponse.json(noGames(input.requestedGames,input.rank));
 
     const [matchesResult,metricsResult]=await Promise.all([
-      db.from('matches').select('id,champion,role,result,kills,deaths,assists,duration_seconds,occurred_at,created_at').eq('user_id',user.id).in('id',ids),
+      db.from('matches').select('id,champion,role,result,kills,deaths,assists,duration_seconds,occurred_at,created_at').eq('queue_id',420).eq('user_id',user.id).in('id',ids),
       db.from('match_metrics').select('match_id,cs,cs_per_min,vision_score,kill_participation,objective_participation,raw').eq('user_id',user.id).in('match_id',ids),
     ]);
     if(matchesResult.error)throw new Error(matchesResult.error.message);

@@ -36,7 +36,7 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
     :'UNRANKED';
 
   const matchResult=await db.from('matches')
-    .select('id,external_match_id,riot_account_id,live_session_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at')
+    .select('id,external_match_id,riot_account_id,live_session_id,champion,role,result,kills,deaths,assists,duration_seconds,rank,source,occurred_at,created_at').eq('queue_id',420)
     .eq('user_id',userId).eq('riot_account_id',accountId)
     .in('result',['WIN','LOSS'])
     .order('occurred_at',{ascending:false})
@@ -51,9 +51,9 @@ export async function buildValidationLab(db:any,userId:string,accountId:string,l
       .select('match_id,cs,cs_per_min,gold_per_min,damage_per_min,damage_share,kill_participation,vision_score,farm_after_15,objective_participation,lane_cs_per_min,post15_cs_per_min,cs_at_10,cs_at_15,gold_diff_at_15,xp_diff_at_15,deaths_pre_10,deaths_10_to_20,deaths_post_20,solo_deaths,teamfight_deaths,first_item_minute,second_item_minute,third_item_minute,raw,unavailable_metrics')
       .eq('user_id',userId).in('match_id',ids):Promise.resolve({data:[],error:null}),
     ids.length?db.from('op_match_analysis')
-      .select('match_id,session_id,evidence_sources,analysis,created_at')
+      .select('match_id,session_id,evidence_sources,analysis,created_at').eq('queue_id',420)
       .eq('user_id',userId).in('match_id',ids):Promise.resolve({data:[],error:null}),
-    db.from('ilp_tasks').select('id,payload').eq('user_id',userId).eq('riot_account_id',accountId),
+    db.from('ilp_tasks').select('id,payload').eq('payload->>queueScope','RANKED_SOLO_V1').eq('user_id',userId).eq('riot_account_id',accountId),
     ids.length?db.from('player_xp_ledger')
       .select('transaction_key,mission_id,match_id,kind,xp,created_at')
       .eq('user_id',userId).eq('riot_account_id',accountId).in('match_id',ids):Promise.resolve({data:[],error:null}),

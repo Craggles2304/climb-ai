@@ -14,7 +14,7 @@ export async function GET(_req:Request,{params}:{params:Promise<{match:string}>}
   const tier=(await resolveLeagueEntitlement(user.id)).tier;
   const {match}=await params;
   const {data,error}=await db.from('op_match_analysis')
-    .select('analysis,evidence_sources,created_at')
+    .select('analysis,evidence_sources,created_at').eq('queue_id',420)
     .eq('user_id',user.id)
     .eq('match_id',match)
     .maybeSingle();

@@ -34,7 +34,7 @@ test('renderer locks mission on match start and does not change it using live st
   assert.match(rendererSource,/if\(status==='RECORDING'&&!tftLastRecording\)/);
   assert.match(rendererSource,/tftFrozenMission=state\?\.tftMission\?\.mission/);
   assert.match(rendererSource,/const mission=tftFrozenMission\|\|state\?\.tftMission\?\.mission/);
-  assert.match(rendererSource,/renderTftPrep\(paired&&phase==='WAITING'/);
+  assert.match(rendererSource,/renderTftPrep\(!rankedSoloOnly&&paired&&phase==='WAITING'/);
   assert.match(rendererSource,/tft\.round&&tft\.round!=='0-0'/);
   assert.match(html,/<script src="tft-coach-model\.js"><\/script>[\s\S]*<script src="renderer\.js"><\/script>/);
   assert.match(html, /tft-coach-hud\.css/);

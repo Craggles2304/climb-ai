@@ -1,6 +1,7 @@
 import type {CoachingMetricKey} from '../subscription';
 import type {StrengthTimeline,FightReview} from './liveStrength';
 import type {LiveTelemetryPlayer,LiveTelemetrySnapshot,LiveTelemetryEvent} from './liveTelemetry';
+import {recordedQueueId} from '../rankedSolo';
 import type {RiotMatchDto,RiotParticipant,RiotTimelineDto,RiotTimelineEvent,RiotTimelineFrame} from './riotTypes';
 import type {MatchReconstruction} from '../matchReconstruction';
 import {buildRiotMatchReconstruction,buildLiveMatchReconstruction} from '../matchReconstruction';
@@ -44,6 +45,7 @@ export interface ProFingerprint{
 }
 
 export interface ProMatchAnalysis{
+  queueId?:number|null;
   version:1;
   champion:string;
   role:string|null;
@@ -133,7 +135,7 @@ export function buildLiveProAnalysis(snapshots:LiveTelemetrySnapshot[],summary:S
   metrics.champion_identity=championIdentityMetric(champion,role,metrics);
   metrics.historical_leak_rate=metric('historical_leak_rate','OP LEAK RATE',null,'Building history','BUILDING','LOW','This becomes a true historical rate after multiple completed tracked games. The current match contributes its detected leak signals to that profile.',leaks.slice(0,5).map(l=>({label:l.label,detail:`${l.count} occurrence${l.count===1?'':'s'} this game.`})));
 
-  return {version:1,champion,role,evidenceSources:['LIVE_TELEMETRY'],metrics,leakSignals:leaks,fingerprint,reconstruction:buildLiveMatchReconstruction(ordered,summary)??undefined};
+  return {version:1,queueId:recordedQueueId(ordered),champion,role,evidenceSources:['LIVE_TELEMETRY'],metrics,leakSignals:leaks,fingerprint,reconstruction:buildLiveMatchReconstruction(ordered,summary)??undefined};
 }
 
 export function buildRiotProAnalysis(dto:RiotMatchDto,timeline:RiotTimelineDto|null,puuid:string,opts:RiotProOptions={}):ProMatchAnalysis|null{
@@ -151,7 +153,7 @@ export function buildRiotProAnalysis(dto:RiotMatchDto,timeline:RiotTimelineDto|n
 
   if(!timeline){
     const fingerprint:ProFingerprint={primary:'MATCH DATA ONLY',sequence:['Match-V5 result available','Timeline unavailable'],confidence:'LOW',explanation:'The match payload enriched final damage/economy, but timeline-dependent PRO metrics could not be upgraded.'};
-    return {version:1,champion:me.championName,role,evidenceSources:['MATCH_V5'],metrics,leakSignals:[],fingerprint};
+    return {version:1,queueId:dto.info.queueId??null,champion:me.championName,role,evidenceSources:['MATCH_V5'],metrics,leakSignals:[],fingerprint};
   }
 
   const events=allRiotEvents(timeline);
@@ -191,7 +193,7 @@ export function buildRiotProAnalysis(dto:RiotMatchDto,timeline:RiotTimelineDto|n
   metrics.opponent_adaptation=metric('opponent_adaptation','OPPONENT ADAPTATION',adaptation.score,adaptation.value,adaptation.status,'HIGH',adaptation.summary,adaptation.evidence,'MATCH_V5_TIMELINE');
 
   const fingerprint:ProFingerprint={primary:'RIOT TIMELINE ENRICHED',sequence:['Live decision evidence','Riot purchase/objective timeline','Persistent history'],confidence:'HIGH',explanation:'This match has authoritative Riot match and timeline evidence layered over the live tracker review.'};
-  return {version:1,champion:me.championName,role,evidenceSources:['MATCH_V5','MATCH_V5_TIMELINE'],metrics,leakSignals:[],fingerprint,reconstruction:buildRiotMatchReconstruction(dto,timeline,puuid)??undefined};
+  return {version:1,queueId:dto.info.queueId??null,champion:me.championName,role,evidenceSources:['MATCH_V5','MATCH_V5_TIMELINE'],metrics,leakSignals:[],fingerprint,reconstruction:buildRiotMatchReconstruction(dto,timeline,puuid)??undefined};
 }
 
 export function mergeProAnalyses(base:ProMatchAnalysis,upgrade:ProMatchAnalysis|null|undefined):ProMatchAnalysis{
@@ -200,6 +202,7 @@ export function mergeProAnalyses(base:ProMatchAnalysis,upgrade:ProMatchAnalysis|
   for(const [key,value] of Object.entries(upgrade.metrics))if(value)metrics[key as CoachingMetricKey]=value;
   return {
     ...base,
+    queueId:upgrade.queueId??base.queueId,
     champion:upgrade.champion||base.champion,
     role:upgrade.role||base.role,
     evidenceSources:[...new Set([...base.evidenceSources,...upgrade.evidenceSources])],

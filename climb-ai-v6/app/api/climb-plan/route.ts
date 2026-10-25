@@ -154,18 +154,18 @@ export async function GET(req:Request){
         .select('id,game_name,tagline,role,rank_tier,rank_division,league_points')
         .eq('id',input.accountId).eq('user_id',user.id).maybeSingle(),
       db.from('op_match_analysis')
-        .select('match_id,champion,role,created_at,analysis')
+        .select('match_id,champion,role,created_at,analysis').eq('queue_id',420)
         .eq('user_id',user.id).eq('riot_account_id',input.accountId)
         .order('created_at',{ascending:true}).limit(100),
       db.from('op_player_learning_profiles')
-        .select('recent_change,role_profiles')
+        .select('recent_change,role_profiles').eq('learning_model_version',3)
         .eq('user_id',user.id).eq('riot_account_id',input.accountId).maybeSingle(),
       db.from('ilp_tasks')
-        .select('payload,updated_at')
+        .select('payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1')
         .eq('user_id',user.id).eq('riot_account_id',input.accountId)
         .order('updated_at',{ascending:false}).limit(160),
       db.from('matches')
-        .select('id,champion,role,result,kills,deaths,assists,duration_seconds,rank,occurred_at,created_at')
+        .select('id,champion,role,result,kills,deaths,assists,duration_seconds,rank,occurred_at,created_at').eq('queue_id',420)
         .eq('user_id',user.id).eq('riot_account_id',input.accountId)
         .order('occurred_at',{ascending:false}).limit(100),
     ]);

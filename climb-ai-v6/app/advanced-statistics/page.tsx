@@ -57,11 +57,11 @@ const tools=[
     badge:'DEEP VIEW',
   },
   {
-    title:'Add Game Data',
+    title:'Ranked Recordings',
     href:'/uploads',
     kicker:'DATA TOOLS',
-    copy:'Add extra match data when you need to. This feeds the same coaching system without cluttering your normal Home screen.',
-    badge:'INPUT',
+    copy:'Open the Solo/Duo games saved to your account, or connect Companion to record your next ranked match.',
+    badge:'RECORDED',
   },
 ] as const;
 

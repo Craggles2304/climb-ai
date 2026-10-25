@@ -57,7 +57,7 @@ export async function bootstrapActivation(input:Input):Promise<Result>{
 
   if(linkedExisting){
     const stored=await db.from('matches')
-      .select('id,champion,role,rank,occurred_at,created_at')
+      .select('id,champion,role,rank,occurred_at,created_at').eq('queue_id',420)
       .eq('user_id',user.id)
       .eq('riot_account_id',linkedExisting.id)
       .in('result',['WIN','LOSS'])

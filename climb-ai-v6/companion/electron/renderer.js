@@ -46,9 +46,10 @@ function render(state){
   const phase=String(current.phase||'WAITING');
   const tft=current.tftRecorder||{};
   const tftBusy=['INITIALIZING','RECORDING','PROCESSING','READY'].includes(String(tft.state||''));
-  const tftHomeVisible=paired&&tftBusy&&!['CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase);
+  const rankedSoloOnly=current.rankedSoloOnly!==false;
+  const tftHomeVisible=!rankedSoloOnly&&paired&&tftBusy&&!['CHAMP_SELECT','RECORDING','UPLOADING','REVIEW'].includes(phase);
   renderTftHome(current,tftHomeVisible);
-  renderTftPrep(paired&&phase==='WAITING'&&!tftHomeVisible);
+  renderTftPrep(!rankedSoloOnly&&paired&&phase==='WAITING'&&!tftHomeVisible);
 
   document.body.classList.toggle('op-mode-match-room',phase==='CHAMP_SELECT');
   document.body.classList.toggle('op-mode-quiet',phase==='RECORDING'||tft.state==='RECORDING');

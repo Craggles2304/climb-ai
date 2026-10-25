@@ -25,7 +25,7 @@ export interface RiotService{
 }
 
 export class DisabledRiotService implements RiotService{
-  private fail():never{throw new Error('Automatic Riot sync is not enabled yet. Upload a match instead.')}
+  private fail():never{throw new Error('Automatic Riot sync is not enabled yet. Connect Companion to record a Ranked Solo/Duo game.')}
   async getAccountByRiotId(){return this.fail()}
   async getSummonerRank(){return this.fail()}
   async getRecentMatches(){return this.fail()}
@@ -53,13 +53,14 @@ export class LiveRiotService implements RiotService{
 
   async getRecentMatches(puuid:string,region:string,opts:RecentMatchOptions={}):Promise<string[]>{
     const params=new URLSearchParams({start:String(opts.start??0),count:String(Math.min(100,opts.count??20))});
-    if(opts.queue)params.set('queue',String(opts.queue));
+    params.set('queue','420');
     return riotFetch<string[]>(`${regionalHost(region)}/lol/match/v5/matches/by-puuid/${encodeURIComponent(puuid)}/ids?${params}`,{ttl:'short'});
   }
 
   async getMatchDetails(matchId:string,region:string,ctx:MatchContext):Promise<RiotMatchDetails>{
     const host=regionalHost(region);
     const match=await riotFetch<RiotMatchDto>(`${host}/lol/match/v5/matches/${matchId}`,{ttl:'immutable'});
+    if(match.info.queueId!==420)throw new Error('Only Ranked Solo/Duo 5v5 matches count towards OP CLIMB.');
     let timeline:RiotTimelineDto|null=null;
     try{timeline=await riotFetch<RiotTimelineDto>(`${host}/lol/match/v5/matches/${matchId}/timeline`,{ttl:'immutable'})}
     catch(err){if(!(err instanceof RiotApiError))throw err}
@@ -73,6 +74,7 @@ export class LiveRiotService implements RiotService{
   async getActiveGame(puuid:string,region:string):Promise<LiveGameRead|null>{
     try{
       const game=await riotFetch<SpectatorGame>(`${platformHost(region)}/lol/spectator/v5/active-games/by-puuid/${encodeURIComponent(puuid)}`,{ttl:'short',maxRetries:1});
+      if(game.gameQueueConfigId!==420)return null;
       const championNames=await this.getChampionData().then(championNameMap).catch(()=>undefined);
       return readLiveGame(game,puuid,{championNames});
     }catch(err){if(err instanceof RiotApiError&&err.status===404)return null;throw err}

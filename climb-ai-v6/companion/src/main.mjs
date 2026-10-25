@@ -3,7 +3,7 @@ import {execFile} from 'node:child_process';
 import {get as httpsGet} from 'node:https';
 import {existsSync,mkdirSync,readFileSync,unlinkSync,writeFileSync} from 'node:fs';
 import {dirname,join} from 'node:path';
-import {recoveryPregameContext,gameActiveNow,isGameActivePhase,trackerHeartbeatState} from './in-game-recovery.mjs';
+import {recoveryPregameContext,gameActiveNow,isGameActivePhase,trackerHeartbeatState,queueIdFromGameflow} from './in-game-recovery.mjs';
 import {normalizePregame} from './pregame-normalizer.mjs';
 import {pendingMatchStore} from './pending-matches.mjs';
 
@@ -61,6 +61,8 @@ let lastLcuDetected=false;
 let lastChampSelectDetected=false;
 let lastLcuDetail='Starting local League detection.';
 let lastGameflowPhase='';
+let observedQueueId=null;
+let lastQueueLookupAt=0;
 let lastGameflowOkAt=0;
 let lastGameflowCheckedAt=0;
 const championNames=new Map();
@@ -317,7 +319,16 @@ async function pollGameflow(force=false){
   lastGameflowCheckedAt=Date.now();
   try{
     const phase=text(await lcuJson('/lol-gameflow/v1/gameflow-phase'));
+    const phaseChanged=lastGameflowPhase!==phase;
     lastGameflowPhase=phase;
+    if(['ChampSelect','GameStart','InProgress','Reconnect'].includes(phase)){
+      if(phaseChanged||Date.now()-lastQueueLookupAt>5000){
+        lastQueueLookupAt=Date.now();
+        try{observedQueueId=queueIdFromGameflow(await lcuJson('/lol-gameflow/v1/session'))}
+        catch{observedQueueId=null}
+      }
+    }else if(['None','Lobby','Matchmaking','ReadyCheck'].includes(phase)){observedQueueId=null}
+
     lastGameflowOkAt=Date.now();
     lastLcuDetected=true;
     if(phase==='InProgress'||phase==='Reconnect'){
@@ -337,11 +348,13 @@ async function pollPregame(){
   if(session){lastChampSelectDetected=false;return}
   const gameflow=await pollGameflow();
   if(gameflow==='InProgress'||gameflow==='Reconnect'){lastChampSelectDetected=false;return}
+  if(observedQueueId!==420){lastChampSelectDetected=false;return}
   try{
     const data=await lcuJson('/lol-champ-select/v1/session');
     lastLcuDetected=true;lastChampSelectDetected=true;lastLcuDetail='League Client connected and champ select detected.';pregameMisses=0;
     if(!pregame)pregame={id:randomUUID(),startedAt:new Date().toISOString()};
     const context=await normalizePregame(data,championName);
+    context.queueId=observedQueueId;
     emitPregameMatchup(context);
     const signature=JSON.stringify({...context,capturedAt:null});
     const heartbeat=Date.now()-lastPregameUploadAt>=60_000;
@@ -650,6 +663,11 @@ async function tick(){
   }
   lastLcuDetected=true;
   const snapshot=normalize(data);
+  snapshot.queueId=observedQueueId;
+  if(snapshot.queueId!==420&&!session){
+    logState('WAITING',observedQueueId==null?'OP CLIMB: checking Ranked Solo/Duo queue identity…':'OP CLIMB: Ranked Solo/Duo only. This queue does not count towards your climb.');
+    return;
+  }
   emitLiveMatchup(snapshot);
   // Read-only score feed for the desktop HUD. Recording and review still use
   // the unmodified snapshot below.

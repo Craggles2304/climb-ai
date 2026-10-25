@@ -18,7 +18,7 @@ export function recoveryPregameContext(snapshot){
   if(allies.length!==5||enemies.length!==5)return null;
   const pick=(player,cellId)=>({cellId,championId:0,championName:player.championName,role:role(player.position),lockedIn:true,selectionState:'LOCKED'});
   return{
-    version:1,capturedAt:new Date().toISOString(),phase:'IN_GAME_RECOVERY',
+    version:1,queueId:snapshot.queueId??null,capturedAt:new Date().toISOString(),phase:'IN_GAME_RECOVERY',
     localPlayerCellId:allies.indexOf(me),localChampionId:0,localChampionName:me.championName,
     localRole:role(me.position),localLockedIn:true,localSelectionState:'LOCKED',
     allies:allies.map(pick),enemies:enemies.map(pick),bans:{allies:[],enemies:[]},
@@ -74,4 +74,10 @@ export function trackerHeartbeatState({hasSession,gameActive,hasPregame,lcuDetec
   if(gameActive)return'RECORDING';
   if(hasPregame)return'CHAMP_SELECT';
   return lcuDetected?'WAITING':'LCU_UNAVAILABLE';
+}
+
+// Queue identity comes from LCU gameflow, never from the generic CLASSIC mode.
+export function queueIdFromGameflow(flow){
+  const value=flow?.gameData?.queue?.id??flow?.gameData?.queueId;
+  return typeof value==='number'&&Number.isInteger(value)&&value>0?value:null;
 }

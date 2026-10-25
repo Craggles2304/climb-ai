@@ -19,8 +19,9 @@ export async function recordCompletedClimbSessionGame(db:any,input:{userId:strin
  const session=await getActiveClimbSession(db,input.userId,input.accountId);if(!session)return null;
  const {data:duplicate,error:duplicateError}=await db.from('op_climb_session_games').select('id,game_number').eq('session_id',session.id).eq('telemetry_session_id',input.telemetrySessionId).maybeSingle();if(duplicateError)throw new Error(duplicateError.message);if(duplicate)return duplicate;
  const games=await getSessionGames(db,input.userId,session.id);const gameNumber=games.length+1;if(gameNumber>Number(session.target_games||3))return null;
- const [{data:match,error:matchError},{data:pro,error:proError}]=await Promise.all([db.from('matches').select('id,external_match_id,result,champion,role,kills,deaths,assists').eq('user_id',input.userId).eq('riot_account_id',input.accountId).eq('live_session_id',input.telemetrySessionId).maybeSingle(),db.from('op_match_analysis').select('analysis').eq('user_id',input.userId).eq('riot_account_id',input.accountId).eq('session_id',input.telemetrySessionId).maybeSingle()]);
+ const [{data:match,error:matchError},{data:pro,error:proError}]=await Promise.all([db.from('matches').select('id,external_match_id,result,champion,role,kills,deaths,assists').eq('queue_id',420).eq('user_id',input.userId).eq('riot_account_id',input.accountId).eq('live_session_id',input.telemetrySessionId).maybeSingle(),db.from('op_match_analysis').select('analysis').eq('queue_id',420).eq('user_id',input.userId).eq('riot_account_id',input.accountId).eq('session_id',input.telemetrySessionId).maybeSingle()]);
  if(matchError)throw new Error(matchError.message);if(proError)throw new Error(proError.message);
+ if(!match)return null;
  const metric=String(session.mission_snapshot?.metric||'');const measured=metric&&pro?.analysis?.metrics?.[metric]?pro.analysis.metrics[metric]:null;
  const missionResult={result:match?.result??null,champion:match?.champion??null,role:match?.role??null,kda:match?{kills:match.kills,deaths:match.deaths,assists:match.assists}:null,metric,measured:measured?{score:measured.score,status:measured.status,confidence:measured.confidence,summary:measured.summary}:null,recordedAt:new Date().toISOString()};
  const attached=await attachSessionGame(db,{userId:input.userId,accountId:input.accountId,sessionId:session.id,matchId:match?.id??null,externalMatchId:match?.external_match_id??null,telemetrySessionId:input.telemetrySessionId,gameNumber,missionResult});
@@ -46,8 +47,8 @@ export async function loadCoachMemories(db:any,userId:string,accountId:string,li
 export async function syncDerivedCoachMemories(db:any,userId:string,accountId:string){
  const now=new Date().toISOString();
  const [taskResult,profileResult,existingResult]=await Promise.all([
-  db.from('ilp_tasks').select('payload,updated_at').eq('user_id',userId).eq('riot_account_id',accountId),
-  db.from('op_player_learning_profiles').select('role_profiles,recent_change').eq('user_id',userId).eq('riot_account_id',accountId).maybeSingle(),
+  db.from('ilp_tasks').select('payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1').eq('user_id',userId).eq('riot_account_id',accountId),
+  db.from('op_player_learning_profiles').select('role_profiles,recent_change').eq('learning_model_version',3).eq('user_id',userId).eq('riot_account_id',accountId).maybeSingle(),
   db.from('op_coach_memories').select('memory_key,evidence,first_seen_at,occurrences,status').eq('user_id',userId).eq('riot_account_id',accountId).like('memory_key','derived:%'),
  ]);
  if(taskResult.error)throw new Error(taskResult.error.message);

@@ -1,4 +1,4 @@
-export const CURRENT_LEARNING_MODEL_VERSION=2 as const;
+export const CURRENT_LEARNING_MODEL_VERSION=3 as const;
 
 export const REQUIRED_LEARNING_LAYERS=[
   'decisionTwinV2',

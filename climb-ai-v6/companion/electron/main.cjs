@@ -22,7 +22,7 @@ let recordingExitTimer=null,recordingExitPendingAt=0,recordingStartedAt=0,lastLo
 const RECORDING_END_GRACE_MS=22000;
 let pairingAuthInvalid=false;
 let recentLogs=[];
-let state={phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
+let state={rankedSoloOnly:true,phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -463,6 +463,7 @@ async function pollPlayerHome(roleOverride=dnaViewRole){
 
 // The companion fetches the same account-scoped mission as the TFT website.
 async function pollTftMission(){
+  if(state.rankedSoloOnly)return;
   if(tftMissionInFlight||state.phase!=='WAITING'||!paired())return;
   const cfg=currentConfig();if(!cfg.token)return;
   tftMissionInFlight=true;
@@ -859,6 +860,7 @@ function stopTftRecorder(){
   setState({tftRecorder:{available:true,state:'STOPPED',detail:'TFT recorder stopped.'}});
 }
 function startTftRecorder(){
+  if(state.rankedSoloOnly){setState({tftRecorder:{available:false,state:'DISABLED',detail:'OP CLIMB is focused on Ranked Solo/Duo 5v5.'}});return}
   if(!paired())return;
   if(tftRecorder)return;
   try{

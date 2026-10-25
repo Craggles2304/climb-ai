@@ -31,7 +31,7 @@ export async function POST(req:NextRequest){
     return NextResponse.json({
       ok:false,
       code:'RIOT_DISABLED',
-      error:'Automatic match sync is coming shortly. Add your last match and OP CLIMB can still build the first grade now.',
+      error:'Riot sync is unavailable. Use Companion 0.12.0 or newer to record Ranked Solo/Duo games.',
     },{status:503});
   }
 
@@ -127,7 +127,7 @@ export async function POST(req:NextRequest){
       const status=err.status===404?404:err.status===429?429:502;
       return NextResponse.json({ok:false,error:err.message},{status});
     }
-    return NextResponse.json({ok:false,error:'We could not reach Riot for your matches. Your account is safe — add the last game manually or try again.'},{status:502});
+    return NextResponse.json({ok:false,error:'We could not reach Riot for your matches. Your account is safe — record your next Ranked Solo/Duo game with Companion or try again.'},{status:502});
   }
 }
 
@@ -137,6 +137,6 @@ export async function GET(){
     regions:SUPPORTED_REGIONS,
     message:riotEnabled()
       ?'Riot sync is enabled.'
-      :'Automatic match sync is coming shortly. Add your last match and OP CLIMB can still build the first grade now.',
+      :'Riot sync is unavailable. Use Companion 0.12.0 or newer to record Ranked Solo/Duo games.',
   });
 }

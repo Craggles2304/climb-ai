@@ -27,7 +27,7 @@ export async function GET(req:NextRequest){
       ?db.from('riot_accounts').select('id,game_name,tagline,role,rank_tier,rank_division,league_points,champions').eq('user_id',device.userId).eq('id',device.riotAccountId).maybeSingle()
       :Promise.resolve({data:null,error:null}),
     device.riotAccountId
-      ?db.from('ilp_tasks').select('id,payload,updated_at').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
+      ?db.from('ilp_tasks').select('id,payload,updated_at').eq('payload->>queueScope','RANKED_SOLO_V1').eq('user_id',device.userId).eq('riot_account_id',device.riotAccountId).order('updated_at',{ascending:false}).limit(80)
       :Promise.resolve({data:[],error:null}),
     resolveTier(db,device.userId),
   ]);

@@ -21,8 +21,8 @@ export async function POST(req:Request){
     const cutoff=historyCutoffIso(tier);
 
     const [matchesResult,analysisResult]=await Promise.all([
-      db.from('matches').select('id,occurred_at,created_at').eq('user_id',user.id).in('id',matchIds),
-      db.from('op_match_analysis').select('match_id,analysis').eq('user_id',user.id).in('match_id',matchIds),
+      db.from('matches').select('id,occurred_at,created_at').eq('queue_id',420).eq('user_id',user.id).in('id',matchIds),
+      db.from('op_match_analysis').select('match_id,analysis').eq('queue_id',420).eq('user_id',user.id).in('match_id',matchIds),
     ]);
     if(matchesResult.error)throw new Error(matchesResult.error.message);
     if(analysisResult.error)throw new Error(analysisResult.error.message);
