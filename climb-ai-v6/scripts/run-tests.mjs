@@ -1,7 +1,9 @@
 import {readdirSync,readFileSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
 
-const files=readdirSync('tests').filter(file=>file.endsWith('.test.ts')).sort();
+// Both suffixes: the .test.cjs files are node:test suites and were silently
+// excluded here, so a third of the tests never ran in npm test or in CI.
+const files=readdirSync('tests').filter(file=>file.endsWith('.test.ts')||file.endsWith('.test.cjs')).sort();
 const vitest=files.filter(file=>readFileSync(`tests/${file}`,'utf8').includes("from 'vitest'"));
 const node=files.filter(file=>!vitest.includes(file));
 const executable=process.platform==='win32'?'node.exe':'node';

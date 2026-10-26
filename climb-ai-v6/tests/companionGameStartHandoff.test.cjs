@@ -113,6 +113,11 @@ function desktopPhaseLog(sequence){
   const source=desktop.slice(start,end);
 
   let reviewPolls=0;
+  // applyTrackerState now defers match end through the recording-exit grace
+  // period instead of flipping straight to UPLOADING, so the helpers it calls
+  // are stubbed here and their calls recorded.
+  const exitSchedules=[];
+  let aliveMarks=0;
   const prelude=[
     "let state={phase:'CHAMP_SELECT',matchup:{status:'READY'},teamPlan:{adaptiveBuild:{}}};",
     'const phases=[state.phase];',
@@ -126,20 +131,24 @@ function desktopPhaseLog(sequence){
     'for(const s of sequence)applyTrackerState({state:s,detail:s},"LOCAL");',
     'return {phases,state};',
   ].join('\n');
-  const driver=new Function('sequence','startPostGameReviewPoll',[prelude,source,drive].join('\n'));
-  const result=driver(sequence,()=>{reviewPolls++});
-  return {phases:result.phases,state:result.state,reviewPolls};
+  const driver=new Function('sequence','startPostGameReviewPoll','markRecordingAlive','scheduleRecordingExit',[prelude,source,drive].join('\n'));
+  const result=driver(sequence,()=>{reviewPolls++},()=>{aliveMarks++},detail=>{exitSchedules.push(detail)});
+  return {phases:result.phases,state:result.state,reviewPolls,exitSchedules,aliveMarks};
 }
 
-test('the OLD tracker sequence flips the desktop between RECORDING and UPLOADING',()=>{
+test('the OLD tracker sequence no longer flips the desktop out of the match',()=>{
   // Recorded from the real tracker before the fix. Kept to pin WHY the tracker
   // must never say WAITING during a game: the desktop deliberately treats
   // WAITING-while-recording as match end, which is how it self-heals a missed
   // end-of-match log.
   const old=['CHAMP_SELECT','WAITING','GAME_STARTING','GAME_STARTING','WAITING','GAME_STARTING','GAME_STARTING','WAITING','RECORDING'];
-  const {phases,reviewPolls}=desktopPhaseLog(old);
-  assert.ok(phases.filter(p=>p==='UPLOADING').length>=2,`expected repeated UPLOADING, got ${phases.join(' > ')}`);
-  assert.ok(reviewPolls>=2,'and it starts post-game review polls for a game that has not begun');
+  // The recording-exit grace period was added so that a WAITING reading mid-game
+  // can no longer end the match on the spot: the exit is scheduled and only
+  // taken if the game really has stopped reporting.
+  const {phases,reviewPolls,exitSchedules}=desktopPhaseLog(old);
+  assert.equal(phases.filter(p=>p==='UPLOADING').length,0,'no immediate UPLOADING: '+phases.join(' > '));
+  assert.equal(reviewPolls,0,'and no review poll is started for a game that has not begun');
+  assert.ok(exitSchedules.length>=1,'the end of the match is deferred to the grace period instead');
 });
 
 test('the NEW tracker sequence moves the desktop from champ select to RECORDING once',()=>{

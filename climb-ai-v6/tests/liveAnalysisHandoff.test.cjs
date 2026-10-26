@@ -11,16 +11,20 @@ const analyseApi=fs.readFileSync('app/api/analyse/route.ts','utf8');
 const liveTracker=fs.readFileSync('lib/server/liveTrackerRepository.ts','utf8');
 
 test('completed live review exposes the saved match id',()=>{
-  assert.ok(liveRead.includes("db.from('matches').select('id').eq('live_session_id',session.id)"));
+  // Further filters (queue scoping, for one) may sit in this chain; looking the
+  // match up by its session is the contract, not the exact filter list.
+  assert.match(liveRead,/db\.from\('matches'\)\.select\('id'\)[^;]*?\.eq\('live_session_id',session\.id\)/);
   assert.ok(liveRead.includes('matchId=(matchRow as any)?.data?.id??null'));
   assert.ok(liveRead.includes('matchId,'));
 });
 
 test('live page exposes a full match review action for completed games',()=>{
-  assert.ok(liveCenter.includes('OPEN FULL MATCH REVIEW →'));
+  // Either quoting style is fine; the route and the id it carries are not.
+  const analyseLink=/\/analyse\/(?:'\+|\$\{)encodeURIComponent\(review\.matchId\)/;
+  assert.match(liveCenter,analyseLink);
+  assert.match(liveReview,analyseLink);
+  assert.ok(liveCenter.includes('OPEN SAVED MATCH'));
   assert.ok(liveReview.includes('OPEN FULL MATCH REVIEW →'));
-  assert.ok(liveCenter.includes("href={'/analyse/'+encodeURIComponent(review.matchId)}"));
-  assert.ok(liveReview.includes('encodeURIComponent(review.matchId)'));
 });
 
 test('completed live game refreshes the account match cache',()=>{
@@ -38,7 +42,9 @@ test('analysis page can recover a newly completed match directly from the server
 
 
 test('completed live review self-heals a missing saved match',()=>{
-  assert.ok(liveTracker.includes("if(session.status==='COMPLETE'&&normalized.length&&strength&&!recoveredMatchId)"));
+  // Guards may be added in front (queue processing, for one); the recovery
+  // condition itself is what this pins down.
+  assert.match(liveTracker,/if\([^)]*session\.status==='COMPLETE'&&normalized\.length&&strength&&!recoveredMatchId\)/);
   assert.ok(liveTracker.includes("persistLiveMatchWithRetry({...session,user_id:userId},normalized,strength,proAnalysis)"));
 });
 

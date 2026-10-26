@@ -20,7 +20,9 @@ const css=fs.readFileSync(path.join(electron,'esports-v2.css'),'utf8');
 
 test('legacy layers load first and the new design system loads last',()=>{
   const links=[...html.matchAll(/<link rel="stylesheet" href="([^"]+)">/g)].map(m=>m[1]);
-  assert.equal(links[0],'design-system.css','tokens load before everything');
+  // arena-tokens.css was added ahead of the design system; both are token
+  // layers and both must still precede every component stylesheet.
+  assert.deepEqual(links.slice(0,2),['arena-tokens.css','design-system.css'],'tokens load before everything');
   const shell=links.indexOf('shell.css');
   for(const legacy of ['styles.css','esports-v2.css','premium-review.css','broadcast-v2.css','brand-sync.css'])
     assert.ok(links.indexOf(legacy)>=0&&links.indexOf(legacy)<shell,`${legacy} must load before the shell`);

@@ -7,6 +7,7 @@ const repoFile=fs.readFileSync('lib/server/liveTrackerRepository.ts','utf8');
 const worker=fs.readFileSync('lib/server/postGameQueue.ts','utf8');
 const cron=fs.readFileSync('app/api/cron/postgame/route.ts','utf8');
 const vercel=fs.readFileSync('vercel.json','utf8');
+const cloudflareCron=fs.readFileSync('cloudflare-cron/wrangler.jsonc','utf8');
 const migration=fs.readFileSync('supabase/migrations/20261005_50_player_beta_hardening.sql','utf8');
 
 test('telemetry sampling and rate limiting are shared in Postgres, not Vercel memory',()=>{
@@ -25,13 +26,16 @@ test('post-game uploads are durable and processed outside the ingest request',()
   assert.ok(repoFile.includes('payload:envelope'));
   assert.ok(repoFile.includes('processQueuedPostGameSession'));
   assert.equal(repoFile.includes("if(envelope.type==='END')await finalizeSession(sessionId)"),false);
-  assert.ok(worker.includes("db.rpc('claim_live_postgame_jobs'"));
-  assert.ok(worker.includes("db.rpc('finish_live_postgame_job'"));
+  assert.match(worker,/\.rpc\('claim_live_postgame_jobs'/);
+  assert.match(worker,/\.rpc\('finish_live_postgame_job'/);
 });
 
-test('Vercel drains a bounded post-game batch every minute with a secret',()=>{
+test('a bounded post-game batch is drained every minute with a secret',()=>{
+  // The schedule moved to the Cloudflare cron Worker when the site left Vercel.
+  // Vercel must no longer schedule it, or both providers drain the same queue.
   const config=JSON.parse(vercel);
-  assert.deepEqual(config.crons,[{path:'/api/cron/postgame',schedule:'* * * * *'}]);
+  assert.deepEqual(config.crons??[],[]);
+  assert.deepEqual(JSON.parse(cloudflareCron.replace(/^\s*\/\/.*$/gm,'')).triggers.crons,['* * * * *']);
   assert.ok(cron.includes('process.env.CRON_SECRET'));
   assert.ok(cron.includes("drainPostGameQueue({limit:18,concurrency:3})"));
   assert.ok(cron.includes('export const maxDuration=120'));
