@@ -124,3 +124,22 @@ test('a Solo/Duo FINAL bundle produces a linked match, review, rank and mission 
   expect(state.db.tables.ilp_tasks.every((r:any)=>r.payload.queueScope===RANKED_SOLO_SCOPE)).toBe(true);
   expect(session.summary.processing.status).toBe('COMPLETE');
 });
+
+test('a normal-queue FINAL bundle is skipped and completed, never reported as a failed save',async()=>{
+  state.db.tables.riot_accounts=[{id:account,user_id:'owner',is_primary:true,role:'ADC',rank_tier:'GOLD',rank_division:'IV'}];
+  const player=(i:number)=>({summonerName:'Player'+i,riotId:'Player'+i+'#EUW',championName:i===0?'Jinx':'Ashe',team:i<5?'ORDER':'CHAOS',level:12,position:i===0?'ADC':null,isDead:false,respawnTimer:0,itemGold:2000,items:[],scores:{kills:5,deaths:2,assists:4,creepScore:180,wardScore:15}});
+  const players=Array.from({length:10},(_,i)=>player(i));
+  const frame=(time:number):any=>({version:1,queueId:400,gameTime:time,gameMode:'CLASSIC',mapName:'Map11',receivedAt:'2026-10-25T10:00:00Z',active:{...players[0],currentGold:200,stats:{currentHealth:1000,maxHealth:1000,currentMana:500,maxMana:500,attackDamage:100,attackSpeed:1,abilityPower:0,armor:50,magicResist:40,moveSpeed:330}},players,events:time===1800?[{id:1,name:'GameEnd',time,actor:null,target:null,raw:{Result:'Win'}}]:[]});
+  const device:any={id:'pc',userId:'owner',riotAccountId:account,accountKey:account,deviceName:'PC'};
+  const envelope:any={type:'FINAL',clientSessionId:'normal-complete',snapshots:[frame(600),frame(1800)]};
+  const saved=await saveCompletedMatchBundle(device,envelope);
+  const session=state.db.tables.live_telemetry_sessions[0];session.patch='16.21';session.game_version='16.21.1';
+  // A skipped queue must resolve, not ask the Companion to send the game again:
+  // the durable-write guards further down finalizeSession throw "retry required"
+  // when a match or analysis row is missing, which a skipped game never writes.
+  await expect(processQueuedPostGameSession(saved.sessionId!,envelope)).resolves.not.toThrow();
+  expect(state.db.tables.matches??[]).toHaveLength(0);
+  expect(state.db.tables.op_match_analysis??[]).toHaveLength(0);
+  expect(session.summary.processing.status).toBe('COMPLETE');
+  expect(session.summary.learningPlanSync).toMatchObject({status:'SKIPPED',reason:'RANKED_SOLO_ONLY'});
+});
