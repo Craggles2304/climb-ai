@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import {beforeEach,expect,test,vi} from 'vitest';
 import {isRankedSolo,recordedQueueId,rankedEligibility,scopeMissionsToRanked,RANKED_SOLO_SCOPE} from '../lib/rankedSolo';
 import type {ILPTask} from '../lib/types';
@@ -18,7 +19,26 @@ class MemoryDb{
   from(table:string){
     const db=this;let op='read',payload:any,conflict='id',limit=1000;const filters:Array<(r:any)=>boolean>=[];
     const field=(r:any,k:string)=>k.includes('->>')?String(r[k.split('->>')[0]]?.[k.split('->>')[1]]):r[k];
-    const q:any={select(){return q},eq(k:string,v:any){filters.push(r=>field(r,k)===v);return q},in(k:string,v:any[]){filters.push(r=>v.includes(r[k]));return q},order(){return q},like(k:string,v:string){filters.push(r=>String(r[k]??'').startsWith(v.replace('%','')));return q},is(k:string,v:any){filters.push(r=>(r[k]??null)===v);return q},limit(n:number){limit=n;return q},
+    const q:any={select(){return q},eq(k:string,v:any){filters.push(r=>field(r,k)===v);return q},in(k:string,v:any[]){filters.push(r=>v.includes(r[k]));return q},order(){return q},like(k:string,v:string){filters.push(r=>String(r[k]??'').startsWith(v.replace('%','')));return q},is(k:string,v:any){filters.push(r=>(r[k]??null)===v);return q},
+      // PostgREST .or() with the two shapes the app uses: "col.eq.v" and
+      // "and(col.is.null,col.lt.v)". Enough to exercise baseline eligibility.
+      or(expr:string){
+        const clauses:Array<(r:any)=>boolean>=[];
+        for(const part of String(expr).split(/,(?![^(]*\))/)){
+          const and=part.match(/^and\((.+)\)$/);
+          const terms=(and?and[1].split(','):[part]).map(term=>{
+            const [col,op,...rest]=term.split('.');
+            const raw=rest.join('.');
+            if(op==='is')return (r:any)=>(r[col]??null)===(raw==='null'?null:raw);
+            if(op==='eq')return (r:any)=>String(r[col]??'')===raw;
+            if(op==='lt')return (r:any)=>String(r[col]??'')<raw;
+            return ()=>false;
+          });
+          clauses.push(r=>terms.every(fn=>fn(r)));
+        }
+        filters.push(r=>clauses.some(fn=>fn(r)));
+        return q;
+      },limit(n:number){limit=n;return q},
       insert(p:any){op='insert';payload=p;return q},upsert(p:any,o:any){op='upsert';payload=p;conflict=o?.onConflict??'id';return q},update(p:any){op='update';payload=p;return q},
       maybeSingle:async()=>{const r=run();return{...r,data:r.data[0]??null}},single:async()=>{const r=run();return{...r,data:r.data[0]??null}},then(resolve:any,reject:any){return Promise.resolve(run()).then(resolve,reject)}};
     function run(){
@@ -48,14 +68,29 @@ test('only explicit queue 420 qualifies; CLASSIC and unknown modes never imply r
   expect(recordedQueueId([{}])).toBeNull();
   expect(rankedEligibility(null).eligible).toBe(false);
 });
-test('baseline counts only owned Solo/Duo matches in the selected role',async()=>{
+test('baseline counts owned Solo/Duo plus legacy games, and nothing else',async()=>{
+  // Games recorded before queue identity existed cannot be proved ranked, but
+  // they were watched, so they count towards the baseline only. A NULL written
+  // after the cutover is a bug, not history, and must not be let in.
   state.db.tables.matches=[
-    {id:soloId,user_id:'owner',riot_account_id:account,queue_id:420,role:'ADC',result:'WIN',duration_seconds:1800},
-    {id:flexId,user_id:'owner',riot_account_id:account,queue_id:440,role:'ADC',result:'WIN',duration_seconds:1800},
-    {id:'unknown',user_id:'owner',riot_account_id:account,queue_id:null,role:'ADC',result:'WIN',duration_seconds:1800},
-    {id:'foreign',user_id:'other',riot_account_id:account,queue_id:420,role:'ADC',result:'WIN',duration_seconds:1800},
+    {id:soloId,user_id:'owner',riot_account_id:account,queue_id:420,role:'ADC',result:'WIN',duration_seconds:1800,created_at:'2026-10-26T10:00:00Z'},
+    {id:flexId,user_id:'owner',riot_account_id:account,queue_id:440,role:'ADC',result:'WIN',duration_seconds:1800,created_at:'2026-10-20T10:00:00Z'},
+    {id:'legacy',user_id:'owner',riot_account_id:account,queue_id:null,role:'ADC',result:'WIN',duration_seconds:1800,created_at:'2026-10-20T10:00:00Z'},
+    {id:'null-after-cutover',user_id:'owner',riot_account_id:account,queue_id:null,role:'ADC',result:'WIN',duration_seconds:1800,created_at:'2026-10-27T10:00:00Z'},
+    {id:'foreign',user_id:'other',riot_account_id:account,queue_id:420,role:'ADC',result:'WIN',duration_seconds:1800,created_at:'2026-10-26T10:00:00Z'},
   ];
-  expect(await companionDnaBaseline({userId:'owner',riotAccountId:account,role:'ADC'})).toMatchObject({games:1,ready:false});
+  expect(await companionDnaBaseline({userId:'owner',riotAccountId:account,role:'ADC'})).toMatchObject({games:2,ready:false});
+});
+
+test('a legacy game never becomes mission proof',async()=>{
+  // Baseline eligibility is deliberately wider than proof. The proof path still
+  // demands queue 420, so an unverifiable game can start you off but can never
+  // claim ranked progress.
+  const repo=fs.readFileSync('lib/server/proLearningRepository.ts','utf8');
+  expect(repo).toContain("if(!isRankedSolo(input.analysis.queueId))return null;");
+  const baseline=fs.readFileSync('lib/server/companionDnaBaseline.ts','utf8');
+  expect(baseline).toContain('BASELINE_ELIGIBLE');
+  expect(baseline).not.toContain("eq('queue_id',420)");
 });
 test('real analysis persistence excludes other queues and saves the ranked queue',async()=>{
   const input:any={userId:'owner',riotAccountId:account,matchId:soloId,sessionId:null,champion:'Jinx',role:'ADC',analysis:{version:1,queueId:440,evidenceSources:[]}};

@@ -4,6 +4,18 @@ import {verifiedMissionAttempts} from './verifiedMissionProof';
 export const RANKED_SOLO_QUEUE_ID=420;
 export const RANKED_SOLO_SCOPE='RANKED_SOLO_V1' as const;
 export const RANKED_SOLO_LABEL='Ranked Solo/Duo 5v5';
+
+/**
+ * Queue identity reached production on 25 October 2026: the column was added at
+ * 11:45 UTC and the code that fills it deployed at 12:36, so every row written
+ * before then has queue_id NULL and no evidence anywhere of which queue it was.
+ * An audit of all four possible sources - the analysis payload, the session's
+ * rankedEligibility, the stored keyframes and the Match-V5 analysis - found
+ * zero recoverable rows, because those fields were introduced the same day.
+ * Rows older than this are legacy: real games we watched, never provable as
+ * ranked. They count towards the DNA baseline and nothing else.
+ */
+export const LEGACY_UNVERIFIED_BEFORE='2026-10-25T12:36:00.000Z';
 export function isRankedSolo(queueId:unknown):boolean{return queueId===RANKED_SOLO_QUEUE_ID}
 
 /** CLASSIC and Summoner's Rift alone cannot distinguish normals from ranked. */

@@ -1,6 +1,17 @@
 import type {Role} from '@/lib/types';
 import {LEAGUE_ROLES,canonicalLeagueRole} from '@/lib/roleAwareLearning';
 import {getSupabaseAdmin} from './supabaseAdmin';
+import {RANKED_SOLO_QUEUE_ID,LEGACY_UNVERIFIED_BEFORE} from '@/lib/rankedSolo';
+
+/**
+ * The baseline asks one question: have we watched you play enough to describe
+ * your game? Rows recorded before queue identity existed carry queue_id NULL
+ * and can never be proved Ranked Solo, but they were still real games we
+ * watched. Counting them for the baseline only - never as mission proof - lets
+ * an existing player keep the start they earned without letting an unverified
+ * game claim ranked progress.
+ */
+const BASELINE_ELIGIBLE='queue_id.eq.'+RANKED_SOLO_QUEUE_ID+',and(queue_id.is.null,created_at.lt.'+LEGACY_UNVERIFIED_BEFORE+')';
 
 export const COMPANION_DNA_BASELINE_REQUIRED=3;
 
@@ -18,7 +29,7 @@ export async function companionDnaBaseline(input:{
   }
 
   const {data,error}=await db.from('matches')
-    .select('id,role,duration_seconds,result,occurred_at').eq('queue_id',420)
+    .select('id,role,duration_seconds,result,occurred_at').or(BASELINE_ELIGIBLE)
     .eq('user_id',input.userId)
     .eq('riot_account_id',input.riotAccountId)
     .in('result',['WIN','LOSS'])
@@ -55,7 +66,7 @@ export async function companionDnaRoleBaselines(input:{
   if(!db||!input.riotAccountId)return empty;
 
   const {data,error}=await db.from('matches')
-    .select('id,role,duration_seconds,result,occurred_at').eq('queue_id',420)
+    .select('id,role,duration_seconds,result,occurred_at').or(BASELINE_ELIGIBLE)
     .eq('user_id',input.userId)
     .eq('riot_account_id',input.riotAccountId)
     .in('result',['WIN','LOSS'])
