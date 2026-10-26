@@ -1,10 +1,11 @@
 import Link from 'next/link';
-import {Wordmark} from '@/components/UI';
+import {PublicHeader} from '@/components/PublicHeader';
 import {PublicFooter} from '@/components/PublicFooter';
 import {BRAND} from '@/lib/brand';
 
 export default function Privacy(){return <>
-  <main className="container section"><Wordmark/><article className="glass card legal">
+  <PublicHeader/>
+  <main className="container section"><article className="glass card legal">
     <h1>Privacy Policy</h1><p className="muted">Last updated 13 September 2026</p>
     <h2>Who we are</h2><p>{BRAND.name} is a League of Legends improvement tool. This policy explains what we collect, why we use it and how to request access or deletion.</p>
     <h2>What we collect</h2>
