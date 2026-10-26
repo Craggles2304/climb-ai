@@ -71,7 +71,7 @@ function ScoutingCard({result,busy,step,demoName}:{result:PreviewResponse|null;b
 
   const playerName=report
     ? ((result?.account?.gameName||'YOU')+' · '+report.primaryRole).toUpperCase()
-    : (demoName?demoName.split('#')[0].toUpperCase()+' · ADC':'JINX · ADC');
+    : 'JINX · ADC';
 
   return <div className={styles.scout} id="scout" aria-live="polite">
     <div className={styles['scout-head']}>
@@ -159,11 +159,10 @@ export function BroadcastLanding(){
     return()=>window.clearInterval(timer);
   },[busy]);
 
-  const runSample=(name:string)=>{
+  const showSample=(message:string)=>{
     setResult(null);
-    setDemoName(name||'You#EUW');
-    setBusy(true);
-    window.setTimeout(()=>setBusy(false),5*550+700);
+    setDemoName('');
+    setError(message);
   };
 
   const submit=async(event:FormEvent)=>{
@@ -171,7 +170,7 @@ export function BroadcastLanding(){
     const entered=riotId.trim()||'You#EUW';
 
     if(available===false){
-      runSample(entered);
+      showSample('Live Riot lookups are offline right now.');
       return;
     }
 
@@ -193,9 +192,8 @@ export function BroadcastLanding(){
       track('public_riot_preview_completed',{placement:'broadcast_home',region,games:body.report.gamesAnalyzed,rank:body.report.rank});
     }catch(err){
       const message=err instanceof Error?err.message:'Could not analyse those games.';
-      setError(message);
       setBusy(false);
-      window.setTimeout(()=>runSample(entered),0);
+      showSample(message);
       track('public_riot_preview_failed',{placement:'broadcast_home',region,message});
     }finally{
       setBusy(false);
@@ -262,7 +260,8 @@ export function BroadcastLanding(){
             <select value={region} onChange={e=>setRegion(e.target.value as (typeof REGIONS)[number])} aria-label="Region">{REGIONS.map(item=><option key={item}>{item}</option>)}</select>
             <button className={styles['lock-btn']} type="submit" disabled={busy||available===null}>Preview</button>
           </form>
-          {error&&<div className={styles.error}>{error} Showing the sample report instead.</div>}
+          {error&&<div className={styles.error} role="status">{error} Showing the sample report instead.</div>}
+          {!error&&available===false&&<div className={styles.error} role="status">Live Riot lookups are offline right now. The card shows sample data, not your games.</div>}
         </div>
         <ScoutingCard result={result} busy={busy} step={step} demoName={demoName}/>
       </section>
