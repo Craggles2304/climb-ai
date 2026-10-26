@@ -143,3 +143,48 @@ test('a normal-queue FINAL bundle is skipped and completed, never reported as a 
   expect(session.summary.processing.status).toBe('COMPLETE');
   expect(session.summary.learningPlanSync).toMatchObject({status:'SKIPPED',reason:'RANKED_SOLO_ONLY'});
 });
+
+const frames=(riotId:string)=>{
+  const player=(i:number)=>({summonerName:'Player'+i,riotId:i===0?riotId:'Player'+i+'#EUW',championName:i===0?'Jinx':'Ashe',team:i<5?'ORDER':'CHAOS',level:12,position:i===0?'ADC':null,isDead:false,respawnTimer:0,itemGold:2000,items:[],scores:{kills:5,deaths:2,assists:4,creepScore:180,wardScore:15}});
+  const players=Array.from({length:10},(_,i)=>player(i));
+  const frame=(time:number):any=>({version:1,queueId:420,gameTime:time,gameMode:'CLASSIC',mapName:'Map11',receivedAt:'2026-10-26T10:00:00Z',active:{...players[0],currentGold:200,stats:{currentHealth:1000,maxHealth:1000,currentMana:500,maxMana:500,attackDamage:100,attackSpeed:1,abilityPower:0,armor:50,magicResist:40,moveSpeed:330}},players,events:time===1800?[{id:1,name:'GameEnd',time,actor:null,target:null,raw:{Result:'Win'}}]:[]});
+  return[frame(600),frame(1800)];
+};
+
+test('a game played on a second linked account is filed against that account',async()=>{
+  const second='22222222-2222-4222-8222-222222222222';
+  state.db.tables.riot_accounts=[
+    {id:account,user_id:'owner',is_primary:true,role:'ADC',game_name:'Main',tagline:'EUW',rank_tier:'GOLD',rank_division:'IV'},
+    {id:second,user_id:'owner',is_primary:false,role:'ADC',game_name:'Smurf',tagline:'EUW'},
+  ];
+  const device:any={id:'pc',userId:'owner',riotAccountId:account,accountKey:account,deviceName:'PC'};
+  const envelope:any={type:'FINAL',clientSessionId:'smurf-game',snapshots:frames('Smurf#EUW')};
+  const saved=await saveCompletedMatchBundle(device,envelope);
+  await processQueuedPostGameSession(saved.sessionId!,envelope);
+  // The paired account did not play this game and must not carry it.
+  expect(state.db.tables.matches[0].riot_account_id).toBe(second);
+  expect(state.db.tables.live_telemetry_sessions[0].riot_account_id).toBe(second);
+});
+
+test('a game played on an unlinked Riot ID is refused, not filed under the paired account',async()=>{
+  state.db.tables.riot_accounts=[{id:account,user_id:'owner',is_primary:true,role:'ADC',game_name:'Main',tagline:'EUW',rank_tier:'GOLD',rank_division:'IV'}];
+  const device:any={id:'pc',userId:'owner',riotAccountId:account,accountKey:account,deviceName:'PC'};
+  const envelope:any={type:'FINAL',clientSessionId:'stranger-game',snapshots:frames('Someone#ELSE')};
+  const saved=await saveCompletedMatchBundle(device,envelope);
+  await processQueuedPostGameSession(saved.sessionId!,envelope);
+  expect((state.db.tables.matches??[]).length).toBe(0);
+  const session=state.db.tables.live_telemetry_sessions[0];
+  expect(session.riot_account_id).toBe(account);
+  expect(session.summary.learningPlanSync.reason).toBe('UNLINKED_RIOT_ACCOUNT');
+  expect(session.summary.attribution.observed).toBe('Someone#ELSE');
+});
+
+test('an account with no stored Riot ID still records: an unknown identity proves nothing',async()=>{
+  state.db.tables.riot_accounts=[{id:account,user_id:'owner',is_primary:true,role:'ADC',rank_tier:'GOLD',rank_division:'IV'}];
+  const device:any={id:'pc',userId:'owner',riotAccountId:account,accountKey:account,deviceName:'PC'};
+  const envelope:any={type:'FINAL',clientSessionId:'unverified-game',snapshots:frames('Whoever#EUW')};
+  const saved=await saveCompletedMatchBundle(device,envelope);
+  await processQueuedPostGameSession(saved.sessionId!,envelope);
+  expect(state.db.tables.matches.length).toBe(1);
+  expect(state.db.tables.matches[0].riot_account_id).toBe(account);
+});
