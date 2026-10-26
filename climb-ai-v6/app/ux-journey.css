@@ -63,7 +63,8 @@
 @media(max-width:900px){
   .tier-unlock-preview,.landing-tier-journey{grid-template-columns:1fr}
   .pricing-story{grid-template-columns:1fr}
-  .pricing-story-arrow{transform:rotate(90deg);min-height:20px}
+  .pricing-story-arrow{min-height:28px;font-size:0}
+  .pricing-story-arrow::before{content:'↓';font-size:24px}
   .pricing-compare{overflow-x:auto}
   .pricing-compare-head,.pricing-feature-row{min-width:670px}
 }
