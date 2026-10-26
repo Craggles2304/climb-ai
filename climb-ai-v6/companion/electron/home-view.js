@@ -303,6 +303,10 @@
     if(!rows.length)return'';
     const line=row=>{
       const champion=text(row&&row.champion);
+      if(row&&row.reason==='UNLINKED_RIOT_ACCOUNT'){
+        const who=text(row.observed);
+        return `<li class="oc-skipped__row"><b>${esc(who||'Another account')}</b><span>Not linked to your OP CLIMB account</span></li>`;
+      }
       const why=row&&row.reason==='QUEUE_UNVERIFIED'
         ?'Queue could not be read from the League client'
         :'Not Ranked Solo/Duo'+(row&&row.queueId?' (queue '+num(row.queueId)+')':'');
