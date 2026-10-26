@@ -70,6 +70,22 @@ const championNames=new Map();
 function emitTrackerState(next,detail){
   console.log(`${TRACKER_STATE_PREFIX}${JSON.stringify({state:next,detail:String(detail||''),runtimeVersion:RUNTIME_VERSION})}`);
 }
+let lastSkipSignature='';
+// A skipped game is still a game the player played. Record it once, so the
+// desktop can say what was dropped and why instead of staying silent.
+function reportSkippedGame(snapshot,queueId){
+  const champion=String(snapshot?.active?.championName||'').trim();
+  const signature=(queueId==null?'unknown':queueId)+'|'+champion;
+  if(signature===lastSkipSignature)return;
+  lastSkipSignature=signature;
+  console.log('OP_SKIPPED_GAME '+JSON.stringify({
+    queueId:queueId==null?null:queueId,
+    reason:queueId==null?'QUEUE_UNVERIFIED':'NOT_RANKED_SOLO',
+    champion,
+    at:new Date().toISOString(),
+  }));
+}
+function clearSkipSignature(){lastSkipSignature=''}
 function logState(next,message){
   if(state===next)return;
   state=next;
@@ -327,7 +343,7 @@ async function pollGameflow(force=false){
         try{observedQueueId=queueIdFromGameflow(await lcuJson('/lol-gameflow/v1/session'))}
         catch{observedQueueId=null}
       }
-    }else if(['None','Lobby','Matchmaking','ReadyCheck'].includes(phase)){observedQueueId=null}
+    }else if(['None','Lobby','Matchmaking','ReadyCheck'].includes(phase)){observedQueueId=null;clearSkipSignature()}
 
     lastGameflowOkAt=Date.now();
     lastLcuDetected=true;
@@ -666,6 +682,7 @@ async function tick(){
   snapshot.queueId=observedQueueId;
   if(snapshot.queueId!==420&&!session){
     logState('WAITING',observedQueueId==null?'OP CLIMB: checking Ranked Solo/Duo queue identity…':'OP CLIMB: Ranked Solo/Duo only. This queue does not count towards your climb.');
+    reportSkippedGame(snapshot,observedQueueId);
     return;
   }
   emitLiveMatchup(snapshot);

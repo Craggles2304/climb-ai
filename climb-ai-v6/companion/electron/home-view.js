@@ -296,8 +296,28 @@
     bind(root,ctx);
   }
 
+  // Games League played that OP CLIMB did not record. Silence here reads as a
+  // bug to the player, so say what was dropped and why.
+  function skippedSection(state){
+    const rows=Array.isArray(state.skippedGames)?state.skippedGames.slice(0,3):[];
+    if(!rows.length)return'';
+    const line=row=>{
+      const champion=text(row&&row.champion);
+      const why=row&&row.reason==='QUEUE_UNVERIFIED'
+        ?'Queue could not be read from the League client'
+        :'Not Ranked Solo/Duo'+(row&&row.queueId?' (queue '+num(row.queueId)+')':'');
+      return `<li class="oc-skipped__row"><b>${esc(champion||'Last game')}</b><span>${esc(why)}</span></li>`;
+    };
+    return `
+      <section class="oc-card oc-skipped" aria-label="Games not recorded">
+        <div class="oc-cluster"><span class="oc-eyebrow oc-tone-amber">Not recorded</span></div>
+        <ul class="oc-skipped__list">${rows.map(line).join('')}</ul>
+        <p class="oc-small">Only Ranked Solo/Duo games progress your DNA. These were played but not saved.</p>
+      </section>`;
+  }
+
   function keyFor(route,state,home,stage){
-    return JSON.stringify([route,phaseOf(state),tierOf(state),stage,home,ui.lastChampion()?.name||'',Boolean(state.postGameReview),roleRequest]);
+    return JSON.stringify([route,phaseOf(state),tierOf(state),stage,home,(state.skippedGames||[]).length,ui.lastChampion()?.name||'',Boolean(state.postGameReview),roleRequest]);
   }
 
   views.home={
@@ -334,6 +354,7 @@
           ${stagePanel(stage)}
           ${dnaSection(state,home,stage,{expanded:true})}
           ${stage.stage==='active'?missionsSection(home,stage):''}
+          ${skippedSection(state)}
           ${links}
         </div>`,ctx);
       if(justRevealed===stage.role&&stage.stage==='active')setTimeout(()=>{justRevealed=''},1600);

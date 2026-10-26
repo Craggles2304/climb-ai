@@ -13,6 +13,7 @@ const PAIR_PROTOCOL='opclimb';
 const MATCHUP_PREFIX='OP_MATCHUP_CONTEXT ';
 const TRACKER_STATE_PREFIX='OP_TRACKER_STATE ';
 const DRAFT_CONTEXT_PREFIX='OP_DRAFT_CONTEXT ';
+const SKIPPED_GAME_PREFIX='OP_SKIPPED_GAME ';
 let overlayBoundDisplayId=null,overlayLastRaisedAt=0,overlayInteractionMode='';
 let overlayWindow=null,overlayEditing=false,overlayAssistantOpen=false,overlayBuildsOpen=false,overlayCoachBusy=false,overlayFrozenLeague=null,overlayFrozenTftFocus=null,overlayFrozenTftMission=null,overlayFrozenTftBuilds=null,overlayFrozenLeagueBuild=null;
 let mainWindow=null,tray=null,tracker=null,tftRecorder=null,trackerRestartTimer=null,championPlanTimer=null,reviewPollTimer=null,trackerStatusTimer=null,missedReviewTimer=null,playerHomeTimer=null;
@@ -22,7 +23,7 @@ let recordingExitTimer=null,recordingExitPendingAt=0,recordingStartedAt=0,lastLo
 const RECORDING_END_GRACE_MS=22000;
 let pairingAuthInvalid=false;
 let recentLogs=[];
-let state={rankedSoloOnly:true,phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
+let state={rankedSoloOnly:true,skippedGames:[],phase:'STARTING',detail:'Starting OP CLIMB Companion…',paired:false,trackerRunning:false,tftRecorder:{available:false,state:'STARTING',detail:'Checking TFT recorder…'},lastLog:'',autoStart:false,matchup:null,teamPlan:null,draft:null,postGameReview:null,playerHome:null,tftMission:null,tftMissionError:null};
 
 function registerProtocol(){
   if(process.defaultApp&&process.argv.length>=2)return app.setAsDefaultProtocolClient(PAIR_PROTOCOL,process.execPath,[path.resolve(process.argv[1])]);
@@ -427,7 +428,7 @@ function setState(patch){
 }
 function addLog(line,kind='info'){
   const clean=String(line||'').trim();if(!clean)return;
-  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)||clean.startsWith(DRAFT_CONTEXT_PREFIX)||clean.startsWith('OPCLIMB_HUD_JSON=')){parseTrackerLine(clean,kind);return}
+  if(clean.startsWith(MATCHUP_PREFIX)||clean.startsWith(TRACKER_STATE_PREFIX)||clean.startsWith(DRAFT_CONTEXT_PREFIX)||clean.startsWith('OPCLIMB_HUD_JSON=')||clean.startsWith(SKIPPED_GAME_PREFIX)){parseTrackerLine(clean,kind);return}
   recentLogs.push({at:new Date().toISOString(),kind,line:clean});
   if(recentLogs.length>200)recentLogs=recentLogs.slice(-200);
   setState({lastLog:clean});parseTrackerLine(clean,kind);
@@ -708,6 +709,15 @@ function parseTrackerLine(line,kind){
   }
   if(line.startsWith(MATCHUP_PREFIX)){try{void loadMatchupPlan(JSON.parse(line.slice(MATCHUP_PREFIX.length)))}catch{}return}
   if(line.startsWith(TRACKER_STATE_PREFIX)){try{applyTrackerState(JSON.parse(line.slice(TRACKER_STATE_PREFIX.length)))}catch{}return}
+  if(line.startsWith(SKIPPED_GAME_PREFIX)){
+    // Games League played but OP CLIMB did not record. Kept so the desktop can
+    // say what was dropped and why; newest first, last five only.
+    try{
+      const entry=JSON.parse(line.slice(SKIPPED_GAME_PREFIX.length));
+      setState({skippedGames:[entry,...(state.skippedGames||[])].slice(0,5)});
+    }catch{}
+    return;
+  }
   if(line.startsWith(DRAFT_CONTEXT_PREFIX)){try{if(state.phase==='CHAMP_SELECT')setState({draft:freshestDraft(state.draft,draftFromLocalContext(JSON.parse(line.slice(DRAFT_CONTEXT_PREFIX.length))))})}catch{}return}
   const lower=line.toLowerCase();
   if(lower.includes('pairing token rejected'))return setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});

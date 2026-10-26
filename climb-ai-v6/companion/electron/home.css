@@ -358,3 +358,10 @@
   .oc-roles__list { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .oc-baseline__games { grid-template-columns: 1fr; }
 }
+
+/* Games League played that OP CLIMB did not record. */
+.oc-skipped{gap:var(--oc-space-3)}
+.oc-skipped__list{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.oc-skipped__row{display:flex;align-items:baseline;justify-content:space-between;gap:var(--oc-space-3);padding:8px 10px;border:1px solid var(--oc-line);border-radius:var(--oc-radius-sm);background:var(--oc-surface-2)}
+.oc-skipped__row b{font-family:var(--oc-font-display);letter-spacing:.02em}
+.oc-skipped__row span{color:var(--oc-text-2);font-size:var(--oc-fs-sm);text-align:right}
