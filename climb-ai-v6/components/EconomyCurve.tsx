@@ -8,7 +8,7 @@ import {Match,Role} from '@/lib/types';
  * minutes, game by game. The distance between the two lines IS the leak the ILP
  * is trying to close, and the reference line is the mission target.
  *
- * Series colours are validated against the OVERPOWERED dark surface #121417:
+ * Series colours are validated against the OP CLIMB dark surface #121417:
  * lightness band, chroma floor, CVD separation (protan ΔE 27.4, tritan 26.6),
  * normal-vision ΔE 29.6 and contrast all pass. Brand blue carries post-15 — the
  * brand colour sits on the number the plan is trying to move.

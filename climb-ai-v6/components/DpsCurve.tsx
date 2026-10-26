@@ -11,7 +11,7 @@ import type {DpsPoint} from '@/lib/champions/dps';
  * item is worth, drawn rather than asserted.
  *
  * Colours match the EconomyCurve pair, which were validated against the
- * OVERPOWERED dark surface for lightness, chroma, CVD separation and contrast.
+ * OP CLIMB dark surface for lightness, chroma, CVD separation and contrast.
  */
 
 export const BASE_COLOR='#C2703C';   // copper
