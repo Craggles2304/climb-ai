@@ -338,10 +338,18 @@ async function pollGameflow(force=false){
     const phaseChanged=lastGameflowPhase!==phase;
     lastGameflowPhase=phase;
     if(['ChampSelect','GameStart','InProgress','Reconnect'].includes(phase)){
-      if(phaseChanged||Date.now()-lastQueueLookupAt>5000){
+      // Retry immediately while the queue is still unknown. The first ticks of a
+      // game are exactly when a missing id costs a recording, so waiting out the
+      // 5s throttle there loses genuine ranked games.
+      if(phaseChanged||observedQueueId==null||Date.now()-lastQueueLookupAt>5000){
         lastQueueLookupAt=Date.now();
-        try{observedQueueId=queueIdFromGameflow(await lcuJson('/lol-gameflow/v1/session'))}
-        catch{observedQueueId=null}
+        // A failed or empty lookup must not erase an id Riot already gave us for
+        // this game. One LCU hiccup used to turn a verified Ranked Solo/Duo game
+        // into an unverified one, and the recording was dropped for good.
+        try{
+          const found=queueIdFromGameflow(await lcuJson('/lol-gameflow/v1/session'));
+          if(found!=null)observedQueueId=found;
+        }catch{}
       }
     }else if(['None','Lobby','Matchmaking','ReadyCheck'].includes(phase)){observedQueueId=null;clearSkipSignature()}
 
