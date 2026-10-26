@@ -63,3 +63,32 @@ test('server WAITING does not hide a still-running League game; local end is deb
  assert.match(main,/win\.showInactive\(\)/);
  assert.match(main,/if\(lower\.includes\('match recording closed'\)\)\{cancelRecordingExit\(\)/);
 });
+
+test('a tank played mid is coached as a tank, not a backline mage',()=>{
+ // jobFor used to gate the tank branch to TOP/SUPPORT/JUNGLE, so Maokai mid
+ // fell through to the mage branch and was told to preserve range.
+ const plan=fs.readFileSync('lib/champions/teamCompPlan.ts','utf8');
+ const tankAt=plan.indexOf("if(me.tags.includes('Tank'))return theirs.dive>=2");
+ const adcAt=plan.indexOf("if(me.role==='ADC'||me.tags.includes('Marksman'))");
+ assert.ok(tankAt>0&&adcAt>0,'both branches must exist');
+ assert.ok(tankAt<adcAt,'tank is decided before role, so a tank mid stays a tank');
+ assert.doesNotMatch(plan,/includes\('Tank'\)&&\(me\.role==='TOP'/,'the tank branch must not be gated by lane');
+});
+
+test('a cue keeps the plan it was given rather than the lane boilerplate',()=>{
+ // Every rule missing meant every game read the same: the lane basic.
+ assert.equal(brief.cue('MOVE','HOLD THE RIVER BUSH. Nothing else matters.','MID'),'Hold the river bush.');
+ assert.equal(brief.cue('MOVE','CREATE FIRST CONTACT. Give your carries a safe front edge.','MID'),
+  'Make first contact. Give your carries a safe front edge.');
+ // Only an empty plan may fall back to the lane line.
+ assert.equal(brief.cue('MOVE','','MID'),'Clear your wave safely. Move with your team.');
+});
+
+test('the explanation after the instruction cannot flip the cue',()=>{
+ // "behind FRONTLINE" and "let FIRST CONTACT happen" used to match rules meant
+ // for the opposite advice, because the whole paragraph was searched.
+ assert.equal(brief.cue('MOVE','CONTROL THE SPACE BEHIND FRONTLINE. Preserve range, layer damage after engage.','MID'),
+  'Control the space behind frontline.');
+ assert.equal(brief.cue('MOVE','WAIT → ENTER SECOND. Let key control and first contact happen.','MID'),
+  'Enter after first contact. Punish the isolated target.');
+});

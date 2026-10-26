@@ -244,12 +244,15 @@ function sidelanePlan(me:Read,ours:Shape){
   return{label:ours.frontline>=1?'BALANCED SIDE / GROUP':'GROUP MORE OFTEN',summary:'Take guaranteed side-wave resources when safe, but prioritise being present for the fights your composition is built to take.'};
 }
 function jobFor(me:Read,ours:Shape,theirs:Shape){
+  // Champion first, lane second: a tank played mid is still a tank, and a
+  // marksman is squishy wherever it is played. Deciding on me.role alone gave a
+  // Maokai mid the backline-mage plan.
+  if(me.tags.includes('Tank'))return theirs.dive>=2
+    ?'PEEL FIRST. Their composition wants access to your carries, so your body and control are often worth more protecting the back line than diving alone.'
+    :'CREATE FIRST CONTACT. Give your carries a safe front edge, then decide whether the fight needs engage or peel.';
   if(me.role==='ADC'||me.tags.includes('Marksman'))return theirs.dive>=2
     ?'SURVIVE THE DIVE → DPS. Keep range, hit the nearest safe target and make their divers cross your team before they reach you.'
     :'SAFE DPS. Play behind first contact, hit what is reachable and do not walk past the enemy front line just to reach a carry.';
-  if(me.tags.includes('Tank')&&(me.role==='TOP'||me.role==='SUPPORT'||me.role==='JUNGLE'))return theirs.dive>=2
-    ?'PEEL FIRST. Their composition wants access to your carries, so your body and control are often worth more protecting the back line than diving alone.'
-    :'CREATE FIRST CONTACT. Give your carries a safe front edge, then decide whether the fight needs engage or peel.';
   if(me.tags.includes('Assassin'))return'WAIT → ENTER SECOND. Let key control and first contact happen, then threaten the isolated back-line target instead of opening the fight yourself.';
   if(me.tags.includes('Mage'))return ours.frontline>=1
     ?'CONTROL THE SPACE BEHIND FRONTLINE. Preserve range, layer damage/control after engage and avoid being the first champion visible in the fight.'

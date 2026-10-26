@@ -18,8 +18,31 @@
     ADC:'Keep your range. Hit the nearest safe target.',
     SUPPORT:'Protect your carries. Save CC for enemy engages.',
   };
+  /**
+   * The plan's own first instruction, made readable: lead clause only, no arrow
+   * chains, sentence case, ending in a full stop. Returns '' when it cannot be
+   * made short enough, so the caller can fall back. This exists so that a plan
+   * no rule recognises keeps saying something specific about THIS game rather
+   * than collapsing into the lane's generic line.
+   */
+  function fromSource(value,max=86){
+    const steps=clean(value).split(/\s+→\s+/).filter(Boolean);
+    const raw=steps.length>1&&steps[0].length<24?steps[0]+', then '+steps[1].toLowerCase():(steps[0]||'');
+    const lead=(raw.split(/(?<=[.!])\s+/)[0]||raw).replace(/[;:,.]+$/,'').trim();
+    if(!lead||lead.length>max-1)return'';
+    const cased=/^[A-Z0-9 ,'/+-]+$/.test(lead)
+      ?lead.charAt(0)+lead.slice(1).toLowerCase()
+      :lead;
+    return /[.!]$/.test(cased)?cased:cased+'.';
+  }
+
+  function leadClause(value){
+    const whole=clean(value);
+    return (whole.split(/(?<=[.!])\s+/)[0]||whole);
+  }
+
   function cue(kind,value,role=''){
-    const s=clean(value);
+    const s=leadClause(value);
     const r=String(role).toUpperCase();
     if(kind==='MOVE'){
       if(has(s,/survive.{0,35}dive|keep.{0,12}range|nearest safe target|their divers/i))
@@ -28,6 +51,10 @@
         return 'Check health, levels and your escape before fighting.';
       if(has(s,/wave.{0,30}move|clear.{0,30}wave|lane priority/i))
         return 'Clear your wave safely. Move before your opponent.';
+      if(has(s,/enter second|back.?line target|isolated/i))
+        return 'Enter after first contact. Punish the isolated target.';
+      if(has(s,/first contact|front edge|create space/i))
+        return 'Make first contact. Give your carries a safe front edge.';
       if(has(s,/peel|protect.{0,22}carry|keep.{0,22}alive/i))
         return 'Stay with your carry. Save your CC for divers.';
       if(has(s,/objective|dragon|baron|herald/i))
@@ -38,7 +65,7 @@
         return 'Control the side lane. Rejoin before the fight.';
       if(has(s,/engage|start.{0,12}fight/i))
         return 'Engage when your teammates are ready to follow.';
-      return basics[r]||'Choose a safe fight. Stay connected to your team.';
+      return fromSource(s)||basics[r]||'Choose a safe fight. Stay connected to your team.';
     }
     if(kind==='WIN'){
       if(has(s,/core items|safe farm|item.{0,12}spike/i))
