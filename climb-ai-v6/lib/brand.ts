@@ -19,7 +19,7 @@ export const BRAND={
   loop:'The Hunt',
   loopCaps:'THE HUNT',
   description:'League of Legends improvement powered by saved match evidence, adaptive learning plans and post-game coaching.',
-  /** Existing OVERPOWERED logo assets remain the visual mark. */
+  /** The existing logo assets keep their original filenames; OP CLIMB is the name. */
   logo:{lockup:'/brand/overpowered-lockup.png',crest:'/brand/overpowered-crest.png'},
 } as const;
 
