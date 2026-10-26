@@ -42,3 +42,26 @@ test('Home shows what was skipped and why, and repaints when the list grows',()=
 test('an empty list renders nothing at all',()=>{
   assert.match(home,/if\(!rows\.length\)return'';/);
 });
+
+const reviewApi=fs.readFileSync('app/api/live/companion-review/route.ts','utf8');
+
+test('a game refused for an unlinked account is reported, not returned as an empty review',()=>{
+  assert.match(reviewApi,/attribution\?\.status==='UNLINKED'/);
+  assert.match(reviewApi,/reason:'UNLINKED_RIOT_ACCOUNT'/);
+  assert.match(reviewApi,/observed:String\(attribution\.observed\|\|''\)/);
+  // It must be decided before the review is assembled, or the player gets a
+  // review of a game that was never saved.
+  assert.ok(reviewApi.indexOf("attribution?.status==='UNLINKED'")<reviewApi.indexOf('const riotReview=await recentRiotReview'));
+});
+
+test('the desktop files a refused game into the same Not recorded list',()=>{
+  assert.match(desktop,/body\?\.notRecorded/);
+  assert.match(desktop,/skippedGames:\[body\.notRecorded,\.\.\.\(state\.skippedGames\|\|\[\]\)\]\.slice\(0,5\)/);
+  // Stop polling: no review is ever coming for a game that was not recorded.
+  assert.match(desktop,/body\?\.notRecorded\)\{\s*\r?\n\s*stopPostGameReviewPoll\(\);/);
+});
+
+test('Home names the account that played a refused game',()=>{
+  assert.match(home,/row\.reason==='UNLINKED_RIOT_ACCOUNT'/);
+  assert.match(home,/Not linked to your OP CLIMB account/);
+});

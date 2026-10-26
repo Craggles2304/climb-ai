@@ -145,6 +145,16 @@ export async function GET(req:NextRequest){
   const processing=String(latest?.summary?.processing?.status||'');
   if(latest?.status==='COMPLETE'&&['QUEUED','PROCESSING'].includes(processing))
     return NextResponse.json({ok:true,ready:false,processing:true},{status:202});
+  // A game played on a Riot ID this user has not linked is refused rather than
+  // filed under the paired account. Say so instead of returning an empty review.
+  const attribution=(latest?.summary as any)?.attribution;
+  if(attribution?.status==='UNLINKED'){
+    return NextResponse.json({ok:true,ready:true,notRecorded:{
+      reason:'UNLINKED_RIOT_ACCOUNT',
+      observed:String(attribution.observed||''),
+      at:new Date().toISOString(),
+    }});
+  }
   const riotReview=await recentRiotReview(device,latest);
   if(riotReview){
     const baseline=await companionDnaBaseline({

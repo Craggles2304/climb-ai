@@ -636,6 +636,12 @@ async function pollPostGameReview(){
     if(response.status===202){schedulePostGameReviewPoll();return}
     const body=await response.json().catch(()=>({}));
     if(response.status===401||response.status===403){setState({phase:'AUTH_ERROR',detail:'This PC pairing is no longer valid. Re-pair from OP CLIMB.'});return}
+    if(response.ok&&body?.ready&&body?.notRecorded){
+      stopPostGameReviewPoll();
+      setState({phase:'WAITING',detail:'That game was not recorded.',postGameReview:null,
+        skippedGames:[body.notRecorded,...(state.skippedGames||[])].slice(0,5)});
+      return;
+    }
     if(!response.ok||!body?.ready||!body?.review){schedulePostGameReviewPoll(2500);return}
     await presentPostGameReview(body.review,'Your key good points and critical points are ready.');
   }catch{schedulePostGameReviewPoll(2500)}
