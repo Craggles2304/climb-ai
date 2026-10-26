@@ -345,6 +345,42 @@ export async function processQueuedPostGameSession(sessionId:string,envelope?:Li
   return{sessionId,reused:false};
 }
 
+/** The Riot ID actually seen in game, newest keyframe that carries one. */
+function observedRiotId(snapshots:LiveTelemetrySnapshot[]):string{
+  for(let i=snapshots.length-1;i>=0;i--){
+    const id=String(snapshots[i]?.active?.riotId||'').trim();
+    if(id)return id;
+  }
+  return'';
+}
+
+/**
+ * Which of this player's linked Riot accounts actually played this game.
+ * The Companion pairs to one account, but League can be launched on another,
+ * and filing a game under an account that did not play it corrupts that
+ * account's DNA silently. Never guess: switch only to an account this user has
+ * linked, and refuse the game outright when the Riot ID is not one of theirs.
+ */
+async function attributePlayedAccount(session:any,snapshots:LiveTelemetrySnapshot[]){
+  const db=getSupabaseAdmin();
+  const observed=observedRiotId(snapshots);
+  if(!db||!observed)return{status:'UNVERIFIED' as const,observed:''};
+  const {data,error}=await db.from('riot_accounts').select('id,game_name,tagline').eq('user_id',session.user_id);
+  if(error)throw new Error(error.message);
+  const key=(name:unknown,tag:unknown)=>(String(name||'')+'#'+String(tag||'').replace(/^#/,'')).toLowerCase();
+  const played=(data??[]).find(row=>key(row.game_name,row.tagline)===observed.toLowerCase())??null;
+  if(!played){
+    // Only refuse when we positively know the paired account's Riot ID and it
+    // is not this one. An account with no stored identity proves nothing, so
+    // the game is recorded as before rather than thrown away on a guess.
+    const paired=(data??[]).find(row=>row.id===session.riot_account_id)??null;
+    const pairedKnown=Boolean(paired&&String(paired.game_name||'').trim());
+    return pairedKnown?{status:'UNLINKED' as const,observed}:{status:'UNVERIFIED' as const,observed};
+  }
+  if(played.id===session.riot_account_id)return{status:'PAIRED' as const,observed,riotAccountId:played.id as string};
+  return{status:'SWITCHED' as const,observed,riotAccountId:played.id as string};
+}
+
 async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)return;
   const [{data:session,error:sessionError},{data,error}]=await Promise.all([
@@ -363,6 +399,23 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
     return;
   }
   session.queue_id=queueId;
+  // Attribute the game to whoever actually played it before anything is written.
+  const attribution=await attributePlayedAccount(session,snapshots);
+  if(attribution.status==='UNLINKED'){
+    const unlinked=await db.from('live_telemetry_sessions').update({
+      summary:{...existingSummary,rankedEligibility:rankedEligibility(queueId),attribution,
+        proAnalysis:null,decisionGraph:null,
+        learningPlanSync:{status:'SKIPPED',reason:'UNLINKED_RIOT_ACCOUNT'},
+        processing:{status:'COMPLETE',completedAt:new Date().toISOString()}},
+    }).eq('id',sessionId);
+    if(unlinked.error)throw new Error(unlinked.error.message);
+    return;
+  }
+  if(attribution.status==='SWITCHED'){
+    const moved=await db.from('live_telemetry_sessions').update({riot_account_id:attribution.riotAccountId}).eq('id',sessionId);
+    if(moved.error)throw new Error(moved.error.message);
+    session.riot_account_id=attribution.riotAccountId;
+  }
   const summary=buildStrengthTimeline(snapshots);
   const queuedReadCheckpoints=Array.isArray(queuedEnvelope?.readCheckpoints)?queuedEnvelope?.readCheckpoints??[]:[];
   const embeddedReadCheckpoints=Array.isArray(existingSummary?.capture?.readCheckpoints)?existingSummary.capture.readCheckpoints:[];
