@@ -223,3 +223,21 @@ test('an account with no stored Riot ID still records: an unknown identity prove
   expect(state.db.tables.matches.length).toBe(1);
   expect(state.db.tables.matches[0].riot_account_id).toBe(account);
 });
+
+test('the Companion follows the account that actually played',async()=>{
+  const second='22222222-2222-4222-8222-222222222222';
+  state.db.tables.riot_accounts=[
+    {id:account,user_id:'owner',is_primary:true,role:'ADC',game_name:'Main',tagline:'EUW',rank_tier:'GOLD',rank_division:'IV'},
+    {id:second,user_id:'owner',is_primary:false,role:'ADC',game_name:'Smurf',tagline:'EUW'},
+  ];
+  state.db.tables.live_tracker_devices=[{id:'pc',user_id:'owner',riot_account_id:account,account_key:account,device_name:'PC'}];
+  const device:any={id:'pc',userId:'owner',riotAccountId:account,accountKey:account,deviceName:'PC'};
+  const envelope:any={type:'FINAL',clientSessionId:'follow-me',snapshots:frames('Smurf#EUW')};
+  const saved=await saveCompletedMatchBundle(device,envelope);
+  await processQueuedPostGameSession(saved.sessionId!,envelope);
+  // Filing the game correctly is not enough: Home reads through the pairing,
+  // so a device left on the old account shows an empty profile.
+  expect(state.db.tables.matches[0].riot_account_id).toBe(second);
+  expect(state.db.tables.live_tracker_devices[0].riot_account_id).toBe(second);
+  expect(state.db.tables.live_tracker_devices[0].account_key).toBe(second);
+});

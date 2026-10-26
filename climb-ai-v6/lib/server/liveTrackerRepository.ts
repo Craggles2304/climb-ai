@@ -381,10 +381,26 @@ async function attributePlayedAccount(session:any,snapshots:LiveTelemetrySnapsho
   return{status:'SWITCHED' as const,observed,riotAccountId:played.id as string};
 }
 
+/**
+ * Follow the player. The Companion reads Home and the baseline through the
+ * device's paired account, so when a game turns out to belong to another of
+ * this player's linked accounts the pairing moves too. Without this the game is
+ * filed correctly and remains invisible to the person who played it.
+ */
+async function repointDeviceToPlayedAccount(deviceId:string|null,userId:string,riotAccountId:string){
+  const db=getSupabaseAdmin();
+  if(!db||!deviceId||!riotAccountId)return;
+  const {error}=await db.from('live_tracker_devices')
+    .update({riot_account_id:riotAccountId,account_key:riotAccountId})
+    .eq('id',deviceId)
+    .eq('user_id',userId);
+  if(error)console.warn('[live-finalize] could not repoint device to the played account',error.message);
+}
+
 async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
   const db=getSupabaseAdmin();if(!db)return;
   const [{data:session,error:sessionError},{data,error}]=await Promise.all([
-    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,started_at,ended_at,patch,game_version,patch_source,summary,queue_id').eq('id',sessionId).single(),
+    db.from('live_telemetry_sessions').select('id,user_id,riot_account_id,account_key,device_id,started_at,ended_at,patch,game_version,patch_source,summary,queue_id').eq('id',sessionId).single(),
     db.from('live_telemetry_snapshots').select('payload').eq('session_id',sessionId).order('game_time',{ascending:true}),
   ]);
   if(sessionError)throw new Error(sessionError.message);if(error)throw new Error(error.message);
@@ -415,6 +431,7 @@ async function finalizeSession(sessionId:string,queuedEnvelope?:LiveEnvelope){
     const moved=await db.from('live_telemetry_sessions').update({riot_account_id:attribution.riotAccountId}).eq('id',sessionId);
     if(moved.error)throw new Error(moved.error.message);
     session.riot_account_id=attribution.riotAccountId;
+    await repointDeviceToPlayedAccount(session.device_id,session.user_id,attribution.riotAccountId);
   }
   const summary=buildStrengthTimeline(snapshots);
   const queuedReadCheckpoints=Array.isArray(queuedEnvelope?.readCheckpoints)?queuedEnvelope?.readCheckpoints??[]:[];
