@@ -8,7 +8,7 @@
 
 export const BRAND={
   /** Full public product name. */
-  name:'OVERPOWERED CLIMB AI',
+  name:'OP CLIMB',
   /** Short form used where space is tight. */
   short:'OP CLIMB',
   tagline:"HUNT WHAT'S NEXT.",
