@@ -19,6 +19,31 @@ export interface TrackerDevice{id:string;userId:string;accountKey:string;riotAcc
 export interface RiotProfileInput{gameName:string;tagline:string;region:string;role?:string;rank?:string;champions?:string[];frustration?:string}
 export interface LiveEnvelope{type:'SNAPSHOT'|'END'|'FINAL';clientSessionId:string;startedAt?:string;endedAt?:string;snapshot?:LiveTelemetrySnapshot;snapshots?:LiveTelemetrySnapshot[];readCheckpoints?:Array<{checkpointMinute:5|10|15;gameSeconds:number;stateRead:'AHEAD'|'EVEN'|'BEHIND';confidenceRead?:'HIGH'|'MEDIUM'|'LOW'|null;threatRead?:string|null;priorityRead?:string|null}>;markedMoments?:Array<{at:string;clientSessionId?:string;gameSeconds:number;source:'PLAYER_HOTKEY'}>}
 
+/**
+ * One live row per PC. Pairing used to insert a row every time, leaving the
+ * previous row live with its own token: two valid devices for one machine, and
+ * whichever token the Companion still held decided which Riot account the games
+ * were filed under. Retiring the superseded rows makes the newest pairing the
+ * only one that authenticates, because authenticateTrackerToken requires
+ * revoked_at to be null.
+ */
+export async function retireSupersededDevices(
+  db:NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  input:{userId:string;deviceName:string;keepId:string;at?:string},
+){
+  const at=input.at??new Date().toISOString();
+  const {data,error}=await db.from('live_tracker_devices').update({
+    revoked_at:at,
+    tracker_status:{state:'REPLACED',pairing:false,replacedAt:at,replacedBy:input.keepId},
+    tracker_status_updated_at:at,
+  }).eq('user_id',input.userId).eq('device_name',input.deviceName)
+    .neq('id',input.keepId).is('revoked_at',null).select('id');
+  // A stale sibling left behind is a pairing bug, not a reason to fail the
+  // pairing the player just completed.
+  if(error){console.warn('[live-tracker] superseded devices not retired',error.message);return[]}
+  return (data??[]).map(row=>String(row.id));
+}
+
 export async function createTrackerDevice(userId:string,accountKey:string,deviceName:string,riotProfile:RiotProfileInput){
   const db=getSupabaseAdmin();if(!db)throw new Error('Supabase is required for secure tracker pairing.');
   const now=new Date().toISOString(),tagline=riotProfile.tagline.replace(/^#/,'').trim().toUpperCase(),region=riotProfile.region.trim().toUpperCase(),gameName=riotProfile.gameName.trim();
@@ -28,7 +53,9 @@ export async function createTrackerDevice(userId:string,accountKey:string,device
   if(riotError||!riotAccount)throw new Error(riotError?.message||'Riot account could not be saved.');
   const token=`climb_live_${randomBytes(32).toString('base64url')}`;
   const {data,error}=await db.from('live_tracker_devices').insert({user_id:userId,account_key:accountKey,riot_account_id:riotAccount.id,device_name:deviceName,token_hash:hashTrackerToken(token)}).select('id,account_key,riot_account_id,device_name,created_at,last_seen_at').single();
-  if(error)throw new Error(error.message);return{token,device:data,riotAccount};
+  if(error)throw new Error(error.message);
+  await retireSupersededDevices(db,{userId,deviceName,keepId:String(data.id),at:now});
+  return{token,device:data,riotAccount};
 }
 
 export async function listTrackerDevices(userId:string){const db=getSupabaseAdmin();if(!db)return[];const {data,error}=await db.from('live_tracker_devices').select('id,account_key,riot_account_id,device_name,created_at,last_seen_at,revoked_at').eq('user_id',userId).is('revoked_at',null).order('created_at',{ascending:false});if(error)throw new Error(error.message);return data??[]}
