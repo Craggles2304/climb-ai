@@ -1,6 +1,7 @@
 import 'server-only';
 import {createHash,randomBytes} from 'node:crypto';
 import {getSupabaseAdmin} from './supabaseAdmin';
+import {retireSupersededDevices} from './liveTrackerRepository';
 import type {RiotProfileInput} from './liveTrackerRepository';
 
 const PAIR_CODE_TTL_MS=10*60*1000;
@@ -40,7 +41,7 @@ export async function createDesktopPairCode(userId:string,accountKey:string,devi
 
   const code=makeCode();
   const expiresAt=new Date(Date.now()+PAIR_CODE_TTL_MS).toISOString();
-  const {data:pending,error}=await db.from('live_tracker_devices').insert({
+  const pairRow={
     user_id:userId,
     account_key:accountKey,
     riot_account_id:riotAccount.id,
@@ -49,8 +50,13 @@ export async function createDesktopPairCode(userId:string,accountKey:string,devi
     revoked_at:now,
     tracker_status:{state:'PAIRING',pairing:true,expiresAt},
     tracker_status_updated_at:now,
-  }).select('id').single();
-  if(error||!pending)throw new Error(error?.message||'Pairing code could not be created.');
+  };
+
+  // Asking for a second code for the same PC replaces the unclaimed one rather
+  // than leaving it behind. Codes are requested far more often than they are
+  // claimed, so inserting per request was what filled the table.
+  const pending=await reuseUnclaimedPairRow(db,userId,deviceName,pairRow)
+    ??await insertPairRow(db,pairRow);
   return{code,expiresAt,pendingDeviceId:pending.id,riotAccount};
 }
 
@@ -79,8 +85,43 @@ export async function claimDesktopPairCode(rawCode:string){
     .select('id,account_key,riot_account_id,device_name,created_at,last_seen_at').maybeSingle();
   if(updateError)throw new Error(updateError.message);
   if(!device)return null;
+  await retireSupersededDevices(db,{userId:pair.user_id,deviceName:pair.device_name,keepId:pair.id,at:now});
   if(pair.riot_account_id)await db.from('riot_accounts').update({sync_status:'paired',updated_at:now}).eq('id',pair.riot_account_id);
   return{token,device};
+}
+
+/**
+ * The newest unclaimed code for this PC, re-cut with a fresh code and expiry.
+ * Returns null when there is none to reuse, so the caller inserts instead.
+ */
+async function reuseUnclaimedPairRow(
+  db:NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  userId:string,deviceName:string,pairRow:Record<string,unknown>,
+){
+  const {data:candidates,error:readError}=await db.from('live_tracker_devices')
+    .select('id,tracker_status')
+    .eq('user_id',userId).eq('device_name',deviceName).not('revoked_at','is',null)
+    .order('created_at',{ascending:false}).limit(10);
+  if(readError||!candidates?.length)return null;
+  const unclaimed=candidates.find(row=>{
+    const status=(row.tracker_status&&typeof row.tracker_status==='object'?row.tracker_status:{}) as Record<string,unknown>;
+    return status.pairing===true;
+  });
+  if(!unclaimed)return null;
+  const {data,error}=await db.from('live_tracker_devices')
+    .update(pairRow).eq('id',unclaimed.id).select('id').maybeSingle();
+  // Losing the race to reuse a row is not a reason to refuse the player a code.
+  if(error||!data)return null;
+  return data as {id:string};
+}
+
+async function insertPairRow(
+  db:NonNullable<ReturnType<typeof getSupabaseAdmin>>,
+  pairRow:Record<string,unknown>,
+){
+  const {data,error}=await db.from('live_tracker_devices').insert(pairRow).select('id').single();
+  if(error||!data)throw new Error(error?.message||'Pairing code could not be created.');
+  return data as {id:string};
 }
 
 function makeCode(){
